@@ -28,7 +28,13 @@ G2Rect {
     topRightRadius: -Appearance.sizes.sidebarFlare
     bottomRightRadius: -Appearance.sizes.sidebarFlare
 
-    color: Appearance.colour.surface
+    // A lit face, not a flat fill: brighter at the top, with a hairline down the
+    // free edge where the light catches it. The left edge is off-screen, so the
+    // stroke only ever shows where it should.
+    color: Appearance.colour.surfaceTop
+    colorBottom: Appearance.colour.surface
+    borderColor: Appearance.colour.bevel
+    borderWidth: Appearance.depth.bevelWidth
 
     Item {
         id: body
@@ -42,10 +48,27 @@ G2Rect {
             anchors.centerIn: parent
         }
 
-        Clock {
+        Column {
+            id: bottom
+
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: Appearance.padding.huge
+            anchors.bottomMargin: Appearance.padding.large
             anchors.horizontalCenter: parent.horizontalCenter
+
+            width: parent.width - Appearance.padding.normal * 2
+            spacing: Appearance.padding.normal
+
+            Clock {
+                anchors.horizontalCenter: parent.horizontalCenter
+            }
+
+            Groove {
+                width: parent.width
+            }
+
+            StatusIcons {
+                width: parent.width
+            }
         }
     }
 }

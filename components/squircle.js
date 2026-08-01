@@ -192,3 +192,34 @@ function path(w, h, tl, tr, br, bl, smoothing) {
 
     return out + " Z";
 }
+
+// The sliver of a screen corner that a rounded desktop leaves uncovered.
+//
+// Filled black, these four pieces frame the desktop: the display appears to have
+// rounded corners. The shape is the corner curve itself plus two straight runs
+// back through the physical corner, so it matches the window rounding exactly
+// rather than approximating it.
+//
+// Drawn in a `p` x `p` box, where p is extent(radius, smoothing).
+function cornerPatch(radius, smoothing, which) {
+    const s = Math.max(0, Math.min(1, smoothing));
+    const k = corner(Math.abs(radius), s);
+    if (k.r <= 0)
+        return "";
+
+    k.concave = false;
+    const p = n(k.p);
+    const seg = segment(k, which);
+
+    switch (which) {
+    case "tl":
+        return `M 0 ${p}${seg} L 0 0 Z`;
+    case "tr":
+        return `M 0 0${seg} L ${p} 0 Z`;
+    case "br":
+        return `M ${p} 0${seg} L ${p} ${p} Z`;
+    case "bl":
+        return `M ${p} ${p}${seg} L 0 ${p} Z`;
+    }
+    return "";
+}

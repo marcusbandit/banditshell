@@ -27,12 +27,42 @@ Singleton {
             // for tier 0/1/2 and the maths does the rest.
             font: {
                 family: "Monocraft",
+                // Icons. Separate from the text face on purpose: swap this for a
+                // pixel icon font when one exists and nothing else changes.
+                icon: "Material Symbols Rounded",
                 base: 16,
                 // Three tiers, and three is the limit on purpose.
                 scale: [0.75, 1.0, 1.75]
             },
+
+            // Depth. greensteel is anodised metal, so surfaces are lit rather
+            // than flat: a RAISED face is lighter at the top, a RECESSED one is
+            // darker at the top, and edges catch a hairline of light. All of it
+            // is expressed in fractional steps of the theme's ramp, so it holds
+            // up when the palette changes and nothing here is a hex value.
+            depth: {
+                // How much lighter the top of a raised surface is, in ramp steps.
+                lift: 0.45,
+                // How much darker a machined channel sits below its surface.
+                inset: 0.9,
+                // Specular hairline along a free edge: how far up the ramp, and
+                // how strong.
+                bevelStep: 4,
+                bevelAlpha: 0.28,
+                bevelWidth: 1,
+                // The engraved line used as a divider: one dark, one light.
+                engraveStep: 1.6
+            },
+            // Take rounding, corner smoothing and the edge gap from the running
+            // compositor instead of the values below, so the shell agrees with
+            // the windows without being told twice. Hyprland and niri.
+            // Falls back to the manual values if the compositor can't be read.
+            compositor: {
+                follow: true
+            },
+
             rounding: {
-                // 15 matches Hyprland's `rounding = 15`.
+                // Ignored while compositor.follow finds a compositor.
                 base: 15,
                 scale: [0.55, 1.0, 1.6],
                 // Corner smoothing: 0 = plain circular arc, 0.6 = iOS squircle,
@@ -67,9 +97,19 @@ Singleton {
             },
 
             edge: {
-                // Width of the invisible interaction ring. 10 matches Hyprland's
-                // gaps_out.
-                border: 10
+                // Width of the invisible interaction ring. Ignored while
+                // compositor.follow is finding gaps_out.
+                border: 10,
+
+                // Round the outer edges of the display: four black pieces at the
+                // physical screen corners, so the desktop reads as a framed
+                // panel rather than a rectangle that happens to end.
+                roundOuter: true,
+                // Which rounding tier the frame uses. 1 is the same radius as a
+                // window corner, which is usually what "correct" means here.
+                outerTier: 1,
+                // The frame colour. Black is the point, but it is a setting.
+                outerColour: "#000000"
             },
 
             sidebar: {
@@ -82,6 +122,10 @@ Singleton {
                     persistent: 5,
                     slot: 30,
                     gap: 6
+                },
+                status: {
+                    slot: 36,
+                    gap: 2
                 }
             }
         })

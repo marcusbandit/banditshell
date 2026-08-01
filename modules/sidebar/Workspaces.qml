@@ -27,15 +27,31 @@ Item {
     implicitWidth: slot
     implicitHeight: count * pitch - Appearance.sizes.wsGap
 
-    // The "you are here" marker. Drawn first so the numbers sit on top of it.
-    // Its y is NOT bound: the timer below drives it, so it can be animated.
+    // The rail the indicators ride in: a channel machined into the panel face.
+    // Its lighting is INVERTED (dark at the top), which is the whole reason it
+    // reads as cut into the surface rather than sitting on it.
+    G2Rect {
+        anchors.fill: parent
+        anchors.margins: -Appearance.padding.small
+        radius: Appearance.rounding.small + Appearance.padding.small
+
+        color: Appearance.colour.inset
+        colorBottom: Appearance.colour.insetBottom
+    }
+
+    // The "you are here" marker. Drawn after the channel so it sits in it, and
+    // before the numbers so they sit on top of it. Its y is NOT bound: the timer
+    // below drives it, so it can be animated.
     G2Rect {
         id: indicator
 
         width: root.slot
         height: root.slot
         radius: Appearance.rounding.small
+
+        // Lit from above like anything raised.
         color: Appearance.colour.accent
+        colorBottom: Appearance.colour.accentDim
     }
 
     // Exponential smoothing: moves fast when far, settles gently when close, and
@@ -73,11 +89,16 @@ Item {
             width: root.slot
             height: root.slot
 
-            // Hover response: the slot lights up under the cursor.
+            // Hover response: a plate rises out of the channel under the cursor.
             G2Rect {
                 anchors.fill: parent
                 radius: Appearance.rounding.small
-                color: Appearance.colour.surfaceAlt
+
+                color: Appearance.colour.surfaceTop
+                colorBottom: Appearance.colour.surface
+                borderColor: Appearance.colour.bevel
+                borderWidth: Appearance.depth.bevelWidth
+
                 opacity: mouse.containsMouse && !slot.isActive ? 1 : 0
 
                 Behavior on opacity {

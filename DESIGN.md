@@ -294,22 +294,29 @@ myshell/
 ├── shell.qml                    entry point: Variants -> one set of surfaces per screen
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/myshell/config.json, live.
+│   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
 │   ├── Themes.qml               SINGLETON. Named palettes (ramp + accents).
-│   └── Appearance.qml           SINGLETON. Config x Themes -> the tokens widgets read.
+│   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── G2Rect.qml               the ONE rounded-rect primitive
-│   └── StyledText.qml           the ONE text element
+│   ├── ScreenCorner.qml         one black piece of the display's rounded corner
+│   ├── Groove.qml               an engraved divider
+│   ├── StyledText.qml           the ONE text element
+│   └── Icon.qml                 the ONE icon glyph (separate face from text)
 ├── services/                    the outside world, adapted
 │   └── Hypr.qml                 SINGLETON. Hyprland IPC -> clean workspace state
 └── modules/                     actual shell UI
     ├── EdgeWindow.qml           full-screen ring surface, owns the input mask
+    ├── ScreenFrame.qml          rounds the display's corners, above all, no input
     ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
     └── sidebar/
         ├── SidebarWindow.qml    the left surface (reserves space)
         ├── Sidebar.qml          its visual content
         ├── Clock.qml            stacked HH / mm / date
-        └── Workspaces.qml       Hyprland workspace indicators
+        ├── Workspaces.qml       Hyprland workspace indicators
+        ├── StatusIcons.qml      the status section, rendered from data
+        └── StatusIcon.qml       one indicator, service-agnostic
 ```
 
 Import paths: Quickshell exposes the config root as the module `qs`, so a directory is
@@ -332,8 +339,28 @@ Colour roles are **ramp indices**, not hex values. A theme supplies an eleven-st
 ramp plus three saturated accents, and never names a widget. So adding a palette means adding
 colours, not decisions, and `Config.theme` swaps the whole shell.
 
-`Appearance.qml` is where those two meet, and it contains no literals at all. Widgets read only
-`Appearance`, never `Config` or `Themes` directly.
+`Appearance.qml` is where those meet, and it contains no literals at all. Widgets read only
+`Appearance`, never `Config`, `Compositor` or `Themes` directly.
+
+**Geometry the compositor also has an opinion about comes from the compositor.** With
+`compositor.follow` on, `Compositor.qml` reads Hyprland's `rounding`, `rounding_power` and
+`gaps_out` (or scrapes niri's config) and those win over config.json, so the shell and the
+windows can never disagree about how round a corner is. `rounding_power` is a superellipse
+exponent and our smoothing is the Figma parameter; they describe the same thing, so one maps to
+the other (2 = circular = 0, and an iOS-ish 5 = 0.6). If it can't be read, `available` stays
+false and config.json wins, which is the correct failure.
+
+**Depth is a lighting model, not a set of shadows.** greensteel is anodised metal, so:
+
+- a **raised** face is lighter at the top (`surfaceTop` -> `surface`),
+- a **recessed** channel inverts that, darker at the top (`inset` -> `insetBottom`),
+- a **free edge** carries a specular hairline (`bevel`), which on a panel flush to a screen
+  edge only ever shows on the edge that faces the desktop,
+- a **divider** is engraved: a dark score with a lit lower lip (`Groove`).
+
+All of it is expressed in *fractional steps of the theme's ramp* via `Appearance.rampAt()`, not
+in hex values or alpha blacks. So "raised" means "0.45 of a step further up the ramp than what
+it sits on", and the entire depth language survives a palette swap.
 
 **The layering rule, and the reason the tree looks like this:**
 

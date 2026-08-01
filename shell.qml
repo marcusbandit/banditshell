@@ -3,6 +3,7 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
+import qs.config
 import qs.modules
 import qs.modules.sidebar
 
@@ -12,10 +13,11 @@ import qs.modules.sidebar
 // monitor creates the shell surfaces on it and unplugging destroys them, with no
 // screen-counting code anywhere.
 //
-// Two surfaces per screen:
+// Three surfaces per screen, and the order they are declared in is their
+// stacking order:
 //   EdgeWindow    - full-screen, reserves nothing, owns the summon zones
 //   SidebarWindow - left-anchored, reserves its width, displaces tiled windows
-// Order matters: the sidebar is declared second so it stacks above the ring.
+//   ScreenFrame   - rounds the physical screen corners, above all, no input
 ShellRoot {
     Variants {
         model: Quickshell.screens
@@ -31,6 +33,14 @@ ShellRoot {
 
             SidebarWindow {
                 screen: scope.modelData
+            }
+
+            LazyLoader {
+                active: Appearance.sizes.roundOuter
+
+                ScreenFrame {
+                    screen: scope.modelData
+                }
             }
         }
     }

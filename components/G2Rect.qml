@@ -31,7 +31,16 @@ Item {
     // 0 = plain rounded rect, 0.6 = iOS squircle, 1 = maximum smoothing.
     property real cornerSmoothing: Appearance.rounding.smoothing
 
+    // Surfaces are lit, not flat: `color` is the top of a vertical gradient and
+    // `colorBottom` the bottom. Leave colorBottom alone for a flat fill.
+    // Lighter at the top reads as RAISED, darker at the top reads as RECESSED,
+    // which is the entire depth vocabulary.
     property color color: "transparent"
+    property color colorBottom: color
+
+    // A hairline stroke along the whole contour. On a panel flush to a screen
+    // edge only the free edge is visible, which is exactly where light would
+    // catch it.
     property color borderColor: "transparent"
     property real borderWidth: 0
 
@@ -44,9 +53,24 @@ Item {
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
-            fillColor: root.color
             strokeColor: root.borderWidth > 0 ? root.borderColor : "transparent"
             strokeWidth: root.borderWidth
+
+            fillGradient: LinearGradient {
+                x1: 0
+                y1: 0
+                x2: 0
+                y2: Math.max(1, root.height)
+
+                GradientStop {
+                    position: 0
+                    color: root.color
+                }
+                GradientStop {
+                    position: 1
+                    color: root.colorBottom
+                }
+            }
 
             PathSvg {
                 path: Squircle.path(root.width, root.height, root.topLeftRadius, root.topRightRadius, root.bottomRightRadius, root.bottomLeftRadius, root.cornerSmoothing)
