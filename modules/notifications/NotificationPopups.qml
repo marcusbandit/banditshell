@@ -63,6 +63,14 @@ Item {
 
     readonly property bool any: Notifs.popups.length > 0
 
+    // What the window's input mask should cover: the CARDS, not this item.
+    //
+    // This item fills the screen, because the cards are positioned inside it.
+    // Handing it to the mask as-is made the whole screen interactive the moment
+    // any notification existed, so the shell swallowed every click anywhere. A
+    // critical notification never times out, so it stayed that way.
+    readonly property Item maskItem: stack
+
     Column {
         id: stack
 

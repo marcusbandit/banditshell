@@ -37,8 +37,27 @@ Item {
     // It throws RIGHT because this band is the right edge: the card leaves the
     // way it came in. Dragging back cancels.
     property real dragX: 0
+    // How far you have actually moved. `dragX` is where the card is, which is
+    // not the same thing while it is resisting.
+    property real pulled: 0
+
     readonly property real throwDistance: fullWidth * Appearance.sizes.dragDismissFraction
+    readonly property bool committed: Math.abs(pulled) >= throwDistance
     readonly property bool throwing: drag.throwing
+
+    // Resistance before the commit point, 1:1 after it.
+    //
+    // The card gives back only half of the first fifth of the throw, so it feels
+    // like it is holding on; past the commit point the slope changes and it
+    // tracks the pointer exactly. That change is the signal that letting go will
+    // now dismiss, and it is felt rather than read.
+    function resist(delta: real): real {
+        const commit = root.throwDistance;
+        const k = Appearance.sizes.dragResistance;
+        const m = Math.abs(delta);
+        const held = m < commit ? m * k : commit * k + (m - commit);
+        return delta < 0 ? -held : held;
+    }
 
     width: fullWidth * reveal
     height: body.implicitHeight + Appearance.padding.large * 2
@@ -46,7 +65,9 @@ Item {
     // The whole card moves with the finger, and fades as it goes so the gesture
     // says what it will do before it is finished.
     x: base + dragX
-    opacity: Math.max(0, 1 - Math.abs(dragX) / (fullWidth * 0.9))
+    // Only starts fading once it is going. Before the commit point it stays
+    // solid, because it is not leaving.
+    opacity: Math.max(0.15, 1 - Math.max(0, Math.abs(dragX) - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
 
     // Where the card sits when it is not being thrown. Set by the layout.
     property real base: 0
@@ -110,14 +131,18 @@ Item {
             if (!throwing && Math.abs(delta) < Appearance.sizes.dragThreshold)
                 return;
             throwing = true;
-            root.dragX = startedAt + delta;
+            root.pulled = delta;
+            root.dragX = root.resist(startedAt + delta);
         }
 
         onReleased: {
-            if (throwing && Math.abs(root.dragX) >= root.throwDistance)
+            // Judged on how far you PULLED, not on where the card ended up: the
+            // card is deliberately behind your finger until the commit point.
+            if (throwing && root.committed)
                 return root.dismissed();
             if (!throwing)
                 return root.dismissed();
+            root.pulled = 0;
             // Abandoned mid-throw: hand the offset to the spring and let it walk
             // home rather than snapping.
             settle.value = root.dragX;

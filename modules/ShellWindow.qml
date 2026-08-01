@@ -105,7 +105,7 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
-            item: popups.any ? popups : null
+            item: popups.any ? popups.maskItem : null
         }
     }
 

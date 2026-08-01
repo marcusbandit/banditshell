@@ -108,9 +108,11 @@ Singleton {
                 // Corner smoothing for VECTOR shapes: 0 = plain circular arc,
                 // 0.6 = iOS squircle, 1 = maximum. Anything above 0 is G2.
                 smoothing: 0.6,
-                // Superellipse exponent for the chassis field. 2 = circular.
-                // Ignored while compositor.follow reads `rounding_power`.
-                power: 4.0
+                // Corner exponent for the chassis field. 2 = circular, which is
+                // what Hyprland actually renders here regardless of what its
+                // `rounding_power` says. Raise it only if the windows visibly
+                // become squarer.
+                power: 2.0
             },
             padding: {
                 // 6 / 12 / 18 / 30, sharing the factor 6 with the 9px type grid
@@ -232,7 +234,13 @@ Singleton {
                 // fraction of its own width, before letting go dismisses it.
                 // Short enough that a touchpad flick counts, long enough that a
                 // stray nudge does not.
-                dragDismissFraction: 0.3,
+                dragDismissFraction: 0.2,
+                // How much of your movement the card gives you BEFORE the commit
+                // point. Below 1 the card resists, so the first fifth of the
+                // throw feels like it is holding on; at the commit point it
+                // breaks free and tracks you 1:1. That change of slope is the
+                // whole signal: you can feel that letting go will now dismiss.
+                dragResistance: 0.5,
                 // Movement before a press becomes a drag. Qt's default is 10,
                 // which is tuned for a mouse; a touchpad flick and a finger both
                 // want to commit sooner.

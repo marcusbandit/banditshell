@@ -30,7 +30,9 @@ PanelWindow {
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "banditshell-picker"
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.Exclusive
+    // Only while it is actually up. An unconditional exclusive grab on a
+    // surface that merely exists takes the keyboard from the desktop.
+    WlrLayershell.keyboardFocus: win.visible ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     // Hidden, not destroyed, while a live capture is taken: grim must not find
     // the picker in the picture.

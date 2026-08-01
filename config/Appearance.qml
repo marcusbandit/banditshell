@@ -133,10 +133,18 @@ Singleton {
         readonly property real normal: at(1)
         readonly property real large: at(2)
 
-        // The superellipse exponent, for shapes that can draw one: the chassis
-        // field. 2 is a circular corner. Taken straight from the compositor,
-        // because a frame and the windows inside it have to be the same curve.
-        readonly property real power: root.follows ? Compositor.roundingPower : root.cfg.rounding.power
+        // The corner exponent for the chassis field. 2 is a circular corner.
+        //
+        // NOT taken from the compositor, on purpose. Hyprland reports
+        // `rounding_power = 4`, but the corner it actually DRAWS measures
+        // circular: on rays from the corner centre its edge sits at a constant
+        // radius, while a 4-exponent corner would reach 19% further along the
+        // diagonal. Following the reported number gave the chassis a squarer
+        // corner than the window it was cupping, so the gap opened out at the
+        // diagonal exactly as if the radius were wrong.
+        //
+        // Measure the render, not the setting.
+        readonly property real power: root.cfg.rounding.power
 
         // G2 corner smoothing, for the VECTOR primitive, which cannot draw a
         // superellipse. This is the Figma construction: it eases curvature in
@@ -190,6 +198,7 @@ Singleton {
         readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget
         readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction
+        readonly property real dragResistance: root.cfg.control.dragResistance
         readonly property int dragThreshold: root.cfg.control.dragThreshold
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property int sliderHeight: root.cfg.control.sliderHeight
