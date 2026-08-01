@@ -14,6 +14,24 @@
 // abut, and no joint geometry to hand-place: the melt is a property of the
 // field, not a decoration added afterwards.
 //
+// EVERY EDGE IN THE CHASSIS COMES FROM ONE CURVE.
+//
+// There is a single shape here: the window's own outline, at the compositor's
+// radius and the compositor's superellipse exponent. Everything else is that
+// curve OFFSET outwards, which in a distance field is one subtraction:
+//
+//     the window          d
+//     the content area    d - gap          the chassis's inner edge
+//     the screen's edge   d - gap - band   where the black corners begin
+//
+// This is the reason it has to be a field. An offset curve is at a CONSTANT
+// distance; a larger radius is not. Growing a superellipse's radius by the gap
+// instead overshoots by 19% along the 45 degree diagonal at these values, which
+// on screen is a wedge of wallpaper opening up at every corner while the
+// straight edges stay perfectly correct. Circles are the one family where
+// radius+gap and offset coincide, which is why the mistake is easy to make and
+// hard to see.
+//
 // The technique is what caelestia's compiled Blobs plugin does. This is the same
 // idea in a fragment shader, so banditshell owns it end to end.
 
@@ -43,14 +61,21 @@ layout(std140, binding = 0) uniform buf {
     // orthogonal operations on different curve families.
     float power;
 
+    // The two distances every other edge is derived from.
+    float gap;
+    float band;
+    // 0 hides the black screen-corner frame.
+    float frameOn;
+    float pad0;
+
     // Item size in pixels; the shader works in pixels, not UV.
     vec4 size;
 
-    // The CUTOUT: the content area, which is the hole the chassis is left
-    // around. x, y, w, h.
-    vec4 frame;
-    // Its corner radii, packed the way roundedBox wants them.
-    vec4 frameRadius;
+    // The content area: x, y, w, h. The base curve is this inset by `gap`.
+    vec4 content;
+    // Corner radii OF THE BASE CURVE, i.e. the window's own, packed the way
+    // sdBox wants them.
+    vec4 baseRadius;
 
     // Panels. Each is x, y, w, h; a width of zero means the slot is unused.
     // A uniform block cannot hold a variable-length array, so the slots are
@@ -69,6 +94,7 @@ layout(std140, binding = 0) uniform buf {
     vec4 blobRadius2;
 
     vec4 colour;
+    vec4 frameColour;
 };
 
 // Rounded box with a different radius per corner (iq). Negative inside.
@@ -124,12 +150,28 @@ float addPanel(float d, vec2 p, vec4 rect, float radius, float k) {
     return smin(d, sdBox(p - (rect.xy + rect.zw * 0.5), rect.zw * 0.5, vec4(radius)), k);
 }
 
+// Antialias in screen space rather than with a fixed edge width, so the edge
+// stays one pixel wide whatever the field's gradient is doing near a joint.
+float inside(float d) {
+    float aa = max(fwidth(d), 0.0001) * feather;
+    return 1.0 - smoothstep(-aa, aa, d);
+}
+
 void main() {
     vec2 p = qt_TexCoord0 * size.xy;
 
-    // The chassis is everything OUTSIDE the content area, so its field is the
-    // cutout's negated: negative where the cutout is not.
-    float d = -sdBox(p - (frame.xy + frame.zw * 0.5), frame.zw * 0.5, frameRadius);
+    // The one curve: the window's own outline. The content area is that grown by
+    // the gap, so the base shape is the content area shrunk by it.
+    vec2 centre = content.xy + content.zw * 0.5;
+    float window = sdBox(p - centre, max(content.zw * 0.5 - gap, vec2(0.0)), baseRadius);
+
+    // Offsets, not radii.
+    float toContent = window - gap;
+    float toScreen = window - gap - band;
+
+    // The chassis is everything outside the content area, so its field is the
+    // content's negated.
+    float d = -toContent;
 
     d = addPanel(d, p, blob0, blobRadius.x, smoothing);
     d = addPanel(d, p, blob1, blobRadius.y, smoothing);
@@ -140,14 +182,22 @@ void main() {
     d = addPanel(d, p, blob6, blobRadius2.z, smoothing);
     d = addPanel(d, p, blob7, blobRadius2.w, smoothing);
 
-    // Antialias in screen space rather than with a fixed edge width, so the edge
-    // stays one pixel wide whatever the field's gradient is doing near a joint.
-    float aa = max(fwidth(d), 0.0001) * feather;
-    float coverage = 1.0 - smoothstep(-aa, aa, d);
+    // Clipped to the screen's own edge, so the body cannot spill into the
+    // rounded-off corners of the display.
+    if (frameOn > 0.5)
+        d = max(d, toScreen);
 
     // Qt hands a QColor uniform over ALREADY PREMULTIPLIED, so the whole vec4
     // just scales by coverage. Multiplying rgb by alpha again here is an easy
     // mistake and looks like the surface has quietly lost its colour: the tint
     // goes dark and desaturated while still being obviously "there".
-    fragColor = colour * (coverage * qt_Opacity);
+    vec4 body = colour * inside(d);
+
+    // The black beyond the screen's rounded edge, which is what makes a
+    // rectangular display read as a rounded one. Composited here rather than
+    // drawn as four separate items, so it is the same curve by construction
+    // instead of by four numbers agreeing.
+    float outside = frameOn > 0.5 ? 1.0 - inside(toScreen) : 0.0;
+
+    fragColor = (frameColour * outside + body * (1.0 - outside)) * qt_Opacity;
 }

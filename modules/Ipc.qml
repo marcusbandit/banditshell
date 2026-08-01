@@ -82,7 +82,7 @@ Scope {
         // Enough to see whether the shell agrees with the compositor, which is
         // the thing most likely to be quietly wrong and hardest to see.
         function status(): string {
-            return [`compositor  ${Compositor.name}`, `following   ${Appearance.follows}`, `theme       ${Config.values.theme}`, `rounding    ${Appearance.rounding.base}`, `smoothing   ${Appearance.rounding.smoothing.toFixed(3)} (power ${Compositor.roundingPower})`, `gap         ${Appearance.sizes.border} outer, ${Compositor.gapsIn} inner`, `wm border   ${Compositor.borderSize}`, `outer round ${Appearance.sizes.outerRadius}`, `bar         ${Appearance.sizes.sidebarWidth}`, `screens     ${Shell.screenNames().join(", ")}`].join("\n");
+            return [`compositor  ${Compositor.name}`, `following   ${Appearance.follows}`, `theme       ${Config.values.theme}`, `rounding    ${Appearance.rounding.base}`, `smoothing   ${Appearance.rounding.smoothing.toFixed(3)} (power ${Compositor.roundingPower})`, `gap         ${Appearance.sizes.gap} outer, ${Compositor.gapsIn} inner`, `wm border   ${Compositor.borderSize}`, `window edge ${Appearance.sizes.windowRadius} (the one radius)`, `band        ${Appearance.sizes.band}`, `bar         ${Appearance.sizes.sidebarWidth}`, `screens     ${Shell.screenNames().join(", ")}`].join("\n");
         }
 
         function themes(): string {

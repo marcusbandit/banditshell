@@ -199,18 +199,27 @@ Singleton {
 
         readonly property bool roundOuter: root.cfg.edge.roundOuter
 
-        // CONCENTRIC CORNERS. Every ring out from a window adds its distance to
-        // it, so all of them share a centre. Getting this wrong is not obviously
-        // wrong, it just looks slightly off in a way that is hard to name.
+        // THE ROUNDING VOCABULARY. There is ONE radius in this shell and two
+        // distances; everything else is a name for an offset of the same curve.
         //
-        //   window content   rounding.base            (Hyprland's `rounding`)
-        //   its border       + the compositor's border width
-        //   the gap          + gaps_out, which is `border` here
-        //   -> the cutout the chassis is drawn around
-        //   the band         + `border` again
-        //   -> the screen's own corner
-        readonly property real windowRadius: root.rounding.base + (root.follows ? Compositor.borderSize : 0)
-        readonly property real contentRadius: windowRadius + border + root.cfg.edge.outerExtra
-        readonly property real outerRadius: contentRadius + border
+        //   windowRadius   the compositor's `rounding` plus its `border_size`:
+        //                  the outer edge of a window, and the only radius here
+        //   gap            the compositor's `gaps_out`
+        //   band           how thick the chassis band is, which is the gap
+        //
+        // and then, all offsets of the window's curve, never radii of their own:
+        //
+        //   the content area   windowRadius offset out by `gap`
+        //   the screen's edge  offset again by `band`
+        //
+        // Saying "the content radius is windowRadius + gap" is the trap. It is
+        // true for circles and false for every other superellipse: at the
+        // compositor's exponent of 4 it opens a 19% wider gap along the diagonal
+        // than along the edges, which is a visible wedge at each corner. The
+        // shader offsets the distance field instead, so the chassis cups a
+        // window corner at a constant distance whatever the exponent is.
+        readonly property real windowRadius: root.rounding.base + (root.follows ? Compositor.borderSize : 0) + root.cfg.edge.outerExtra
+        readonly property real gap: border
+        readonly property real band: border
     }
 }

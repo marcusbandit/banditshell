@@ -4,7 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.config
-import qs.components
 import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
@@ -168,24 +167,4 @@ PanelWindow {
         border: win.border
     }
 
-    // Black pieces rounding off the physical screen corners. Opaque, so they can
-    // sit on top of the chassis without blending trouble.
-    //
-    // The radius is the window radius PLUS the band thickness, which makes the
-    // outside of the frame concentric with the windows inside it. Corners that
-    // are not concentric are the usual reason a frame looks subtly wrong.
-    Repeater {
-        model: Appearance.sizes.roundOuter ? ["tl", "tr", "br", "bl"] : []
-
-        delegate: CornerWedge {
-            required property string modelData
-
-            corner: modelData
-            radius: Appearance.sizes.outerRadius
-            color: Appearance.colour.frame
-
-            x: modelData === "tr" || modelData === "br" ? win.width - extent : 0
-            y: modelData === "bl" || modelData === "br" ? win.height - extent : 0
-        }
-    }
 }

@@ -31,10 +31,20 @@ ShaderEffect {
     // they frame rather than merely the same radius.
     property real power: Appearance.rounding.power
 
-    // The content area, and its corner radii packed the way blob.frag wants:
-    // (bottomRight, topRight, bottomLeft, topLeft).
-    property vector4d frame: Qt.vector4d(0, 0, 0, 0)
-    property vector4d frameRadius: Qt.vector4d(0, 0, 0, 0)
+    // The content area, and the BASE curve's radii packed the way blob.frag
+    // wants: (bottomRight, topRight, bottomLeft, topLeft).
+    //
+    // The radii are the WINDOW's, not the chassis's. Everything the chassis
+    // draws is that curve offset outwards, so there is exactly one radius in the
+    // system and the rest are distances.
+    property vector4d content: Qt.vector4d(0, 0, 0, 0)
+    property vector4d baseRadius: Qt.vector4d(0, 0, 0, 0)
+
+    property real gap: Appearance.sizes.gap
+    property real band: Appearance.sizes.band
+    property real pad0: 0
+    property bool frameOn: Appearance.sizes.roundOuter
+    property color frameColour: Appearance.colour.frame
 
     // The shader works in pixels, so it has to be told the size.
     readonly property vector4d size: Qt.vector4d(width, height, 0, 0)

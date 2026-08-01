@@ -41,11 +41,16 @@ Item {
 
         panels: root.panels
 
-        frame: Qt.vector4d(root.holeX, root.holeY, root.holeWidth, root.holeHeight)
-        // (bottomRight, topRight, bottomLeft, topLeft). The right corners are the
-        // window radius, so the chassis hugs the windows. The left ones are
-        // bigger: that is the sidebar's edge sweeping into the band. They are
-        // corners of the CUTOUT, so they read as concave on the body.
-        frameRadius: Qt.vector4d(Appearance.sizes.contentRadius, Appearance.sizes.contentRadius, Appearance.sizes.sidebarFlare, Appearance.sizes.sidebarFlare)
+        content: Qt.vector4d(root.holeX, root.holeY, root.holeWidth, root.holeHeight)
+
+        // The BASE curve's radii, in (bottomRight, topRight, bottomLeft,
+        // topLeft) order. On the right this is the window's own outer radius,
+        // and the chassis's inner edge is that curve offset by the gap, so it
+        // cups a window corner at a constant distance instead of merely being a
+        // bigger radius near it.
+        //
+        // The left pair has no window behind it, only the sidebar, so the flare
+        // is a design choice: given as the radius the OFFSET should end up at.
+        baseRadius: Qt.vector4d(Appearance.sizes.windowRadius, Appearance.sizes.windowRadius, Math.max(0, Appearance.sizes.sidebarFlare - Appearance.sizes.gap), Math.max(0, Appearance.sizes.sidebarFlare - Appearance.sizes.gap))
     }
 }
