@@ -65,8 +65,12 @@ Singleton {
             return "power";
         if (percentage >= 1)
             return charging ? "battery_charging_full" : "battery_full";
+        // Clamped to 6: the font has battery_0_bar through battery_6_bar, and
+        // floor(percentage * 7) reaches 7 at exactly 100%. That is unreachable
+        // only because the line above catches it first, which is the kind of
+        // safety that stops being safe the moment someone edits the guard.
         if (!charging)
-            return `battery_${Math.floor(percentage * 7)}_bar`;
+            return `battery_${Math.min(6, Math.floor(percentage * 7))}_bar`;
 
         const want = percentage * 100;
         const step = root.chargingSteps.reduce((best, s) => Math.abs(s - want) < Math.abs(best - want) ? s : best);

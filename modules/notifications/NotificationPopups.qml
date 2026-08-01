@@ -32,9 +32,15 @@ Item {
             const item = stack.children[i];
             if (!item?.visible || item.reveal <= 0)
                 continue;
+            // MAPPED, not assembled from parts. `item.y` is relative to the
+            // stack, which is itself inset, and hand-anchoring the blob to the
+            // right while the card grew from the left put the two in completely
+            // different places for the whole animation: at half reveal they did
+            // not even overlap.
+            const at = item.mapToItem(root, 0, 0);
             out.push({
-                x: root.width - item.width,
-                y: item.y,
+                x: at.x,
+                y: at.y,
                 w: item.width,
                 h: item.height,
                 radius: Appearance.rounding.large
@@ -58,6 +64,10 @@ Item {
 
             delegate: NotificationCard {
                 required property var modelData
+
+                // Grows from the RIGHT: this band is on the right, so the edge
+                // that stays put is the one against the chassis.
+                x: stack.width - width
 
                 entry: modelData
                 fullWidth: root.panelWidth

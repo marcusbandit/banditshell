@@ -15,9 +15,20 @@ Column {
 
     spacing: Appearance.padding.small
 
-    Component.onCompleted: if (Bluetooth.enabled)
-        Bluetooth.setDiscovering(true)
+    // Discovery follows the adapter for as long as this menu is open. Doing it
+    // once on completion meant that turning Bluetooth ON from inside the menu
+    // left discovery off forever: nothing new ever appeared, and the empty state
+    // said "nothing paired" rather than "scanning", so it looked like a working
+    // scan that had found nothing.
+    Component.onCompleted: Bluetooth.setDiscovering(Bluetooth.enabled)
     Component.onDestruction: Bluetooth.setDiscovering(false)
+
+    Connections {
+        target: Bluetooth
+        function onEnabledChanged(): void {
+            Bluetooth.setDiscovering(Bluetooth.enabled);
+        }
+    }
 
     MenuRow {
         width: root.width

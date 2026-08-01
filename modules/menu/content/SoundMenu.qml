@@ -60,9 +60,11 @@ Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
-            // Fixed width, so the slider does not twitch as the number changes
-            // from two digits to three.
-            width: implicitWidth
+            // Actually fixed, at the width of the widest thing it can say.
+            // `width: implicitWidth` is Text's own default and is not fixed at
+            // all, so the slider's right anchor jumped whenever the readout went
+            // from two digits to three, or to "muted".
+            width: widest.width
             horizontalAlignment: Text.AlignRight
             text: Audio.muted ? "muted" : `${Math.round(Audio.volume * 100)}%`
             color: Audio.muted ? Appearance.colour.textFaint : Appearance.colour.textDim
@@ -115,7 +117,7 @@ Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
-            width: implicitWidth
+            width: widest.width
             horizontalAlignment: Text.AlignRight
             text: Audio.sourceMuted ? "muted" : `${Math.round(Audio.sourceVolume * 100)}%`
             color: Audio.sourceMuted ? Appearance.colour.textFaint : Appearance.colour.textDim
@@ -145,5 +147,14 @@ Column {
             selected: modelData === Audio.sink
             onActivated: Audio.setSink(modelData)
         }
+    }
+
+    // The widest string any readout in this menu can hold.
+    TextMetrics {
+        id: widest
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+        text: "muted"
     }
 }

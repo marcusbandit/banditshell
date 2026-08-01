@@ -20,7 +20,17 @@ Column {
 
     spacing: Appearance.padding.small
 
-    Component.onCompleted: Network.watch(true)
+    // Scanning stops while a passphrase is being typed.
+    //
+    // `networks` is derived from every AP's signal strength, so a scan result
+    // re-evaluates it, and a Repeater over a plain array rebuilds every delegate
+    // when it does. That destroyed the password field mid-word, every couple of
+    // seconds, along with its keyboard focus. Freshness is worth nothing while
+    // someone is answering a prompt.
+    readonly property bool scanning: !root.asking
+    onScanningChanged: Network.watch(scanning)
+
+    Component.onCompleted: Network.watch(root.scanning)
     Component.onDestruction: Network.watch(false)
 
     MenuRow {

@@ -17,11 +17,16 @@ Item {
 
     implicitHeight: visible ? field.implicitHeight + Appearance.padding.normal * 2 : 0
 
-    onVisibleChanged: {
+    function claim(): void {
         field.text = "";
-        if (visible)
+        if (root.visible)
             field.forceActiveFocus();
     }
+
+    // Both: onVisibleChanged does not fire for an item CREATED already visible,
+    // which is exactly how this one appears when its row rebuilds.
+    onVisibleChanged: root.claim()
+    Component.onCompleted: root.claim()
 
     G2Rect {
         anchors.fill: parent

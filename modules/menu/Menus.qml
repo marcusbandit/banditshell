@@ -44,6 +44,9 @@ Item {
         }
     ] : []
 
+    // Where the caller asked for it, kept so the clamp can be RE-evaluated.
+    property real requestedCentre: 0
+
     property string currentKey: ""
     property string currentTitle: ""
     // The component the open menu shows. Handed in by whoever knows what a menu
@@ -63,7 +66,7 @@ Item {
         root.currentKey = key;
         root.currentTitle = title;
         root.currentBody = body;
-        centre.target = root.clampCentre(centreY);
+        root.requestedCentre = centreY;
         // Nothing to slide from when it was closed: place it, then grow.
         if (wasClosed)
             centre.snap();
@@ -97,6 +100,16 @@ Item {
 
     Follow {
         id: centre
+
+        // BOUND, not assigned once.
+        //
+        // The clamp depends on the panel's height, and at the moment show() runs
+        // the panel is still closed: its body Loader has not instantiated, so
+        // implicitHeight is the minimum. Clamping there and never revisiting it
+        // let a tall menu hang up to 170px off the bottom of the screen. As a
+        // binding it re-evaluates when the content arrives and the panel grows.
+        target: root.clampCentre(root.requestedCentre)
+
         // A menu that has to travel further should not take longer, so the panel
         // keeps up with the cursor moving down a column of icons.
         speed: Appearance.anim.trackSpeed

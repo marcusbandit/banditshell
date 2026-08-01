@@ -38,6 +38,15 @@ Item {
         onValueChanged: root.reveal = value
     }
 
+    // Declared BEFORE the contents: a catch-all that comes last covers the
+    // action buttons inside, and every one of them dismissed the notification
+    // instead of doing what it said.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
+        onClicked: root.dismissed()
+    }
+
     // Contents at full width, clipped by the growing panel, so nothing reflows
     // while it arrives.
     Item {
@@ -143,10 +152,4 @@ Item {
         }
     }
 
-    // Click anywhere else to put it away.
-    MouseArea {
-        anchors.fill: parent
-        acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-        onClicked: root.dismissed()
-    }
 }

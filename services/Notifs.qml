@@ -28,7 +28,11 @@ Singleton {
 
     readonly property int count: history.length
     readonly property bool any: count > 0
-    readonly property bool anyUrgent: history.some(n => n.urgency === NotificationUrgency.Critical)
+    // Through .notification: `history` holds { notification, time } wrappers, so
+    // reading .urgency off the wrapper is always undefined and the sidebar never
+    // went accent for a critical notification, which is the ONE case the design
+    // reserves colour for.
+    readonly property bool anyUrgent: history.some(e => e.notification?.urgency === NotificationUrgency.Critical)
 
     // Notifications keep arriving while you are not looking. A hub that shows
     // three hundred is not a hub, it is a log.

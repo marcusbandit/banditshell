@@ -33,8 +33,13 @@ Singleton {
 
     function watch(on: bool): void {
         root.watchers = Math.max(0, root.watchers + (on ? 1 : -1));
-        if (on)
-            root.poll();
+        if (!on)
+            return;
+        // Forget the last reading before sampling again. Keeping it means the
+        // first number after re-opening the menu is the AVERAGE load since the
+        // menu last closed, presented as if it were instantaneous.
+        root.lastStat = null;
+        root.poll();
     }
 
     function poll(): void {

@@ -38,6 +38,22 @@ Item {
         }
     }
 
+    // DECLARED FIRST, deliberately. Declaration order is input order in QML and
+    // there is no z anywhere in this shell, so a catch-all that comes last sits
+    // on top of the row's own trailing controls and eats their clicks. The
+    // Bluetooth "forget" button connected the device instead of forgetting it,
+    // and every notification action button dismissed the notification instead of
+    // invoking the action. A row-wide target has to be UNDER what it contains.
+    MouseArea {
+        id: pointer
+
+        anchors.fill: parent
+        enabled: root.interactive
+        hoverEnabled: true
+        cursorShape: Qt.PointingHandCursor
+        onClicked: root.activated()
+    }
+
     Icon {
         id: glyph
 
@@ -89,13 +105,4 @@ Item {
         height: implicitHeight
     }
 
-    MouseArea {
-        id: pointer
-
-        anchors.fill: parent
-        enabled: root.interactive
-        hoverEnabled: true
-        cursorShape: Qt.PointingHandCursor
-        onClicked: root.activated()
-    }
 }

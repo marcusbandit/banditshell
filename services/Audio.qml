@@ -40,7 +40,7 @@ Singleton {
 
     // Everything that can be picked as an output. Streams are individual apps
     // and belong to a per-app mixer, not here.
-    readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && !n.isStream)
+    readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && n.audio && !n.isStream)
     readonly property var sources: Pipewire.nodes.values.filter(n => !n.isSink && n.audio && !n.isStream)
 
     function label(node: PwNode): string {

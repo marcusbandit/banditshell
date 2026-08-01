@@ -52,7 +52,7 @@ Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
-            width: implicitWidth
+            width: widest.width
             horizontalAlignment: Text.AlignRight
             text: Audio.sourceMuted ? "muted" : `${Math.round(Audio.sourceVolume * 100)}%`
             font.pixelSize: Appearance.font.size.small
@@ -99,5 +99,14 @@ Column {
         text: "no input devices"
         color: Appearance.colour.textFaint
         font.pixelSize: Appearance.font.size.small
+    }
+
+    // The widest string any readout in this menu can hold.
+    TextMetrics {
+        id: widest
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+        text: "muted"
     }
 }

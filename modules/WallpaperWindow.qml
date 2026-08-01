@@ -47,7 +47,11 @@ PanelWindow {
         if (!path || front.source == path)
             return;
         // First one: no fade, there is nothing to fade from.
-        if (!front.source)
+        //
+        // Compared as a STRING: a QML url is a JS object even when empty, so
+        // `!front.source` is always false and this branch never ran. Every first
+        // wallpaper cross-faded in from black instead of simply being there.
+        if (String(front.source) === "")
             front.source = path;
         else
             back.source = path;
