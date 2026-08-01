@@ -352,6 +352,8 @@ banditshell/
 │   ├── Media.qml                MPRIS, with a stable choice of player
 │   ├── SysInfo.qml              /proc and /sys: cpu, memory, temperature
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from
+│   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
+│   ├── Apps.qml                 desktop entries, and ranked search over them
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -360,6 +362,8 @@ banditshell/
 │   ├── Ipc.qml                  the control surface the CLI talks to
 │   ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
 │   ├── WallpaperWindow.qml      background layer, below every window
+│   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── notifications/           popups that melt out of the RIGHT band
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape
@@ -602,6 +606,72 @@ somewhere, and bluetooth discovery is visible to other people as well.
 **Still placeholder: nothing.** Every menu in the sidebar is live. Notifications
 and the launcher (DESIGN.md sections 4 and 5) are the remaining capstones and
 have not been started.
+
+---
+
+## 12. Measured against the standards
+
+A research pass over Apple's HIG, macOS Control Center geometry, WCAG 2.2 and
+Material's token set. The numbers below are the ones that changed the code.
+
+**The pixel font was off its own grid, which was the worst finding.** Monocraft
+has `unitsPerEm` 1080 with every metric on a 120-unit lattice: one design pixel
+is 120 units and the em is exactly **9** of them. Cap height 840 (7px), x-height
+600 (5px), advance 720 (6px). 1440 of its 1468 glyphs sit entirely on that grid;
+the 28 that do not are `f i k l t` and their accents, which need a half-pixel.
+
+So a pixel font's scale can only be **integer multiples**. 12/16/24 were 1.33x,
+1.78x and 2.67x, and 16 was the worst of them: even the character advance came
+out fractional at 10.67px, so glyphs did not begin on pixel boundaries.
+`NativeRendering` cannot rescue an off-grid size. Now **9 / 18 / 27**, with the
+line box at **4/3 the size**, which is the font's own hhea ratio and therefore
+lands whole. The font's `lineGap` is off-grid and is ignored.
+
+**Corner smoothing and corner boxiness are different knobs, and I had conflated
+them.** Figma-style smoothing extends the transition ALONG the edge; it does not
+move the curve closer to the corner vertex at any value. A superellipse does. At
+r=15 a circular corner clears the vertex by 6.21px, Hyprland's `rounding_power`
+of 4 clears it by 3.38px, and **no smoothing value closes that gap**. The chassis
+was visibly rounder than the windows it framed while claiming to be concentric.
+
+The chassis is a field, so it can draw the real thing: `blob.frag` takes the
+corner as a **p-norm** rather than a length, which is a superellipse for any
+exponent above 2, and takes the exponent straight from the compositor. The
+vector primitive still uses the Figma construction, which is fine because menus
+and rows do not nest with window corners.
+
+The concentric ARITHMETIC was already right, and matches what SwiftUI's
+`ConcentricRectangle` computes: 15 (+2 border) = 17, +10 gap = 27, +10 band = 37.
+
+**Contrast failed only over light wallpapers.** At `surfaceAlpha` 0.72 the
+secondary label came out at 3.14:1 against white where WCAG wants 4.5, and the
+accent at 2.59:1 where SC 1.4.11 wants 3. Over a dark wallpaper the same tokens
+pass at 6.33 and 7.36, which is exactly why it went unnoticed for a day. Now
+0.88, which is also Apple's own rule: a thicker material under text.
+
+**The fill ladder had too small a first step.** Apple's entire fill range is
+0.070 to 0.145 and Material's state layers are additive, so a 0.07 container plus
+an 0.08 hover lands on 0.145, which IS Apple's `systemFill`. Hover at 0.12 was a
+1.18:1 step above its own container and barely read.
+
+Numbers that were already right, recorded so they do not get "fixed":
+
+- **Separator 0.1.** macOS `separatorColor` in dark mode is white at 0.098.
+- **Menu width 300.** Sequoia's Control Center panel measures 298pt.
+- **Padding base 10 (now 6, same lattice).** Sequoia uses a single 10pt constant
+  for panel padding, card padding, gutters and group gaps.
+- **Fills as one light at several opacities**, rather than as separate colours.
+- **The thumbless fill slider**, which is what iOS Control Center uses.
+- **`SignalBars`**, and the reason for it. Signal strength is not in the
+  freedesktop icon spec at all.
+- **The metaball chassis.** Apple shipped `GlassEffectContainer` in 2025 to
+  "fluidly morph Liquid Glass shapes into each other". Same construction.
+
+**Still owed to this list:** Apple's Liquid Glass guidance says a material
+becomes *thicker* as it morphs to a larger size. Our chassis and its menus are
+one surface at one alpha, so a menu should be more opaque than the band it grew
+out of. The field would need a per-blob colour to do it, and that is the next
+cheap large win.
 
 ---
 

@@ -28,7 +28,20 @@ layout(std140, binding = 0) uniform buf {
     float smoothing;
     // Multiplier on the antialiased edge width.
     float feather;
-    float pad0;
+
+    // The superellipse exponent for corners: |x|^n + |y|^n = r^n.
+    //
+    // 2 is a circular arc. Hyprland draws its window corners with this same
+    // parameter (`rounding_power`), so matching it is what makes the chassis and
+    // the windows it frames the SAME CURVE, not merely the same radius.
+    //
+    // Figma-style corner smoothing, which the vector primitive uses, cannot do
+    // this: it extends the transition along the edge and leaves the distance
+    // from the curve to the corner vertex unchanged at every smoothing value.
+    // At r=15 a circular corner clears the vertex by 6.21px and Hyprland's n=4
+    // clears it by 3.38px, and no amount of smoothing closes that. They are
+    // orthogonal operations on different curve families.
+    float power;
 
     // Item size in pixels; the shader works in pixels, not UV.
     vec4 size;
@@ -75,7 +88,15 @@ float sdBox(vec2 p, vec2 halfSize, vec4 r) {
     r.xy = (p.x > 0.0) ? r.xy : r.zw;
     r.x = (p.y > 0.0) ? r.x : r.y;
     vec2 q = abs(p) - halfSize + r.x;
-    return min(max(q.x, q.y), 0.0) + length(max(q, vec2(0.0))) - r.x;
+
+    // The corner is the p-NORM of the outside part, not its length. length() is
+    // the 2-norm and gives a circle; any higher exponent gives a superellipse,
+    // which is the family Hyprland rounds windows with.
+    vec2 m = max(q, vec2(0.0));
+    float n = max(2.0, power);
+    float corner = pow(pow(m.x, n) + pow(m.y, n), 1.0 / n);
+
+    return min(max(q.x, q.y), 0.0) + corner - r.x;
 }
 
 // Polynomial smooth minimum. The whole point of the file: where two fields are

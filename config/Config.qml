@@ -105,9 +105,12 @@ Singleton {
                 base: 15,
                 // 9 / 15 / 24, all on the 3px lattice. 0.55 gave 8.
                 scale: [0.6, 1.0, 1.6],
-                // Corner smoothing: 0 = plain circular arc, 0.6 = iOS squircle,
-                // 1 = maximum. Anything above 0 is G2.
-                smoothing: 0.6
+                // Corner smoothing for VECTOR shapes: 0 = plain circular arc,
+                // 0.6 = iOS squircle, 1 = maximum. Anything above 0 is G2.
+                smoothing: 0.6,
+                // Superellipse exponent for the chassis field. 2 = circular.
+                // Ignored while compositor.follow reads `rounding_power`.
+                power: 4.0
             },
             padding: {
                 // 6 / 12 / 18 / 30, sharing the factor 6 with the 9px type grid

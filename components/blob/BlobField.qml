@@ -25,7 +25,11 @@ ShaderEffect {
     // How wide the melt is, in pixels. 0 gives a hard crease.
     property real smoothing: Appearance.sizes.melt
     property real feather: Appearance.sizes.meltFeather
-    property real pad0: 0
+
+    // Superellipse exponent. 2 is circular; the compositor's own
+    // `rounding_power` is what makes these corners the same curve as the windows
+    // they frame rather than merely the same radius.
+    property real power: Appearance.rounding.power
 
     // The content area, and its corner radii packed the way blob.frag wants:
     // (bottomRight, topRight, bottomLeft, topLeft).

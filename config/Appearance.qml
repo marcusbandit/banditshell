@@ -129,9 +129,16 @@ Singleton {
         readonly property real normal: at(1)
         readonly property real large: at(2)
 
-        // G2 corner smoothing, see ~/.claude/rules/g2-corners.md. Following the
-        // compositor converts its superellipse exponent (`rounding_power`) into
-        // the same idea: 2 is a circular corner, higher is smoother.
+        // The superellipse exponent, for shapes that can draw one: the chassis
+        // field. 2 is a circular corner. Taken straight from the compositor,
+        // because a frame and the windows inside it have to be the same curve.
+        readonly property real power: root.follows ? Compositor.roundingPower : root.cfg.rounding.power
+
+        // G2 corner smoothing, for the VECTOR primitive, which cannot draw a
+        // superellipse. This is the Figma construction: it eases curvature in
+        // and out along the edge rather than changing how boxy the corner is, so
+        // it is not the same knob as `power` and does not substitute for it.
+        // Menus and rows do not nest with window corners, so it is enough there.
         readonly property real smoothing: root.follows ? Compositor.smoothing : root.cfg.rounding.smoothing
 
         // Any tier by index, for things that take the tier as a setting.
