@@ -90,7 +90,9 @@ Item {
             StyledText {
                 anchors.centerIn: parent
                 text: slot.wsId
-                color: slot.isActive ? Appearance.colour.accentText : slot.isOccupied ? Appearance.colour.text : Appearance.colour.textFaint
+                // Hover lights the number up to phosphor: the specular spike
+                // follows the cursor, which is the whole "alive on contact" idea.
+                color: slot.isActive ? Appearance.colour.accentText : mouse.containsMouse ? Appearance.colour.accent : slot.isOccupied ? Appearance.colour.text : Appearance.colour.textFaint
                 scale: mouse.containsMouse ? 1.2 : 1
 
                 Behavior on color {

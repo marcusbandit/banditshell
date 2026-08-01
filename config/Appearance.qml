@@ -16,19 +16,54 @@ Singleton {
     readonly property Anim anim: Anim {}
     readonly property Sizes sizes: Sizes {}
 
-    // Lush pixel vibes in a premium chassis: a deep moss chassis, everything on
-    // it green-tinted, and one bright living green for state. Hierarchy comes
-    // from opacity tiers, never from more hues.
+    // GREENSTEEL, taken verbatim from ~/.config/hypr/theme/greensteel.conf so the
+    // shell and the compositor are the same object. Cool anodised-green metal:
+    // one hue family (~158deg, green leaning cyan, never olive) climbing from
+    // near-black to silvery white. Metal reads as metal because of the luminance
+    // ramp and a rare specular spike, not because of hue.
+    //
+    // If greensteel.conf changes, change these to match. Same names.
+    component Ramp: QtObject {
+        readonly property color deepest: "#070c0a"    // $gsVoid (renamed: `void` is reserved)
+        readonly property color abyss: "#0d1512"
+        readonly property color dark: "#16211c"
+        readonly property color body: "#22322b"
+        readonly property color brushed: "#33493f"
+        readonly property color edge: "#4c6b5c"
+        readonly property color lit: "#6e9384"
+        readonly property color pale: "#9dbdaf"
+        readonly property color silver: "#c9e2d7"
+        readonly property color chrome: "#eaf6f0"
+        readonly property color white: "#f7fdfa"
+
+        // The lush end, where the green actually saturates. Used sparingly: the
+        // borders spend most of their length dark so a bright stop reads as a
+        // highlight catching an edge. Same discipline here.
+        readonly property color verdigris: "#3fbf8f"
+        readonly property color lush: "#5fd99a"
+        readonly property color phosphor: "#8cffc0"
+    }
+
+    // What the ramp is used FOR. Widgets read these, not the ramp.
+    //
+    // greensteel.conf's Monocraft note is load-bearing: a pixel font has
+    // one-device-pixel stems, so anti-aliasing has nothing to work with and
+    // mid-tones turn it to mush. Pixel text goes phosphor or silver on abyss or
+    // void. NEVER on body or brushed.
     component Colours: QtObject {
-        readonly property color surface: "#e61b3a2b"     // deep moss panel, 90% opaque
-        readonly property color surfaceAlt: "#26d9ffe8"  // faint mint wash, for hover
-        readonly property color text: "#f2fff8"
-        readonly property color textDim: "#a6cfe8d8"
-        readonly property color textFaint: "#73a8c6b4"
-        readonly property color accent: "#7fe6a5"        // the "you are here" fill
+        readonly property Ramp ramp: Ramp {}
+
+        readonly property color surface: "#f20d1512"     // abyss, 95%: dark enough for Monocraft
+        readonly property color surfaceAlt: ramp.dark    // hover lift, one step up and no further
+
+        readonly property color text: ramp.silver
+        readonly property color textDim: ramp.pale
+        readonly property color textFaint: ramp.lit
+
+        readonly property color accent: ramp.phosphor    // the specular spike: one at a time
         // Text sitting on top of `accent`. NOT named onAccent: QML reads a
         // property starting with "on" + capital as a signal handler.
-        readonly property color accentText: "#0f2419"
+        readonly property color accentText: ramp.abyss
     }
 
     component Font: QtObject {
@@ -56,8 +91,12 @@ Singleton {
 
     component Rounding: QtObject {
         readonly property int small: 8
-        readonly property int normal: 14
-        readonly property int large: 22
+        // Matches Hyprland's `rounding = 15` in hyprland/general.conf, so shell
+        // corners and window corners are the same size. Hyprland is already
+        // drawing superellipse corners there (`rounding_power = 4.0`), which is
+        // the same idea as our G2 smoothing.
+        readonly property int normal: 15
+        readonly property int large: 24
         // G2 corner smoothing, see ~/.claude/rules/g2-corners.md.
         // 0 = plain circular arc (banned), 0.6 = iOS squircle.
         readonly property real smoothing: 0.6
