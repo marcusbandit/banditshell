@@ -8,6 +8,7 @@
 #
 #   banditshell start|stop|restart|run|log
 #   banditshell menu list|open <key>|close|toggle <key>|current
+#   banditshell launcher toggle|open|close
 #   banditshell status
 #   banditshell theme [name]
 #   banditshell get <key> | set <key> <value>
@@ -77,6 +78,10 @@ menu)
         ;;
     *) echo "usage: banditshell menu list|open <key>|close|toggle <key>|current" >&2; exit 2 ;;
     esac
+    ;;
+
+launcher)
+    ipc launcher "${1:-toggle}"
     ;;
 
 status) ipc shell status ;;

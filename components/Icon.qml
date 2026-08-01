@@ -31,6 +31,17 @@ Text {
     font.pixelSize: Appearance.font.iconSize
     color: Appearance.colour.text
 
+    // Material Symbols is a variable font whose optical-size axis runs 20 to 48
+    // and defaults to 48. Drawn at 18 with opsz left at its default, every glyph
+    // carries stroke weights drawn for an icon more than twice the size. Track
+    // the rendered size, clamped into the axis's real range rather than to a
+    // number picked here.
+    // Reads the token, NOT font.pixelSize: `font` is one property group, so a
+    // binding on font.variableAxes that reads font.pixelSize is a loop.
+    font.variableAxes: ({
+            opsz: Math.max(20, Math.min(48, Appearance.font.iconSize))
+        })
+
     // CurveRendering, set explicitly rather than left to the default. Native
     // rendering gives icons subpixel colour fringes, and orange and blue edges on
     // a monochrome glyph is exactly the sort of detail that reads as cheap. The

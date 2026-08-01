@@ -14,4 +14,11 @@ Text {
     font.pixelSize: Appearance.font.size.normal
     renderType: Text.NativeRendering
     color: Appearance.colour.text
+
+    // Monocraft's own hhea box is 1440/1080 units, exactly 4/3 of the em, so a
+    // line box of 4/3 the pixel size lands on whole pixels at every size that is
+    // a multiple of 9. The font's lineGap is off-grid and is deliberately not
+    // used.
+    lineHeight: Math.round(font.pixelSize * 4 / 3)
+    lineHeightMode: Text.FixedHeight
 }

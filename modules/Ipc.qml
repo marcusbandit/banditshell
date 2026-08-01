@@ -54,6 +54,29 @@ Scope {
     }
 
     IpcHandler {
+        target: "launcher"
+
+        function toggle(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.launcher.toggle();
+            return win.launcher.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Shell.forScreen("")?.launcher.show();
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.launcher.hide();
+            return "closed";
+        }
+    }
+
+    IpcHandler {
         target: "shell"
 
         // Enough to see whether the shell agrees with the compositor, which is

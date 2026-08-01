@@ -72,6 +72,9 @@ Singleton {
         readonly property color text: root.veil(root.cfg.material.label[0])
         readonly property color textDim: root.veil(root.cfg.material.label[1])
         readonly property color textFaint: root.veil(root.cfg.material.label[2])
+        // Watermarks, placeholders, genuinely inactive text. Without it,
+        // textFaint was doing two jobs at one weight.
+        readonly property color textGhost: root.veil(root.cfg.material.label[3])
 
         // Fills. `fill` is a hover, `fillStrong` is a selection. Neither is a
         // colour: they are the same light, turned up.
@@ -110,7 +113,12 @@ Singleton {
 
         // Icons are glyphs, not type: they carry no hierarchy, so they sit
         // outside the three tiers rather than eating one.
-        readonly property int iconSize: Math.round(root.cfg.font.base * root.cfg.font.iconScale)
+        //
+        // Sized from the tier they sit BESIDE, not from the raw base. Deriving
+        // from the base coupled them to the pixel grid, and when that moved to
+        // 9 every icon in the shell shrank to 10px along with it. An icon next
+        // to body text should match body text whatever the grid says.
+        readonly property int iconSize: Math.round(size.normal * root.cfg.font.iconScale)
     }
 
     readonly property QtObject rounding: QtObject {
@@ -169,11 +177,13 @@ Singleton {
 
         readonly property int networkListMax: root.cfg.control.networkListMax
         readonly property int deviceListMax: root.cfg.control.deviceListMax
+        readonly property int minTarget: root.cfg.control.minTarget
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property int sliderHeight: root.cfg.control.sliderHeight
         readonly property int toggleWidth: root.cfg.control.toggleWidth
         readonly property int toggleHeight: root.cfg.control.toggleHeight
 
+        readonly property int launcherWidth: root.cfg.launcher.width
         readonly property int notificationWidth: root.cfg.notifications.width
 
         readonly property int menuWidth: root.cfg.menu.width

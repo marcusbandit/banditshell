@@ -32,10 +32,29 @@ Singleton {
                 icon: "Material Symbols Rounded",
                 // Icons are not part of the text hierarchy, so they get their
                 // own multiplier on the base rather than a fourth text tier.
-                iconScale: 1.15,
-                base: 16,
-                // Three tiers, and three is the limit on purpose.
-                scale: [0.75, 1.0, 1.5]
+                // The icon font's optical-size axis starts at 20, so the result
+                // is clamped there rather than being allowed below it.
+                iconScale: 1.1,
+
+                // NINE. Not a taste decision: it is the font's own pixel.
+                //
+                // Monocraft has unitsPerEm 1080 and every metric on a 120-unit
+                // grid, so one design pixel is 120 units and the em is exactly 9
+                // of them. Cap height 840, x-height 600, advance 720: all whole
+                // pixels. 1440 of its 1468 glyphs sit entirely on that grid.
+                //
+                // Rendering it at any size that is not a multiple of 9 puts the
+                // whole font between pixels, which is precisely what a pixel
+                // font must not be, and NativeRendering cannot save an off-grid
+                // size. The previous 16 was the worst of the three: even the
+                // character advance came out fractional at 10.67px, so glyphs
+                // did not start on pixel boundaries either.
+                //
+                // So the scale is integer multiples, 1x/2x/3x, and cannot be a
+                // ratio of anyone's choosing. 18 is fully crisp; 9 and 27 leave
+                // f, i, k, l and t on a half-pixel, which is the whole cost.
+                base: 9,
+                scale: [1, 2, 3]
             },
 
             // Material.
@@ -46,13 +65,31 @@ Singleton {
             // transparency and layering, never from bevels, gradients or
             // engraved lines, which read as cheap.
             material: {
-                // Opacity of a panel. The rest is whatever is behind it, blurred.
-                surfaceAlpha: 0.72,
-                // Label tiers: primary, secondary, tertiary.
-                label: [0.92, 0.58, 0.32],
-                // Fills, for hover and selection. Same light end, far quieter.
-                fill: [0.07, 0.12, 0.18],
-                // Hairline separators and panel edges.
+                // Opacity of a panel.
+                //
+                // 0.72 looked fine and failed over a LIGHT wallpaper: secondary
+                // label came out at 3.14:1 against white where WCAG wants 4.5,
+                // and the accent at 2.59:1 where SC 1.4.11 wants 3. Over a dark
+                // wallpaper the same tokens pass comfortably, which is exactly
+                // why it went unnoticed. Apple's rule for text-heavy surfaces is
+                // a thicker material, and this is that.
+                surfaceAlpha: 0.88,
+
+                // Label tiers: primary, secondary, tertiary, quaternary.
+                // Modelled on macOS dark mode's NSColor label ladder
+                // (0.847 / 0.549 / 0.247 / 0.098), run a little hotter because
+                // this surface is translucent.
+                label: [0.92, 0.58, 0.32, 0.16],
+
+                // Fills: container, hover, selected.
+                //
+                // Apple's whole fill range is 0.070 to 0.145 and Material's
+                // state layers are additive: a 0.07 container plus an 0.08 hover
+                // is 0.145, which is exactly Apple's systemFill. Hover at 0.12
+                // was only a 1.18:1 step above the container and barely read.
+                fill: [0.07, 0.145, 0.18],
+
+                // macOS separatorColor in dark mode is white at 0.098.
                 separator: 0.1
             },
             // Take rounding, corner smoothing and the edge gap from the running
@@ -66,14 +103,19 @@ Singleton {
             rounding: {
                 // Ignored while compositor.follow finds a compositor.
                 base: 15,
-                scale: [0.55, 1.0, 1.6],
+                // 9 / 15 / 24, all on the 3px lattice. 0.55 gave 8.
+                scale: [0.6, 1.0, 1.6],
                 // Corner smoothing: 0 = plain circular arc, 0.6 = iOS squircle,
                 // 1 = maximum. Anything above 0 is G2.
                 smoothing: 0.6
             },
             padding: {
-                base: 10,
-                scale: [0.6, 1.0, 1.8, 3.0]
+                // 6 / 12 / 18 / 30, sharing the factor 6 with the 9px type grid
+                // and its 12/24/36 line boxes. The previous 6/10/18/30 had only
+                // one value on the lattice, which is a coincidence rather than a
+                // grid.
+                base: 6,
+                scale: [1, 2, 3, 5]
             },
             anim: {
                 base: 220,
@@ -153,6 +195,12 @@ Singleton {
                 feather: 1.0
             },
 
+            launcher: {
+                width: 420,
+                // A launcher is for the one you meant, not for browsing.
+                maxResults: 8
+            },
+
             notifications: {
                 // How long a popup stays when the sender does not say. Critical
                 // ones ignore this and stay until acted on.
@@ -167,6 +215,8 @@ Singleton {
 
             // Controls inside menus.
             control: {
+                // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.
+                minTarget: 24,
                 // How many rows a list menu shows before it says "+N more". A
                 // street is eighty wifi networks and a menu that scrolls forever
                 // is worse than one that admits what it left out.
@@ -226,10 +276,18 @@ Singleton {
     }
 
     // Overlay the user's file on the defaults, key by key, so a partial or
-    // outdated config.json still yields a complete settings object. Arrays are
-    // replaced wholesale: a scale is one value, not a set to merge into.
+    // outdated config.json still yields a complete settings object.
+    //
+    // An array is one value, not a set to merge into: a scale of three
+    // multipliers edited by the user must survive whole. But an array whose
+    // LENGTH has changed in the defaults is a shape change, not a preference,
+    // and keeping the old one silently leaves the new entries undefined. The
+    // label ladder growing from three tiers to four did exactly that, and
+    // undefined fed straight into a colour.
     function merge(base: var, over: var): var {
-        if (over === undefined || base === null || typeof base !== "object" || Array.isArray(base))
+        if (Array.isArray(base))
+            return Array.isArray(over) && over.length === base.length ? over : base;
+        if (over === undefined || base === null || typeof base !== "object")
             return over === undefined ? base : over;
 
         const out = {};

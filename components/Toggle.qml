@@ -28,10 +28,15 @@ Item {
         }
     }
 
+    // An explicit inset, not a derived one. `y` from `height`, `height` from
+    // `width` and `width` from `y` is a binding cycle: Qt reports a loop and
+    // picks an order, which is not a thing to leave to chance.
     G2Rect {
-        y: (parent.height - height) / 2
-        x: root.checked ? parent.width - width - y : y
-        width: parent.height - y * 2
+        readonly property real inset: Math.max(2, Math.round(root.height / 9))
+
+        y: inset
+        x: root.checked ? parent.width - width - inset : inset
+        width: root.height - inset * 2
         height: width
         radius: height / 2
         color: root.checked ? Appearance.colour.accentText : Appearance.colour.text

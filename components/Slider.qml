@@ -48,7 +48,13 @@ Item {
         id: pointer
 
         anchors.fill: parent
-        anchors.margins: -Appearance.padding.small
+        // Grown to the accessible minimum rather than to a spacing token: a 6px
+        // track with a 6px margin is an 18px target, and WCAG 2.2 SC 2.5.8 puts
+        // the floor at 24. The track stays thin; the thing you can hit does not.
+        anchors.topMargin: -Math.max(0, (Appearance.sizes.minTarget - root.height) / 2)
+        anchors.bottomMargin: anchors.topMargin
+        anchors.leftMargin: -Appearance.padding.small
+        anchors.rightMargin: -Appearance.padding.small
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
 

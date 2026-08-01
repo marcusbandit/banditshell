@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.config
 import qs.components
 import qs.modules.menu
+import qs.modules.launcher
 import qs.modules.notifications
 import qs.modules.sidebar
 import qs.services
@@ -31,6 +32,7 @@ PanelWindow {
     // What the IPC handler drives. Registering here rather than being handed a
     // reference keeps shell.qml from having to wire anything up.
     readonly property Menus menus: menuLayer
+    readonly property Launcher launcher: launcherLayer
     readonly property var statusItems: sidebar.status.items
     readonly property var statusKeys: statusItems.map(i => i.key)
 
@@ -94,6 +96,11 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
+            item: launcherLayer.open ? launcherLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
             item: topClock.active ? topClock.maskItem : null
         }
 
@@ -110,7 +117,7 @@ PanelWindow {
         // Open panels join the shell's distance field rather than being drawn on
         // top of it, which is what lets them melt into the body.
         // Everything that melts into the body: menus, and the notch.
-        panels: [...menuLayer.blobs, ...topClock.blobs, ...popups.blobs]
+        panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs]
     }
 
     // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -140,6 +147,14 @@ PanelWindow {
 
     Menus {
         id: menuLayer
+
+        anchors.fill: parent
+        originX: chassis.barWidth
+        inset: win.border
+    }
+
+    Launcher {
+        id: launcherLayer
 
         anchors.fill: parent
         originX: chassis.barWidth
