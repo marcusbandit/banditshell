@@ -8,10 +8,12 @@ import qs.config
 // its own component means swapping that face for a pixel icon set later touches
 // one file, not every widget.
 //
-// QtRendering, not NativeRendering: unlike a pixel font, icon outlines want the
-// distance-field renderer. Set explicitly rather than left to the default,
-// because native rendering gives these subpixel colour fringes, and coloured
-// fringes on a monochrome icon is exactly the sort of thing that reads as cheap.
+// CurveRendering, set explicitly rather than left to the default. Native
+// rendering gives icons subpixel colour fringes, and orange and blue edges on a
+// monochrome glyph is exactly the sort of detail that reads as cheap. The curve
+// rasterizer antialiases in greyscale and stays sharp at any size, which suits
+// an outline icon; Monocraft keeps NativeRendering, because a pixel font wants
+// the pixel grid instead.
 Text {
     font.family: Appearance.font.icon
     font.pixelSize: Appearance.font.iconSize

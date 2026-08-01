@@ -20,11 +20,20 @@ Item {
     property real value: 0
     property real speed: Appearance.anim.trackSpeed
 
-    // Close enough to stop. Below this the value snaps, so it settles exactly on
-    // target instead of asymptotically never arriving.
+    // Close enough to stop chasing and just land. Exponential decay is
+    // asymptotic, so without this it would tick forever getting nowhere.
     property real epsilon: 0.25
 
-    readonly property bool settled: Math.abs(value - target) <= epsilon
+    // Settled means EXACTLY on target, not near it.
+    //
+    // This looks like it should be the epsilon test, and must not be. `running`
+    // is evaluated before a tick, so an epsilon-based `settled` stops the timer
+    // one tick BEFORE the snap below could ever run: the snap becomes dead code
+    // and the value halts up to epsilon short of target, permanently. That is
+    // invisible for a position (a fifth of a pixel) and not at all invisible for
+    // a 0-to-1 reveal, where "never quite 0" leaves a closed panel a sliver
+    // wide and every `if (closed)` test downstream silently false.
+    readonly property bool settled: value === target
 
     // Jump without animating: for the first layout, where there is no "from".
     function snap(): void {
@@ -38,7 +47,9 @@ Item {
 
         onTriggered: {
             const d = root.target - root.value;
-            root.value = Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * (interval / 1000)));
+            // A non-positive speed means "no smoothing", not "never arrive":
+            // the step would be zero and the timer would spin at 60fps forever.
+            root.value = root.speed <= 0 || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * (interval / 1000)));
         }
     }
 }

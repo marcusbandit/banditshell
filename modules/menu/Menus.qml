@@ -31,6 +31,19 @@ Item {
     readonly property bool open: currentKey !== ""
     readonly property Item maskItem: panel
 
+    // What the chassis needs to melt this panel into the shell's body. A closed
+    // panel has zero width, which the field skips, so it costs nothing rather
+    // than leaving a stub behind.
+    readonly property var blobs: panel.width > 0 ? [
+        {
+            x: panel.x,
+            y: panel.y,
+            w: panel.width,
+            h: panel.height,
+            radius: panel.cornerRadius
+        }
+    ] : []
+
     property string currentKey: ""
     property string currentTitle: ""
 
@@ -38,12 +51,17 @@ Item {
     readonly property bool hovered: pointer.containsMouse
 
     function show(key: string, title: string, centreY: real): void {
+        // Asked BEFORE currentKey changes, and asked of the state rather than of
+        // the animation's value: "is the reveal at zero" is a float test, and a
+        // float test for closed is exactly the kind that works until it doesn't.
+        const wasClosed = !root.open;
+
         grace.stop();
         root.currentKey = key;
         root.currentTitle = title;
         centre.target = root.clampCentre(centreY);
         // Nothing to slide from when it was closed: place it, then grow.
-        if (!reveal.value)
+        if (wasClosed)
             centre.snap();
         reveal.target = 1;
     }

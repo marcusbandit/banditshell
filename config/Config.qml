@@ -139,11 +139,18 @@ Singleton {
                 }
             },
 
+            // How the shell's body melts together. See components/blob/blob.frag.
+            blob: {
+                // Width of the blend where a panel meets the body, in pixels.
+                // 0 gives a hard crease; too high and everything looks inflated.
+                melt: 34,
+                // Multiplier on the antialiased edge width.
+                feather: 1.0
+            },
+
             menu: {
                 width: 300,
                 height: 380,
-                // Rounding tier for the fillet where a menu joins the sidebar.
-                jointTier: 2,
                 // Placeholder skeleton rows.
                 rowHeight: 12,
                 rowGap: 12

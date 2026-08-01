@@ -13,6 +13,7 @@
 #   banditshell get <key> | set <key> <value>
 #   banditshell shot [file]      screenshot, for checking a change actually landed
 #   banditshell demo <key>       open a menu, screenshot it, close it
+#   banditshell shaders          recompile components/blob/*.frag to .qsb
 
 set -euo pipefail
 
@@ -32,7 +33,9 @@ ipc() {
 
 running() { pgrep -x qs >/dev/null 2>&1; }
 
-usage() { sed -n '2,20p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//'; }
+# Print the header comment block, however long it happens to be. A hardcoded
+# line range silently starts printing the code once the header changes length.
+usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
 
 cmd="${1:-help}"
 shift || true
@@ -54,11 +57,13 @@ restart)
     qs_ -d
     ;;
 run)
-    # Foreground, so QML errors land in the terminal.
-    exec qs_
+    # Foreground, so QML errors land in the terminal. Spelled out rather than
+    # calling qs_: bash's exec replaces the process from PATH and cannot run a
+    # shell function, so `exec qs_` dies with "not found" before qs is reached.
+    exec qs -p "$SHELL_DIR"
     ;;
 log)
-    exec qs_ log "$@"
+    exec qs -p "$SHELL_DIR" log "$@"
     ;;
 
 menu)
@@ -93,6 +98,18 @@ shot)
     out="${1:-$SHOT_DIR/shot.png}"
     grim "$out"
     echo "$out"
+    ;;
+
+shaders)
+    # .qsb files are build output committed alongside their source, because
+    # Quickshell loads QML from a directory and has nowhere to run a build step.
+    # This is that build step; run it after editing any .frag.
+    qsb="${QSB:-/usr/lib/qt6/bin/qsb}"
+    [ -x "$qsb" ] || { echo "banditshell: qsb not found (install qt6-shadertools)" >&2; exit 1; }
+    for f in "$SHELL_DIR"/components/blob/*.frag; do
+        "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
+        echo "$(basename "$f") -> $(basename "$f").qsb"
+    done
     ;;
 
 demo)

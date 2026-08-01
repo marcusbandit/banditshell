@@ -158,9 +158,11 @@ Singleton {
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 
+        readonly property real melt: root.cfg.blob.melt
+        readonly property real meltFeather: root.cfg.blob.feather
+
         readonly property int menuWidth: root.cfg.menu.width
         readonly property int menuHeight: root.cfg.menu.height
-        readonly property real menuJoint: root.rounding.at(root.cfg.menu.jointTier)
         readonly property int menuRowHeight: root.cfg.menu.rowHeight
         readonly property int menuRowGap: root.cfg.menu.rowGap
 

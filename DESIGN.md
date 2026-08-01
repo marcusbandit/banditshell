@@ -329,7 +329,11 @@ banditshell/
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── G2Rect.qml               the ONE rounded-rect primitive
-│   ├── CornerWedge.qml          a corner's leftover: rounds the screen, fillets a join
+│   ├── CornerWedge.qml          a corner's leftover; rounds off the screen corners
+│   ├── blob/
+│   │   ├── blob.frag            the chassis as a signed distance field
+│   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`
+│   │   └── BlobField.qml        the ShaderEffect that draws it
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
@@ -434,6 +438,33 @@ also holds `Shell.qml`, the registry of which windows exist: the things that nee
 handler, later keybinds) sit outside the window tree entirely, and threading a reference down
 to them would couple files with nothing else to say to each other.
 
+**One surface, one field. REVISED TWICE on 2026-08-01.**
+
+Everything the shell draws is in ONE window per screen, and the chassis (the band around the
+screen, the sidebar, and every open panel) is ONE signed distance field, evaluated per pixel by
+`components/blob/blob.frag`. See section 10.
+
+The version before this had a window per panel, stacked. It was wrong in three ways that all
+came from the same cause. Two translucent panels that abut **double their opacity** wherever
+they overlap and show a bright seam. Where they merely touch, each draws its own hairline and
+you get two lines along one join. And nothing could round as a single object, because there was
+no single contour to round. Cutting one shape makes all three impossible rather than fixed.
+
+- `ShellWindow` - full-screen, ignores others' exclusive zones, on the normal shell layer. Its
+  `mask` is the chassis itself: everything except the content area, plus whatever is currently
+  summoned. So every edge is a summon zone, the sidebar is reachable, and the region is
+  contiguous, which matters because a gap in it would drop the cursor mid-gesture and dismiss
+  what it was reaching for.
+- `FrameExclusions` - four invisible one-edge surfaces that exist only to reserve space. An
+  exclusive zone belongs to a surface anchored to one edge, and ShellWindow is anchored to four,
+  so reserving has to be someone else's job (see the section 7 amendment). The left edge
+  reserves the band and the sidebar together.
+
+**Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
+contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes
+later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
+the left edge the way `TopClock` already does at the top.
+
 ## 9. Driving it from a terminal
 
 `bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`.
@@ -467,31 +498,54 @@ Two things worth keeping in mind, both learned the hard way:
   a slide from one icon to the next; `ydotool mousemove` produces real relative motion, and
   that is what exposed the hover race.
 
-**One shape, one surface. REVISED 2026-08-01.**
+---
 
-Everything the shell draws is in ONE window per screen, and the chassis (the band around the
-screen plus the sidebar) is ONE shape: the screen with the content area cut out of it.
+## 10. The metaball chassis
 
-The version before this had a window per panel, stacked. It was wrong in three ways that all
-came from the same cause. Two translucent panels that abut **double their opacity** wherever
-they overlap and show a bright seam. Where they merely touch, each draws its own hairline and
-you get two lines along one join. And nothing could round as a single object, because there was
-no single contour to round. Cutting one shape makes all three impossible rather than fixed.
+**The shell's body is a field, not a set of shapes.** `components/blob/blob.frag` evaluates a
+signed distance function per pixel: the chassis (everything outside the content area) combined
+with each open panel using a **smooth minimum** rather than a plain one.
 
-- `ShellWindow` - full-screen, ignores others' exclusive zones, on the normal shell layer. Its
-  `mask` is the chassis itself: everything except the content area, plus whatever is currently
-  summoned. So every edge is a summon zone, the sidebar is reachable, and the region is
-  contiguous, which matters because a gap in it would drop the cursor mid-gesture and dismiss
-  what it was reaching for.
-- `FrameExclusions` - four invisible one-edge surfaces that exist only to reserve space. An
-  exclusive zone belongs to a surface anchored to one edge, and ShellWindow is anchored to four,
-  so reserving has to be someone else's job (see the section 7 amendment). The left edge
-  reserves the band and the sidebar together.
+A plain union of two rounded boxes meets at a crease. A smooth union bulges into the join and
+fillets it, and the fillet grows and shrinks by itself as the pieces move. That is the whole
+difference between a menu that has been parked next to the bar and one that is separating out
+of it.
 
-**Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
-contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes
-later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
-the left edge the way `TopClock` already does at the top.
+**Three attempts, and why the first two were wrong**, because the wrongness is the useful part:
+
+1. **A window per panel.** Two translucent surfaces that abut double their opacity along the
+   join and show a bright seam, and each draws its own hairline so one join gets two lines.
+2. **One vector path, panels as separate shapes with hand-placed corner wedges at the joins.**
+   The picture was roughly right and it was a hack: the join was two shapes *agreeing* to
+   touch. It could not blend, it could not react to the panel moving, and any slip in the
+   agreement showed. This is the version that produced "things are not melting together".
+3. **One field.** Nothing places a joint, because there is no joint. The melt is a property of
+   the field, so it is correct at every frame of an animation for free.
+
+Consequences worth knowing:
+
+- **The sidebar is not an object.** The cutout simply starts further in on the left; whatever is
+  left over is the bar. There is no bar-to-band join to get right because there is no join.
+- **A panel opens by GROWING its width from nothing.** At small widths it is entirely inside the
+  melt distance, so it reads as a bulge swelling out of the body. Sliding a finished panel out
+  from behind the bar would not.
+- **The input mask stays rectangular.** `Region` takes rectangles, so the mask approximates the
+  field with the chassis rects plus the panel rect. caelestia does the same. Input does not need
+  to follow a fillet.
+- **`blob.frag.qsb` is build output committed next to its source.** Quickshell loads QML from a
+  directory and has nowhere to run a build step, so `banditshell shaders` is that step. Run it
+  after editing any `.frag`.
+- **Qt hands a `QColor` uniform over premultiplied.** Multiplying rgb by alpha again in the
+  shader looks like the surface has quietly lost its colour: the tint goes dark and desaturated
+  while still obviously being there. Cost an hour; written down so it costs nothing next time.
+
+This is the same technique as caelestia's compiled `Caelestia.Blobs` plugin. Ours is a fragment
+shader instead, which is the answer to "why not C++": the maths is identical, and a shader is
+where per-pixel maths belongs anyway.
+
+**Still to come:** caelestia's blobs also carry spring physics (`damping`, `stiffness`,
+`deformMatrix`), so a panel squashes as it moves and settles. That is the next step, and the
+field is what makes it possible.
 
 ---
 

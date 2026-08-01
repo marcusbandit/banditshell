@@ -17,7 +17,13 @@ Item {
 
     SystemClock {
         id: clock
+
         precision: SystemClock.Seconds
+        // Only tick while it is being looked at. A seconds clock bound to a
+        // visible label wakes the render thread once a second whether or not
+        // anything is on screen, and every one of those frames now redraws the
+        // whole chassis field and hands the compositor a new surface to blur.
+        enabled: root.active
     }
 
     // Summon zone: a strip of the invisible ring at top-centre. It sits inside

@@ -99,7 +99,11 @@ PanelWindow {
 
     Chassis {
         id: chassis
+
         anchors.fill: parent
+        // Open panels join the shell's distance field rather than being drawn on
+        // top of it, which is what lets them melt into the body.
+        panels: menuLayer.blobs
     }
 
     // Sidebar contents, laid out in the chassis's left band. The band is one

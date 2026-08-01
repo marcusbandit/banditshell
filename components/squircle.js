@@ -197,27 +197,6 @@ function path(w, h, tl, tr, br, bl, smoothing, ox, oy) {
     return out + " Z";
 }
 
-// The whole area with a rounded rectangle cut out of it.
-//
-// Two subpaths in one path, so an odd-even fill turns the inner one into a hole.
-// This is how the shell chassis is drawn as ONE shape: the frame band and the
-// sidebar are not two overlapping panels, they are what is left when the content
-// area is removed. Overlapping translucent panels would double their opacity and
-// show a seam along the join; a single shape cannot.
-//
-// The outer boundary is left square here; the black corner pieces carve it to
-// the outer radius on top, which is cheaper than describing the same curve twice.
-function cutoutPath(w, h, hx, hy, hw, hh, tl, tr, br, bl, smoothing) {
-    if (w <= 0 || h <= 0)
-        return "";
-
-    const outer = "M 0 0 L " + seq(w, 0) + " L " + seq(w, h) + " L " + seq(0, h) + " Z";
-    if (hw <= 0 || hh <= 0)
-        return outer;
-
-    return outer + " " + path(hw, hh, tl, tr, br, bl, smoothing, hx, hy);
-}
-
 // The sliver of a screen corner that a rounded desktop leaves uncovered.
 //
 // Filled black, these four pieces frame the desktop: the display appears to have
