@@ -301,7 +301,7 @@ myshell/
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── G2Rect.qml               the ONE rounded-rect primitive
 │   ├── ScreenCorner.qml         one black piece of the display's rounded corner
-│   ├── Groove.qml               an engraved divider
+│   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   └── Icon.qml                 the ONE icon glyph (separate face from text)
 ├── services/                    the outside world, adapted
@@ -350,17 +350,34 @@ exponent and our smoothing is the Figma parameter; they describe the same thing,
 the other (2 = circular = 0, and an iOS-ish 5 = 0.6). If it can't be read, `available` stays
 false and config.json wins, which is the correct failure.
 
-**Depth is a lighting model, not a set of shadows.** greensteel is anodised metal, so:
+**Depth is material, not decoration. REVISED 2026-08-01.**
 
-- a **raised** face is lighter at the top (`surfaceTop` -> `surface`),
-- a **recessed** channel inverts that, darker at the top (`inset` -> `insetBottom`),
-- a **free edge** carries a specular hairline (`bevel`), which on a panel flush to a screen
-  edge only ever shows on the edge that faces the desktop,
-- a **divider** is engraved: a dark score with a lit lower lip (`Groove`).
+The first attempt built depth out of gradients, bevels and engraved two-tone dividers: surfaces
+lit from above, channels lit from below, specular hairlines. It read as **cheap**, and the
+reason is worth keeping: those are decorations *imitating* a physical material. Imitation is
+what looks cheap. A real material does not need to be drawn.
 
-All of it is expressed in *fractional steps of the theme's ramp* via `Appearance.rampAt()`, not
-in hex values or alpha blacks. So "raised" means "0.45 of a step further up the ramp than what
-it sits on", and the entire depth language survives a palette swap.
+So depth now comes from transparency and layering:
+
+- A panel is a **translucent material the compositor blurs** (`WlrLayershell.namespace` plus a
+  `layerrule` in `~/.config/hypr/hyprland/rules.conf`). What you see through it is the actual
+  desktop behind it, out of focus. That is depth you cannot fake with a gradient.
+- Everything ON a panel is **one colour at three opacities**: the palette's light end at
+  primary / secondary / tertiary (`Appearance.veil()`). That is the entire hierarchy, and it is
+  why a translucent interface stays coherent over any wallpaper.
+- **Fills** for hover and selection are the same light, turned down to 7-18%. A selection is
+  never a saturated block: a big coloured shape shouts, and the only thing worth saying is
+  "you are here".
+- A **separator** is one hairline at a tenth opacity. Space does most of the separating.
+- The **accent** is reserved for state that genuinely earns a colour. Colour in the bar should
+  mean something is wrong.
+
+The surface tint still has to sit high enough on the ramp that the theme reads through the
+translucency; too low and a frosted panel is just grey, which is nobody's palette.
+
+Icons use `Text.CurveRendering`. Native rendering gives them subpixel colour fringes, and
+coloured fringes on a monochrome icon is exactly the sort of detail that reads as cheap.
+Monocraft still uses `NativeRendering`, because a pixel font wants the pixel grid.
 
 **The layering rule, and the reason the tree looks like this:**
 

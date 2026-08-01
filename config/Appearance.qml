@@ -52,40 +52,38 @@ Singleton {
         return Qt.rgba(lerp(16), lerp(8), lerp(0), alpha);
     }
 
+    // Everything drawn ON a panel is one colour, the light end of the ramp, at
+    // different opacities. That is the whole hierarchy. It is why a translucent
+    // interface stays coherent over any wallpaper: the tiers keep their relative
+    // weight no matter what shows through.
+    readonly property color tint: theme.ramp[theme.ramp.length - 1]
+
+    function veil(alpha: real): color {
+        return root.mix(root.tint, root.tint, 0, alpha);
+    }
+
     readonly property QtObject colour: QtObject {
-        readonly property real surfaceStep: root.cfg.colour.surface
-        readonly property real opacity: root.cfg.colour.surfaceOpacity
+        // A translucent material. What you mostly see through it is the
+        // compositor's blur of whatever is behind, which is where the depth
+        // actually comes from.
+        readonly property color surface: root.rampAt(root.cfg.colour.surface, root.cfg.material.surfaceAlpha)
 
-        // A panel face, lit from above: `surface` is the bottom of the gradient,
-        // `surfaceTop` the top. Flat only if depth.lift is 0.
-        readonly property color surface: root.rampAt(surfaceStep, opacity)
-        readonly property color surfaceTop: root.rampAt(surfaceStep + root.cfg.depth.lift, opacity)
+        // Label tiers.
+        readonly property color text: root.veil(root.cfg.material.label[0])
+        readonly property color textDim: root.veil(root.cfg.material.label[1])
+        readonly property color textFaint: root.veil(root.cfg.material.label[2])
 
-        // A channel machined into that face: the lighting inverts, dark at the
-        // top, which is the whole reason a recess reads as a recess.
-        readonly property color inset: root.rampAt(surfaceStep - root.cfg.depth.inset, opacity)
-        readonly property color insetBottom: root.rampAt(surfaceStep, opacity)
+        // Fills. `fill` is a hover, `fillStrong` is a selection. Neither is a
+        // colour: they are the same light, turned up.
+        readonly property color fill: root.veil(root.cfg.material.fill[0])
+        readonly property color fillStrong: root.veil(root.cfg.material.fill[1])
+        readonly property color fillStronger: root.veil(root.cfg.material.fill[2])
 
-        readonly property color surfaceAlt: root.rampAt(root.cfg.colour.surfaceAlt, 1)
+        readonly property color separator: root.veil(root.cfg.material.separator)
 
-        // Specular hairline where a surface presents a free edge to the light.
-        readonly property color bevel: root.rampAt(surfaceStep + root.cfg.depth.bevelStep, root.cfg.depth.bevelAlpha)
-
-        // An engraved line: a dark score with a lit lower lip.
-        readonly property color engraveDark: root.rampAt(surfaceStep - root.cfg.depth.engraveStep, 1)
-        readonly property color engraveLight: root.rampAt(surfaceStep + root.cfg.depth.engraveStep, 1)
-
-        readonly property color text: root.rampAt(root.cfg.colour.text, 1)
-        readonly property color textDim: root.rampAt(root.cfg.colour.textDim, 1)
-        readonly property color textFaint: root.rampAt(root.cfg.colour.textFaint, 1)
-
-        // The saturated end of the theme, spent sparingly so a bright stop reads
-        // as a highlight rather than as decoration.
+        // The saturated end of the theme. Reserved for state that is genuinely
+        // worth a colour, never for decoration or for filling a shape.
         readonly property color accent: root.theme[root.cfg.colour.accent]
-        readonly property color accentDim: root.theme.mid
-        // NOT named onAccent: QML reads a property starting with "on" + capital
-        // as a signal handler.
-        readonly property color accentText: root.rampAt(root.cfg.colour.accentText, 1)
 
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
@@ -139,10 +137,6 @@ Singleton {
         // Exponential-smoothing rate for anything that tracks a target
         // (see ~/.claude/rules/animation-smoothing.md).
         readonly property real trackSpeed: root.cfg.anim.trackSpeed
-    }
-
-    readonly property QtObject depth: QtObject {
-        readonly property real bevelWidth: root.cfg.depth.bevelWidth
     }
 
     readonly property QtObject sizes: QtObject {

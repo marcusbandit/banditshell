@@ -9,11 +9,14 @@ import qs.config
 // one file, not every widget.
 //
 // QtRendering, not NativeRendering: unlike a pixel font, icon outlines want the
-// distance-field renderer so they scale and stay smooth.
+// distance-field renderer. Set explicitly rather than left to the default,
+// because native rendering gives these subpixel colour fringes, and coloured
+// fringes on a monochrome icon is exactly the sort of thing that reads as cheap.
 Text {
     font.family: Appearance.font.icon
     font.pixelSize: Appearance.font.size.large
     color: Appearance.colour.text
+    renderType: Text.CurveRendering
 
     verticalAlignment: Text.AlignVCenter
     horizontalAlignment: Text.AlignHCenter

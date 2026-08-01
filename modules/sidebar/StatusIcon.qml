@@ -24,17 +24,10 @@ Item {
     implicitWidth: Appearance.sizes.statusSlot
     implicitHeight: Appearance.sizes.statusSlot
 
-    // A plate that rises out of the panel under the cursor: lit from above, with
-    // a hairline where its edge catches the light.
     G2Rect {
         anchors.fill: parent
-        radius: Appearance.rounding.small
-
-        color: Appearance.colour.surfaceTop
-        colorBottom: Appearance.colour.surface
-        borderColor: Appearance.colour.bevel
-        borderWidth: Appearance.depth.bevelWidth
-
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fill
         opacity: root.hovered ? 1 : 0
 
         Behavior on opacity {
@@ -48,19 +41,13 @@ Item {
         anchors.centerIn: parent
         text: root.icon
 
-        color: !root.available ? Appearance.colour.textFaint : root.alert ? Appearance.colour.accentDim : root.hovered ? Appearance.colour.accent : root.active ? Appearance.colour.text : Appearance.colour.textDim
-
-        scale: root.hovered ? 1.12 : 1
+        // Label tiers, not colours. Accent is kept for `alert` only, so a colour
+        // in this bar always means something is wrong.
+        color: !root.available ? Appearance.colour.textFaint : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
 
         Behavior on color {
             ColorAnimation {
                 duration: Appearance.anim.fast
-            }
-        }
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutBack
             }
         }
     }

@@ -10,6 +10,9 @@ import qs.services
 // Slot positions come from one formula over the count, so adding a workspace
 // just changes `count` (see ~/.claude/rules/math-over-hardcoding.md). Nothing
 // here knows about "workspace 3" specifically.
+//
+// The selection is a quiet translucent fill, not a saturated block. A big
+// coloured shape shouts, and the thing worth knowing is only "you are here".
 Item {
     id: root
 
@@ -27,31 +30,15 @@ Item {
     implicitWidth: slot
     implicitHeight: count * pitch - Appearance.sizes.wsGap
 
-    // The rail the indicators ride in: a channel machined into the panel face.
-    // Its lighting is INVERTED (dark at the top), which is the whole reason it
-    // reads as cut into the surface rather than sitting on it.
-    G2Rect {
-        anchors.fill: parent
-        anchors.margins: -Appearance.padding.small
-        radius: Appearance.rounding.small + Appearance.padding.small
-
-        color: Appearance.colour.inset
-        colorBottom: Appearance.colour.insetBottom
-    }
-
-    // The "you are here" marker. Drawn after the channel so it sits in it, and
-    // before the numbers so they sit on top of it. Its y is NOT bound: the timer
-    // below drives it, so it can be animated.
+    // The "you are here" marker. Drawn before the numbers so they sit on top of
+    // it. Its y is NOT bound: the timer below drives it, so it can be animated.
     G2Rect {
         id: indicator
 
         width: root.slot
         height: root.slot
-        radius: Appearance.rounding.small
-
-        // Lit from above like anything raised.
-        color: Appearance.colour.accent
-        colorBottom: Appearance.colour.accentDim
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fillStronger
     }
 
     // Exponential smoothing: moves fast when far, settles gently when close, and
@@ -89,16 +76,10 @@ Item {
             width: root.slot
             height: root.slot
 
-            // Hover response: a plate rises out of the channel under the cursor.
             G2Rect {
                 anchors.fill: parent
-                radius: Appearance.rounding.small
-
-                color: Appearance.colour.surfaceTop
-                colorBottom: Appearance.colour.surface
-                borderColor: Appearance.colour.bevel
-                borderWidth: Appearance.depth.bevelWidth
-
+                radius: Appearance.rounding.normal
+                color: Appearance.colour.fill
                 opacity: mouse.containsMouse && !slot.isActive ? 1 : 0
 
                 Behavior on opacity {
@@ -108,23 +89,16 @@ Item {
                 }
             }
 
+            // Three states, three label tiers, no colour: here, been there,
+            // empty.
             StyledText {
                 anchors.centerIn: parent
                 text: slot.wsId
-                // Hover lights the number up to phosphor: the specular spike
-                // follows the cursor, which is the whole "alive on contact" idea.
-                color: slot.isActive ? Appearance.colour.accentText : mouse.containsMouse ? Appearance.colour.accent : slot.isOccupied ? Appearance.colour.text : Appearance.colour.textFaint
-                scale: mouse.containsMouse ? 1.2 : 1
+                color: slot.isActive ? Appearance.colour.text : slot.isOccupied ? Appearance.colour.textDim : Appearance.colour.textFaint
 
                 Behavior on color {
                     ColorAnimation {
                         duration: Appearance.anim.fast
-                    }
-                }
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                        easing.type: Easing.OutBack
                     }
                 }
             }

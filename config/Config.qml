@@ -35,23 +35,22 @@ Singleton {
                 scale: [0.75, 1.0, 1.75]
             },
 
-            // Depth. greensteel is anodised metal, so surfaces are lit rather
-            // than flat: a RAISED face is lighter at the top, a RECESSED one is
-            // darker at the top, and edges catch a hairline of light. All of it
-            // is expressed in fractional steps of the theme's ramp, so it holds
-            // up when the palette changes and nothing here is a hex value.
-            depth: {
-                // How much lighter the top of a raised surface is, in ramp steps.
-                lift: 0.45,
-                // How much darker a machined channel sits below its surface.
-                inset: 0.9,
-                // Specular hairline along a free edge: how far up the ramp, and
-                // how strong.
-                bevelStep: 4,
-                bevelAlpha: 0.28,
-                bevelWidth: 1,
-                // The engraved line used as a divider: one dark, one light.
-                engraveStep: 1.6
+            // Material.
+            //
+            // Panels are a translucent material that the compositor blurs, not a
+            // painted colour, and everything ON them is the palette's light end
+            // at an opacity tier. That is the whole system: depth comes from
+            // transparency and layering, never from bevels, gradients or
+            // engraved lines, which read as cheap.
+            material: {
+                // Opacity of a panel. The rest is whatever is behind it, blurred.
+                surfaceAlpha: 0.72,
+                // Label tiers: primary, secondary, tertiary.
+                label: [0.92, 0.58, 0.32],
+                // Fills, for hover and selection. Same light end, far quieter.
+                fill: [0.07, 0.12, 0.18],
+                // Hairline separators and panel edges.
+                separator: 0.1
             },
             // Take rounding, corner smoothing and the edge gap from the running
             // compositor instead of the values below, so the shell agrees with
@@ -70,8 +69,8 @@ Singleton {
                 smoothing: 0.6
             },
             padding: {
-                base: 8,
-                scale: [0.5, 1.0, 1.5, 2.5]
+                base: 10,
+                scale: [0.6, 1.0, 1.8, 3.0]
             },
             anim: {
                 base: 220,
@@ -85,15 +84,12 @@ Singleton {
             // (darkest) to 10 (lightest), so these are portable across themes:
             // a new palette supplies colours, not decisions.
             colour: {
-                surface: 3,         // panel bodies
-                surfaceAlt: 4,      // hover lift
-                text: 9,
-                textDim: 8,
-                textFaint: 7,
-                accentText: 1,      // text sitting on top of the accent
+                // Which stop the panel material is tinted with. High enough that
+                // the theme still reads through the translucency: too low and a
+                // frosted panel is just grey, which is nobody's palette.
+                surface: 3,
                 // Which saturated colour is "the accent": dim, mid or bright.
-                accent: "bright",
-                surfaceOpacity: 0.96
+                accent: "mid"
             },
 
             edge: {
@@ -113,19 +109,19 @@ Singleton {
             },
 
             sidebar: {
-                width: 76,
+                width: 84,
                 // Rounding tier used for the concave corners that meet the
                 // screen edges.
                 flareTier: 2,
                 workspaces: {
                     // Slots always shown, even when empty.
                     persistent: 5,
-                    slot: 30,
-                    gap: 6
+                    slot: 32,
+                    gap: 10
                 },
                 status: {
-                    slot: 36,
-                    gap: 2
+                    slot: 34,
+                    gap: 8
                 }
             }
         })

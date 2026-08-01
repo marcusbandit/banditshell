@@ -1,4 +1,5 @@
 import Quickshell
+import Quickshell.Wayland
 
 // The sidebar's own layer surface.
 //
@@ -21,6 +22,11 @@ PanelWindow {
     }
 
     color: "transparent"
+
+    // The compositor blurs this surface by name. Without that the panel is just
+    // a flat translucent wash; with it, it is a material. See the myshell
+    // layerrules in ~/.config/hypr/hyprland/rules.conf.
+    WlrLayershell.namespace: "myshell-sidebar"
 
     // Wider than the panel: the concave corners flare past `bodyWidth` and need
     // somewhere to be drawn.

@@ -4,6 +4,10 @@ import qs.components
 
 // The left panel.
 //
+// A translucent material, blurred by the compositor, with a hairline down its
+// free edge. No gradient, no bevel: the depth is the blur and the layering, and
+// everything on top is one light at three opacities.
+//
 // Flush against the screen edge, square where it meets it. The two corners on
 // the right are CONCAVE: instead of the panel curling away from the top and
 // bottom screen edges and leaving a notch, its right edge sweeps outward as it
@@ -28,13 +32,11 @@ G2Rect {
     topRightRadius: -Appearance.sizes.sidebarFlare
     bottomRightRadius: -Appearance.sizes.sidebarFlare
 
-    // A lit face, not a flat fill: brighter at the top, with a hairline down the
-    // free edge where the light catches it. The left edge is off-screen, so the
-    // stroke only ever shows where it should.
-    color: Appearance.colour.surfaceTop
-    colorBottom: Appearance.colour.surface
-    borderColor: Appearance.colour.bevel
-    borderWidth: Appearance.depth.bevelWidth
+    color: Appearance.colour.surface
+    // The left edge is off-screen, so this only ever shows where the panel meets
+    // the desktop.
+    borderColor: Appearance.colour.separator
+    borderWidth: 1
 
     Item {
         id: body
@@ -52,17 +54,17 @@ G2Rect {
             id: bottom
 
             anchors.bottom: parent.bottom
-            anchors.bottomMargin: Appearance.padding.large
+            anchors.bottomMargin: Appearance.padding.huge
             anchors.horizontalCenter: parent.horizontalCenter
 
             width: parent.width - Appearance.padding.normal * 2
-            spacing: Appearance.padding.normal
+            spacing: Appearance.padding.large
 
             Clock {
                 anchors.horizontalCenter: parent.horizontalCenter
             }
 
-            Groove {
+            Separator {
                 width: parent.width
             }
 
