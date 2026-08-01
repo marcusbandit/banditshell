@@ -139,6 +139,11 @@ Singleton {
                 }
             },
 
+            wallpaper: {
+                dir: "~/Pictures/Wallpapers",
+                current: "~/Pictures/Wallpapers/shaded_landscape.png"
+            },
+
             // How the shell's body melts together. See components/blob/blob.frag.
             blob: {
                 // Width of the blend where a panel meets the body, in pixels.
@@ -148,12 +153,32 @@ Singleton {
                 feather: 1.0
             },
 
+            // Controls inside menus.
+            control: {
+                // How many rows a list menu shows before it says "+N more". A
+                // street is eighty wifi networks and a menu that scrolls forever
+                // is worse than one that admits what it left out.
+                networkListMax: 7,
+                deviceListMax: 7,
+                rowHeight: 34,
+                sliderHeight: 6,
+                toggleWidth: 34,
+                toggleHeight: 18
+            },
+
             menu: {
                 width: 300,
-                height: 380,
-                // Placeholder skeleton rows.
-                rowHeight: 12,
-                rowGap: 12
+                // A menu is at least this tall and grows to fit its contents, up
+                // to `maxHeight`. Fixed heights make a two-row menu look
+                // abandoned and a ten-row one look cramped.
+                //
+                // Named minHeight, not height, because it used to BE a fixed
+                // height. Reusing the name would have let every existing
+                // config.json carry its old value into a key that now means
+                // something else, which migration cannot detect: it compares
+                // shape, and the shape would not have changed.
+                minHeight: 200,
+                maxHeight: 560
             }
         })
 
@@ -211,10 +236,30 @@ Singleton {
         onFileChanged: reload()
 
         onLoaded: {
+            let parsed;
             try {
-                root.values = root.merge(root.defaults, JSON.parse(text()));
+                parsed = JSON.parse(text());
             } catch (e) {
-                console.warn(`Config: ${root.path} is not valid JSON, keeping previous values.`, e);
+                return console.warn(`Config: ${root.path} is not valid JSON, keeping previous values.`, e);
+            }
+
+            root.values = root.merge(root.defaults, parsed);
+
+            // If the SHAPE changed, write the file back.
+            //
+            // merge() already makes an outdated file work, and that is exactly
+            // the trap: a setting added or removed in the defaults leaves the
+            // file on disk stale, still readable, and quietly authoritative for
+            // everything it does mention. Editing it then has no effect on the
+            // new settings and the file disagrees with the shell about what
+            // settings even exist. Values the user changed survive, because
+            // merge keeps them; only the structure is brought up to date.
+            if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {
+                console.log("Config: schema changed, updating config.json (your values are kept).");
+                // Deferred: writing from inside the read's own completion
+                // handler makes FileView drop the operation it is still
+                // finishing.
+                Qt.callLater(root.save);
             }
         }
 

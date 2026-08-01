@@ -46,11 +46,14 @@ Item {
 
     property string currentKey: ""
     property string currentTitle: ""
+    // The component the open menu shows. Handed in by whoever knows what a menu
+    // key means, so this file stays about position and lifetime.
+    property Component currentBody: null
 
     // True while the cursor is on the panel itself, which keeps it open.
     readonly property bool hovered: pointer.containsMouse
 
-    function show(key: string, title: string, centreY: real): void {
+    function show(key: string, title: string, body: Component, centreY: real): void {
         // Asked BEFORE currentKey changes, and asked of the state rather than of
         // the animation's value: "is the reveal at zero" is a float test, and a
         // float test for closed is exactly the kind that works until it doesn't.
@@ -59,6 +62,7 @@ Item {
         grace.stop();
         root.currentKey = key;
         root.currentTitle = title;
+        root.currentBody = body;
         centre.target = root.clampCentre(centreY);
         // Nothing to slide from when it was closed: place it, then grow.
         if (wasClosed)
@@ -108,6 +112,7 @@ Item {
         id: panel
 
         title: root.currentTitle
+        body: root.currentBody
         reveal: reveal.value
 
         x: root.originX

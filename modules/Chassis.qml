@@ -46,6 +46,6 @@ Item {
         // window radius, so the chassis hugs the windows. The left ones are
         // bigger: that is the sidebar's edge sweeping into the band. They are
         // corners of the CUTOUT, so they read as concave on the body.
-        frameRadius: Qt.vector4d(Appearance.rounding.base, Appearance.rounding.base, Appearance.sizes.sidebarFlare, Appearance.sizes.sidebarFlare)
+        frameRadius: Qt.vector4d(Appearance.sizes.contentRadius, Appearance.sizes.contentRadius, Appearance.sizes.sidebarFlare, Appearance.sizes.sidebarFlare)
     }
 }

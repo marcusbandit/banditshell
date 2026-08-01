@@ -40,13 +40,13 @@ PanelWindow {
     // hovering an icon and calling this over IPC take the same path, so the
     // scriptable route cannot drift from the one people actually use.
     function openMenu(key: string): bool {
-        const entry = statusItems.find(i => i.key === key);
+        const entry = sidebar.status.entryFor(key);
         const source = sidebar.status.iconFor(key);
         if (!entry || !source)
             return false;
 
         const centre = source.mapToItem(win.contentItem, source.width / 2, source.height / 2);
-        menuLayer.show(key, entry.title, centre.y);
+        menuLayer.show(key, entry.title, entry.body, centre.y);
         return true;
     }
 
@@ -103,7 +103,8 @@ PanelWindow {
         anchors.fill: parent
         // Open panels join the shell's distance field rather than being drawn on
         // top of it, which is what lets them melt into the body.
-        panels: menuLayer.blobs
+        // Everything that melts into the body: menus, and the notch.
+        panels: [...menuLayer.blobs, ...topClock.blobs]
     }
 
     // Sidebar contents, laid out in the chassis's left band. The band is one

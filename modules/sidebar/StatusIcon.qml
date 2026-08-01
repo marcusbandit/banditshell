@@ -41,7 +41,7 @@ Item {
 
     Icon {
         anchors.centerIn: parent
-        text: root.icon
+        name: root.icon
 
         // Label tiers, not colours. Accent is kept for `alert` only, so a colour
         // in this bar always means something is wrong.

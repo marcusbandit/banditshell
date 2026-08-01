@@ -11,9 +11,10 @@ import qs.modules
 // monitor creates the shell surfaces on it and unplugging destroys them, with no
 // screen-counting code anywhere.
 //
-// Two surfaces per screen, with completely separate jobs:
-//   ShellWindow     - everything visible, and all the input. One shape, one
-//                     mask, no stacking.
+// Three surfaces per screen, with completely separate jobs:
+//   WallpaperWindow - the background layer, below every window.
+//   ShellWindow     - everything the shell draws, and all the input. One field,
+//                     one mask, no stacking.
 //   FrameExclusions - invisible; reserves the room the chassis occupies.
 //
 // Ipc is shell-wide rather than per-screen: it finds windows through the
@@ -28,6 +29,10 @@ ShellRoot {
             id: scope
 
             required property ShellScreen modelData
+
+            WallpaperWindow {
+                screen: scope.modelData
+            }
 
             ShellWindow {
                 screen: scope.modelData

@@ -3,20 +3,20 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
+import qs.modules.menu.content
 
-// The system status section.
+// The system status section, and the menus behind it.
 //
-// NONE OF THESE ARE WIRED UP YET. They render their resting glyph, react to the
-// cursor, and open a placeholder menu; the services behind them come later, one
-// at a time. What matters now is that the shape is right: the section is
-// rendered FROM DATA, so adding an indicator is a row in `items`, and connecting
-// one is filling in its bindings, never touching this layout.
+// Rendered FROM DATA: adding an indicator is a row in `items`, and connecting one
+// is filling in that row's bindings. Sound and battery are live; the rest carry
+// demo content, which is deliberate. A grey skeleton tells you the panel has the
+// right SHAPE. Rows that look like the real thing tell you whether the DESIGN
+// holds at the density the real thing will have, and that is the question worth
+// answering before writing the service.
 Item {
     id: root
 
-    // `source` is the icon item itself, so whoever positions the menu can ask
-    // where it actually ended up rather than being told a coordinate that only
-    // this file knows how to compute.
     signal requested(string key)
     signal released
 
@@ -31,6 +31,50 @@ Item {
 
     onHoveredKeyChanged: hoveredKey ? root.requested(hoveredKey) : root.released()
 
+    readonly property var items: [
+        {
+            key: "audio",
+            title: "Sound",
+            icon: Audio.icon(Audio.volume, Audio.muted),
+            active: !Audio.muted && Audio.volume > 0,
+            body: soundMenu
+        },
+        {
+            key: "mic",
+            title: "Microphone",
+            icon: Audio.sourceMuted ? "mic_off" : "mic",
+            active: !Audio.sourceMuted,
+            alert: Audio.sourceMuted,
+            body: micMenu
+        },
+        {
+            key: "network",
+            title: "Network",
+            icon: Network.icon(Network.activeStrength),
+            active: Network.connected,
+            alert: Network.available && !Network.enabled,
+            available: Network.available,
+            body: networkMenu
+        },
+        {
+            key: "bluetooth",
+            title: "Bluetooth",
+            icon: Bluetooth.statusIcon(),
+            active: Bluetooth.anyConnected,
+            available: Bluetooth.available,
+            body: bluetoothMenu
+        },
+        {
+            key: "battery",
+            title: "Battery",
+            icon: Battery.icon(),
+            active: Battery.charging,
+            alert: Battery.low,
+            available: Battery.available,
+            body: batteryMenu
+        }
+    ]
+
     // The icon item for a key, so whoever positions a menu can ask where the
     // icon actually ended up rather than recomputing a layout only this file
     // knows.
@@ -43,38 +87,9 @@ Item {
         return null;
     }
 
-    readonly property var items: [
-        {
-            key: "audio",
-            title: "Sound",
-            icon: "volume_up"
-        },
-        {
-            key: "mic",
-            title: "Microphone",
-            icon: "mic"
-        },
-        {
-            key: "network",
-            title: "Network",
-            icon: "wifi"
-        },
-        {
-            key: "ethernet",
-            title: "Ethernet",
-            icon: "lan"
-        },
-        {
-            key: "bluetooth",
-            title: "Bluetooth",
-            icon: "bluetooth"
-        },
-        {
-            key: "battery",
-            title: "Battery",
-            icon: "battery_full"
-        }
-    ]
+    function entryFor(key: string): var {
+        return root.items.find(i => i.key === key) ?? null;
+    }
 
     implicitWidth: column.implicitWidth
     implicitHeight: column.implicitHeight
@@ -105,7 +120,6 @@ Item {
                 readonly property string key: modelData.key
 
                 icon: modelData.icon
-                // Placeholders until a service says otherwise.
                 active: modelData.active ?? false
                 alert: modelData.alert ?? false
                 available: modelData.available ?? true
@@ -121,5 +135,56 @@ Item {
                 onActivated: root.requested(key)
             }
         }
+    }
+
+    Component {
+        id: soundMenu
+
+        SoundMenu {}
+    }
+
+    Component {
+        id: batteryMenu
+
+        BatteryMenu {}
+    }
+
+    Component {
+        id: micMenu
+
+        DemoMenu {
+            footer: "input routing is not wired up yet"
+            rows: [
+                {
+                    icon: "graphic_eq",
+                    label: "Noise suppression",
+                    detail: "RNNoise",
+                    toggle: true
+                },
+                {
+                    icon: "hearing",
+                    label: "Monitor input",
+                    toggle: false
+                },
+                {
+                    icon: "settings_voice",
+                    label: "Built-in Microphone",
+                    detail: "default",
+                    selected: true
+                }
+            ]
+        }
+    }
+
+    Component {
+        id: networkMenu
+
+        NetworkMenu {}
+    }
+
+    Component {
+        id: bluetoothMenu
+
+        BluetoothMenu {}
     }
 }

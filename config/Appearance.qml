@@ -85,6 +85,12 @@ Singleton {
         // worth a colour, never for decoration or for filling a shape.
         readonly property color accent: root.theme[root.cfg.colour.accent]
 
+        // What goes ON the accent: a switch's knob, selected text behind it.
+        // The accent is a bright saturated green, so this is the dark end of the
+        // ramp rather than a label tier, which would be translucent and let the
+        // green show through whatever sits on it.
+        readonly property color accentText: root.rampAt(1, 1)
+
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour
@@ -161,16 +167,31 @@ Singleton {
         readonly property real melt: root.cfg.blob.melt
         readonly property real meltFeather: root.cfg.blob.feather
 
+        readonly property int networkListMax: root.cfg.control.networkListMax
+        readonly property int deviceListMax: root.cfg.control.deviceListMax
+        readonly property int rowHeight: root.cfg.control.rowHeight
+        readonly property int sliderHeight: root.cfg.control.sliderHeight
+        readonly property int toggleWidth: root.cfg.control.toggleWidth
+        readonly property int toggleHeight: root.cfg.control.toggleHeight
+
         readonly property int menuWidth: root.cfg.menu.width
-        readonly property int menuHeight: root.cfg.menu.height
-        readonly property int menuRowHeight: root.cfg.menu.rowHeight
-        readonly property int menuRowGap: root.cfg.menu.rowGap
+        readonly property int menuMinHeight: root.cfg.menu.minHeight
+        readonly property int menuMaxHeight: root.cfg.menu.maxHeight
 
         readonly property bool roundOuter: root.cfg.edge.roundOuter
 
-        // Concentric: the outside of the frame is the window radius plus the
-        // frame's own thickness, so a window corner and the screen corner it
-        // sits in share a centre. Any other value reads as subtly wrong.
-        readonly property real outerRadius: root.rounding.base + border + root.cfg.edge.outerExtra
+        // CONCENTRIC CORNERS. Every ring out from a window adds its distance to
+        // it, so all of them share a centre. Getting this wrong is not obviously
+        // wrong, it just looks slightly off in a way that is hard to name.
+        //
+        //   window content   rounding.base            (Hyprland's `rounding`)
+        //   its border       + the compositor's border width
+        //   the gap          + gaps_out, which is `border` here
+        //   -> the cutout the chassis is drawn around
+        //   the band         + `border` again
+        //   -> the screen's own corner
+        readonly property real windowRadius: root.rounding.base + (root.follows ? Compositor.borderSize : 0)
+        readonly property real contentRadius: windowRadius + border + root.cfg.edge.outerExtra
+        readonly property real outerRadius: contentRadius + border
     }
 }
