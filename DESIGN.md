@@ -70,6 +70,23 @@ it is **never drawn**. The border exists as a mechanism; it must not exist as de
 be drawn at rest. **Rejected:** a permanently visible frame, and painting the whole frame
 solid whenever a widget is summoned (both read as caelestia's border, which I dislike).
 
+**REVERSED 2026-08-01. The border is drawn, and it is part of the shell.** What I disliked was
+not the existence of a frame, it was a thin line sitting *on top of* the desktop like a
+decoration. A band of the same material as the panels, cut from the same shape, reading as the
+chassis the desktop sits inside, is a different thing and I want it. Concretely:
+
+- The band is **not an overlay**. It is the same surface as everything else the shell draws, on
+  the normal shell layer, and it gives way to a fullscreen window the way a bar does.
+- The band and the sidebar are **one shape** (`modules/Chassis.qml`), not two panels next to
+  each other. See section 8 for why that matters.
+- It **reserves its own space**, so windows sit inside it with the compositor's gap intact
+  rather than jammed against it.
+
+This is deliberately close to caelestia's construction. **We are rebuilding caelestia's main
+parts, with more control, because they are ours.** The point was never that caelestia is wrong;
+it is that I want the whole mental model. Where caelestia solved something well, copy the
+solution and understand it, don't invent a worse one to be different.
+
 **But it MAY reveal itself through interaction.** The direction I like: the border
 *deforms* near the cursor, so the reveal and the reaction are the same event. It isn't "a
 border that distorts", it's "a distortion that shows a border was there". Local, transient,
@@ -77,7 +94,14 @@ tied to where I actually am.
 
 Integration between a summoned widget and the screen edge is otherwise carried by **motion**:
 widgets live behind the edge and slide out via a clipping container, so they read as
-emerging from the frame without the frame being rendered.
+emerging from the frame.
+
+**Direction for the menus (2026-08-01): metaball.** When panels and menus start appearing, they
+should feel like they *separate out of* the chassis and merge back into it, the way two blobs
+of liquid join and part, rather than sliding in as separate rectangles. The chassis already
+being a single shape is what makes that possible: a menu is another region of the same shape,
+so the join between them can be a smooth blend instead of an overlap. Worth building the
+machinery for early rather than retrofitting it.
 
 ### 2.2 Intent summons the outcome
 
@@ -307,12 +331,12 @@ myshell/
 ├── services/                    the outside world, adapted
 │   └── Hypr.qml                 SINGLETON. Hyprland IPC -> clean workspace state
 └── modules/                     actual shell UI
-    ├── EdgeWindow.qml           full-screen ring surface, owns the input mask
-    ├── ScreenFrame.qml          rounds the display's corners, above all, no input
+    ├── ShellWindow.qml          THE surface: everything visible, all the input
+    ├── Chassis.qml              the band + sidebar as ONE shape
+    ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
     ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
     └── sidebar/
-        ├── SidebarWindow.qml    the left surface (reserves space)
-        ├── Sidebar.qml          its visual content
+        ├── Sidebar.qml          layout of what sits in the chassis's left band
         ├── Clock.qml            stacked HH / mm / date
         ├── Workspaces.qml       Hyprland workspace indicators
         ├── StatusIcons.qml      the status section, rendered from data
@@ -392,14 +416,26 @@ Dependencies only ever point downward. A widget in `modules/` never talks to Hyp
 directly; it reads `services/Hypr.qml`. That keeps the "how do we know this" logic (which IPC
 events force a refresh, id arithmetic) in one place, and leaves widgets purely visual.
 
-**Two surfaces per screen, and why:**
+**One shape, one surface. REVISED 2026-08-01.**
 
-- `EdgeWindow` - full-screen, transparent, reserves nothing, ignores others' exclusive zones.
-  Its `mask` is the ring plus whatever is currently summoned. This is the input authority for
-  every edge gesture.
-- `SidebarWindow` - left-anchored, `exclusiveZone = its width`, so tiled windows move over.
-  Separate surface purely because exclusive zones are per-surface (see section 7 amendment).
-  Declared *after* EdgeWindow in `shell.qml` so it stacks above the ring where they overlap.
+Everything the shell draws is in ONE window per screen, and the chassis (the band around the
+screen plus the sidebar) is ONE shape: the screen with the content area cut out of it.
+
+The version before this had a window per panel, stacked. It was wrong in three ways that all
+came from the same cause. Two translucent panels that abut **double their opacity** wherever
+they overlap and show a bright seam. Where they merely touch, each draws its own hairline and
+you get two lines along one join. And nothing could round as a single object, because there was
+no single contour to round. Cutting one shape makes all three impossible rather than fixed.
+
+- `ShellWindow` - full-screen, ignores others' exclusive zones, on the normal shell layer. Its
+  `mask` is the chassis itself: everything except the content area, plus whatever is currently
+  summoned. So every edge is a summon zone, the sidebar is reachable, and the region is
+  contiguous, which matters because a gap in it would drop the cursor mid-gesture and dismiss
+  what it was reaching for.
+- `FrameExclusions` - four invisible one-edge surfaces that exist only to reserve space. An
+  exclusive zone belongs to a surface anchored to one edge, and ShellWindow is anchored to four,
+  so reserving has to be someone else's job (see the section 7 amendment). The left edge
+  reserves the band and the sidebar together.
 
 **Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
 contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes

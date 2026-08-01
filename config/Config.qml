@@ -30,9 +30,12 @@ Singleton {
                 // Icons. Separate from the text face on purpose: swap this for a
                 // pixel icon font when one exists and nothing else changes.
                 icon: "Material Symbols Rounded",
+                // Icons are not part of the text hierarchy, so they get their
+                // own multiplier on the base rather than a fourth text tier.
+                iconScale: 1.15,
                 base: 16,
                 // Three tiers, and three is the limit on purpose.
-                scale: [0.75, 1.0, 1.75]
+                scale: [0.75, 1.0, 1.5]
             },
 
             // Material.
@@ -97,31 +100,36 @@ Singleton {
                 // compositor.follow is finding gaps_out.
                 border: 10,
 
-                // Round the outer edges of the display: four black pieces at the
-                // physical screen corners, so the desktop reads as a framed
-                // panel rather than a rectangle that happens to end.
+                // Draw the frame: a band around the whole screen as thick as the
+                // compositor's outer gap, plus black pieces rounding off the
+                // physical screen corners.
+                //
+                // The outer radius is not a setting: it is the window radius
+                // plus the band thickness, because concentric is the only value
+                // that looks right. `outerExtra` nudges it if that is ever wrong.
                 roundOuter: true,
-                // Which rounding tier the frame uses. 1 is the same radius as a
-                // window corner, which is usually what "correct" means here.
-                outerTier: 1,
-                // The frame colour. Black is the point, but it is a setting.
+                outerExtra: 0,
+                // Colour outside the frame. Black is the point, but it is a setting.
                 outerColour: "#000000"
             },
 
             sidebar: {
-                width: 84,
+                // Roughly caelestia's bar width. A vertical bar wants to be
+                // narrow: it is peripheral, and width is the main thing that
+                // makes one feel heavy.
+                width: 52,
                 // Rounding tier used for the concave corners that meet the
-                // screen edges.
+                // frame's inner edge.
                 flareTier: 2,
                 workspaces: {
                     // Slots always shown, even when empty.
                     persistent: 5,
-                    slot: 32,
-                    gap: 10
+                    slot: 28,
+                    gap: 6
                 },
                 status: {
-                    slot: 34,
-                    gap: 8
+                    slot: 28,
+                    gap: 4
                 }
             }
         })

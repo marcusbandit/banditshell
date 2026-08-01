@@ -14,7 +14,7 @@ import qs.config
 // fringes on a monochrome icon is exactly the sort of thing that reads as cheap.
 Text {
     font.family: Appearance.font.icon
-    font.pixelSize: Appearance.font.size.large
+    font.pixelSize: Appearance.font.iconSize
     color: Appearance.colour.text
     renderType: Text.CurveRendering
 

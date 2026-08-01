@@ -167,7 +167,11 @@ function ends(k, which, w, h) {
 }
 
 // Full closed path, drawn clockwise starting on the top edge.
-function path(w, h, tl, tr, br, bl, smoothing) {
+// ox/oy translate it, which is what lets a shape be a hole inside a bigger one.
+function path(w, h, tl, tr, br, bl, smoothing, ox, oy) {
+    ox = ox || 0;
+    oy = oy || 0;
+
     if (w <= 0 || h <= 0)
         return "";
 
@@ -186,11 +190,32 @@ function path(w, h, tl, tr, br, bl, smoothing) {
     });
 
     // Start where the top-left corner finishes, i.e. on the top edge.
-    let out = "M " + seq(geom[3].exit[0], geom[3].exit[1]);
+    let out = "M " + seq(geom[3].exit[0] + ox, geom[3].exit[1] + oy);
     for (const g of geom)
-        out += " L " + seq(g.entry[0], g.entry[1]) + g.seg;
+        out += " L " + seq(g.entry[0] + ox, g.entry[1] + oy) + g.seg;
 
     return out + " Z";
+}
+
+// The whole area with a rounded rectangle cut out of it.
+//
+// Two subpaths in one path, so an odd-even fill turns the inner one into a hole.
+// This is how the shell chassis is drawn as ONE shape: the frame band and the
+// sidebar are not two overlapping panels, they are what is left when the content
+// area is removed. Overlapping translucent panels would double their opacity and
+// show a seam along the join; a single shape cannot.
+//
+// The outer boundary is left square here; the black corner pieces carve it to
+// the outer radius on top, which is cheaper than describing the same curve twice.
+function cutoutPath(w, h, hx, hy, hw, hh, tl, tr, br, bl, smoothing) {
+    if (w <= 0 || h <= 0)
+        return "";
+
+    const outer = "M 0 0 L " + seq(w, 0) + " L " + seq(w, h) + " L " + seq(0, h) + " Z";
+    if (hw <= 0 || hh <= 0)
+        return outer;
+
+    return outer + " " + path(hw, hh, tl, tr, br, bl, smoothing, hx, hy);
 }
 
 // The sliver of a screen corner that a rounded desktop leaves uncovered.

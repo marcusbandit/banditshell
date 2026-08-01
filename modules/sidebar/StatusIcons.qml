@@ -11,7 +11,7 @@ import qs.components
 // now is that the shape is right: the section is rendered FROM DATA, so adding
 // an indicator is a row in `items`, and connecting one is filling in its
 // bindings, never touching this layout.
-Column {
+Item {
     id: root
 
     signal opened(string key)
@@ -43,23 +43,38 @@ Column {
         }
     ]
 
-    spacing: Appearance.sizes.statusGap
+    implicitWidth: column.implicitWidth
+    implicitHeight: column.implicitHeight
 
-    Repeater {
-        model: root.items
+    // Same container as the workspaces, for the same reason: one control, not
+    // six loose glyphs.
+    G2Rect {
+        anchors.fill: parent
+        anchors.margins: -Appearance.padding.small
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fill
+    }
 
-        delegate: StatusIcon {
-            required property var modelData
+    Column {
+        id: column
 
-            anchors.horizontalCenter: parent.horizontalCenter
+        anchors.centerIn: parent
+        spacing: Appearance.sizes.statusGap
 
-            icon: modelData.icon
-            // Placeholders until a service says otherwise.
-            active: modelData.active ?? false
-            alert: modelData.alert ?? false
-            available: modelData.available ?? true
+        Repeater {
+            model: root.items
 
-            onActivated: root.opened(modelData.key)
+            delegate: StatusIcon {
+                required property var modelData
+
+                icon: modelData.icon
+                // Placeholders until a service says otherwise.
+                active: modelData.active ?? false
+                alert: modelData.alert ?? false
+                available: modelData.available ?? true
+
+                onActivated: root.opened(modelData.key)
+            }
         }
     }
 }

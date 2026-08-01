@@ -30,6 +30,16 @@ Item {
     implicitWidth: slot
     implicitHeight: count * pitch - Appearance.sizes.wsGap
 
+    // A quiet container, so the indicators read as one control rather than a
+    // column of loose numbers. No bevel, no channel: just a fill a shade above
+    // the panel, which is all "these belong together" needs.
+    G2Rect {
+        anchors.fill: parent
+        anchors.margins: -Appearance.padding.small
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fill
+    }
+
     // The "you are here" marker. Drawn before the numbers so they sit on top of
     // it. Its y is NOT bound: the timer below drives it, so it can be animated.
     G2Rect {

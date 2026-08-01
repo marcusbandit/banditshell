@@ -101,6 +101,10 @@ Singleton {
             readonly property int normal: Math.round(root.tier(root.cfg.font.base, root.cfg.font.scale, 1))
             readonly property int large: Math.round(root.tier(root.cfg.font.base, root.cfg.font.scale, 2))
         }
+
+        // Icons are glyphs, not type: they carry no hierarchy, so they sit
+        // outside the three tiers rather than eating one.
+        readonly property int iconSize: Math.round(root.cfg.font.base * root.cfg.font.iconScale)
     }
 
     readonly property QtObject rounding: QtObject {
@@ -153,6 +157,10 @@ Singleton {
         readonly property int statusGap: root.cfg.sidebar.status.gap
 
         readonly property bool roundOuter: root.cfg.edge.roundOuter
-        readonly property real outerRadius: root.rounding.at(root.cfg.edge.outerTier)
+
+        // Concentric: the outside of the frame is the window radius plus the
+        // frame's own thickness, so a window corner and the screen corner it
+        // sits in share a centre. Any other value reads as subtly wrong.
+        readonly property real outerRadius: root.rounding.base + border + root.cfg.edge.outerExtra
     }
 }
