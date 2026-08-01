@@ -33,8 +33,14 @@ Item {
 
         ShapePath {
             fillColor: Appearance.colour.surface
-            strokeColor: Appearance.colour.separator
-            strokeWidth: 1
+            // NO STROKE, deliberately. A hairline on this contour draws a line
+            // straight down the join wherever a menu meets the chassis, because
+            // the menu is a separate shape abutting it exactly. The real fix is
+            // for open menus to be part of THIS path, which is the metaball work
+            // in DESIGN.md section 2.1; until then the material against blurred
+            // content is boundary enough.
+            strokeColor: "transparent"
+            strokeWidth: 0
             // The inner subpath is a hole, not a second filled shape.
             fillRule: ShapePath.OddEvenFill
 

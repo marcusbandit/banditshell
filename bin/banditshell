@@ -1,0 +1,114 @@
+#!/usr/bin/env bash
+# banditshell - run and drive the shell.
+#
+# Menus open on hover, which is a fine way to use them and an impossible way to
+# test: you cannot script a cursor into a corner and assert what happened. This
+# drives the same code path from the terminal, so the gesture and the thing it
+# opens can be checked separately.
+#
+#   banditshell start|stop|restart|run|log
+#   banditshell menu list|open <key>|close|toggle <key>|current
+#   banditshell status
+#   banditshell theme [name]
+#   banditshell get <key> | set <key> <value>
+#   banditshell shot [file]      screenshot, for checking a change actually landed
+#   banditshell demo <key>       open a menu, screenshot it, close it
+
+set -euo pipefail
+
+SHELL_DIR="${BANDITSHELL_DIR:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)}"
+SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
+
+qs_() { qs -p "$SHELL_DIR" "$@"; }
+
+# `qs ipc call` fails loudly when the shell is not running; say so in a way that
+# tells you what to do about it.
+ipc() {
+    if ! qs_ ipc call "$@" 2>/dev/null; then
+        echo "banditshell: not running (try: banditshell start)" >&2
+        return 1
+    fi
+}
+
+running() { pgrep -x qs >/dev/null 2>&1; }
+
+usage() { sed -n '2,20p' "$(readlink -f "${BASH_SOURCE[0]}")" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-help}"
+shift || true
+
+case "$cmd" in
+start)
+    running && { echo "already running"; exit 0; }
+    qs_ -d
+    ;;
+stop)
+    # -x, not -f: `pkill -f qs` matches this script's own command line and kills
+    # the terminal it was typed in.
+    pkill -x qs || true
+    echo "stopped"
+    ;;
+restart)
+    pkill -x qs || true
+    sleep 0.5
+    qs_ -d
+    ;;
+run)
+    # Foreground, so QML errors land in the terminal.
+    exec qs_
+    ;;
+log)
+    exec qs_ log "$@"
+    ;;
+
+menu)
+    sub="${1:-list}"
+    shift || true
+    case "$sub" in
+    list | close | current) ipc menu "$sub" ;;
+    open | toggle)
+        [ $# -ge 1 ] || { echo "usage: banditshell menu $sub <key>" >&2; exit 2; }
+        ipc menu "$sub" "$1" "${2:-}"
+        ;;
+    *) echo "usage: banditshell menu list|open <key>|close|toggle <key>|current" >&2; exit 2 ;;
+    esac
+    ;;
+
+status) ipc shell status ;;
+themes) ipc shell themes ;;
+theme)
+    [ $# -ge 1 ] && ipc shell set theme "\"$1\"" || ipc shell get theme
+    ;;
+get)
+    [ $# -ge 1 ] || { echo "usage: banditshell get <key>" >&2; exit 2; }
+    ipc shell get "$1"
+    ;;
+set)
+    [ $# -ge 2 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
+    ipc shell set "$1" "$2"
+    ;;
+
+shot)
+    mkdir -p "$SHOT_DIR"
+    out="${1:-$SHOT_DIR/shot.png}"
+    grim "$out"
+    echo "$out"
+    ;;
+
+demo)
+    # Open a menu, wait for the reveal to settle, capture it, put it away. The
+    # sleep is the animation, not a guess: the reveal is exponential smoothing,
+    # so it is asymptotic and needs a moment rather than a frame.
+    [ $# -ge 1 ] || { echo "usage: banditshell demo <key>" >&2; exit 2; }
+    mkdir -p "$SHOT_DIR"
+    out="${2:-$SHOT_DIR/menu-$1.png}"
+    ipc menu open "$1" "" >/dev/null
+    sleep 0.6
+    grim "$out"
+    ipc menu close >/dev/null
+    echo "$out"
+    ;;
+
+help | -h | --help) usage ;;
+*) usage >&2; exit 2 ;;
+esac

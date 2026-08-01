@@ -1,4 +1,4 @@
-# myshell - Design Document
+# banditshell - Design Document
 
 > A from-scratch desktop shell to eventually replace caelestia.
 > Written 2026-07-28 as a reference. **Nothing is being built yet** - this is the
@@ -9,6 +9,11 @@ the point. I want to be proud of my system and understand how the *entire* thing
 The constant urge to tweak caelestia is the tell that I'd rather own the whole mental
 model than live in someone else's. This document is so that intent survives the gap
 between now and whenever I actually start.
+
+**Named 2026-08-01: banditshell.** Lives in `~/.banditshell`... no: `~/banditshell`, settings in
+`~/.config/banditshell/config.json`, driven by the `banditshell` CLI, and its Wayland surfaces
+announce themselves under the namespace `banditshell` (which is how the compositor's blur rule
+finds them).
 
 ---
 
@@ -314,10 +319,10 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 ## 8. Code structure (living map - keep this current)
 
 ```
-myshell/
+banditshell/
 ├── shell.qml                    entry point: Variants -> one set of surfaces per screen
 ├── config/
-│   ├── Config.qml               SINGLETON. ~/.config/myshell/config.json, live.
+│   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
 │   ├── Themes.qml               SINGLETON. Named palettes (ramp + accents).
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
@@ -349,7 +354,7 @@ Import paths: Quickshell exposes the config root as the module `qs`, so a direct
 
 **Configuration: no magic numbers, anywhere.**
 
-`Config.qml` owns `~/.config/myshell/config.json`. Edit it and the shell follows live; delete
+`Config.qml` owns `~/.config/banditshell/config.json`. Edit it and the shell follows live; delete
 it and it is rewritten from the defaults. The `defaults` object in that file *is* the schema:
 a key not in it is not a setting, and a key in it always resolves, so a half-written config
 still boots. `Config.set("sidebar.width", 90)` writes and persists, which is the entire API the

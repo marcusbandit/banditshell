@@ -3,12 +3,19 @@ import QtQuick.Shapes
 import qs.config
 import "squircle.js" as Squircle
 
-// One black corner piece, sized and shaped to the desktop's corner rounding.
+// The bit of a square corner that a rounded shape leaves over: a corner curve
+// plus two straight runs back through the corner point.
 //
-// Four of these turn a rectangular display into a rounded one. It is the corner
-// curve itself plus two straight runs back through the physical corner, using
-// the same geometry as every other corner in the shell, so it matches the window
-// rounding exactly rather than approximating it.
+// Two jobs, same shape:
+//
+//   FILLING IN  - four of these in black at the screen corners turn a
+//                 rectangular display into a rounded one.
+//   JOINING     - one in the panel material where two panels meet at a right
+//                 angle fillets the join, so they read as one body separating
+//                 rather than two rectangles touching.
+//
+// It uses the same corner geometry as everything else, so it matches exactly
+// rather than approximating.
 Item {
     id: root
 

@@ -12,6 +12,10 @@ import qs.config
 Item {
     id: root
 
+    // Forwarded up to the menu layer, which lives outside the sidebar because
+    // the menus are not part of it.
+    property alias status: status
+
     Workspaces {
         anchors.centerIn: parent
     }
@@ -28,6 +32,7 @@ Item {
         }
 
         StatusIcons {
+            id: status
             anchors.horizontalCenter: parent.horizontalCenter
         }
     }

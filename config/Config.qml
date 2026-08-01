@@ -4,7 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// User settings, backed by ~/.config/myshell/config.json.
+// User settings, backed by ~/.config/banditshell/config.json.
 //
 // Edit that file and the shell follows live, no restart. Delete it and it is
 // written back from the defaults below. A settings menu will just call
@@ -15,7 +15,7 @@ import Quickshell.Io
 Singleton {
     id: root
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.config/myshell`
+    readonly property string dir: `${Quickshell.env("HOME")}/.config/banditshell`
     readonly property string path: `${dir}/config.json`
 
     readonly property var defaults: ({
@@ -80,7 +80,13 @@ Singleton {
                 scale: [0.68, 1.0, 1.45],
                 // Exponential-smoothing rate for things that track a target.
                 // Higher is snappier.
-                trackSpeed: 14
+                trackSpeed: 14,
+                // Same, for a panel opening or closing.
+                revealSpeed: 18,
+                // How long a hover-opened thing survives the cursor leaving.
+                // Hover is a sloppy input; without this, crossing a boundary
+                // dismisses what you were reaching for.
+                grace: 180
             },
 
             // Which stop of the theme's ramp each role uses. The ramp runs 0
@@ -131,6 +137,16 @@ Singleton {
                     slot: 28,
                     gap: 4
                 }
+            },
+
+            menu: {
+                width: 300,
+                height: 380,
+                // Rounding tier for the fillet where a menu joins the sidebar.
+                jointTier: 2,
+                // Placeholder skeleton rows.
+                rowHeight: 12,
+                rowGap: 12
             }
         })
 

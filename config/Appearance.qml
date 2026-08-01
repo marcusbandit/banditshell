@@ -138,9 +138,11 @@ Singleton {
         readonly property int normal: Math.round(root.tier(root.cfg.anim.base, root.cfg.anim.scale, 1))
         readonly property int slow: Math.round(root.tier(root.cfg.anim.base, root.cfg.anim.scale, 2))
 
-        // Exponential-smoothing rate for anything that tracks a target
-        // (see ~/.claude/rules/animation-smoothing.md).
+        // Exponential-smoothing rates (see ~/.claude/rules/animation-smoothing.md).
         readonly property real trackSpeed: root.cfg.anim.trackSpeed
+        readonly property real revealSpeed: root.cfg.anim.revealSpeed
+
+        readonly property int grace: root.cfg.anim.grace
     }
 
     readonly property QtObject sizes: QtObject {
@@ -155,6 +157,12 @@ Singleton {
         readonly property int wsPersistent: root.cfg.sidebar.workspaces.persistent
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
+
+        readonly property int menuWidth: root.cfg.menu.width
+        readonly property int menuHeight: root.cfg.menu.height
+        readonly property real menuJoint: root.rounding.at(root.cfg.menu.jointTier)
+        readonly property int menuRowHeight: root.cfg.menu.rowHeight
+        readonly property int menuRowGap: root.cfg.menu.rowGap
 
         readonly property bool roundOuter: root.cfg.edge.roundOuter
 
