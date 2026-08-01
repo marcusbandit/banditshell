@@ -12,24 +12,23 @@ between now and whenever I actually start.
 
 ---
 
-## 0. How I want AI to help (hard rule for this project)
+## 0. How I want AI to help
 
-**I type the code myself.** I want AI assistance, but I write every line. This is
-non-negotiable for myshell specifically, because the entire point is understanding my own
-system - and I can't understand code I didn't write.
+**REVISED 2026-08-01.** The original rule here was "I type every line myself". Dropped. The
+assistant writes the code and puts it in the files.
 
-So the assistant's role here is:
-- explain how things work, sketch approaches, point at the right Quickshell/QML/DBus/Hypr APIs
-- debug, review, rubber-duck the design, answer "how / why" questions
-- write pseudocode or tiny illustrative snippets *to teach a concept*, not to be pasted in as
-  the implementation
+What did **not** change: **I want to understand all of it.** The understanding requirement moved
+from *authorship* to *architecture*:
 
-The assistant's role here is **NOT**:
-- writing the widgets / files for me
-- producing paste-ready implementations of the actual shell
-- editing myshell source files on my behalf
+- **The structure is mine.** I want to know how the shell is laid out, why each file exists, and
+  what talks to what. Section 8 is the living map of that and must be kept current.
+- **Explain the structure as it changes.** When a file is added, moved, or a boundary shifts,
+  say so and say why. Don't let the tree drift ahead of my mental model.
+- Code should be written to be *read*: comments explain the non-obvious *why* (why a separate
+  window, why a mask and not opacity), not the obvious *what*.
 
-If in doubt: hand me the understanding, let me type the code.
+Original rejected alternative: assistant-as-tutor-only (explain, never write). It made the
+project stall, which is the exact failure mode section 5 warns about.
 
 ---
 
@@ -63,10 +62,22 @@ there. Nothing is served before I ask for it.
 This is the opposite of caelestia's always-present bar. The whole thesis: **information
 appears in response to intent, not preemptively.**
 
-The thin border caelestia always draws around the screen: I'm not a fan. I may keep an
+The thin border caelestia always draws around the screen: I'm not a fan. I keep an
 **invisible interaction region** (a hit-target ring / edge zones) for summoning things, but
-it must be **fully transparent until interacted with**. The border can exist as a mechanism;
-it must not exist as decoration-at-rest.
+it is **never drawn**. The border exists as a mechanism; it must not exist as decoration.
+
+**DECIDED 2026-07-28: never visible by default.** The border is not decoration and must not
+be drawn at rest. **Rejected:** a permanently visible frame, and painting the whole frame
+solid whenever a widget is summoned (both read as caelestia's border, which I dislike).
+
+**But it MAY reveal itself through interaction.** The direction I like: the border
+*deforms* near the cursor, so the reveal and the reaction are the same event. It isn't "a
+border that distorts", it's "a distortion that shows a border was there". Local, transient,
+tied to where I actually am.
+
+Integration between a summoned widget and the screen edge is otherwise carried by **motion**:
+widgets live behind the edge and slide out via a clipping container, so they read as
+emerging from the frame without the frame being rendered.
 
 ### 2.2 Intent summons the outcome
 
@@ -212,6 +223,19 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   shell *looks* different from caelestia's Google-Sans-Flex smoothness. Different look,
   different soul. (caelestia reference: Google Sans Flex sans, JetBrainsMono Nerd Font mono,
   Material Symbols Rounded icons.)
+  - Because it's a pixel font, all text goes through `components/StyledText.qml`, which sets
+    `renderType: Text.NativeRendering`. Qt's default distance-field renderer smears pixel-font
+    stems into grey mush; native rendering keeps them on the pixel grid.
+- **Corners are G2, never circular.** Every rounded shape goes through `components/G2Rect.qml`
+  (a squircle drawn with `QtQuick.Shapes`). `Rectangle.radius` is banned in this project: it's
+  a circular arc, so curvature jumps at the corner and the eye reads a pinch.
+  Portable rule: `~/.claude/rules/g2-corners.md`.
+- **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
+  `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
+  spacing instead. Portable rule: `~/.claude/rules/type-scale.md`.
+- **Monochrome.** White on near-black, hierarchy by opacity tier. The "you are here" state
+  inverts (solid white fill, black text) rather than introducing a hue. No accent colour has
+  been chosen yet, and the shell should stay legible if one never is.
 - **Distinctive, not generic.** Never trade a distinctive look for a generic "clean" one.
   Since I'm establishing the style from scratch, commit to an idiom early (the clock sets it)
   and build every later widget in that idiom.
@@ -236,12 +260,76 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   input, opacity gates visuals** - keep those two separate. Masked areas must stay
   *contiguous* or the cursor crosses dead pixels and the widget flickers away.
   This one window is the foundation for ALL future summon zones, not one panel per widget.
+  - **AMENDED 2026-08-01:** "one window" holds for *summon zones*, but **not** for anything that
+    reserves space. A Wayland exclusive zone belongs to a whole surface anchored to one edge, so
+    a full-screen surface anchored to all four edges cannot have one. Panels that displace tiled
+    windows therefore get their own `PanelWindow`, and the ring window is set to
+    `WlrLayershell.exclusionMode: ExclusionMode.Ignore` so it keeps hugging the physical screen
+    edges instead of being pushed inward by them.
 - Persistence/state store for notifications (Tier 4) and saved networks/devices.
 - How much goes in **C** vs QML (start pure QML; drop to C only where measured need appears).
 
 ---
 
+## 8. Code structure (living map - keep this current)
+
+```
+myshell/
+├── shell.qml                    entry point: Variants -> one set of surfaces per screen
+├── config/
+│   └── Appearance.qml           SINGLETON. Every colour, size, radius, duration.
+├── components/                  generic, reusable, know nothing about the shell
+│   ├── squircle.js              G2 corner geometry (pure maths, no QML)
+│   ├── G2Rect.qml               the ONE rounded-rect primitive
+│   └── StyledText.qml           the ONE text element
+├── services/                    the outside world, adapted
+│   └── Hypr.qml                 SINGLETON. Hyprland IPC -> clean workspace state
+└── modules/                     actual shell UI
+    ├── EdgeWindow.qml           full-screen ring surface, owns the input mask
+    ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
+    └── sidebar/
+        ├── SidebarWindow.qml    the left surface (reserves space)
+        ├── Sidebar.qml          its visual content
+        ├── Clock.qml            stacked HH / mm / date
+        └── Workspaces.qml       Hyprland workspace indicators
+```
+
+Import paths: Quickshell exposes the config root as the module `qs`, so a directory is
+`import qs.components`, `import qs.services`, `import qs.modules.sidebar`. There are no
+`qmldir` files to maintain; Quickshell generates them.
+
+**The layering rule, and the reason the tree looks like this:**
+
+```
+modules   ->  can use everything below
+services  ->  can use config + components, never modules
+components->  can use config, nothing else
+config    ->  uses nothing
+```
+
+Dependencies only ever point downward. A widget in `modules/` never talks to Hyprland
+directly; it reads `services/Hypr.qml`. That keeps the "how do we know this" logic (which IPC
+events force a refresh, id arithmetic) in one place, and leaves widgets purely visual.
+
+**Two surfaces per screen, and why:**
+
+- `EdgeWindow` - full-screen, transparent, reserves nothing, ignores others' exclusive zones.
+  Its `mask` is the ring plus whatever is currently summoned. This is the input authority for
+  every edge gesture.
+- `SidebarWindow` - left-anchored, `exclusiveZone = its width`, so tiled windows move over.
+  Separate surface purely because exclusive zones are per-surface (see section 7 amendment).
+  Declared *after* EdgeWindow in `shell.qml` so it stacks above the ring where they overlap.
+
+**Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
+contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes
+later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
+the left edge the way `TopClock` already does at the top.
+
+---
+
 *Relevant portable rules to re-read when building: `~/.claude/rules/animation-smoothing.md`
 (exponential smoothing), `~/.claude/rules/math-over-hardcoding.md` (compute zones/positions),
+`~/.claude/rules/g2-corners.md` (G2/squircle corners, never a plain radius),
+`~/.claude/rules/type-scale.md` (at most three font sizes),
 `~/.claude/rules/working-style.md` (just-try-then-iterate, preserve the distinctive style,
 explicit line breaks). Memory pointer: `project-custom-shell-plan`.*

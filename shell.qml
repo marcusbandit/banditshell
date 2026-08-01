@@ -1,84 +1,36 @@
-import QtQuick
+//@ pragma DefaultEnv QS_NO_RELOAD_POPUP=1
+
+pragma ComponentBehavior: Bound
+
 import Quickshell
+import qs.modules
+import qs.modules.sidebar
 
+// Entry point.
+//
+// Variants instantiates its child once per item in `model`, so plugging in a
+// monitor creates the shell surfaces on it and unplugging destroys them, with no
+// screen-counting code anywhere.
+//
+// Two surfaces per screen:
+//   EdgeWindow    - full-screen, reserves nothing, owns the summon zones
+//   SidebarWindow - left-anchored, reserves its width, displaces tiled windows
+// Order matters: the sidebar is declared second so it stacks above the ring.
 ShellRoot {
-    PanelWindow {
-        id: win
-        anchors {
-            top: true
-            bottom: true
-            left: true
-            right: true
-        }
-        color: "transparent"
-        exclusiveZone: 0
+    Variants {
+        model: Quickshell.screens
 
-        property int border: 10
+        Scope {
+            id: scope
 
-        readonly property bool clockWanted: topZone.containsMouse || pillZone.containsMouse
+            required property ShellScreen modelData
 
-
-        mask: Region {
-            width: win.width
-            height: win.height
-            Region {
-                intersection: Intersection.Subtract
-                x: win.border
-                y: win.border
-                width: win.width - win.border * 2
-                height: win.height - win.border * 2
-            }
-            Region {
-                intersection: Intersection.Combine
-                item: win.clockWanted ? pill : null
-            }
-        }
-
-        SystemClock {
-            id: clock
-            precision: SystemClock.Seconds
-        }
-
-        MouseArea {
-            id: topZone
-            hoverEnabled: true
-            height: win.border
-            width: pill.width
-            anchors.top: parent.top
-            anchors.horizontalCenter: parent.horizontalCenter
-        }
-
-        Rectangle {
-            id: pill
-            anchors.top: parent.top
-            anchors.topMargin: win.border
-            anchors.horizontalCenter: parent.horizontalCenter
-
-            width: label.implicitWidth + 40
-            height: label.implicitHeight + 40
-            radius: 10
-            color: "#e61a1a1a"
-
-            opacity: win.clockWanted ? 1 : 0
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: 160;
-                    easing.type: Easing.OutQuad
-                }
-            }
-            MouseArea {
-                id: pillZone
-                anchors.fill: parent
-                hoverEnabled: true
+            EdgeWindow {
+                screen: scope.modelData
             }
 
-            Text {
-                id: label
-                anchors.centerIn: parent
-                text: Qt.formatDateTime(clock.date, "HH:mm:ss")
-                color: "white"
-                font.pixelSize: 28
-                font.family: "Monocraft"
+            SidebarWindow {
+                screen: scope.modelData
             }
         }
     }
