@@ -54,14 +54,15 @@ function corner(radius, smoothing) {
     };
 }
 
-// Two corners share a side. If together they want more than the side is long,
-// scale both down proportionally rather than letting either one win.
+// Two corners share a side. Each gets a slice of it in proportion to how much
+// it asked for, so the bigger radius keeps the bigger allowance when they
+// collide. This is an allowance along the SIDE, not a radius: a corner may spend
+// it on radius and on smoothing both.
 function share(r1, r2, len) {
     const total = r1 + r2;
-    if (total <= len || total <= 0)
-        return [r1, r2];
-    const k = len / total;
-    return [r1 * k, r2 * k];
+    if (total <= 0)
+        return [len / 2, len / 2];
+    return [len * r1 / total, len * r2 / total];
 }
 
 // How much room each corner actually gets: the smaller of its two sides' allowances.
@@ -78,15 +79,15 @@ function budgets(tl, tr, br, bl, w, h) {
     };
 }
 
-// Fit a corner into its budget. Radius is preserved where possible and smoothing
-// is what degrades, because a slightly less smooth corner reads better than a
-// visibly wrong radius.
+
+// Fit a corner into its budget. The radius is preserved where possible and the
+// smoothing is what degrades, because a slightly less smooth corner reads better
+// than a visibly wrong radius. A negative radius means a CONCAVE corner.
 function fit(radius, smoothing, budget) {
-    const r = Math.max(0, Math.min(radius, budget));
-    if (r <= 0)
-        return corner(0, 0);
-    const s = Math.max(0, Math.min(smoothing, budget / r - 1));
-    return corner(r, s);
+    const r = Math.min(Math.abs(radius), budget);
+    const k = r <= 0 ? corner(0, 0) : corner(r, Math.max(0, Math.min(smoothing, budget / r - 1)));
+    k.concave = radius < 0;
+    return k;
 }
 
 function n(x) {
@@ -100,37 +101,94 @@ function seq() {
     return parts.join(" ");
 }
 
+// How far a corner reaches along each of its two sides. Anything sizing itself
+// around a concave corner needs this: the flare is exactly this wide.
+function extent(radius, smoothing) {
+    return (1 + Math.max(0, Math.min(1, smoothing))) * Math.abs(radius);
+}
+
+// CONVEX (positive radius) cuts the corner off the bounding box: the shape pulls
+// away from its own corner. Right for a floating card.
+//
+// CONCAVE (negative radius) does the reverse: the side pulls IN by p, and the
+// corner flares back OUT to touch the bounding-box corner, arriving tangent to
+// the perpendicular edge. That is what you want where a panel meets a screen
+// edge, because the panel then sweeps into the edge instead of curling away from
+// it and leaving a notch of dead space at the very corner.
+//
+// A concave corner is the convex path mirrored in x, which also flips the arc's
+// sweep flag. Both are written out per corner rather than generated, because the
+// four corners enter and leave on different axes and a clever generator here is
+// harder to check than twelve literal numbers.
+function segment(k, which) {
+    if (k.r <= 0)
+        return "";
+
+    const abc = k.a + k.b + k.c;
+    const ab = k.a + k.b;
+    const bc = k.b + k.c;
+    const arcTo = (sx, sy, sweep) => " a " + seq(k.r, k.r) + " 0 0 " + sweep + " " + seq(sx * k.arc, sy * k.arc);
+
+    switch (which) {
+    // enters travelling +x along the top edge, leaves travelling +y
+    case "tr":
+        return k.concave ? " c " + seq(-k.a, 0, -ab, 0, -abc, k.d) + arcTo(-1, 1, 0) + " c " + seq(-k.d, k.c, -k.d, bc, -k.d, abc) : " c " + seq(k.a, 0, ab, 0, abc, k.d) + arcTo(1, 1, 1) + " c " + seq(k.d, k.c, k.d, bc, k.d, abc);
+
+    // enters travelling +y down the right edge, leaves travelling -x
+    case "br":
+        return k.concave ? " c " + seq(0, k.a, 0, ab, k.d, abc) + arcTo(1, 1, 0) + " c " + seq(k.c, k.d, bc, k.d, abc, k.d) : " c " + seq(0, k.a, 0, ab, -k.d, abc) + arcTo(-1, 1, 1) + " c " + seq(-k.c, k.d, -bc, k.d, -abc, k.d);
+
+    // enters travelling -x along the bottom edge, leaves travelling -y
+    case "bl":
+        return k.concave ? " c " + seq(k.a, 0, ab, 0, abc, -k.d) + arcTo(1, -1, 0) + " c " + seq(k.d, -k.c, k.d, -bc, k.d, -abc) : " c " + seq(-k.a, 0, -ab, 0, -abc, -k.d) + arcTo(-1, -1, 1) + " c " + seq(-k.d, -k.c, -k.d, -bc, -k.d, -abc);
+
+    // enters travelling -y up the left edge, leaves travelling +x
+    case "tl":
+        return k.concave ? " c " + seq(0, -k.a, 0, -ab, -k.d, -abc) + arcTo(-1, -1, 0) + " c " + seq(-k.c, -k.d, -bc, -k.d, -abc, -k.d) : " c " + seq(0, -k.a, 0, -ab, k.d, -abc) + arcTo(1, -1, 1) + " c " + seq(k.c, -k.d, bc, -k.d, abc, -k.d);
+    }
+    return "";
+}
+
+// Where each corner starts and finishes, in absolute coordinates. The straight
+// sides are just the lines between one corner's exit and the next one's entry,
+// so a concave corner automatically pulls its side inwards.
+function ends(k, which, w, h) {
+    const p = k.p;
+    switch (which) {
+    case "tr":
+        return k.concave ? [[w, 0], [w - p, p]] : [[w - p, 0], [w, p]];
+    case "br":
+        return k.concave ? [[w - p, h - p], [w, h]] : [[w, h - p], [w - p, h]];
+    case "bl":
+        return k.concave ? [[0, h], [p, h - p]] : [[p, h], [0, h - p]];
+    case "tl":
+        return k.concave ? [[p, p], [0, 0]] : [[0, p], [p, 0]];
+    }
+}
+
 // Full closed path, drawn clockwise starting on the top edge.
 function path(w, h, tl, tr, br, bl, smoothing) {
     if (w <= 0 || h <= 0)
         return "";
 
     const s = Math.max(0, Math.min(1, smoothing));
-    const bud = budgets(tl, tr, br, bl, w, h);
-    const TL = fit(tl, s, bud.tl);
-    const TR = fit(tr, s, bud.tr);
-    const BR = fit(br, s, bud.br);
-    const BL = fit(bl, s, bud.bl);
+    const bud = budgets(Math.abs(tl), Math.abs(tr), Math.abs(br), Math.abs(bl), w, h);
 
-    let out = "M " + seq(w - TR.p, 0);
+    const order = [["tr", fit(tr, s, bud.tr)], ["br", fit(br, s, bud.br)], ["bl", fit(bl, s, bud.bl)], ["tl", fit(tl, s, bud.tl)]];
 
-    // top-right
-    out += TR.r ? " c " + seq(TR.a, 0, TR.a + TR.b, 0, TR.a + TR.b + TR.c, TR.d) + " a " + seq(TR.r, TR.r) + " 0 0 1 " + seq(TR.arc, TR.arc) + " c " + seq(TR.d, TR.c, TR.d, TR.b + TR.c, TR.d, TR.a + TR.b + TR.c) : "";
+    const geom = order.map(([which, k]) => {
+        const e = ends(k, which, w, h);
+        return {
+            entry: e[0],
+            exit: e[1],
+            seg: segment(k, which)
+        };
+    });
 
-    out += " L " + seq(w, h - BR.p);
-
-    // bottom-right
-    out += BR.r ? " c " + seq(0, BR.a, 0, BR.a + BR.b, -BR.d, BR.a + BR.b + BR.c) + " a " + seq(BR.r, BR.r) + " 0 0 1 " + seq(-BR.arc, BR.arc) + " c " + seq(-BR.c, BR.d, -(BR.b + BR.c), BR.d, -(BR.a + BR.b + BR.c), BR.d) : "";
-
-    out += " L " + seq(BL.p, h);
-
-    // bottom-left
-    out += BL.r ? " c " + seq(-BL.a, 0, -(BL.a + BL.b), 0, -(BL.a + BL.b + BL.c), -BL.d) + " a " + seq(BL.r, BL.r) + " 0 0 1 " + seq(-BL.arc, -BL.arc) + " c " + seq(-BL.d, -BL.c, -BL.d, -(BL.b + BL.c), -BL.d, -(BL.a + BL.b + BL.c)) : "";
-
-    out += " L " + seq(0, TL.p);
-
-    // top-left
-    out += TL.r ? " c " + seq(0, -TL.a, 0, -(TL.a + TL.b), TL.d, -(TL.a + TL.b + TL.c)) + " a " + seq(TL.r, TL.r) + " 0 0 1 " + seq(TL.arc, -TL.arc) + " c " + seq(TL.c, -TL.d, TL.b + TL.c, -TL.d, TL.a + TL.b + TL.c, -TL.d) : "";
+    // Start where the top-left corner finishes, i.e. on the top edge.
+    let out = "M " + seq(geom[3].exit[0], geom[3].exit[1]);
+    for (const g of geom)
+        out += " L " + seq(g.entry[0], g.entry[1]) + g.seg;
 
     return out + " Z";
 }

@@ -230,12 +230,19 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   (a squircle drawn with `QtQuick.Shapes`). `Rectangle.radius` is banned in this project: it's
   a circular arc, so curvature jumps at the corner and the eye reads a pinch.
   Portable rule: `~/.claude/rules/g2-corners.md`.
+  - **Where a panel meets a screen edge, the corner is CONCAVE** (a negative radius in
+    `G2Rect`). A convex corner there curls the panel away from the edge and leaves a notch of
+    dead space, which is wrong: nothing is floating, the panel is part of the edge. Concave
+    makes the panel's free edge sweep outward and arrive tangent to the screen edge. Convex is
+    for things that genuinely float.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
   spacing instead. Portable rule: `~/.claude/rules/type-scale.md`.
-- **Monochrome.** White on near-black, hierarchy by opacity tier. The "you are here" state
-  inverts (solid white fill, black text) rather than introducing a hue. No accent colour has
-  been chosen yet, and the shell should stay legible if one never is.
+- **Lush pixel in a premium chassis.** The chassis is a deep moss green (`#1b3a2b` at 90%),
+  not black: dark and solid, but alive rather than a void. Everything on it is green-tinted
+  rather than pure white. One bright living green (`#7fe6a5`) carries state, and the "you are
+  here" fill inverts to it with dark green text. **One hue, tiers of opacity for hierarchy.**
+  No second accent colour.
 - **Distinctive, not generic.** Never trade a distinctive look for a generic "clean" one.
   Since I'm establishing the style from scratch, commit to an idiom early (the clock sets it)
   and build every later widget in that idiom.

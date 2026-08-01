@@ -16,17 +16,19 @@ Singleton {
     readonly property Anim anim: Anim {}
     readonly property Sizes sizes: Sizes {}
 
-    // Monochrome by design: darkness at rest, light on intent.
+    // Lush pixel vibes in a premium chassis: a deep moss chassis, everything on
+    // it green-tinted, and one bright living green for state. Hierarchy comes
+    // from opacity tiers, never from more hues.
     component Colours: QtObject {
-        readonly property color surface: "#e6000000"     // panel background (90% black)
-        readonly property color surfaceAlt: "#1affffff"  // subtle raised fill
-        readonly property color text: "#ffffff"
-        readonly property color textDim: "#8cffffff"
-        readonly property color textFaint: "#66ffffff"
+        readonly property color surface: "#e61b3a2b"     // deep moss panel, 90% opaque
+        readonly property color surfaceAlt: "#26d9ffe8"  // faint mint wash, for hover
+        readonly property color text: "#f2fff8"
+        readonly property color textDim: "#a6cfe8d8"
+        readonly property color textFaint: "#73a8c6b4"
+        readonly property color accent: "#7fe6a5"        // the "you are here" fill
         // Text sitting on top of `accent`. NOT named onAccent: QML reads a
         // property starting with "on" + capital as a signal handler.
-        readonly property color accentText: "#000000"
-        readonly property color accent: "#ffffff"        // the "you are here" fill
+        readonly property color accentText: "#0f2419"
     }
 
     component Font: QtObject {

@@ -12,11 +12,21 @@ import "squircle.js" as Squircle
 Item {
     id: root
 
+    // Positive radius = convex, the corner is cut off the bounding box.
+    // Negative radius = CONCAVE, the side pulls in and the corner flares back out
+    // to the bounding box, arriving tangent to the perpendicular edge. Use that
+    // where a panel meets a screen edge so it sweeps into the edge.
     property real radius: Appearance.rounding.normal
     property real topLeftRadius: radius
     property real topRightRadius: radius
     property real bottomRightRadius: radius
     property real bottomLeftRadius: radius
+
+    // How far a corner of this radius reaches along each of its sides. A concave
+    // corner needs this to know how much extra width to reserve for the flare.
+    function cornerExtent(r: real): real {
+        return Squircle.extent(r, cornerSmoothing);
+    }
 
     // 0 = plain rounded rect, 0.6 = iOS squircle, 1 = maximum smoothing.
     property real cornerSmoothing: Appearance.rounding.smoothing

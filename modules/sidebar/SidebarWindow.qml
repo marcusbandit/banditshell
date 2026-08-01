@@ -1,5 +1,4 @@
 import Quickshell
-import Quickshell.Wayland
 
 // The sidebar's own layer surface.
 //
@@ -23,11 +22,20 @@ PanelWindow {
 
     color: "transparent"
 
+    // Wider than the panel: the concave corners flare past `bodyWidth` and need
+    // somewhere to be drawn.
     implicitWidth: sidebar.implicitWidth
 
-    // Push tiled windows aside by exactly the sidebar's width. When the sidebar
-    // becomes toggleable this drops to 0 while hidden.
-    exclusiveZone: sidebar.implicitWidth
+    // Push tiled windows aside by the panel proper, not by the flare. When the
+    // sidebar becomes toggleable this drops to 0 while hidden.
+    exclusiveZone: sidebar.bodyWidth
+
+    // Only the panel proper takes input. The flare is decoration over whatever
+    // window is behind it, so clicks there must fall through.
+    mask: Region {
+        width: sidebar.bodyWidth
+        height: win.height
+    }
 
     Sidebar {
         id: sidebar
