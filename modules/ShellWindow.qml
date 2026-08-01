@@ -116,7 +116,9 @@ PanelWindow {
         // Open panels join the shell's distance field rather than being drawn on
         // top of it, which is what lets them melt into the body.
         // Everything that melts into the body: menus, and the notch.
-        panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs]
+        // Menus, the launcher and the notch melt out of the chassis. Notification
+        // popups do NOT: they are peers in a stack and have to stay separable.
+        panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs]
     }
 
     // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -140,8 +142,7 @@ PanelWindow {
         id: popups
 
         anchors.fill: parent
-        originX: win.width - win.border
-        inset: win.border
+        inset: win.border + Appearance.sizes.gap
     }
 
     Menus {

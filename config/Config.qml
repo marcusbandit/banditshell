@@ -222,7 +222,8 @@ Singleton {
                 maxPopups: 4,
                 // Kept in the hub. A hub showing three hundred is a log.
                 maxHistory: 50,
-                width: 320
+                width: 340,
+                badge: 36
             },
 
             // Controls inside menus.

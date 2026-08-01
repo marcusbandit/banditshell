@@ -34,6 +34,13 @@ Singleton {
     // reserves colour for.
     readonly property bool anyUrgent: history.some(e => e.notification?.urgency === NotificationUrgency.Critical)
 
+    // How long a popup lives, in ms. 0 means it stays until acted on.
+    function timeoutFor(n: var): int {
+        if (n?.urgency === NotificationUrgency.Critical)
+            return 0;
+        return n?.expireTimeout > 0 ? n.expireTimeout : root.defaultTimeout;
+    }
+
     // Notifications keep arriving while you are not looking. A hub that shows
     // three hundred is not a hub, it is a log.
     readonly property int maxHistory: Config.values.notifications.maxHistory
@@ -44,6 +51,9 @@ Singleton {
         root.popups = root.popups.filter(e => e !== entry);
         root.history = root.history.filter(e => e !== entry);
         entry?.notification?.dismiss();
+        // Entries are created objects parented to this singleton, so dropping
+        // the last reference is not enough to free them.
+        entry?.destroy();
     }
 
     function dismissPopup(entry: var): void {
@@ -77,6 +87,29 @@ Singleton {
         return "notifications";
     }
 
+    Component {
+        id: entryComponent
+
+        NotifEntry {}
+    }
+
+    // ONE ticker for every popup. Per-card timers were both duplicated work and
+    // the thing that reset itself whenever the list changed.
+    Timer {
+        interval: 50
+        repeat: true
+        running: root.popups.length > 0
+
+        onTriggered: {
+            const done = [];
+            for (const entry of root.popups)
+                if (entry.tick(interval))
+                    done.push(entry);
+            for (const entry of done)
+                root.dismissPopup(entry);
+        }
+    }
+
     NotificationServer {
         id: server
 
@@ -93,12 +126,18 @@ Singleton {
             // Tracking is what keeps the object alive past this callback.
             notification.tracked = true;
 
-            const entry = {
+            const entry = entryComponent.createObject(root, {
                 notification: notification,
-                time: Date.now()
-            };
+                time: Date.now(),
+                timeout: root.timeoutFor(notification)
+            });
 
+            // Anything pushed off the end of the history is gone for good, so
+            // it has to be destroyed rather than merely forgotten.
+            const evicted = [entry, ...root.history].slice(root.maxHistory);
             root.history = [entry, ...root.history].slice(0, root.maxHistory);
+            for (const old of evicted)
+                old.destroy();
 
             // Transient notifications are for things like volume OSDs: show,
             // never keep.
@@ -106,27 +145,11 @@ Singleton {
                 root.history = root.history.filter(e => e !== entry);
 
             root.popups = [entry, ...root.popups].slice(0, root.maxPopups);
+            // The countdown lives on the card, not here: it has to be a
+            // reactive value so the card can draw it, and it has to pause while
+            // the cursor is on the card, which only the card knows.
 
-            // Critical ones stay until acted on: that is what the urgency means.
-            if (notification.urgency !== NotificationUrgency.Critical)
-                timeout.createObject(root, {
-                    entry: entry,
-                    interval: notification.expireTimeout > 0 ? notification.expireTimeout : root.defaultTimeout
-                });
         }
     }
 
-    Component {
-        id: timeout
-
-        Timer {
-            required property var entry
-
-            running: true
-            onTriggered: {
-                root.dismissPopup(entry);
-                destroy();
-            }
-        }
-    }
 }

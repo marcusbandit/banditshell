@@ -208,6 +208,7 @@ Singleton {
         readonly property int pickerOutline: root.cfg.picker.outline
         readonly property int launcherWidth: root.cfg.launcher.width
         readonly property int notificationWidth: root.cfg.notifications.width
+        readonly property int notificationBadge: root.cfg.notifications.badge
 
         readonly property int menuWidth: root.cfg.menu.width
         readonly property int menuMinHeight: root.cfg.menu.minHeight

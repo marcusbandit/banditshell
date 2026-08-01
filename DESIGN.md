@@ -364,7 +364,7 @@ banditshell/
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
 │   ├── picker/                  screenshot: hover a window or drag a region
-│   ├── notifications/           popups that melt out of the RIGHT band
+│   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape
@@ -707,7 +707,27 @@ from the single window curve and the chassis cups a window corner at a constant
 distance whatever the exponent is. This is the strongest argument yet for the
 chassis being a field rather than a path.
 
-## 14. Drag before click
+## 14. Where the melt does NOT belong
+
+The chassis field is for things that **grow out of** the shell: a menu from the
+sidebar, the notch from the top band, the launcher. It works because there are
+two bodies and one of them is leaving the other, so the fillet between them says
+"these are connected".
+
+Notification popups were built the same way and it was wrong. Three peers in a
+stack, each within melt distance of the next, do not read as three things
+connected to the shell. They fuse into one lumpy mass with pinches where the
+boundaries should be, and you cannot tell where one notification ends and the
+next begins.
+
+**Peers have to be individually legible, and that is worth more than consistency
+with a technique.** They are discrete cards now, each with its own background, in
+a plain spaced stack, which is what caelestia does and what every other shell
+does, for this reason.
+
+The rule: melt where one thing emerges from another. Never between siblings.
+
+## 15. Drag before click
 
 **The primary gesture is a drag; the click is the fallback.**
 
