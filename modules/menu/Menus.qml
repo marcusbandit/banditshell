@@ -37,24 +37,21 @@ Item {
     // True while the cursor is on the panel itself, which keeps it open.
     readonly property bool hovered: pointer.containsMouse
 
-    signal openedChanged(string key)
-
     function show(key: string, title: string, centreY: real): void {
         grace.stop();
         root.currentKey = key;
         root.currentTitle = title;
         centre.target = root.clampCentre(centreY);
+        // Nothing to slide from when it was closed: place it, then grow.
         if (!reveal.value)
             centre.snap();
         reveal.target = 1;
-        root.openedChanged(key);
     }
 
     function hide(): void {
         grace.stop();
         root.currentKey = "";
         reveal.target = 0;
-        root.openedChanged("");
     }
 
     // Leaving anything hoverable asks to close; only the timer running out

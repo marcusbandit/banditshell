@@ -41,35 +41,24 @@ Item {
     }
 
     // The "you are here" marker. Drawn before the numbers so they sit on top of
-    // it. Its y is NOT bound: the timer below drives it, so it can be animated.
+    // it, and it slides between slots rather than jumping, so switching
+    // workspaces reads as one thing moving.
+    Follow {
+        id: slide
+        target: root.activeY
+    }
+
+    Component.onCompleted: slide.snap()
+
     G2Rect {
         id: indicator
 
+        y: slide.value
         width: root.slot
         height: root.slot
         radius: Appearance.rounding.normal
         color: Appearance.colour.fillStronger
     }
-
-    // Exponential smoothing: moves fast when far, settles gently when close, and
-    // is safe at any frame time (see ~/.claude/rules/animation-smoothing.md).
-    // Only runs while there is distance left to cover, so an idle shell is idle.
-    Timer {
-        interval: 16
-        repeat: true
-        running: Math.abs(indicator.y - root.activeY) > 0.25
-
-        onTriggered: {
-            const dy = root.activeY - indicator.y;
-            if (Math.abs(dy) < 0.25) {
-                indicator.y = root.activeY;
-                return;
-            }
-            indicator.y += dy * (1 - Math.exp(-Appearance.anim.trackSpeed * (interval / 1000)));
-        }
-    }
-
-    Component.onCompleted: indicator.y = root.activeY
 
     Repeater {
         model: root.count
@@ -89,7 +78,9 @@ Item {
             G2Rect {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
-                color: Appearance.colour.fill
+                // A step above the group's own container fill, or hovering
+                // inside the container would not read as anything.
+                color: Appearance.colour.fillStrong
                 opacity: mouse.containsMouse && !slot.isActive ? 1 : 0
 
                 Behavior on opacity {

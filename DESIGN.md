@@ -329,23 +329,31 @@ banditshell/
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── G2Rect.qml               the ONE rounded-rect primitive
-│   ├── ScreenCorner.qml         one black piece of the display's rounded corner
+│   ├── CornerWedge.qml          a corner's leftover: rounds the screen, fillets a join
+│   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   └── Icon.qml                 the ONE icon glyph (separate face from text)
-├── services/                    the outside world, adapted
-│   └── Hypr.qml                 SINGLETON. Hyprland IPC -> clean workspace state
-└── modules/                     actual shell UI
-    ├── ShellWindow.qml          THE surface: everything visible, all the input
-    ├── Chassis.qml              the band + sidebar as ONE shape
-    ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
-    ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
-    └── sidebar/
-        ├── Sidebar.qml          layout of what sits in the chassis's left band
-        ├── Clock.qml            stacked HH / mm / date
-        ├── Workspaces.qml       Hyprland workspace indicators
-        ├── StatusIcons.qml      the status section, rendered from data
-        └── StatusIcon.qml       one indicator, service-agnostic
+├── services/                    state that outlives any one widget
+│   ├── Hypr.qml                 SINGLETON. Hyprland IPC -> clean workspace state
+│   └── Shell.qml                SINGLETON. Which ShellWindows exist
+├── modules/                     actual shell UI
+│   ├── ShellWindow.qml          THE surface: everything visible, all the input
+│   ├── Chassis.qml              the band + sidebar as ONE shape
+│   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
+│   ├── Ipc.qml                  the control surface the CLI talks to
+│   ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
+│   ├── menu/
+│   │   ├── Menus.qml            which menu is open, where it sits, when it closes
+│   │   └── MenuPanel.qml        one panel: shape, joint fillets, placeholder body
+│   └── sidebar/
+│       ├── Sidebar.qml          layout of what sits in the chassis's left band
+│       ├── Clock.qml            stacked HH / mm / date
+│       ├── Workspaces.qml       Hyprland workspace indicators
+│       ├── StatusIcons.qml      the status section, rendered from data
+│       └── StatusIcon.qml       one indicator, service-agnostic
+└── bin/
+    └── banditshell              the CLI (linked into ~/bin)
 ```
 
 Import paths: Quickshell exposes the config root as the module `qs`, so a directory is
@@ -420,6 +428,44 @@ config    ->  uses nothing
 Dependencies only ever point downward. A widget in `modules/` never talks to Hyprland
 directly; it reads `services/Hypr.qml`. That keeps the "how do we know this" logic (which IPC
 events force a refresh, id arithmetic) in one place, and leaves widgets purely visual.
+
+`services/` is state that outlives any one widget. Mostly that is the outside world, but it
+also holds `Shell.qml`, the registry of which windows exist: the things that need it (the IPC
+handler, later keybinds) sit outside the window tree entirely, and threading a reference down
+to them would couple files with nothing else to say to each other.
+
+## 9. Driving it from a terminal
+
+`bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`.
+
+It exists because **menus open on hover, and hover is impossible to assert**. You cannot script
+a cursor into a corner and check what happened, so the gesture and the thing it opens have to
+be separable. Every menu is reachable by name, which means a change to a panel can be checked
+without reproducing the gesture, and a change to the gesture can be checked against a panel
+already known to work.
+
+```
+banditshell start|stop|restart|run|log
+banditshell menu list|open <key>|close|toggle <key>|current
+banditshell status                 what the shell thinks the compositor said
+banditshell get <key> | set <key> <value>
+banditshell shot [file]
+banditshell demo <key>             open, screenshot, close
+```
+
+`status` exists for one failure in particular: the shell deriving its geometry from the
+compositor and quietly disagreeing with it. Printing rounding, smoothing, both gaps and the
+window border side by side makes that visible instead of subtly wrong.
+
+Two things worth keeping in mind, both learned the hard way:
+
+- **`pkill -f` matches the command line of the shell that runs it.** `pkill -f 'qs -p …'`
+  killed its own invoking shell before the rest of the command ran, which silently stopped a
+  config reset from happening for several rounds of work. Use `pkill -x qs`.
+- **Warping the pointer with `hyprctl dispatch movecursor` does not always deliver motion
+  within a surface.** It is fine for entering the shell from elsewhere and useless for testing
+  a slide from one icon to the next; `ydotool mousemove` produces real relative motion, and
+  that is what exposed the hover race.
 
 **One shape, one surface. REVISED 2026-08-01.**
 

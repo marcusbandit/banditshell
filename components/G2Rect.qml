@@ -27,17 +27,10 @@ Item {
 
     property color color: "transparent"
 
-    // A hairline stroke along the whole contour. On a panel flush to a screen
-    // edge only the free edge is visible, which is exactly where light would
-    // catch it.
-    property color borderColor: "transparent"
-    property real borderWidth: 0
-
-    // How far a corner of this radius reaches along each of its sides. A concave
-    // corner needs this to know how much extra width to reserve for the flare.
-    function cornerExtent(r: real): real {
-        return Squircle.extent(r, cornerSmoothing);
-    }
+    // Fill only, no stroke. Every hairline this shell tried to draw on a shape's
+    // own contour landed on a join with another shape and read as a seam through
+    // one body; see Chassis.qml. Separator.qml draws the one line that is
+    // actually wanted.
 
     // Children declared inside a G2Rect land in `inner`, on top of the shape.
     default property alias content: inner.data
@@ -49,8 +42,8 @@ Item {
 
         ShapePath {
             fillColor: root.color
-            strokeColor: root.borderWidth > 0 ? root.borderColor : "transparent"
-            strokeWidth: root.borderWidth
+            strokeColor: "transparent"
+            strokeWidth: 0
 
             PathSvg {
                 path: Squircle.path(root.width, root.height, root.topLeftRadius, root.topRightRadius, root.bottomRightRadius, root.bottomLeftRadius, root.cornerSmoothing)

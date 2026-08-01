@@ -27,7 +27,9 @@ Item {
     G2Rect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: Appearance.colour.fill
+        // A step above the group's own container fill, or hovering inside the
+        // container would not read as anything.
+        color: Appearance.colour.fillStrong
         opacity: root.hovered ? 1 : 0
 
         Behavior on opacity {
