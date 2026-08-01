@@ -153,6 +153,18 @@ Singleton {
                 feather: 1.0
             },
 
+            notifications: {
+                // How long a popup stays when the sender does not say. Critical
+                // ones ignore this and stay until acted on.
+                timeout: 5000,
+                // On screen at once. Beyond this the oldest popup goes; they are
+                // all still in the hub.
+                maxPopups: 4,
+                // Kept in the hub. A hub showing three hundred is a log.
+                maxHistory: 50,
+                width: 320
+            },
+
             // Controls inside menus.
             control: {
                 // How many rows a list menu shows before it says "+N more". A

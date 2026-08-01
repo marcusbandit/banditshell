@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.config
 import qs.components
 import qs.modules.menu
+import qs.modules.notifications
 import qs.modules.sidebar
 import qs.services
 
@@ -95,6 +96,11 @@ PanelWindow {
             intersection: Intersection.Combine
             item: topClock.active ? topClock.maskItem : null
         }
+
+        Region {
+            intersection: Intersection.Combine
+            item: popups.any ? popups : null
+        }
     }
 
     Chassis {
@@ -104,7 +110,7 @@ PanelWindow {
         // Open panels join the shell's distance field rather than being drawn on
         // top of it, which is what lets them melt into the body.
         // Everything that melts into the body: menus, and the notch.
-        panels: [...menuLayer.blobs, ...topClock.blobs]
+        panels: [...menuLayer.blobs, ...topClock.blobs, ...popups.blobs]
     }
 
     // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -122,6 +128,14 @@ PanelWindow {
 
         status.onRequested: key => win.openMenu(key)
         status.onReleased: menuLayer.release()
+    }
+
+    NotificationPopups {
+        id: popups
+
+        anchors.fill: parent
+        originX: win.width - win.border
+        inset: win.border
     }
 
     Menus {

@@ -14,7 +14,7 @@ import qs.config
 ShaderEffect {
     id: root
 
-    readonly property int capacity: 4
+    readonly property int capacity: 8
 
     // [{ x, y, w, h, radius }, ...] in this item's coordinates. A zero width
     // means nothing is drawn for that slot, which is how a closed panel costs
@@ -48,7 +48,12 @@ ShaderEffect {
     readonly property vector4d blob1: slotRect(1)
     readonly property vector4d blob2: slotRect(2)
     readonly property vector4d blob3: slotRect(3)
+    readonly property vector4d blob4: slotRect(4)
+    readonly property vector4d blob5: slotRect(5)
+    readonly property vector4d blob6: slotRect(6)
+    readonly property vector4d blob7: slotRect(7)
     readonly property vector4d blobRadius: Qt.vector4d(slotRadius(0), slotRadius(1), slotRadius(2), slotRadius(3))
+    readonly property vector4d blobRadius2: Qt.vector4d(slotRadius(4), slotRadius(5), slotRadius(6), slotRadius(7))
 
     onPanelsChanged: if (panels.length > capacity)
         console.warn(`BlobField: ${panels.length} panels but only ${capacity} slots; the rest will not be drawn.`)

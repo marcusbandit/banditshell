@@ -174,6 +174,8 @@ Singleton {
         readonly property int toggleWidth: root.cfg.control.toggleWidth
         readonly property int toggleHeight: root.cfg.control.toggleHeight
 
+        readonly property int notificationWidth: root.cfg.notifications.width
+
         readonly property int menuWidth: root.cfg.menu.width
         readonly property int menuMinHeight: root.cfg.menu.minHeight
         readonly property int menuMaxHeight: root.cfg.menu.maxHeight

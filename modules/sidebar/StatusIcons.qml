@@ -65,6 +65,14 @@ Item {
             body: bluetoothMenu
         },
         {
+            key: "notifications",
+            title: "Notifications",
+            icon: Notifs.any ? "notifications_active" : "notifications",
+            active: Notifs.any,
+            alert: Notifs.anyUrgent,
+            body: notificationMenu
+        },
+        {
             key: "media",
             title: "Media",
             icon: Media.playing ? "play_arrow" : "music_note",
@@ -186,6 +194,12 @@ Item {
         id: bluetoothMenu
 
         BluetoothMenu {}
+    }
+
+    Component {
+        id: notificationMenu
+
+        NotificationMenu {}
     }
 
     Component {

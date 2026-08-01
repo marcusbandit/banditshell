@@ -40,12 +40,20 @@ layout(std140, binding = 0) uniform buf {
     vec4 frameRadius;
 
     // Panels. Each is x, y, w, h; a width of zero means the slot is unused.
+    // A uniform block cannot hold a variable-length array, so the slots are
+    // written out. Eight is the ceiling: the chassis, a menu, the notch, and up
+    // to five notification popups.
     vec4 blob0;
     vec4 blob1;
     vec4 blob2;
     vec4 blob3;
-    // Corner radius per panel, in the same order.
+    vec4 blob4;
+    vec4 blob5;
+    vec4 blob6;
+    vec4 blob7;
+    // Corner radius per panel, four to a vec4, in the same order.
     vec4 blobRadius;
+    vec4 blobRadius2;
 
     vec4 colour;
 };
@@ -106,6 +114,10 @@ void main() {
     d = addPanel(d, p, blob1, blobRadius.y, smoothing);
     d = addPanel(d, p, blob2, blobRadius.z, smoothing);
     d = addPanel(d, p, blob3, blobRadius.w, smoothing);
+    d = addPanel(d, p, blob4, blobRadius2.x, smoothing);
+    d = addPanel(d, p, blob5, blobRadius2.y, smoothing);
+    d = addPanel(d, p, blob6, blobRadius2.z, smoothing);
+    d = addPanel(d, p, blob7, blobRadius2.w, smoothing);
 
     // Antialias in screen space rather than with a fixed edge width, so the edge
     // stays one pixel wide whatever the field's gradient is doing near a joint.
