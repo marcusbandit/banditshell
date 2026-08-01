@@ -18,6 +18,11 @@ Item {
     // rather than reassures: volume above 100% is amplification.
     property real warnAbove: 1
 
+    // Still shows its value, but says the value is not in effect. Emptying the
+    // track instead would throw away the one thing you want to know while muted:
+    // what it will go back to.
+    property bool dimmed: false
+
     signal moved(real value)
 
     readonly property real fraction: Math.max(0, Math.min(1, (value - from) / Math.max(0.0001, to - from)))
@@ -36,7 +41,7 @@ Item {
         height: parent.height
         width: Math.max(height, parent.width * root.fraction)
         radius: height / 2
-        color: root.value > root.warnAbove ? Appearance.colour.accent : Appearance.colour.text
+        color: root.dimmed ? Appearance.colour.textFaint : root.value > root.warnAbove ? Appearance.colour.accent : Appearance.colour.text
     }
 
     MouseArea {

@@ -47,9 +47,10 @@ Column {
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
 
-            value: Audio.muted ? 0 : Audio.volume
+            value: Audio.volume
             to: Audio.maxVolume
             warnAbove: 1
+            dimmed: Audio.muted
             onMoved: v => Audio.setVolume(v)
         }
 
@@ -63,8 +64,8 @@ Column {
             // from two digits to three.
             width: implicitWidth
             horizontalAlignment: Text.AlignRight
-            text: `${Math.round(Audio.volume * 100)}%`
-            color: Appearance.colour.textDim
+            text: Audio.muted ? "muted" : `${Math.round(Audio.volume * 100)}%`
+            color: Audio.muted ? Appearance.colour.textFaint : Appearance.colour.textDim
             font.pixelSize: Appearance.font.size.small
         }
     }
@@ -103,7 +104,8 @@ Column {
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
 
-            value: Audio.sourceMuted ? 0 : Audio.sourceVolume
+            value: Audio.sourceVolume
+            dimmed: Audio.sourceMuted
             onMoved: v => Audio.setSourceVolume(v)
         }
 
@@ -115,8 +117,8 @@ Column {
 
             width: implicitWidth
             horizontalAlignment: Text.AlignRight
-            text: `${Math.round(Audio.sourceVolume * 100)}%`
-            color: Appearance.colour.textDim
+            text: Audio.sourceMuted ? "muted" : `${Math.round(Audio.sourceVolume * 100)}%`
+            color: Audio.sourceMuted ? Appearance.colour.textFaint : Appearance.colour.textDim
             font.pixelSize: Appearance.font.size.small
         }
     }

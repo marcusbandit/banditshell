@@ -57,9 +57,10 @@ Column {
         value: Battery.percentage
         warnAbove: 1
 
-        // A slider that ignores the pointer would still take the click away from
-        // whatever is under it.
+        // A slider that ignores the pointer would still take the click away
+        // from whatever is under it.
         enabled: false
+        dimmed: !Battery.charging && Battery.low
     }
 
     Separator {

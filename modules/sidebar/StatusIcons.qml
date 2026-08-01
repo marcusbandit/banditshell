@@ -65,6 +65,21 @@ Item {
             body: bluetoothMenu
         },
         {
+            key: "media",
+            title: "Media",
+            icon: Media.playing ? "play_arrow" : "music_note",
+            active: Media.playing,
+            available: Media.available,
+            body: mediaMenu
+        },
+        {
+            key: "system",
+            title: "System",
+            icon: "speed",
+            alert: SysInfo.temperature >= 80,
+            body: systemMenu
+        },
+        {
             key: "battery",
             title: "Battery",
             icon: Battery.icon(),
@@ -72,6 +87,12 @@ Item {
             alert: Battery.low,
             available: Battery.available,
             body: batteryMenu
+        },
+        {
+            key: "power",
+            title: "Power",
+            icon: "power_settings_new",
+            body: powerMenu
         }
     ]
 
@@ -186,5 +207,23 @@ Item {
         id: bluetoothMenu
 
         BluetoothMenu {}
+    }
+
+    Component {
+        id: mediaMenu
+
+        MediaMenu {}
+    }
+
+    Component {
+        id: systemMenu
+
+        SystemMenu {}
+    }
+
+    Component {
+        id: powerMenu
+
+        PowerMenu {}
     }
 }
