@@ -8,16 +8,16 @@ import Quickshell.Services.Notifications
 
 // One notification, on screen.
 //
-// A DISCRETE CARD with its own background. It used to be a blob in the chassis
-// field, melted into the band and into its neighbours, and that was the wrong
-// tool: the melt exists so a panel can grow OUT OF the chassis, and it works
-// because there are two things and one is leaving the other. Three peers in a
-// stack, each within melt distance of the next, fuse into one lumpy mass with
-// pinches where the boundaries should be. You could not tell where one
-// notification ended and the next began.
+// A DISCRETE CARD that melts into the shell but never into its neighbours.
 //
-// Peers have to be individually legible. That is worth more than consistency
-// with a technique.
+// It has no background of its own: it reports its rectangle and the chassis
+// field draws it, so it joins the band it arrived from. What it does NOT do is
+// join the card above and below it. Chaining every panel into one running field
+// melted the panels into each other too, and three peers within melt distance
+// fused into a single lumpy mass with pinches where the boundaries should have
+// been. blob.frag blends each panel with the chassis ALONE and unions the
+// results plainly, which is the distinction: melt where one thing emerges from
+// another, never between siblings.
 Item {
     id: root
 
@@ -92,11 +92,13 @@ Item {
         return delta < 0 ? -held : held;
     }
 
-    G2Rect {
-        anchors.fill: parent
-        radius: Appearance.rounding.large
-        color: Appearance.colour.surface
-    }
+    // NO BACKGROUND. The card reports its rectangle and the chassis field draws
+    // it, so it melts into the band it arrived from. Drawing one here as well
+    // would put the same translucent material over itself and the card would
+    // come out heavier than the shell it belongs to.
+    //
+    // It still does not melt into its NEIGHBOURS: the field blends each panel
+    // with the chassis alone and unions the results plainly. See blob.frag.
 
     // A critical notification is marked by a bar down its leading edge, not by a
     // differently coloured card. Colour alone is not a state cue, and a whole

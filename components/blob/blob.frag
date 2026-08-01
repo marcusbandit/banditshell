@@ -143,7 +143,14 @@ float smin(float a, float b, float k) {
     return mix(b, a, h) - k * h * (1.0 - h);
 }
 
-// Fold one panel into the field, or leave the field alone if the slot is empty.
+// Melt ONE panel into the SHELL, and return that result on its own.
+//
+// Deliberately not chained. Folding each panel into the running total in turn
+// melts the panels into each OTHER as well as into the shell, and between peers
+// that is destructive: a stack of notification cards fuses into one lumpy mass
+// with pinches where the boundaries should be. Each panel is blended with the
+// shell alone, and the results are combined with a plain min, so every panel
+// joins the shell smoothly and panels meet each other with a clean edge.
 //
 // The empty case RETURNS EARLY. It used to answer "very far" (1e9) and let smin
 // discard it, which is wrong in a way that is invisible in the algebra and
@@ -152,10 +159,10 @@ float smin(float a, float b, float k) {
 // 1e9 and is simply lost. The field came back off by tens of pixels, so the body
 // bled well past its own edge and every boundary went soft. Never feed a huge
 // sentinel into arithmetic that has to preserve small differences.
-float addPanel(float d, vec2 p, vec4 rect, float radius, float k) {
+float meltPanel(float shell, vec2 p, vec4 rect, float radius, float k) {
     if (rect.z <= 0.0 || rect.w <= 0.0)
-        return d;
-    return smin(d, sdBox(p - (rect.xy + rect.zw * 0.5), rect.zw * 0.5, vec4(radius)), k);
+        return shell;
+    return smin(shell, sdBox(p - (rect.xy + rect.zw * 0.5), rect.zw * 0.5, vec4(radius)), k);
 }
 
 // Antialias in screen space rather than with a fixed edge width, so the edge
@@ -179,16 +186,19 @@ void main() {
 
     // The chassis is everything outside the content area, so its field is the
     // content's negated.
-    float d = -toContent;
+    float shell = -toContent;
 
-    d = addPanel(d, p, blob0, blobRadius.x, smoothing);
-    d = addPanel(d, p, blob1, blobRadius.y, smoothing);
-    d = addPanel(d, p, blob2, blobRadius.z, smoothing);
-    d = addPanel(d, p, blob3, blobRadius.w, smoothing);
-    d = addPanel(d, p, blob4, blobRadius2.x, smoothing);
-    d = addPanel(d, p, blob5, blobRadius2.y, smoothing);
-    d = addPanel(d, p, blob6, blobRadius2.z, smoothing);
-    d = addPanel(d, p, blob7, blobRadius2.w, smoothing);
+    // Each panel melted into the shell separately, then unioned plainly. See
+    // meltPanel: this is what keeps siblings from fusing into each other.
+    float d = shell;
+    d = min(d, meltPanel(shell, p, blob0, blobRadius.x, smoothing));
+    d = min(d, meltPanel(shell, p, blob1, blobRadius.y, smoothing));
+    d = min(d, meltPanel(shell, p, blob2, blobRadius.z, smoothing));
+    d = min(d, meltPanel(shell, p, blob3, blobRadius.w, smoothing));
+    d = min(d, meltPanel(shell, p, blob4, blobRadius2.x, smoothing));
+    d = min(d, meltPanel(shell, p, blob5, blobRadius2.y, smoothing));
+    d = min(d, meltPanel(shell, p, blob6, blobRadius2.z, smoothing));
+    d = min(d, meltPanel(shell, p, blob7, blobRadius2.w, smoothing));
 
     // Clipped to the screen's own edge, so the body cannot spill into the
     // rounded-off corners of the display.

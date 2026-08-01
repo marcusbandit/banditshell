@@ -116,9 +116,9 @@ PanelWindow {
         // Open panels join the shell's distance field rather than being drawn on
         // top of it, which is what lets them melt into the body.
         // Everything that melts into the body: menus, and the notch.
-        // Menus, the launcher and the notch melt out of the chassis. Notification
-        // popups do NOT: they are peers in a stack and have to stay separable.
-        panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs]
+        // Everything that joins the shell's body. Each melts into the CHASSIS
+        // and none of them melt into each other; see blob.frag's meltPanel.
+        panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs]
     }
 
     // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -143,6 +143,8 @@ PanelWindow {
 
         anchors.fill: parent
         inset: win.border + Appearance.sizes.gap
+        // Flush with the band's inner edge, so each card melts into the shell.
+        edgeInset: win.border
     }
 
     Menus {
