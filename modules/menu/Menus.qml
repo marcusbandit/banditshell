@@ -113,6 +113,7 @@ Item {
 
         title: root.currentTitle
         body: root.currentBody
+        available: root.height - root.inset * 2
         reveal: reveal.value
 
         x: root.originX

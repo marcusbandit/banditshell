@@ -31,8 +31,13 @@ Item {
     readonly property real fullWidth: Appearance.sizes.menuWidth
     readonly property real cornerRadius: Appearance.rounding.large
 
+    // How much room there actually is. A configured maximum is a preference;
+    // this is a fact, and content clipped by the bottom of the screen is a bug
+    // rather than a long menu.
+    property real available: Appearance.sizes.menuMaxHeight
+
     implicitWidth: fullWidth
-    implicitHeight: Math.max(Appearance.sizes.menuMinHeight, Math.min(Appearance.sizes.menuMaxHeight, stack.implicitHeight + Appearance.padding.large * 2))
+    implicitHeight: Math.max(Appearance.sizes.menuMinHeight, Math.min(Math.min(Appearance.sizes.menuMaxHeight, available), stack.implicitHeight + Appearance.padding.large * 2))
 
     width: fullWidth * reveal
     visible: reveal > 0

@@ -173,28 +173,7 @@ Item {
     Component {
         id: micMenu
 
-        DemoMenu {
-            footer: "input routing is not wired up yet"
-            rows: [
-                {
-                    icon: "graphic_eq",
-                    label: "Noise suppression",
-                    detail: "RNNoise",
-                    toggle: true
-                },
-                {
-                    icon: "hearing",
-                    label: "Monitor input",
-                    toggle: false
-                },
-                {
-                    icon: "settings_voice",
-                    label: "Built-in Microphone",
-                    detail: "default",
-                    selected: true
-                }
-            ]
-        }
+        MicMenu {}
     }
 
     Component {

@@ -25,9 +25,17 @@ Singleton {
 
     // Paired first, then connected within that, then by name, so the list does
     // not reshuffle under the cursor every time a scan result arrives.
+    // A device with no name reports its ADDRESS as its name, in a different
+    // punctuation from the address field, so "name !== address" lets every
+    // passing phone and earbud in the street into the list as a row of hex.
+    // Match the shape instead.
+    function anonymous(d: var): bool {
+        return !d?.name || /^([0-9a-f]{2}[:-]){5}[0-9a-f]{2}$/i.test(d.name);
+    }
+
     readonly property var devices: {
         const all = Bluez.Bluetooth.devices?.values ?? [];
-        return all.filter(d => d.paired || d.bonded || (d.name && d.name !== d.address)).sort((a, b) => {
+        return all.filter(d => d.paired || d.bonded || !root.anonymous(d)).sort((a, b) => {
             if (a.connected !== b.connected)
                 return a.connected ? -1 : 1;
             if (a.paired !== b.paired)

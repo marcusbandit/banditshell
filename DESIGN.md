@@ -337,19 +337,36 @@ banditshell/
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
-│   └── Icon.qml                 the ONE icon glyph (separate face from text)
+│   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
+│   ├── SignalBars.qml           a drawn strength meter (the font's is illegible)
+│   ├── Slider.qml               a value you drag, or a read-only gauge
+│   ├── Toggle.qml               a switch
+│   ├── MenuRow.qml              icon + label + detail + trailing slot
+│   └── PasswordField.qml        inline secret entry
 ├── services/                    state that outlives any one widget
-│   ├── Hypr.qml                 SINGLETON. Hyprland IPC -> clean workspace state
-│   └── Shell.qml                SINGLETON. Which ShellWindows exist
+│   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
+│   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
+│   ├── Battery.qml              UPower
+│   ├── Network.qml              NetworkManager: wifi, one entry per SSID
+│   ├── Bluetooth.qml            bluez: adapter and devices
+│   ├── Media.qml                MPRIS, with a stable choice of player
+│   ├── SysInfo.qml              /proc and /sys: cpu, memory, temperature
+│   ├── Wallpaper.qml            the current wallpaper and the list to pick from
+│   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
 │   ├── Chassis.qml              the band + sidebar as ONE shape
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
 │   ├── Ipc.qml                  the control surface the CLI talks to
 │   ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
+│   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
-│   │   └── MenuPanel.qml        one panel: shape, joint fillets, placeholder body
+│   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape
+│   │   └── content/             one file per menu, all reading the real machine
+│   │       ├── SoundMenu.qml    MicMenu.qml    NetworkMenu.qml
+│   │       ├── BluetoothMenu.qml MediaMenu.qml SystemMenu.qml
+│   │       └── BatteryMenu.qml  PowerMenu.qml
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
 │       ├── Clock.qml            stacked HH / mm / date
@@ -546,6 +563,45 @@ where per-pixel maths belongs anyway.
 **Still to come:** caelestia's blobs also carry spring physics (`damping`, `stiffness`,
 `deformMatrix`), so a panel squashes as it moves and settles. That is the next step, and the
 field is what makes it possible.
+
+---
+
+## 11. What the services taught
+
+Every menu reads the real machine. Quickshell ships bindings for PipeWire,
+UPower, NetworkManager, bluez and MPRIS, so none of it shells out.
+
+Three rules came out of writing them, and they are worth keeping:
+
+**A service adapts, it does not relay.** The list NetworkManager gives is not the
+list a menu wants: NM reports every BSSID, so one mesh appears four times, in
+arrival order. `Network.qml` collapses to one entry per SSID and sorts it the way
+a person reads: what you are on, then what you have joined, then by signal. Same
+for bluez, which reports every passing stranger.
+
+**Sampling is tied to what is on screen.** Wifi scanning, bluetooth discovery,
+`/proc` reads and MPRIS position polling all start when the menu opens and stop
+when it closes. A shell that scans in the background is a laptop's battery going
+somewhere, and bluetooth discovery is visible to other people as well.
+
+**Ask the source what it actually has.** Two bugs came from assuming:
+
+- Material Symbols addresses glyphs by LIGATURE, so a name the font lacks does
+  not fail, it renders as its own name in letters. The shell drew "ARGING_70"
+  across a menu because `battery_charging_70` is not a symbol. `Icon.qml`
+  measures the ligature now and falls back with a warning. The same check found
+  the wifi bar glyphs are worse than missing: they exist and draw an outlined
+  wedge whose filled bars are invisible at 18px, so every network looked
+  identical. `SignalBars.qml` draws the meter instead, which reads faster down a
+  column anyway. **The icon set constrains the design; find out what it has
+  before deciding what to show.**
+- `WifiSecurityType`'s "no security" member is `Open`, not `None`. Comparing
+  against a member that does not exist yields `undefined`, every network compared
+  unequal, and every one of them got a padlock.
+
+**Still placeholder: nothing.** Every menu in the sidebar is live. Notifications
+and the launcher (DESIGN.md sections 4 and 5) are the remaining capstones and
+have not been started.
 
 ---
 

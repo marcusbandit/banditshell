@@ -82,6 +82,11 @@ Singleton {
             Pipewire.preferredDefaultAudioSink = node;
     }
 
+    function setSource(node: PwNode): void {
+        if (node)
+            Pipewire.preferredDefaultAudioSource = node;
+    }
+
     function icon(v: real, isMuted: bool): string {
         if (isMuted)
             return "no_sound";
