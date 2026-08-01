@@ -97,6 +97,10 @@ Singleton {
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour
+
+        // What dims everything outside a selection. Dark rather than tinted: it
+        // sits over arbitrary content that has to stay recognisable through it.
+        readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)
     }
 
     readonly property QtObject font: QtObject {
@@ -185,11 +189,14 @@ Singleton {
         readonly property int networkListMax: root.cfg.control.networkListMax
         readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget
+        readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction
+        readonly property int dragThreshold: root.cfg.control.dragThreshold
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property int sliderHeight: root.cfg.control.sliderHeight
         readonly property int toggleWidth: root.cfg.control.toggleWidth
         readonly property int toggleHeight: root.cfg.control.toggleHeight
 
+        readonly property int pickerOutline: root.cfg.picker.outline
         readonly property int launcherWidth: root.cfg.launcher.width
         readonly property int notificationWidth: root.cfg.notifications.width
 

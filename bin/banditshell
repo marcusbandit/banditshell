@@ -9,6 +9,7 @@
 #   banditshell start|stop|restart|run|log
 #   banditshell menu list|open <key>|close|toggle <key>|current
 #   banditshell launcher toggle|open|close
+#   banditshell picker open|freeze|clip|freezeclip|close
 #   banditshell status
 #   banditshell theme [name]
 #   banditshell get <key> | set <key> <value>
@@ -82,6 +83,10 @@ menu)
 
 launcher)
     ipc launcher "${1:-toggle}"
+    ;;
+
+picker)
+    ipc picker "${1:-freezeclip}"
     ;;
 
 status) ipc shell status ;;

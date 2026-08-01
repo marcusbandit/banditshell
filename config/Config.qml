@@ -198,6 +198,13 @@ Singleton {
                 feather: 1.0
             },
 
+            picker: {
+                dir: "~/Pictures/Screenshots",
+                // What opens a non-clipboard capture.
+                editor: "swappy -f",
+                outline: 2
+            },
+
             launcher: {
                 width: 420,
                 // A launcher is for the one you meant, not for browsing.
@@ -220,6 +227,16 @@ Singleton {
             control: {
                 // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.
                 minTarget: 24,
+
+                // DRAG BEFORE CLICK. How far a thing has to be thrown, as a
+                // fraction of its own width, before letting go dismisses it.
+                // Short enough that a touchpad flick counts, long enough that a
+                // stray nudge does not.
+                dragDismissFraction: 0.3,
+                // Movement before a press becomes a drag. Qt's default is 10,
+                // which is tuned for a mouse; a touchpad flick and a finger both
+                // want to commit sooner.
+                dragThreshold: 6,
                 // How many rows a list menu shows before it says "+N more". A
                 // street is eighty wifi networks and a menu that scrolls forever
                 // is worse than one that admits what it left out.

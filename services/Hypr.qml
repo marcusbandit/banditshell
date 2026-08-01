@@ -37,6 +37,21 @@ Singleton {
         return (windows[id] ?? 0) > 0;
     }
 
+    // Windows on the screen's active workspace, front-most first, which is the
+    // order a picker has to test them in: the one on top is the one you meant.
+    function clientsOn(screen: var): var {
+        const mon = Hyprland.monitorFor(screen);
+        if (!mon)
+            return [];
+        const special = mon.lastIpcObject?.specialWorkspace;
+        const wsId = special?.name ? special.id : mon.activeWorkspace?.id;
+        return Hyprland.toplevels.values.filter(c => c.workspace?.id === wsId).sort((a, b) => {
+            const x = a.lastIpcObject;
+            const y = b.lastIpcObject;
+            return (y.pinned - x.pinned) || ((y.fullscreen !== 0) - (x.fullscreen !== 0)) || (y.floating - x.floating);
+        });
+    }
+
     function switchTo(id: int): void {
         Hyprland.dispatch(`workspace ${id}`);
     }
@@ -48,8 +63,10 @@ Singleton {
 
         function onRawEvent(event): void {
             const n = event.name;
-            if (n.includes("workspace") || n.includes("window") || n.includes("mon"))
+            if (n.includes("workspace") || n.includes("window") || n.includes("mon")) {
                 Hyprland.refreshWorkspaces();
+                Hyprland.refreshToplevels();
+            }
         }
     }
 }

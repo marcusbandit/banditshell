@@ -46,6 +46,13 @@ ShaderEffect {
     property bool frameOn: Appearance.sizes.roundOuter
     property color frameColour: Appearance.colour.frame
 
+    // A hard edge exactly on the content boundary. 0 draws none.
+    property real outlineWidth: 0
+    property color outlineColour: Appearance.colour.accent
+    property real pad1: 0
+    property real pad2: 0
+    property real pad3: 0
+
     // The shader works in pixels, so it has to be told the size.
     readonly property vector4d size: Qt.vector4d(width, height, 0, 0)
 

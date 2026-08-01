@@ -25,8 +25,31 @@ Item {
 
     property real reveal: 0
 
+    // DRAG BEFORE CLICK.
+    //
+    // Throwing a notification off the edge is the primary way to be rid of it:
+    // it is one continuous gesture, it works identically with a finger, a
+    // touchpad or a mouse, and it is reversible right up until you let go, which
+    // a click never is. Clicking still dismisses, because a mouse user who
+    // expects it should not be told they are holding it wrong, but the drag is
+    // the designed path and the click is the fallback.
+    //
+    // It throws RIGHT because this band is the right edge: the card leaves the
+    // way it came in. Dragging back cancels.
+    property real dragX: 0
+    readonly property real throwDistance: fullWidth * Appearance.sizes.dragDismissFraction
+    readonly property bool throwing: drag.throwing
+
     width: fullWidth * reveal
     height: body.implicitHeight + Appearance.padding.large * 2
+
+    // The whole card moves with the finger, and fades as it goes so the gesture
+    // says what it will do before it is finished.
+    x: base + dragX
+    opacity: Math.max(0, 1 - Math.abs(dragX) / (fullWidth * 0.9))
+
+    // Where the card sits when it is not being thrown. Set by the layout.
+    property real base: 0
 
     Component.onCompleted: grow.target = 1
 
@@ -38,13 +61,69 @@ Item {
         onValueChanged: root.reveal = value
     }
 
+    // Springs home when a throw is abandoned. Not a fixed animation: the drag
+    // can be released at any offset and any speed, and exponential smoothing is
+    // correct from wherever it starts.
+    Follow {
+        id: settle
+
+        speed: Appearance.anim.revealSpeed
+        target: 0
+        onValueChanged: if (!root.throwing)
+            root.dragX = value
+    }
+
     // Declared BEFORE the contents: a catch-all that comes last covers the
     // action buttons inside, and every one of them dismissed the notification
     // instead of doing what it said.
     MouseArea {
+        id: drag
+
+        // NO drag.target. `x` is bound to `base + dragX`, and Qt's built-in drag
+        // assigns x imperatively, which destroys that binding and then fights
+        // whatever re-establishes it: the card simply did not move. Tracking the
+        // pointer and driving dragX keeps one owner for the position.
+        //
+        // The anchor is kept in the PARENT's coordinates, because `mouse.x` is
+        // relative to this item and this item is what is moving: as the card
+        // slides right by d, mouse.x falls by d for the same physical pointer.
+        // `root.x + mouse.x` is invariant, which is the only thing safe to
+        // measure against.
+        property real anchor: 0
+        property real startedAt: 0
+        property bool throwing: false
+
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-        onClicked: root.dismissed()
+        preventStealing: true
+
+        onPressed: mouse => {
+            anchor = root.x + mouse.x;
+            startedAt = root.dragX;
+            throwing = false;
+        }
+
+        onPositionChanged: mouse => {
+            if (!pressed)
+                return;
+            const delta = root.x + mouse.x - anchor;
+            if (!throwing && Math.abs(delta) < Appearance.sizes.dragThreshold)
+                return;
+            throwing = true;
+            root.dragX = startedAt + delta;
+        }
+
+        onReleased: {
+            if (throwing && Math.abs(root.dragX) >= root.throwDistance)
+                return root.dismissed();
+            if (!throwing)
+                return root.dismissed();
+            // Abandoned mid-throw: hand the offset to the spring and let it walk
+            // home rather than snapping.
+            settle.value = root.dragX;
+            settle.target = 0;
+            throwing = false;
+        }
     }
 
     // Contents at full width, clipped by the growing panel, so nothing reflows

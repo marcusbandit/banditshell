@@ -363,6 +363,7 @@ banditshell/
 │   ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── notifications/           popups that melt out of the RIGHT band
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
@@ -672,6 +673,65 @@ becomes *thicker* as it morphs to a larger size. Our chassis and its menus are
 one surface at one alpha, so a menu should be more opaque than the band it grew
 out of. The field would need a per-blob colour to do it, and that is the next
 cheap large win.
+
+---
+
+## 13. Rounding: one radius, two distances
+
+The word "rounding" was doing three jobs and they disagreed. Settled vocabulary:
+
+| name | what it is |
+|---|---|
+| `windowRadius` | the compositor's `rounding` plus its `border_size`. The outer edge of a window, and **the only radius in the shell**. |
+| `gap` | the compositor's `gaps_out`. |
+| `band` | how thick the chassis band is, which is the gap. |
+
+Everything else is an **offset** of that one curve, never a radius of its own:
+
+```
+the window          d
+the content area    d - gap          the chassis's inner edge
+the screen's edge   d - gap - band   where the black corners begin
+```
+
+**"Content radius = window radius + gap" is the trap.** It is true for circles and
+false for every other superellipse. At the compositor's `rounding_power` of 4 it
+opens a gap 19% wider along the 45 degree diagonal than along the straight edges,
+which on screen is a wedge of wallpaper at every corner. The straight edges stay
+perfect, which is why it reads as a rounding value being slightly off rather than
+as a category error.
+
+An offset curve is at a constant distance; a larger radius is not. In a distance
+field the offset is one subtraction, so the shader derives all three boundaries
+from the single window curve and the chassis cups a window corner at a constant
+distance whatever the exponent is. This is the strongest argument yet for the
+chassis being a field rather than a path.
+
+## 14. Drag before click
+
+**The primary gesture is a drag; the click is the fallback.**
+
+A drag is one continuous gesture, it is identical with a finger, a touchpad or a
+mouse, and it is *reversible right up until you let go*. A click is none of those
+things. So where something can be thrown away, throwing it is the designed path:
+a notification is dismissed by dragging it off the edge it arrived from, and it
+follows the pointer and fades as it goes, so the gesture says what it will do
+before it is finished. Dragging back cancels.
+
+Clicking still dismisses. A mouse user who expects that should not be told they
+are holding it wrong.
+
+The touch-friendliness that follows is mostly free, and the rest is arithmetic:
+targets meet WCAG 2.2 SC 2.5.8's 24px floor, and the drag threshold is 6px rather
+than Qt's mouse-tuned 10, because a touchpad flick covers less distance than a
+finger and should still commit.
+
+**Do not use `drag.target` on an item whose `x` is bound.** Qt's built-in drag
+assigns `x` imperatively, which destroys the binding and then fights whatever
+re-establishes it; the card did not move at all. Track the pointer and drive the
+offset instead, and keep the anchor in the PARENT's coordinates: `mouse.x` is
+relative to the item that is moving, so as the card slides right by d, `mouse.x`
+falls by d for the same physical pointer. `item.x + mouse.x` is the invariant.
 
 ---
 

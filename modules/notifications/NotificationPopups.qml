@@ -24,9 +24,19 @@ Item {
     readonly property real panelWidth: Appearance.sizes.notificationWidth
     readonly property real gap: Appearance.padding.normal
 
+    // Bumped whenever a card moves or resizes.
+    //
+    // `blobs` reads geometry through mapToItem(), and QML cannot see inside a
+    // function call to know what the binding depends on. Without something that
+    // visibly changes, the blob is computed once and then stays put while the
+    // card is dragged out from under it: the body sat still and the text slid
+    // away from it.
+    property int revision: 0
+
     // Every popup's rectangle, for the chassis to melt in. Reported in the same
     // order as the items below, so a blob and its contents cannot disagree.
     readonly property var blobs: {
+        root.revision;
         const out = [];
         for (let i = 0; i < stack.children.length; i++) {
             const item = stack.children[i];
@@ -41,7 +51,9 @@ Item {
             out.push({
                 x: at.x,
                 y: at.y,
-                w: item.width,
+                // Shrinks as the card fades, so the body leaves with its
+                // contents instead of lingering as an empty bulge.
+                w: item.width * item.opacity,
                 h: item.height,
                 radius: Appearance.rounding.large
             });
@@ -66,8 +78,15 @@ Item {
                 required property var modelData
 
                 // Grows from the RIGHT: this band is on the right, so the edge
-                // that stays put is the one against the chassis.
-                x: stack.width - width
+                // that stays put is the one against the chassis. Given as `base`
+                // rather than `x`, because a throw owns x while it lasts.
+                base: stack.width - width
+
+                onXChanged: root.revision++
+                onYChanged: root.revision++
+                onWidthChanged: root.revision++
+                onHeightChanged: root.revision++
+                onOpacityChanged: root.revision++
 
                 entry: modelData
                 fullWidth: root.panelWidth

@@ -17,6 +17,8 @@ import qs.services
 Scope {
     id: root
 
+    required property var picker
+
     IpcHandler {
         target: "menu"
 
@@ -50,6 +52,39 @@ Scope {
         function current(): string {
             const win = Shell.forScreen("");
             return win?.menus.currentKey ?? "";
+        }
+    }
+
+    IpcHandler {
+        target: "picker"
+
+        // Two axes: freeze the screen first or not, and go to the clipboard or
+        // to an editor. Four names rather than flags, because a keybind is a
+        // string and flags in a keybind are a thing to get wrong once and never
+        // notice.
+        function open(): string {
+            root.picker.show(false, false);
+            return "picker";
+        }
+
+        function freeze(): string {
+            root.picker.show(true, false);
+            return "picker (frozen)";
+        }
+
+        function clip(): string {
+            root.picker.show(false, true);
+            return "picker (to clipboard)";
+        }
+
+        function freezeclip(): string {
+            root.picker.show(true, true);
+            return "picker (frozen, to clipboard)";
+        }
+
+        function close(): string {
+            root.picker.close();
+            return "closed";
         }
     }
 

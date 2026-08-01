@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import qs.modules
+import qs.modules.picker
 
 // banditshell.
 //
@@ -20,7 +21,14 @@ import qs.modules
 // Ipc is shell-wide rather than per-screen: it finds windows through the
 // registry they put themselves in, so nothing has to be wired up here.
 ShellRoot {
-    Ipc {}
+    // The picker's state is shell-wide; its surfaces are per screen.
+    PickerState {
+        id: picker
+    }
+
+    Ipc {
+        picker: picker
+    }
 
     Variants {
         model: Quickshell.screens
@@ -40,6 +48,11 @@ ShellRoot {
 
             FrameExclusions {
                 screen: scope.modelData
+            }
+
+            PickerWindow {
+                screen: scope.modelData
+                state: picker
             }
         }
     }

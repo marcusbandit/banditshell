@@ -95,6 +95,14 @@ layout(std140, binding = 0) uniform buf {
 
     vec4 colour;
     vec4 frameColour;
+
+    // An outline ON the content boundary, for things that must show exactly
+    // where an edge is rather than melt across it.
+    vec4 outlineColour;
+    float outlineWidth;
+    float pad1;
+    float pad2;
+    float pad3;
 };
 
 // Rounded box with a different radius per corner (iq). Negative inside.
@@ -199,5 +207,13 @@ void main() {
     // instead of by four numbers agreeing.
     float outside = frameOn > 0.5 ? 1.0 - inside(toScreen) : 0.0;
 
-    fragColor = (frameColour * outside + body * (1.0 - outside)) * qt_Opacity;
+    // The outline straddles the content edge. Drawn last, over everything, so a
+    // selection edge is unambiguous.
+    vec4 result = frameColour * outside + body * (1.0 - outside);
+    if (outlineWidth > 0.0) {
+        float ring = inside(abs(toContent) - outlineWidth * 0.5);
+        result = outlineColour * ring + result * (1.0 - ring);
+    }
+
+    fragColor = result * qt_Opacity;
 }
