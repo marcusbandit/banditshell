@@ -293,7 +293,9 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 myshell/
 ├── shell.qml                    entry point: Variants -> one set of surfaces per screen
 ├── config/
-│   └── Appearance.qml           SINGLETON. Every colour, size, radius, duration.
+│   ├── Config.qml               SINGLETON. ~/.config/myshell/config.json, live.
+│   ├── Themes.qml               SINGLETON. Named palettes (ramp + accents).
+│   └── Appearance.qml           SINGLETON. Config x Themes -> the tokens widgets read.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── G2Rect.qml               the ONE rounded-rect primitive
@@ -313,6 +315,25 @@ myshell/
 Import paths: Quickshell exposes the config root as the module `qs`, so a directory is
 `import qs.components`, `import qs.services`, `import qs.modules.sidebar`. There are no
 `qmldir` files to maintain; Quickshell generates them.
+
+**Configuration: no magic numbers, anywhere.**
+
+`Config.qml` owns `~/.config/myshell/config.json`. Edit it and the shell follows live; delete
+it and it is rewritten from the defaults. The `defaults` object in that file *is* the schema:
+a key not in it is not a setting, and a key in it always resolves, so a half-written config
+still boots. `Config.set("sidebar.width", 90)` writes and persists, which is the entire API the
+future settings menu needs.
+
+Sizes are never listed, they are **derived**: each scale is a `base` and a list of multipliers,
+so `small / normal / large` are indices into data rather than three hardcoded numbers, and
+changing one base rescales everything proportionally.
+
+Colour roles are **ramp indices**, not hex values. A theme supplies an eleven-stop luminance
+ramp plus three saturated accents, and never names a widget. So adding a palette means adding
+colours, not decisions, and `Config.theme` swaps the whole shell.
+
+`Appearance.qml` is where those two meet, and it contains no literals at all. Widgets read only
+`Appearance`, never `Config` or `Themes` directly.
 
 **The layering rule, and the reason the tree looks like this:**
 

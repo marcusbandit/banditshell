@@ -55,6 +55,9 @@ Item {
             width: label.implicitWidth + Appearance.padding.huge * 2
             height: label.implicitHeight + Appearance.padding.huge * 2
 
+            // Square where it meets the screen edge, rounded where it meets the
+            // desktop. It is flush against the edge but not at a screen corner,
+            // so these stay convex.
             topLeftRadius: 0
             topRightRadius: 0
             bottomLeftRadius: Appearance.rounding.normal

@@ -19,14 +19,14 @@ G2Rect {
     id: root
 
     readonly property int bodyWidth: Appearance.sizes.sidebarWidth
-    readonly property real flare: cornerExtent(Appearance.rounding.large)
+    readonly property real flare: cornerExtent(Appearance.sizes.sidebarFlare)
 
     implicitWidth: bodyWidth + flare
 
     topLeftRadius: 0
     bottomLeftRadius: 0
-    topRightRadius: -Appearance.rounding.large
-    bottomRightRadius: -Appearance.rounding.large
+    topRightRadius: -Appearance.sizes.sidebarFlare
+    bottomRightRadius: -Appearance.sizes.sidebarFlare
 
     color: Appearance.colour.surface
 

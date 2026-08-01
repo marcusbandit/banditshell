@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import qs.config
 
 // Adapter over Quickshell's Hyprland IPC.
 //
@@ -13,7 +14,7 @@ Singleton {
     id: root
 
     // Workspaces always shown, even when empty.
-    property int persistentCount: 5
+    readonly property int persistentCount: Appearance.sizes.wsPersistent
 
     readonly property int activeId: Hyprland.focusedWorkspace?.id ?? 1
 
