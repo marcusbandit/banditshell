@@ -225,7 +225,11 @@ Singleton {
                 // is worse than one that admits what it left out.
                 networkListMax: 7,
                 deviceListMax: 7,
-                rowHeight: 34,
+                // 40 is Sequoia's measured Control Center row pitch. At 34 a
+                // two-line row (18px label + 9px detail, so 36px of line boxes)
+                // was taller than its own row height and the list read as
+                // cramped.
+                rowHeight: 40,
                 sliderHeight: 6,
                 toggleWidth: 34,
                 toggleHeight: 18
