@@ -42,14 +42,17 @@ Item {
     readonly property int maxWindows: Appearance.sizes.wsMaxWindows
     readonly property int tick: Appearance.sizes.wsTick
 
-    // How far a plate reaches in, as a fraction of the bar. The active one is
-    // always the whole width; these are the other two states, and the ONLY thing
-    // separating them is length.
-    readonly property real stubReach: Appearance.sizes.wsStubReach
-    readonly property real fullReach: Appearance.sizes.wsFullReach
+    // How far a plate reaches in, as a fraction of the bar. THREE states, three
+    // lengths, and length is the only thing separating them: nothing, windows,
+    // here. Even the longest stops short of the bar's inner edge, because a
+    // plate that runs the full width is not a plate any more, it is a stripe
+    // across the bar.
+    readonly property real emptyReach: Appearance.sizes.wsEmptyReach
+    readonly property real busyReach: Appearance.sizes.wsBusyReach
+    readonly property real activeReach: Appearance.sizes.wsActiveReach
 
-    function reach(occupied: bool): real {
-        return Math.round(root.width * (occupied ? root.fullReach : root.stubReach));
+    function reach(occupied: bool, active: bool): real {
+        return Math.round(root.width * (active ? root.activeReach : occupied ? root.busyReach : root.emptyReach));
     }
 
     // THE SCREEN'S EDGE, which is where this item starts: it spans the whole
@@ -255,13 +258,19 @@ Item {
             // holds windows. Hidden under the tab when this is where you are, so
             // the two never stack their translucency into a denser patch.
             G2Rect {
-                x: root.edge
-                // An empty workspace gets a mark, not a plate: half as tall,
+                // An EMPTY workspace gets a mark, not a plate: half as tall,
                 // centred on the slot it stands for. Length alone did not carry
-                // it, a short plate at full height is just a fat nub.
-                y: slotItem.isOccupied ? -root.tabPad : (parent.height - root.slot / 2) / 2
-                width: root.reach(slotItem.isOccupied)
-                height: slotItem.isOccupied ? parent.height + root.tabPad * 2 : root.slot / 2
+                // it, a short plate at full height is just a fat nub. Going
+                // there makes it a plate like any other.
+                readonly property bool solid: slotItem.isOccupied || slotItem.isActive
+
+                x: root.edge
+                y: solid ? -root.tabPad : (parent.height - root.slot / 2) / 2
+                // Sized for the state it is IN, including active: the plate a
+                // tab lands on grows to meet it, so nothing changes size behind
+                // the tab while it is there and nothing snaps when it leaves.
+                width: root.reach(slotItem.isOccupied, slotItem.isActive)
+                height: solid ? parent.height + root.tabPad * 2 : root.slot / 2
 
                 topLeftRadius: 0
                 bottomLeftRadius: 0
@@ -272,6 +281,13 @@ Item {
                 opacity: slotItem.isActive ? 0 : 1
 
                 Behavior on width {
+                    NumberAnimation {
+                        duration: Appearance.anim.normal
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                Behavior on height {
                     NumberAnimation {
                         duration: Appearance.anim.normal
                         easing.type: Easing.OutCubic

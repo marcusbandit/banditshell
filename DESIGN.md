@@ -585,15 +585,22 @@ Not a field in the end, and the two that were are worth keeping written down.
    Correct and thin: one small shape in a tall empty bar, which is where "flat and boring"
    came from in the first place.
 3. **A stack of plates**, which is what is there now. Every workspace is hinged on the screen's
-   edge and reaches in as far as it is worth: a short mark when empty, most of the bar when it
-   holds windows, the whole width for the one you are on. Index tabs and a bar chart of how
-   busy the machine is, which turn out to be the same drawing.
+   edge and reaches in as far as it is worth: a short mark when empty, further when it holds
+   windows, furthest for the one you are on. Index tabs and a bar chart of how busy the machine
+   is, which turn out to be the same drawing.
 
 What the third one gets that the others did not:
 
 - **Length is the state.** Three reaches, computed as fractions of the bar rather than in
   pixels, so the proportions survive the bar changing width. Nothing needs a legend: the
-  longest plate is where you are, and a column of stubs is an idle machine.
+  longest plate is where you are, and a column of stubs is an idle machine. Even the longest
+  stops short of the bar's inner edge; a plate that runs the full width has no free end left
+  and reads as a stripe painted across the bar rather than as one pulled out of the edge.
+- **The busy reach has a floor, and it is the icon column.** The icons are centred on the bar's
+  centre line so they line up with the clock and the status icons below them, which means a
+  plate shorter than about 0.72 of the bar leaves its own glyphs hanging off the end. Dropping
+  below that is possible, but only by moving the icons off that centre line to hug the hinge,
+  and then the sidebar no longer reads as one column.
 - **Depth is thickness and layering.** The plates are one sheet of material; the active one is
   two, with the accent in the upper sheet, and it is pulled further out than the rest. No
   shadow, no bevel, no gradient. Apple's rule for Liquid Glass, and the only depth cue this
