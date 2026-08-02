@@ -191,6 +191,7 @@ Singleton {
         readonly property real scrollSpeed: root.cfg.anim.scrollSpeed
 
         readonly property int grace: root.cfg.anim.grace
+        readonly property int tooltip: root.cfg.anim.tooltip
     }
 
     readonly property QtObject sizes: QtObject {
@@ -249,6 +250,12 @@ Singleton {
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone
+
+        // The right edge, as a volume rail. See modules/VolumeRail.qml.
+        readonly property real volumeStep: root.cfg.volume.step
+        readonly property int volumeRailLength: root.cfg.volume.railLength
+        readonly property int volumeRailWidth: root.cfg.volume.railWidth
+        readonly property int volumeLinger: root.cfg.volume.linger
 
         readonly property int menuWidth: root.cfg.menu.width
         readonly property int menuMinHeight: root.cfg.menu.minHeight

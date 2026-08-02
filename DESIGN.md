@@ -334,6 +334,7 @@ banditshell/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`
 │   │   └── BlobField.qml        the ShaderEffect that draws it
+│   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
@@ -346,6 +347,7 @@ banditshell/
 │   └── PasswordField.qml        inline secret entry
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
+│   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
 │   ├── Battery.qml              UPower
 │   ├── Network.qml              NetworkManager: wifi, one entry per SSID

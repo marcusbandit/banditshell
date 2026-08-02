@@ -174,7 +174,12 @@ Singleton {
                 // How long a hover-opened thing survives the cursor leaving.
                 // Hover is a sloppy input; without this, crossing a boundary
                 // dismisses what you were reaching for.
-                grace: 180
+                grace: 180,
+                // How long the cursor has to STAY on something before it gets
+                // told what the something is. Long enough that crossing a column
+                // of icons says nothing, short enough that stopping on one feels
+                // answered rather than waited for.
+                tooltip: 450
             },
 
             // Which stop of the theme's ramp each role uses. The ramp runs 0
@@ -242,7 +247,7 @@ Singleton {
                     //
                     // An override in `apps.icons` beats all three, and the
                     // category glyph is what any of them falls back to.
-                    iconMode: "brand",
+                    iconMode: "glyph",
                     // How much bigger a window's mark is here than an icon
                     // anywhere else in the shell. The sidebar is scanned at a
                     // glance and from the corner of the eye, which is not what
@@ -346,7 +351,15 @@ Singleton {
             // LIST and splats it, so `banditshell set apps.icons '[...]'` never
             // arrives as an array. An object survives intact.
             apps: {
-                icons: ({})
+                icons: ({}),
+
+                // How to ask Claude Code for an icon the machine does not have.
+                // The prompt is appended as the last argument. Headless, and
+                // allowed to write only because it has to save the file it
+                // fetches; everything else about how it finds one is its
+                // problem, which is the point of asking it rather than writing
+                // a downloader in here.
+                claude: ["claude", "-p", "--permission-mode", "acceptEdits"]
             },
 
             launcher: {
@@ -431,6 +444,27 @@ Singleton {
                 // notch stops being a notch and becomes a bar across the top of
                 // the screen, which is the one thing this shell does not have.
                 trackWidth: 288
+            },
+
+            // The right edge, as a volume rail.
+            volume: {
+                // What one notch of the wheel is worth. The same five points the
+                // sound menu's slider moves by, because they are the same
+                // gesture on the same value and a wheel that meant one thing on
+                // the edge and another inside a menu would be two controls.
+                step: 0.05,
+
+                // The readout's meter. Long enough to read as a level rather
+                // than as a lit dot, narrow enough that it is a mark on the band
+                // and not a panel: this is a glance, not an instrument.
+                railLength: 180,
+                railWidth: 10,
+
+                // How long the readout stays after the last change. Long enough
+                // to see where a keypress landed, short enough that it is gone
+                // before you wonder how to dismiss it. It never outlives the
+                // cursor: hovering holds it open regardless.
+                linger: 1200
             },
 
             // Controls inside menus.

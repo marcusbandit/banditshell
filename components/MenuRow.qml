@@ -18,6 +18,13 @@ Item {
     property string iconSource: ""
     readonly property bool hasImage: iconSource !== "" && image.status === Image.Ready
 
+    // A LEADING SLOT for rows whose mark is neither of those: an application's
+    // mark can be a glyph from a second face or a file tinted to the label
+    // colour, and a row should not have to know which. Given as a Component so
+    // the row can place and size it; when set it replaces the glyph and the
+    // image entirely.
+    property Component mark: null
+
     // How present the leading mark is, and how much room the row gives it. A
     // menu wants a quiet glyph beside a label; a launcher is a list you scan by
     // icon, and the same size that reads as tidy in a menu reads as cramped
@@ -93,6 +100,18 @@ Item {
         onClicked: root.activated()
     }
 
+    Loader {
+        id: custom
+
+        anchors.left: parent.left
+        anchors.leftMargin: Appearance.padding.normal
+        anchors.verticalCenter: parent.verticalCenter
+
+        active: !!root.mark
+        visible: active
+        sourceComponent: root.mark
+    }
+
     Icon {
         id: glyph
 
@@ -100,7 +119,7 @@ Item {
         anchors.leftMargin: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
 
-        visible: !!root.icon && !root.hasImage
+        visible: !!root.icon && !root.hasImage && !root.mark
         size: root.iconSize
         name: root.icon
         color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
@@ -121,7 +140,7 @@ Item {
         sourceSize.width: width * Screen.devicePixelRatio
         sourceSize.height: height * Screen.devicePixelRatio
 
-        visible: root.hasImage
+        visible: root.hasImage && !root.mark
         source: root.iconSource
         fillMode: Image.PreserveAspectFit
         asynchronous: true
@@ -131,7 +150,7 @@ Item {
     Item {
         id: stack
 
-        anchors.left: root.icon || root.hasImage ? glyph.right : parent.left
+        anchors.left: root.mark ? custom.right : root.icon || root.hasImage ? glyph.right : parent.left
         anchors.leftMargin: Appearance.padding.normal
         anchors.right: trailingSlot.left
         anchors.rightMargin: Appearance.padding.normal

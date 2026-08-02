@@ -53,15 +53,123 @@ Item {
     readonly property real emptyReach: Appearance.sizes.wsEmptyReach
     readonly property real busyReach: Appearance.sizes.wsBusyReach
 
+    // The scratchpad group: how far its pills sit off the edge, how much air
+    // separates them from each other, and how much separates the group from the
+    // numbered run below it. That last one is wider than a plate gap on purpose:
+    // it is the boundary between two kinds of thing.
+    readonly property real inset: Appearance.sizes.band
+    readonly property int gapSize: Appearance.sizes.wsGap
+    readonly property int specialGap: Hypr.specials.length ? Appearance.padding.large : 0
+
     property int hovered: -1
 
-    implicitHeight: layout.total
+    // The numbered run sits under the scratchpads, which is why it is offset
+    // rather than starting at zero.
+    implicitHeight: specials.height + layout.total
 
     WorkspaceModel {
         id: layout
 
         base: root.slot
         pitch: root.pitch
+    }
+
+    // SCRATCHPADS, which are not workspace 6. A special workspace is not
+    // somewhere you go and stay, it is something you pull over whatever you are
+    // already doing and then put away, and it exists only while something is on
+    // it. So they do not join the numbered run: they FLOAT above it, rounded at
+    // both ends and off the screen's edge, because the one thing the plates say
+    // by being hinged is "this is one of the places you live".
+    //
+    // No layout pass and no smoothing here on purpose. A scratchpad appears when
+    // you put something in it and is gone when you take it out; there is no
+    // rearranging to follow, and the numbered column below simply starts lower.
+    Column {
+        id: specials
+
+        width: root.width
+        spacing: root.gapSize
+        bottomPadding: root.specialGap
+
+        Repeater {
+            model: Hypr.specials
+
+            delegate: Item {
+                id: pad
+
+                required property var modelData
+                readonly property bool isOpen: Hypr.openSpecial === pad.modelData.name
+
+                width: root.width
+                height: root.slot
+
+                MouseArea {
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Hypr.toggleSpecial(pad.modelData.name)
+                }
+
+                G2Rect {
+                    id: pill
+
+                    // Inset from the edge and rounded at both ends: a plate is
+                    // attached to the screen, this is lying on top of it.
+                    x: root.inset
+                    width: Math.round(root.span * root.busyReach) - root.inset
+                    height: parent.height
+                    radius: Appearance.rounding.normal
+
+                    color: pad.isOpen ? Appearance.colour.fillStrong : Appearance.colour.fill
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Appearance.anim.fast
+                        }
+                    }
+
+                    G2Rect {
+                        // `pill.radius`, not `parent.radius`: children declared
+                        // inside a G2Rect land in its inner item, which is a
+                        // plain Item and has no radius to read.
+                        anchors.fill: parent
+                        radius: pill.radius
+                        color: Appearance.colour.accentFill
+                        opacity: pad.isOpen ? 1 : 0
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+                    }
+
+                    // One mark, not a stack: a scratchpad is usually one window,
+                    // and if it is three the point is still "the scratchpad",
+                    // not which of the three is in front.
+                    AppMark {
+                        anchors.centerIn: parent
+                        size: root.iconSize
+                        spec: pad.modelData.windows.length ? AppIcons.markFor(Hypr.classOf(pad.modelData.windows[0])) : ""
+                        fallback: pad.modelData.windows.length ? Apps.iconFor(Hypr.classOf(pad.modelData.windows[0])) : "layers"
+                        color: pad.isOpen ? Appearance.colour.text : Appearance.colour.textDim
+                    }
+
+                    // How many are in there, when it is more than one. A number
+                    // rather than a stack of marks, because the stack would make
+                    // a scratchpad look like a workspace.
+                    StyledText {
+                        anchors.right: parent.right
+                        anchors.rightMargin: Appearance.padding.small / 2
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: pad.modelData.windows.length > 1
+                        text: pad.modelData.windows.length
+                        font.pixelSize: Appearance.font.size.small
+                        color: Appearance.colour.textFaint
+                    }
+                }
+            }
+        }
     }
 
     Repeater {
@@ -88,7 +196,7 @@ Item {
             readonly property bool isActive: Hypr.activeId === slotItem.info.id
             readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
 
-            y: slotItem.geom.y
+            y: specials.height + slotItem.geom.y
             width: root.width
             height: slotItem.geom.h
 
@@ -229,57 +337,21 @@ Item {
                         readonly property bool lit: focused || winMouse.containsMouse
                         readonly property string appClass: Hypr.classOf(modelData)
 
-                        // AN OVERRIDE BEATS EVERYTHING. Then, in `brand` mode,
-                        // the per-application line glyph; then the icon theme's
-                        // artwork in `colour` mode; then what kind of thing it
-                        // is, which is the only one that always has an answer.
-                        readonly property string override: Apps.overrideFor(appClass)
-                        readonly property string brand: override || root.iconMode !== "brand" ? "" : Apps.brandFor(appClass)
-                        readonly property string source: override || root.iconMode !== "colour" ? "" : Apps.iconSourceFor([appClass, modelData.lastIpcObject?.initialClass ?? ""])
-
                         x: (plate.width - root.slot) / 2
                         y: (root.slot - root.pitch) / 2 + index * root.pitch
                         width: root.slot
                         height: root.pitch
 
-                        // The application's own artwork, only in `colour` mode:
-                        // it arrives with somebody else's palette attached, and a
-                        // bar full of five of those stops reading as one
-                        // interface. Kept because sometimes that is what you want.
-                        Image {
-                            id: image
-
+                        // THE MARK, whatever kind of thing it turns out to be:
+                        // what you picked for this application in settings, what
+                        // the config named, what the current mode works out, or
+                        // the category glyph. One component draws all of them, so
+                        // the sidebar cannot disagree with the picker.
+                        AppMark {
                             anchors.centerIn: parent
-                            width: root.iconSize
-                            height: width
-                            source: row.source
-                            sourceSize.width: width * 2
-                            sourceSize.height: width * 2
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                            smooth: true
-                            visible: row.source !== "" && status === Image.Ready
-                            opacity: row.lit ? 1 : 0.55
-
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-                        }
-
-                        // THE MARK. A per-application line glyph when the brand
-                        // set has one, the hand-picked override when the config
-                        // named one, and what kind of thing it is when neither
-                        // does. All three are one Text in the shell's own colour,
-                        // which is the entire point: an icon set that is drawn as
-                        // a set can be recoloured, and an icon PACK cannot.
-                        Icon {
-                            anchors.centerIn: parent
-                            visible: !image.visible
                             size: root.iconSize
-                            glyph: row.brand
-                            name: Apps.iconFor(row.appClass)
+                            spec: AppIcons.markFor(row.appClass)
+                            fallback: Apps.iconFor(row.appClass)
 
                             // The focused window is the only thing in the column
                             // at full label weight. That is the whole hierarchy:

@@ -73,6 +73,12 @@ Item {
             body: bluetoothMenu
         },
         {
+            key: "settings",
+            title: "Settings",
+            icon: "tune",
+            body: settingsMenu
+        },
+        {
             key: "battery",
             title: "Battery",
             icon: Battery.icon(),
@@ -176,6 +182,12 @@ Item {
         id: soundMenu
 
         SoundMenu {}
+    }
+
+    Component {
+        id: settingsMenu
+
+        IconsMenu {}
     }
 
     Component {

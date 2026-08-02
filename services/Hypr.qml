@@ -45,8 +45,10 @@ Singleton {
     readonly property var clients: {
         const out = {};
         for (const c of Hyprland.toplevels.values) {
+            // Special workspaces have NEGATIVE ids and belong in here too: the
+            // only thing zero means is a window with no workspace at all.
             const id = c.workspace?.id ?? 0;
-            if (id > 0) {
+            if (id !== 0) {
                 if (!out[id])
                     out[id] = [];
                 out[id].push(c);
@@ -63,6 +65,47 @@ Singleton {
 
     function clientsIn(id: int): var {
         return root.clients[id] ?? [];
+    }
+
+    // SPECIAL WORKSPACES, which are a different kind of thing and not a numbered
+    // slot with a minus sign on it. A scratchpad is not somewhere you go and
+    // stay, it is something you pull over whatever you are already doing, and it
+    // exists only while something is on it.
+    //
+    // [{ id, name, label, windows }], in the order Hyprland lists them.
+    readonly property var specials: {
+        const out = [];
+        for (const ws of Hyprland.workspaces.values) {
+            if (ws.id >= 0)
+                continue;
+            const name = ws.lastIpcObject?.name ?? "";
+            out.push({
+                id: ws.id,
+                name,
+                // `special:magic` is the wire name; `magic` is what you called it.
+                label: name.startsWith("special:") ? name.slice(8) : name,
+                windows: root.clients[ws.id] ?? []
+            });
+        }
+        return out;
+    }
+
+    // The special workspace currently pulled over the screen, by name, or "".
+    // Read off the MONITOR rather than off the workspace list, because the
+    // question is not which ones exist, it is which one you are looking at.
+    readonly property string openSpecial: {
+        for (const mon of Hyprland.monitors.values) {
+            const name = mon.lastIpcObject?.specialWorkspace?.name ?? "";
+            if (name)
+                return name;
+        }
+        return "";
+    }
+
+    function toggleSpecial(name: string): void {
+        // The dispatcher wants the bare name, not the `special:` prefix it
+        // reports back to us.
+        Hyprland.dispatch(`togglespecialworkspace ${name.startsWith("special:") ? name.slice(8) : name}`);
     }
 
     // The focused window itself, not its address: it is the same object the
