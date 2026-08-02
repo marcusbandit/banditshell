@@ -34,6 +34,18 @@ Item {
     readonly property bool open: currentKey !== ""
     readonly property Item maskItem: panel
 
+    // True while something in the open menu is waiting to be typed into, which
+    // is the only reason a menu ever has to hold the keyboard. See ShellWindow's
+    // keyboardFocus for why holding it the whole time a menu is up would be
+    // worse than not holding it at all.
+    //
+    // Asked of Prompts rather than of the content, because the content is a
+    // Component this file is handed and never looks inside; the field that wants
+    // the keyboard says so directly. Still gated on `open`: a menu that is not
+    // on screen cannot be the reason the shell is keeping the keyboard from the
+    // desktop, whatever a stale claim says.
+    readonly property bool needsKeyboard: root.open && Prompts.active
+
     // What the chassis needs to melt this panel into the shell's body. A closed
     // panel has zero width, which the field skips, so it costs nothing rather
     // than leaving a stub behind.

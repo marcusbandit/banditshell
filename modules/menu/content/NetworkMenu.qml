@@ -37,31 +37,37 @@ Column {
 
     spacing: Appearance.padding.small
 
-    // THE LIST HOLDS STILL WHILE YOU ARE USING IT.
+    // THE LIST HOLDS STILL WHILE YOU ARE USING IT, and the radio does not stop.
     //
-    // `networks` is derived from every AP's signal strength, so each scan result
-    // re-evaluates it and a Repeater over a plain array rebuilds every delegate.
-    // That destroyed the password field mid-word every couple of seconds along
-    // with its focus, restarted the unroll of any open layer, and moved the row
-    // under the cursor out from under it between aiming and clicking. Freshness
-    // is worth nothing while someone is answering a prompt or reading a panel.
+    // `networks` is rebuilt by every scan result, and a Repeater over a plain
+    // array rebuilds every delegate whenever that array changes identity. So the
+    // password field was destroyed mid-word every couple of seconds along with
+    // its focus, any open layer restarted its unroll, and rows moved out from
+    // under the cursor between aiming and clicking.
     //
-    // The switch below is therefore INTENT, not the radio: it says whether this
-    // menu wants a fresh list, and stays where you put it while a layer is open.
-    // Reporting the device's own state there instead would have the panel
-    // announce that scanning was off because you opened the panel containing the
-    // scanning switch.
+    // The first fix was to stop scanning while a prompt was open, and it is the
+    // wrong one twice over. NetworkManager ages out access points it has stopped
+    // hearing, so a paused scan does not freeze the list, it slowly empties it,
+    // taking with it the very row whose password was being typed. And it left
+    // the panel announcing that scanning was off because you had opened the
+    // panel containing the scanning switch.
+    //
+    // So the radio keeps scanning and the VIEW freezes: while something is open,
+    // `rows` hands back the same array by reference, which is the only thing a
+    // Repeater treats as "nothing happened".
     property bool wantScan: true
 
     readonly property bool busy: !!root.asking || !!root.opened
 
-    function applyScan(): void {
-        Network.watch(root.wantScan && !root.busy);
-    }
+    property var frozen: []
 
-    onWantScanChanged: root.applyScan()
-    onBusyChanged: root.applyScan()
-    Component.onCompleted: root.applyScan()
+    readonly property var rows: root.busy ? root.frozen : Network.enabled ? Network.networks.slice(0, Appearance.sizes.networkListMax) : []
+
+    onBusyChanged: if (root.busy)
+        root.frozen = root.rows
+
+    onWantScanChanged: Network.watch(root.wantScan)
+    Component.onCompleted: Network.watch(root.wantScan)
     Component.onDestruction: Network.watch(false)
 
     // One switch inside a layer, and one thing that happens. Same pair as the
@@ -199,7 +205,7 @@ Column {
     // eighty, and a menu that scrolls forever is worse than one that says how
     // many it left out.
     Repeater {
-        model: Network.enabled ? Network.networks.slice(0, Appearance.sizes.networkListMax) : []
+        model: root.rows
 
         delegate: Column {
             id: entry

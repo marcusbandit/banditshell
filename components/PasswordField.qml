@@ -7,6 +7,12 @@ import qs.config
 // to a press and having to click it again would be silly. Escape cancels, Enter
 // accepts; a field you cannot get out of without using the mouse is the reason
 // people dislike inline entry.
+//
+// While it is up it also REGISTERS itself, because window-local focus is not the
+// keyboard: the surface it is drawn on gets no key events at all until its
+// window asks the compositor for them, and the field is the only thing that
+// knows one is wanted. Saying it here rather than in whatever menu holds the
+// field means no menu has to remember to. See Prompts.
 Item {
     id: root
 
@@ -17,16 +23,34 @@ Item {
 
     implicitHeight: visible ? field.implicitHeight + Appearance.padding.normal * 2 : 0
 
+    // Asking for the keyboard and having it are a round trip apart: the window
+    // only asks once this field has said it wants one, and the compositor hands
+    // it over a frame or more later. Focus taken before that lands is focus in a
+    // surface with no keys to give, so it is taken again when the surface
+    // actually becomes active. NOT through claim(), which empties the field:
+    // activation can also come back mid-word.
+    readonly property bool surfaceActive: root.Window.active
+    onSurfaceActiveChanged: if (root.surfaceActive && root.visible)
+        field.forceActiveFocus()
+
     function claim(): void {
         field.text = "";
-        if (root.visible)
+        if (root.visible) {
+            Prompts.request(root);
             field.forceActiveFocus();
+        } else {
+            Prompts.release(root);
+        }
     }
 
     // Both: onVisibleChanged does not fire for an item CREATED already visible,
     // which is exactly how this one appears when its row rebuilds.
     onVisibleChanged: root.claim()
     Component.onCompleted: root.claim()
+
+    // A menu closing destroys its rows outright, without them ever passing
+    // through invisible, so the claim has to be given back here as well.
+    Component.onDestruction: Prompts.release(root)
 
     G2Rect {
         anchors.fill: parent

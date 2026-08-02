@@ -58,11 +58,15 @@ Scope {
         // menu is or is not still open. Worth being able to ask from outside:
         // "it closed when it should not have" and "it never thought you were on
         // it" look identical from a screenshot, and this separates them.
+        //
+        // The keyboard for the same reason: a field with a prompt open and a
+        // field the surface has actually asked the compositor for the keyboard
+        // for look identical from a screenshot, right up until you type.
         function hover(): string {
             const win = Shell.forScreen("");
             if (!win)
                 return "no shell window";
-            return `shell=${win.cursorOnShell} panel=${win.menus.hovered} open=[${win.menus.currentKey}]`;
+            return `shell=${win.cursorOnShell} panel=${win.menus.hovered} open=[${win.menus.currentKey}] keyboard=${win.menus.needsKeyboard}`;
         }
     }
 

@@ -64,14 +64,19 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    // The keyboard, but ONLY while the launcher is up.
+    // The keyboard, but ONLY while something here is being typed into.
     //
     // A layer surface receives no key events unless its window asks, which is
     // why the search field could be focused, draw a cursor, and still get
     // nothing typed into it. Exclusive rather than on-demand so Escape works
     // from anywhere, and dropped the instant it closes: an unconditional grab on
     // a surface that merely exists takes the keyboard from the desktop.
-    WlrLayershell.keyboardFocus: launcherLayer.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+    //
+    // A menu asks only while it holds a live prompt, never merely for being
+    // open. Menus follow the cursor down the sidebar and stay up while it is
+    // anywhere on the shell, so grabbing for an open one would take typing away
+    // from the window the cursor is passing over.
+    WlrLayershell.keyboardFocus: launcherLayer.open || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
