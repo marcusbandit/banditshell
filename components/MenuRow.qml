@@ -28,9 +28,9 @@ Item {
 
     // Which of the three sizes the label is set in. A menu row is a line in a
     // list of settings and takes the body size; a launcher row is the thing the
-    // whole window exists to show you, and takes the large one. Still the same
+    // whole window exists to show you, and takes a bigger one. Still the same
     // three sizes: this picks one, it does not invent a fourth.
-    property real labelSize: Appearance.font.size.normal
+    property real labelSize: Appearance.font.size.small
 
     property string label: ""
     property string detail: ""
@@ -45,7 +45,14 @@ Item {
     readonly property bool hovered: interactive && pointer.containsMouse
 
     implicitWidth: parent ? parent.width : 0
-    implicitHeight: Math.max(root.rowHeight, trailingSlot.childrenRect.height + Appearance.padding.small * 2)
+
+    // The row is as tall as the tallest thing in it, and the LABELS are one of
+    // those things. They were missing from this maximum: a label and a detail
+    // used to be 24px and 12px of line box, which fitted inside the 44px floor
+    // whatever happened, so nothing noticed. Both are 18px type now, 48px of
+    // line box together, and a two-line row grew straight through the bottom of
+    // its own background and into the row beneath it.
+    implicitHeight: Math.max(root.rowHeight, stack.implicitHeight + Appearance.padding.small * 2, trailingSlot.childrenRect.height + Appearance.padding.small * 2)
 
     G2Rect {
         anchors.fill: parent
@@ -112,6 +119,8 @@ Item {
     }
 
     Column {
+        id: stack
+
         anchors.left: root.icon || root.hasImage ? glyph.right : parent.left
         anchors.leftMargin: Appearance.padding.normal
         anchors.right: trailingSlot.left

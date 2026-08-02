@@ -291,7 +291,7 @@ Item {
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
-                        size: Appearance.font.size.large
+                        size: Appearance.font.size.normal
                         name: "search"
                         color: Appearance.colour.textFaint
                     }
@@ -305,7 +305,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
 
                         font.family: Appearance.font.family
-                        font.pixelSize: Appearance.font.size.large
+                        font.pixelSize: Appearance.font.size.normal
                         renderType: Text.NativeRendering
                         color: Appearance.colour.text
                         selectionColor: Appearance.colour.accent
@@ -363,11 +363,11 @@ Item {
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
-                            // Short, because the field is set in the large
-                            // size now and the old sentence ran off the end of
-                            // it. A search box does not need to explain itself.
+                            // Short, because the field is set a tier above body
+                            // and the old sentence ran off the end of it. A
+                            // search box does not need to explain itself.
                             text: "Search"
-                            font.pixelSize: Appearance.font.size.large
+                            font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
                     }
@@ -420,7 +420,7 @@ Item {
                         width: list.width
                         iconSize: Appearance.sizes.launcherIcon
                         rowHeight: root.rowPitch
-                        labelSize: Appearance.font.size.large
+                        labelSize: Appearance.font.size.normal
                         // The entry's own icon, resolved out of the icon theme,
                         // with the generic mark only as a fallback for entries
                         // that name none.

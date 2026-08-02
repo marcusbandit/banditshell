@@ -50,11 +50,23 @@ Singleton {
                 // character advance came out fractional at 10.67px, so glyphs
                 // did not start on pixel boundaries either.
                 //
-                // So the scale is integer multiples, 1x/2x/3x, and cannot be a
-                // ratio of anyone's choosing. 18 is fully crisp; 9 and 27 leave
-                // f, i, k, l and t on a half-pixel, which is the whole cost.
+                // So the scale is integer multiples and cannot be a ratio of
+                // anyone's choosing. What it CAN be is which multiples, and 1x
+                // was the mistake. At 9px the em is one device pixel per design
+                // pixel, which sounds correct and lands a 5px x-height on a
+                // 1920x1200 panel at scale 1. Every eyebrow in the shell was set
+                // in it, and none of them could be read.
+                //
+                // There is nothing between 9 and 18 to retreat to: the grid has
+                // no half-steps. So the small tier IS 18, and the hierarchy that
+                // used to come from being smaller is carried by colour, case and
+                // tracking instead, which carry it better anyway (see
+                // ~/.claude/rules/type-scale.md).
+                //
+                // 2x/3x/4x. 18 and 36 are fully crisp; 27 leaves f, i, k, l and
+                // t on a half-pixel, which is the whole cost.
                 base: 9,
-                scale: [1, 2, 3]
+                scale: [2, 3, 4]
             },
 
             // Material.
@@ -122,12 +134,17 @@ Singleton {
                 power: 2.0
             },
             padding: {
-                // 6 / 12 / 18 / 30, sharing the factor 6 with the 9px type grid
-                // and its 12/24/36 line boxes. The previous 6/10/18/30 had only
-                // one value on the lattice, which is a coincidence rather than a
-                // grid.
+                // 6 / 12 / 24 / 36. The inner two are deliberately unchanged:
+                // they set the space INSIDE a row, and a row's text did not get
+                // bigger. The outer two did change, because the labels BETWEEN
+                // sections doubled and the gaps that used to separate them
+                // stopped being able to.
+                //
+                // 24 and 36 are the 18px tier's line box and half again, so a
+                // section break is now an empty line rather than a number that
+                // happens to look right.
                 base: 6,
-                scale: [1, 2, 3, 5]
+                scale: [1, 2, 4, 6]
             },
             anim: {
                 base: 220,
@@ -221,12 +238,17 @@ Singleton {
                     // Width of the bright mark on the edge of the active plate.
                     tick: 3,
                     // How far a plate reaches in, as a fraction of the bar's
-                    // width. The active one is always the whole width, so these
-                    // are the other two states: a workspace with nothing on it,
-                    // and one with windows. Fractions rather than pixels, so the
-                    // three lengths keep their proportions if the bar changes.
-                    stubReach: 0.28,
-                    fullReach: 0.78
+                    // width: nothing on it, windows on it, and the one you are
+                    // on. Fractions rather than pixels, so the three lengths
+                    // keep their proportions if the bar changes width.
+                    //
+                    // Even `active` stops short of the bar's inner edge. A plate
+                    // that runs the full width has no free end left, so it stops
+                    // reading as pulled out of the edge and starts reading as a
+                    // stripe painted across the bar.
+                    emptyReach: 0.28,
+                    busyReach: 0.62,
+                    activeReach: 0.8
                 },
                 status: {
                     slot: 28,
@@ -330,7 +352,18 @@ Singleton {
             },
 
             menu: {
-                width: 300,
+                // Sized from what a row has to hold, not picked. A row spends
+                // 12 of padding, 20 of icon, 12, then the label, then 12, the
+                // trailing control, and 12 again: 108px before a single
+                // character. At 300 that left 192px, which was 32 characters of
+                // 6px type and only 16 of 12px, so every SSID and every
+                // Bluetooth device name in the shell elided at the same moment
+                // the type got legible.
+                //
+                // 400 leaves 292, which is 24 characters. "internet79vietnamnet"
+                // and "OpenRun Pro 2 Bluetooth" are the longest real names here
+                // and both fit.
+                width: 400,
                 // A menu is at least this tall and grows to fit its contents, up
                 // to `maxHeight`. Fixed heights make a two-row menu look
                 // abandoned and a ten-row one look cramped.
@@ -341,7 +374,15 @@ Singleton {
                 // something else, which migration cannot detect: it compares
                 // shape, and the shape would not have changed.
                 minHeight: 200,
-                maxHeight: 560
+                // Raised with the type. The sound menu is the tall one: two
+                // sliders and two device lists came to roughly 600px once every
+                // row in it was set in 18px, and a 560 cap cut the last device
+                // in half rather than showing it.
+                //
+                // Not a licence to grow forever. MenuPanel takes the min of this
+                // and the space actually below the icon, so the screen still
+                // decides; this only stops the cap deciding first.
+                maxHeight: 820
             }
         })
 

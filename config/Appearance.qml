@@ -128,7 +128,13 @@ Singleton {
         // from the base coupled them to the pixel grid, and when that moved to
         // 9 every icon in the shell shrank to 10px along with it. An icon next
         // to body text should match body text whatever the grid says.
-        readonly property int iconSize: Math.round(size.normal * root.cfg.font.iconScale)
+        //
+        // That tier is `small`. Body text is `small` now: the grid has no step
+        // between 9 and 18, so the bottom of the ladder had to become the
+        // workhorse rather than the quiet one. Reading `normal` here would size
+        // every icon from a tier nothing is set in, and 30px icons do not fit
+        // the 28px status slot they sit in.
+        readonly property int iconSize: Math.round(size.small * root.cfg.font.iconScale)
     }
 
     readonly property QtObject rounding: QtObject {
@@ -203,8 +209,9 @@ Singleton {
         readonly property int wsWindowPitch: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.windowPitch)
         // The ruler down the screen's edge. See modules/sidebar/Workspaces.qml.
         readonly property int wsTick: root.cfg.sidebar.workspaces.tick
-        readonly property real wsStubReach: root.cfg.sidebar.workspaces.stubReach
-        readonly property real wsFullReach: root.cfg.sidebar.workspaces.fullReach
+        readonly property real wsEmptyReach: root.cfg.sidebar.workspaces.emptyReach
+        readonly property real wsBusyReach: root.cfg.sidebar.workspaces.busyReach
+        readonly property real wsActiveReach: root.cfg.sidebar.workspaces.activeReach
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 

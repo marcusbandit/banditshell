@@ -11,7 +11,10 @@ import qs.config
 //      See ~/.claude/rules/type-scale.md.
 Text {
     font.family: Appearance.font.family
-    font.pixelSize: Appearance.font.size.normal
+    // `small` is the body size. The pixel grid has no step between 9 and 18, so
+    // the bottom of the ladder is the workhorse and the tiers above it are for
+    // the one thing a view is about. See config/Config.qml's font block.
+    font.pixelSize: Appearance.font.size.small
     renderType: Text.NativeRendering
     color: Appearance.colour.text
 

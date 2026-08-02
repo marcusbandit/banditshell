@@ -48,7 +48,7 @@ Item {
         clip: true
 
         font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.normal
+        font.pixelSize: Appearance.font.size.small
         renderType: Text.NativeRendering
         color: Appearance.colour.text
         selectionColor: Appearance.colour.accent
