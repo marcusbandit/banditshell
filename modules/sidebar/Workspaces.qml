@@ -58,8 +58,9 @@ Item {
     readonly property real edge: 0
 
     // How far the tab reaches in, and how much taller it is than the slot it
-    // marks. One band short of the bar's inner edge, so it stops on the shell's
-    // own lattice rather than at a number picked here.
+    // marks. The WHOLE band: reach is what separates the other two states from
+    // each other, so the one you are on spends the last of it and has nowhere
+    // further to go. Nothing else in the column is ever this long.
     readonly property real tabWidth: width
     readonly property real tabPad: Appearance.padding.small / 2
 

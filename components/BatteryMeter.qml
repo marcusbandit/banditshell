@@ -25,8 +25,10 @@ Item {
     // what either of those means.
     property color colour: Appearance.colour.text
 
-    // Much fainter than the faintest LABEL tier, the same as an unlit signal
-    // bar: empty has to lose against full at a glance, at this size.
+    // The same as an unlit signal bar, so the two drawn meters in the bar are
+    // made of one material: empty has to lose against full at a glance, at this
+    // size. A FILL tier rather than a label one, because the track is the thing
+    // the charge sits in, not something being said.
     property color trackColour: Appearance.colour.fillStronger
 
     readonly property real unit: Appearance.font.iconSize

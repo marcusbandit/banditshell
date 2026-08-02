@@ -333,10 +333,7 @@ banditshell/
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`
-│   │   ├── BlobField.qml        the ShaderEffect that draws it
-│   │   ├── beads.frag           the workspace column as one liquid: rail + beads
-│   │   ├── beads.frag.qsb       compiled; rebuild with `banditshell shaders`
-│   │   └── BeadField.qml        the ShaderEffect that draws it
+│   │   └── BlobField.qml        the ShaderEffect that draws it
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
