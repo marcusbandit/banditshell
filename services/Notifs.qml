@@ -47,26 +47,74 @@ Singleton {
     readonly property int defaultTimeout: Config.values.notifications.timeout
     readonly property int maxPopups: Config.values.notifications.maxPopups
 
-    function dismiss(entry: var): void {
-        root.popups = root.popups.filter(e => e !== entry);
-        root.history = root.history.filter(e => e !== entry);
-        entry?.notification?.dismiss();
-        // Entries are created objects parented to this singleton, so dropping
-        // the last reference is not enough to free them.
-        entry?.destroy();
+    // Countdowns stop while the tray is open. A notification that expires out
+    // from under the list you are reading is the same bug as one expiring under
+    // the pointer, one level up.
+    property bool paused: false
+
+    // How long a row has to get itself off the screen. Fixed rather than
+    // exponential, unlike everything else in the shell, because the SERVICE has
+    // to know when the animation is done: a card leaving is a one-shot A to B,
+    // not something tracking a moving target, and one duration read by both ends
+    // means they agree by construction instead of by a callback.
+    readonly property int exitMs: Appearance.anim.slow
+
+    // Removal is TWO-PHASE. Taking a row out of the list immediately gives the
+    // view nothing to animate: the card is destroyed on the same frame and the
+    // stack jumps. So this marks the entry and the sweep below finishes the job
+    // once the card has had its exit.
+    function beginLeave(entry: var, forget: bool): void {
+        if (!entry || entry.leaving)
+            return;
+        entry.forget = forget;
+        entry.leaveElapsed = 0;
+        entry.leaving = true;
+        root.leaving = [...root.leaving, entry];
     }
 
-    function dismissPopup(entry: var): void {
+    // Thrown away, or acted on. A decision, so it does not come back.
+    function dismiss(entry: var): void {
+        root.beginLeave(entry, true);
+    }
+
+    // Merely out of time. It leaves the screen and stays in the tray, because it
+    // is still a notification nobody has read.
+    function expire(entry: var): void {
+        root.beginLeave(entry, false);
+    }
+
+    // Phase two: the row is off the screen, so it can actually go.
+    function drop(entry: var): void {
+        root.leaving = root.leaving.filter(e => e !== entry);
         root.popups = root.popups.filter(e => e !== entry);
+
+        // Back to rest, because the SAME object is still in the tray. A
+        // transient one is not: it was never put in the history, so timing out
+        // is the end of it and nothing else will ever free it.
+        if (!entry.forget && root.history.includes(entry)) {
+            entry.leaving = false;
+            entry.leaveElapsed = 0;
+            return;
+        }
+
+        root.history = root.history.filter(e => e !== entry);
+        entry.notification?.dismiss();
+        // Entries are created objects parented to this singleton, so dropping
+        // the last reference is not enough to free them.
+        entry.destroy();
     }
 
     function clear(): void {
-        // Copy first: dismiss() mutates the list being walked.
+        // Copy first: this mutates the lists being walked.
         for (const entry of root.history.slice())
             entry.notification?.dismiss();
         root.history = [];
         root.popups = [];
+        root.leaving = [];
     }
+
+    // On their way out, waiting on the sweep.
+    property var leaving: []
 
     function urgencyLabel(n: var): string {
         switch (n?.urgency) {
@@ -98,15 +146,28 @@ Singleton {
     Timer {
         interval: 50
         repeat: true
-        running: root.popups.length > 0
+        running: root.popups.length > 0 || root.leaving.length > 0
 
         onTriggered: {
-            const done = [];
-            for (const entry of root.popups)
-                if (entry.tick(interval))
-                    done.push(entry);
-            for (const entry of done)
-                root.dismissPopup(entry);
+            if (!root.paused) {
+                const done = [];
+                for (const entry of root.popups)
+                    if (entry.tick(interval))
+                        done.push(entry);
+                for (const entry of done)
+                    root.expire(entry);
+            }
+
+            // The sweep runs whether or not the countdowns do: a row already on
+            // its way out has to land even while the tray is held open.
+            const gone = [];
+            for (const entry of root.leaving) {
+                entry.leaveElapsed += interval;
+                if (entry.leaveElapsed >= root.exitMs)
+                    gone.push(entry);
+            }
+            for (const entry of gone)
+                root.drop(entry);
         }
     }
 
@@ -136,8 +197,14 @@ Singleton {
             // it has to be destroyed rather than merely forgotten.
             const evicted = [entry, ...root.history].slice(root.maxHistory);
             root.history = [entry, ...root.history].slice(0, root.maxHistory);
-            for (const old of evicted)
+            for (const old of evicted) {
+                // It can still be on screen: maxPopups and maxHistory are
+                // different numbers, and destroying an object the stack is
+                // holding leaves the view with a dangling row.
+                root.popups = root.popups.filter(e => e !== old);
+                root.leaving = root.leaving.filter(e => e !== old);
                 old.destroy();
+            }
 
             // Transient notifications are for things like volume OSDs: show,
             // never keep.

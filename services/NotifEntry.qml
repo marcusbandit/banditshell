@@ -26,7 +26,19 @@ QtObject {
     // under the pointer while you are reaching for its button.
     property bool held: false
 
-    readonly property bool running: timeout > 0 && remaining > 0 && !held
+    // On its way out, and how long it has been going. Removal is two-phase so
+    // the card can animate before its row actually disappears; see Notifs.
+    property bool leaving: false
+    property int leaveElapsed: 0
+
+    // Whether leaving means GONE, or merely off the screen.
+    //
+    // The difference the tray is built on: a popup that timed out is still a
+    // notification you have not read, and the tray must still have it. One you
+    // threw away is a decision, and it does not come back.
+    property bool forget: false
+
+    readonly property bool running: timeout > 0 && remaining > 0 && !held && !leaving
 
     function tick(ms: int): bool {
         if (!root.running)

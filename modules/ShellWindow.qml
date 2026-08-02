@@ -138,7 +138,7 @@ PanelWindow {
         status.onReleased: menuLayer.release()
     }
 
-    NotificationPopups {
+    NotificationTray {
         id: popups
 
         anchors.fill: parent

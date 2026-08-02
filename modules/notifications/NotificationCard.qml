@@ -9,7 +9,7 @@ import Quickshell.Services.Notifications
 // One notification, on screen.
 //
 // A row INSIDE the tray, not a shape of its own in the chassis field. The tray
-// makes the one join to the shell; see NotificationPopups for why that beat both
+// makes the one join to the shell; see NotificationTray for why that beat both
 // of the field-level arrangements this went through.
 //
 // So the background is a raised FILL rather than the shell's surface material.
@@ -27,8 +27,22 @@ Item {
     readonly property var notification: entry?.notification ?? null
     readonly property bool urgent: !!notification && notification.urgency === NotificationUrgency.Critical
 
-    // Arrival: slides in from the edge it belongs to, and fades up.
+    // Arrival: unfolds downwards out of the tray and fades up. EXPONENTIAL,
+    // because another notification can land on top of it mid-flight and it has
+    // to retarget rather than finish a scripted move to a stale place.
     property real reveal: 0
+
+    // Departure, 0 to 1, driving the same collapse in reverse. FIXED duration,
+    // unlike the arrival, because the service has to know when it is done: see
+    // Notifs.exitMs. Both ends read the one number, so they agree by
+    // construction rather than by a callback that a destroyed card never sends.
+    property real leave: 0
+    readonly property bool leaving: entry?.leaving ?? false
+
+    // How much of the row is actually there. The stack's height is the sum of
+    // these, so the tray grows and shrinks by itself and the rows below a
+    // departing one slide up without any of them being told to.
+    readonly property real open: Math.max(0, reveal - leave)
 
     // Where the card is, and how far you actually pulled. They differ while it
     // is resisting.
@@ -54,13 +68,43 @@ Item {
 
     width: fullWidth
     implicitHeight: body.implicitHeight + Appearance.padding.large * 2
-    height: implicitHeight
+    height: implicitHeight * open
 
-    // One expression owns x: the arrival slide plus the throw.
-    x: fullWidth * (1 - reveal) + dragX
-    opacity: reveal * Math.max(0.1, 1 - Math.max(0, Math.abs(dragX) - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
+    // CLIPPED, so the contents keep their real size while the row collapses.
+    // Scaling them with it squashes the text, which reads as the notification
+    // being crushed rather than closed.
+    clip: true
+
+    // One expression owns x: the throw, and nothing else. The row arrives by
+    // unfolding rather than by sliding, so an arrival and a drag can never
+    // fight over the same axis.
+    x: dragX
+    opacity: open * Math.max(0.1, 1 - Math.max(0, Math.abs(dragX) - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
 
     Component.onCompleted: grow.target = 1
+
+    // Reversible, because an entry that merely timed out RESETS: it leaves the
+    // popups and stays in the tray as the same object. A delegate that outlives
+    // that (the tray was open) would otherwise sit at leave = 1 forever, present
+    // in the list and zero pixels tall.
+    onLeavingChanged: {
+        if (leaving) {
+            exit.start();
+        } else {
+            exit.stop();
+            leave = 0;
+        }
+    }
+
+    NumberAnimation {
+        id: exit
+
+        target: root
+        property: "leave"
+        to: 1
+        duration: Notifs.exitMs
+        easing.type: Easing.InOutQuad
+    }
 
     Follow {
         id: grow

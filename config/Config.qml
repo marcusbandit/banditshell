@@ -223,7 +223,11 @@ Singleton {
                 // Kept in the hub. A hub showing three hundred is a log.
                 maxHistory: 50,
                 width: 340,
-                badge: 36
+                badge: 36,
+                // How far the summon zone runs along each edge from the
+                // top-right corner. Only as thick as the band, because a screen
+                // corner cannot be overshot.
+                cornerZone: 120
             },
 
             // Controls inside menus.
