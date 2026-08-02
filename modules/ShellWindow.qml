@@ -108,6 +108,15 @@ PanelWindow {
             item: launcherLayer.open ? launcherLayer.maskItem : null
         }
 
+        // ALWAYS, not only while swollen. At rest the zone is exactly the band,
+        // which the chassis already covers, so this costs nothing; while swollen
+        // it reaches a few pixels past the band, and without it those would be
+        // the only part of the swell the cursor could not reach.
+        Region {
+            intersection: Intersection.Combine
+            item: launchEdge.maskItem
+        }
+
         Region {
             intersection: Intersection.Combine
             item: topClock.active ? topClock.maskItem : null
@@ -148,7 +157,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs, ...launchEdge.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -194,6 +203,20 @@ PanelWindow {
             anchors.fill: parent
             originX: chassis.barWidth
             inset: win.border
+        }
+
+        // The bottom edge, as a way in: it swells under the cursor, opens on a
+        // click, and opens on a push up from it.
+        LaunchEdge {
+            id: launchEdge
+
+            anchors.fill: parent
+            border: win.border
+            // Pointless while the thing it opens is already open, and worse than
+            // pointless: the launcher's own panel comes out of the same edge.
+            armed: !launcherLayer.open
+
+            onRequested: launcherLayer.show()
         }
 
         TopClock {

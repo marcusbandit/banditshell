@@ -163,10 +163,18 @@ Item {
         return out;
     }
 
-    // Which section the rail is pointing at, and where on the rail the cursor
-    // is, which is what the bow curves around.
+    // Which section the rail is pointing at, and where the HANDLE is: how far
+    // down the rail, and how far out of it.
+    //
+    // Both axes come from the drag, which is the whole gesture. Hover did the
+    // job with one axis and a constant for the other, and that is a different,
+    // worse gesture wearing the same picture: the curve was always the same
+    // depth, so there was nothing to feel. How far you pull it out is how far
+    // you have committed to the rail, and it is yours to vary.
     property string marked: ""
     property real scrubY: 0
+    property real depth: 0
+    property bool grabbing: false
 
     // Whether hover is allowed to change the selection yet.
     //
@@ -189,6 +197,16 @@ Item {
         if (!root.scrubbing)
             return;
         root.scrubY = Math.max(0, Math.min(fraction, 1)) * rail.height;
+        root.depth = root.bowDepth * 0.55;
+        root.scrubAt(root.scrubY);
+    }
+
+    // The handle, from a point on the rail. x is measured INWARD from the rail's
+    // own centre, so dragging toward the middle of the panel deepens the curve
+    // and letting the pointer drift back toward the edge flattens it.
+    function grabAt(x: real, y: real): void {
+        root.scrubY = Math.max(0, Math.min(y, rail.height));
+        root.depth = Math.max(0, Math.min(rail.width / 2 - x, root.bowDepth));
         root.scrubAt(root.scrubY);
     }
 
@@ -311,7 +329,10 @@ Item {
     Follow {
         id: bow
 
-        target: rail.containsMouse || root.scrubbing ? 1 : 0
+        // Held out while the handle is held, eased back when it is let go. The
+        // DEPTH itself is never animated: that is the pointer's own position,
+        // and smoothing it would put the handle behind the finger dragging it.
+        target: root.grabbing || root.scrubbing ? 1 : 0
         speed: Appearance.anim.revealSpeed
         epsilon: 0.005
     }
@@ -361,16 +382,28 @@ Item {
                 width: root.railWidth
 
                 hoverEnabled: true
-                // MOTION only, not entry. The panel rises when it opens, so the
-                // rail arrives under whatever the cursor happened to be sitting
-                // on, and an entry-triggered scrub means the launcher opens on a
-                // letter nobody chose. Reaching the rail requires moving to it,
-                // and moving to it is a position event.
-                onPositionChanged: mouse => {
-                    root.scrubY = mouse.y;
+                preventStealing: true
+                cursorShape: Qt.SizeVerCursor
+
+                // PRESS AND DRAG, not hover. Passing a cursor over the rail is
+                // not a request to go anywhere, and treating it as one made the
+                // list bolt away from under anyone who crossed the right edge on
+                // their way somewhere else. Grabbing it is unambiguous, it is
+                // the gesture the phone has, and it is what lets the pull depth
+                // mean anything.
+                onPressed: mouse => {
+                    root.grabbing = true;
                     root.hoverArmed = true;
-                    root.scrubAt(mouse.y);
+                    root.grabAt(mouse.x, mouse.y);
                 }
+
+                onPositionChanged: mouse => {
+                    if (root.grabbing)
+                        root.grabAt(mouse.x, mouse.y);
+                }
+
+                onReleased: root.grabbing = false
+                onCanceled: root.grabbing = false
 
                 Repeater {
                     model: root.keys
@@ -383,7 +416,7 @@ Item {
 
                         readonly property bool isStar: modelData === root.star
                         readonly property bool active: modelData === root.marked
-                        readonly property color tint: active ? Appearance.colour.accent : Appearance.colour.textFaint
+                        readonly property color tint: active ? Appearance.colour.accent : rail.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
 
                         // Evenly divided by count, so the rail fills its height
                         // whether it carries twelve marks or twenty-eight.
@@ -397,7 +430,7 @@ Item {
                         // corner in it, or the curve looks like a tent.
                         readonly property real fromCursor: (index + 0.5) * slot - root.scrubY
 
-                        x: -root.bowDepth * bow.value * Math.exp(-Math.pow(fromCursor / (slot * root.bowSpread), 2))
+                        x: -root.depth * bow.value * Math.exp(-Math.pow(fromCursor / (slot * root.bowSpread), 2))
                         y: index * slot
                         width: rail.width
                         height: slot
@@ -426,13 +459,21 @@ Item {
             // scrubber, and a scrubber needs a handle you can see without
             // looking away from the list it is moving.
             G2Rect {
+                id: disc
+
+                // NOT `parent.isStar` down in the children. G2Rect's default
+                // property is `content`, so anything declared inside it is a
+                // child of an inner item and `parent` is that item, not this
+                // one. The lookup silently yielded undefined, and an undefined
+                // binding on `visible` leaves the property at its default, which
+                // is true: the star was drawn over every letter, always.
                 readonly property bool isStar: root.marked === root.star
 
                 // BEYOND the deepest letter, not on top of it. The disc is the
                 // handle and the letters are the line it is pulling, so it has
                 // to lead them: parked at the same depth it simply covered the
                 // one letter you were reading.
-                x: rail.x + rail.width / 2 - (root.bowDepth + width / 2 + Appearance.padding.normal) * bow.value - width / 2
+                x: rail.x + rail.width / 2 - (root.depth + width / 2 + Appearance.padding.normal) * bow.value - width / 2
                 y: rail.y + root.scrubY - height / 2
                 width: root.badgeSize
                 height: width
@@ -444,7 +485,7 @@ Item {
 
                 StyledText {
                     anchors.centerIn: parent
-                    visible: !parent.isStar
+                    visible: !disc.isStar
                     text: root.marked
                     font.pixelSize: Appearance.font.size.large
                     color: Appearance.colour.accentText
@@ -452,7 +493,7 @@ Item {
 
                 Icon {
                     anchors.centerIn: parent
-                    visible: parent.isStar
+                    visible: disc.isStar
                     size: Appearance.font.size.large
                     name: root.starIcon
                     color: Appearance.colour.accentText
