@@ -9,11 +9,18 @@ import qs.modules.menu.content
 // The system status section, and the menus behind it.
 //
 // Rendered FROM DATA: adding an indicator is a row in `items`, and connecting one
-// is filling in that row's bindings. Sound and battery are live; the rest carry
-// demo content, which is deliberate. A grey skeleton tells you the panel has the
-// right SHAPE. Rows that look like the real thing tell you whether the DESIGN
-// holds at the density the real thing will have, and that is the question worth
-// answering before writing the service.
+// is filling in that row's bindings.
+//
+// What is NOT here matters as much as what is. This row is for the four things
+// you reach for while doing something else: how loud, which network, which
+// headphones, how much charge. Notifications have their own tray, and media,
+// performance and power are going to the dashboard, where there is room to READ
+// them instead of squinting at a 28px slot. A bar that carries everything is a
+// bar you stop looking at.
+//
+// Sound and microphone are one gauge for the same reason: they are one question,
+// which is whether you can hear and whether you can be heard. A muted microphone
+// raises that gauge's alert rather than costing a slot of its own.
 Item {
     id: root
 
@@ -37,15 +44,11 @@ Item {
             title: "Sound",
             icon: Audio.icon(Audio.volume, Audio.muted),
             active: !Audio.muted && Audio.volume > 0,
-            body: soundMenu
-        },
-        {
-            key: "mic",
-            title: "Microphone",
-            icon: Audio.sourceMuted ? "mic_off" : "mic",
-            active: !Audio.sourceMuted,
+            // The one state in this pair worth interrupting you for: a muted
+            // output you hear immediately, a muted input you find out about a
+            // minute into talking to nobody.
             alert: Audio.sourceMuted,
-            body: micMenu
+            body: soundMenu
         },
         {
             key: "network",
@@ -65,29 +68,6 @@ Item {
             body: bluetoothMenu
         },
         {
-            key: "notifications",
-            title: "Notifications",
-            icon: Notifs.any ? "notifications_active" : "notifications",
-            active: Notifs.any,
-            alert: Notifs.anyUrgent,
-            body: notificationMenu
-        },
-        {
-            key: "media",
-            title: "Media",
-            icon: Media.playing ? "play_arrow" : "music_note",
-            active: Media.playing,
-            available: Media.available,
-            body: mediaMenu
-        },
-        {
-            key: "system",
-            title: "System",
-            icon: "speed",
-            alert: SysInfo.temperature >= 80,
-            body: systemMenu
-        },
-        {
             key: "battery",
             title: "Battery",
             icon: Battery.icon(),
@@ -95,12 +75,6 @@ Item {
             alert: Battery.low,
             available: Battery.available,
             body: batteryMenu
-        },
-        {
-            key: "power",
-            title: "Power",
-            icon: "power_settings_new",
-            body: powerMenu
         }
     ]
 
@@ -179,12 +153,6 @@ Item {
     }
 
     Component {
-        id: micMenu
-
-        MicMenu {}
-    }
-
-    Component {
         id: networkMenu
 
         NetworkMenu {}
@@ -194,29 +162,5 @@ Item {
         id: bluetoothMenu
 
         BluetoothMenu {}
-    }
-
-    Component {
-        id: notificationMenu
-
-        NotificationMenu {}
-    }
-
-    Component {
-        id: mediaMenu
-
-        MediaMenu {}
-    }
-
-    Component {
-        id: systemMenu
-
-        SystemMenu {}
-    }
-
-    Component {
-        id: powerMenu
-
-        PowerMenu {}
     }
 }

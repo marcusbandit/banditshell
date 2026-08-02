@@ -369,9 +369,10 @@ banditshell/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape
 │   │   └── content/             one file per menu, all reading the real machine
-│   │       ├── SoundMenu.qml    MicMenu.qml    NetworkMenu.qml
-│   │       ├── BluetoothMenu.qml MediaMenu.qml SystemMenu.qml
-│   │       └── BatteryMenu.qml  PowerMenu.qml
+│   │       ├── SoundMenu.qml    NetworkMenu.qml   in the bar: the four gauges
+│   │       ├── BluetoothMenu.qml BatteryMenu.qml
+│   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
+│   │       └── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
 │       ├── Clock.qml            stacked HH / mm / date
