@@ -23,6 +23,12 @@ Text {
     // What to draw when `name` is not in the font.
     property string fallback: "question_mark"
 
+    // A RAW GLYPH from the brand face, given as the character itself. Set this
+    // and it is drawn instead of `name`: a Nerd Font addresses its glyphs by
+    // codepoint rather than by ligature, so there is no name to look up and
+    // nothing to verify. See Apps.brandGlyphs.
+    property string glyph: ""
+
     // How big to draw it. A property rather than a direct binding on
     // font.pixelSize, because `font` is ONE property group: a binding on
     // font.variableAxes that reads font.pixelSize is a loop, and the optical
@@ -31,9 +37,9 @@ Text {
 
     readonly property bool resolved: probe.width <= font.pixelSize * 1.7
 
-    text: resolved ? name : fallback
+    text: root.glyph || (resolved ? name : fallback)
 
-    font.family: Appearance.font.icon
+    font.family: root.glyph ? Appearance.font.brand : Appearance.font.icon
     font.pixelSize: root.size
     color: Appearance.colour.text
 
@@ -64,6 +70,6 @@ Text {
         text: root.name
     }
 
-    onResolvedChanged: if (!resolved && name)
+    onResolvedChanged: if (!resolved && name && !root.glyph)
         console.warn(`Icon: "${name}" is not in ${Appearance.font.icon}; drawing ${fallback} instead.`)
 }

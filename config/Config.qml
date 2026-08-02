@@ -30,6 +30,12 @@ Singleton {
                 // Icons. Separate from the text face on purpose: swap this for a
                 // pixel icon font when one exists and nothing else changes.
                 icon: "Material Symbols Rounded",
+                // Per-application marks: the Nerd Fonts symbol face, which is
+                // several thousand line glyphs drawn as one set, monochrome by
+                // construction. `ttf-nerd-fonts-symbols`. Material Symbols has
+                // no idea what Telegram is; this does, and still takes the
+                // shell's own colour.
+                brand: "Symbols Nerd Font",
                 // Icons are not part of the text hierarchy, so they get their
                 // own multiplier on the base rather than a fourth text tier.
                 // The icon font's optical-size axis starts at 20, so the result
@@ -224,17 +230,19 @@ Singleton {
 
                     // WHAT A WINDOW IS DRAWN AS.
                     //
-                    //   theme    the application's own icon, but rendered in the
-                    //            shell's own colour instead of its own, so a bar
-                    //            full of them still looks like one interface
-                    //   colour   the application's icon exactly as shipped
-                    //   glyph    no application artwork at all: the Material
-                    //            Symbol for what KIND of thing it is
+                    //   brand    the Nerd Fonts mark for the application
+                    //            itself: a line glyph from one set, in the
+                    //            shell's colour, so Telegram looks like
+                    //            Telegram and like it belongs here
+                    //   colour   the application's own icon exactly as the icon
+                    //            theme ships it, brand palette and all
+                    //   glyph    what KIND of thing it is, and nothing about
+                    //            which one: the Material Symbol for its
+                    //            freedesktop category
                     //
-                    // An override in `apps.icons` beats all three, and a glyph
-                    // is what any of them falls back to when the icon theme has
-                    // nothing for the window.
-                    iconMode: "theme",
+                    // An override in `apps.icons` beats all three, and the
+                    // category glyph is what any of them falls back to.
+                    iconMode: "brand",
                     // How much bigger a window's mark is here than an icon
                     // anywhere else in the shell. The sidebar is scanned at a
                     // glance and from the corner of the eye, which is not what

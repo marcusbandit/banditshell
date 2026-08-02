@@ -96,6 +96,56 @@ Singleton {
             Utility: "build"
         })
 
+    // PER-APPLICATION MARKS, from the Nerd Fonts symbol face.
+    //
+    // This is the icon pack that fits: several thousand line glyphs drawn as one
+    // set, monochrome by construction, so they take the shell's label colour the
+    // way the Material Symbols do instead of arriving with a brand palette
+    // attached. A category glyph says "a browser"; this says "Firefox", and it
+    // still looks like it belongs in this bar.
+    //
+    // Keyed by a regex on the window class, first match wins, most specific
+    // first. Values are the codepoint, because that is what a Nerd Font addresses
+    // a glyph by; the name in the comment is the one the cheat sheet lists.
+    //
+    // NOT a substitute for `categoryIcons`, which is still the answer for the
+    // thousands of applications no icon set has ever heard of. This is the top of
+    // the ladder, not the whole of it.
+    readonly property var brandGlyphs: ({
+            // Zen is a Firefox build, so it gets the Firefox mark rather than
+            // the generic browser one: the mark should say what the thing IS.
+            "^(firefox|librewolf|floorp|waterfox|zen)": "\uf269",   // fa-firefox
+            "^(chromium|chrome|brave|vivaldi|opera)": "\uf268",     // fa-chrome
+            "(telegram)": "\uf2c6",                                 // fa-telegram
+            "(discord|vesktop|webcord)": "\uf1ff",                  // fa-discord
+            "(slack)": "\uf198",                                    // fa-slack
+            "(teams)": "\uf02bb",                                   // md-microsoft-teams
+            "(skype)": "\uf17e",                                    // fa-skype
+            "(thunderbird)": "\uf370",                              // linux-thunderbird
+            "^(kitty|alacritty|foot|wezterm|ghostty|konsole|xterm)": "\ue795", // dev-terminal
+            "(nvim|neovim)": "\ue6ae",                              // custom-neovim
+            "(gvim|^vim)": "\ue7c5",                                // dev-vim
+            "(emacs)": "\ue7cf",                                    // dev-emacs
+            "(vscode|code-oss|codium|^code$)": "\ue8da",            // dev-vscode
+            "(jetbrains|idea|pycharm|webstorm|clion|rider|goland)": "\ue7b5", // dev-intellij
+            "(android-?studio)": "\ue70e",                          // dev-android
+            "(godot)": "\ue7ee",                                    // dev-godot
+            "(blender)": "\ue766",                                  // dev-blender
+            "(gimp)": "\ue7e7",                                     // dev-gimp
+            "(inkscape)": "\ue801",                                 // dev-inkscape
+            "(krita)": "\uf33d",                                    // linux-krita
+            "(kdenlive)": "\uf33c",                                 // linux-kdenlive
+            "(mpv|celluloid)": "\uf36e",                            // linux-mpv
+            "(vlc)": "\uf057c",                                     // md-vlc
+            "(spotify)": "\uf1bc",                                  // fa-spotify
+            "(steam|lutris|heroic)": "\uf1b6",                      // fa-steam
+            "(torrent|transmission|deluge)": "\uf076",              // fa-magnet
+            "(docker|podman)": "\uf21f",                            // fa-docker
+            "(libreoffice|onlyoffice|soffice)": "\uf376",           // linux-libreoffice
+            "(zathura|evince|okular|papers|sioyek)": "\uf0226",     // md-file-pdf-box
+            "(nautilus|dolphin|thunar|nemo|files|pcmanfm)": "\uf024b" // md-folder
+        })
+
     // The generic mark, for a window whose class matches no desktop entry at
     // all: wine apps, games launched by an id, anything self-titled. Same glyph
     // the launcher falls back to, so "we could not identify this" looks the
@@ -182,6 +232,20 @@ Singleton {
     // the guess is simply wrong or too vague to be worth drawing; this is where
     // you say so. See `apps.icons` in config.json.
     readonly property var overrides: Config.values.apps.icons
+
+    // The per-app glyph for a window class, or "" when the set has nothing for
+    // it, which is the caller's cue to fall back to what KIND of thing it is.
+    function brandFor(appClass: string): string {
+        for (const pattern in root.brandGlyphs) {
+            try {
+                if (new RegExp(pattern, "i").test(appClass))
+                    return root.brandGlyphs[pattern];
+            } catch (e) {
+                console.warn(`Apps: "${pattern}" is not a valid brand regex, skipping it.`, e);
+            }
+        }
+        return "";
+    }
 
     function overrideFor(appClass: string): string {
         for (const pattern in root.overrides) {

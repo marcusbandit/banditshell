@@ -112,6 +112,7 @@ Singleton {
     readonly property QtObject font: QtObject {
         readonly property string family: root.cfg.font.family
         readonly property string icon: root.cfg.font.icon
+        readonly property string brand: root.cfg.font.brand
 
         // THREE SIZES, shell-wide. Hierarchy is carried by colour, spacing and
         // fills instead (see ~/.claude/rules/type-scale.md).

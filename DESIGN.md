@@ -608,22 +608,29 @@ is what is left when all of it misses.
 
 **An icon pack is fifty designers' palettes at once.** The application icons went in, looked
 instantly wrong, and the reason is not that they are ugly: a bar full of other people's brand
-colours stops reading as one interface. `sidebar.workspaces.iconMode` is the answer, with three
-settings and a hand-override above all of them:
+colours stops reading as one interface. Desaturating them is not the fix either, which was the
+next thing tried and is exactly as bad as it sounds: a greyscale photograph of a logo is still a
+photograph of a logo.
 
-- `theme` (default) draws the app's own artwork with its colour taken out, through a
-  `MultiEffect` at `saturation: -1, colorization: 1` in the label colour. **Luminance has to be
-  left alone**: a brightness lift blows every icon with a filled badge behind it into a white
-  disc, and a flat silhouette is worse still, since Telegram becomes a disc and qBittorrent
-  becomes a square. Keeping the luminance keeps the SHAPE, which is what is actually recognised.
-- `colour` is the artwork as shipped.
-- `glyph` is no artwork at all: the Material Symbol for what kind of thing the window is, which
-  is the most coherent with the rest of the shell and the least specific about which app it is.
+**The fix was a different SET, not a filter.** `ttf-nerd-fonts-symbols` is several thousand line
+glyphs drawn as one family and monochrome by construction, and it knows what Telegram is: there
+is an `fa-telegram`, a `linux-mpv`, a `dev-vscode`, a `fa-magnet` for the torrent clients. A font
+takes the shell's label colour the way Material Symbols already do, because the colour was never
+baked into it. `Apps.brandGlyphs` maps a window class to a codepoint (a Nerd Font addresses
+glyphs by codepoint, not by ligature, so `Icon.qml` grew a `glyph` property that skips the
+name-verification path), and `sidebar.workspaces.iconMode` picks between:
+
+- `brand` (default): the per-application line glyph. Telegram looks like Telegram AND like it
+  belongs in this bar, which is the whole thing the icon theme could not do.
+- `colour`: the icon theme's artwork exactly as shipped, brand palette and all.
+- `glyph`: the Material Symbol for the freedesktop CATEGORY, which says "a browser" rather than
+  "Firefox" and is still the fallback under both of the others, because no set has heard of
+  every application.
 - `apps.icons` beats all three: `{ "^zen$": "web" }`, regex against the window class. A MAP, not
   a list, because Quickshell's IPC reads a bracketed argument as an argument LIST and splats it,
   so `banditshell set apps.icons '[...]'` can never arrive as an array. `Config.merge` grew the
-  matching rule for both: an empty default array or object is DATA, not a schema, so the user's
-  keys survive instead of being walked away.
+  matching rule for both shapes: an empty default array or object is DATA, not a schema, so the
+  user's keys survive instead of being walked away.
 
 **A column that is centred cannot change height suddenly.** Switching to a workspace that was
 not on the list yet (going to 6 when five are shown) added a slot, and the column is centred in
