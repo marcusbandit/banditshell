@@ -5,96 +5,109 @@ import qs.config
 import qs.components
 import qs.services
 
-// Notifications, arriving.
+// Notifications, arriving, inside ONE tray.
 //
-// A plain stack of DISCRETE CARDS inside the content area, not blobs in the
-// chassis field. See NotificationCard for why: peers that melt into each other
-// stop being separable, which is the one thing a stack has to be.
+// The tray is a single blob melted into the right band, and the cards live
+// INSIDE it. That is the third arrangement this file has had, and the reasoning
+// is worth keeping:
+//
+//   - Panels chained through the melt fused into each OTHER as well as into the
+//     shell: three peers within melt distance became one lumpy mass with pinches
+//     where the boundaries should have been.
+//   - Melting each card into the band separately fixed that, and produced N
+//     tongues off the edge, which is not one body either.
+//   - A metaball chain cannot give both. Cards fuse into a column only when they
+//     are closer together than half the melt, and that is exactly the spacing at
+//     which they stop being legible.
+//
+// So the connection is made by a CONTAINER rather than by the field. One tray,
+// one join to the shell, and the cards inside it separated the ordinary way, by
+// a raised fill and a gap. The stack grows and shrinks as one shape.
 //
 // Newest at the top, so a new arrival never shoves the one you are reading out
 // from under the cursor.
 Item {
     id: root
 
-    // How far in from the content area's edges to sit.
-    //
-    // Zero on the right on purpose: the cards sit FLUSH against the band so the
-    // field has something to join them to. Held off it, the melt reaches across
-    // the gap and makes a neck instead of a fillet.
+    // How far in from the content area's top edge the tray sits.
     required property real inset
+
+    // The band's thickness. The tray reaches past it, to the screen edge.
+    required property real edgeInset
 
     readonly property real panelWidth: Appearance.sizes.notificationWidth
 
     readonly property bool any: Notifs.popups.length > 0
 
-    // What the window's input mask should cover: the CARDS, not this item.
+    // What the window's input mask should cover: the TRAY, not this item.
     //
-    // This item fills the screen, because the cards are positioned inside it.
+    // This item fills the screen, because the tray is positioned inside it.
     // Handing it to the mask as-is made the whole screen interactive the moment
     // any notification existed, so the shell swallowed every click anywhere. A
     // critical notification never times out, so it stayed that way.
-    readonly property Item maskItem: stack
+    readonly property Item maskItem: tray
 
-    // Where the chassis's inner edge is on the right.
-    required property real edgeInset
-
-    // The cards' rectangles, for the chassis to melt in. They join the SHELL and
-    // never each other: see meltPanel in blob.frag.
+    // The tray's rectangle, for the chassis to melt in.
     //
-    // PUSHED, not bound. A binding here has to loop over the stack's children,
-    // and reading a card's `x` re-evaluates that card's lazy binding, which
-    // emits xChanged, which invalidates this list WHILE it is being computed:
-    // a binding loop every frame of every arrival. Qt.callLater coalesces the
-    // pushes, so a card that moves and resizes in one frame rebuilds this once.
+    // PUSHED, not bound. A binding here has to read the tray's geometry, and
+    // reading a lazy binding re-evaluates it, which emits the very change signal
+    // that invalidates this list WHILE it is being computed: a binding loop on
+    // every frame of every arrival. Qt.callLater coalesces the pushes, so a tray
+    // that moves and resizes in the same frame rebuilds this once.
     property var blobs: []
 
     function sync(): void {
-        const out = [];
-        for (let i = 0; i < stack.children.length; i++) {
-            const item = stack.children[i];
-            if (!item?.visible || item.opacity <= 0.01 || item.height <= 0)
-                continue;
-            out.push({
-                x: stack.x + item.x,
-                y: stack.y + item.y,
-                w: item.width,
-                h: item.height,
-                radius: Appearance.rounding.large
-            });
+        if (!root.any || tray.height <= 0) {
+            root.blobs = [];
+            return;
         }
-        root.blobs = out;
+        root.blobs = [
+            {
+                x: tray.x,
+                y: tray.y,
+                w: tray.width,
+                h: tray.height,
+                radius: Appearance.rounding.large
+            }
+        ];
     }
 
-    Column {
-        id: stack
+    onAnyChanged: Qt.callLater(root.sync)
+    onWidthChanged: Qt.callLater(root.sync)
 
-        x: root.width - root.panelWidth - root.edgeInset
+    Item {
+        id: tray
+
+        // Flush with the SCREEN edge, not with the band's inner edge. The tray
+        // and the band are one body; held off the edge it would join the shell
+        // through a neck instead of simply being part of it.
+        x: root.width - root.panelWidth
         y: root.inset
         width: root.panelWidth
-        // Wider than a normal gap, and derived rather than picked. Each card
-        // melts into the band, and the polynomial smin's maximum pull is k/4, so
-        // two cards closer than melt/2 have their flares meet in the seam and
-        // close it. What is left is a tapering CRACK, which reads as a botched
-        // join rather than as two things. Past that reach the seam is a clean
-        // channel and each card is unmistakably its own tongue off the band.
-        spacing: Math.round(Appearance.sizes.melt / 2) + Appearance.padding.normal
+        height: stack.height + Appearance.padding.normal * 2
+        visible: root.any
 
-        Repeater {
-            model: Notifs.popups
+        onYChanged: Qt.callLater(root.sync)
+        onHeightChanged: Qt.callLater(root.sync)
 
-            delegate: NotificationCard {
-                required property var modelData
+        Column {
+            id: stack
 
-                onXChanged: Qt.callLater(root.sync)
-                onYChanged: Qt.callLater(root.sync)
-                onHeightChanged: Qt.callLater(root.sync)
-                onOpacityChanged: Qt.callLater(root.sync)
-                Component.onCompleted: Qt.callLater(root.sync)
-                Component.onDestruction: Qt.callLater(root.sync)
+            x: Appearance.padding.normal
+            y: Appearance.padding.normal
+            width: tray.width - Appearance.padding.normal * 2
+            spacing: Appearance.padding.normal
 
-                entry: modelData
-                fullWidth: root.panelWidth
-                onDismissed: Notifs.dismissPopup(modelData)
+            Repeater {
+                model: Notifs.popups
+
+                delegate: NotificationCard {
+                    required property var modelData
+
+                    entry: modelData
+                    fullWidth: stack.width
+                    onDismissed: Notifs.dismissPopup(modelData)
+                }
             }
         }
     }

@@ -8,16 +8,14 @@ import Quickshell.Services.Notifications
 
 // One notification, on screen.
 //
-// A DISCRETE CARD that melts into the shell but never into its neighbours.
+// A row INSIDE the tray, not a shape of its own in the chassis field. The tray
+// makes the one join to the shell; see NotificationPopups for why that beat both
+// of the field-level arrangements this went through.
 //
-// It has no background of its own: it reports its rectangle and the chassis
-// field draws it, so it joins the band it arrived from. What it does NOT do is
-// join the card above and below it. Chaining every panel into one running field
-// melted the panels into each other too, and three peers within melt distance
-// fused into a single lumpy mass with pinches where the boundaries should have
-// been. blob.frag blends each panel with the chassis ALONE and unions the
-// results plainly, which is the distinction: melt where one thing emerges from
-// another, never between siblings.
+// So the background is a raised FILL rather than the shell's surface material.
+// A veil over what is already there, not a second translucent sheet: stacking
+// the surface on itself doubles its opacity and the card comes out heavier than
+// the shell it belongs to.
 Item {
     id: root
 
@@ -92,13 +90,16 @@ Item {
         return delta < 0 ? -held : held;
     }
 
-    // NO BACKGROUND. The card reports its rectangle and the chassis field draws
-    // it, so it melts into the band it arrived from. Drawing one here as well
-    // would put the same translucent material over itself and the card would
-    // come out heavier than the shell it belongs to.
-    //
-    // It still does not melt into its NEIGHBOURS: the field blends each panel
-    // with the chassis alone and unions the results plainly. See blob.frag.
+    // Concentric with the tray by construction: an inner corner sits its own
+    // inset in from the outer one, so a fixed radius here would read as pinched
+    // at the top and loose at the bottom of the same shape.
+    readonly property real radius: Math.max(Appearance.rounding.small, Appearance.rounding.large - Appearance.padding.normal)
+
+    G2Rect {
+        anchors.fill: parent
+        radius: root.radius
+        color: Appearance.colour.fill
+    }
 
     // A critical notification is marked by a bar down its leading edge, not by a
     // differently coloured card. Colour alone is not a state cue, and a whole
