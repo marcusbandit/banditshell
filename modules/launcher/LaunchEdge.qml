@@ -47,6 +47,22 @@ Item {
     // Far enough to be a drag rather than the wobble in a click.
     readonly property real slack: Appearance.padding.large
 
+    // How tall the thing you have to HIT is, which is not how tall the thing you
+    // can SEE is.
+    //
+    // The swell was doing both jobs and could not: at rest the target was the
+    // band alone, ten pixels, and the swell that would have made it bigger only
+    // happened once the cursor was already inside those ten pixels. So the first
+    // approach that stopped a little short hit nothing, changed nothing, and
+    // left the edge exactly as hard to hit as before. Every gesture took two
+    // tries, and the second one only worked because the first had parked the
+    // cursor low enough to swell it.
+    //
+    // A target cannot be conditional on having already been hit. This one is
+    // constant: at least as tall as the swell it will become, and never under
+    // the minimum size anything in this shell is allowed to be.
+    readonly property real grab: Math.max(root.border + root.swellBy, Appearance.sizes.minTarget)
+
     readonly property bool active: root.armed && (zone.containsMouse || zone.pressed)
 
     // Always in the mask, not only while swollen. At rest the zone is exactly
@@ -89,9 +105,13 @@ Item {
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
         width: root.span
-        height: root.border + swell.value
+        height: root.grab
 
-        enabled: root.armed
+        // NOT disabled when unarmed. Disabling a MouseArea mid-gesture tears
+        // down the grab it is holding, and the gesture that unarms this one is
+        // the gesture that opens the launcher: the release would arrive at a
+        // dead item. It rejects the press instead, which lets it fall through to
+        // the panel that is now covering this edge.
         hoverEnabled: true
         preventStealing: true
 
@@ -104,6 +124,10 @@ Item {
         property real lastY: 0
 
         onPressed: mouse => {
+            if (!root.armed) {
+                mouse.accepted = false;
+                return;
+            }
             zone.from = mouse.y;
             zone.lastY = mouse.y;
             zone.pulling = false;
