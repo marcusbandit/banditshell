@@ -45,6 +45,9 @@ Item {
     readonly property real railWidth: Config.values.launcher.niagara.rail
     readonly property int favouriteCount: Config.values.launcher.niagara.favourites
     readonly property real iconSize: Config.values.launcher.niagara.icon
+    readonly property real bowDepth: Config.values.launcher.niagara.bow
+    readonly property real bowSpread: Config.values.launcher.niagara.bowSpread
+    readonly property real badgeSize: Config.values.launcher.niagara.badge
 
     // The letter's column, outside the icons'. Wide enough for the character and
     // no wider, so the names sit as close to the edge as the annotation allows.
@@ -160,8 +163,34 @@ Item {
         return out;
     }
 
-    // Which section the rail is pointing at.
+    // Which section the rail is pointing at, and where on the rail the cursor
+    // is, which is what the bow curves around.
     property string marked: ""
+    property real scrubY: 0
+
+    // Whether hover is allowed to change the selection yet.
+    //
+    // FALSE until the pointer MOVES. The panel arrives under a cursor that is
+    // not moving, so every row it lands on reports an enter and the launcher
+    // opens with whatever happened to be under the mouse selected. Arrival is
+    // not intent; motion is. Same reason the rail scrubs on motion only.
+    property bool hoverArmed: false
+
+    // Held out by the CLI rather than by a cursor.
+    //
+    // The rail answers to hover, and hover is the one input that cannot be
+    // scripted: a warped pointer delivers no motion inside a surface it is
+    // already in, so nothing about the bow can be seen from the terminal
+    // without this. Same reason `banditshell menu open` exists.
+    property bool scrubbing: false
+
+    function scrubTo(fraction: real): void {
+        root.scrubbing = fraction >= 0;
+        if (!root.scrubbing)
+            return;
+        root.scrubY = Math.max(0, Math.min(fraction, 1)) * rail.height;
+        root.scrubAt(root.scrubY);
+    }
 
     property int selected: 0
 
@@ -178,6 +207,7 @@ Item {
         root.shown = true;
         query.text = "";
         root.marked = "";
+        root.hoverArmed = false;
         root.selected = root.firstApp(0, 1);
         list.reset();
         Qt.callLater(query.forceActiveFocus);
@@ -276,6 +306,16 @@ Item {
         epsilon: 0.005
     }
 
+    // How far out the rail is bowed, 0 to 1. Eased rather than snapped, so
+    // arriving on the rail draws the curve out and leaving lets it fall back.
+    Follow {
+        id: bow
+
+        target: rail.containsMouse || root.scrubbing ? 1 : 0
+        speed: Appearance.anim.revealSpeed
+        epsilon: 0.005
+    }
+
     // Under the panel, so a click anywhere else puts it away.
     MouseArea {
         id: catcher
@@ -326,7 +366,11 @@ Item {
                 // on, and an entry-triggered scrub means the launcher opens on a
                 // letter nobody chose. Reaching the rail requires moving to it,
                 // and moving to it is a position event.
-                onPositionChanged: mouse => root.scrubAt(mouse.y)
+                onPositionChanged: mouse => {
+                    root.scrubY = mouse.y;
+                    root.hoverArmed = true;
+                    root.scrubAt(mouse.y);
+                }
 
                 Repeater {
                     model: root.keys
@@ -345,6 +389,15 @@ Item {
                         // whether it carries twelve marks or twenty-eight.
                         readonly property real slot: rail.height / root.keys.length
 
+                        // THE BOW. Marks are pulled toward the middle of the
+                        // panel, furthest under the cursor and less either side,
+                        // so the rail reads as a line being dragged rather than
+                        // as a column with one item highlighted. A Gaussian
+                        // rather than a linear falloff: the taper has to have no
+                        // corner in it, or the curve looks like a tent.
+                        readonly property real fromCursor: (index + 0.5) * slot - root.scrubY
+
+                        x: -root.bowDepth * bow.value * Math.exp(-Math.pow(fromCursor / (slot * root.bowSpread), 2))
                         y: index * slot
                         width: rail.width
                         height: slot
@@ -368,6 +421,44 @@ Item {
                 }
             }
 
+            // The mark you are on, on a disc, at the far end of the bow. It is
+            // the one thing in this concept drawn in the accent: the rail is a
+            // scrubber, and a scrubber needs a handle you can see without
+            // looking away from the list it is moving.
+            G2Rect {
+                readonly property bool isStar: root.marked === root.star
+
+                // BEYOND the deepest letter, not on top of it. The disc is the
+                // handle and the letters are the line it is pulling, so it has
+                // to lead them: parked at the same depth it simply covered the
+                // one letter you were reading.
+                x: rail.x + rail.width / 2 - (root.bowDepth + width / 2 + Appearance.padding.normal) * bow.value - width / 2
+                y: rail.y + root.scrubY - height / 2
+                width: root.badgeSize
+                height: width
+                radius: width / 2
+
+                visible: bow.value > 0.01 && !!root.marked
+                opacity: bow.value
+                color: Appearance.colour.accent
+
+                StyledText {
+                    anchors.centerIn: parent
+                    visible: !parent.isStar
+                    text: root.marked
+                    font.pixelSize: Appearance.font.size.large
+                    color: Appearance.colour.accentText
+                }
+
+                Icon {
+                    anchors.centerIn: parent
+                    visible: parent.isStar
+                    size: Appearance.font.size.large
+                    name: root.starIcon
+                    color: Appearance.colour.accentText
+                }
+            }
+
             // The search, at the BOTTOM, where a phone puts the thing you reach
             // for. Everything else stacks upward off it.
             Item {
@@ -379,7 +470,7 @@ Item {
                 anchors.leftMargin: Appearance.padding.large
                 anchors.rightMargin: Appearance.padding.normal
                 anchors.bottomMargin: Appearance.padding.large
-                height: Appearance.font.size.large + Appearance.padding.normal
+                height: Appearance.font.size.normal + Appearance.padding.normal
 
                 Icon {
                     id: searchGlyph
@@ -387,7 +478,7 @@ Item {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
                     width: root.gutter
-                    size: Appearance.font.size.large
+                    size: Appearance.font.size.normal
                     name: "search"
                     color: query.text ? Appearance.colour.accent : Appearance.colour.textGhost
                 }
@@ -398,7 +489,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     visible: !query.text
                     text: "Search, or run the rail"
-                    font.pixelSize: Appearance.font.size.large
+                    font.pixelSize: Appearance.font.size.normal
                     color: Appearance.colour.textGhost
                 }
 
@@ -411,7 +502,11 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     font.family: Appearance.font.family
-                    font.pixelSize: Appearance.font.size.large
+                    // The BODY size. It was set as a headline, which is what a
+                    // search field is on a phone where it is the only thing on
+                    // the screen. Here it sits under a hundred and forty rows
+                    // set smaller than it, and it was shouting over all of them.
+                    font.pixelSize: Appearance.font.size.normal
                     renderType: Text.NativeRendering
                     color: Appearance.colour.text
                     selectionColor: Appearance.colour.accent
@@ -569,7 +664,14 @@ Item {
                         enabled: !row.isSection
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onEntered: root.selected = row.index
+                        // Motion arms it; arrival alone never selects. See
+                        // root.hoverArmed.
+                        onPositionChanged: {
+                            root.hoverArmed = true;
+                            root.selected = row.index;
+                        }
+                        onEntered: if (root.hoverArmed)
+                            root.selected = row.index
                         onClicked: {
                             root.selected = row.index;
                             root.accept();

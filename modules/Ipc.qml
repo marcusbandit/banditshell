@@ -120,6 +120,18 @@ Scope {
                 win.launcher.hide();
             return "closed";
         }
+
+        // Drive the niagara concept's rail from here, because hover cannot be
+        // scripted: a warped pointer delivers no motion inside a surface it is
+        // already in. 0 is the top of the rail, 1 the bottom, and anything
+        // negative lets go of it.
+        function scrub(fraction: string): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.launcher.scrub(parseFloat(fraction));
+            return `scrubbed to ${fraction}`;
+        }
     }
 
     IpcHandler {

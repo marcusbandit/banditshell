@@ -214,19 +214,36 @@ Singleton {
                     // settings; see modules/sidebar/Workspaces.qml.
                     //
                     //   plates   index tabs on the screen's edge, length as
-                    //            state, a category glyph per window
-                    //   icons    the same, with each window drawn as its own
-                    //            application icon
+                    //            state, a mark per window
                     //   map      no glyphs: each window is a bar as long as the
                     //            window is wide, so the column shows the shape
                     //            of the layout instead of its contents
                     //   blocks   one square per window, one row per workspace,
                     //            on the pixel grid
-                    style: "icons",
+                    style: "plates",
+
+                    // WHAT A WINDOW IS DRAWN AS.
+                    //
+                    //   theme    the application's own icon, but rendered in the
+                    //            shell's own colour instead of its own, so a bar
+                    //            full of them still looks like one interface
+                    //   colour   the application's icon exactly as shipped
+                    //   glyph    no application artwork at all: the Material
+                    //            Symbol for what KIND of thing it is
+                    //
+                    // An override in `apps.icons` beats all three, and a glyph
+                    // is what any of them falls back to when the icon theme has
+                    // nothing for the window.
+                    iconMode: "theme",
+                    // How much bigger a window's mark is here than an icon
+                    // anywhere else in the shell. The sidebar is scanned at a
+                    // glance and from the corner of the eye, which is not what
+                    // an icon beside a menu label has to survive.
+                    iconScale: 1.25,
 
                     // Slots always shown, even when empty.
                     persistent: 5,
-                    slot: 28,
+                    slot: 32,
                     // Wider than the gap INSIDE a slot, which is what makes a
                     // workspace holding three windows read as one group rather
                     // than as three workspaces. Grouping is carried entirely by
@@ -305,6 +322,19 @@ Singleton {
                 outline: 2
             },
 
+            // PER-APPLICATION ICON OVERRIDES, for when neither the icon theme
+            // nor the app's freedesktop categories give the right mark.
+            //
+            // A list, not a map, because the match is a regex and order decides
+            // which of two overlapping ones wins. `match` is tested against the
+            // window class, case-insensitively; `icon` is a Material Symbols
+            // name (the same names components/Icon.qml verifies).
+            //
+            //   apps: { icons: [{ match: "^zen$", icon: "web" }] }
+            apps: {
+                icons: []
+            },
+
             launcher: {
                 width: 840,
                 // How present an app's icon is. Bigger than a menu's glyph on
@@ -333,7 +363,7 @@ Singleton {
                     // How far the rail bows toward the middle under the cursor,
                     // and how many marks either side come with it.
                     bow: 150,
-                    bowSpread: 3.5,
+                    bowSpread: 5,
                     // The disc that shows the mark you are on.
                     badge: 72
                 },
@@ -503,8 +533,12 @@ Singleton {
     // label ladder growing from three tiers to four did exactly that, and
     // undefined fed straight into a colour.
     function merge(base: var, over: var): var {
+        // An EMPTY default array is a list, not a tuple: there is no shape to
+        // have changed, so whatever the user put there is data and survives. A
+        // non-empty one is a fixed set of slots (a scale, a ladder) and a
+        // different length means the shape moved under it.
         if (Array.isArray(base))
-            return Array.isArray(over) && over.length === base.length ? over : base;
+            return Array.isArray(over) && (base.length === 0 || over.length === base.length) ? over : base;
         if (over === undefined || base === null || typeof base !== "object")
             return over === undefined ? base : over;
 

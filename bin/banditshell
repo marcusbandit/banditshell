@@ -8,7 +8,7 @@
 #
 #   banditshell start|stop|restart|run|log
 #   banditshell menu list|open <key>|close|toggle <key>|current|hover
-#   banditshell launcher toggle|open|close
+#   banditshell launcher toggle|open|close|scrub <0..1>
 #   banditshell picker open|freeze|clip|freezeclip|close
 #   banditshell status
 #   banditshell theme [name]
@@ -89,7 +89,11 @@ menu)
     ;;
 
 launcher)
-    ipc launcher "${1:-toggle}"
+    if [[ "${1:-}" == "scrub" ]]; then
+        ipc launcher scrub "${2:-0}"
+    else
+        ipc launcher "${1:-toggle}"
+    fi
     ;;
 
 picker)

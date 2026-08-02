@@ -43,7 +43,6 @@ ListView {
     // list feel physical when you throw it, and pure noise when a notch lands
     // you at an end you were already at.
     boundsBehavior: Flickable.DragAndOvershootBounds
-    maximumFlickVelocity: Appearance.sizes.rowHeight * 60
 
     function scrollTo(y: real): void {
         root.scrollTarget = Math.max(0, Math.min(y, root.maxScroll));

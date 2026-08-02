@@ -49,6 +49,12 @@ Item {
         root.concept?.toggle();
     }
 
+    // Only the niagara concept has a rail; the list one ignores it.
+    function scrub(fraction: real): void {
+        if (root.concept?.scrubTo)
+            root.concept.scrubTo(fraction);
+    }
+
     Loader {
         id: loader
 
