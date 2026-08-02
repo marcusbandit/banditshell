@@ -98,7 +98,7 @@ Column {
 
                     SignalBars {
                         anchors.verticalCenter: parent.verticalCenter
-                        strength: entry.modelData.signalStrength
+                        strength: Network.percent(entry.modelData)
                         activeColour: entry.modelData.connected ? Appearance.colour.text : Appearance.colour.textDim
                     }
                 }

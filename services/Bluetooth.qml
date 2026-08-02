@@ -80,32 +80,80 @@ Singleton {
 
     // bluez reports a freedesktop icon name; map the handful that matter onto
     // the icon font, and fall back to a generic rather than to nothing.
-    function icon(device: var): string {
-        const name = device?.icon ?? "";
-        if (name.includes("headset") || name.includes("headphone"))
-            return "headphones";
-        if (name.includes("audio"))
-            return "speaker";
-        if (name.includes("mouse"))
-            return "mouse";
-        if (name.includes("keyboard"))
-            return "keyboard";
-        if (name.includes("phone"))
-            return "devices";
-        if (name.includes("computer"))
-            return "computer";
-        if (name.includes("watch"))
-            return "watch";
-        if (name.includes("gaming") || name.includes("joypad"))
-            return "sports_esports";
-        return "bluetooth";
+    //
+    // ORDERED, and the order is the answer to "which one does the bar mean"
+    // when several things are connected. Not a second list to keep in step with
+    // the first: the kinds ARE the ranking, most-worth-showing first, and the
+    // matcher walks them in order. Audio wins because it is the connection you
+    // notice going wrong; a mouse you can see moving.
+    readonly property var kinds: [
+        {
+            icon: "headphones",
+            match: ["headset", "headphone"]
+        },
+        {
+            icon: "speaker",
+            match: ["audio", "speaker"]
+        },
+        {
+            icon: "sports_esports",
+            match: ["gaming", "joypad"]
+        },
+        {
+            icon: "keyboard",
+            match: ["keyboard"]
+        },
+        {
+            icon: "mouse",
+            match: ["mouse", "pointing"]
+        },
+        {
+            icon: "watch",
+            match: ["watch"]
+        },
+        {
+            icon: "devices",
+            match: ["phone"]
+        },
+        {
+            icon: "computer",
+            match: ["computer"]
+        }
+    ]
+
+    // Which entry of `kinds` a device is, as an index, so both the icon for one
+    // device and the pick between several come from the same walk.
+    function kindOf(device: var): int {
+        const name = (device?.icon ?? "").toLowerCase();
+        return root.kinds.findIndex(k => k.match.some(m => name.includes(m)));
     }
 
+    function icon(device: var): string {
+        const i = root.kindOf(device);
+        return i < 0 ? "bluetooth" : root.kinds[i].icon;
+    }
+
+    // The bar's mark: WHAT is connected, not merely that bluetooth exists.
+    //
+    // A generic radio glyph answers a question nobody has. "Are my headphones
+    // on", "is the controller awake", "did the mouse drop again" are the actual
+    // questions, and the device's own kind answers all three at a glance. With
+    // several connected it shows the highest-ranked kind rather than whatever
+    // bluez happened to sort first, so the bar does not change its mind about
+    // what it means every time a device reconnects.
     function statusIcon(): string {
         if (!root.available || !root.enabled)
             return "bluetooth_disabled";
-        if (root.anyConnected)
-            return "bluetooth_connected";
-        return "bluetooth";
+
+        const best = root.connectedDevices.reduce((a, d) => {
+            const i = root.kindOf(d);
+            // An unrecognised device still counts as connected; it just loses
+            // to anything the icon font can actually name.
+            return i >= 0 && i < a ? i : a;
+        }, root.kinds.length);
+
+        if (best < root.kinds.length)
+            return root.kinds[best].icon;
+        return root.anyConnected ? "bluetooth_connected" : "bluetooth";
     }
 }

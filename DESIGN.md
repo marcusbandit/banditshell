@@ -342,6 +342,7 @@ banditshell/
 │   ├── StyledText.qml           the ONE text element
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
 │   ├── SignalBars.qml           a drawn strength meter (the font's is illegible)
+│   ├── BatteryMeter.qml         a drawn battery: every level, and charging as motion
 │   ├── Slider.qml               a value you drag, or a read-only gauge
 │   ├── Toggle.qml               a switch
 │   ├── MenuRow.qml              icon + label + detail + trailing slot

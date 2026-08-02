@@ -54,6 +54,11 @@ Item {
             key: "network",
             title: "Network",
             icon: Network.icon(Network.activeStrength),
+            // A METER while there is a signal to meter, and a glyph for the two
+            // states that are not a level at all: switched off, and on but
+            // joined to nothing. Four dark bars would say both of those, and
+            // they are not the same thing as each other or as a weak signal.
+            mark: Network.connected ? signalMark : null,
             active: Network.connected,
             alert: Network.available && !Network.enabled,
             available: Network.available,
@@ -71,6 +76,10 @@ Item {
             key: "battery",
             title: "Battery",
             icon: Battery.icon(),
+            // Drawn, so the level is the level rather than the nearest of six
+            // names the font happens to have, and so charging can be shown as
+            // motion instead of as one more static picture.
+            mark: Battery.available ? batteryMark : null,
             active: Battery.charging,
             alert: Battery.low,
             available: Battery.available,
@@ -123,6 +132,7 @@ Item {
                 readonly property string key: modelData.key
 
                 icon: modelData.icon
+                mark: modelData.mark ?? null
                 active: modelData.active ?? false
                 alert: modelData.alert ?? false
                 available: modelData.available ?? true
@@ -137,6 +147,28 @@ Item {
                 }
                 onActivated: root.requested(key)
             }
+        }
+    }
+
+    // The drawn marks. Each takes `colour` from the indicator it sits in, which
+    // is the whole contract StatusIcon asks of a mark.
+    Component {
+        id: signalMark
+
+        SignalBars {
+            property color colour: Appearance.colour.text
+
+            strength: Network.activeStrength
+            activeColour: colour
+        }
+    }
+
+    Component {
+        id: batteryMark
+
+        BatteryMeter {
+            level: Battery.percentage
+            charging: Battery.charging
         }
     }
 

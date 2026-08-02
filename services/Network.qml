@@ -24,7 +24,24 @@ Singleton {
     readonly property var active: wifiDevice?.networks?.values?.find(n => n.connected) ?? null
     readonly property bool connected: !!active
     readonly property string activeName: active?.name ?? ""
-    readonly property real activeStrength: active?.signalStrength ?? 0
+    readonly property real activeStrength: root.percent(active)
+
+    // PERCENT, from the fraction Quickshell reports.
+    //
+    // NetworkManager's own API hands out a 0..100 integer and Quickshell divides
+    // it down to 0..1, which is a perfectly good decision and a silent trap for
+    // everything downstream: 0.61 read as a percentage is not a weak signal, it
+    // is a signal one four-hundredth of the way up a four-bar meter, so EVERY
+    // network drew one bar and the status glyph sat on `signal_wifi_0_bar`
+    // forever. It looked like a design that did not react rather than an
+    // arithmetic bug, which is why it survived.
+    //
+    // The conversion lives here, once, at the boundary. A widget that has to
+    // remember which of two scales it is holding will eventually hold the wrong
+    // one.
+    function percent(n: var): real {
+        return Math.round((n?.signalStrength ?? 0) * 100);
+    }
 
     // Anything mid-connect, so the UI can say so rather than looking stuck.
     readonly property var connecting: wifiDevice?.networks?.values?.find(n => n.stateChanging && !n.connected) ?? null

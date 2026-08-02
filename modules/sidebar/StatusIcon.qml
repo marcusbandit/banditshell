@@ -17,9 +17,24 @@ Item {
     property bool alert: false      // wants attention
     property bool available: true   // this machine has one at all
 
+    // A DRAWN mark, instead of the glyph, for the indicators the icon font
+    // cannot actually say. Signal strength and a charge level are meters, and a
+    // font that has to name every state can only approximate one: it ran out of
+    // wifi glyphs after four ragged steps and out of charging glyphs after six.
+    //
+    // Whatever is loaded here is handed the colour the glyph would have taken,
+    // through a property it must call `colour`. That is the whole contract: a
+    // mark lights up on hover and goes accent on alert without knowing why, and
+    // this file still does not know what it is indicating.
+    property Component mark: null
+
     signal activated
 
     readonly property bool hovered: mouse.containsMouse
+
+    // Label tiers, not colours. Accent is kept for `alert` only, so a colour in
+    // this bar always means something is wrong.
+    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
 
     implicitWidth: Appearance.sizes.statusSlot
     implicitHeight: Appearance.sizes.statusSlot
@@ -41,17 +56,26 @@ Item {
 
     Icon {
         anchors.centerIn: parent
+        visible: !root.mark
         name: root.icon
-
-        // Label tiers, not colours. Accent is kept for `alert` only, so a colour
-        // in this bar always means something is wrong.
-        color: !root.available ? Appearance.colour.textFaint : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
+        color: root.markColour
 
         Behavior on color {
             ColorAnimation {
                 duration: Appearance.anim.fast
             }
         }
+    }
+
+    Loader {
+        anchors.centerIn: parent
+        active: !!root.mark
+        sourceComponent: root.mark
+
+        // Bound after the fact rather than declared: a Component cannot be
+        // handed properties at construction, and the mark is written where
+        // someone knows what it means, which is not here.
+        onLoaded: item.colour = Qt.binding(() => root.markColour)
     }
 
     MouseArea {
