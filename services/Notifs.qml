@@ -57,7 +57,12 @@ Singleton {
     // to know when the animation is done: a card leaving is a one-shot A to B,
     // not something tracking a moving target, and one duration read by both ends
     // means they agree by construction instead of by a callback.
-    readonly property int exitMs: Appearance.anim.slow
+    //
+    // The MIDDLE tier, not the slow one. Dismissal is the one animation in the
+    // shell that is not showing anything: the card is already decided about, and
+    // every millisecond of it is time the row below spends waiting to move up.
+    // `slow` is for something arriving that wants to be noticed.
+    readonly property int exitMs: Appearance.anim.normal
 
     // Removal is TWO-PHASE. Taking a row out of the list immediately gives the
     // view nothing to animate: the card is destroyed on the same frame and the

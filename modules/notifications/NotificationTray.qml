@@ -93,6 +93,25 @@ Item {
     // that moves and resizes in the same frame rebuilds this once.
     property var blobs: []
 
+    // IT REACHES THE SCREEN'S TOP EDGE, not the tray's own top.
+    //
+    // The tray is drawn an `inset` in from the content area so its contents
+    // clear the band, and handing THAT rectangle to the field made the tray a
+    // free-floating box a gap away from the body, joined only by whatever the
+    // smooth minimum could stretch across the space. A smin bridging a gap does
+    // not make a fillet, it makes a NECK, and a neck has an inflection at each
+    // end: the tray's left flank came out with a visible tooth where its own
+    // rounded top corner and the band's inner edge each pulled the contour a
+    // different way. It looked like a corner drawn wrong, which is what it was.
+    //
+    // Extended to y = 0 the two overlap instead of reaching for each other, so
+    // there is nothing to bridge. The only join left is where the tray's flank
+    // crosses the band's inner edge, and that is a plain concave fillet: one
+    // tongue hanging out of the corner, which is what it is meant to be.
+    //
+    // The same reason TopClock's notch is anchored at y = 0 rather than parked
+    // below the band. Melt where one thing emerges from another (DESIGN.md 14),
+    // and emerging means touching.
     function sync(): void {
         if (!root.any || tray.height <= 0) {
             root.blobs = [];
@@ -101,9 +120,9 @@ Item {
         root.blobs = [
             {
                 x: tray.x,
-                y: tray.y,
+                y: 0,
                 w: tray.width,
-                h: tray.height,
+                h: tray.y + tray.height,
                 radius: Appearance.rounding.large
             }
         ];
@@ -149,7 +168,15 @@ Item {
         x: root.width - root.panelWidth
         y: root.inset
         width: root.panelWidth
-        height: Math.min(list.height, root.height - root.inset * 2) + Appearance.padding.normal * 2
+
+        // Nothing tall, when there is nothing in it. The padding used to be
+        // added unconditionally, so an empty tray was still two padding tiers
+        // high and the tongue POPPED that far out of the band before the first
+        // row had drawn a pixel. Growing from zero is what makes the arrival the
+        // band swelling rather than a box appearing and then filling up.
+        readonly property real contentHeight: Math.min(list.height, root.height - root.inset * 2)
+
+        height: contentHeight > 0 ? contentHeight + Appearance.padding.normal * 2 : 0
         visible: root.any
 
         onYChanged: Qt.callLater(root.sync)
@@ -173,7 +200,7 @@ Item {
             x: Appearance.padding.normal
             y: Appearance.padding.normal
             width: tray.width - Appearance.padding.normal * 2
-            height: tray.height - Appearance.padding.normal * 2
+            height: Math.max(0, tray.height - Appearance.padding.normal * 2)
 
             contentHeight: list.height
             interactive: contentHeight > height
@@ -207,48 +234,40 @@ Item {
                         target: root.expanded ? 1 : 0
                     }
 
-                    Row {
+                    // ANCHORED, not a Row. In a Row the title had to subtract the
+                    // pill's width and the spacing by hand, which is only right
+                    // while the pill is there: with nothing unread it was still
+                    // reserving room for a button that had gone.
+                    Item {
                         id: header
 
                         width: parent.width
-                        spacing: Appearance.padding.normal
+                        implicitHeight: Math.max(title.implicitHeight, clearAll.implicitHeight)
 
                         StyledText {
                             id: title
 
+                            anchors.left: parent.left
+                            anchors.right: clearAll.visible ? clearAll.left : parent.right
+                            anchors.rightMargin: Appearance.padding.normal
                             anchors.verticalCenter: parent.verticalCenter
-                            width: parent.width - clearAll.width - parent.spacing
+
                             text: Notifs.count > 0 ? `${Notifs.count} unread` : "Nothing unread"
                             font.pixelSize: Appearance.font.size.small
                             color: Appearance.colour.textFaint
                             elide: Text.ElideRight
                         }
 
-                        G2Rect {
+                        Pill {
                             id: clearAll
 
-                            width: Notifs.count > 0 ? clearLabel.implicitWidth + Appearance.padding.normal * 2 : 0
-                            height: Appearance.sizes.minTarget
-                            radius: height / 2
-                            color: clearPress.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+
                             visible: Notifs.count > 0
+                            text: "Clear"
 
-                            StyledText {
-                                id: clearLabel
-
-                                anchors.centerIn: parent
-                                text: "Clear"
-                                font.pixelSize: Appearance.font.size.small
-                            }
-
-                            MouseArea {
-                                id: clearPress
-
-                                anchors.fill: parent
-                                hoverEnabled: true
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: Notifs.clear()
-                            }
+                            onClicked: Notifs.clear()
                         }
                     }
                 }

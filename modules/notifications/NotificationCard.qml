@@ -1,6 +1,8 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -49,8 +51,21 @@ Item {
     property real dragX: 0
     property real pulled: 0
 
+    // Which way it was THROWN, if it was: -1, 0 or +1.
+    //
+    // A card let go past the commit point should keep going. Without this it
+    // stopped dead wherever the pointer stopped and then collapsed in place,
+    // which reads as the throw being ignored and the card dying of something
+    // else. The fling rides `leave`, so it is the same one motion as the
+    // collapse rather than a second animation racing it.
+    property int flung: 0
+
     readonly property real throwDistance: fullWidth * Appearance.sizes.dragDismissFraction
     readonly property bool committed: Math.abs(pulled) >= throwDistance
+
+    // Where the card actually sits: the drag, plus however much of the fling has
+    // played. At leave = 1 it is exactly one card-width clear of home.
+    readonly property real throwX: dragX + flung * leave * Math.max(0, fullWidth - Math.abs(dragX))
 
     // The countdown belongs to the ENTRY, not to this card. A Repeater over a
     // plain array rebuilds every delegate when the array changes, so state kept
@@ -62,12 +77,19 @@ Item {
     // PAUSED while the cursor is on it. A notification that expires from under
     // the pointer while you are reaching for its button is the single most
     // annoying thing a shell can do. Pushed to the entry so it survives a rebuild.
-    readonly property bool held: drag.containsMouse || drag.pressed
+    //
+    // A HoverHandler, not the drag area's containsMouse. Qt gives hover to the
+    // topmost item that takes it, so the moment the cursor reached an action
+    // button the card decided it was no longer hovered and the countdown resumed
+    // UNDER THE BUTTON someone was already aiming at: the exact bug this pause
+    // exists to prevent, reintroduced by how it was measured. A HoverHandler is
+    // passive and stays hovered while its own descendants are.
+    readonly property bool held: hover.hovered || drag.pressed
     onHeldChanged: if (entry)
         entry.held = held
 
     width: fullWidth
-    implicitHeight: body.implicitHeight + Appearance.padding.large * 2
+    implicitHeight: body.implicitHeight + Appearance.padding.normal * 2
     height: implicitHeight * open
 
     // CLIPPED, so the contents keep their real size while the row collapses.
@@ -78,8 +100,12 @@ Item {
     // One expression owns x: the throw, and nothing else. The row arrives by
     // unfolding rather than by sliding, so an arrival and a drag can never
     // fight over the same axis.
-    x: dragX
-    opacity: open * Math.max(0.1, 1 - Math.max(0, Math.abs(dragX) - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
+    x: throwX
+    opacity: open * Math.max(0.1, 1 - Math.max(0, Math.abs(throwX) - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
+
+    HoverHandler {
+        id: hover
+    }
 
     Component.onCompleted: grow.target = 1
 
@@ -93,6 +119,7 @@ Item {
         } else {
             exit.stop();
             leave = 0;
+            flung = 0;
         }
     }
 
@@ -103,7 +130,10 @@ Item {
         property: "leave"
         to: 1
         duration: Notifs.exitMs
-        easing.type: Easing.InOutQuad
+        // OUT, not in-out. A dismissal is an answer to something someone just
+        // did, so it has to start at full speed; easing into it spends the first
+        // third of the animation looking like nothing happened.
+        easing.type: Easing.OutCubic
     }
 
     Follow {
@@ -142,13 +172,29 @@ Item {
     G2Rect {
         anchors.fill: parent
         radius: root.radius
-        color: Appearance.colour.fill
+        // It answers the cursor. A stack of cards that does nothing under the
+        // pointer is the one place in this shell where nothing is alive, and the
+        // lift also says which card a throw is about to take.
+        color: root.held ? Appearance.colour.fillStrong : Appearance.colour.fill
+
+        Behavior on color {
+            ColorAnimation {
+                duration: Appearance.anim.fast
+            }
+        }
     }
 
     // A critical notification is marked by a bar down its leading edge, not by a
     // differently coloured card. Colour alone is not a state cue, and a whole
     // card tinted red is a fire alarm for something that is merely important.
+    //
+    // It TAKES ROOM. Drawn at the same inset as the content it was sharing three
+    // pixels with the app's badge plate, showing through it because a fill is a
+    // veil rather than paint; a mark that has to be in front of something is not
+    // a mark. `spine` below is what the content moves over by.
     G2Rect {
+        id: spine
+
         anchors.left: parent.left
         anchors.top: parent.top
         anchors.bottom: parent.bottom
@@ -159,8 +205,15 @@ Item {
         visible: root.urgent
     }
 
+    readonly property real spineRoom: root.urgent ? spine.width + Appearance.padding.small : 0
+
     // How long it has left, along the bottom edge. Without it, a notification
     // vanishing mid-read reads as a glitch rather than as a timer.
+    //
+    // A label tier when it is paused rather than the ACCENT. The accent is for
+    // state that is wrong (the urgent bar above is the only one on this card),
+    // and "you are touching it" is not that; brightening the same line says the
+    // same thing without spending the one colour the shell reserves.
     G2Rect {
         anchors.left: parent.left
         anchors.bottom: parent.bottom
@@ -168,45 +221,101 @@ Item {
         width: Math.max(0, (parent.width - Appearance.padding.normal * 2) * root.remaining)
         height: 2
         radius: 1
-        color: root.held ? Appearance.colour.accent : Appearance.colour.fillStronger
+        color: root.held ? Appearance.colour.textDim : Appearance.colour.fillStronger
         visible: root.timeout > 0
     }
 
+    // ONE padding tier inside the card, and it is the same one the tray puts
+    // outside it, so the content sits two tiers in from the tray's edge without
+    // either of them spending a bigger number. `large` here was 24 a side: 48px
+    // of the card's width gone to air, on a card whose text column was already
+    // the thing running out of room.
     Item {
         id: body
 
-        x: Appearance.padding.large
-        y: Appearance.padding.large
-        width: root.fullWidth - Appearance.padding.large * 2
+        x: Appearance.padding.normal + root.spineRoom
+        y: Appearance.padding.normal
+        width: root.fullWidth - Appearance.padding.normal * 2 - root.spineRoom
         implicitHeight: Math.max(badge.height, text.implicitHeight)
 
-        // The sender's own icon when it gave one, and our bell when it did not.
-        // An app that bothered to identify itself should be recognised by its
-        // icon rather than by reading its name.
-        G2Rect {
+        // The sender's own icon when it gave one, our bell when it did not. An
+        // app that bothered to identify itself should be recognised by its mark
+        // rather than by reading its name.
+        Item {
             id: badge
 
             width: Appearance.sizes.notificationBadge
             height: width
-            radius: Appearance.rounding.small
-            color: Appearance.colour.fill
 
-            Image {
+            // An icon NAME is not a URL. `appIcon` is a freedesktop name, so
+            // handing it straight to an Image failed silently and every app that
+            // sent one instead of a pixmap wore the generic bell. The theme has
+            // to be asked; the nullable form returns "" rather than a
+            // placeholder, which is what lets the glyph take over.
+            readonly property string source: root.notification?.image || (root.notification?.appIcon ? Quickshell.iconPath(root.notification.appIcon, true) : "")
+            readonly property bool hasImage: source !== "" && art.status === Image.Ready
+
+            // The plate is only there to hold the glyph. Under an image it would
+            // be a frame around something already square, and a step of fill
+            // showing at the corners reads as the image not fitting.
+            G2Rect {
                 anchors.fill: parent
-                anchors.margins: 2
-                source: root.notification?.image || root.notification?.appIcon || ""
-                fillMode: Image.PreserveAspectFit
-                asynchronous: true
-                visible: status === Image.Ready
-                sourceSize.width: width
-                sourceSize.height: height
+                radius: Appearance.rounding.small
+                color: Appearance.colour.fillStrong
+                visible: !badge.hasImage
             }
 
             Icon {
                 anchors.centerIn: parent
-                visible: !root.notification?.image && !root.notification?.appIcon
+                visible: !badge.hasImage
+                // HALF THE PLATE, not the shell's text-side icon size. That one
+                // is sized to sit beside a line of body text; dropped into a
+                // plate three times its area it read as a mark lost in a box.
+                size: Math.round(badge.width / 2)
                 name: root.urgent ? "priority_high" : "notifications"
                 color: root.urgent ? Appearance.colour.accent : Appearance.colour.textDim
+            }
+
+            // CROPPED TO FILL, then masked to the plate's own squircle.
+            //
+            // Fitting an image inside the plate was wrong twice over: anything
+            // not square letterboxed, so a screenshot thumbnail sat in a band of
+            // fill, and the image kept its own SQUARE corners inside a rounded
+            // plate, which is the one thing a G2 corner cannot forgive. Filling
+            // and masking makes an arbitrary image the same shape as everything
+            // else the shell draws.
+            Image {
+                id: art
+
+                anchors.fill: parent
+                source: badge.source
+                fillMode: Image.PreserveAspectCrop
+                asynchronous: true
+                smooth: true
+                sourceSize.width: badge.width * Screen.devicePixelRatio
+                sourceSize.height: badge.height * Screen.devicePixelRatio
+                // Rendered to a texture for the mask to eat, never to the scene.
+                layer.enabled: true
+                visible: false
+            }
+
+            G2Rect {
+                id: artMask
+
+                anchors.fill: parent
+                radius: Appearance.rounding.small
+                // Only the alpha matters; the colour is what makes it opaque.
+                color: "white"
+                layer.enabled: true
+                visible: false
+            }
+
+            MultiEffect {
+                anchors.fill: parent
+                source: art
+                maskEnabled: true
+                maskSource: artMask
+                visible: badge.hasImage
             }
         }
 
@@ -228,9 +337,23 @@ Item {
                 elide: Text.ElideRight
             }
 
+            // THE ONE THING THE CARD IS ABOUT, and it says so with COLOUR, not
+            // with a size. The size above `small` is 27, because the pixel grid
+            // has no step between them, and a 27px headline on a card this size
+            // is not emphasis, it is a banner: the card grew half again as tall
+            // and the tray started shouting over the desktop it belongs to.
+            // Brightest label tier against a dim body carries the same hierarchy
+            // for nothing (see ~/.claude/rules/type-scale.md).
+            //
+            // It WRAPS rather than eliding. A summary is a whole short sentence
+            // often enough ("Connection Established") that a one-line cap turned
+            // most notifications into an ellipsis, and a truncated headline reads
+            // as broken where a wrapped one reads as written.
             StyledText {
                 width: parent.width
                 text: root.notification?.summary ?? ""
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
                 elide: Text.ElideRight
             }
 
@@ -241,12 +364,28 @@ Item {
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textDim
                 wrapMode: Text.Wrap
-                // A notification is not a document.
+                // A notification is not a document, but three lines is where the
+                // cap has to be. Two was tried, to keep the cards short, and it
+                // elided the 2FA code out of "Your verification code for The
+                // Movie Database (TMDB) is: 4098" - which is the whole reason
+                // that notification exists. A card is allowed to be one line box
+                // taller than its neighbour; it is not allowed to hide the thing
+                // it came to say.
                 maximumLineCount: 3
                 elide: Text.ElideRight
+                topPadding: Appearance.padding.small
             }
 
-            Row {
+            // A FLOW, not a Row. The count is the sender's to choose and the
+            // labels are the sender's to write, so nothing here can know whether
+            // they fit: a Row let "Do not show this message again" run straight
+            // out through the side of the card. This wraps whatever does not fit
+            // onto the next line, and caps each pill at the column so a single
+            // long one loses characters instead of the card losing its edge.
+            Flow {
+                id: actions
+
+                width: parent.width
                 visible: (root.notification?.actions?.length ?? 0) > 0
                 topPadding: Appearance.padding.normal
                 spacing: Appearance.padding.small
@@ -254,34 +393,15 @@ Item {
                 Repeater {
                     model: root.notification?.actions ?? []
 
-                    delegate: G2Rect {
+                    delegate: Pill {
                         required property var modelData
 
-                        implicitWidth: actionLabel.implicitWidth + Appearance.padding.normal * 2
-                        implicitHeight: Math.max(Appearance.sizes.minTarget, actionLabel.implicitHeight + Appearance.padding.small * 2)
-                        width: implicitWidth
-                        height: implicitHeight
-                        radius: Appearance.rounding.small
-                        color: actionPress.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
+                        text: modelData.text
+                        width: Math.min(implicitWidth, actions.width)
 
-                        StyledText {
-                            id: actionLabel
-
-                            anchors.centerIn: parent
-                            text: modelData.text
-                            font.pixelSize: Appearance.font.size.small
-                        }
-
-                        MouseArea {
-                            id: actionPress
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: {
-                                modelData.invoke();
-                                root.dismissed();
-                            }
+                        onClicked: {
+                            modelData.invoke();
+                            root.dismissed();
                         }
                     }
                 }
@@ -307,6 +427,10 @@ Item {
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
         preventStealing: true
+        // The gesture ADVERTISES itself. Drag is the primary way to get rid of a
+        // notification (DESIGN.md 15) and nothing on the card says so; a hand
+        // that closes when you press is the cheapest way to say it.
+        cursorShape: drag.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
         onPressed: mouse => {
             anchor = root.x + mouse.x;
@@ -326,8 +450,17 @@ Item {
         }
 
         onReleased: {
-            if (!throwing || root.committed)
+            // A click, which dismisses too: a mouse user who expects that should
+            // not be told they are holding it wrong. It has no direction, so it
+            // collapses in place rather than flinging.
+            if (!throwing)
                 return root.dismissed();
+
+            if (root.committed) {
+                root.flung = root.pulled < 0 ? -1 : 1;
+                return root.dismissed();
+            }
+
             // Abandoned short of the commit point: hand the offset to the spring
             // and let it walk home rather than snapping.
             settle.value = root.dragX;

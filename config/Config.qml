@@ -298,8 +298,23 @@ Singleton {
                 maxPopups: 4,
                 // Kept in the hub. A hub showing three hundred is a log.
                 maxHistory: 50,
-                width: 340,
-                badge: 36,
+
+                // Set from the TEXT COLUMN, not picked. Monocraft's advance is
+                // two thirds of its size, so at the 18px body tier a character
+                // is 12px and a column is worth exactly width/12 characters. The
+                // card spends two padding tiers a side and the badge plus a
+                // gutter, which is 100px, so 400 leaves 300: twenty-five
+                // characters, where 340 left eighteen and turned every summary
+                // in the shell into an ellipsis.
+                //
+                // 480 was the other way past it. There is no smaller text size
+                // on this font's grid, so a pixel font can only be given width,
+                // and past about 400 the tray stops being a corner and starts
+                // being a column down the side of the screen.
+                width: 400,
+                // The app's own mark, at about a tenth of the card, which is
+                // where Apple puts it. The glyph inside is half the plate.
+                badge: 40,
                 // How far the summon zone runs along each edge from the
                 // top-right corner. Only as thick as the band, because a screen
                 // corner cannot be overshot.
