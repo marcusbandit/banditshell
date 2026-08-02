@@ -190,6 +190,11 @@ Singleton {
         readonly property int wsSlot: root.cfg.sidebar.workspaces.slot
         readonly property int wsGap: root.cfg.sidebar.workspaces.gap
         readonly property int wsPersistent: root.cfg.sidebar.workspaces.persistent
+        readonly property int wsMaxWindows: root.cfg.sidebar.workspaces.maxWindows
+        // The row pitch of stacked window icons. Derived from the icon size
+        // rather than set in pixels, so the stack keeps its proportions when
+        // the icons change size.
+        readonly property int wsWindowPitch: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.windowPitch)
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 

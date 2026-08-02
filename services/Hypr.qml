@@ -33,8 +33,44 @@ Singleton {
     // a hardcoded list of slots.
     readonly property int count: Math.max(persistentCount, activeId, ...Object.keys(windows).map(Number))
 
-    function occupied(id: int): bool {
-        return (windows[id] ?? 0) > 0;
+    // { id: [toplevel, ...] } for every workspace that has any, in the order
+    // Hyprland lists them, which is the order they were opened. The indicators
+    // draw one icon per entry, so this is the difference between knowing a
+    // workspace is busy and knowing what is on it.
+    readonly property var clients: {
+        const out = {};
+        for (const c of Hyprland.toplevels.values) {
+            const id = c.workspace?.id ?? 0;
+            if (id > 0) {
+                if (!out[id])
+                    out[id] = [];
+                out[id].push(c);
+            }
+        }
+        return out;
+    }
+
+    function clientsIn(id: int): var {
+        return root.clients[id] ?? [];
+    }
+
+    // The focused window itself, not its address: it is the same object the
+    // model hands the delegates, so "is this the focused one" is an identity
+    // test rather than string bookkeeping that can go stale.
+    readonly property var activeClient: Hyprland.activeToplevel
+
+    // What a window IS, for icon lookup. `class` is what Hyprland reports now;
+    // `initialClass` is what it started as, and is all there is for a window
+    // that has not mapped yet.
+    function classOf(client: var): string {
+        const o = client?.lastIpcObject;
+        return o?.class || o?.initialClass || "";
+    }
+
+    function focusClient(client: var): void {
+        const addr = client?.lastIpcObject?.address;
+        if (addr)
+            Hyprland.dispatch(`focuswindow address:${addr}`);
     }
 
     // Windows on the screen's active workspace, front-most first, which is the

@@ -29,6 +29,91 @@ Singleton {
 
     readonly property var all: DesktopEntries.applications.values.filter(e => !e.noDisplay)
 
+    // What KIND of thing a window is, as one glyph.
+    //
+    // Keyed by freedesktop CATEGORY, not by application name. A name list is a
+    // list that is permanently missing whatever was installed last week,
+    // whereas every desktop entry already ships its categories, so an app this
+    // shell has never heard of still gets the right mark. Registered names
+    // only: https://specifications.freedesktop.org/menu-spec.
+    //
+    // ORDER IS THE PRIORITY. First match down this list wins, because entries
+    // declare several: an IDE is `Development;IDE;TextEditor`, a terminal is
+    // `System;TerminalEmulator;Utility`, and the specific one is the one worth
+    // drawing. The generic buckets (Utility, System, Network) sit at the bottom
+    // for exactly that reason.
+    readonly property var categoryIcons: ({
+            TerminalEmulator: "terminal",
+            ConsoleOnly: "terminal",
+            WebBrowser: "web",
+            Email: "mail",
+            InstantMessaging: "forum",
+            IRCClient: "forum",
+            Chat: "forum",
+            IDE: "code",
+            Development: "code",
+            TextEditor: "edit_note",
+            Emulator: "sports_esports",
+            Game: "sports_esports",
+            FileManager: "folder",
+            FileTools: "folder",
+            Archiving: "archive",
+            Compression: "archive",
+            AudioVideoEditing: "video_settings",
+            Music: "music_note",
+            Video: "movie",
+            Player: "movie",
+            Recorder: "mic",
+            Audio: "music_note",
+            AudioVideo: "movie",
+            TV: "tv",
+            "3DGraphics": "deployed_code",
+            VectorGraphics: "draw",
+            RasterGraphics: "photo_library",
+            "2DGraphics": "photo_library",
+            Photography: "photo_library",
+            Graphics: "photo_library",
+            Spreadsheet: "table_chart",
+            Presentation: "slideshow",
+            WordProcessor: "description",
+            Calendar: "calendar_month",
+            Office: "description",
+            Documentation: "article",
+            Education: "book",
+            Science: "calculate",
+            Math: "calculate",
+            Maps: "map",
+            PackageManager: "package",
+            Security: "security",
+            Printing: "print",
+            Monitor: "monitor_heart",
+            DesktopSettings: "settings",
+            HardwareSettings: "settings",
+            Settings: "settings",
+            Viewer: "image",
+            Network: "public",
+            System: "host",
+            Utility: "build"
+        })
+
+    // The generic mark, for a window whose class matches no desktop entry at
+    // all: wine apps, games launched by an id, anything self-titled. Same glyph
+    // the launcher falls back to, so "we could not identify this" looks the
+    // same everywhere.
+    readonly property string genericIcon: "apps"
+
+    function iconFor(appClass: string): string {
+        // heuristicLookup, because a window's class is only approximately its
+        // entry's id: `org.kde.dolphin` vs `dolphin`, `Alacritty` vs
+        // `alacritty`. Matching those by hand is a rabbit hole Quickshell has
+        // already been down.
+        const categories = DesktopEntries.heuristicLookup(appClass)?.categories ?? [];
+        for (const category in root.categoryIcons)
+            if (categories.includes(category))
+                return root.categoryIcons[category];
+        return root.genericIcon;
+    }
+
     // Match tiers, high to low. Named rather than written as literals at the
     // comparison sites, so "does a keyword match beat a word-start match" is
     // answered by reading the list instead of by comparing two magic numbers.
