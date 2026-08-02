@@ -100,6 +100,31 @@ Singleton {
             Hyprland.dispatch(`focuswindow address:${addr}`);
     }
 
+    // Waiting for the window an application is about to open.
+    //
+    // Hyprland focuses a new window by itself, and that is not the whole job
+    // here: with follow_mouse on, the pointer decides who has focus from the
+    // next mouse movement onwards, so a window focused while the cursor sits
+    // over the one you launched it from loses focus the moment you twitch.
+    // Dispatching focus explicitly warps the pointer with it, which makes the
+    // keyboard and the mouse agree about what you just asked for.
+    property bool claiming: false
+
+    function claimNextWindow(): void {
+        root.claiming = true;
+        claim.restart();
+    }
+
+    // Applications are not quick, and some are very slow. Long enough for a
+    // browser to get itself up, short enough that an unrelated window opening
+    // later is never mistaken for the one that was asked for.
+    Timer {
+        id: claim
+
+        interval: Config.values.launcher.claimMs
+        onTriggered: root.claiming = false
+    }
+
     // The window that has the keyboard, as an address, straight off the event
     // stream.
     //
@@ -140,6 +165,16 @@ Singleton {
 
         function onRawEvent(event): void {
             const n = event.name;
+
+            if (n === "openwindow" && root.claiming) {
+                root.claiming = false;
+                claim.stop();
+                // WINDOWADDRESS,WORKSPACENAME,WINDOWCLASS,WINDOWTITLE, and the
+                // address arrives without its 0x.
+                const addr = (event.data ?? "").split(",")[0];
+                if (addr)
+                    root.focusAddress(addr.startsWith("0x") ? addr : `0x${addr}`);
+            }
 
             if (n === "activewindowv2") {
                 const addr = (event.data ?? "").trim();

@@ -92,17 +92,12 @@ Singleton {
                 // macOS separatorColor in dark mode is white at 0.098.
                 separator: 0.1,
 
-                // How dark a recess is: a track something sits IN, as opposed
-                // to every other tier here, which is light on top. Black at a
-                // slider track's weight.
-                recess: 0.22,
-
-                // The accent, used as a FILL rather than as a label: for
-                // tinting a surface the way the fills above do, but with the
-                // theme's colour in it. Well above a fill's weight, because a
-                // saturated hue at 0.145 is a grey with an opinion; this has to
-                // read as green while still being glass.
-                accentFill: 0.42
+                // The accent, used as a FILL rather than as a label: for tinting
+                // a surface the way the fills above do, but with the theme's
+                // colour in it. Kept near a fill's weight on purpose. It goes
+                // over one of them, not instead of it, so the surface reads as
+                // thicker glass with colour in it rather than as a stain.
+                accentFill: 0.2
             },
             // Take rounding, corner smoothing and the edge gap from the running
             // compositor instead of the values below, so the shell agrees with
@@ -153,12 +148,6 @@ Singleton {
                 // than the others on purpose: this is the one place the motion
                 // is meant to be FELT rather than merely be over.
                 scrollSpeed: 11,
-                // How much slower a TRAIL chases than the thing it trails, as a
-                // fraction of the rate above. This is the whole stretch: at 1
-                // the trail is exactly under its bead and nothing ever pulls
-                // apart, near 0 it lags so far behind that one shape reads as
-                // two. Only meaningful where two fields are melted together.
-                trail: 0.45,
                 // How long a hover-opened thing survives the cursor leaving.
                 // Hover is a sloppy input; without this, crossing a boundary
                 // dismisses what you were reaching for.
@@ -225,27 +214,16 @@ Singleton {
                     // should be visibly tighter than between slots.
                     windowPitch: 1.0,
 
-                    // THE COLUMN IS ONE LIQUID. See components/blob/beads.frag:
-                    // a rail with a bead per workspace, smooth-unioned, so a
-                    // bead grows out of the rail instead of sitting on it and
-                    // two beads that come near each other neck together.
+                    // THE RULER. Every workspace keeps a tick hard against the
+                    // screen's edge, as long as the workspace is tall, and the
+                    // one you are on grows a tab out of that edge.
                     //
-                    // Width of that rail. Thin: it is the thing the beads are
-                    // ON, not a container around them.
-                    spine: 9,
-                    // An empty workspace's bead. A dot, so "nothing here" is
-                    // still something on the chain.
-                    dot: 11,
-                    // How far the active bead swells past the slot, each side.
-                    // This is what makes the rail bulge around where you are.
-                    bump: 4,
-                    // Fillet width where two parts of the field meet. Around
-                    // half the gap: much more and every bead fuses into its
-                    // neighbours, much less and the joins go sharp.
-                    // The accent fades across this same width, so the colour
-                    // necks where the shapes neck. Nothing is drawn outside the
-                    // silhouette: there is no glow here and there should not be.
-                    melt: 13
+                    // Width of a tick. Narrow: it is a mark on an edge, not a
+                    // bar chart.
+                    tick: 3,
+                    // What is left of a tick when the workspace is empty. A
+                    // place you can still go, said as quietly as possible.
+                    stub: 6
                 },
                 status: {
                     slot: 28,
@@ -283,7 +261,10 @@ Singleton {
                 // How fast a launch stops counting. Each one is worth 1 when it
                 // happens and half that after this many days, so the order
                 // follows what you use NOW rather than what you used once.
-                halfLifeDays: 14
+                halfLifeDays: 14,
+                // How long to keep watching for the window a launch opens, so
+                // it can be given the pointer as well as the keyboard.
+                claimMs: 15000
             },
 
             notifications: {

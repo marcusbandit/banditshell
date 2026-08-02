@@ -124,8 +124,14 @@ Item {
 
     function accept(): void {
         const entry = root.results[root.selected];
-        if (entry)
+        if (entry) {
             Apps.launch(entry);
+            // The window being asked for is the one that should end up focused,
+            // so the handback is cancelled: restoring the window this was opened
+            // from would take focus straight back off the thing just launched.
+            root.restoreTo = "";
+            Hypr.claimNextWindow();
+        }
         root.hide();
     }
 

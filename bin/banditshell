@@ -22,7 +22,13 @@ set -euo pipefail
 SHELL_DIR="${BANDITSHELL_DIR:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)}"
 SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
 
-qs_() { qs -p "$SHELL_DIR" "$@"; }
+# Started from $HOME, ALWAYS.
+#
+# Every application the shell launches is its child and inherits its working
+# directory, so a shell started from this repo opened every terminal in this
+# repo. -p takes an absolute path, so nothing here depends on the cwd; the only
+# thing it decides is where the desktop lands, and that is the user's home.
+qs_() { (cd "$HOME" && qs -p "$SHELL_DIR" "$@"); }
 
 # `qs ipc call` fails loudly when the shell is not running; say so in a way that
 # tells you what to do about it.
@@ -62,6 +68,7 @@ run)
     # Foreground, so QML errors land in the terminal. Spelled out rather than
     # calling qs_: bash's exec replaces the process from PATH and cannot run a
     # shell function, so `exec qs_` dies with "not found" before qs is reached.
+    cd "$HOME" || exit 1
     exec qs -p "$SHELL_DIR"
     ;;
 log)
