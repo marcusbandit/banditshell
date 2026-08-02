@@ -7,7 +7,7 @@
 # opens can be checked separately.
 #
 #   banditshell start|stop|restart|run|log
-#   banditshell menu list|open <key>|close|toggle <key>|current
+#   banditshell menu list|open <key>|close|toggle <key>|current|hover
 #   banditshell launcher toggle|open|close
 #   banditshell picker open|freeze|clip|freezeclip|close
 #   banditshell status
@@ -79,12 +79,12 @@ menu)
     sub="${1:-list}"
     shift || true
     case "$sub" in
-    list | close | current) ipc menu "$sub" ;;
+    list | close | current | hover) ipc menu "$sub" ;;
     open | toggle)
         [ $# -ge 1 ] || { echo "usage: banditshell menu $sub <key>" >&2; exit 2; }
         ipc menu "$sub" "$1" "${2:-}"
         ;;
-    *) echo "usage: banditshell menu list|open <key>|close|toggle <key>|current" >&2; exit 2 ;;
+    *) echo "usage: banditshell menu list|open <key>|close|toggle <key>|current|hover" >&2; exit 2 ;;
     esac
     ;;
 

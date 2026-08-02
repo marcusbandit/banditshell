@@ -16,9 +16,12 @@ import qs.components
 //   WHERE it sits: the panel's centre follows the icon that asked for it, by
 //   exponential smoothing, clamped so it never runs past the chassis.
 //
-//   WHETHER it stays: hover is a sloppy input. Leaving starts a short grace
-//   timer instead of closing immediately, so crossing from the icon to the panel
-//   or between icons does not dismiss anything.
+//   WHETHER it stays: hover is a sloppy input, and a menu that lives only while
+//   the cursor is exactly on its icon or exactly on its panel makes a minefield
+//   of the band between them. It stays while the cursor is anywhere on the
+//   SHELL, with a short grace timer over leaving even that, so the only two
+//   things that close a menu are asking for a different one and going back to
+//   your own windows.
 Item {
     id: root
 
@@ -55,6 +58,17 @@ Item {
 
     // True while the cursor is on the panel itself, which keeps it open.
     readonly property bool hovered: pointer.containsMouse
+
+    // True while the cursor is anywhere on the shell at all, which ALSO keeps it
+    // open. Handed down rather than worked out here: the surface's input mask is
+    // already the authority on where the shell is, and a second answer to the
+    // same question is a second answer to get wrong.
+    property bool shellHovered: false
+
+    // Leaving the shell is the one gesture that means "I am done with this".
+    // Everything else is somewhere on the way to somewhere.
+    onShellHoveredChanged: if (!root.shellHovered)
+        root.release()
 
     function show(key: string, title: string, body: Component, centreY: real): void {
         // Asked BEFORE currentKey changes, and asked of the state rather than of
@@ -94,7 +108,7 @@ Item {
     Timer {
         id: grace
         interval: Appearance.anim.grace
-        onTriggered: if (!root.hovered)
+        onTriggered: if (!root.hovered && !root.shellHovered)
             root.hide()
     }
 

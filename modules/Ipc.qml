@@ -53,6 +53,17 @@ Scope {
             const win = Shell.forScreen("");
             return win?.menus.currentKey ?? "";
         }
+
+        // What the shell believes about the cursor, which is the whole reason a
+        // menu is or is not still open. Worth being able to ask from outside:
+        // "it closed when it should not have" and "it never thought you were on
+        // it" look identical from a screenshot, and this separates them.
+        function hover(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            return `shell=${win.cursorOnShell} panel=${win.menus.hovered} open=[${win.menus.currentKey}]`;
+        }
     }
 
     IpcHandler {

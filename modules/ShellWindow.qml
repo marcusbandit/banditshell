@@ -34,6 +34,7 @@ PanelWindow {
     readonly property Launcher launcher: launcherLayer
     readonly property var statusItems: sidebar.status.items
     readonly property var statusKeys: statusItems.map(i => i.key)
+    readonly property bool cursorOnShell: onShell.hovered
 
     Component.onCompleted: Shell.register(win)
     Component.onDestruction: Shell.unregister(win)
@@ -118,65 +119,88 @@ PanelWindow {
         }
     }
 
-    Chassis {
-        id: chassis
+    // EVERYTHING the shell draws, in one item, so that one watcher can answer
+    // "is the cursor on the shell at all?".
+    //
+    // Qt delivers a hover event to the topmost item that accepts it AND to that
+    // item's ancestors, and to nobody else. Both obvious placements therefore
+    // fail, and both were measured failing: a watcher ON TOP of everything takes
+    // hover away from every control beneath it, so the gauges stop opening menus
+    // (`blocking: false` does not save it); a watcher UNDER everything goes
+    // blind the moment the cursor finds a control, so crossing the workspaces
+    // reads as leaving the shell. A watcher that is their PARENT hears both: the
+    // bare chassis, because nothing else accepted it, and every control, because
+    // ancestors are told what their children took.
+    Item {
+        id: body
 
         anchors.fill: parent
-        // Open panels join the shell's distance field rather than being drawn on
-        // top of it, which is what lets them melt into the body.
-        // Everything that melts into the body: menus, and the notch.
-        // Everything that joins the shell's body. Each melts into the CHASSIS
-        // and none of them melt into each other; see blob.frag's meltPanel.
-        panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs]
+
+        HoverHandler {
+            id: onShell
+        }
+
+        Chassis {
+            id: chassis
+
+            anchors.fill: parent
+            // Open panels join the shell's distance field rather than being drawn
+            // on top of it, which is what lets them melt into the body.
+            // Everything that joins the shell's body. Each melts into the CHASSIS
+            // and none of them melt into each other; see blob.frag's meltPanel.
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs]
+        }
+
+        // Sidebar contents, laid out in the chassis's left band. The band is one
+        // material, so the content centres in the whole of it rather than in some
+        // inner rectangle.
+        Sidebar {
+            id: sidebar
+
+            anchors.left: parent.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+            anchors.topMargin: win.border
+            anchors.bottomMargin: win.border
+            width: chassis.barWidth
+
+            status.onRequested: key => win.openMenu(key)
+            status.onReleased: menuLayer.release()
+        }
+
+        NotificationTray {
+            id: popups
+
+            anchors.fill: parent
+            inset: win.border + Appearance.sizes.gap
+            // Flush with the band's inner edge, so each card melts into the shell.
+            edgeInset: win.border
+        }
+
+        Menus {
+            id: menuLayer
+
+            anchors.fill: parent
+            originX: chassis.barWidth
+            inset: win.border
+
+            // The whole surface, not this panel: see `body` above.
+            shellHovered: onShell.hovered
+        }
+
+        Launcher {
+            id: launcherLayer
+
+            anchors.fill: parent
+            originX: chassis.barWidth
+            inset: win.border
+        }
+
+        TopClock {
+            id: topClock
+
+            anchors.fill: parent
+            border: win.border
+        }
     }
-
-    // Sidebar contents, laid out in the chassis's left band. The band is one
-    // material, so the content centres in the whole of it rather than in some
-    // inner rectangle.
-    Sidebar {
-        id: sidebar
-
-        anchors.left: parent.left
-        anchors.top: parent.top
-        anchors.bottom: parent.bottom
-        anchors.topMargin: win.border
-        anchors.bottomMargin: win.border
-        width: chassis.barWidth
-
-        status.onRequested: key => win.openMenu(key)
-        status.onReleased: menuLayer.release()
-    }
-
-    NotificationTray {
-        id: popups
-
-        anchors.fill: parent
-        inset: win.border + Appearance.sizes.gap
-        // Flush with the band's inner edge, so each card melts into the shell.
-        edgeInset: win.border
-    }
-
-    Menus {
-        id: menuLayer
-
-        anchors.fill: parent
-        originX: chassis.barWidth
-        inset: win.border
-    }
-
-    Launcher {
-        id: launcherLayer
-
-        anchors.fill: parent
-        originX: chassis.barWidth
-        inset: win.border
-    }
-
-    TopClock {
-        id: topClock
-
-        anchors.fill: parent
-        border: win.border
-    }
-
 }
