@@ -53,14 +53,14 @@ Item {
         {
             key: "network",
             title: "Network",
-            icon: Network.icon(Network.activeStrength),
+            icon: Network.icon(),
             // A METER while there is a signal to meter, and a glyph for the two
             // states that are not a level at all: switched off, and on but
             // joined to nothing. Four dark bars would say both of those, and
             // they are not the same thing as each other or as a weak signal.
             mark: Network.connected ? signalMark : null,
             active: Network.connected,
-            alert: Network.available && !Network.enabled,
+            alert: (Network.available && !Network.enabled) || Network.stranded,
             available: Network.available,
             body: networkMenu
         },
