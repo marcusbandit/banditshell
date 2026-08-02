@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.modules.media
 import qs.services
 
 // Whatever is playing. This one is real.
@@ -115,65 +116,15 @@ Column {
     }
 
     // Transport. Centred, because it is the one thing in this menu you aim at.
-    Row {
+    //
+    // The same component the notch's preview uses, so there is ONE set of media
+    // buttons in the shell rather than two that drift. It used to be a filled
+    // disc and two bare glyphs; the ring is Niagara's, and it is the better
+    // answer for a translucent material anyway (see MediaTransport.qml).
+    MediaTransport {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: Media.available
-        spacing: Appearance.padding.large
-
-        Repeater {
-            model: [
-                {
-                    icon: "skip_previous",
-                    action: "previous",
-                    enabled: !!Media.active?.canGoPrevious
-                },
-                {
-                    icon: Media.playing ? "pause" : "play_arrow",
-                    action: "toggle",
-                    enabled: true,
-                    primary: true
-                },
-                {
-                    icon: "skip_next",
-                    action: "next",
-                    enabled: !!Media.active?.canGoNext
-                }
-            ]
-
-            delegate: G2Rect {
-                id: button
-
-                required property var modelData
-
-                width: modelData.primary ? Appearance.sizes.rowHeight : Appearance.sizes.rowHeight * 0.85
-                height: width
-                radius: width / 2
-                color: modelData.primary ? Appearance.colour.fillStronger : press.containsMouse ? Appearance.colour.fillStrong : "transparent"
-
-                Icon {
-                    anchors.centerIn: parent
-                    name: button.modelData.icon
-                    color: button.modelData.enabled ? Appearance.colour.text : Appearance.colour.textFaint
-                }
-
-                MouseArea {
-                    id: press
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    enabled: button.modelData.enabled
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
-                        if (button.modelData.action === "toggle")
-                            Media.toggle();
-                        else if (button.modelData.action === "next")
-                            Media.next();
-                        else
-                            Media.previous();
-                    }
-                }
-            }
-        }
+        width: parent.width
     }
 
     // More than one player is common (a browser registers one per tab), so say

@@ -264,6 +264,16 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     dead space, which is wrong: nothing is floating, the panel is part of the edge. Concave
     makes the panel's free edge sweep outward and arrive tangent to the screen edge. Convex is
     for things that genuinely float.
+  - **A PICTURE cannot go through the primitive, so it is masked by one.** An image is a
+    texture, not a path, so album art or a notification's thumbnail dropped into a rounded
+    plate keeps its own square corners over the plate's curve, a pixel away from a G2 corner
+    for comparison. `components/G2Image.qml` renders the picture to a texture and lets a
+    G2Rect of the same size eat it. Same shape, applied differently.
+  - **An OUTLINE is allowed on a control, never on the body.** `G2Rect` grew a stroke for the
+    transport's play ring. The old "fill only" rule was about the chassis: a hairline on a
+    contour that joins another shape reads as a seam through one object. A ring around a
+    button joins nothing, and it is how to give a control a boundary without a solid fill.
+    It is stroked INSIDE the item's bounds, because a ring is laid out as a target.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
   spacing instead. Portable rule: `~/.claude/rules/type-scale.md`.
@@ -328,7 +338,8 @@ banditshell/
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
-│   ├── G2Rect.qml               the ONE rounded-rect primitive
+│   ├── G2Rect.qml               the ONE rounded-rect primitive; fill and/or outline
+│   ├── G2Image.qml              a picture cut to that same corner, by mask
 │   ├── CornerWedge.qml          a corner's leftover; rounds off the screen corners
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
@@ -367,7 +378,9 @@ banditshell/
 │   ├── Ipc.qml                  the control surface the CLI talks to
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
-│   ├── MediaPreview.qml         what is playing, small enough to ride under it
+│   ├── media/
+│   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
+│   │   └── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
 │   ├── picker/                  screenshot: hover a window or drag a region

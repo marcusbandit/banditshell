@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
@@ -253,7 +252,7 @@ Item {
             // to be asked; the nullable form returns "" rather than a
             // placeholder, which is what lets the glyph take over.
             readonly property string source: root.notification?.image || (root.notification?.appIcon ? Quickshell.iconPath(root.notification.appIcon, true) : "")
-            readonly property bool hasImage: source !== "" && art.status === Image.Ready
+            readonly property bool hasImage: source !== "" && art.ready
 
             // The plate is only there to hold the glyph. Under an image it would
             // be a frame around something already square, and a step of fill
@@ -276,46 +275,18 @@ Item {
                 color: root.urgent ? Appearance.colour.accent : Appearance.colour.textDim
             }
 
-            // CROPPED TO FILL, then masked to the plate's own squircle.
-            //
-            // Fitting an image inside the plate was wrong twice over: anything
-            // not square letterboxed, so a screenshot thumbnail sat in a band of
-            // fill, and the image kept its own SQUARE corners inside a rounded
-            // plate, which is the one thing a G2 corner cannot forgive. Filling
-            // and masking makes an arbitrary image the same shape as everything
-            // else the shell draws.
-            Image {
+            // CROPPED TO FILL, then masked to the plate's own squircle. Fitting
+            // an image INSIDE the plate was wrong twice over: anything not
+            // square letterboxed, so a screenshot thumbnail sat in a band of
+            // fill, and the image kept its own square corners inside a rounded
+            // plate. Both of those, and the reason, now live in G2Image, which
+            // is also what the media preview's cover goes through.
+            G2Image {
                 id: art
 
                 anchors.fill: parent
                 source: badge.source
-                fillMode: Image.PreserveAspectCrop
-                asynchronous: true
-                smooth: true
-                sourceSize.width: badge.width * Screen.devicePixelRatio
-                sourceSize.height: badge.height * Screen.devicePixelRatio
-                // Rendered to a texture for the mask to eat, never to the scene.
-                layer.enabled: true
-                visible: false
-            }
-
-            G2Rect {
-                id: artMask
-
-                anchors.fill: parent
                 radius: Appearance.rounding.small
-                // Only the alpha matters; the colour is what makes it opaque.
-                color: "white"
-                layer.enabled: true
-                visible: false
-            }
-
-            MultiEffect {
-                anchors.fill: parent
-                source: art
-                maskEnabled: true
-                maskSource: artMask
-                visible: badge.hasImage
             }
         }
 

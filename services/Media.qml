@@ -64,6 +64,17 @@ Singleton {
             active.next();
     }
 
+    // Bring the player itself up. The preview says what is playing, and the
+    // question it cannot answer is always "what IS this", so the artwork is a
+    // way back to the application that knows. Not every player offers it: a
+    // browser tab is a window MPRIS cannot raise on its own.
+    readonly property bool canRaise: !!active?.canRaise
+
+    function raise(): void {
+        if (active?.canRaise)
+            active.raise();
+    }
+
     function previous(): void {
         if (active?.canGoPrevious)
             active.previous();

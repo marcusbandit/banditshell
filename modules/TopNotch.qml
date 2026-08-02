@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.modules.media
 import qs.services
 
 // The notch: cursor to the top-centre edge and the time swells out of the band.

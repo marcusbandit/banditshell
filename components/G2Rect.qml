@@ -27,26 +27,50 @@ Item {
 
     property color color: "transparent"
 
-    // Fill only, no stroke. Every hairline this shell tried to draw on a shape's
-    // own contour landed on a join with another shape and read as a seam through
-    // one body; see Chassis.qml. Separator.qml draws the one line that is
-    // actually wanted.
+    // AN OUTLINE, for a shape that is a CONTROL rather than part of the body.
+    //
+    // This used to say "fill only, no stroke", and the reason still holds for
+    // everything the chassis is made of: every hairline this shell tried to draw
+    // on a body's own contour landed on a join with another shape and read as a
+    // seam through one object (see Chassis.qml). A ring around a button joins
+    // nothing, and it is the one way to draw a control that has a boundary
+    // without painting a solid disc that shouts.
+    //
+    // Stroked INSIDE the item's bounds rather than centred on the path, which is
+    // Qt's default: a ring is laid out as a target, and half of it hanging
+    // outside the box it was given makes every layout around it wrong by a
+    // pixel.
+    property color stroke: "transparent"
+    property real strokeWidth: 0
 
     // Children declared inside a G2Rect land in `inner`, on top of the shape.
     default property alias content: inner.data
 
+    // Half the stroke, which is how far the drawn curve moves in to keep the
+    // whole of it inside the item. An offset curve is the radius less the same
+    // distance; a concave corner is left alone, because it is a flare into a
+    // screen edge and nothing there is ever stroked.
+    readonly property real inset: root.strokeWidth / 2
+
+    function offset(r: real): real {
+        return r < 0 ? r : Math.max(0, r - root.inset);
+    }
+
     Shape {
+        id: shape
+
         anchors.fill: parent
+        anchors.margins: root.inset
         // Qt 6.6+ curve renderer: proper antialiasing without a multisample layer.
         preferredRendererType: Shape.CurveRenderer
 
         ShapePath {
             fillColor: root.color
-            strokeColor: "transparent"
-            strokeWidth: 0
+            strokeColor: root.stroke
+            strokeWidth: root.strokeWidth
 
             PathSvg {
-                path: Squircle.path(root.width, root.height, root.topLeftRadius, root.topRightRadius, root.bottomRightRadius, root.bottomLeftRadius, root.cornerSmoothing)
+                path: Squircle.path(shape.width, shape.height, root.offset(root.topLeftRadius), root.offset(root.topRightRadius), root.offset(root.bottomRightRadius), root.offset(root.bottomLeftRadius), root.cornerSmoothing)
             }
         }
     }

@@ -136,6 +136,17 @@ Singleton {
         // every icon from a tier nothing is set in, and 30px icons do not fit
         // the 28px status slot they sit in.
         readonly property int iconSize: Math.round(size.small * root.cfg.font.iconScale)
+
+        // THE PIXEL FONT'S OWN DEVICE PIXEL, and therefore what a line drawn
+        // beside it should weigh.
+        //
+        // Monocraft's design pixel is the base (see Config's font block), so a
+        // tier is that many device pixels per design pixel: at base 9 with the
+        // body tier at 2x, a stem is 2px wide. A rule, a ring or an outline at
+        // any other width reads as a different material sitting next to type
+        // made of stems that thick, which is the same reason the sizes have to
+        // be whole multiples in the first place.
+        readonly property int stem: Math.max(1, Math.round(size.small / root.cfg.font.base))
     }
 
     readonly property QtObject rounding: QtObject {
@@ -256,6 +267,10 @@ Singleton {
         readonly property int volumeRailLength: root.cfg.volume.railLength
         readonly property int volumeRailWidth: root.cfg.volume.railWidth
         readonly property int volumeLinger: root.cfg.volume.linger
+
+        // The power panel, on the right edge. See modules/session/SessionMenu.qml.
+        readonly property int sessionButton: root.cfg.session.button
+        readonly property int sessionIcon: Math.round(root.font.iconSize * root.cfg.session.iconScale)
 
         readonly property int menuWidth: root.cfg.menu.width
         readonly property int menuMinHeight: root.cfg.menu.minHeight
