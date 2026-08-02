@@ -66,7 +66,10 @@ Item {
     // zero-height view, which is an accident, not a mechanism. Knowing the pitch
     // up front means the panel's size follows from the RESULT COUNT and the list
     // never has to be measured at all.
-    readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.normal * 2)
+    // Tighter than a menu row's on purpose. A menu is a handful of settings and
+    // can afford air; this is a list of every application installed, and every
+    // pixel of row height is one fewer result you can see at a glance.
+    readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
     // The blob the chassis melts in.
     readonly property var blobs: panel.height <= 0 ? [] : [
@@ -420,7 +423,11 @@ Item {
                         width: list.width
                         iconSize: Appearance.sizes.launcherIcon
                         rowHeight: root.rowPitch
+                        // The BODY size, not the display size. The field above
+                        // is the one thing here set large; a hundred rows all
+                        // shouting is not hierarchy, it is just loud.
                         labelSize: Appearance.font.size.normal
+                        inlineDetail: true
                         // The entry's own icon, resolved out of the icon theme,
                         // with the generic mark only as a fallback for entries
                         // that name none.

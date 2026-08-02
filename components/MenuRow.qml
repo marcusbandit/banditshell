@@ -32,6 +32,16 @@ Item {
     // three sizes: this picks one, it does not invent a fourth.
     property real labelSize: Appearance.font.size.small
 
+    // Detail BESIDE the label rather than under it.
+    //
+    // Stacked is right for a menu, where a row is a setting and its explanation
+    // and there is no width to spare. A launcher has width to spare and hundreds
+    // of rows, so stacking doubles the height of every one of them to carry a
+    // line nobody reads until they are already unsure. Beside and right-aligned
+    // it costs no height, spends the width on something true, and turns the list
+    // into two columns that can be scanned independently.
+    property bool inlineDetail: false
+
     property string label: ""
     property string detail: ""
     property bool selected: false
@@ -118,7 +128,7 @@ Item {
         smooth: true
     }
 
-    Column {
+    Item {
         id: stack
 
         anchors.left: root.icon || root.hasImage ? glyph.right : parent.left
@@ -127,10 +137,19 @@ Item {
         anchors.rightMargin: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
 
-        spacing: 0
+        implicitHeight: root.inlineDetail ? Math.max(title.implicitHeight, detail.implicitHeight) : title.implicitHeight + (detail.visible ? detail.implicitHeight : 0)
+        height: implicitHeight
 
         StyledText {
-            width: parent.width
+            id: title
+
+            anchors.left: parent.left
+            anchors.top: parent.top
+            // Yields to the detail beside it, never the other way round: the
+            // name is what is being looked for, so it keeps whatever it needs
+            // and the description takes what is left.
+            width: root.inlineDetail ? parent.width - detail.width - Appearance.padding.large : parent.width
+
             text: root.label
             font.pixelSize: root.labelSize
             color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
@@ -138,7 +157,18 @@ Item {
         }
 
         StyledText {
-            width: parent.width
+            id: detail
+
+            anchors.right: root.inlineDetail ? parent.right : undefined
+            anchors.left: root.inlineDetail ? undefined : parent.left
+            anchors.top: root.inlineDetail ? undefined : title.bottom
+            anchors.verticalCenter: root.inlineDetail ? parent.verticalCenter : undefined
+
+            // Capped, so a wordy description cannot squeeze the name it belongs
+            // to down to an ellipsis.
+            width: root.inlineDetail ? Math.min(implicitWidth, parent.width * 0.4) : parent.width
+            horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft
+
             visible: !!root.detail
             text: root.detail
             font.pixelSize: Appearance.font.size.small
