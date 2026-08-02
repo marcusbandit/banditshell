@@ -584,23 +584,33 @@ Not a field in the end, and the two that were are worth keeping written down.
 2. **One tab on the edge**, crisp, square where it met the screen and rounded on its free end.
    Correct and thin: one small shape in a tall empty bar, which is where "flat and boring"
    came from in the first place.
-3. **A stack of plates**, which is what is there now. Every workspace is hinged on the screen's
-   edge and reaches in as far as it is worth: a short mark when empty, further when it holds
-   windows, furthest for the one you are on. Index tabs and a bar chart of how busy the machine
-   is, which turn out to be the same drawing.
+3. **A stack of plates**, which is what is there now. Every workspace is a plate hinged just
+   inside the frame, reaching in as far as it is worth: a short mark when empty, further when it
+   holds windows, all the way out for the one you are on. Index tabs and a bar chart of how busy
+   the machine is, which turn out to be the same drawing.
 
 What the third one gets that the others did not:
 
-- **Length is the state.** Three reaches, computed as fractions of the bar rather than in
-  pixels, so the proportions survive the bar changing width. Nothing needs a legend: the
-  longest plate is where you are, and a column of stubs is an idle machine. Even the longest
-  stops short of the bar's inner edge; a plate that runs the full width has no free end left
-  and reads as a stripe painted across the bar rather than as one pulled out of the edge.
-- **The busy reach has a floor, and it is the icon column.** The icons are centred on the bar's
-  centre line so they line up with the clock and the status icons below them, which means a
-  plate shorter than about 0.72 of the bar leaves its own glyphs hanging off the end. Dropping
-  below that is possible, but only by moving the icons off that centre line to hug the hinge,
-  and then the sidebar no longer reads as one column.
+- **Length is the state, and it is the only indicator.** There is no separate marker sliding
+  over the plates: the plate you switch to grows, the one you left shrinks. A sliding tab over
+  plates that stayed put meant the growth happened to a hidden element and nothing visibly
+  changed at all.
+- **The plates hinge INSIDE the frame, not on the screen's edge.** The band is drawn around the
+  whole display, so a plate reaching into it makes the frame bulge in one place, which reads as
+  a defect rather than as a tab. Hinging at `band` and stopping a band short of the bar's inner
+  edge gives the same gap at both ends and, for free, puts a full-length plate exactly under the
+  icon column.
+- **The icons ride their plate.** They are children of it, centred in it, so a short plate is
+  not a plate with its glyphs hanging off the end. That is what lets the lengths differ by a
+  lot: with the icons pinned to the bar's centre line instead, no occupied plate could be
+  shorter than about 0.72 of the bar, and the whole staircase collapsed into two near-identical
+  steps. At full length the plate is centred in the bar anyway, so the workspace you are ON
+  keeps the line the clock and the status icons hold, and the others tuck in behind it.
+- **Animate the state, never the resolved pixels.** Width and height both resolve through the
+  column's live height, which is already being smoothed frame by frame; a `Behavior` on the
+  result restarts a 220ms animation on every one of those frames and the plate rubber-bands
+  behind its own column. Animating the fraction (`reach`, `tall`) keeps the reflow exponential
+  and the state change eased, with neither fighting the other. This was the "janky" version.
 - **Depth is thickness and layering.** The plates are one sheet of material; the active one is
   two, with the accent in the upper sheet, and it is pulled further out than the rest. No
   shadow, no bevel, no gradient. Apple's rule for Liquid Glass, and the only depth cue this

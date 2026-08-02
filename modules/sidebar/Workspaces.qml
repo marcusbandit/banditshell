@@ -6,26 +6,31 @@ import qs.config
 import qs.components
 import qs.services
 
-// Vertical workspace indicators: a ruler down the screen's edge, and a tab where
-// you are.
+// Vertical workspace indicators: a stack of plates, and the one you are on is
+// pulled out.
 //
-// A workspace is not a number, it is the windows you left there, so each slot
-// stacks one glyph per window (see Apps.iconFor: the mark comes from the desktop
+// A workspace is not a number, it is the windows you left there, so each plate
+// carries one glyph per window (see Apps.iconFor: the mark comes from the desktop
 // entry's freedesktop categories, so an app this shell has never seen still gets
 // the right one). Nothing here is labelled 1..N: the column IS the order.
 //
-// THE SHAPE IS THE SCREEN'S EDGE. Every workspace is a PLATE hinged on it, and
-// how far the plate reaches in is what the workspace is: a sliver for an empty
-// one, most of the bar for one with windows on it, the whole width for the one
-// you are on. Index tabs, and a bar chart of how busy the machine is, which are
-// the same drawing. Square where they meet the edge, because a rounded corner
-// there would curl the plate away and leave a notch of dead space behind it;
-// rounded on the free end, because that end is free.
+// LENGTH IS THE STATE, and it is the only thing that says it: a short mark for a
+// workspace with nothing on it, further in when it holds windows, all the way out
+// for the one you are on. Index tabs, and a bar chart of how busy the machine is,
+// which turn out to be the same drawing. There is no separate indicator sliding
+// around on top: the plate you go to IS the indicator, and it grows.
 //
-// Depth is thickness and layering, never a shadow or a bevel: the plates are one
-// sheet of material, the active one is two with the accent in the upper sheet,
-// and it is longer than the others, so where you are is literally more glass
-// pulled further out of the edge.
+// THE PLATES ARE HINGED INSIDE THE FRAME, not on the screen's edge. The first
+// `band` pixels of this item are the chassis's frame, which runs around the whole
+// display; a plate reaching into it makes the frame bulge green in one place and
+// reads as a defect rather than as a tab. So the plates start where the frame
+// ends, and stop a band short of the bar's inner edge, which leaves the same gap
+// at both ends and puts a full-length plate exactly under the icon column.
+//
+// Depth is thickness and layering, never a shadow or a bevel: an inactive plate
+// is one sheet of material, the active one is two with the accent in the upper
+// sheet, and it is longer than the rest. Where you are is literally more glass,
+// pulled further out.
 //
 // Every position comes from one pass down the column (see
 // ~/.claude/rules/math-over-hardcoding.md). A slot is as tall as the windows it
@@ -42,30 +47,17 @@ Item {
     readonly property int maxWindows: Appearance.sizes.wsMaxWindows
     readonly property int tick: Appearance.sizes.wsTick
 
-    // How far a plate reaches in, as a fraction of the bar. THREE states, three
-    // lengths, and length is the only thing separating them: nothing, windows,
-    // here. Even the longest stops short of the bar's inner edge, because a
-    // plate that runs the full width is not a plate any more, it is a stripe
-    // across the bar.
+    // WHERE A PLATE STARTS AND HOW FAR IT CAN GO. Both are the chassis's own
+    // band, so a full-length plate is inset by the same amount at each end and
+    // lands centred on the icon column without either being told about the
+    // other. Nothing here is a number chosen to look right.
+    readonly property real hinge: Appearance.sizes.band
+    readonly property real span: width - hinge * 2
+
+    // The other two states, as fractions of that span. The active one is the
+    // whole span by definition: it is what "pulled all the way out" means.
     readonly property real emptyReach: Appearance.sizes.wsEmptyReach
     readonly property real busyReach: Appearance.sizes.wsBusyReach
-    readonly property real activeReach: Appearance.sizes.wsActiveReach
-
-    function reach(occupied: bool, active: bool): real {
-        return Math.round(root.width * (active ? root.activeReach : occupied ? root.busyReach : root.emptyReach));
-    }
-
-    // THE SCREEN'S EDGE, which is where this item starts: it spans the whole
-    // left band of the chassis, and the band is shell material all the way out
-    // to the display's own edge. So the ruler is drawn at x = 0 and means it.
-    readonly property real edge: 0
-
-    // How far the tab reaches in, and how much taller it is than the slot it
-    // marks. The WHOLE band: reach is what separates the other two states from
-    // each other, so the one you are on spends the last of it and has nowhere
-    // further to go. Nothing else in the column is ever this long.
-    readonly property real tabWidth: width
-    readonly property real tabPad: Appearance.padding.small / 2
 
     // Which slot the cursor is on, or -1.
     property int hovered: -1
@@ -97,10 +89,10 @@ Item {
         return out;
     }
 
-    // THE MOTION, for the same reason the layout is one pass: the ticks, the
-    // icons and the tab have to agree to the pixel. Two components chasing the
-    // same target with the same maths still disagree for a frame at a time, and
-    // a tick half a pixel behind its own icons reads as a wobble. So the whole
+    // THE MOTION, for the same reason the layout is one pass: the plates and the
+    // icons on them have to agree to the pixel. Two components chasing the same
+    // target with the same maths still disagree for a frame at a time, and a
+    // plate half a pixel behind its own icons reads as a wobble. So the whole
     // column is smoothed HERE, once, and everything reads the result.
     //
     // Exponential smoothing, as everywhere else in this shell: fast when far,
@@ -156,76 +148,11 @@ Item {
         onTriggered: root.step(interval / 1000)
     }
 
-    Component.onCompleted: {
-        root.snap();
-        slideY.snap();
-        slideH.snap();
-    }
+    Component.onCompleted: root.snap()
 
-    readonly property var activeSlot: root.slots[Hypr.activeId - 1]
     readonly property var lastLive: root.live[root.live.length - 1]
 
     implicitHeight: lastLive ? lastLive.y + lastLive.h : slot
-
-    // The tab slides between slots on its own. Its targets are the RAW layout
-    // rather than the smoothed one: when a workspace grows a window, the tab and
-    // the slot under it start from the same place at the same rate, so they
-    // travel as one thing instead of one chasing the other.
-    Follow {
-        id: slideY
-        target: root.activeSlot?.y ?? 0
-    }
-
-    Follow {
-        id: slideH
-        target: root.activeSlot?.h ?? root.slot
-    }
-
-    // THE TAB. Two sheets: a neutral one that makes the material thicker, and
-    // the accent over it. A tint alone reads as a coloured stain on the bar; the
-    // pair reads as more glass, with colour in it.
-    G2Rect {
-        id: tab
-
-        x: root.edge
-        y: slideY.value - root.tabPad
-        width: root.tabWidth
-        height: slideH.value + root.tabPad * 2
-
-        // SQUARE where it meets the screen's edge, convex on its free end. A
-        // rounded corner there would curl the tab away from the edge and leave a
-        // notch of dead space behind it; a concave flare, which is what the
-        // chassis uses at this boundary, needs more room than a 28px slot has
-        // and pinches the tab's own end off. It is attached to the edge, so it
-        // ends flat against it.
-        topLeftRadius: 0
-        bottomLeftRadius: 0
-        topRightRadius: Appearance.rounding.normal
-        bottomRightRadius: Appearance.rounding.normal
-
-        color: Appearance.colour.fillStrong
-
-        G2Rect {
-            anchors.fill: parent
-            topLeftRadius: tab.topLeftRadius
-            bottomLeftRadius: tab.bottomLeftRadius
-            topRightRadius: tab.topRightRadius
-            bottomRightRadius: tab.bottomRightRadius
-            color: Appearance.colour.accentFill
-        }
-
-        // The one saturated thing in the sidebar, and it is three pixels wide,
-        // hard on the screen's edge. The tint says which plate is yours; this
-        // says it in the palette's own voice, at the one place in the bar that
-        // cannot be mistaken for anything else.
-        G2Rect {
-            x: 0
-            width: root.tick
-            height: parent.height
-            radius: 0
-            color: Appearance.colour.accent
-        }
-    }
 
     Repeater {
         // Modelled by the COUNT, not by `slots`: a Repeater over a JS array
@@ -253,60 +180,9 @@ Item {
             width: root.width
             height: slotItem.geom.h
 
-            // THE PLATE. Hinged on the screen's edge, reaching in as far as the
-            // workspace is worth: a sliver when empty, most of the bar when it
-            // holds windows. Hidden under the tab when this is where you are, so
-            // the two never stack their translucency into a denser patch.
-            G2Rect {
-                // An EMPTY workspace gets a mark, not a plate: half as tall,
-                // centred on the slot it stands for. Length alone did not carry
-                // it, a short plate at full height is just a fat nub. Going
-                // there makes it a plate like any other.
-                readonly property bool solid: slotItem.isOccupied || slotItem.isActive
-
-                x: root.edge
-                y: solid ? -root.tabPad : (parent.height - root.slot / 2) / 2
-                // Sized for the state it is IN, including active: the plate a
-                // tab lands on grows to meet it, so nothing changes size behind
-                // the tab while it is there and nothing snaps when it leaves.
-                width: root.reach(slotItem.isOccupied, slotItem.isActive)
-                height: solid ? parent.height + root.tabPad * 2 : root.slot / 2
-
-                topLeftRadius: 0
-                bottomLeftRadius: 0
-                topRightRadius: tab.topRightRadius
-                bottomRightRadius: tab.bottomRightRadius
-
-                color: root.hovered === slotItem.index ? Appearance.colour.fillStrong : Appearance.colour.fill
-                opacity: slotItem.isActive ? 0 : 1
-
-                Behavior on width {
-                    NumberAnimation {
-                        duration: Appearance.anim.normal
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Behavior on height {
-                    NumberAnimation {
-                        duration: Appearance.anim.normal
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
-            }
-
+            // The click target is the whole width, plate or no plate: a 12px mark
+            // is a mark, not a button, and reaching for a workspace should not
+            // mean hitting it.
             MouseArea {
                 anchors.fill: parent
                 hoverEnabled: true
@@ -317,76 +193,179 @@ Item {
                 onClicked: Hypr.switchTo(slotItem.info.id)
             }
 
-            // One row per window, centred in the bar with everything else in it.
-            // The rows are centred in the slot as a group: a slot is `root.slot`
-            // tall plus a pitch per extra row, so the group's inset is the same
-            // whatever it holds.
-            Repeater {
-                // A ScriptModel, NOT the array: the array is rebuilt on every
-                // Hyprland event, and a plain-array Repeater would tear down and
-                // rebuild every icon each time. This diffs it, so a window
-                // opening touches only its own row.
-                model: ScriptModel {
-                    values: slotItem.info.windows
+            // THE PLATE.
+            G2Rect {
+                id: plate
+
+                // An EMPTY workspace gets a mark, not a plate: half as tall,
+                // centred on the slot it stands for. Length alone did not carry
+                // it, a short plate at full height is just a fat nub. Going there
+                // makes it a plate like any other.
+                readonly property bool solid: slotItem.isOccupied || slotItem.isActive
+
+                // THE STATE IS ANIMATED, NOT THE PIXELS. Both of these resolve
+                // through the slot's live height, which is already being smoothed
+                // frame by frame; a Behavior on the resulting height would
+                // restart a 220ms animation on every one of those frames and the
+                // plate would rubber-band behind its own column. Animating the
+                // fractions instead keeps the two motions independent: the reflow
+                // stays exponential, the state change eases, neither fights the
+                // other.
+                readonly property real reachTarget: slotItem.isActive ? 1 : slotItem.isOccupied ? root.busyReach : root.emptyReach
+                readonly property real tallTarget: solid ? 1 : 0.5
+
+                property real reach: reachTarget
+                property real tall: tallTarget
+
+                x: root.hinge
+                width: Math.round(root.span * reach)
+                height: Math.round(parent.height * tall)
+                y: (parent.height - height) / 2
+
+                // SQUARE at the hinge, convex on the free end. A rounded corner
+                // at the hinge would curl the plate away from the frame and leave
+                // a notch of dead space behind it; the chassis's concave flare,
+                // which is the right answer where a panel meets the screen's own
+                // edge, needs more room than a 28px slot has and pinches the
+                // plate's end off. Attached means flat against.
+                topLeftRadius: 0
+                bottomLeftRadius: 0
+                topRightRadius: Appearance.rounding.normal
+                bottomRightRadius: Appearance.rounding.normal
+
+                color: root.hovered === slotItem.index || slotItem.isActive ? Appearance.colour.fillStrong : Appearance.colour.fill
+
+                Behavior on reach {
+                    NumberAnimation {
+                        duration: Appearance.anim.normal
+                        easing.type: Easing.OutCubic
+                    }
                 }
 
-                delegate: Item {
-                    id: row
+                Behavior on tall {
+                    NumberAnimation {
+                        duration: Appearance.anim.normal
+                        easing.type: Easing.OutCubic
+                    }
+                }
 
-                    required property var modelData
-                    required property int index
-                    readonly property bool focused: Hypr.isFocused(modelData)
+                Behavior on color {
+                    ColorAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
 
-                    x: (root.width - root.slot) / 2
-                    y: (root.slot - root.pitch) / 2 + index * root.pitch
-                    width: root.slot
-                    height: root.pitch
+                // The second sheet: the accent, over the neutral one rather than
+                // instead of it, so the active plate reads as thicker glass with
+                // colour in it and not as a stain on the bar.
+                G2Rect {
+                    anchors.fill: parent
+                    topLeftRadius: plate.topLeftRadius
+                    bottomLeftRadius: plate.bottomLeftRadius
+                    topRightRadius: plate.topRightRadius
+                    bottomRightRadius: plate.bottomRightRadius
+                    color: Appearance.colour.accentFill
+                    opacity: slotItem.isActive ? 1 : 0
 
-                    Icon {
-                        anchors.centerIn: parent
-                        name: Apps.iconFor(Hypr.classOf(row.modelData))
-
-                        // The focused window is the only thing in the column at
-                        // full label weight. That is the whole hierarchy: the
-                        // tab says which workspace you are on, this says which
-                        // window you are in.
-                        color: row.focused || winMouse.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.anim.fast
-                            }
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Appearance.anim.fast
                         }
                     }
+                }
 
-                    // Clicking a window goes to THAT window, not merely to its
-                    // workspace. Hyprland's focuswindow brings the workspace
-                    // along with it, so this is strictly more than the slot's own
-                    // click does.
-                    MouseArea {
-                        id: winMouse
+                // The one saturated thing in the sidebar, and it is three pixels
+                // wide, on the plate's hinge. The tint says which plate is yours;
+                // this says it in the palette's own voice.
+                G2Rect {
+                    x: 0
+                    width: root.tick
+                    height: parent.height
+                    radius: 0
+                    color: Appearance.colour.accent
+                    opacity: slotItem.isActive ? 1 : 0
 
-                        anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        onEntered: root.hovered = slotItem.index
-                        onExited: if (root.hovered === slotItem.index)
-                            root.hovered = -1
-                        onClicked: Hypr.focusClient(row.modelData)
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Appearance.anim.fast
+                        }
                     }
                 }
-            }
 
-            // "and more". Sits in the row after the last icon, so an overflowing
-            // workspace is capped rather than truncated silently.
-            Icon {
-                visible: slotItem.info.rest > 0
-                x: (root.width - root.slot) / 2
-                y: (root.slot - root.pitch) / 2 + slotItem.info.windows.length * root.pitch
-                width: root.slot
-                height: root.pitch
-                name: "more_horiz"
-                color: Appearance.colour.textFaint
+                // One row per window, CENTRED IN THE PLATE, which is why they are
+                // children of it: the icons ride the plate out as it grows rather
+                // than sitting at a fixed place it happens to cover. A plate long
+                // enough to hold them is then not a constraint on how short the
+                // others can be. At full length the plate is centred in the bar,
+                // so the icons of the workspace you are on land exactly on the
+                // line the clock and the status icons keep.
+                Repeater {
+                    // A ScriptModel, NOT the array: the array is rebuilt on every
+                    // Hyprland event, and a plain-array Repeater would tear down
+                    // and rebuild every icon each time. This diffs it, so a
+                    // window opening touches only its own row.
+                    model: ScriptModel {
+                        values: slotItem.info.windows
+                    }
+
+                    delegate: Item {
+                        id: row
+
+                        required property var modelData
+                        required property int index
+                        readonly property bool focused: Hypr.isFocused(modelData)
+
+                        x: (plate.width - root.slot) / 2
+                        y: (root.slot - root.pitch) / 2 + index * root.pitch
+                        width: root.slot
+                        height: root.pitch
+
+                        Icon {
+                            anchors.centerIn: parent
+                            name: Apps.iconFor(Hypr.classOf(row.modelData))
+
+                            // The focused window is the only thing in the column
+                            // at full label weight. That is the whole hierarchy:
+                            // the plate says which workspace you are on, this
+                            // says which window you are in.
+                            color: row.focused || winMouse.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
+                        }
+
+                        // Clicking a window goes to THAT window, not merely to
+                        // its workspace. Hyprland's focuswindow brings the
+                        // workspace along with it, so this is strictly more than
+                        // the plate's own click does.
+                        MouseArea {
+                            id: winMouse
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onEntered: root.hovered = slotItem.index
+                            onExited: if (root.hovered === slotItem.index)
+                                root.hovered = -1
+                            onClicked: Hypr.focusClient(row.modelData)
+                        }
+                    }
+                }
+
+                // "and more". Sits in the row after the last icon, so an
+                // overflowing workspace is capped rather than truncated silently.
+                Icon {
+                    visible: slotItem.info.rest > 0
+                    x: (plate.width - root.slot) / 2
+                    y: (root.slot - root.pitch) / 2 + slotItem.info.windows.length * root.pitch
+                    width: root.slot
+                    height: root.pitch
+                    name: "more_horiz"
+                    color: Appearance.colour.textFaint
+                }
             }
         }
     }

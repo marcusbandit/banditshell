@@ -211,7 +211,6 @@ Singleton {
         readonly property int wsTick: root.cfg.sidebar.workspaces.tick
         readonly property real wsEmptyReach: root.cfg.sidebar.workspaces.emptyReach
         readonly property real wsBusyReach: root.cfg.sidebar.workspaces.busyReach
-        readonly property real wsActiveReach: root.cfg.sidebar.workspaces.activeReach
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 

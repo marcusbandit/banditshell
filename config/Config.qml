@@ -237,18 +237,15 @@ Singleton {
                     //
                     // Width of the bright mark on the edge of the active plate.
                     tick: 3,
-                    // How far a plate reaches in, as a fraction of the bar's
-                    // width: nothing on it, windows on it, and the one you are
-                    // on. Fractions rather than pixels, so the three lengths
-                    // keep their proportions if the bar changes width.
+                    // How far a plate reaches, as a fraction of the room it
+                    // has: one with nothing on it, and one with windows. The
+                    // active plate is always the whole span, which is what
+                    // "pulled all the way out" means, so it has no setting.
                     //
-                    // Even `active` stops short of the bar's inner edge. A plate
-                    // that runs the full width has no free end left, so it stops
-                    // reading as pulled out of the edge and starts reading as a
-                    // stripe painted across the bar.
+                    // Fractions rather than pixels, so the lengths keep their
+                    // proportions if the bar changes width.
                     emptyReach: 0.28,
-                    busyReach: 0.62,
-                    activeReach: 0.8
+                    busyReach: 0.62
                 },
                 status: {
                     slot: 28,
@@ -278,11 +275,11 @@ Singleton {
             },
 
             launcher: {
-                width: 920,
+                width: 840,
                 // How present an app's icon is. Bigger than a menu's glyph on
                 // purpose: a launcher is a list you scan by icon, and the row
                 // grows to suit.
-                iconSize: 44,
+                iconSize: 36,
                 // How fast a launch stops counting. Each one is worth 1 when it
                 // happens and half that after this many days, so the order
                 // follows what you use NOW rather than what you used once.
