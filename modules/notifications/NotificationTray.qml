@@ -39,9 +39,32 @@ Item {
 
     readonly property real panelWidth: Appearance.sizes.notificationWidth
 
-    // Summoned by the corner, and held open by the cursor being anywhere in the
-    // tray, so you can travel from the corner into the list without it shutting.
-    readonly property bool expanded: cornerTop.containsMouse || cornerSide.containsMouse || trayHover.containsMouse
+    // Summoned by the corner, and held open while the cursor is anywhere in the
+    // tray.
+    //
+    // Leaving starts a GRACE timer rather than closing, the same as the menus.
+    // Hover is a sloppy input and there is real dead space to cross: the corner
+    // arms are in the band and the tray starts a gap below it, so an immediate
+    // close makes the tray unreachable from the thing that opens it.
+    property bool expanded: false
+
+    readonly property bool hovering: cornerTop.containsMouse || cornerSide.containsMouse || trayHover.hovered
+
+    onHoveringChanged: {
+        if (root.hovering) {
+            grace.stop();
+            root.expanded = true;
+        } else if (root.expanded) {
+            grace.restart();
+        }
+    }
+
+    Timer {
+        id: grace
+
+        interval: Appearance.anim.grace
+        onTriggered: root.expanded = false
+    }
 
     readonly property var items: root.expanded ? Notifs.history : Notifs.popups
 
@@ -132,14 +155,14 @@ Item {
         onYChanged: Qt.callLater(root.sync)
         onHeightChanged: Qt.callLater(root.sync)
 
-        MouseArea {
+        // A HANDLER, not a MouseArea. A hoverEnabled MouseArea is the topmost
+        // thing that gets hover and everything under it gets none, so the moment
+        // the cursor reached a row the tray stopped being hovered, decided the
+        // cursor had left, and closed itself: the list vanished the instant you
+        // tried to touch it. A HoverHandler is passive and stays hovered while
+        // its own descendants are.
+        HoverHandler {
             id: trayHover
-
-            anchors.fill: parent
-            hoverEnabled: true
-            // Hover only. Everything clickable in here has its own area on top,
-            // and this must not swallow a press meant for a row.
-            acceptedButtons: Qt.NoButton
         }
 
         // Scrolls only when it has to. A tray shorter than the screen is a
