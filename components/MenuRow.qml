@@ -10,6 +10,14 @@ Item {
     id: root
 
     property string icon: ""
+
+    // A real image for the leading slot, which wins over the glyph when it
+    // resolves. An application's own icon is how it is recognised; making every
+    // app in the launcher wear the same generic mark throws that away and turns
+    // the list into text that has to be read.
+    property string iconSource: ""
+    readonly property bool hasImage: iconSource !== "" && image.status === Image.Ready
+
     property string label: ""
     property string detail: ""
     property bool selected: false
@@ -61,13 +69,35 @@ Item {
         anchors.leftMargin: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
 
-        visible: !!root.icon
+        visible: !!root.icon && !root.hasImage
         name: root.icon
         color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
     }
 
+    Image {
+        id: image
+
+        anchors.left: parent.left
+        anchors.leftMargin: Appearance.padding.normal
+        anchors.verticalCenter: parent.verticalCenter
+
+        // Squared on the GLYPH's box, so a row with an image and a row with a
+        // glyph put their text in the same place and the column of labels stays
+        // straight whatever mix of the two a list happens to contain.
+        width: Appearance.font.iconSize
+        height: width
+        sourceSize.width: width * Screen.devicePixelRatio
+        sourceSize.height: height * Screen.devicePixelRatio
+
+        visible: root.hasImage
+        source: root.iconSource
+        fillMode: Image.PreserveAspectFit
+        asynchronous: true
+        smooth: true
+    }
+
     Column {
-        anchors.left: root.icon ? glyph.right : parent.left
+        anchors.left: root.icon || root.hasImage ? glyph.right : parent.left
         anchors.leftMargin: Appearance.padding.normal
         anchors.right: trailingSlot.left
         anchors.rightMargin: Appearance.padding.normal

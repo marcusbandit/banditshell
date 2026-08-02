@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -174,6 +175,10 @@ Item {
                             required property int index
 
                             width: parent.width
+                            // The entry's own icon, resolved out of the icon
+                            // theme, with the generic mark only as a fallback
+                            // for the entries that do not name one.
+                            iconSource: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
                             icon: "apps"
                             label: modelData.name ?? ""
                             detail: modelData.genericName || modelData.comment || ""
