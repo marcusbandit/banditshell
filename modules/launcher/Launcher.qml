@@ -8,14 +8,22 @@ import qs.services
 
 // The launcher.
 //
-// It grows out of the sidebar like everything else, rather than appearing in the
-// middle of the screen. A centred panel would be the conventional choice and
-// would be the only thing in this shell that is not part of the chassis; the
-// whole point of the field is that nothing floats.
+// It hangs from the TOP BAND, centred on the content area, and swells downwards
+// out of it. It used to grow from the sidebar, which kept it part of the chassis
+// but put it against one edge: fine on a 16:9 screen, a long way from where you
+// are looking on an ultrawide. Centred and top-hung it is both, because the top
+// band runs the whole width and so the shell has something to melt it out of
+// wherever it sits.
 //
-// It is the ONE thing here that takes the keyboard, which is why it needs a
-// focus grab: a layer surface does not get key events unless it asks, and the
-// asking has to stop the moment it closes or the desktop stays deaf.
+// It is the ONE thing here that takes the keyboard. A layer surface gets no key
+// events unless its window asks for them, so ShellWindow raises the surface's
+// keyboard focus while this is open and drops it the moment it closes: without
+// that the field looks focused, shows a cursor, and receives nothing.
+//
+// It closes on a CLICK anywhere outside, and never on hover. Hover-close is
+// right for something the cursor summoned and wrong for something a keybind
+// did: the pointer is nowhere near it when it opens, so closing when the pointer
+// leaves would close it before it had been used.
 Item {
     id: root
 
@@ -26,7 +34,12 @@ Item {
     property bool shown: false
 
     readonly property real panelWidth: Appearance.sizes.launcherWidth
-    readonly property Item maskItem: panel
+
+    // The whole screen while it is open, so a click anywhere lands on the shell
+    // and can dismiss it. The panel alone would let every click outside fall
+    // through to whatever is behind, which is how a launcher ends up typing into
+    // the window you were trying to leave.
+    readonly property Item maskItem: catcher
 
     readonly property var results: Apps.search(query.text)
     property int selected: 0
@@ -47,7 +60,10 @@ Item {
         query.text = "";
         root.selected = 0;
         reveal.target = 1;
-        query.forceActiveFocus();
+        // DEFERRED. Focus is only worth taking once the window has actually
+        // asked the compositor for the keyboard, and that follows from `shown`
+        // in the same pass this is running in.
+        Qt.callLater(query.forceActiveFocus);
     }
 
     function hide(): void {
@@ -70,15 +86,21 @@ Item {
         root.hide();
     }
 
-    // Wrapping, because a launcher list is short and getting stuck at the end of
-    // it is a small papercut you feel every time.
+    // Wrapping, because getting stuck at the end of a list is a small papercut
+    // you feel every time. The view follows, so arrowing past the bottom scrolls
+    // rather than moving a selection you can no longer see.
     function move(delta: int): void {
         const n = root.results.length;
-        if (n > 0)
-            root.selected = (root.selected + delta + n) % n;
+        if (n <= 0)
+            return;
+        root.selected = (root.selected + delta + n) % n;
+        list.reveal(root.selected);
     }
 
-    onResultsChanged: root.selected = 0
+    onResultsChanged: {
+        root.selected = 0;
+        list.reset();
+    }
 
     Follow {
         id: reveal
@@ -87,13 +109,34 @@ Item {
         epsilon: 0.005
     }
 
+    // DECLARED FIRST so it sits UNDER the panel. Declaration order is input
+    // order in QML: a catch-all that comes last swallows every click meant for
+    // the thing it is supposed to be behind.
+    MouseArea {
+        id: catcher
+
+        anchors.fill: parent
+        enabled: root.open
+        visible: root.open
+        onClicked: root.hide()
+    }
+
     Item {
         id: panel
 
-        x: root.originX
-        y: (root.height - height) / 2
-        width: root.panelWidth * reveal.value
-        height: Math.min(root.height - root.inset * 2, Appearance.padding.large * 2 + field.height + list.implicitHeight + Appearance.padding.normal)
+        // Centred on the CONTENT area rather than on the screen: the sidebar is
+        // chrome, and centring on the whole width would push the panel off the
+        // middle of the space windows actually occupy.
+        x: root.originX + (root.width - root.originX - root.inset - width) / 2
+        y: root.inset
+
+        width: root.panelWidth
+        // Grows DOWNWARDS out of the band. Height is what the reveal animates,
+        // so at rest it is a sliver inside the band and invisible, and opening
+        // is the shell swelling rather than a panel arriving from somewhere.
+        height: fullHeight * reveal.value
+
+        readonly property real fullHeight: Math.min(root.height - root.inset * 2, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + list.fullHeight)
 
         visible: reveal.value > 0
 
@@ -102,6 +145,8 @@ Item {
             clip: true
 
             Column {
+                id: layout
+
                 x: Appearance.padding.large
                 y: Appearance.padding.large
                 width: root.panelWidth - Appearance.padding.large * 2
@@ -132,7 +177,7 @@ Item {
                         anchors.verticalCenter: parent.verticalCenter
 
                         font.family: Appearance.font.family
-                        font.pixelSize: Appearance.font.size.normal
+                        font.pixelSize: Appearance.font.size.large
                         renderType: Text.NativeRendering
                         color: Appearance.colour.text
                         selectionColor: Appearance.colour.accent
@@ -151,47 +196,67 @@ Item {
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
-                            text: "type to find an application"
+                            // Short, because the field is set in the large
+                            // size now and the old sentence ran off the end of
+                            // it. A search box does not need to explain itself.
+                            text: "Search"
+                            font.pixelSize: Appearance.font.size.large
                             color: Appearance.colour.textFaint
                         }
                     }
                 }
 
                 Separator {
+                    id: separator
+
                     width: parent.width
                 }
 
-                Column {
+                // A LIST VIEW, not a Column. Nothing is truncated any more, so
+                // with an empty query this is every application installed; a
+                // Column would build a row for every one of them on every
+                // keystroke. This builds only what is on screen, and glides: see
+                // GlideList for what Qt's own wheel handling does instead.
+                GlideList {
                     id: list
 
+                    // What the panel would need, CAPPED at a row count rather
+                    // than at the screen: nothing is truncated any more, so
+                    // "everything installed" would otherwise open a launcher the
+                    // full height of the display every time. A short result set
+                    // still gets a short panel; a long one scrolls.
+                    readonly property real fullHeight: Math.min(root.results.length ? contentHeight : empty.implicitHeight, Appearance.sizes.rowHeight * Appearance.sizes.launcherRows)
+
                     width: parent.width
-                    spacing: 0
+                    height: Math.max(0, panel.height - y - Appearance.padding.large)
+                    clip: true
 
-                    Repeater {
-                        model: root.results
+                    model: root.results
+                    cacheBuffer: Appearance.sizes.rowHeight * 4
 
-                        delegate: MenuRow {
-                            required property var modelData
-                            required property int index
+                    delegate: MenuRow {
+                        required property var modelData
+                        required property int index
 
-                            width: parent.width
-                            // The entry's own icon, resolved out of the icon
-                            // theme, with the generic mark only as a fallback
-                            // for the entries that do not name one.
-                            iconSource: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
-                            icon: "apps"
-                            label: modelData.name ?? ""
-                            detail: modelData.genericName || modelData.comment || ""
-                            selected: index === root.selected
+                        width: list.width
+                        // The entry's own icon, resolved out of the icon theme,
+                        // with the generic mark only as a fallback for entries
+                        // that name none.
+                        iconSource: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
+                        icon: "apps"
+                        label: modelData.name ?? ""
+                        detail: modelData.genericName || modelData.comment || ""
+                        selected: index === root.selected
 
-                            onActivated: {
-                                root.selected = index;
-                                root.accept();
-                            }
+                        onActivated: {
+                            root.selected = index;
+                            root.accept();
                         }
                     }
 
                     StyledText {
+                        id: empty
+
                         visible: !root.results.length
                         text: query.text ? "nothing matches" : "no applications found"
                         color: Appearance.colour.textFaint

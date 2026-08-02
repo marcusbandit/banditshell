@@ -174,6 +174,7 @@ Singleton {
         // Exponential-smoothing rates (see ~/.claude/rules/animation-smoothing.md).
         readonly property real trackSpeed: root.cfg.anim.trackSpeed
         readonly property real revealSpeed: root.cfg.anim.revealSpeed
+        readonly property real scrollSpeed: root.cfg.anim.scrollSpeed
 
         readonly property int grace: root.cfg.anim.grace
     }
@@ -201,12 +202,14 @@ Singleton {
         readonly property real dragResistance: root.cfg.control.dragResistance
         readonly property int dragThreshold: root.cfg.control.dragThreshold
         readonly property int rowHeight: root.cfg.control.rowHeight
+        readonly property real wheelRows: root.cfg.control.wheelRows
         readonly property int sliderHeight: root.cfg.control.sliderHeight
         readonly property int toggleWidth: root.cfg.control.toggleWidth
         readonly property int toggleHeight: root.cfg.control.toggleHeight
 
         readonly property int pickerOutline: root.cfg.picker.outline
         readonly property int launcherWidth: root.cfg.launcher.width
+        readonly property int launcherRows: root.cfg.launcher.rows
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone

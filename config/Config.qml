@@ -130,6 +130,10 @@ Singleton {
                 trackSpeed: 14,
                 // Same, for a panel opening or closing.
                 revealSpeed: 18,
+                // Same, for a list gliding to where the wheel threw it. Lower
+                // than the others on purpose: this is the one place the motion
+                // is meant to be FELT rather than merely be over.
+                scrollSpeed: 11,
                 // How long a hover-opened thing survives the cursor leaving.
                 // Hover is a sloppy input; without this, crossing a boundary
                 // dismisses what you were reaching for.
@@ -208,9 +212,15 @@ Singleton {
             },
 
             launcher: {
-                width: 420,
-                // A launcher is for the one you meant, not for browsing.
-                maxResults: 8
+                width: 560,
+                // How many rows fit before it scrolls. Not a cap on results:
+                // everything that matches is in the list, this is only how much
+                // of it is on screen at once.
+                rows: 9,
+                // How fast a launch stops counting. Each one is worth 1 when it
+                // happens and half that after this many days, so the order
+                // follows what you use NOW rather than what you used once.
+                halfLifeDays: 14
             },
 
             notifications: {
@@ -234,6 +244,9 @@ Singleton {
             control: {
                 // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.
                 minTarget: 24,
+
+                // How far one notch of the wheel throws a list, in rows.
+                wheelRows: 3,
 
                 // DRAG BEFORE CLICK. How far a thing has to be thrown, as a
                 // fraction of its own width, before letting go dismisses it.

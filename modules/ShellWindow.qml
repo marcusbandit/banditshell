@@ -63,6 +63,15 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
+    // The keyboard, but ONLY while the launcher is up.
+    //
+    // A layer surface receives no key events unless its window asks, which is
+    // why the search field could be focused, draw a cursor, and still get
+    // nothing typed into it. Exclusive rather than on-demand so Escape works
+    // from anywhere, and dropped the instant it closes: an unconditional grab on
+    // a surface that merely exists takes the keyboard from the desktop.
+    WlrLayershell.keyboardFocus: launcherLayer.open ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
+
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
     // layerrule in ~/.config/hypr/hyprland/rules.conf.
