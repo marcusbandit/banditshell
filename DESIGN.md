@@ -648,6 +648,23 @@ needed: the padding has to be deferred with `Qt.callLater` (assigning `live` fro
 and the styles have to render `max(count, live.length)` delegates or the ghost has no plate to
 shrink.
 
+**A scratchpad is not a sixth workspace.** The first attempt drew special workspaces as a row of
+pills above the numbered run, and it was wrong twice: it took slots in a column that is a list of
+places you LIVE, and it pushed that column around every time one came or went. What a special
+workspace actually does is lie OVER whatever you are looking at, so that is what it is drawn as
+now: a card tucked behind the active plate with a sliver peeking out from under its edge, which
+slides over the plate when you pull it open and tucks back when you put it away. The plate's own
+marks fade while it is covered, because you cannot see those windows either. Two bugs came out
+of building it, both of the same shape (asking the wrong object):
+
+- **`activeId` was the FOCUSED workspace**, and opening a scratchpad focuses it, with a negative
+  id. The active plate vanished, because there is no slot minus ninety-eight. The monitor's own
+  `activeWorkspace` is the numbered one you are still on, which is the question being asked.
+- **`activespecial` contains none of the words the event filter matched on**: not "workspace",
+  not "window", not "mon". The shell knew a special workspace existed and never noticed one
+  being pulled open. Worse, which one is open is a property of the MONITOR, so refreshing
+  workspaces and toplevels left that answer exactly as stale as it was.
+
 **The styles are switchable, and that is deliberate.** `sidebar.workspaces.style` picks between
 whole alternatives (`plates`, `icons`, `map`, `blocks`), not combinable settings. They share
 `WorkspaceModel.qml`, which owns the layout pass and the smoothing, so only the drawing is

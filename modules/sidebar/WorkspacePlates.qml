@@ -53,19 +53,19 @@ Item {
     readonly property real emptyReach: Appearance.sizes.wsEmptyReach
     readonly property real busyReach: Appearance.sizes.wsBusyReach
 
-    // The scratchpad group: how far its pills sit off the edge, how much air
-    // separates them from each other, and how much separates the group from the
-    // numbered run below it. That last one is wider than a plate gap on purpose:
-    // it is the boundary between two kinds of thing.
-    readonly property real inset: Appearance.sizes.band
-    readonly property int gapSize: Appearance.sizes.wsGap
-    readonly property int specialGap: Hypr.specials.length ? Appearance.padding.large : 0
+    // SCRATCHPADS lie on the plate you are on, so how far each tucked one peeks
+    // out from behind it, and how much of the plate underneath stays visible
+    // past the end of an open one. Both small: this is a card on a card.
+    readonly property real peek: Appearance.padding.small
+    readonly property real overhang: Appearance.padding.normal
+
+    // Where the plate you are on currently IS, smoothed like everything else, so
+    // a card lying on it travels with it rather than after it.
+    readonly property var activeGeom: layout.at(Hypr.activeId - 1)
 
     property int hovered: -1
 
-    // The numbered run sits under the scratchpads, which is why it is offset
-    // rather than starting at zero.
-    implicitHeight: specials.height + layout.total
+    implicitHeight: layout.total
 
     WorkspaceModel {
         id: layout
@@ -74,100 +74,70 @@ Item {
         pitch: root.pitch
     }
 
-    // SCRATCHPADS, which are not workspace 6. A special workspace is not
-    // somewhere you go and stay, it is something you pull over whatever you are
-    // already doing and then put away, and it exists only while something is on
-    // it. So they do not join the numbered run: they FLOAT above it, rounded at
-    // both ends and off the screen's edge, because the one thing the plates say
-    // by being hinged is "this is one of the places you live".
+    // SCRATCHPADS, TUCKED BEHIND THE PLATE YOU ARE ON.
     //
-    // No layout pass and no smoothing here on purpose. A scratchpad appears when
-    // you put something in it and is gone when you take it out; there is no
-    // rearranging to follow, and the numbered column below simply starts lower.
-    Column {
-        id: specials
+    // A special workspace is not a sixth workspace and drawing it as one was
+    // wrong twice over: it took a slot in a column that is a list of places you
+    // live, and it pushed that column around every time one came or went. What a
+    // scratchpad actually does is LIE OVER whatever you are looking at, so that
+    // is what it is drawn as: a card behind the active plate, peeking out from
+    // under its edge, which slides over it when you pull it open and tucks back
+    // when you put it away.
+    //
+    // Behind, so only the sliver shows. The open one is drawn again in front,
+    // further down this file, because a thing that is on top of another cannot
+    // also be underneath it.
+    Repeater {
+        model: Hypr.specials
 
-        width: root.width
-        spacing: root.gapSize
-        bottomPadding: root.specialGap
+        delegate: G2Rect {
+            required property var modelData
+            required property int index
+            readonly property bool open: Hypr.openSpecial === modelData.name
 
-        Repeater {
-            model: Hypr.specials
+            x: root.hinge
+            // Tucked under the active plate, each one a little further out than
+            // the last, so two scratchpads read as two cards rather than one.
+            y: root.activeGeom.y + (index + 1) * root.peek
+            width: Math.round(root.span) - root.overhang
+            height: root.activeGeom.h
 
-            delegate: Item {
-                id: pad
+            topLeftRadius: 0
+            bottomLeftRadius: 0
+            topRightRadius: Appearance.rounding.normal
+            bottomRightRadius: Appearance.rounding.normal
 
-                required property var modelData
-                readonly property bool isOpen: Hypr.openSpecial === pad.modelData.name
+            color: Appearance.colour.fillStrong
+            // Gone while it is open: the copy in front is the same card, and two
+            // of them at once is one translucent card twice as thick.
+            opacity: open ? 0 : 1
 
-                width: root.width
-                height: root.slot
-
-                MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Hypr.toggleSpecial(pad.modelData.name)
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.fast
                 }
+            }
 
-                G2Rect {
-                    id: pill
-
-                    // Inset from the edge and rounded at both ends: a plate is
-                    // attached to the screen, this is lying on top of it.
-                    x: root.inset
-                    width: Math.round(root.span * root.busyReach) - root.inset
-                    height: parent.height
-                    radius: Appearance.rounding.normal
-
-                    color: pad.isOpen ? Appearance.colour.fillStrong : Appearance.colour.fill
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.anim.fast
-                        }
-                    }
-
-                    G2Rect {
-                        // `pill.radius`, not `parent.radius`: children declared
-                        // inside a G2Rect land in its inner item, which is a
-                        // plain Item and has no radius to read.
-                        anchors.fill: parent
-                        radius: pill.radius
-                        color: Appearance.colour.accentFill
-                        opacity: pad.isOpen ? 1 : 0
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Appearance.anim.fast
-                            }
-                        }
-                    }
-
-                    // One mark, not a stack: a scratchpad is usually one window,
-                    // and if it is three the point is still "the scratchpad",
-                    // not which of the three is in front.
-                    AppMark {
-                        anchors.centerIn: parent
-                        size: root.iconSize
-                        spec: pad.modelData.windows.length ? AppIcons.markFor(Hypr.classOf(pad.modelData.windows[0])) : ""
-                        fallback: pad.modelData.windows.length ? Apps.iconFor(Hypr.classOf(pad.modelData.windows[0])) : "layers"
-                        color: pad.isOpen ? Appearance.colour.text : Appearance.colour.textDim
-                    }
-
-                    // How many are in there, when it is more than one. A number
-                    // rather than a stack of marks, because the stack would make
-                    // a scratchpad look like a workspace.
-                    StyledText {
-                        anchors.right: parent.right
-                        anchors.rightMargin: Appearance.padding.small / 2
-                        anchors.verticalCenter: parent.verticalCenter
-                        visible: pad.modelData.windows.length > 1
-                        text: pad.modelData.windows.length
-                        font.pixelSize: Appearance.font.size.small
-                        color: Appearance.colour.textFaint
-                    }
+            Behavior on y {
+                NumberAnimation {
+                    duration: Appearance.anim.normal
+                    easing.type: Easing.OutCubic
                 }
+            }
+
+            // THE SLIVER IS THE HANDLE. Only the part below the plate is
+            // visible, so only that part takes the click: the rest of this card
+            // is underneath a plate that has its own job. Reached down a little
+            // further than it is drawn, because six pixels is a hard thing to
+            // hit and there is nothing below it to hit by mistake.
+            MouseArea {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: (parent.index + 1) * root.peek + Appearance.padding.small
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Hypr.toggleSpecial(parent.modelData.name)
             }
         }
     }
@@ -195,8 +165,13 @@ Item {
             readonly property var geom: layout.at(index)
             readonly property bool isActive: Hypr.activeId === slotItem.info.id
             readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
+            // A scratchpad is lying on this plate, so its windows are behind
+            // one: you cannot see them, and neither should their marks, which
+            // would otherwise show through the card and read as two icons in the
+            // same place.
+            readonly property bool covered: slotItem.isActive && Hypr.openSpecial !== ""
 
-            y: specials.height + slotItem.geom.y
+            y: slotItem.geom.y
             width: root.width
             height: slotItem.geom.h
 
@@ -341,6 +316,13 @@ Item {
                         y: (root.slot - root.pitch) / 2 + index * root.pitch
                         width: root.slot
                         height: root.pitch
+                        opacity: slotItem.covered ? 0 : 1
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Appearance.anim.normal
+                            }
+                        }
 
                         // THE MARK, whatever kind of thing it turns out to be:
                         // what you picked for this application in settings, what
@@ -395,6 +377,99 @@ Item {
                     name: "more_horiz"
                     size: root.iconSize
                     color: Appearance.colour.textFaint
+                }
+            }
+        }
+    }
+
+    // THE OPEN SCRATCHPAD, over everything, because that is where it is.
+    //
+    // It takes the height ITS OWN windows need rather than the height of the
+    // plate it covers: a scratchpad is not in the column and does not have to
+    // fit the column's rhythm, and a terminal and a notes window in there should
+    // look like two things. Slightly shorter than the plate underneath, so the
+    // end of what it is covering stays visible past it and the stack reads as a
+    // stack.
+    Repeater {
+        model: Hypr.specials
+
+        delegate: Item {
+            id: pad
+
+            required property var modelData
+            required property int index
+            readonly property bool open: Hypr.openSpecial === pad.modelData.name
+
+            readonly property var windows: pad.modelData.windows.slice(0, root.maxWindows)
+            readonly property int rows: Math.max(1, pad.windows.length)
+            readonly property real full: root.slot + (pad.rows - 1) * root.pitch
+
+            // Centred on the plate it covers when open; folded back down to the
+            // sliver it came from when not, so opening and closing is the same
+            // card moving rather than one appearing where another vanished.
+            property real shown: pad.open ? 1 : 0
+
+            x: root.hinge
+            width: Math.round(root.span) - root.overhang
+            height: root.activeGeom.h + (pad.full - root.activeGeom.h) * pad.shown
+            y: root.activeGeom.y + (pad.index + 1) * root.peek * (1 - pad.shown) + ((root.activeGeom.h - height) / 2) * pad.shown
+            visible: pad.shown > 0
+
+            Behavior on shown {
+                NumberAnimation {
+                    duration: Appearance.anim.normal
+                    easing.type: Easing.OutCubic
+                }
+            }
+
+            MouseArea {
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Hypr.toggleSpecial(pad.modelData.name)
+            }
+
+            G2Rect {
+                id: card
+
+                anchors.fill: parent
+
+                topLeftRadius: 0
+                bottomLeftRadius: 0
+                topRightRadius: Appearance.rounding.normal
+                bottomRightRadius: Appearance.rounding.normal
+
+                // THICKER GLASS, not another colour. The accent means "the
+                // workspace you are on" and the workspace you are on has not
+                // changed: something is lying on top of it. More material is how
+                // this shell says nearer, so this is two sheets where a plate is
+                // one, over a plate that is already there: a card on a card.
+                color: Appearance.colour.fillStrong
+
+                G2Rect {
+                    anchors.fill: parent
+                    topLeftRadius: card.topLeftRadius
+                    bottomLeftRadius: card.bottomLeftRadius
+                    topRightRadius: card.topRightRadius
+                    bottomRightRadius: card.bottomRightRadius
+                    color: Appearance.colour.fillStronger
+                }
+
+                Repeater {
+                    model: pad.windows
+
+                    delegate: AppMark {
+                        required property var modelData
+                        required property int index
+
+                        x: (card.width - root.slot) / 2
+                        y: (root.slot - root.pitch) / 2 + index * root.pitch + (root.slot - root.iconSize) / 2
+                        size: root.iconSize
+                        spec: AppIcons.markFor(Hypr.classOf(modelData))
+                        fallback: Apps.iconFor(Hypr.classOf(modelData))
+                        color: Hypr.isFocused(modelData) ? Appearance.colour.text : Appearance.colour.textDim
+                        opacity: pad.shown
+                    }
                 }
             }
         }

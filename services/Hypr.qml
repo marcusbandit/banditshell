@@ -16,7 +16,17 @@ Singleton {
     // Workspaces always shown, even when empty.
     readonly property int persistentCount: Appearance.sizes.wsPersistent
 
-    readonly property int activeId: Hyprland.focusedWorkspace?.id ?? 1
+    // THE NUMBERED WORKSPACE YOU ARE ON, which is not always the focused one:
+    // opening a scratchpad focuses IT, and its id is negative. The workspace
+    // underneath has not changed and neither has the answer to "where am I", so
+    // the monitor's own active workspace is asked instead, and the focused one
+    // is only a fallback for the case where there is no monitor to ask.
+    readonly property int activeId: {
+        const focused = Hyprland.focusedWorkspace?.id ?? 1;
+        if (focused > 0)
+            return focused;
+        return Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
+    }
 
     // { id: windowCount } for every workspace Hyprland currently knows about.
     // Special workspaces have negative ids and are left out.
@@ -225,9 +235,17 @@ Singleton {
                     root.focusedAddress = addr.startsWith("0x") ? addr : `0x${addr}`;
             }
 
-            if (n.includes("workspace") || n.includes("window") || n.includes("mon")) {
+            // `activespecial` is the one that says a scratchpad came or went,
+            // and it contains none of the words below: not "workspace", not
+            // "window", not "mon". Which is why the shell used to know a special
+            // workspace existed and never notice one being pulled open.
+            if (n.includes("workspace") || n.includes("window") || n.includes("mon") || n.includes("special")) {
                 Hyprland.refreshWorkspaces();
                 Hyprland.refreshToplevels();
+                // MONITORS TOO: which special is over the screen is a property of
+                // the monitor, not of the workspace list, so refreshing the other
+                // two leaves that answer exactly as stale as it was.
+                Hyprland.refreshMonitors();
             }
         }
     }
