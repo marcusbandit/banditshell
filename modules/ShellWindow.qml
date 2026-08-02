@@ -119,7 +119,7 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
-            item: topClock.active ? topClock.maskItem : null
+            item: topNotch.active ? topNotch.maskItem : null
         }
 
         Region {
@@ -157,7 +157,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topClock.blobs, ...popups.blobs, ...launchEdge.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -212,15 +212,17 @@ PanelWindow {
 
             anchors.fill: parent
             border: win.border
+            span: launcherLayer.panelWidth
             // Pointless while the thing it opens is already open, and worse than
             // pointless: the launcher's own panel comes out of the same edge.
             armed: !launcherLayer.open
 
-            onRequested: launcherLayer.show()
+            onDragged: fraction => launcherLayer.dragTo(fraction)
+            onFinished: open => launcherLayer.dragEnd(open)
         }
 
-        TopClock {
-            id: topClock
+        TopNotch {
+            id: topNotch
 
             anchors.fill: parent
             border: win.border

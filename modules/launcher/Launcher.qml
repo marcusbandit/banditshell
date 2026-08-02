@@ -49,10 +49,28 @@ Item {
         root.concept?.toggle();
     }
 
+    // How wide the live concept is, so the bottom edge can be an affordance for
+    // exactly the thing it opens rather than for the whole screen.
+    readonly property real panelWidth: root.concept?.panelWidth ?? 0
+
     // Only the niagara concept has a rail; the list one ignores it.
     function scrub(fraction: real): void {
         if (root.concept?.scrubTo)
             root.concept.scrubTo(fraction);
+    }
+
+    // Pulled out of the bottom edge by hand. Concepts that cannot follow a drag
+    // simply open on release, which is what the edge did before it could.
+    function dragTo(fraction: real): void {
+        if (root.concept?.dragTo)
+            root.concept.dragTo(fraction);
+    }
+
+    function dragEnd(open: bool): void {
+        if (root.concept?.dragEnd)
+            root.concept.dragEnd(open);
+        else if (open)
+            root.show();
     }
 
     Loader {

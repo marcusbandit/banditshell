@@ -184,6 +184,35 @@ Item {
     // not intent; motion is. Same reason the rail scrubs on motion only.
     property bool hoverArmed: false
 
+    // Being pulled out of the bottom edge by hand, and how far.
+    //
+    // While this is true the panel's height is the POINTER'S, not the reveal
+    // animation's: the top edge has to be where the finger is or the gesture is
+    // a switch with a picture of a drag on it. The animation takes over at the
+    // moment of release, from wherever the drag left it.
+    property bool dragging: false
+    property real dragProgress: 0
+
+    function dragTo(fraction: real): void {
+        root.dragging = true;
+        root.dragProgress = Math.max(0, Math.min(fraction, 1));
+    }
+
+    function dragEnd(open: bool): void {
+        root.dragging = false;
+        // Hand the animation the position the drag ended at, so it carries on
+        // from there instead of snapping back to start the journey again.
+        rise.value = root.dragProgress;
+        if (open)
+            root.show();
+        else
+            root.hide();
+        // Back to nothing, so the NEXT press starts from the bottom. Left at the
+        // last drag's depth, a plain click would hand the animation a starting
+        // point half way up and the panel would appear already half open.
+        root.dragProgress = 0;
+    }
+
     // Held out by the CLI rather than by a cursor.
     //
     // The rail answers to hover, and hover is the one input that cannot be
@@ -359,7 +388,7 @@ Item {
         // Grows UPWARD out of the bottom band and stays joined to it the whole
         // way: a column rising out of the shell rather than a sheet arriving
         // over it.
-        height: fullHeight * rise.value
+        height: fullHeight * (root.dragging ? root.dragProgress : rise.value)
         y: bandY - height
 
         visible: height > 0

@@ -7,17 +7,29 @@ import qs.components
 // A phone has a gesture bar there and everyone already knows what it is for, so
 // the shell does the same thing with the band it already has: put the cursor on
 // the bottom of the screen and it swells a little, click it and the launcher
-// comes up, or push up from it and it comes up with you.
+// comes up, or push up from it and it comes up WITH you.
 //
-// The swell is deliberately SMALL, a hair under the gap the windows already sit
+// The push is the whole point of it. It is not a switch that happens to be
+// operated by a drag: the panel's top edge tracks the pointer the entire way, so
+// you can see how much of it you have pulled out and decide halfway through that
+// you did not want it. Reverse while still holding and it goes back down. Which
+// way it goes on release is decided by MOMENTUM rather than by position, because
+// position asks "did you drag far enough" and momentum asks "which way were you
+// going", and only the second one is a question about intent.
+//
+// The swell is deliberately small, a hair under the gap the windows already sit
 // inside, so it never moves anything and never covers anything. It is the shell
-// noticing you rather than the shell interrupting you: the whole affordance is
-// that the edge is alive, and an edge only has to move a few pixels to say that.
+// noticing you rather than the shell interrupting you.
 Item {
     id: root
 
     // The band's own thickness, which the swell is added to rather than replaces.
     required property real border
+
+    // How wide the thing this opens is. The edge is an affordance FOR that
+    // thing, so it is exactly as wide: a full-width swell promises that the
+    // whole bottom of the screen does something, and it does not.
+    required property real span
 
     // Whether the edge is worth offering at all. Pointless while the thing it
     // opens is already open.
@@ -27,10 +39,15 @@ Item {
     // reaches the windows sitting inside that gap.
     readonly property real swellBy: Math.max(1, Appearance.sizes.gap - 1)
 
-    // How far up counts as a push rather than a slip.
-    readonly property real swipeBy: Appearance.sizes.rowHeight
+    // A full pull is the height the panel will end up at, so the top edge under
+    // the pointer is the top edge it will have. Derived from the content area
+    // rather than passed in: they are the same number by construction.
+    readonly property real travelFull: Math.max(1, root.height - root.border * 2)
 
-    readonly property bool active: root.armed && zone.containsMouse
+    // Far enough to be a drag rather than the wobble in a click.
+    readonly property real slack: Appearance.padding.large
+
+    readonly property bool active: root.armed && (zone.containsMouse || zone.pressed)
 
     // Always in the mask, not only while swollen. At rest the zone is exactly
     // the band, which the chassis already covers, so this costs nothing; while
@@ -38,13 +55,16 @@ Item {
     // would be the only part of the swell you could not touch.
     readonly property Item maskItem: zone
 
-    signal requested
+    // How far out the panel has been pulled, 0 to 1.
+    signal dragged(real fraction)
+    // Let go: true carries on up, false puts it back.
+    signal finished(bool open)
 
     readonly property var blobs: swell.value <= 0.01 ? [] : [
         {
-            x: 0,
+            x: (root.width - root.span) / 2,
             y: root.height - (root.border + swell.value),
-            w: root.width,
+            w: root.span,
             h: root.border + swell.value,
             radius: Appearance.sizes.windowRadius
         }
@@ -63,40 +83,64 @@ Item {
     MouseArea {
         id: zone
 
-        // Follows the swell, so the cursor that caused it can stay inside it
-        // rather than falling out of the thing it just opened.
-        anchors.left: parent.left
-        anchors.right: parent.right
+        // As wide as what it opens, and following the swell in height so the
+        // cursor that caused it stays inside it rather than falling out of the
+        // thing it just moved.
+        anchors.horizontalCenter: parent.horizontalCenter
         anchors.bottom: parent.bottom
+        width: root.span
         height: root.border + swell.value
 
         enabled: root.armed
         hoverEnabled: true
+        preventStealing: true
 
+        // Where the press started, whether it has become a drag, and which way
+        // it is going. The velocity is smoothed, because the last single event
+        // before a finger lifts is noise as often as it is direction.
         property real from: 0
-        property bool pushed: false
+        property bool pulling: false
+        property real velocity: 0
+        property real lastY: 0
 
         onPressed: mouse => {
             zone.from = mouse.y;
-            zone.pushed = false;
+            zone.lastY = mouse.y;
+            zone.pulling = false;
+            zone.velocity = 0;
         }
 
-        // The push. Fires as soon as it has gone far enough rather than waiting
-        // for the finger to come off, because a gesture that only answers on
-        // release feels like it did not hear the first half of it.
         onPositionChanged: mouse => {
-            if (!zone.pressed || zone.pushed)
+            if (!zone.pressed)
                 return;
-            if (zone.from - mouse.y >= root.swipeBy) {
-                zone.pushed = true;
-                root.requested();
-            }
+
+            // Up is POSITIVE, because up is the direction that opens it and the
+            // sign is what the release reads.
+            const step = zone.lastY - mouse.y;
+            zone.lastY = mouse.y;
+            zone.velocity += (step - zone.velocity) * 0.4;
+
+            if (!zone.pulling && zone.from - mouse.y < root.slack)
+                return;
+
+            zone.pulling = true;
+            root.dragged(Math.max(0, Math.min((zone.from - mouse.y) / root.travelFull, 1)));
         }
 
-        // A click is the whole gesture only if the push was not. Releasing after
-        // a push has already opened it would open it twice, and the second one
-        // is a toggle shut.
-        onClicked: if (!zone.pushed)
-            root.requested()
+        // A press that never became a drag is a click, and a click just opens
+        // it. One that did is answered by which way it was travelling.
+        onReleased: {
+            if (zone.pulling)
+                root.finished(zone.velocity >= 0);
+            else
+                root.finished(true);
+            zone.pulling = false;
+        }
+
+        onCanceled: {
+            if (zone.pulling)
+                root.finished(false);
+            zone.pulling = false;
+        }
     }
 }
