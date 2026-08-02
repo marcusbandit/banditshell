@@ -27,7 +27,17 @@ ListView {
     property real scrollTarget: 0
 
     readonly property real maxScroll: Math.max(0, contentHeight - height)
-    readonly property bool handling: dragging || flicking
+
+    // DRAGGING ONLY, not `dragging || flicking`. `flicking` is also set when
+    // Flickable runs its own bounds fixup, which it does in response to the
+    // glide's own writes to contentY, so keying off it meant every glide
+    // retriggered the resync below and pulled the target back to where the
+    // content had got to. The scroll decayed to a stop a few rows in.
+    //
+    // Nothing has to suppress the glide during a real flick: at the moment the
+    // finger lifts the target equals the position, so the glide is settled, its
+    // timer is not running, and it writes nothing while Flickable coasts.
+    readonly property bool handling: dragging
 
     // Overshoot on a DRAG, never on the wheel: the rubber band is what makes a
     // list feel physical when you throw it, and pure noise when a notch lands
@@ -52,25 +62,29 @@ ListView {
         const top = index * rowHeight;
         const bottom = top + rowHeight;
 
-        if (top < root.scrollTarget)
+        if (top < root.anchor)
             root.scrollTo(top);
-        else if (bottom > root.scrollTarget + root.height)
+        else if (bottom > root.anchor + root.height)
             root.scrollTo(bottom - root.height);
     }
 
     // Back to the top, with no glide: a new set of results is a new list, and
     // watching it scroll up from where the last one happened to be is motion
     // that means nothing.
+    //
+    // It must NOT touch glide.target. That property is BOUND to scrollTarget,
+    // and assigning to a bound property in QML does not set it for one frame, it
+    // destroys the binding for good. reset() runs on every open, because opening
+    // clears the query, so one assignment there left the glide permanently
+    // pinned to 0: the target moved, the glide agreed it had already arrived,
+    // and the list never scrolled again by wheel or by key. Setting scrollTarget
+    // is enough; the binding carries it.
     function reset(): void {
         root.scrollTarget = 0;
         glide.value = 0;
-        glide.target = 0;
         root.contentY = 0;
     }
 
-    // The list moved under its own power, so the target follows it rather than
-    // yanking the content back to where the wheel last left it.
-    onMovementEnded: root.scrollTarget = root.contentY
     onContentHeightChanged: root.scrollTo(root.scrollTarget)
 
     Follow {
@@ -86,12 +100,34 @@ ListView {
             root.contentY = value
     }
 
-    // While a drag or a flick owns the content, the glide has nothing to say.
-    // It picks the position back up the moment that ends.
-    onHandlingChanged: if (root.handling) {
+    // The one place the target is taken FROM the content instead of driving it:
+    // a drag or a flick owns the position while it lasts, so the glide stands
+    // down as it starts and picks the target back up from wherever it landed.
+    //
+    // This used to be onMovementEnded, and that was a feedback loop. Flickable
+    // reports movement for ANY change to contentY, including the glide's own, so
+    // every tick of a glide ended a "movement", which reset the target to the
+    // position the glide had just reached, which stopped the glide. The scroll
+    // fought itself to a standstill a few rows in and the target came out as a
+    // number that corresponded to nothing.
+    // Only a real DRAG hands the position back. Flickable emits flickEnded and
+    // movementEnded for its own internal animations too, including the ones it
+    // runs in response to the glide's writes, so listening to either meant the
+    // target was repeatedly reset to wherever the glide had got to and the
+    // scroll decayed to a halt somewhere in the middle of the list.
+    onDraggingChanged: {
         glide.value = root.contentY;
         root.scrollTarget = root.contentY;
     }
+
+    // Where a new scroll starts FROM.
+    //
+    // Mid-glide that is the target, so a second notch extends the throw instead
+    // of restarting it from the content's current position. Otherwise it is
+    // wherever the content actually is, which is what makes a flick's resting
+    // place the start of the next scroll without anything having to observe the
+    // flick ending.
+    readonly property real anchor: glide.settled ? contentY : scrollTarget
 
     // A wheel and a touchpad are DIFFERENT INPUTS and want opposite treatment.
     //
@@ -114,7 +150,7 @@ ListView {
             event.accepted = true;
 
             if (event.pixelDelta.y === 0) {
-                root.scrollTo(root.scrollTarget - event.angleDelta.y / 120 * root.step);
+                root.scrollTo(root.anchor - event.angleDelta.y / 120 * root.step);
                 return;
             }
 
