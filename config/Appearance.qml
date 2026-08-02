@@ -208,7 +208,12 @@ Singleton {
         // the icons change size.
         readonly property int wsWindowPitch: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.windowPitch)
         // The ruler down the screen's edge. See modules/sidebar/Workspaces.qml.
+        readonly property string wsStyle: root.cfg.sidebar.workspaces.style
         readonly property int wsTick: root.cfg.sidebar.workspaces.tick
+        readonly property int wsMapBar: root.cfg.sidebar.workspaces.mapBar
+        readonly property int wsMapGap: root.cfg.sidebar.workspaces.mapGap
+        readonly property int wsBlock: root.cfg.sidebar.workspaces.block
+        readonly property int wsBlockGap: root.cfg.sidebar.workspaces.blockGap
         readonly property real wsEmptyReach: root.cfg.sidebar.workspaces.emptyReach
         readonly property real wsBusyReach: root.cfg.sidebar.workspaces.busyReach
         readonly property int statusSlot: root.cfg.sidebar.status.slot

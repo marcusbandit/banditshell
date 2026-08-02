@@ -377,7 +377,11 @@ banditshell/
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
 │       ├── Clock.qml            stacked HH / mm / date
-│       ├── Workspaces.qml       Hyprland workspace indicators
+│       ├── Workspaces.qml       picks which workspace style the sidebar wears
+│       ├── WorkspaceModel.qml   the column's layout + motion, shared by all of them
+│       ├── WorkspacePlates.qml  style: index tabs, length as state (`plates`/`icons`)
+│       ├── WorkspaceMap.qml     style: a bar per window, as long as the window is wide
+│       ├── WorkspaceBlocks.qml  style: one square per window, on the pixel grid
 │       ├── StatusIcons.qml      the status section, rendered from data
 │       └── StatusIcon.qml       one indicator, service-agnostic
 └── bin/
@@ -589,7 +593,15 @@ Not a field in the end, and the two that were are worth keeping written down.
    holds windows, all the way out for the one you are on. Index tabs and a bar chart of how busy
    the machine is, which turn out to be the same drawing.
 
-What the third one gets that the others did not:
+**The styles are switchable, and that is deliberate.** `sidebar.workspaces.style` picks between
+whole alternatives (`plates`, `icons`, `map`, `blocks`), not combinable settings. They share
+`WorkspaceModel.qml`, which owns the layout pass and the smoothing, so only the drawing is
+written more than once and a new idea costs one file. `map` is the one that says something the
+others cannot: the layout scrolls sideways, so a workspace holding one full-width editor and one
+holding four thirds are identical as a stack of glyphs and nothing alike to work in, and drawing
+each window as a bar as long as the window is wide puts that difference on screen.
+
+What the plates get that the first two attempts did not:
 
 - **Length is the state, and it is the only indicator.** There is no separate marker sliding
   over the plates: the plate you switch to grows, the one you left shrinks. A sliding tab over
