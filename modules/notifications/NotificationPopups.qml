@@ -71,7 +71,13 @@ Item {
         x: root.width - root.panelWidth - root.edgeInset
         y: root.inset
         width: root.panelWidth
-        spacing: Appearance.padding.normal
+        // Wider than a normal gap, and derived rather than picked. Each card
+        // melts into the band, and the polynomial smin's maximum pull is k/4, so
+        // two cards closer than melt/2 have their flares meet in the seam and
+        // close it. What is left is a tapering CRACK, which reads as a botched
+        // join rather than as two things. Past that reach the seam is a clean
+        // channel and each card is unmistakably its own tongue off the band.
+        spacing: Math.round(Appearance.sizes.melt / 2) + Appearance.padding.normal
 
         Repeater {
             model: Notifs.popups
