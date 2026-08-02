@@ -8,10 +8,10 @@ import qs.config
 // and their motion (WorkspaceModel) so only the drawing is written more than
 // once. Switch live with `banditshell set sidebar.workspaces.style <name>`.
 //
-//   plates   index tabs hinged on the screen's edge, length as state, category
-//            glyphs for the windows. The one that works.
-//   icons    the same, with each window drawn as its own application icon: the
-//            one place colour gets into the sidebar by itself.
+//   plates   index tabs hinged on the screen's edge, length as state, one mark
+//            per window. The one that works. What the mark IS (the app's own
+//            icon in our colour, the app's icon as shipped, or a category
+//            glyph) is `sidebar.workspaces.iconMode`, not a style of its own.
 //   map      no glyphs. Each window is a bar as long as the window is wide, so
 //            the column shows the shape of the layout rather than its contents.
 //   blocks   one square per window, one row per workspace, on the pixel grid.
@@ -36,9 +36,7 @@ Item {
     Component {
         id: plates
 
-        WorkspacePlates {
-            appIcons: root.style === "icons"
-        }
+        WorkspacePlates {}
     }
 
     Component {

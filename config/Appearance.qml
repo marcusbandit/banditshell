@@ -206,7 +206,11 @@ Singleton {
         // The row pitch of stacked window icons. Derived from the icon size
         // rather than set in pixels, so the stack keeps its proportions when
         // the icons change size.
-        readonly property int wsWindowPitch: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.windowPitch)
+        // A window's mark here, and the row it sits in. Both derive from the
+        // shell's icon size, so the sidebar keeps its proportions when that moves.
+        readonly property int wsIcon: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.iconScale)
+        readonly property int wsWindowPitch: Math.round(wsIcon * root.cfg.sidebar.workspaces.windowPitch)
+        readonly property string wsIconMode: root.cfg.sidebar.workspaces.iconMode
         // The ruler down the screen's edge. See modules/sidebar/Workspaces.qml.
         readonly property string wsStyle: root.cfg.sidebar.workspaces.style
         readonly property int wsTick: root.cfg.sidebar.workspaces.tick

@@ -102,14 +102,6 @@ Singleton {
     // same everywhere.
     readonly property string genericIcon: "apps"
 
-    // The icon FILE for an app, given whatever names the thing asking happens to
-    // hold: a window class, a PipeWire `application.name`, a process binary.
-    //
-    // Several, in order, because none of them is authoritative and which one
-    // resolves varies by app: PipeWire hears "Zen" from the browser whose entry
-    // is `zen-browser`, and hears the binary `zen-bin` for the same process.
-    // Returns "" when nothing resolves, which is the caller's cue to fall back
-    // to the category glyph rather than to draw a hole.
     // Names that a reverse-DNS id can also be known by, most specific first.
     //
     // The icon THEME is where the artwork is, and it is enormous: Papirus alone
@@ -145,6 +137,14 @@ Singleton {
         return out;
     }
 
+    // The icon FILE for an app, given whatever names the thing asking happens to
+    // hold: a window class, a PipeWire `application.name`, a process binary.
+    //
+    // Several, in order, because none of them is authoritative and which one
+    // resolves varies by app: PipeWire hears "Zen" from the browser whose entry
+    // is `zen-browser`, and hears the binary `zen-bin` for the same process.
+    // Returns "" when nothing resolves, which is the caller's cue to fall back
+    // to the category glyph rather than to draw a hole.
     function iconSourceFor(names: var): string {
         // The desktop ENTRY first, for every name given, because an entry's own
         // `Icon=` is the one authoritative answer: it is what the application
@@ -177,7 +177,29 @@ Singleton {
         return "";
     }
 
+    // Hand-picked marks, tried before anything is worked out: { regex: glyph }.
+    // A category is a guess about what an application IS, and for some of them
+    // the guess is simply wrong or too vague to be worth drawing; this is where
+    // you say so. See `apps.icons` in config.json.
+    readonly property var overrides: Config.values.apps.icons
+
+    function overrideFor(appClass: string): string {
+        for (const pattern in root.overrides) {
+            try {
+                if (new RegExp(pattern, "i").test(appClass))
+                    return root.overrides[pattern];
+            } catch (e) {
+                console.warn(`Apps: "${pattern}" is not a valid regex, skipping that icon override.`, e);
+            }
+        }
+        return "";
+    }
+
     function iconFor(appClass: string): string {
+        const picked = root.overrideFor(appClass);
+        if (picked)
+            return picked;
+
         // heuristicLookup, because a window's class is only approximately its
         // entry's id: `org.kde.dolphin` vs `dolphin`, `Alacritty` vs
         // `alacritty`. Matching those by hand is a rabbit hole Quickshell has

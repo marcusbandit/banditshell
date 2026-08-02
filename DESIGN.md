@@ -606,6 +606,25 @@ because an entry's own `Icon=` is the one authoritative answer and it is how `ze
 class) reaches `zen-browser` (the file), which no string mangling would find. The category glyph
 is what is left when all of it misses.
 
+**An icon pack is fifty designers' palettes at once.** The application icons went in, looked
+instantly wrong, and the reason is not that they are ugly: a bar full of other people's brand
+colours stops reading as one interface. `sidebar.workspaces.iconMode` is the answer, with three
+settings and a hand-override above all of them:
+
+- `theme` (default) draws the app's own artwork with its colour taken out, through a
+  `MultiEffect` at `saturation: -1, colorization: 1` in the label colour. **Luminance has to be
+  left alone**: a brightness lift blows every icon with a filled badge behind it into a white
+  disc, and a flat silhouette is worse still, since Telegram becomes a disc and qBittorrent
+  becomes a square. Keeping the luminance keeps the SHAPE, which is what is actually recognised.
+- `colour` is the artwork as shipped.
+- `glyph` is no artwork at all: the Material Symbol for what kind of thing the window is, which
+  is the most coherent with the rest of the shell and the least specific about which app it is.
+- `apps.icons` beats all three: `{ "^zen$": "web" }`, regex against the window class. A MAP, not
+  a list, because Quickshell's IPC reads a bracketed argument as an argument LIST and splats it,
+  so `banditshell set apps.icons '[...]'` can never arrive as an array. `Config.merge` grew the
+  matching rule for both: an empty default array or object is DATA, not a schema, so the user's
+  keys survive instead of being walked away.
+
 **A column that is centred cannot change height suddenly.** Switching to a workspace that was
 not on the list yet (going to 6 when five are shown) added a slot, and the column is centred in
 the bar, so everything above it jumped by half a slot instantly. New slots now start FLAT and

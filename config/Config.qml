@@ -325,14 +325,20 @@ Singleton {
             // PER-APPLICATION ICON OVERRIDES, for when neither the icon theme
             // nor the app's freedesktop categories give the right mark.
             //
-            // A list, not a map, because the match is a regex and order decides
-            // which of two overlapping ones wins. `match` is tested against the
-            // window class, case-insensitively; `icon` is a Material Symbols
-            // name (the same names components/Icon.qml verifies).
+            // Keyed by a REGEX tested against the window class, case
+            // insensitively; the value is a Material Symbols name, the same
+            // names components/Icon.qml verifies exist. First match wins, in the
+            // order written. An override beats everything, including the
+            // application's own artwork.
             //
-            //   apps: { icons: [{ match: "^zen$", icon: "web" }] }
+            //   "apps": { "icons": { "^zen$": "web", "kitty": "terminal" } }
+            //
+            // A map rather than a list because a list cannot be set from the
+            // CLI: Quickshell's IPC reads a bracketed argument as an argument
+            // LIST and splats it, so `banditshell set apps.icons '[...]'` never
+            // arrives as an array. An object survives intact.
             apps: {
-                icons: []
+                icons: ({})
             },
 
             launcher: {
@@ -360,9 +366,10 @@ Singleton {
                     // How many of your most-used applications are on screen when
                     // nothing has been typed or scrubbed.
                     favourites: 7,
-                    // How far the rail bows toward the middle under the cursor,
-                    // and how many marks either side come with it.
-                    bow: 150,
+                    // How far the rail can be pulled toward the middle, and how
+                    // many marks either side come with it. A CEILING, not a
+                    // fixed depth: how far you actually pull is the gesture.
+                    bow: 340,
                     bowSpread: 5,
                     // The disc that shows the mark you are on.
                     badge: 72
@@ -539,6 +546,12 @@ Singleton {
         // different length means the shape moved under it.
         if (Array.isArray(base))
             return Array.isArray(over) && (base.length === 0 || over.length === base.length) ? over : base;
+
+        // Same idea for an empty default OBJECT: the defaults name no keys, so
+        // the keys are the user's data rather than a schema to merge into, and
+        // walking `base` would drop every one of them.
+        if (base && typeof base === "object" && !Object.keys(base).length)
+            return over && typeof over === "object" ? over : base;
         if (over === undefined || base === null || typeof base !== "object")
             return over === undefined ? base : over;
 

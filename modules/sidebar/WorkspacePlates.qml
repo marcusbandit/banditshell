@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
@@ -31,11 +32,14 @@ import qs.services
 Item {
     id: root
 
-    // Draw each window as its application's own icon rather than as a category
-    // glyph. The one place colour gets into the sidebar by itself.
-    property bool appIcons: false
+    // WHAT A WINDOW IS DRAWN AS: its own icon in the shell's colour (`theme`),
+    // its own icon as shipped (`colour`), or the Material Symbol for what kind of
+    // thing it is (`glyph`). See config.json.
+    readonly property string iconMode: Appearance.sizes.wsIconMode
+    readonly property bool artwork: iconMode !== "glyph"
 
     readonly property int slot: Appearance.sizes.wsSlot
+    readonly property int iconSize: Appearance.sizes.wsIcon
     readonly property int pitch: Appearance.sizes.wsWindowPitch
     readonly property int tick: Appearance.sizes.wsTick
 
@@ -224,22 +228,25 @@ Item {
                         required property var modelData
                         required property int index
                         readonly property bool focused: Hypr.isFocused(modelData)
-                        readonly property string source: root.appIcons ? Apps.iconSourceFor([Hypr.classOf(modelData), modelData.lastIpcObject?.initialClass ?? ""]) : ""
+                        readonly property bool lit: focused || winMouse.containsMouse
+                        // An OVERRIDE beats the artwork: if the config names a
+                        // glyph for this window, the theme has nothing to add.
+                        readonly property bool overridden: Apps.overrideFor(Hypr.classOf(modelData)) !== ""
+                        readonly property string source: root.artwork && !overridden ? Apps.iconSourceFor([Hypr.classOf(modelData), modelData.lastIpcObject?.initialClass ?? ""]) : ""
 
                         x: (plate.width - root.slot) / 2
                         y: (root.slot - root.pitch) / 2 + index * root.pitch
                         width: root.slot
                         height: root.pitch
 
-                        // The application's own icon, when this style asks for it
-                        // and the icon theme has one. Dimmed rather than hidden
-                        // when it is not the focused window, because a colour
-                        // photograph of a logo cannot use the label tiers.
+                        // The application's own icon. Drawn straight in `colour`
+                        // mode, and used as the effect's source in `theme` mode,
+                        // where it is never itself on screen.
                         Image {
                             id: image
 
                             anchors.centerIn: parent
-                            width: Appearance.font.iconSize
+                            width: root.iconSize
                             height: width
                             source: row.source
                             sourceSize.width: width * 2
@@ -247,8 +254,8 @@ Item {
                             fillMode: Image.PreserveAspectFit
                             asynchronous: true
                             smooth: true
-                            visible: status === Image.Ready
-                            opacity: row.focused || winMouse.containsMouse ? 1 : 0.55
+                            visible: root.iconMode === "colour" && status === Image.Ready
+                            opacity: row.lit ? 1 : 0.55
 
                             Behavior on opacity {
                                 NumberAnimation {
@@ -257,16 +264,52 @@ Item {
                             }
                         }
 
+                        // THE APP'S OWN ARTWORK, IN OUR COLOUR. An icon pack is
+                        // fifty designers' palettes at once, and a bar full of
+                        // them stops looking like one interface; this keeps each
+                        // app's SHAPE, which is what you actually recognise, and
+                        // throws away its colour, which is what was fighting.
+                        //
+                        // Luminance is preserved rather than flattened: a
+                        // silhouette would turn Telegram into a disc and
+                        // qBittorrent into a square, which is worse than a
+                        // category glyph, not better.
+                        MultiEffect {
+                            id: effect
+
+                            anchors.fill: image
+                            source: image
+                            visible: root.iconMode === "theme" && image.status === Image.Ready
+                            // Luminance is what is left after the colour goes, so
+                            // it has to be left alone: a brightness lift here
+                            // blows every icon that has a filled badge behind it
+                            // into a white disc, which is the shape of a disc and
+                            // not the shape of the app.
+                            saturation: -1
+                            colorization: 1
+                            colorizationColor: row.lit ? Appearance.colour.text : Appearance.colour.textDim
+
+                            Behavior on colorizationColor {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
+                        }
+
+                        // What KIND of thing it is, for a window the icon theme
+                        // has nothing for, and for `glyph` mode, and for anything
+                        // the config picked a mark for by hand.
                         Icon {
                             anchors.centerIn: parent
-                            visible: !image.visible
+                            visible: !image.visible && !effect.visible
+                            size: root.iconSize
                             name: Apps.iconFor(Hypr.classOf(row.modelData))
 
                             // The focused window is the only thing in the column
                             // at full label weight. That is the whole hierarchy:
                             // the plate says which workspace you are on, this says
                             // which window you are in.
-                            color: row.focused || winMouse.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+                            color: row.lit ? Appearance.colour.text : Appearance.colour.textDim
 
                             Behavior on color {
                                 ColorAnimation {
@@ -302,6 +345,7 @@ Item {
                     width: root.slot
                     height: root.pitch
                     name: "more_horiz"
+                    size: root.iconSize
                     color: Appearance.colour.textFaint
                 }
             }
