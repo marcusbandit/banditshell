@@ -4,23 +4,28 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
-import qs.components.blob
 import qs.services
 
-// Vertical workspace indicators: a chain of beads, and what is on them.
+// Vertical workspace indicators: a ruler down the screen's edge, and a tab where
+// you are.
 //
-// A workspace is not a number, it is the windows you left there, so each bead
+// A workspace is not a number, it is the windows you left there, so each slot
 // stacks one glyph per window (see Apps.iconFor: the mark comes from the desktop
 // entry's freedesktop categories, so an app this shell has never seen still gets
-// the right one). An empty workspace is a small bead with nothing in it. Nothing
-// here is labelled 1..N: the column IS the order.
+// the right one). Nothing here is labelled 1..N: the column IS the order.
 //
-// The beads are not shapes drawn next to each other. They are one signed
-// distance field (see components/blob/beads.frag): a thin rail with a bead grown
-// out of it per workspace, smooth-unioned, so the joins are fillets the field
-// works out for itself and a bead that swells pushes the rail out around it. The
-// accent is washed out of the active bead by DISTANCE rather than painted onto
-// it, so the colour bleeds down the chain and fades.
+// THE SHAPE IS THE SCREEN'S EDGE. Every workspace is a PLATE hinged on it, and
+// how far the plate reaches in is what the workspace is: a sliver for an empty
+// one, most of the bar for one with windows on it, the whole width for the one
+// you are on. Index tabs, and a bar chart of how busy the machine is, which are
+// the same drawing. Square where they meet the edge, because a rounded corner
+// there would curl the plate away and leave a notch of dead space behind it;
+// rounded on the free end, because that end is free.
+//
+// Depth is thickness and layering, never a shadow or a bevel: the plates are one
+// sheet of material, the active one is two with the accent in the upper sheet,
+// and it is longer than the others, so where you are is literally more glass
+// pulled further out of the edge.
 //
 // Every position comes from one pass down the column (see
 // ~/.claude/rules/math-over-hardcoding.md). A slot is as tall as the windows it
@@ -35,15 +40,30 @@ Item {
     readonly property int gap: Appearance.sizes.wsGap
     readonly property int pitch: Appearance.sizes.wsWindowPitch
     readonly property int maxWindows: Appearance.sizes.wsMaxWindows
-    readonly property int dot: Appearance.sizes.wsDot
-    readonly property int bump: Appearance.sizes.wsBump
+    readonly property int tick: Appearance.sizes.wsTick
 
-    // Room around the column for the swell and the light coming off it. The
-    // field is drawn into this margin, the layout is not: slots still sit in
-    // root's own coordinates and the field offsets by it.
-    readonly property int bleed: Appearance.padding.normal
+    // How far a plate reaches in, as a fraction of the bar. The active one is
+    // always the whole width; these are the other two states, and the ONLY thing
+    // separating them is length.
+    readonly property real stubReach: Appearance.sizes.wsStubReach
+    readonly property real fullReach: Appearance.sizes.wsFullReach
 
-    // Which slot the cursor is on, or -1. A hovered bead swells too, by less.
+    function reach(occupied: bool): real {
+        return Math.round(root.width * (occupied ? root.fullReach : root.stubReach));
+    }
+
+    // THE SCREEN'S EDGE, which is where this item starts: it spans the whole
+    // left band of the chassis, and the band is shell material all the way out
+    // to the display's own edge. So the ruler is drawn at x = 0 and means it.
+    readonly property real edge: 0
+
+    // How far the tab reaches in, and how much taller it is than the slot it
+    // marks. One band short of the bar's inner edge, so it stops on the shell's
+    // own lattice rather than at a number picked here.
+    readonly property real tabWidth: width
+    readonly property real tabPad: Appearance.padding.small / 2
+
+    // Which slot the cursor is on, or -1.
     property int hovered: -1
 
     // THE LAYOUT: { id, y, h, windows, rest } per slot, in one pass.
@@ -73,10 +93,10 @@ Item {
         return out;
     }
 
-    // THE MOTION, for the same reason the layout is one pass: the icons and the
-    // liquid behind them have to agree to the pixel. Two components chasing the
+    // THE MOTION, for the same reason the layout is one pass: the ticks, the
+    // icons and the tab have to agree to the pixel. Two components chasing the
     // same target with the same maths still disagree for a frame at a time, and
-    // a bead half a pixel behind its own icons reads as a wobble. So the whole
+    // a tick half a pixel behind its own icons reads as a wobble. So the whole
     // column is smoothed HERE, once, and everything reads the result.
     //
     // Exponential smoothing, as everywhere else in this shell: fast when far,
@@ -99,8 +119,8 @@ Item {
         for (let i = 0; i < root.slots.length; i++) {
             const t = root.slots[i];
             const l = root.live[i];
-            // A slot that did not exist a moment ago has no "from" to travel
-            // out of, so it starts where it belongs.
+            // A slot that did not exist a moment ago has no "from" to travel out
+            // of, so it starts where it belongs.
             if (!l) {
                 out.push({
                     y: t.y,
@@ -136,20 +156,17 @@ Item {
         root.snap();
         slideY.snap();
         slideH.snap();
-        trailY.snap();
-        trailH.snap();
     }
 
     readonly property var activeSlot: root.slots[Hypr.activeId - 1]
     readonly property var lastLive: root.live[root.live.length - 1]
 
-    implicitWidth: slot
     implicitHeight: lastLive ? lastLive.y + lastLive.h : slot
 
-    // The active bead slides between slots on its own. Its targets are the RAW
-    // layout rather than the smoothed one: when a workspace grows a window, the
-    // bead and the slot under it start from the same place with the same rate,
-    // so they travel as one shape instead of one chasing the other.
+    // The tab slides between slots on its own. Its targets are the RAW layout
+    // rather than the smoothed one: when a workspace grows a window, the tab and
+    // the slot under it start from the same place at the same rate, so they
+    // travel as one thing instead of one chasing the other.
     Follow {
         id: slideY
         target: root.activeSlot?.y ?? 0
@@ -160,60 +177,57 @@ Item {
         target: root.activeSlot?.h ?? root.slot
     }
 
-    // The same chase, slower. At rest it sits exactly under the active bead and
-    // costs nothing; in motion it is behind, and because the field melts the two
-    // together the bead STRETCHES between where it is going and where it was.
-    // A rigid shape sliding down a rail is a slider; this is a liquid.
-    Follow {
-        id: trailY
-        target: slideY.target
-        speed: Appearance.anim.trackSpeed * Appearance.anim.trail
-    }
+    // THE TAB. Two sheets: a neutral one that makes the material thicker, and
+    // the accent over it. A tint alone reads as a coloured stain on the bar; the
+    // pair reads as more glass, with colour in it.
+    G2Rect {
+        id: tab
 
-    Follow {
-        id: trailH
-        target: slideH.target
-        speed: Appearance.anim.trackSpeed * Appearance.anim.trail
-    }
+        x: root.edge
+        y: slideY.value - root.tabPad
+        width: root.tabWidth
+        height: slideH.value + root.tabPad * 2
 
-    BeadField {
-        anchors.fill: parent
-        anchors.margins: -root.bleed
+        // SQUARE where it meets the screen's edge, convex on its free end. A
+        // rounded corner there would curl the tab away from the edge and leave a
+        // notch of dead space behind it; a concave flare, which is what the
+        // chassis uses at this boundary, needs more room than a 28px slot has
+        // and pinches the tab's own end off. It is attached to the edge, so it
+        // ends flat against it.
+        topLeftRadius: 0
+        bottomLeftRadius: 0
+        topRightRadius: Appearance.rounding.normal
+        bottomRightRadius: Appearance.rounding.normal
 
-        // The rail: as long as the column, plus the padding that used to be the
-        // container's. Thin enough that it reads as what the beads are ON.
-        rail: Qt.vector4d((width - Appearance.sizes.wsSpine) / 2, root.bleed - Appearance.padding.small, Appearance.sizes.wsSpine, root.implicitHeight + Appearance.padding.small * 2)
+        color: Appearance.colour.fillStrong
 
-        beads: root.live.map((l, i) => {
-            const info = root.slots[i];
-            const busy = info && (info.windows.length > 0 || info.rest > 0);
-            const swell = root.hovered === i ? root.bump : 0;
-            // An empty workspace is a dot, centred in the slot it stands for,
-            // rather than a capsule with nothing in it.
-            return busy ? {
-                y: l.y + root.bleed,
-                h: l.h,
-                w: root.slot + swell,
-                occupied: true
-            } : {
-                y: l.y + root.bleed + (l.h - root.dot) / 2,
-                h: root.dot + swell,
-                w: root.dot + swell,
-                occupied: false
-            };
-        })
+        G2Rect {
+            anchors.fill: parent
+            topLeftRadius: tab.topLeftRadius
+            bottomLeftRadius: tab.bottomLeftRadius
+            topRightRadius: tab.topRightRadius
+            bottomRightRadius: tab.bottomRightRadius
+            color: Appearance.colour.accentFill
+        }
 
-        activeBead: Qt.vector4d(slideY.value + root.bleed, slideH.value, root.slot + root.bump * 2, 1)
-        // Narrower than the bead it follows, so the stretch tapers off behind
-        // rather than dragging a second bead of the same size around.
-        trailBead: Qt.vector4d(trailY.value + root.bleed, trailH.value, root.slot, 1)
+        // The one saturated thing in the sidebar, and it is three pixels wide,
+        // hard on the screen's edge. The tint says which plate is yours; this
+        // says it in the palette's own voice, at the one place in the bar that
+        // cannot be mistaken for anything else.
+        G2Rect {
+            x: 0
+            width: root.tick
+            height: parent.height
+            radius: 0
+            color: Appearance.colour.accent
+        }
     }
 
     Repeater {
         // Modelled by the COUNT, not by `slots`: a Repeater over a JS array
         // rebuilds every delegate whenever the array is reassigned, and this one
-        // is reassigned on every window event. Keyed by an int, the slots
-        // persist and only their bindings update.
+        // is reassigned on every window event. Keyed by an int, the slots persist
+        // and only their bindings update.
         model: root.count
 
         delegate: Item {
@@ -228,10 +242,53 @@ Item {
                     rest: 0
                 })
             readonly property var geom: root.live[index] ?? slotItem.info
+            readonly property bool isActive: Hypr.activeId === slotItem.info.id
+            readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
 
             y: slotItem.geom.y
-            width: root.slot
+            width: root.width
             height: slotItem.geom.h
+
+            // THE PLATE. Hinged on the screen's edge, reaching in as far as the
+            // workspace is worth: a sliver when empty, most of the bar when it
+            // holds windows. Hidden under the tab when this is where you are, so
+            // the two never stack their translucency into a denser patch.
+            G2Rect {
+                x: root.edge
+                // An empty workspace gets a mark, not a plate: half as tall,
+                // centred on the slot it stands for. Length alone did not carry
+                // it, a short plate at full height is just a fat nub.
+                y: slotItem.isOccupied ? -root.tabPad : (parent.height - root.slot / 2) / 2
+                width: root.reach(slotItem.isOccupied)
+                height: slotItem.isOccupied ? parent.height + root.tabPad * 2 : root.slot / 2
+
+                topLeftRadius: 0
+                bottomLeftRadius: 0
+                topRightRadius: tab.topRightRadius
+                bottomRightRadius: tab.bottomRightRadius
+
+                color: root.hovered === slotItem.index ? Appearance.colour.fillStrong : Appearance.colour.fill
+                opacity: slotItem.isActive ? 0 : 1
+
+                Behavior on width {
+                    NumberAnimation {
+                        duration: Appearance.anim.normal
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
+            }
 
             MouseArea {
                 anchors.fill: parent
@@ -243,9 +300,10 @@ Item {
                 onClicked: Hypr.switchTo(slotItem.info.id)
             }
 
-            // One row per window. The rows are centred in the slot as a group: a
-            // slot is `root.slot` tall plus a pitch per extra row, so the
-            // group's inset is the same whatever it holds.
+            // One row per window, centred in the bar with everything else in it.
+            // The rows are centred in the slot as a group: a slot is `root.slot`
+            // tall plus a pitch per extra row, so the group's inset is the same
+            // whatever it holds.
             Repeater {
                 // A ScriptModel, NOT the array: the array is rebuilt on every
                 // Hyprland event, and a plain-array Repeater would tear down and
@@ -262,6 +320,7 @@ Item {
                     required property int index
                     readonly property bool focused: Hypr.isFocused(modelData)
 
+                    x: (root.width - root.slot) / 2
                     y: (root.slot - root.pitch) / 2 + index * root.pitch
                     width: root.slot
                     height: root.pitch
@@ -272,8 +331,8 @@ Item {
 
                         // The focused window is the only thing in the column at
                         // full label weight. That is the whole hierarchy: the
-                        // colour under it says which workspace you are on, this
-                        // says which window you are in.
+                        // tab says which workspace you are on, this says which
+                        // window you are in.
                         color: row.focused || winMouse.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
 
                         Behavior on color {
@@ -285,8 +344,8 @@ Item {
 
                     // Clicking a window goes to THAT window, not merely to its
                     // workspace. Hyprland's focuswindow brings the workspace
-                    // along with it, so this is strictly more than the slot's
-                    // own click does.
+                    // along with it, so this is strictly more than the slot's own
+                    // click does.
                     MouseArea {
                         id: winMouse
 
@@ -305,7 +364,7 @@ Item {
             // workspace is capped rather than truncated silently.
             Icon {
                 visible: slotItem.info.rest > 0
-                x: 0
+                x: (root.width - root.slot) / 2
                 y: (root.slot - root.pitch) / 2 + slotItem.info.windows.length * root.pitch
                 width: root.slot
                 height: root.pitch

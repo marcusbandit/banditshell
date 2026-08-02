@@ -84,13 +84,6 @@ Singleton {
 
         readonly property color separator: root.veil(root.cfg.material.separator)
 
-        // A RECESS: the one thing here made of dark rather than light. Every
-        // other tier is the palette's light end at some opacity, which can only
-        // ever read as raised; a groove for something to sit in has to go the
-        // other way. Black, not a dark stop of the ramp, because it is the
-        // absence of the material rather than more of it.
-        readonly property color recess: Qt.rgba(0, 0, 0, root.cfg.material.recess)
-
         // The saturated end of the theme. Reserved for state that is genuinely
         // worth a colour, never for decoration or for filling a shape.
         readonly property color accent: root.theme[root.cfg.colour.accent]
@@ -189,7 +182,6 @@ Singleton {
         readonly property real revealSpeed: root.cfg.anim.revealSpeed
         readonly property real resizeSpeed: root.cfg.anim.resizeSpeed
         readonly property real scrollSpeed: root.cfg.anim.scrollSpeed
-        readonly property real trail: root.cfg.anim.trail
 
         readonly property int grace: root.cfg.anim.grace
     }
@@ -209,11 +201,10 @@ Singleton {
         // rather than set in pixels, so the stack keeps its proportions when
         // the icons change size.
         readonly property int wsWindowPitch: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.windowPitch)
-        // The liquid the column is drawn as. See components/blob/beads.frag.
-        readonly property int wsSpine: root.cfg.sidebar.workspaces.spine
-        readonly property int wsDot: root.cfg.sidebar.workspaces.dot
-        readonly property int wsBump: root.cfg.sidebar.workspaces.bump
-        readonly property real wsMelt: root.cfg.sidebar.workspaces.melt
+        // The ruler down the screen's edge. See modules/sidebar/Workspaces.qml.
+        readonly property int wsTick: root.cfg.sidebar.workspaces.tick
+        readonly property real wsStubReach: root.cfg.sidebar.workspaces.stubReach
+        readonly property real wsFullReach: root.cfg.sidebar.workspaces.fullReach
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 

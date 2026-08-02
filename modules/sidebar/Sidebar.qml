@@ -16,8 +16,13 @@ Item {
     // the menus are not part of it.
     property alias status: status
 
+    // Full width, unlike everything else in here: the workspace ruler is drawn
+    // ON the screen's edge and reaches in from it, so it needs the whole band to
+    // measure from rather than a centred column.
     Workspaces {
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
     }
 
     Column {

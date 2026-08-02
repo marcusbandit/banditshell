@@ -218,12 +218,15 @@ Singleton {
                     // screen's edge, as long as the workspace is tall, and the
                     // one you are on grows a tab out of that edge.
                     //
-                    // Width of a tick. Narrow: it is a mark on an edge, not a
-                    // bar chart.
+                    // Width of the bright mark on the edge of the active plate.
                     tick: 3,
-                    // What is left of a tick when the workspace is empty. A
-                    // place you can still go, said as quietly as possible.
-                    stub: 6
+                    // How far a plate reaches in, as a fraction of the bar's
+                    // width. The active one is always the whole width, so these
+                    // are the other two states: a workspace with nothing on it,
+                    // and one with windows. Fractions rather than pixels, so the
+                    // three lengths keep their proportions if the bar changes.
+                    stubReach: 0.28,
+                    fullReach: 0.78
                 },
                 status: {
                     slot: 28,
