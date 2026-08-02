@@ -344,6 +344,8 @@ banditshell/
 │   ├── Slider.qml               a bead on a rail; read-only loses the bead
 │   ├── Toggle.qml               a switch
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
+│   ├── MenuLayer.qml            the rest of a row, folded up under it
+│   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
 │   └── PasswordField.qml        inline secret entry
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
@@ -363,6 +365,7 @@ banditshell/
 │   ├── Chassis.qml              the band + sidebar as ONE shape
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
 │   ├── Ipc.qml                  the control surface the CLI talks to
+│   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
 │   ├── MediaPreview.qml         what is playing, small enough to ride under it
 │   ├── WallpaperWindow.qml      background layer, below every window
