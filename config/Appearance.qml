@@ -209,13 +209,14 @@ Singleton {
         readonly property int dragThreshold: root.cfg.control.dragThreshold
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property real wheelRows: root.cfg.control.wheelRows
+        readonly property real coastMs: root.cfg.control.coastMs
         readonly property int sliderHeight: root.cfg.control.sliderHeight
         readonly property int toggleWidth: root.cfg.control.toggleWidth
         readonly property int toggleHeight: root.cfg.control.toggleHeight
 
         readonly property int pickerOutline: root.cfg.picker.outline
         readonly property int launcherWidth: root.cfg.launcher.width
-        readonly property int launcherRows: root.cfg.launcher.rows
+        readonly property int launcherIcon: root.cfg.launcher.iconSize
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone

@@ -23,12 +23,18 @@ Text {
     // What to draw when `name` is not in the font.
     property string fallback: "question_mark"
 
+    // How big to draw it. A property rather than a direct binding on
+    // font.pixelSize, because `font` is ONE property group: a binding on
+    // font.variableAxes that reads font.pixelSize is a loop, and the optical
+    // size axis below has to know the rendered size.
+    property real size: Appearance.font.iconSize
+
     readonly property bool resolved: probe.width <= font.pixelSize * 1.7
 
     text: resolved ? name : fallback
 
     font.family: Appearance.font.icon
-    font.pixelSize: Appearance.font.iconSize
+    font.pixelSize: root.size
     color: Appearance.colour.text
 
     // Material Symbols is a variable font whose optical-size axis runs 20 to 48
@@ -36,10 +42,8 @@ Text {
     // carries stroke weights drawn for an icon more than twice the size. Track
     // the rendered size, clamped into the axis's real range rather than to a
     // number picked here.
-    // Reads the token, NOT font.pixelSize: `font` is one property group, so a
-    // binding on font.variableAxes that reads font.pixelSize is a loop.
     font.variableAxes: ({
-            opsz: Math.max(20, Math.min(48, Appearance.font.iconSize))
+            opsz: Math.max(20, Math.min(48, root.size))
         })
 
     // CurveRendering, set explicitly rather than left to the default. Native

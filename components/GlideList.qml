@@ -93,16 +93,63 @@ ListView {
         root.scrollTarget = root.contentY;
     }
 
+    // A wheel and a touchpad are DIFFERENT INPUTS and want opposite treatment.
+    //
+    // A notch is a discrete request to go somewhere, so it moves the target and
+    // the glide carries the eye there. Fingers are a continuous position, so
+    // they move the content DIRECTLY: routing them through the same smoothing
+    // put a lag between the fingers and the list, which is exactly the thing
+    // that makes touchpad scrolling feel like driving something remotely rather
+    // than touching it. Both went through the target at first, and on a wheel it
+    // felt right for the same reason it felt wrong on a touchpad.
+    //
+    // The finger path then hands its VELOCITY to the glide when the fingers
+    // leave, which is the coast: the list keeps going and eases down instead of
+    // stopping dead the instant contact breaks.
+    property real velocity: 0
+    property real lastEvent: 0
+
     WheelHandler {
-        // A touchpad sends pixels and a wheel sends notches. Using the pixels
-        // when they are there keeps two-finger scrolling one-to-one with the
-        // fingers, which is the whole reason it feels right; converting it to
-        // notches would make it lurch.
         onWheel: event => {
-            const byPixels = event.pixelDelta.y !== 0;
-            const delta = byPixels ? event.pixelDelta.y : event.angleDelta.y / 120 * root.step;
-            root.scrollTo(root.scrollTarget - delta);
             event.accepted = true;
+
+            if (event.pixelDelta.y === 0) {
+                root.scrollTo(root.scrollTarget - event.angleDelta.y / 120 * root.step);
+                return;
+            }
+
+            const now = Date.now();
+            const dt = Math.max(1, Math.min(100, now - root.lastEvent));
+            root.lastEvent = now;
+
+            const before = root.contentY;
+            root.contentY = Math.max(0, Math.min(root.contentY - event.pixelDelta.y, root.maxScroll));
+
+            // Smoothed, because one event's dt is noisy enough to throw a flick
+            // in the wrong direction entirely if the last sample happened to be
+            // a straggler.
+            const sample = (root.contentY - before) / dt;
+            root.velocity += (sample - root.velocity) * 0.4;
+
+            // The glide is sitting exactly where the content is, so it has
+            // nothing to pull against until the coast below gives it a target.
+            root.scrollTarget = root.contentY;
+            glide.value = root.contentY;
+
+            coast.restart();
+        }
+    }
+
+    // The fingers stopped sending. Either they lifted or they stopped moving,
+    // and the coast tells those apart by itself: no movement means no velocity
+    // means no throw.
+    Timer {
+        id: coast
+
+        interval: Appearance.anim.fast
+        onTriggered: {
+            root.scrollTo(root.contentY + root.velocity * Appearance.sizes.coastMs);
+            root.velocity = 0;
         }
     }
 }

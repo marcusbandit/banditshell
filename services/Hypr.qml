@@ -68,10 +68,27 @@ Singleton {
     }
 
     function focusClient(client: var): void {
-        const addr = client?.lastIpcObject?.address;
+        root.focusAddress(client?.lastIpcObject?.address ?? "");
+    }
+
+    function focusAddress(addr: string): void {
         if (addr)
             Hyprland.dispatch(`focuswindow address:${addr}`);
     }
+
+    // The window that has the keyboard, as an address, straight off the event
+    // stream.
+    //
+    // NOT `activeToplevel`. That is refreshed by an IPC round trip after the
+    // event arrives, so anything reading it in the same turn as the event gets
+    // the PREVIOUS window: a panel that saved it on the way up restored focus to
+    // whatever had it before the one you were actually using. This is set from
+    // the event's own payload, so it is right by the time anything can ask.
+    //
+    // Empty payloads are IGNORED rather than stored. Hyprland reports focus
+    // moving to a layer surface as an empty activewindowv2, and that is exactly
+    // the transition a panel needs to remember ACROSS.
+    property string focusedAddress: ""
 
     // Windows on the screen's active workspace, front-most first, which is the
     // order a picker has to test them in: the one on top is the one you meant.
@@ -99,6 +116,13 @@ Singleton {
 
         function onRawEvent(event): void {
             const n = event.name;
+
+            if (n === "activewindowv2") {
+                const addr = (event.data ?? "").trim();
+                if (addr && addr !== ",")
+                    root.focusedAddress = addr.startsWith("0x") ? addr : `0x${addr}`;
+            }
+
             if (n.includes("workspace") || n.includes("window") || n.includes("mon")) {
                 Hyprland.refreshWorkspaces();
                 Hyprland.refreshToplevels();

@@ -18,6 +18,14 @@ Item {
     property string iconSource: ""
     readonly property bool hasImage: iconSource !== "" && image.status === Image.Ready
 
+    // How present the leading mark is, and how much room the row gives it. A
+    // menu wants a quiet glyph beside a label; a launcher is a list you scan by
+    // icon, and the same size that reads as tidy in a menu reads as cramped
+    // there. Derived from each other, so asking for a bigger icon gives it room
+    // rather than jamming it into the old row.
+    property real iconSize: Appearance.font.iconSize
+    property real rowHeight: Math.max(Appearance.sizes.rowHeight, iconSize + Appearance.padding.normal * 2)
+
     property string label: ""
     property string detail: ""
     property bool selected: false
@@ -31,7 +39,7 @@ Item {
     readonly property bool hovered: interactive && pointer.containsMouse
 
     implicitWidth: parent ? parent.width : 0
-    implicitHeight: Math.max(Appearance.sizes.rowHeight, trailingSlot.childrenRect.height + Appearance.padding.small * 2)
+    implicitHeight: Math.max(root.rowHeight, trailingSlot.childrenRect.height + Appearance.padding.small * 2)
 
     G2Rect {
         anchors.fill: parent
@@ -70,6 +78,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
 
         visible: !!root.icon && !root.hasImage
+        size: root.iconSize
         name: root.icon
         color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
     }
@@ -84,7 +93,7 @@ Item {
         // Squared on the GLYPH's box, so a row with an image and a row with a
         // glyph put their text in the same place and the column of labels stays
         // straight whatever mix of the two a list happens to contain.
-        width: Appearance.font.iconSize
+        width: root.iconSize
         height: width
         sourceSize.width: width * Screen.devicePixelRatio
         sourceSize.height: height * Screen.devicePixelRatio

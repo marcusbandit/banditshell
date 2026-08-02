@@ -235,11 +235,11 @@ Singleton {
             },
 
             launcher: {
-                width: 560,
-                // How many rows fit before it scrolls. Not a cap on results:
-                // everything that matches is in the list, this is only how much
-                // of it is on screen at once.
-                rows: 9,
+                width: 720,
+                // How present an app's icon is. Bigger than a menu's glyph on
+                // purpose: a launcher is a list you scan by icon, and the row
+                // grows to suit.
+                iconSize: 32,
                 // How fast a launch stops counting. Each one is worth 1 when it
                 // happens and half that after this many days, so the order
                 // follows what you use NOW rather than what you used once.
@@ -270,6 +270,10 @@ Singleton {
 
                 // How far one notch of the wheel throws a list, in rows.
                 wheelRows: 3,
+                // How long a touchpad flick keeps going after the fingers
+                // leave, in ms of the velocity it ended at. This is the coast:
+                // 0 stops dead the instant you let go.
+                coastMs: 190,
 
                 // DRAG BEFORE CLICK. How far a thing has to be thrown, as a
                 // fraction of its own width, before letting go dismisses it.

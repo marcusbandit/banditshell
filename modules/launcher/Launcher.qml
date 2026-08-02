@@ -55,7 +55,20 @@ Item {
         }
     ]
 
+    // What had the keyboard before this took it.
+    //
+    // Taking exclusive focus makes the compositor unfocus the window under it,
+    // and letting go does NOT hand it back: you got the launcher, dismissed it,
+    // and were left typing into nothing until you clicked the window again.
+    //
+    // An ADDRESS off the event stream, not Hyprland's `activeToplevel`, which is
+    // refreshed by an IPC round trip and so is one window behind at the moment
+    // this needs it. Captured on the way up, because by the time the grab is
+    // live there is nothing left to capture.
+    property string restoreTo: ""
+
     function show(): void {
+        root.restoreTo = Hypr.focusedAddress;
         root.shown = true;
         query.text = "";
         root.selected = 0;
@@ -70,6 +83,8 @@ Item {
         root.shown = false;
         reveal.target = 0;
         query.focus = false;
+        Hypr.focusAddress(root.restoreTo);
+        root.restoreTo = "";
     }
 
     function toggle(): void {
@@ -124,19 +139,26 @@ Item {
     Item {
         id: panel
 
-        // Centred on the CONTENT area rather than on the screen: the sidebar is
-        // chrome, and centring on the whole width would push the panel off the
-        // middle of the space windows actually occupy.
-        x: root.originX + (root.width - root.originX - root.inset - width) / 2
-        y: root.inset
+        // Placed so the SEARCH BAR lands on the screen's centre, not so the
+        // panel does: the bar is the fixed point you aim at and the results are
+        // whatever happens to be below it, so centring the box would move the
+        // bar every time the number of results changed.
+        readonly property real barOffset: Appearance.padding.large + field.height / 2
+
+        x: (root.width - width) / 2
+        y: root.height / 2 - barOffset
 
         width: root.panelWidth
-        // Grows DOWNWARDS out of the band. Height is what the reveal animates,
-        // so at rest it is a sliver inside the band and invisible, and opening
-        // is the shell swelling rather than a panel arriving from somewhere.
+        // Unfurls DOWNWARDS from the bar's line. Height is what the reveal
+        // animates, so opening reads as the panel opening out of the bar rather
+        // than as a box arriving from somewhere.
         height: fullHeight * reveal.value
 
-        readonly property real fullHeight: Math.min(root.height - root.inset * 2, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + list.fullHeight)
+        // Stops at the bottom band's inner edge, which is where it TOUCHES the
+        // chassis: a long result list grows down until it meets the shell and
+        // melts into it, so the panel is hanging in the middle only while it has
+        // little to say.
+        readonly property real fullHeight: Math.min(root.height - y - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + list.fullHeight)
 
         visible: reveal.value > 0
 
@@ -220,12 +242,11 @@ Item {
                 GlideList {
                     id: list
 
-                    // What the panel would need, CAPPED at a row count rather
-                    // than at the screen: nothing is truncated any more, so
-                    // "everything installed" would otherwise open a launcher the
-                    // full height of the display every time. A short result set
-                    // still gets a short panel; a long one scrolls.
-                    readonly property real fullHeight: Math.min(root.results.length ? contentHeight : empty.implicitHeight, Appearance.sizes.rowHeight * Appearance.sizes.launcherRows)
+                    // What the panel would need. Not capped here at all: the
+                    // panel's own limit is the bottom band, and running into it
+                    // is not a failure, it is the launcher REJOINING the
+                    // chassis. A short result set still gets a short panel.
+                    readonly property real fullHeight: root.results.length ? contentHeight : empty.implicitHeight
 
                     width: parent.width
                     height: Math.max(0, panel.height - y - Appearance.padding.large)
@@ -239,6 +260,7 @@ Item {
                         required property int index
 
                         width: list.width
+                        iconSize: Appearance.sizes.launcherIcon
                         // The entry's own icon, resolved out of the icon theme,
                         // with the generic mark only as a fallback for entries
                         // that name none.
