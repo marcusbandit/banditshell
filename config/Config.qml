@@ -337,6 +337,11 @@ Singleton {
                 // street is eighty wifi networks and a menu that scrolls forever
                 // is worse than one that admits what it left out.
                 networkListMax: 7,
+                // App rows the mixer shows before it stops counting. The panel
+                // clips where it runs out of screen rather than scrolling, so
+                // this is the difference between a long list and a list with its
+                // last row cut in half.
+                streamListMax: 5,
                 deviceListMax: 7,
                 // 40 is Sequoia's measured Control Center row pitch. At 34 a
                 // two-line row (18px label + 9px detail, so 36px of line boxes)

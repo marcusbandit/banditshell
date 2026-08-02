@@ -20,12 +20,11 @@ import qs.services
 // which turn out to be the same drawing. There is no separate indicator sliding
 // around on top: the plate you go to IS the indicator, and it grows.
 //
-// THE PLATES ARE HINGED INSIDE THE FRAME, not on the screen's edge. The first
-// `band` pixels of this item are the chassis's frame, which runs around the whole
-// display; a plate reaching into it makes the frame bulge green in one place and
-// reads as a defect rather than as a tab. So the plates start where the frame
-// ends, and stop a band short of the bar's inner edge, which leaves the same gap
-// at both ends and puts a full-length plate exactly under the icon column.
+// THE PLATES BORDER THE SCREEN'S EDGE. They start at x = 0 and end flat there:
+// this item spans the chassis's whole left band, and the band is shell material
+// all the way out to the display, so a plate hinged at zero is hinged on the edge
+// of the screen itself. They stop one band short of the bar's inner edge, so the
+// free end has somewhere to be.
 //
 // Depth is thickness and layering, never a shadow or a bevel: an inactive plate
 // is one sheet of material, the active one is two with the accent in the upper
@@ -47,12 +46,12 @@ Item {
     readonly property int maxWindows: Appearance.sizes.wsMaxWindows
     readonly property int tick: Appearance.sizes.wsTick
 
-    // WHERE A PLATE STARTS AND HOW FAR IT CAN GO. Both are the chassis's own
-    // band, so a full-length plate is inset by the same amount at each end and
-    // lands centred on the icon column without either being told about the
-    // other. Nothing here is a number chosen to look right.
-    readonly property real hinge: Appearance.sizes.band
-    readonly property real span: width - hinge * 2
+    // WHERE A PLATE STARTS AND HOW FAR IT CAN GO. It starts ON the screen's
+    // edge, and the room it has is everything up to one band short of the bar's
+    // inner edge: the shell's own lattice at the far end, nothing at the near
+    // one, because there is nothing between a plate and the edge it is hinged on.
+    readonly property real hinge: 0
+    readonly property real span: width - Appearance.sizes.band
 
     // The other two states, as fractions of that span. The active one is the
     // whole span by definition: it is what "pulled all the way out" means.
@@ -223,11 +222,11 @@ Item {
                 y: (parent.height - height) / 2
 
                 // SQUARE at the hinge, convex on the free end. A rounded corner
-                // at the hinge would curl the plate away from the frame and leave
-                // a notch of dead space behind it; the chassis's concave flare,
-                // which is the right answer where a panel meets the screen's own
+                // at the hinge would curl the plate off the screen's edge and
+                // leave a notch of dead space behind it; the chassis's concave
+                // flare, which is the right answer where a whole panel meets that
                 // edge, needs more room than a 28px slot has and pinches the
-                // plate's end off. Attached means flat against.
+                // plate's own end off. Attached means flat against.
                 topLeftRadius: 0
                 bottomLeftRadius: 0
                 topRightRadius: Appearance.rounding.normal

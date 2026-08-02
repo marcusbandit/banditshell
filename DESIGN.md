@@ -340,7 +340,7 @@ banditshell/
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
 │   ├── SignalBars.qml           a drawn strength meter (the font's is illegible)
 │   ├── BatteryMeter.qml         a drawn battery: every level, and charging as motion
-│   ├── Slider.qml               a value you drag, or a read-only gauge
+│   ├── Slider.qml               a bead on a rail; read-only loses the bead
 │   ├── Toggle.qml               a switch
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
 │   └── PasswordField.qml        inline secret entry

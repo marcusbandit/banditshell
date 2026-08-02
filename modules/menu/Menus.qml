@@ -57,7 +57,7 @@ Item {
     property Component currentBody: null
 
     // True while the cursor is on the panel itself, which keeps it open.
-    readonly property bool hovered: pointer.containsMouse
+    readonly property bool hovered: pointer.hovered
 
     // True while the cursor is anywhere on the shell at all, which ALSO keeps it
     // open. Handed down rather than worked out here: the surface's input mask is
@@ -150,12 +150,21 @@ Item {
         // already sitting: the travel has to be centred on the travelling size.
         y: centre.value - height / 2
 
-        MouseArea {
+        // A HANDLER, not a MouseArea.
+        //
+        // This is declared at the use site, so it lands in the panel's `data`
+        // after everything MenuPanel builds and sits on top of all of it. As a
+        // hoverEnabled MouseArea that made the panel a sheet of glass over its
+        // own contents: it took every hover, so nothing inside ever lit up, and
+        // it accepted every press, so nothing inside could be clicked or
+        // dragged. Every menu in the shell was a picture of a control panel.
+        //
+        // A handler is passive on both counts, and an ancestor is told about the
+        // hover its children accept, so leaving the panel is still an event this
+        // can hear. Same lesson as the tray's rows, from the other side: there,
+        // the catch-all was under the rows and heard nothing.
+        HoverHandler {
             id: pointer
-
-            anchors.fill: parent
-            hoverEnabled: true
-            onExited: root.release()
         }
     }
 }

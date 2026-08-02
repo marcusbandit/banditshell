@@ -218,6 +218,7 @@ Singleton {
         readonly property real meltFeather: root.cfg.blob.feather
 
         readonly property int networkListMax: root.cfg.control.networkListMax
+        readonly property int streamListMax: root.cfg.control.streamListMax
         readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget
         readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction

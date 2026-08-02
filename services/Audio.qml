@@ -38,13 +38,37 @@ Singleton {
     // caller's job to make it look like a warning.
     readonly property real maxVolume: 1.5
 
-    // Everything that can be picked as an output. Streams are individual apps
-    // and belong to a per-app mixer, not here.
+    // Everything that can be picked as an output or an input.
     readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && n.audio && !n.isStream)
     readonly property var sources: Pipewire.nodes.values.filter(n => !n.isSink && n.audio && !n.isStream)
 
+    // The individual apps, split by which direction they point.
+    //
+    // `media.class` rather than `isSink`, which is true for a playback stream
+    // (it feeds a sink) and reads like the opposite of what it means. PipeWire
+    // says Stream/Output/Audio for something playing and Stream/Input/Audio for
+    // something listening, and those are the two questions: what is making
+    // noise, and what is hearing me.
+    readonly property var streams: Pipewire.nodes.values.filter(n => n.isStream && n.audio)
+    readonly property var playing: streams.filter(n => (n.properties?.["media.class"] ?? "").includes("Output"))
+    readonly property var recording: streams.filter(n => (n.properties?.["media.class"] ?? "").includes("Input"))
+
     function label(node: PwNode): string {
         return node?.nickname || node?.description || node?.name || "unknown";
+    }
+
+    // What an app calls itself. `application.name` is right nearly always and
+    // is what the app chose to be called; the rest are for the ones that set
+    // nothing, where the process name is at least true.
+    function streamLabel(node: PwNode): string {
+        return node?.properties?.["application.name"] || node?.description || node?.properties?.["application.process.binary"] || node?.name || "unknown";
+    }
+
+    // What to LOOK it up as. A desktop entry is found by something close to the
+    // binary far more often than by the display name an app invents for itself,
+    // so both are offered and the caller takes whichever resolves.
+    function streamBinary(node: PwNode): string {
+        return node?.properties?.["application.process.binary"] || "";
     }
 
     // Whole percent, so a slider and a readout cannot disagree.
@@ -77,6 +101,29 @@ Singleton {
             source.audio.muted = !source.audio.muted;
     }
 
+    // One app, not the whole machine. Same shape as the pair above on purpose:
+    // a stream is a volume like any other, and the mixer should not need to
+    // know that it is a special kind.
+    function streamVolume(node: PwNode): real {
+        return node?.audio?.volume ?? 0;
+    }
+
+    function streamMuted(node: PwNode): bool {
+        return !!node?.audio?.muted;
+    }
+
+    function setStreamVolume(node: PwNode, v: real): void {
+        if (!node?.ready || !node?.audio)
+            return;
+        node.audio.muted = false;
+        node.audio.volume = root.quantise(v);
+    }
+
+    function toggleStreamMute(node: PwNode): void {
+        if (node?.audio)
+            node.audio.muted = !node.audio.muted;
+    }
+
     function setSink(node: PwNode): void {
         if (node)
             Pipewire.preferredDefaultAudioSink = node;
@@ -97,8 +144,9 @@ Singleton {
         return "volume_mute";
     }
 
-    // Nothing reports until it is tracked.
+    // Nothing reports until it is tracked, and an untracked node reads 0 rather
+    // than failing, so a forgotten stream looks like an app sitting at silence.
     PwObjectTracker {
-        objects: [root.sink, root.source, ...root.sinks, ...root.sources]
+        objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.streams]
     }
 }
