@@ -26,6 +26,8 @@ Item {
 
     // Which application's alternatives are showing, or "" for the list.
     property string picking: ""
+    // The alternative under the cursor, for the label under the row of them.
+    property string hint: ""
 
     implicitHeight: picking ? picker.implicitHeight : list.implicitHeight
 
@@ -126,7 +128,10 @@ Item {
 
                     required property var modelData
 
-                    readonly property bool current: AppIcons.specFor(root.picking) === modelData.spec
+                    // The SAME FILE counts as current whichever colour it is
+                    // being drawn in, or switching to original colours would
+                    // look like losing the choice.
+                    readonly property bool current: AppIcons.sameMark(AppIcons.specFor(root.picking), modelData.spec)
 
                     width: Appearance.sizes.rowHeight
                     height: width
@@ -146,9 +151,26 @@ Item {
                     AppMark {
                         anchors.centerIn: parent
                         size: Appearance.font.iconSize
-                        spec: option.modelData.spec
+                        // Shown the way it will actually be drawn, including
+                        // whether it keeps its own colours: a picker that lies
+                        // about the result is worse than no picker.
+                        spec: option.current ? AppIcons.specFor(root.picking) : option.modelData.spec
                         fallback: Apps.iconFor(root.picking)
                         color: Appearance.colour.text
+                    }
+
+                    // The chosen one says so. Without this the only feedback for
+                    // a click is a tint behind a mark you are already looking
+                    // at, and picking the icon you already had looks like
+                    // nothing happening at all.
+                    Icon {
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: 2
+                        visible: option.current
+                        size: Appearance.font.size.small
+                        name: "check_circle"
+                        color: Appearance.colour.accent
                     }
 
                     MouseArea {
@@ -161,9 +183,25 @@ Item {
                         // you get back to the automatic answer without a second
                         // control that only ever does that.
                         onClicked: AppIcons.assign(root.picking, option.current ? "" : option.modelData.spec)
+                        onEntered: root.hint = option.modelData.spec
+                        onExited: if (root.hint === option.modelData.spec)
+                            root.hint = ""
                     }
                 }
             }
+        }
+
+        // The one thing the alternatives cannot show at once: whether a file
+        // keeps its own colours. Everything is offered tinted, because that is
+        // what makes a row of them comparable and a bar of them coherent, and
+        // this is how you say "not this one".
+        MenuRow {
+            width: picker.width
+            visible: AppIcons.isFile(AppIcons.specFor(root.picking))
+            icon: AppIcons.specFor(root.picking).startsWith("mono:") ? "palette" : "invert_colors"
+            label: AppIcons.specFor(root.picking).startsWith("mono:") ? "Use its own colours" : "Use the shell's colour"
+            detail: root.picking
+            onActivated: AppIcons.recolour(root.picking)
         }
 
         Separator {

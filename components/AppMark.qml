@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Effects
 import qs.config
 import qs.components
 
@@ -50,32 +49,16 @@ Item {
         glyph: root.kind === "glyph" && root.value ? String.fromCodePoint(parseInt(root.value, 16)) : ""
     }
 
-    Image {
-        id: image
-
+    // FITTED, not merely scaled: icon files disagree about how much of their own
+    // canvas they use, and a row of them at the same box size comes out at three
+    // different sizes. See FittedImage.
+    FittedImage {
         anchors.centerIn: parent
         width: root.size
         height: root.size
-        sourceSize.width: root.size * 2
-        sourceSize.height: root.size * 2
-        source: root.kind === "image" || root.kind === "mono" ? root.value : ""
-        fillMode: Image.PreserveAspectFit
-        asynchronous: true
-        smooth: true
-        // The mono path draws through the effect instead, so the source itself
-        // must not also be on screen.
-        visible: root.kind === "image" && status === Image.Ready
-    }
-
-    MultiEffect {
-        anchors.fill: image
-        source: image
-        visible: root.kind === "mono" && image.status === Image.Ready
-        // A symbolic icon is a single colour with an alpha channel, so replacing
-        // that colour outright is the whole operation: there is no luminance to
-        // preserve and nothing of the original to lose.
-        brightness: 1
-        colorization: 1
-        colorizationColor: root.color
+        visible: root.kind === "image" || root.kind === "mono"
+        source: visible ? root.value : ""
+        tint: root.kind === "mono"
+        colour: root.color
     }
 }

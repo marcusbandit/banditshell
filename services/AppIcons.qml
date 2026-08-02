@@ -36,8 +36,34 @@ Singleton {
     // that is expensive to fetch again, not a record of what happened.
     readonly property string store: `${Quickshell.env("HOME")}/.local/share/banditshell/icons`
 
+    // WHETHER THE FILE HAS BEEN READ YET, and the reason this exists: every
+    // write is a write of the WHOLE table, and the table starts empty. The
+    // window list arrives before the first read finishes, so recording what is
+    // open used to overwrite the file with nothing but what was open, and every
+    // icon anybody had ever chosen went with it. Nothing writes until the disk
+    // has had its say.
+    property bool loaded: false
+
     // { class: { title, spec, at } }
     property var apps: ({})
+
+    // { path: [x, y, w, h] } normalised, what an icon file actually covers of
+    // its own canvas. Measured once by components/FittedImage.qml and kept,
+    // because a file does not change shape and scanning pixels is not free.
+    property var fits: ({})
+
+    function fitFor(path: string): var {
+        return root.fits[path] ?? null;
+    }
+
+    function recordFit(path: string, box: var): void {
+        if (!path || !box)
+            return;
+        const next = Object.assign({}, root.fits);
+        next[path] = box;
+        root.fits = next;
+        root.save();
+    }
 
     readonly property var classes: Object.keys(root.apps).sort()
 
@@ -52,13 +78,22 @@ Singleton {
     // A NEW OBJECT, not a mutated one: `apps` is a var property and QML only
     // notices assignment, so mutating it in place leaves every binding reading
     // it showing the old table until something else happens to invalidate them.
+    function save(): void {
+        if (!root.loaded)
+            return;
+        store.setText(JSON.stringify({
+            apps: root.apps,
+            fits: root.fits
+        }, null, 4) + "\n");
+    }
+
     function write(cls: string, patch: var): void {
         if (!cls)
             return;
         const next = Object.assign({}, root.apps);
         next[cls] = Object.assign({}, next[cls] ?? {}, patch);
         root.apps = next;
-        store.setText(JSON.stringify(root.apps, null, 4) + "\n");
+        root.save();
     }
 
     // FIRST SIGHT ONLY. A window's title changes every time you switch a tab,
@@ -86,14 +121,22 @@ Singleton {
         const next = Object.assign({}, root.apps);
         delete next[cls];
         root.apps = next;
-        store.setText(JSON.stringify(root.apps, null, 4) + "\n");
+        root.save();
     }
 
     // Watch what is open and remember it. A window that is never open when the
     // settings menu happens to be is still an application you use.
     readonly property var watching: Hypr.clients
 
-    onWatchingChanged: {
+    onWatchingChanged: root.observe()
+    // Whatever was open before the file came back is still open now, and now
+    // there is something to merge it into.
+    onLoadedChanged: if (root.loaded)
+        root.observe()
+
+    function observe(): void {
+        if (!root.loaded)
+            return;
         for (const id in root.watching)
             for (const c of root.watching[id]) {
                 const o = c.lastIpcObject;
@@ -129,6 +172,26 @@ Singleton {
                 return `image:${art}`;
         }
         return "";
+    }
+
+    function isFile(spec: string): bool {
+        return spec.startsWith("mono:") || spec.startsWith("image:");
+    }
+
+    // Two specs that name the same FILE, whatever colour each asks for.
+    function sameMark(a: string, b: string): bool {
+        if (!a || !b)
+            return false;
+        return a === b || (root.isFile(a) && root.isFile(b) && a.slice(a.indexOf(":")) === b.slice(b.indexOf(":")));
+    }
+
+    // Flip the chosen file between the shell's colour and its own.
+    function recolour(cls: string): void {
+        const spec = root.specFor(cls);
+        if (!root.isFile(spec))
+            return;
+        const path = spec.slice(spec.indexOf(":") + 1);
+        root.assign(cls, `${spec.startsWith("mono:") ? "image" : "mono"}:${path}`);
     }
 
     // ------------------------------------------------------------------
@@ -196,11 +259,14 @@ Singleton {
                         };
                 }
 
+                // EVERY file is offered as a `mono`, whatever it is. The
+                // alternatives are meant to be comparable, and five brand
+                // palettes in a row are not comparable to each other or to the
+                // rest of the bar; the picker has a switch for the ones you
+                // want in their own colours.
                 const specs = [];
-                for (const base in seen) {
-                    const path = seen[base].path;
-                    specs.push(`${root.monoLooking(path) ? "mono" : "image"}:${path}`);
-                }
+                for (const base in seen)
+                    specs.push(`mono:${seen[base].path}`);
 
                 const next = Object.assign({}, root.found);
                 next[scan.cls] = specs;
@@ -271,16 +337,28 @@ Singleton {
 
         onLoaded: {
             try {
-                root.apps = JSON.parse(text()) ?? {};
+                const data = JSON.parse(text()) ?? {};
+                // The file used to BE the app table. A version without the
+                // wrapper is still every choice somebody made, so it is read as
+                // what it was rather than thrown away for having the old shape.
+                root.apps = data.apps ?? data ?? {};
+                root.fits = data.fits ?? {};
+                root.loaded = true;
             } catch (e) {
                 console.warn(`AppIcons: ${root.path} is not valid JSON, starting the table over.`, e);
                 root.apps = {};
+                root.fits = {};
+                root.loaded = true;
             }
         }
 
         onLoadFailed: err => {
+            // No file yet is not a failure to read one: there is nothing on disk
+            // to lose, so writing can start as soon as the directory exists.
             if (err === FileViewError.FileNotFound)
                 mkdir.running = true;
+            else
+                console.warn(`AppIcons: could not read ${root.path} (${err}); choices made now will not be kept.`);
         }
     }
 
@@ -288,5 +366,6 @@ Singleton {
         id: mkdir
 
         command: ["mkdir", "-p", root.dir, root.store]
+        onExited: root.loaded = true
     }
 }
