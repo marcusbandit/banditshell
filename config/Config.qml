@@ -316,7 +316,9 @@ Singleton {
                 concept: "list",
 
                 niagara: {
-                    width: 620,
+                    width: 760,
+                    // How big an application's mark is in the column.
+                    icon: 48,
                     // How wide the alphabet rail is. Narrow on purpose: it is a
                     // ruler, not a column of buttons.
                     rail: 44,

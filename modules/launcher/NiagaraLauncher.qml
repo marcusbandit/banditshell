@@ -6,33 +6,32 @@ import qs.config
 import qs.components
 import qs.services
 
-// THE NIAGARA CONCEPT: text before icons, and the alphabet as the interface.
+// THE NIAGARA CONCEPT: everything installed, in one sectioned column, indexed by
+// an alphabet rail.
 //
-// After the Android launcher of the same name, whose argument is that a grid of
-// several hundred identical squares is a filing cabinet, not a home. So it does
-// not show you one. At rest there are a handful of names, and everything else
-// lives behind an A-Z RAIL you scrub with your thumb: the letter under it is
-// what you are looking at, and the apps under that letter appear beside it.
+// After the Android launcher of the same name. Its argument is not that icons
+// are bad, it is that a GRID is: several hundred squares in an arbitrary order
+// is a filing cabinet you have to read left to right. So it keeps the icons and
+// throws away the grid. One column, alphabetical, each letter announced in the
+// margin, and a rail down the edge that jumps to any of them.
 //
 // Three things carry it across to a desktop:
 //
-//   TEXT. No icons at all here, which is the deliberate opposite of the list
-//   concept sitting next to it. A name read is faster than a picture recognised
-//   once you already know what you want, and a column of names is quiet in a way
-//   a column of logos cannot be.
+//   THE STAR. The list does not begin at A. It begins with what you actually
+//   use, under a star, and the alphabet follows underneath. Niagara asks you to
+//   choose those; the shell already knows, off the same frecency the list
+//   concept ranks by.
 //
-//   FEW. At rest this shows only what you actually use, taken from the same
-//   frecency the other concept ranks by. Niagara calls them favourites and asks
-//   you to pick them; the shell already knows.
+//   THE RAIL IS AN INDEX, NOT A FILTER. Everything is in the column the whole
+//   time; running down the rail scrolls to a letter rather than replacing what
+//   is on screen, so the list being looked at is always the same list.
 //
-//   THE RAIL. On a phone it is a thumb gesture. On a desktop the cursor is
-//   already precise, so hovering it is enough: no click, no drag, run down the
-//   edge and the list follows. Letters with nothing under them are not drawn, so
-//   the rail is the shape of what is installed.
+//   THE MARGIN. Letters sit outside the column of icons rather than in it, so
+//   every name starts at one x and the sections read as annotations on a
+//   continuous list instead of as headings that chop it into blocks.
 //
-// It hangs the full height of the content area and fills from the BOTTOM, which
-// is where a phone puts things it expects to be reached. The emptiness above is
-// the design, not an unfinished part of it.
+// It rises out of the BOTTOM band and the search sits at the bottom, where a
+// phone puts what it expects to be reached.
 Item {
     id: root
 
@@ -45,12 +44,30 @@ Item {
     readonly property real panelWidth: Config.values.launcher.niagara.width
     readonly property real railWidth: Config.values.launcher.niagara.rail
     readonly property int favouriteCount: Config.values.launcher.niagara.favourites
+    readonly property real iconSize: Config.values.launcher.niagara.icon
+
+    // The letter's column, outside the icons'. Wide enough for the character and
+    // no wider, so the names sit as close to the edge as the annotation allows.
+    readonly property real gutter: Appearance.font.size.large + Appearance.padding.normal
+
+    readonly property real rowPitch: root.iconSize + Appearance.padding.normal
+    readonly property real sectionPitch: Appearance.font.size.large + Appearance.padding.large
+
+    // The mark for the favourites section. Not a letter, because they are not
+    // filed under one.
+    //
+    // Held as a KEY, drawn as an icon: Monocraft is a pixel face with no star in
+    // it, so setting one as text renders the missing-glyph box, which is a
+    // perfectly good way to make a launcher look broken. The key is what the
+    // sections and the rail agree on; what gets drawn for it is a separate
+    // question and belongs to the icon font.
+    readonly property string star: "favourites"
+    readonly property string starIcon: "star"
 
     readonly property Item maskItem: catcher
 
-    // The blob the chassis melts in. Without it the panel has no surface at all
-    // and the names hang in the middle of the desktop: this concept draws no
-    // background of its own, exactly like every other panel in the shell.
+    // The blob the chassis melts in. This concept draws no background of its
+    // own, exactly like every other panel in the shell.
     readonly property var blobs: panel.height <= 0 ? [] : [
         {
             x: panel.x,
@@ -61,11 +78,9 @@ Item {
         }
     ]
 
-    // The whole alphabet, as the apps actually installed make it.
-    //
-    // Keyed by first letter, everything non-alphabetic under "#". Built from the
-    // data rather than from a hardcoded A-Z, so the rail has no dead letters on
-    // it and a machine with no Q applications does not offer you a Q.
+    // The alphabet, as the applications actually installed make it. Everything
+    // non-alphabetic lands under "#". Built from the data rather than from a
+    // hardcoded A-Z, so the rail has no dead letters on it.
     readonly property var byLetter: {
         const out = {};
         for (const entry of Apps.all) {
@@ -84,29 +99,76 @@ Item {
     }
 
     readonly property var letters: Object.keys(root.byLetter).sort()
+    readonly property var favourites: Apps.search("").slice(0, root.favouriteCount)
 
-    // Which letter the rail is on. Sticky once set: on a phone you let go and it
-    // goes home, but here you have to be able to leave the rail and cross the
-    // panel to click what you came for.
-    property string letter: ""
+    // What the rail offers: the star, then whatever letters exist.
+    readonly property var keys: [root.star, ...root.letters]
 
-    // What the list is showing, and why. Typing beats scrubbing beats resting.
-    readonly property var entries: {
+    // ONE FLAT LIST of rows, sections included, rather than a list of lists.
+    //
+    // A ListView cannot scroll to something it has no row for, and the rail's
+    // whole job is to scroll to a letter. Flattening puts the sections in the
+    // same coordinate space as the applications, so "where is T" is arithmetic
+    // rather than a search through nested delegates.
+    readonly property var rows: {
         if (query.text)
-            return Apps.search(query.text);
-        if (root.letter)
-            return root.byLetter[root.letter] ?? [];
-        return Apps.search("").slice(0, root.favouriteCount);
+            return Apps.search(query.text).map(entry => ({
+                        section: "",
+                        entry: entry
+                    }));
+
+        const out = [];
+        if (root.favourites.length) {
+            out.push({
+                section: root.star,
+                entry: null
+            });
+            for (const entry of root.favourites)
+                out.push({
+                    section: "",
+                    entry: entry
+                });
+        }
+        for (const key of root.letters) {
+            out.push({
+                section: key,
+                entry: null
+            });
+            for (const entry of root.byLetter[key])
+                out.push({
+                    section: "",
+                    entry: entry
+                });
+        }
+        return out;
     }
+
+    // Where each section starts, in the list's own coordinates. Accumulated once
+    // per change rather than measured off the delegates, which only exist for
+    // the part of the list currently on screen.
+    readonly property var sectionY: {
+        const out = {};
+        let y = 0;
+        for (const row of root.rows) {
+            if (row.section) {
+                out[row.section] = y;
+                y += root.sectionPitch;
+            } else {
+                y += root.rowPitch;
+            }
+        }
+        return out;
+    }
+
+    // Which section the rail is pointing at.
+    property string marked: ""
 
     property int selected: 0
 
-    readonly property real rowPitch: Appearance.font.size.large + Appearance.padding.large
-
     // For `banditshell status`.
     readonly property real drawnHeight: panel.height
-    readonly property int resultCount: entries.length
-    readonly property string scrollInfo: `${root.letter ? `letter ${root.letter}` : query.text ? "search" : "favourites"}, row ${root.selected} of ${root.entries.length}`
+    readonly property int resultCount: root.rows.filter(r => !!r.entry).length
+    readonly property string scrollInfo: `${query.text ? "search" : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
 
     // What had the keyboard before this took it; see ListLauncher, same reason.
     property string restoreTo: ""
@@ -115,8 +177,9 @@ Item {
         root.restoreTo = Hypr.focusedAddress;
         root.shown = true;
         query.text = "";
-        root.letter = "";
-        root.selected = 0;
+        root.marked = "";
+        root.selected = root.firstApp(0, 1);
+        list.reset();
         Qt.callLater(query.forceActiveFocus);
     }
 
@@ -135,7 +198,7 @@ Item {
     }
 
     function accept(): void {
-        const entry = root.entries[root.selected];
+        const entry = root.rows[root.selected]?.entry;
         if (entry) {
             Apps.launch(entry);
             root.restoreTo = "";
@@ -144,29 +207,66 @@ Item {
         root.hide();
     }
 
-    function move(delta: int): void {
-        const n = root.entries.length;
-        if (n > 0)
-            root.selected = (root.selected + delta + n) % n;
+    // The next row that is an application, because a section is a label and
+    // selecting one would mean pressing Return on a letter.
+    function firstApp(from: int, step: int): int {
+        const n = root.rows.length;
+        for (let i = 0; i < n; i++) {
+            const at = ((from + i * step) % n + n) % n;
+            if (root.rows[at]?.entry)
+                return at;
+        }
+        return 0;
     }
 
-    // Which letter a point on the rail is, computed from where it falls rather
-    // than from a stack of hit areas: one area, one division, and it stays right
+    function move(delta: int): void {
+        if (root.rows.length)
+            root.selectRow(root.firstApp(root.selected + delta, delta >= 0 ? 1 : -1));
+    }
+
+    // Where a row starts, accumulated. NOT GlideList.reveal, which divides the
+    // content height by the count and so assumes every row is the same size:
+    // true of a plain list and false the moment sections are in it, where it
+    // would put the selection progressively further off the further down you
+    // went.
+    function rowY(index: int): real {
+        let y = 0;
+        for (let i = 0; i < index && i < root.rows.length; i++)
+            y += root.rows[i].section ? root.sectionPitch : root.rowPitch;
+        return y;
+    }
+
+    function selectRow(index: int): void {
+        root.selected = index;
+
+        const top = root.rowY(index);
+        const height = root.rows[index]?.section ? root.sectionPitch : root.rowPitch;
+        // A section is worth scrolling to WITH its row, so arrowing into the
+        // first application under a letter brings the letter along.
+        const lead = index > 0 && root.rows[index - 1]?.section ? root.sectionPitch : 0;
+
+        if (top - lead < list.anchor)
+            list.scrollTo(top - lead);
+        else if (top + height > list.anchor + list.height)
+            list.scrollTo(top + height - list.height);
+    }
+
+    // Which key a point on the rail is, computed from where it falls rather than
+    // from a stack of hit areas: one area, one division, and it stays right
     // whatever the alphabet turns out to contain.
     function scrubAt(y: real): void {
-        const n = root.letters.length;
-        if (n <= 0)
+        const n = root.keys.length;
+        if (n <= 0 || query.text)
             return;
         const index = Math.max(0, Math.min(Math.floor(y / rail.height * n), n - 1));
-        const next = root.letters[index];
-        if (next !== root.letter) {
-            root.letter = next;
-            root.selected = 0;
-            query.text = "";
-        }
+        const key = root.keys[index];
+        if (key === root.marked)
+            return;
+        root.marked = key;
+        list.scrollTo(root.sectionY[key] ?? 0);
     }
 
-    onEntriesChanged: root.selected = 0
+    onRowsChanged: root.selected = root.firstApp(0, 1)
 
     Follow {
         id: rise
@@ -195,9 +295,9 @@ Item {
         x: (root.width - width) / 2
         width: root.panelWidth
 
-        // Grows UPWARD out of the bottom band, and stays joined to it the whole
-        // way: the panel is a column rising out of the shell rather than a sheet
-        // arriving over it.
+        // Grows UPWARD out of the bottom band and stays joined to it the whole
+        // way: a column rising out of the shell rather than a sheet arriving
+        // over it.
         height: fullHeight * rise.value
         y: bandY - height
 
@@ -207,65 +307,68 @@ Item {
             anchors.fill: parent
             clip: true
 
-            // THE RAIL. Down the right edge, full height, and the only thing in
-            // the panel that is always in the same place.
+            // THE RAIL. Down the right edge, full height, the only thing in the
+            // panel that is always in the same place.
             MouseArea {
                 id: rail
 
                 anchors.right: parent.right
                 anchors.top: parent.top
                 anchors.bottom: parent.bottom
-                anchors.margins: Appearance.padding.large
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.topMargin: Appearance.padding.large
+                anchors.bottomMargin: Appearance.padding.large
                 width: root.railWidth
 
                 hoverEnabled: true
-                // Hover, not press. The gesture on a phone is a drag because a
-                // thumb has to commit to the edge; a cursor is already there.
-                //
-                // Driven off mouseY rather than the positionChanged signal. The
-                // signal is only emitted for real motion, so a pointer that
-                // arrives on the rail by any other route (a warp, a workspace
-                // switch landing under it) gets an enter and nothing else, and
-                // the rail sits there doing nothing under a cursor that is
-                // plainly on it. The property is true whenever the pointer is
-                // inside, however it got there.
-                // EVENTS ONLY, never a binding on mouseY. Driving it from the
-                // position property looked more robust and was worse: the panel
-                // rises when it opens, so the rail moves under a cursor that is
-                // not moving, mouseY changes every frame of the animation, and
-                // the launcher opens already scrubbed to a letter nobody asked
-                // for. A pointer event happens because the pointer did
-                // something.
-                // MOTION only, not entry. The panel rises when it opens, so
-                // the rail arrives under whatever the cursor happened to be
-                // sitting on and an entry-triggered scrub means the launcher
-                // opens on a letter nobody chose. Reaching the rail requires
-                // moving to it, and moving to it is a position event.
+                // MOTION only, not entry. The panel rises when it opens, so the
+                // rail arrives under whatever the cursor happened to be sitting
+                // on, and an entry-triggered scrub means the launcher opens on a
+                // letter nobody chose. Reaching the rail requires moving to it,
+                // and moving to it is a position event.
                 onPositionChanged: mouse => root.scrubAt(mouse.y)
 
                 Repeater {
-                    model: root.letters
+                    model: root.keys
 
-                    delegate: StyledText {
+                    delegate: Item {
+                        id: mark
+
                         required property string modelData
                         required property int index
 
+                        readonly property bool isStar: modelData === root.star
+                        readonly property bool active: modelData === root.marked
+                        readonly property color tint: active ? Appearance.colour.accent : Appearance.colour.textFaint
+
                         // Evenly divided by count, so the rail fills its height
-                        // whether there are twelve letters on it or twenty-seven.
-                        readonly property real slot: rail.height / root.letters.length
+                        // whether it carries twelve marks or twenty-eight.
+                        readonly property real slot: rail.height / root.keys.length
 
-                        y: index * slot + (slot - implicitHeight) / 2
+                        y: index * slot
                         width: rail.width
-                        horizontalAlignment: Text.AlignHCenter
+                        height: slot
 
-                        text: modelData
-                        font.pixelSize: Appearance.font.size.small
-                        color: modelData === root.letter ? Appearance.colour.accent : Appearance.colour.textFaint
+                        StyledText {
+                            anchors.centerIn: parent
+                            visible: !mark.isStar
+                            text: mark.modelData
+                            font.pixelSize: Appearance.font.size.small
+                            color: mark.tint
+                        }
+
+                        Icon {
+                            anchors.centerIn: parent
+                            visible: mark.isStar
+                            size: Appearance.font.size.small
+                            name: root.starIcon
+                            color: mark.tint
+                        }
                     }
                 }
             }
 
-            // The query, at the BOTTOM, where a phone puts the thing you reach
+            // The search, at the BOTTOM, where a phone puts the thing you reach
             // for. Everything else stacks upward off it.
             Item {
                 id: field
@@ -273,23 +376,39 @@ Item {
                 anchors.left: parent.left
                 anchors.right: rail.left
                 anchors.bottom: parent.bottom
-                anchors.margins: Appearance.padding.large
+                anchors.leftMargin: Appearance.padding.large
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.bottomMargin: Appearance.padding.large
                 height: Appearance.font.size.large + Appearance.padding.normal
 
-                StyledText {
+                Icon {
+                    id: searchGlyph
+
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
+                    width: root.gutter
+                    size: Appearance.font.size.large
+                    name: "search"
+                    color: query.text ? Appearance.colour.accent : Appearance.colour.textGhost
+                }
+
+                StyledText {
+                    anchors.left: searchGlyph.right
+                    anchors.leftMargin: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
                     visible: !query.text
-                    text: root.letter ? root.letter : "Type, or run the rail"
+                    text: "Search, or run the rail"
                     font.pixelSize: Appearance.font.size.large
-                    color: root.letter ? Appearance.colour.accent : Appearance.colour.textGhost
+                    color: Appearance.colour.textGhost
                 }
 
                 TextInput {
                     id: query
 
-                    anchors.fill: parent
-                    verticalAlignment: Text.AlignVCenter
+                    anchors.left: searchGlyph.right
+                    anchors.leftMargin: Appearance.padding.normal
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
 
                     font.family: Appearance.font.family
                     font.pixelSize: Appearance.font.size.large
@@ -301,9 +420,11 @@ Item {
 
                     // Typing means you have stopped browsing.
                     onTextChanged: if (text)
-                        root.letter = ""
+                        root.marked = ""
 
                     Keys.onPressed: event => {
+                        const page = Math.max(1, Math.floor(list.height / root.rowPitch) - 1);
+
                         switch (event.key) {
                         case Qt.Key_Escape:
                             root.hide();
@@ -320,6 +441,12 @@ Item {
                         case Qt.Key_Backtab:
                             root.move(-1);
                             break;
+                        case Qt.Key_PageDown:
+                            root.move(page);
+                            break;
+                        case Qt.Key_PageUp:
+                            root.move(-page);
+                            break;
                         default:
                             return;
                         }
@@ -328,49 +455,124 @@ Item {
                 }
             }
 
-            // The names, stacked UP off the field. Bottom-aligned, so a short
-            // list sits low and a long one grows into the empty space above
-            // rather than the list starting somewhere different every time.
-            Column {
-                id: names
+            // EVERYTHING, in one column. The rail moves this; it never replaces
+            // it.
+            GlideList {
+                id: list
 
                 anchors.left: parent.left
                 anchors.right: rail.left
+                anchors.top: parent.top
                 anchors.bottom: field.top
                 anchors.leftMargin: Appearance.padding.large
-                anchors.rightMargin: Appearance.padding.large
+                anchors.rightMargin: Appearance.padding.normal
+                anchors.topMargin: Appearance.padding.large
                 anchors.bottomMargin: Appearance.padding.large
 
-                spacing: Appearance.padding.normal
+                clip: true
+                model: ScriptModel {
+                    values: root.rows
+                }
+                reuseItems: true
+                cacheBuffer: root.rowPitch * 4
 
-                Repeater {
-                    model: ScriptModel {
-                        // Only what fits. The rail is how you get to the rest,
-                        // so a letter with forty applications under it is a
-                        // reason to type, not a reason to scroll.
-                        values: root.entries.slice(0, Math.max(1, Math.floor((panel.fullHeight - field.height - Appearance.padding.large * 3) / root.rowPitch)))
+                delegate: Item {
+                    id: row
+
+                    required property var modelData
+                    required property int index
+
+                    readonly property bool isSection: !!modelData.section
+                    readonly property var entry: modelData.entry
+
+                    width: list.width
+                    height: isSection ? root.sectionPitch : root.rowPitch
+
+                    // The letter, in the MARGIN. Outside the icons rather than
+                    // above them, so every name in the list starts at one x and
+                    // the sections annotate a continuous column instead of
+                    // chopping it into blocks.
+                    StyledText {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.gutter
+
+                        visible: row.isSection && row.modelData.section !== root.star
+                        text: row.modelData.section
+                        font.pixelSize: Appearance.font.size.large
+                        color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
                     }
 
-                    delegate: StyledText {
-                        required property var modelData
-                        required property int index
+                    Icon {
+                        anchors.left: parent.left
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.gutter
 
-                        width: names.width
-                        text: modelData.name ?? ""
-                        font.pixelSize: Appearance.font.size.large
-                        color: index === root.selected ? Appearance.colour.text : Appearance.colour.textDim
-                        elide: Text.ElideRight
+                        visible: row.isSection && row.modelData.section === root.star
+                        size: Appearance.font.size.large
+                        name: root.starIcon
+                        color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+                    }
 
-                        MouseArea {
+                    G2Rect {
+                        id: badge
+
+                        anchors.left: parent.left
+                        anchors.leftMargin: root.gutter
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.iconSize
+                        height: width
+                        // Half the width: the squircle at its roundest, which is
+                        // a circle that was never cut from one.
+                        radius: width / 2
+
+                        visible: !row.isSection
+                        color: row.index === root.selected ? Appearance.colour.fillStrong : Appearance.colour.fill
+
+                        Image {
+                            id: art
+
                             anchors.fill: parent
-                            anchors.margins: -Appearance.padding.small
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onEntered: root.selected = parent.index
-                            onClicked: {
-                                root.selected = parent.index;
-                                root.accept();
-                            }
+                            anchors.margins: Appearance.padding.small
+                            source: row.entry?.icon ? Quickshell.iconPath(row.entry.icon, true) : ""
+                            fillMode: Image.PreserveAspectFit
+                            asynchronous: true
+                            visible: status === Image.Ready
+                            sourceSize.width: width * Screen.devicePixelRatio
+                            sourceSize.height: height * Screen.devicePixelRatio
+                        }
+
+                        Icon {
+                            anchors.centerIn: parent
+                            visible: !art.visible
+                            size: root.iconSize / 2
+                            name: "apps"
+                            color: Appearance.colour.textDim
+                        }
+                    }
+
+                    StyledText {
+                        anchors.left: badge.right
+                        anchors.leftMargin: Appearance.padding.large
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        visible: !row.isSection
+                        text: row.entry?.name ?? ""
+                        font.pixelSize: Appearance.font.size.normal
+                        color: row.index === root.selected ? Appearance.colour.text : Appearance.colour.textDim
+                        elide: Text.ElideRight
+                    }
+
+                    MouseArea {
+                        anchors.fill: parent
+                        enabled: !row.isSection
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onEntered: root.selected = row.index
+                        onClicked: {
+                            root.selected = row.index;
+                            root.accept();
                         }
                     }
                 }

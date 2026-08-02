@@ -85,7 +85,26 @@ ListView {
         root.contentY = 0;
     }
 
-    onContentHeightChanged: root.scrollTo(root.scrollTarget)
+    onContentHeightChanged: root.settle()
+    onHeightChanged: root.settle()
+
+    // Put the content back inside its own bounds.
+    //
+    // Needed because the glide only writes contentY while it is chasing: with a
+    // target already at 0 it is settled, so a list left parked out of bounds by
+    // something else stays there. That happens whenever the content shrinks
+    // under the view, which for a search list is every query that matches
+    // little, and it looks like the results have been scrolled off the top.
+    function settle(): void {
+        root.scrollTo(root.scrollTarget);
+
+        const inside = Math.max(0, Math.min(root.contentY, root.maxScroll));
+        if (!root.handling && Math.abs(inside - root.contentY) > 0.5) {
+            glide.value = inside;
+            root.scrollTarget = inside;
+            root.contentY = inside;
+        }
+    }
 
     Follow {
         id: glide
