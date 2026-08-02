@@ -45,49 +45,6 @@ Column {
     onOpenedChanged: Bluetooth.setDiscovering(root.opened === "pair")
     Component.onDestruction: Bluetooth.setDiscovering(false)
 
-    // A LAYER: the things you rarely need, one step down and out of the way.
-    //
-    // It UNROLLS rather than appearing, and it is clipped while it does, so the
-    // rows inside are revealed by the opening rather than arriving already
-    // there. The rule down the left is the whole reason it reads as belonging to
-    // the row above it rather than as the next section.
-    component Layer: Item {
-        id: layer
-
-        property bool open: false
-        readonly property real indent: Appearance.padding.large
-
-        default property alias content: stack.data
-
-        clip: true
-        visible: unroll.value > 0.001
-        implicitHeight: stack.implicitHeight * unroll.value
-
-        Follow {
-            id: unroll
-
-            target: layer.open ? 1 : 0
-            speed: Appearance.anim.revealSpeed
-            epsilon: 0.001
-        }
-
-        G2Rect {
-            x: Math.round(layer.indent / 2)
-            width: Math.max(2, Math.round(Appearance.sizes.sliderHeight / 3))
-            height: parent.height
-            radius: width / 2
-            color: Appearance.colour.separator
-        }
-
-        Column {
-            id: stack
-
-            x: layer.indent
-            width: layer.width - layer.indent
-            spacing: 0
-        }
-    }
-
     // One switch inside a layer. The whole row is the target, not the switch:
     // a 34px toggle is a bad thing to ask anyone to hit, and the label says what
     // it does, so tapping the label doing nothing would be the surprise.
@@ -176,7 +133,7 @@ Column {
         }
     }
 
-    Layer {
+    MenuLayer {
         width: root.width
         open: root.opened === "adapter" && Bluetooth.enabled
 
@@ -257,7 +214,7 @@ Column {
                 }
             }
 
-            Layer {
+            MenuLayer {
                 width: entry.width
                 open: entry.showing
 
@@ -331,7 +288,7 @@ Column {
         }
     }
 
-    Layer {
+    MenuLayer {
         width: root.width
         open: root.opened === "pair"
 
