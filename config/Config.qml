@@ -164,7 +164,7 @@ Singleton {
                 // Same, for a list gliding to where the wheel threw it. Lower
                 // than the others on purpose: this is the one place the motion
                 // is meant to be FELT rather than merely be over.
-                scrollSpeed: 11,
+                scrollSpeed: 15,
                 // How long a hover-opened thing survives the cursor leaving.
                 // Hover is a sloppy input; without this, crossing a boundary
                 // dismisses what you were reaching for.
@@ -222,7 +222,7 @@ Singleton {
                     //            of the layout instead of its contents
                     //   blocks   one square per window, one row per workspace,
                     //            on the pixel grid
-                    style: "plates",
+                    style: "icons",
 
                     // Slots always shown, even when empty.
                     persistent: 5,
@@ -260,6 +260,11 @@ Singleton {
                     // proportions if the bar changes width.
                     emptyReach: 0.28,
                     busyReach: 0.62,
+                    // How much more of everything a workspace gets while the
+                    // cursor is on it: longer and taller by the same fraction,
+                    // so the plate answers the cursor by moving rather than by
+                    // changing colour at it.
+                    hover: 0.09,
 
                     // `map`: how thick one window's bar is, and the gap under
                     // it. Thin, because the column is meant to be read as a
@@ -324,7 +329,13 @@ Singleton {
                     rail: 44,
                     // How many of your most-used applications are on screen when
                     // nothing has been typed or scrubbed.
-                    favourites: 7
+                    favourites: 7,
+                    // How far the rail bows toward the middle under the cursor,
+                    // and how many marks either side come with it.
+                    bow: 150,
+                    bowSpread: 3.5,
+                    // The disc that shows the mark you are on.
+                    badge: 72
                 },
 
                 // How long to keep watching for the window a launch opens, so
@@ -369,8 +380,11 @@ Singleton {
                 // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.
                 minTarget: 24,
 
-                // How far one notch of the wheel throws a list, in rows.
-                wheelRows: 3,
+                // How far one notch of the wheel throws a list, in rows. Five,
+                // not three: a list of everything installed is thousands of
+                // pixels long, and a notch that moves three rows of it makes the
+                // wheel feel geared down.
+                wheelRows: 5,
                 // How long a touchpad flick keeps going after the fingers
                 // leave, in ms of the velocity it ended at. This is the coast:
                 // 0 stops dead the instant you let go.
@@ -434,15 +448,17 @@ Singleton {
                 // something else, which migration cannot detect: it compares
                 // shape, and the shape would not have changed.
                 minHeight: 200,
-                // Raised with the type. The sound menu is the tall one: two
-                // sliders and two device lists came to roughly 600px once every
-                // row in it was set in 18px, and a 560 cap cut the last device
-                // in half rather than showing it.
+                // Raised with the type, and again when device rows grew a second
+                // line. The sound menu is the tall one and keeps getting taller
+                // for good reasons: two sliders, an app per stream, and five
+                // devices that now say what they are and where they plug in.
                 //
                 // Not a licence to grow forever. MenuPanel takes the min of this
                 // and the space actually below the icon, so the screen still
-                // decides; this only stops the cap deciding first.
-                maxHeight: 820
+                // decides; this only stops the cap deciding first. What it
+                // cannot do is make a menu SCROLL, so anything past here is
+                // still cut off rather than reachable.
+                maxHeight: 1000
             }
         })
 

@@ -86,16 +86,26 @@ Item {
 
     function step(dt: real): void {
         const f = 1 - Math.exp(-Appearance.anim.trackSpeed * dt);
+        const n = Math.max(root.live.length, root.slots.length);
+
+        // Where a slot that no longer exists collapses to: the end of the column
+        // it used to be part of.
+        const last = root.slots[root.slots.length - 1];
+        const end = last ? last.y + last.h : 0;
+
         const out = [];
-        for (let i = 0; i < root.slots.length; i++) {
-            const t = root.slots[i];
+        for (let i = 0; i < n; i++) {
+            const t = root.slots[i] ?? ({
+                    y: end,
+                    h: 0
+                });
             const l = root.live[i];
-            // A slot that did not exist a moment ago has no "from" to travel out
-            // of, so it starts where it belongs.
+            // A slot that did not exist a moment ago starts FLAT rather than at
+            // its full height, so it grows into the column instead of shoving it.
             if (!l) {
                 out.push({
                     y: t.y,
-                    h: t.h
+                    h: 0
                 });
                 continue;
             }
@@ -106,6 +116,40 @@ Item {
                 h: Math.abs(t.h - l.h) < 0.25 ? t.h : l.h + (t.h - l.h) * f
             });
         }
+
+        // A ghost is dropped once it has finished collapsing, and only from the
+        // END: workspaces are numbered from 1, so the list can only ever shrink
+        // there. Both numbers have to have landed, or the column's total height
+        // jumps by whatever was left of it.
+        while (out.length > root.slots.length && out[out.length - 1].h === 0 && out[out.length - 1].y === end)
+            out.pop();
+
+        root.live = out;
+    }
+
+    // A NEW SLOT IS FLAT UNTIL THE TIMER GETS TO IT. Without this it draws at
+    // full height for the one frame between the count changing and the first
+    // tick, and since the column is centred in the bar, one frame of full height
+    // is a visible jolt of half a slot.
+    //
+    // This is the whole reason switching to a workspace that was not on the list
+    // yet used to snap: workspace 6 appearing made the column 40px taller
+    // instantly, so everything above it moved 20px, in no time at all.
+    // DEFERRED, not immediate: `moving` reads both lists, so assigning one of
+    // them from inside the other's change handler invalidates a binding while it
+    // is still being evaluated, and Qt calls that a loop and gives up on it.
+    // callLater runs before the frame is drawn, which is all this needs.
+    onSlotsChanged: Qt.callLater(root.pad)
+
+    function pad(): void {
+        if (root.live.length >= root.slots.length)
+            return;
+        const out = root.live.slice();
+        for (let i = out.length; i < root.slots.length; i++)
+            out.push({
+                y: root.slots[i].y,
+                h: 0
+            });
         root.live = out;
     }
 

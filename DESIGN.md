@@ -593,6 +593,29 @@ Not a field in the end, and the two that were are worth keeping written down.
    holds windows, all the way out for the one you are on. Index tabs and a bar chart of how busy
    the machine is, which turn out to be the same drawing.
 
+**The artwork was never the problem.** `icons` draws each window as its own application icon,
+and the pack it draws from is the one the desktop already uses: Papirus, which files **8178**
+applications, resolved through Qt's icon theme (`0ad` and `010editor` resolve here and neither is
+in `hicolor`, which is how you tell). So the question is never "does a picture of this app
+exist", it is **"does the name this window calls itself match the name the pack files it
+under"**. A window says `org.telegram.desktop`; the pack has `telegram`. `Apps.iconSourceFor`
+takes the id apart for that: whole, lowercased, then the last meaningful segment, dropping
+`desktop`/`app`/`gui`/`client`/`bin` off the tail first, or the theme is asked for "desktop" and
+cheerfully returns a picture of a computer. The desktop ENTRY is tried before any of that,
+because an entry's own `Icon=` is the one authoritative answer and it is how `zen` (the window
+class) reaches `zen-browser` (the file), which no string mangling would find. The category glyph
+is what is left when all of it misses.
+
+**A column that is centred cannot change height suddenly.** Switching to a workspace that was
+not on the list yet (going to 6 when five are shown) added a slot, and the column is centred in
+the bar, so everything above it jumped by half a slot instantly. New slots now start FLAT and
+grow, and a slot that stops existing leaves a GHOST that collapses to nothing before it is
+dropped, so the height only ever changes at the rate everything else moves. Two things this
+needed: the padding has to be deferred with `Qt.callLater` (assigning `live` from inside
+`onSlotsChanged` invalidates a binding mid-evaluation, and Qt calls that a loop and abandons it),
+and the styles have to render `max(count, live.length)` delegates or the ghost has no plate to
+shrink.
+
 **The styles are switchable, and that is deliberate.** `sidebar.workspaces.style` picks between
 whole alternatives (`plates`, `icons`, `map`, `blocks`), not combinable settings. They share
 `WorkspaceModel.qml`, which owns the layout pass and the smoothing, so only the drawing is

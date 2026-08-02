@@ -63,11 +63,15 @@ Item {
     }
 
     Repeater {
-        // Modelled by the COUNT, not by the slot array: a Repeater over a JS array
+        // Modelled by a COUNT, not by the slot array: a Repeater over a JS array
         // rebuilds every delegate whenever the array is reassigned, and that array
         // is reassigned on every window event. Keyed by an int, the slots persist
         // and only their bindings update.
-        model: layout.count
+        //
+        // The count includes any GHOST the model is still collapsing, so a
+        // workspace that has just stopped existing shrinks away with the column
+        // instead of vanishing while the column glides.
+        model: Math.max(layout.count, layout.live.length)
 
         delegate: Item {
             id: slotItem
@@ -115,8 +119,13 @@ Item {
                 // would rubber-band behind its own column. Animating the fractions
                 // instead keeps the two motions independent: the reflow stays
                 // exponential, the state change eases, neither fights the other.
-                readonly property real reachTarget: slotItem.isActive ? 1 : slotItem.isOccupied ? root.busyReach : root.emptyReach
-                readonly property real tallTarget: solid ? 1 : 0.5
+                // Hover pulls the plate a little further out and swells it a
+                // little taller: the tab answers the cursor before it is clicked,
+                // and it answers by moving, which is the only thing in this shell
+                // that ever means "yes, this one".
+                readonly property real swell: root.hovered === slotItem.index ? Appearance.sizes.wsHover : 0
+                readonly property real reachTarget: (slotItem.isActive ? 1 : slotItem.isOccupied ? root.busyReach : root.emptyReach) + swell
+                readonly property real tallTarget: (solid ? 1 : 0.5) + swell
 
                 property real reach: reachTarget
                 property real tall: tallTarget

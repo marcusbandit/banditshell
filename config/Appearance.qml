@@ -216,6 +216,7 @@ Singleton {
         readonly property int wsBlockGap: root.cfg.sidebar.workspaces.blockGap
         readonly property real wsEmptyReach: root.cfg.sidebar.workspaces.emptyReach
         readonly property real wsBusyReach: root.cfg.sidebar.workspaces.busyReach
+        readonly property real wsHover: root.cfg.sidebar.workspaces.hover
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 

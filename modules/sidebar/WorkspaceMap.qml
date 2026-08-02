@@ -34,10 +34,11 @@ Item {
 
     implicitHeight: layout.total
 
-    function reachOf(client: var): real {
+    function reachOf(client: var, hovered: bool): real {
         const w = client?.lastIpcObject?.size?.[0] ?? 0;
         const screen = root.Screen.width || 1;
-        return Math.round(root.span * Math.max(root.floor, Math.min(1, w / screen)));
+        const f = Math.max(root.floor, Math.min(1, w / screen)) + (hovered ? Appearance.sizes.wsHover : 0);
+        return Math.round(root.span * f);
     }
 
     WorkspaceModel {
@@ -110,7 +111,7 @@ Item {
 
                     x: 0
                     y: index * root.pitch
-                    width: root.reachOf(modelData)
+                    width: root.reachOf(modelData, root.hovered === slotItem.index)
                     height: root.bar
 
                     // A pill, squared off where it meets the edge it is hinged on.

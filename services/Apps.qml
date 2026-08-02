@@ -110,15 +110,70 @@ Singleton {
     // is `zen-browser`, and hears the binary `zen-bin` for the same process.
     // Returns "" when nothing resolves, which is the caller's cue to fall back
     // to the category glyph rather than to draw a hole.
+    // Names that a reverse-DNS id can also be known by, most specific first.
+    //
+    // The icon THEME is where the artwork is, and it is enormous: Papirus alone
+    // carries an icon for eight thousand applications, so the question is almost
+    // never "does a picture of this app exist", it is "does the name this window
+    // calls itself match the name the pack files it under". A window says
+    // `org.telegram.desktop`; the pack has `telegram`. So the id is taken apart:
+    // whole, then lowercased, then the last meaningful segment, which is what a
+    // pack usually files it as.
+    //
+    // `desktop`, `app`, `gui` and friends are dropped from the tail first, or
+    // `org.telegram.desktop` would ask the theme for "desktop" and cheerfully
+    // come back with a picture of a computer.
+    readonly property var idSuffixes: ["desktop", "app", "gui", "client", "bin"]
+
+    function nameVariants(name: string): var {
+        const out = [name];
+        const lower = name.toLowerCase();
+        if (lower !== name)
+            out.push(lower);
+
+        const parts = lower.split(".").filter(p => p);
+        while (parts.length > 1 && root.idSuffixes.includes(parts[parts.length - 1]))
+            parts.pop();
+        if (parts.length > 1)
+            out.push(parts[parts.length - 1]);
+
+        // `Zen Browser` is a window title, an application.name, and no icon
+        // anywhere; `zen-browser` is the file.
+        if (lower.includes(" "))
+            out.push(lower.replace(/\s+/g, "-"));
+
+        return out;
+    }
+
     function iconSourceFor(names: var): string {
+        // The desktop ENTRY first, for every name given, because an entry's own
+        // `Icon=` is the one authoritative answer: it is what the application
+        // says its picture is called, and it is how `zen` (the window class)
+        // reaches `zen-browser` (the file), which no amount of string mangling
+        // would find.
         for (const name of names) {
-            if (!name)
-                continue;
-            const icon = DesktopEntries.heuristicLookup(name)?.icon;
-            const path = icon ? Quickshell.iconPath(icon, true) : "";
-            if (path)
-                return path;
+            for (const variant of root.nameVariants(name ?? "")) {
+                if (!variant)
+                    continue;
+                const icon = DesktopEntries.heuristicLookup(variant)?.icon;
+                const path = icon ? Quickshell.iconPath(icon, true) : "";
+                if (path)
+                    return path;
+            }
         }
+
+        // Then the theme directly, since a pack files most apps under the name
+        // they already call themselves and a window can easily have no desktop
+        // entry at all: anything started from a terminal, a game launched by an
+        // id, a wine program.
+        for (const name of names) {
+            for (const variant of root.nameVariants(name ?? "")) {
+                const path = variant ? Quickshell.iconPath(variant, true) : "";
+                if (path)
+                    return path;
+            }
+        }
+
         return "";
     }
 
