@@ -333,7 +333,10 @@ banditshell/
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`
-│   │   └── BlobField.qml        the ShaderEffect that draws it
+│   │   ├── BlobField.qml        the ShaderEffect that draws it
+│   │   ├── beads.frag           the workspace column as one liquid: rail + beads
+│   │   ├── beads.frag.qsb       compiled; rebuild with `banditshell shaders`
+│   │   └── BeadField.qml        the ShaderEffect that draws it
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
@@ -569,6 +572,29 @@ where per-pixel maths belongs anyway.
 **Still to come:** caelestia's blobs also carry spring physics (`damping`, `stiffness`,
 `deformMatrix`), so a panel squashes as it moves and settles. That is the next step, and the
 field is what makes it possible.
+
+### The workspace column is a second field
+
+`components/blob/beads.frag`, same construction at a different scale: a thin **rail** with one
+**bead** per workspace grown out of it by smooth minimum. A bead is as tall as the windows it
+holds, so the chain's shape is the state of the machine. Things learnt here that the chassis
+did not teach:
+
+- **Depth needs a dark.** Every tier in `Appearance.colour` is the palette's light end at some
+  opacity, and light on light can only ever read as *raised*. A groove for something to sit in
+  has to go the other way, so `colour.recess` is black. The rail is that; the beads are light.
+  Two directions from one surface is the whole depth cue, no bevel and no gradient anywhere.
+- **Colour belongs to the field too.** The accent is not painted onto the active bead, it is
+  mixed in by *distance* from it, across exactly the fillet width. So where the shapes neck the
+  colour necks with them and there is no seam running through one body. Fading it over a longer
+  distance is a glow, which was tried, looked like fog, and is not wanted.
+- **A trailing copy is how a blob stretches.** The active bead has a second chaser at ~0.45 of
+  the rate (`anim.trail`), melted into it. At rest they coincide and cost nothing; in motion the
+  pair reads as ONE bead stretching between where it is going and where it was. This is the
+  cheap half of the spring physics above, and it needed no physics at all.
+- **The motion is smoothed once, in the parent.** Icons and the liquid behind them must agree to
+  the pixel; two components chasing the same target with the same maths still disagree for a
+  frame at a time, and a capsule half a pixel behind its own icons reads as a wobble.
 
 ---
 

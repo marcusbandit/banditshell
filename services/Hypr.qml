@@ -33,10 +33,15 @@ Singleton {
     // a hardcoded list of slots.
     readonly property int count: Math.max(persistentCount, activeId, ...Object.keys(windows).map(Number))
 
-    // { id: [toplevel, ...] } for every workspace that has any, in the order
-    // Hyprland lists them, which is the order they were opened. The indicators
+    // { id: [toplevel, ...] } for every workspace that has any. The indicators
     // draw one icon per entry, so this is the difference between knowing a
     // workspace is busy and knowing what is on it.
+    //
+    // Ordered by WHERE THE WINDOW IS, left to right, not by when it was opened.
+    // The layout scrolls sideways, so left-to-right is the order you move
+    // through them; a column of icons in creation order would be a different
+    // order every time and mean nothing. Ties go to the higher window, for the
+    // ones stacked in the same column.
     readonly property var clients: {
         const out = {};
         for (const c of Hyprland.toplevels.values) {
@@ -47,6 +52,12 @@ Singleton {
                 out[id].push(c);
             }
         }
+        for (const id in out)
+            out[id].sort((a, b) => {
+                const x = a.lastIpcObject?.at ?? [0, 0];
+                const y = b.lastIpcObject?.at ?? [0, 0];
+                return (x[0] - y[0]) || (x[1] - y[1]);
+            });
         return out;
     }
 
@@ -58,6 +69,19 @@ Singleton {
     // model hands the delegates, so "is this the focused one" is an identity
     // test rather than string bookkeeping that can go stale.
     readonly property var activeClient: Hyprland.activeToplevel
+
+    // Is this the window with the keyboard?
+    //
+    // Prefers the address off the event stream, which is right the moment the
+    // event lands, and falls back to the model's own idea of it for the case
+    // that address cannot cover: before the first focus change of the session
+    // there has been no event to read.
+    function isFocused(client: var): bool {
+        const addr = client?.lastIpcObject?.address ?? "";
+        if (!addr)
+            return false;
+        return root.focusedAddress ? root.focusedAddress === addr : root.activeClient === client;
+    }
 
     // What a window IS, for icon lookup. `class` is what Hyprland reports now;
     // `initialClass` is what it started as, and is all there is for a window
