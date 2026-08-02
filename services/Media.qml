@@ -28,6 +28,15 @@ Singleton {
     readonly property bool available: !!active
     readonly property bool playing: !!active?.isPlaying
 
+    // Something with a NAME, which is not the same question as `available`.
+    //
+    // A player REGISTERS when the application starts, not when it plays: an open
+    // Spotify that has never been asked for anything is a live MPRIS player with
+    // an empty track. That is worth showing in the media menu, which is where you
+    // go to pick a player, and is exactly what must not appear anywhere else: a
+    // preview whose whole job is to say what is playing has nothing to say.
+    readonly property bool hasTrack: !!active?.trackTitle
+
     readonly property string title: active?.trackTitle || "nothing playing"
     readonly property string artist: active?.trackArtist || ""
     readonly property string app: active?.identity || ""

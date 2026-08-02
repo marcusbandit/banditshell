@@ -361,7 +361,8 @@ banditshell/
 │   ├── Chassis.qml              the band + sidebar as ONE shape
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
 │   ├── Ipc.qml                  the control surface the CLI talks to
-│   ├── TopClock.qml             summon zone: cursor to top-centre -> time slides out
+│   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
+│   ├── MediaPreview.qml         what is playing, small enough to ride under it
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
 │   ├── picker/                  screenshot: hover a window or drag a region
@@ -491,7 +492,7 @@ no single contour to round. Cutting one shape makes all three impossible rather 
 **Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
 contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes
 later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
-the left edge the way `TopClock` already does at the top.
+the left edge the way `TopNotch` already does at the top.
 
 ## 9. Driving it from a terminal
 

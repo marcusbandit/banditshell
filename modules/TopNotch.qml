@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.services
 
 // The notch: cursor to the top-centre edge and the time swells out of the band.
 //
@@ -13,6 +14,14 @@ import qs.components
 //
 // That is the difference between something drawn over the shell and something
 // the shell does.
+//
+// It carries TWO things, and only one of them was asked for. The time is the
+// focus: it is what going to the top of the screen means. Whatever is playing
+// rides underneath it, quieter, because the same trip is when you would want to
+// know (DESIGN.md 2.4, contextual prominence). The clock does not move to make
+// room: the contents hang from the notch's bottom edge and the notch is as long
+// as its contents, so a track appearing grows the notch DOWNWARD and leaves the
+// time exactly where it was.
 Item {
     id: root
 
@@ -22,8 +31,20 @@ Item {
 
     property int border: Appearance.sizes.border
 
-    readonly property real notchWidth: label.implicitWidth + Appearance.padding.huge * 2
-    readonly property real notchHeight: root.border + label.implicitHeight + Appearance.padding.large * 2
+    // What is in it, and therefore how big it is: the time always, the track
+    // when there is one. `hasTrack` rather than `available`, because a player
+    // that is merely open is not something to make the notch longer for.
+    readonly property bool showsMedia: Media.hasTrack
+    readonly property real contentWidth: Math.max(label.implicitWidth, showsMedia ? preview.implicitWidth : 0)
+    readonly property real contentHeight: label.implicitHeight + (showsMedia ? Appearance.padding.large + preview.implicitHeight : 0)
+
+    // The SHAPE follows the contents rather than being them, because the
+    // contents change while the notch is open: a track ends, the next one has a
+    // longer name, a player disappears. Taking those instantly would make the
+    // shell twitch at something the cursor did not do. Snapped as it opens, so
+    // arriving is never an animation of the notch finding its own size.
+    readonly property real notchWidth: wide.value + Appearance.padding.huge * 2
+    readonly property real notchHeight: root.border + tall.value + Appearance.padding.large * 2
 
     // What the chassis needs to melt this into the body.
     //
@@ -44,11 +65,34 @@ Item {
         }
     ]
 
+    onActiveChanged: {
+        if (!root.active)
+            return;
+        wide.snap();
+        tall.snap();
+        // Ask the player where it is. MPRIS does not push position and Media
+        // only polls it while something is PLAYING, so a paused track that was
+        // seeked in the player itself would open showing where it used to be.
+        Media.active?.positionChanged();
+    }
+
     Follow {
         id: drop
         speed: Appearance.anim.revealSpeed
         target: root.active ? 1 : 0
         epsilon: 0.005
+    }
+
+    Follow {
+        id: wide
+        speed: Appearance.anim.resizeSpeed
+        target: root.contentWidth
+    }
+
+    Follow {
+        id: tall
+        speed: Appearance.anim.resizeSpeed
+        target: root.contentHeight
     }
 
     SystemClock {
@@ -87,17 +131,37 @@ Item {
         // notch without leaving it.
         height: Math.max(root.border, root.notchHeight - (root.notchHeight + Appearance.sizes.melt) * (1 - drop.value))
 
-        StyledText {
-            id: label
+        // Everything the notch holds, hung from its bottom edge so it rides the
+        // descending blob: the contents arrive WITH the shape rather than being
+        // revealed inside a shape that is already there.
+        Item {
+            id: content
 
             anchors.horizontalCenter: parent.horizontalCenter
-            // Rides the descending blob, so the time arrives WITH the shape
-            // rather than being revealed inside a shape already there.
-            y: parent.height - implicitHeight - Appearance.padding.large
+            width: wide.value
+            height: root.contentHeight
+            y: parent.height - height - Appearance.padding.large
             opacity: drop.value
 
-            text: Qt.formatDateTime(clock.date, "HH:mm:ss")
-            font.pixelSize: Appearance.font.size.large
+            StyledText {
+                id: label
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                anchors.top: parent.top
+
+                text: Qt.formatDateTime(clock.date, "HH:mm:ss")
+                font.pixelSize: Appearance.font.size.large
+            }
+
+            MediaPreview {
+                id: preview
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                height: implicitHeight
+                visible: root.showsMedia
+            }
         }
     }
 }

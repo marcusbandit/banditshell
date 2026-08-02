@@ -109,7 +109,7 @@ Item {
     // crosses the band's inner edge, and that is a plain concave fillet: one
     // tongue hanging out of the corner, which is what it is meant to be.
     //
-    // The same reason TopClock's notch is anchored at y = 0 rather than parked
+    // The same reason TopNotch's blob is anchored at y = 0 rather than parked
     // below the band. Melt where one thing emerges from another (DESIGN.md 14),
     // and emerging means touching.
     function sync(): void {

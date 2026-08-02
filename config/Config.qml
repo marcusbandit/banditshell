@@ -420,6 +420,19 @@ Singleton {
                 cornerZone: 120
             },
 
+            // The notch: the time, and under it whatever is playing.
+            notch: {
+                // How wide the track's line may get before it elides.
+                //
+                // Monocraft's advance is two thirds of its size, so at the 18px
+                // body tier a character is 12px and this is twenty-four of them,
+                // the same column a menu row gets and enough for every real
+                // track name that is not a remix credit. Past about here the
+                // notch stops being a notch and becomes a bar across the top of
+                // the screen, which is the one thing this shell does not have.
+                trackWidth: 288
+            },
+
             // Controls inside menus.
             control: {
                 // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.
