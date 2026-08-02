@@ -44,6 +44,17 @@ Singleton {
         });
     }
 
+    // One device by its address, for whoever holds an address and not a device.
+    // PipeWire's bluetooth nodes carry `api.bluez5.address` and nothing else
+    // about what the thing IS, so this is how the sound menu finds out that the
+    // sink it is drawing is a pair of headphones.
+    function deviceAt(address: string): var {
+        if (!address)
+            return null;
+        const wanted = address.toUpperCase();
+        return root.devices.find(d => (d.address ?? "").toUpperCase() === wanted) ?? null;
+    }
+
     function setEnabled(on: bool): void {
         if (root.adapter)
             root.adapter.enabled = on;

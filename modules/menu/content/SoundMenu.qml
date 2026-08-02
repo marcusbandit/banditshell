@@ -230,7 +230,12 @@ Column {
     Level {
         width: parent.width
 
-        glyph: Audio.icon(Audio.volume, Audio.muted)
+        // WHAT YOU ARE LISTENING THROUGH, not a picture of a loudspeaker. The
+        // glyph is the sink's own kind, so the top of the panel answers "am I on
+        // the headphones or the laptop" before you have read anything. Muted is
+        // the one state that overrides it, because a muted control has to say so
+        // louder than it says what it is.
+        glyph: Audio.muted ? "no_sound" : Audio.deviceIcon(Audio.sink)
         value: Audio.volume
         muted: Audio.muted
         max: Audio.maxVolume
@@ -272,7 +277,7 @@ Column {
     Level {
         width: parent.width
 
-        glyph: Audio.sourceMuted || Audio.sourceVolume <= 0 ? "mic_off" : "mic"
+        glyph: Audio.sourceMuted || Audio.sourceVolume <= 0 ? "mic_off" : Audio.deviceIcon(Audio.source)
         value: Audio.sourceVolume
         muted: Audio.sourceMuted
         urgent: true
@@ -308,17 +313,32 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
+    // THE LEADING SLOT SAYS WHAT IT IS; the trailing one says which is on.
+    //
+    // A tick in the icon slot spent the one strong position in the row saying
+    // something the row's own highlight already said, and left the actual
+    // question, which of these is the headphones, to be worked out from a name
+    // like "ALC257 Analog". Kind on the left, name, where it plugs in
+    // underneath, tick on the right.
     Repeater {
         model: Audio.sinks
 
         delegate: MenuRow {
+            id: sinkRow
+
             required property var modelData
 
             width: root.width
-            icon: modelData === Audio.sink ? "check" : ""
-            label: Audio.label(modelData)
+            icon: Audio.deviceIcon(modelData)
+            label: Audio.deviceLabel(modelData)
+            detail: Audio.deviceTransport(modelData)
             selected: modelData === Audio.sink
             onActivated: Audio.setSink(modelData)
+
+            Icon {
+                visible: sinkRow.selected
+                name: "check"
+            }
         }
     }
 
@@ -332,13 +352,21 @@ Column {
         model: Audio.sources
 
         delegate: MenuRow {
+            id: sourceRow
+
             required property var modelData
 
             width: root.width
-            icon: modelData === Audio.source ? "check" : ""
-            label: Audio.label(modelData)
+            icon: Audio.deviceIcon(modelData)
+            label: Audio.deviceLabel(modelData)
+            detail: Audio.deviceTransport(modelData)
             selected: modelData === Audio.source
             onActivated: Audio.setSource(modelData)
+
+            Icon {
+                visible: sourceRow.selected
+                name: "check"
+            }
         }
     }
 

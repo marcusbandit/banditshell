@@ -57,6 +57,109 @@ Singleton {
         return node?.nickname || node?.description || node?.name || "unknown";
     }
 
+    // WHAT THE THING IS, WHERE IT PLUGS IN, AND WHAT TO CALL IT.
+    //
+    // A list of audio devices is only useful if you can tell which one is your
+    // headphones. PipeWire will tell you, but each backend tells you something
+    // different: ALSA sets `device.icon_name` and a human profile description,
+    // while bluez sets neither on a source and not even `device.api`, leaving
+    // nothing but a node name beginning with `bluez_`. So the answer is
+    // assembled from what each backend actually provides, in that order, and
+    // every step falls through to the next.
+
+    function isBluetooth(node: PwNode): bool {
+        return (node?.properties?.["device.api"] ?? "") === "bluez5" || (node?.name ?? "").startsWith("bluez");
+    }
+
+    // The MAC, which is the one thing the audio node and bluez both know. It is
+    // in the properties when the backend filled them in and in the node name
+    // when it did not, where a source spells it with colons and a sink with
+    // underscores.
+    function btAddress(node: PwNode): string {
+        const direct = node?.properties?.["api.bluez5.address"] ?? "";
+        if (direct)
+            return direct.toUpperCase();
+        const found = (node?.name ?? "").match(/bluez_(?:input|output)\.([0-9A-Fa-f]{2}(?:[:_][0-9A-Fa-f]{2}){5})/);
+        return found ? found[1].replace(/_/g, ":").toUpperCase() : "";
+    }
+
+    // The glyph for a device's KIND, which is the question the icon answers:
+    // headphones, speakers, a microphone, a television.
+    //
+    // For bluetooth it asks bluez, because the audio node has no idea what it is
+    // attached to and bluez has known since it paired. Direction matters at the
+    // end: the same headset is headphones when you are listening through it and
+    // a headset microphone when you are talking into it.
+    function deviceIcon(node: PwNode): string {
+        const sink = !!node?.isSink;
+
+        if (root.isBluetooth(node)) {
+            const kind = Bluetooth.icon(Bluetooth.deviceAt(root.btAddress(node)));
+            if (kind === "headphones")
+                return sink ? "headphones" : "headset_mic";
+            if (kind !== "bluetooth")
+                return kind;
+            return sink ? "speaker" : "mic";
+        }
+
+        const icon = (node?.properties?.["device.icon_name"] || node?.properties?.["device.icon-name"] || "").toLowerCase();
+        const name = (node?.name ?? "").toLowerCase();
+
+        if (icon.includes("headset"))
+            return sink ? "headphones" : "headset_mic";
+        if (icon.includes("headphone"))
+            return "headphones";
+        if (icon.includes("microphone") || icon.includes("input"))
+            return "mic";
+        if (name.includes("hdmi") || name.includes("displayport"))
+            return "tv";
+        if (icon.includes("speaker"))
+            return "speaker";
+        if ((node?.properties?.["device.bus"] ?? "") === "usb")
+            return "usb";
+        return sink ? "speaker" : "mic";
+    }
+
+    // Where it plugs in, WHEN THAT IS NEWS.
+    //
+    // Empty for anything soldered to the machine, which is most of the list.
+    // "Built-in" under a row that says Speaker, and under both of the two
+    // microphones, is a line of type that distinguishes nothing from nothing:
+    // the name and the glyph have already said it. What is worth a second line
+    // is the thing you would otherwise have to know: that this one is on the
+    // radio, or hanging off a port.
+    //
+    // Bluetooth carries its profile, because that is the difference between
+    // music and a telephone. Taking the headset microphone drops the whole
+    // device into headset mode, and everything through it suddenly sounds like
+    // 1998; saying so is the only warning anyone gets.
+    function deviceTransport(node: PwNode): string {
+        if (root.isBluetooth(node)) {
+            const profile = (node?.properties?.["api.bluez5.profile"] ?? "").toLowerCase();
+            const codec = (node?.properties?.["api.bluez5.codec"] ?? "").toUpperCase();
+            if (profile.includes("hsp") || profile.includes("hfp") || profile.includes("headset"))
+                return "Bluetooth · headset mode";
+            return codec ? `Bluetooth · ${codec}` : "Bluetooth";
+        }
+
+        const name = (node?.name ?? "").toLowerCase();
+        if (name.includes("hdmi") || name.includes("displayport"))
+            return "HDMI";
+        if ((node?.properties?.["device.bus"] ?? "") === "usb")
+            return "USB";
+        return "";
+    }
+
+    // What to CALL it. ALSA's node name is the chipset ("ALC257 Analog", twice,
+    // once for each direction); its profile description is what the thing is
+    // ("Speaker", "Digital Microphone"), which is what a person would say. A
+    // bluetooth device is already named by whoever made it.
+    function deviceLabel(node: PwNode): string {
+        if (root.isBluetooth(node))
+            return root.label(node);
+        return node?.properties?.["device.profile.description"] || root.label(node);
+    }
+
     // What an app calls itself. `application.name` is right nearly always and
     // is what the app chose to be called; the rest are for the ones that set
     // nothing, where the process name is at least true.
