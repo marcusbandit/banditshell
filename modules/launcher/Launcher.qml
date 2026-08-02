@@ -281,11 +281,17 @@ Item {
                     implicitHeight: Math.max(searchGlyph.implicitHeight, query.implicitHeight)
                     height: implicitHeight
 
+                    // In the SAME COLUMN as a row's icon, and the same width, so
+                    // the query and the results it produces share one left edge
+                    // instead of sitting a few pixels apart for no reason.
                     Icon {
                         id: searchGlyph
 
                         anchors.left: parent.left
+                        anchors.leftMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
+                        width: Appearance.sizes.launcherIcon
+                        size: Appearance.font.size.large
                         name: "search"
                         color: Appearance.colour.textFaint
                     }
@@ -414,6 +420,7 @@ Item {
                         width: list.width
                         iconSize: Appearance.sizes.launcherIcon
                         rowHeight: root.rowPitch
+                        labelSize: Appearance.font.size.large
                         // The entry's own icon, resolved out of the icon theme,
                         // with the generic mark only as a fallback for entries
                         // that name none.

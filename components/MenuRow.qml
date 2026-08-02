@@ -26,6 +26,12 @@ Item {
     property real iconSize: Appearance.font.iconSize
     property real rowHeight: Math.max(Appearance.sizes.rowHeight, iconSize + Appearance.padding.normal * 2)
 
+    // Which of the three sizes the label is set in. A menu row is a line in a
+    // list of settings and takes the body size; a launcher row is the thing the
+    // whole window exists to show you, and takes the large one. Still the same
+    // three sizes: this picks one, it does not invent a fourth.
+    property real labelSize: Appearance.font.size.normal
+
     property string label: ""
     property string detail: ""
     property bool selected: false
@@ -117,6 +123,7 @@ Item {
         StyledText {
             width: parent.width
             text: root.label
+            font.pixelSize: root.labelSize
             color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
             elide: Text.ElideRight
         }

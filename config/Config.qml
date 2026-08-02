@@ -256,11 +256,11 @@ Singleton {
             },
 
             launcher: {
-                width: 720,
+                width: 920,
                 // How present an app's icon is. Bigger than a menu's glyph on
                 // purpose: a launcher is a list you scan by icon, and the row
                 // grows to suit.
-                iconSize: 32,
+                iconSize: 44,
                 // How fast a launch stops counting. Each one is worth 1 when it
                 // happens and half that after this many days, so the order
                 // follows what you use NOW rather than what you used once.
