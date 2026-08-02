@@ -86,4 +86,8 @@ Item {
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
     }
+
+    // NO TOOLTIP HERE, deliberately. Hovering one of these opens its menu, and
+    // the menu's first line is its name: a label floating over the panel that
+    // already says the same word is the clutter tooltips are supposed to cure.
 }

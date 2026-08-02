@@ -227,5 +227,11 @@ PanelWindow {
             anchors.fill: parent
             border: win.border
         }
+
+        // LAST, so it draws over the panels it explains. It has no input of its
+        // own, so being on top costs nothing to anything underneath it.
+        Tooltip {
+            anchors.fill: parent
+        }
     }
 }

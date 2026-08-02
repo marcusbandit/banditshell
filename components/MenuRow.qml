@@ -98,7 +98,18 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
+
+        // ONLY WHEN THE ROW COULD NOT SAY IT. A tooltip that repeats a label you
+        // can already read is noise on every row in the shell; one that appears
+        // exactly where a name was cut short is the row finishing its sentence.
+        onEntered: {
+            if (title.truncated || detail.truncated)
+                Tooltips.request(root, root.detail ? `${root.label} · ${root.detail}` : root.label);
+        }
+        onExited: Tooltips.release(root)
     }
+
+    Component.onDestruction: Tooltips.release(root)
 
     Loader {
         id: custom
