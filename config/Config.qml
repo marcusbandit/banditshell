@@ -130,6 +130,13 @@ Singleton {
                 trackSpeed: 14,
                 // Same, for a panel opening or closing.
                 revealSpeed: 18,
+                // Same, for a panel taking the size of content that changed
+                // under it. Deliberately the same rate as trackSpeed by
+                // default: a menu that slides and resizes at once is one
+                // object changing shape, and its edges only read that way
+                // while both motions decay together. Separate so the shape
+                // change can be tuned without touching how things follow.
+                resizeSpeed: 14,
                 // Same, for a list gliding to where the wheel threw it. Lower
                 // than the others on purpose: this is the one place the motion
                 // is meant to be FELT rather than merely be over.

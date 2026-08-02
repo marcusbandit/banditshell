@@ -9,9 +9,9 @@ import qs.components
 // It owns three things the panel itself should not care about:
 //
 //   WHICH is open, so opening a second closes the first without a flicker. The
-//   panel never unmounts between menus; it slides to the new anchor and swaps
-//   its title, which is why switching feels like one object moving rather than
-//   two appearing.
+//   panel never unmounts between menus; it slides to the new anchor, travels to
+//   the new content's height and cross-fades to it, which is why switching feels
+//   like one object changing rather than two appearing.
 //
 //   WHERE it sits: the panel's centre follows the icon that asked for it, by
 //   exponential smoothing, clamped so it never runs past the chassis.
@@ -130,7 +130,11 @@ Item {
         reveal: reveal.value
 
         x: root.originX
-        y: centre.value - implicitHeight / 2
+        // The panel's LIVE height, not the size it is heading for. Centring on
+        // the destination would move the panel by half the difference the
+        // instant the content changed, and then grow it into a place it was
+        // already sitting: the travel has to be centred on the travelling size.
+        y: centre.value - height / 2
 
         MouseArea {
             id: pointer

@@ -174,6 +174,7 @@ Singleton {
         // Exponential-smoothing rates (see ~/.claude/rules/animation-smoothing.md).
         readonly property real trackSpeed: root.cfg.anim.trackSpeed
         readonly property real revealSpeed: root.cfg.anim.revealSpeed
+        readonly property real resizeSpeed: root.cfg.anim.resizeSpeed
         readonly property real scrollSpeed: root.cfg.anim.scrollSpeed
 
         readonly property int grace: root.cfg.anim.grace
