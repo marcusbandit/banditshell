@@ -210,6 +210,20 @@ Singleton {
                 // frame's inner edge.
                 flareTier: 2,
                 workspaces: {
+                    // WHICH INDICATOR. Whole alternatives, not combinable
+                    // settings; see modules/sidebar/Workspaces.qml.
+                    //
+                    //   plates   index tabs on the screen's edge, length as
+                    //            state, a category glyph per window
+                    //   icons    the same, with each window drawn as its own
+                    //            application icon
+                    //   map      no glyphs: each window is a bar as long as the
+                    //            window is wide, so the column shows the shape
+                    //            of the layout instead of its contents
+                    //   blocks   one square per window, one row per workspace,
+                    //            on the pixel grid
+                    style: "plates",
+
                     // Slots always shown, even when empty.
                     persistent: 5,
                     slot: 28,
@@ -245,7 +259,19 @@ Singleton {
                     // Fractions rather than pixels, so the lengths keep their
                     // proportions if the bar changes width.
                     emptyReach: 0.28,
-                    busyReach: 0.62
+                    busyReach: 0.62,
+
+                    // `map`: how thick one window's bar is, and the gap under
+                    // it. Thin, because the column is meant to be read as a
+                    // shape rather than as a list of things.
+                    mapBar: 5,
+                    mapGap: 3,
+
+                    // `blocks`: the grid. One square per window, and the gap
+                    // that separates them from each other and from the next
+                    // workspace's row.
+                    block: 9,
+                    blockGap: 3
                 },
                 status: {
                     slot: 28,
@@ -284,6 +310,21 @@ Singleton {
                 // happens and half that after this many days, so the order
                 // follows what you use NOW rather than what you used once.
                 halfLifeDays: 14,
+
+                // Which launcher is live: "list" or "niagara". Both are in the
+                // tree; this decides which one the shell builds.
+                concept: "list",
+
+                niagara: {
+                    width: 620,
+                    // How wide the alphabet rail is. Narrow on purpose: it is a
+                    // ruler, not a column of buttons.
+                    rail: 44,
+                    // How many of your most-used applications are on screen when
+                    // nothing has been typed or scrubbed.
+                    favourites: 7
+                },
+
                 // How long to keep watching for the window a launch opens, so
                 // it can be given the pointer as well as the keyboard.
                 claimMs: 15000

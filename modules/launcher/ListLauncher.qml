@@ -6,7 +6,12 @@ import qs.config
 import qs.components
 import qs.services
 
-// The launcher.
+// THE LIST CONCEPT: a search field over a dense, icon-led list of everything
+// installed, ranked by what you use.
+//
+// One of two launchers; Launcher.qml picks between them and both stay in the
+// tree. See NiagaraLauncher for the other, and `banditshell set
+// launcher.concept` to change which one is live.
 //
 // It hangs from the TOP BAND, centred on the content area, and swells downwards
 // out of it. It used to grow from the sidebar, which kept it part of the chassis
