@@ -107,12 +107,17 @@ Column {
         }
     }
 
-    component Act: MenuRow {
-        Icon {
-            name: "chevron_right"
-            color: Appearance.colour.textFaint
-        }
-    }
+    // NO ARROW. A chevron pointing right means "there is more through here", and
+    // it was sitting on "Disconnect", which does not lead anywhere: it is the
+    // whole action, over the moment you press it. Every act in this menu wore
+    // one, so the layer read as a list of submenus that turned out to be
+    // buttons.
+    //
+    // What tells an act from a switch is now the absence of the switch. The
+    // right edge stays a column, the toggles are the only things in it, and a
+    // row with nothing there is a row that does something. The hover fill and
+    // the pointer cursor say it is pressable; the verb says what it does.
+    component Act: MenuRow {}
 
     component Fact: StyledText {
         leftPadding: Appearance.padding.normal
@@ -152,9 +157,11 @@ Column {
         implicitWidth: parent ? parent.width : 0
         implicitHeight: line.implicitHeight
 
+        // The same radius as the row sitting on it, or the accent tint would
+        // show a second, squarer corner just inside the fill's.
         G2Rect {
             anchors.fill: parent
-            radius: Appearance.rounding.small
+            radius: Appearance.rounding.normal
             color: Appearance.colour.accentFill
         }
 
@@ -196,6 +203,7 @@ Column {
         detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachLabel() ? `${Network.activeName} · ${Network.reachLabel()}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
         onActivated: Network.setEnabled(!Network.enabled)
+        tip: Network.enabled ? "turn Wi-Fi off" : "turn Wi-Fi on"
 
         Row {
             spacing: Appearance.padding.normal
@@ -206,27 +214,13 @@ Column {
                 onToggled: Network.setEnabled(!Network.enabled)
             }
 
-            Icon {
+            Expander {
                 anchors.verticalCenter: parent.verticalCenter
 
                 visible: Network.available
-                name: "expand_more"
-                color: root.opened === "adapter" ? Appearance.colour.text : Appearance.colour.textFaint
-                rotation: root.opened === "adapter" ? 180 : 0
-
-                Behavior on rotation {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                        easing.type: Easing.OutBack
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -Appearance.padding.small
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleLayer("adapter")
-                }
+                open: root.opened === "adapter"
+                tip: "the adapter's own settings"
+                onToggled: root.toggleLayer("adapter")
             }
         }
     }
@@ -263,6 +257,7 @@ Column {
         Act {
             visible: Network.canCheck && Network.checking
             label: "Check now"
+            tip: "fetch something now instead of waiting for the next minute"
             onActivated: Network.checkNow()
         }
 
@@ -352,6 +347,11 @@ Column {
                     root.asking = root.asking === n.name ? "" : n.name;
                 }
 
+                // What pressing the ROW does, which is not what the row says.
+                // The label is the network's name and the detail is its state;
+                // neither of them is "and this is the button that joins it".
+                tip: entry.modelData.connected ? "leave this network" : entry.modelData.known || !Network.secured(entry.modelData) ? "join this network" : Network.enterprise(entry.modelData) ? "needs a profile this shell cannot make" : "ask for the password"
+
                 Row {
                     spacing: Appearance.padding.normal
 
@@ -359,28 +359,20 @@ Column {
                         anchors.verticalCenter: parent.verticalCenter
                         strength: Network.percent(entry.modelData)
                         activeColour: entry.modelData.connected ? Appearance.colour.text : Appearance.colour.textDim
+
+                        // The meter is four bars and a percentage is a number.
+                        // Reading one off the other is the guess this saves.
+                        HoverTip {
+                            text: `${Network.percent(entry.modelData)}% signal`
+                        }
                     }
 
-                    Icon {
+                    Expander {
                         anchors.verticalCenter: parent.verticalCenter
 
-                        name: "expand_more"
-                        color: entry.showing ? Appearance.colour.text : Appearance.colour.textFaint
-                        rotation: entry.showing ? 180 : 0
-
-                        Behavior on rotation {
-                            NumberAnimation {
-                                duration: Appearance.anim.fast
-                                easing.type: Easing.OutBack
-                            }
-                        }
-
-                        MouseArea {
-                            anchors.fill: parent
-                            anchors.margins: -Appearance.padding.small
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.toggleLayer(entry.modelData.name)
-                        }
+                        open: entry.showing
+                        tip: "what else there is to know about this one"
+                        onToggled: root.toggleLayer(entry.modelData.name)
                     }
                 }
             }
@@ -405,6 +397,7 @@ Column {
                 Act {
                     visible: entry.modelData.connected
                     label: "Disconnect"
+                    tip: "leave it, but keep the password"
                     onActivated: entry.modelData.disconnect()
                 }
 
@@ -414,6 +407,7 @@ Column {
                 Act {
                     visible: entry.modelData.known
                     label: "Forget it"
+                    tip: "throw the password away, so joining asks again"
                     onActivated: {
                         root.opened = "";
                         Network.forget(entry.modelData);

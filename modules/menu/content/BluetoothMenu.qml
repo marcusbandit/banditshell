@@ -68,16 +68,19 @@ Column {
         }
     }
 
-    // Something that HAPPENS, rather than something that is on or off. An arrow
-    // where the switches keep their toggle, so the right edge stays a column and
-    // the difference between "set this" and "do this" is visible before you
-    // read either.
-    component Act: MenuRow {
-        Icon {
-            name: "chevron_right"
-            color: Appearance.colour.textFaint
-        }
-    }
+    // Something that HAPPENS, rather than something that is on or off.
+    //
+    // It used to carry an arrow, on the theory that an arrow reads as "do this"
+    // where a switch reads as "set this". It does not: a chevron pointing right
+    // means "there is more through here", and on "Forget it" there is nothing
+    // through there, only the deed, done on press. The layer read as a list of
+    // submenus that turned out to be buttons.
+    //
+    // The switch's ABSENCE is the distinction now. The right edge stays a column
+    // and the toggles are the only things in it, so a row with nothing there is
+    // a row that acts. The hover fill says pressable, the verb says what it
+    // does, and the tip says what it costs.
+    component Act: MenuRow {}
 
     // A line of fact, not a control. Address, adapter, the things you go looking
     // for once a year and need exactly then.
@@ -108,27 +111,13 @@ Column {
                 onToggled: Bluetooth.setEnabled(!Bluetooth.enabled)
             }
 
-            Icon {
+            Expander {
                 anchors.verticalCenter: parent.verticalCenter
 
                 visible: Bluetooth.enabled
-                name: "expand_more"
-                color: root.opened === "adapter" ? Appearance.colour.text : Appearance.colour.textFaint
-                rotation: root.opened === "adapter" ? 180 : 0
-
-                Behavior on rotation {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                        easing.type: Easing.OutBack
-                    }
-                }
-
-                MouseArea {
-                    anchors.fill: parent
-                    anchors.margins: -Appearance.padding.small
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: root.toggleLayer("adapter")
-                }
+                open: root.opened === "adapter"
+                tip: "the adapter's own settings"
+                onToggled: root.toggleLayer("adapter")
             }
         }
     }
@@ -193,24 +182,10 @@ Column {
                 // you never have. Everything else is in the layer.
                 onActivated: Bluetooth.toggleDevice(entry.modelData)
 
-                Icon {
-                    name: "expand_more"
-                    color: entry.showing ? Appearance.colour.text : Appearance.colour.textFaint
-                    rotation: entry.showing ? 180 : 0
-
-                    Behavior on rotation {
-                        NumberAnimation {
-                            duration: Appearance.anim.fast
-                            easing.type: Easing.OutBack
-                        }
-                    }
-
-                    MouseArea {
-                        anchors.fill: parent
-                        anchors.margins: -Appearance.padding.small
-                        cursorShape: Qt.PointingHandCursor
-                        onClicked: root.toggleLayer(entry.modelData.address)
-                    }
+                Expander {
+                    open: entry.showing
+                    tip: "what else there is to know about this one"
+                    onToggled: root.toggleLayer(entry.modelData.address)
                 }
             }
 

@@ -54,6 +54,10 @@ Item {
     property bool selected: false
     property bool interactive: true
 
+    // What the row says on hover when its own text is not the answer. See the
+    // HoverTip below for when this is worth setting and when it is noise.
+    property string tip: ""
+
     // Anything declared inside sits on the right, vertically centred.
     default property alias trailing: trailingSlot.data
 
@@ -71,9 +75,17 @@ Item {
     // its own background and into the row beneath it.
     implicitHeight: Math.max(root.rowHeight, stack.implicitHeight + Appearance.padding.small * 2, trailingSlot.childrenRect.height + Appearance.padding.small * 2)
 
+    // THE FULL RADIUS, not the small one.
+    //
+    // Every rounded shape in this shell is a G2 squircle already, and at 9px on
+    // a 48px row you could not tell: a corner that small spends its whole budget
+    // turning, so there is no room left to ramp the curvature in and out and it
+    // renders as the plain circular arc it was supposed to replace. The
+    // construction was right and invisible, which is the same as not having it.
+    // A third of the row's height is enough for the ramp to read.
     G2Rect {
         anchors.fill: parent
-        radius: Appearance.rounding.small
+        radius: Appearance.rounding.normal
         color: Appearance.colour.fill
         opacity: root.hovered || root.selected ? 1 : 0
 
@@ -98,18 +110,22 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
-
-        // ONLY WHEN THE ROW COULD NOT SAY IT. A tooltip that repeats a label you
-        // can already read is noise on every row in the shell; one that appears
-        // exactly where a name was cut short is the row finishing its sentence.
-        onEntered: {
-            if (title.truncated || detail.truncated)
-                Tooltips.request(root, root.detail ? `${root.label} · ${root.detail}` : root.label);
-        }
-        onExited: Tooltips.release(root)
     }
 
-    Component.onDestruction: Tooltips.release(root)
+    // ONLY WHEN THE ROW COULD NOT SAY IT, unless it is given something else to
+    // say. A tooltip that repeats a label you can already read is noise on every
+    // row in the shell; one that appears exactly where a name was cut short is
+    // the row finishing its sentence. `tip` is for the third case, a row whose
+    // label is honest and whose consequence is not written anywhere: "Forget it"
+    // is a clear instruction and an unclear amount of damage.
+    //
+    // GATED ON THE ROW'S OWN MOUSEAREA, so a control INSIDE the row that takes
+    // the hover takes the question with it. Without that, resting on a row's
+    // chevron would show the chevron's tip and the row's, whichever landed last.
+    HoverTip {
+        host: root
+        text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
+    }
 
     Loader {
         id: custom
