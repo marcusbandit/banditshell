@@ -254,6 +254,22 @@ Singleton {
                     // an icon beside a menu label has to survive.
                     iconScale: 1.25,
 
+                    // THE SCRATCHPAD RACK, in the order you want to read it.
+                    //
+                    // Special workspaces are named, not numbered, and Hyprland
+                    // lists them in the order they were created: close Spotify,
+                    // open it again, and it has moved past Discord. Name them
+                    // here and each one is pinned to its place in the rack for
+                    // good, and keeps that place while it is empty, so the rack
+                    // is in the same order tomorrow as it is now and a scratchpad
+                    // arriving does not shove the others along.
+                    //
+                    // Names WITHOUT the `special:` prefix, exactly as your
+                    // `togglespecialworkspace` bind spells them. Anything not
+                    // listed still appears, after these, in name order. Empty
+                    // means all of them in name order and nothing reserved.
+                    specials: [],
+
                     // Slots always shown, even when empty.
                     persistent: 5,
                     slot: 32,

@@ -28,6 +28,21 @@ import qs.services
 // is one sheet of material, the active one is two with the accent in the upper
 // sheet, and it is longer than the rest. Where you are is literally more glass,
 // pulled further out.
+//
+// SCRATCHPADS GET A RACK OF THEIR OWN, under the column and clear of it. They
+// used to hide behind the plate you were on and peek out below it, which is a
+// fine drawing of ONE card and stops being one at two: each further sheet had to
+// peek further, the second already reached the next plate's edge, and a third
+// would have lain across it. Worse, every sliver looked like every other sliver,
+// so the answer to "which of these is Spotify" was to click one and find out.
+//
+// So they come out from under the plate and lie in a row at the end of the
+// column: one bar each, half the column's rhythm and a whole slot's width of
+// room, carrying their own marks. Three fit without crowding and a fourth costs
+// one bar's height, not a redesign. They keep the plates' grammar, because it is
+// the same grammar: length is state, a bar with nothing on it is a stub, a bar
+// with windows is as long as its marks need, and the one you have pulled open is
+// gone from the rack because it is out on the plate you are on.
 Item {
     id: root
 
@@ -40,6 +55,7 @@ Item {
     readonly property int iconSize: Appearance.sizes.wsIcon
     readonly property int pitch: Appearance.sizes.wsWindowPitch
     readonly property int tick: Appearance.sizes.wsTick
+    readonly property int maxWindows: Appearance.sizes.wsMaxWindows
 
     // WHERE A PLATE STARTS AND HOW FAR IT CAN GO. It starts ON the screen's edge,
     // and the room it has is everything up to one band short of the bar's inner
@@ -53,10 +69,24 @@ Item {
     readonly property real emptyReach: Appearance.sizes.wsEmptyReach
     readonly property real busyReach: Appearance.sizes.wsBusyReach
 
-    // SCRATCHPADS lie on the plate you are on, so how far each tucked one peeks
-    // out from behind it, and how much of the plate underneath stays visible
-    // past the end of an open one. Both small: this is a card on a card.
-    readonly property real peek: Appearance.padding.small
+    // THE RACK'S OWN RHYTHM. A bar is one window row tall, which is half a slot
+    // and change: thin enough that the rack can never be mistaken for more
+    // workspaces, thick enough to carry a mark. The stand-off from the end of the
+    // column is a whole tier above the gap inside it, because the same ratio that
+    // groups a workspace's windows has to separate the rack from all of them.
+    readonly property int barH: root.pitch
+    readonly property int barGap: Math.round(Appearance.padding.small / 2)
+    readonly property int rackGap: Appearance.padding.large
+
+    // Marks on a bar run ACROSS it: the bar is a horizontal thing, so its
+    // contents lie along it, the same way a plate is vertical and stacks its own
+    // down. Smaller than a plate's, because a scratchpad is answering "which one
+    // is this" and not "what is on this workspace".
+    readonly property int barMark: Math.round(root.iconSize * 0.7)
+    readonly property int barPitch: root.barMark + root.barGap
+
+    // How much of the plate underneath stays visible past the end of an open
+    // card. Small: this is still a card on a card.
     readonly property real overhang: Appearance.padding.normal
 
     // Where the plate you are on currently IS, smoothed like everything else, so
@@ -64,8 +94,81 @@ Item {
     readonly property var activeGeom: layout.at(Hypr.activeId - 1)
 
     property int hovered: -1
+    property int racked: -1
 
-    implicitHeight: layout.total
+    // WHICH SCRATCHPADS THERE ARE, IN AN ORDER THAT HOLDS STILL.
+    //
+    // Hyprland lists them in the order they were created, so closing Spotify and
+    // opening it again moves it past Discord and the rack you learned last week
+    // is a different rack today. Names listed in `sidebar.workspaces.specials`
+    // are pinned to their place in that list and KEEP it while they are empty, so
+    // a scratchpad that is not open yet leaves its own slot rather than shoving
+    // the others along when it arrives. Anything unlisted follows, by name, which
+    // is at least the same order every session.
+    readonly property var deck: {
+        const want = Appearance.sizes.wsSpecials;
+        const live = Hypr.specials;
+        const out = [];
+        for (const name of want)
+            out.push(live.find(s => s.label === name) ?? ({
+                        id: 0,
+                        name: `special:${name}`,
+                        label: name,
+                        windows: []
+                    }));
+        for (const s of live.slice().sort((a, b) => a.label.localeCompare(b.label)))
+            if (want.indexOf(s.label) < 0)
+                out.push(s);
+        return out;
+    }
+
+    readonly property real rackTop: layout.total + root.rackGap
+    readonly property real rackHeight: root.deck.length ? root.deck.length * root.barH + (root.deck.length - 1) * root.barGap : 0
+
+    function barY(i: int): real {
+        return root.rackTop + i * (root.barH + root.barGap);
+    }
+
+    // HOW MANY MARKS FIT ON A BAR, which is not a setting: the rack is as wide as
+    // the sidebar and no wider, so the cap is the arithmetic of the room. A plate
+    // caps at `maxWindows` because it can always grow another row downwards; a
+    // bar cannot grow sideways past the edge of the shell.
+    readonly property int barFits: Math.max(1, Math.floor((root.span - root.barGap) / root.barPitch))
+
+    function barMarks(entry: var): int {
+        const n = entry.windows.length;
+        // Over the cap, the last cell says "and more" instead of showing one
+        // arbitrary window of several.
+        return n > root.barFits ? root.barFits - 1 : n;
+    }
+
+    function barRest(entry: var): int {
+        return entry.windows.length - root.barMarks(entry);
+    }
+
+    function barCells(entry: var): int {
+        return root.barMarks(entry) + (root.barRest(entry) > 0 ? 1 : 0);
+    }
+
+    // HOW LONG A BAR IS, in the plates' own language: a stub when there is
+    // nothing on it, a full reach when it is carrying something, and longer than
+    // that only when what it carries needs the room. Length is the state here
+    // too, it is just measured along the other axis.
+    function barWidth(entry: var): real {
+        const cells = root.barCells(entry);
+        if (!cells)
+            return root.span * root.emptyReach;
+        const content = root.barGap * 2 + cells * root.barMark + (cells - 1) * root.barGap;
+        return Math.min(root.span, Math.max(root.span * root.busyReach, content));
+    }
+
+    function barMarkX(i: int): real {
+        return root.barGap + i * root.barPitch;
+    }
+
+    readonly property real barMarkY: Math.round((root.barH - root.barMark) / 2)
+
+    implicitHeight: layout.total + (root.deck.length ? root.rackGap + root.rackHeight : 0)
 
     WorkspaceModel {
         id: layout
@@ -74,70 +177,152 @@ Item {
         pitch: root.pitch
     }
 
-    // SCRATCHPADS, TUCKED BEHIND THE PLATE YOU ARE ON.
+    // THE RACK: one bar per scratchpad, at the end of the column.
     //
-    // A special workspace is not a sixth workspace and drawing it as one was
-    // wrong twice over: it took a slot in a column that is a list of places you
-    // live, and it pushed that column around every time one came or went. What a
-    // scratchpad actually does is LIE OVER whatever you are looking at, so that
-    // is what it is drawn as: a card behind the active plate, peeking out from
-    // under its edge, which slides over it when you pull it open and tucks back
-    // when you put it away.
+    // A special workspace is not a sixth workspace, and this is not a sixth slot:
+    // it is thinner than any plate, it is the other side of a gap wide enough to
+    // be a break rather than a step, and it is a ROW where the column is a
+    // column. What it shares with a plate is the only thing worth sharing, which
+    // is that the length of the thing tells you the state of the thing.
     //
-    // Behind, so only the sliver shows. The open one is drawn again in front,
-    // further down this file, because a thing that is on top of another cannot
-    // also be underneath it.
+    // A bar is where the card sleeps. Pulling one open lifts it out of the rack
+    // and onto the plate you are on, which is drawn further down this file
+    // because a card on top of a plate cannot also be under it; the bar it left
+    // stays empty until it comes back, because that is where it is not.
     Repeater {
-        model: Hypr.specials
+        // Modelled by a COUNT, for the same reason the plates are: `deck` is
+        // rebuilt whenever anything happens to a window, and a Repeater over the
+        // array itself would throw away every bar and build it again each time,
+        // taking the animation it was in the middle of and the hover it was under
+        // with it.
+        model: root.deck.length
 
         delegate: G2Rect {
-            required property var modelData
+            id: bar
+
             required property int index
-            readonly property bool open: Hypr.openSpecial === modelData.name
+            readonly property var entry: root.deck[bar.index] ?? ({
+                    name: "",
+                    label: "",
+                    windows: []
+                })
+            readonly property bool open: !!bar.entry.name && Hypr.openSpecial === bar.entry.name
+            readonly property bool lit: root.racked === bar.index
+            readonly property int marks: root.barMarks(bar.entry)
 
             x: root.hinge
-            // Tucked under the active plate, each one a little further out than
-            // the last, so two scratchpads read as two cards rather than one.
-            y: root.activeGeom.y + (index + 1) * root.peek
-            width: Math.round(root.span) - root.overhang
-            height: root.activeGeom.h
+            y: root.barY(bar.index)
+            // Hover swells it the same fraction a plate swells by, so the rack
+            // answers the cursor in the language the column already speaks.
+            //
+            // A bar whose card is OUT falls back to the empty stub rather than
+            // disappearing: the rack is a set of slots and one of them is empty
+            // right now, which is a different thing from the rack being shorter.
+            // Where the card itself is, is answered by the card.
+            width: Math.round((bar.open ? root.span * root.emptyReach : root.barWidth(bar.entry)) * (1 + (bar.lit ? Appearance.sizes.wsHover : 0)))
+            height: root.barH
 
+            // Square on the screen's edge, like everything else hinged there.
+            // The free end takes the plates' radius, which the corner budget
+            // clamps to half a bar, so a bar this thin ends in a full round.
             topLeftRadius: 0
             bottomLeftRadius: 0
             topRightRadius: Appearance.rounding.normal
             bottomRightRadius: Appearance.rounding.normal
 
-            color: Appearance.colour.fillStrong
-            // Gone while it is open: the copy in front is the same card, and two
-            // of them at once is one translucent card twice as thick.
-            opacity: open ? 0 : 1
+            // The same one sheet a plate is, and the same answer to the cursor.
+            // A scratchpad is not more important than the workspace it will lie
+            // on, so it cannot be brighter than one: what separates a full bar
+            // from an empty one here is length and a mark, exactly as it is up
+            // the column.
+            color: bar.lit ? Appearance.colour.fillStrong : Appearance.colour.fill
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-
-            Behavior on y {
+            Behavior on width {
                 NumberAnimation {
                     duration: Appearance.anim.normal
                     easing.type: Easing.OutCubic
                 }
             }
 
-            // THE SLIVER IS THE HANDLE. Only the part below the plate is
-            // visible, so only that part takes the click: the rest of this card
-            // is underneath a plate that has its own job. Reached down a little
-            // further than it is drawn, because six pixels is a hard thing to
-            // hit and there is nothing below it to hit by mistake.
+            Behavior on color {
+                ColorAnimation {
+                    duration: Appearance.anim.fast
+                }
+            }
+
+            // What the bar is carrying, which is nothing at all while its card is
+            // out: the marks are ON the card and they went with it.
+            Item {
+                anchors.fill: parent
+                opacity: bar.open ? 0 : 1
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
+
+                Repeater {
+                    model: ScriptModel {
+                        values: bar.entry.windows.slice(0, bar.marks)
+                    }
+
+                    delegate: AppMark {
+                        required property var modelData
+                        required property int index
+
+                        x: root.barMarkX(index)
+                        y: root.barMarkY
+                        size: root.barMark
+                        spec: AppIcons.markFor(Hypr.classOf(modelData))
+                        fallback: Apps.iconFor(Hypr.classOf(modelData))
+                        color: Hypr.isFocused(modelData) ? Appearance.colour.text : Appearance.colour.textDim
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+                    }
+                }
+
+                // "and more", in the cell after the last mark, exactly as a plate
+                // does it: a bar that ran out of room says so.
+                Icon {
+                    visible: root.barRest(bar.entry) > 0
+                    x: root.barMarkX(bar.marks)
+                    y: root.barMarkY
+                    width: root.barMark
+                    height: root.barMark
+                    name: "more_horiz"
+                    size: root.barMark
+                    color: Appearance.colour.textFaint
+                }
+            }
+
+            // The whole row, band-wide and half the gap either side, for the same
+            // reason a plate's target is: a 20px lozenge is a mark, not a button,
+            // and a stub has to be as easy to hit as a full bar. Nothing else in
+            // the rack's rows is reachable, so there is nothing to hit by mistake.
             MouseArea {
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.bottom: parent.bottom
-                height: (parent.index + 1) * root.peek + Appearance.padding.small
+                x: 0
+                y: -root.barGap
+                width: root.width
+                height: parent.height + root.barGap * 2
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Hypr.toggleSpecial(parent.modelData.name)
+                onEntered: root.racked = bar.index
+                onExited: if (root.racked === bar.index)
+                    root.racked = -1
+                onClicked: Hypr.toggleSpecial(bar.entry.name)
+
+                // The one thing in the rack that says a name out loud. Position
+                // is what you actually navigate by once you know it; this is how
+                // you come to know it.
+                HoverTip {
+                    text: bar.entry.label
+                    host: bar
+                }
             }
         }
     }
@@ -390,29 +575,47 @@ Item {
     // look like two things. Slightly shorter than the plate underneath, so the
     // end of what it is covering stays visible past it and the stack reads as a
     // stack.
+    //
+    // IT IS THE BAR, MOVED. Every number here is one end of a line between where
+    // this scratchpad lies in the rack and where it lies on the plate you are on,
+    // and `shown` is how far along that line it is, so opening and closing is one
+    // card travelling rather than one appearing where another vanished. Its marks
+    // travel too, and they swing as they go: a row along a bar is a column down a
+    // card, and the same interpolation carries them between the two.
     Repeater {
-        model: Hypr.specials
+        model: root.deck.length
 
         delegate: Item {
             id: pad
 
-            required property var modelData
             required property int index
-            readonly property bool open: Hypr.openSpecial === pad.modelData.name
+            readonly property var entry: root.deck[pad.index] ?? ({
+                    name: "",
+                    label: "",
+                    windows: []
+                })
+            readonly property bool open: !!pad.entry.name && Hypr.openSpecial === pad.entry.name
 
-            readonly property var windows: pad.modelData.windows.slice(0, root.maxWindows)
+            readonly property var windows: pad.entry.windows.slice(0, root.maxWindows)
             readonly property int rows: Math.max(1, pad.windows.length)
-            readonly property real full: root.slot + (pad.rows - 1) * root.pitch
 
-            // Centred on the plate it covers when open; folded back down to the
-            // sliver it came from when not, so opening and closing is the same
-            // card moving rather than one appearing where another vanished.
+            // The two ends of the journey: the bar in the rack, and the card on
+            // the plate.
+            readonly property real full: root.slot + (pad.rows - 1) * root.pitch
+            readonly property real cardW: Math.round(root.span) - root.overhang
+            readonly property real cardY: root.activeGeom.y + (root.activeGeom.h - pad.full) / 2
+            readonly property real barW: root.barWidth(pad.entry)
+
             property real shown: pad.open ? 1 : 0
 
+            function reach(from: real, to: real): real {
+                return from + (to - from) * pad.shown;
+            }
+
             x: root.hinge
-            width: Math.round(root.span) - root.overhang
-            height: root.activeGeom.h + (pad.full - root.activeGeom.h) * pad.shown
-            y: root.activeGeom.y + (pad.index + 1) * root.peek * (1 - pad.shown) + ((root.activeGeom.h - height) / 2) * pad.shown
+            width: pad.reach(pad.barW, pad.cardW)
+            height: pad.reach(root.barH, pad.full)
+            y: pad.reach(root.barY(pad.index), pad.cardY)
             visible: pad.shown > 0
 
             Behavior on shown {
@@ -426,7 +629,7 @@ Item {
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Hypr.toggleSpecial(pad.modelData.name)
+                onClicked: Hypr.toggleSpecial(pad.entry.name)
             }
 
             G2Rect {
@@ -456,19 +659,24 @@ Item {
                 }
 
                 Repeater {
-                    model: pad.windows
+                    model: ScriptModel {
+                        values: pad.windows
+                    }
 
                     delegate: AppMark {
+                        id: mark
+
                         required property var modelData
                         required property int index
 
-                        x: (card.width - root.slot) / 2
-                        y: (root.slot - root.pitch) / 2 + index * root.pitch + (root.slot - root.iconSize) / 2
-                        size: root.iconSize
-                        spec: AppIcons.markFor(Hypr.classOf(modelData))
-                        fallback: Apps.iconFor(Hypr.classOf(modelData))
-                        color: Hypr.isFocused(modelData) ? Appearance.colour.text : Appearance.colour.textDim
-                        opacity: pad.shown
+                        readonly property real markSize: pad.reach(root.barMark, root.iconSize)
+
+                        x: pad.reach(root.barMarkX(mark.index), (card.width - mark.markSize) / 2)
+                        y: pad.reach(root.barMarkY, root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
+                        size: Math.round(mark.markSize)
+                        spec: AppIcons.markFor(Hypr.classOf(mark.modelData))
+                        fallback: Apps.iconFor(Hypr.classOf(mark.modelData))
+                        color: Hypr.isFocused(mark.modelData) ? Appearance.colour.text : Appearance.colour.textDim
                     }
                 }
             }
