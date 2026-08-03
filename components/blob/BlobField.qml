@@ -65,6 +65,13 @@ ShaderEffect {
         return root.panels[i]?.radius ?? 0;
     }
 
+    // A panel that says nothing about its melt gets the shell's, which is every
+    // panel there has ever been. A panel small enough to be swallowed by a
+    // 34px fillet says so instead; see blob.frag.
+    function slotSmooth(i: int): real {
+        return root.panels[i]?.smooth ?? root.smoothing;
+    }
+
     readonly property vector4d blob0: slotRect(0)
     readonly property vector4d blob1: slotRect(1)
     readonly property vector4d blob2: slotRect(2)
@@ -75,6 +82,8 @@ ShaderEffect {
     readonly property vector4d blob7: slotRect(7)
     readonly property vector4d blobRadius: Qt.vector4d(slotRadius(0), slotRadius(1), slotRadius(2), slotRadius(3))
     readonly property vector4d blobRadius2: Qt.vector4d(slotRadius(4), slotRadius(5), slotRadius(6), slotRadius(7))
+    readonly property vector4d blobSmooth: Qt.vector4d(slotSmooth(0), slotSmooth(1), slotSmooth(2), slotSmooth(3))
+    readonly property vector4d blobSmooth2: Qt.vector4d(slotSmooth(4), slotSmooth(5), slotSmooth(6), slotSmooth(7))
 
     onPanelsChanged: if (panels.length > capacity)
         console.warn(`BlobField: ${panels.length} panels but only ${capacity} slots; the rest will not be drawn.`)
