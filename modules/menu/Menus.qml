@@ -32,7 +32,11 @@ Item {
     required property real inset
 
     readonly property bool open: currentKey !== ""
-    readonly property Item maskItem: panel
+
+    // THE GHOST, not the panel. See `held` below: the shell's input region is
+    // allowed to lag the panel shrinking, so that collapsing a layer under the
+    // cursor does not pull the floor out from under it.
+    readonly property Item maskItem: ghost
 
     // True while something in the open menu is waiting to be typed into, which
     // is the only reason a menu ever has to hold the keyboard. See ShellWindow's
@@ -68,8 +72,56 @@ Item {
     // key means, so this file stays about position and lifetime.
     property Component currentBody: null
 
-    // True while the cursor is on the panel itself, which keeps it open.
-    readonly property bool hovered: pointer.hovered
+    // WHAT THE PANEL USED TO BE, kept for as long as the cursor is standing in
+    // it.
+    //
+    // Closing a layer makes the panel shorter, and the panel is centred, so the
+    // top edge comes DOWN to meet the new height. Press the chevron near the top
+    // and the edge sweeps past the cursor: the panel is now somewhere below,
+    // and the cursor is over bare desktop. The input region is the panel, so the
+    // shell stopped being told about the cursor at all, `shellHovered` went
+    // false on the next motion event, and the menu you had just finished using
+    // closed itself. You collapsed a layer and lost the menu.
+    //
+    // So the region is the union of where the panel is and where it has been,
+    // and it is only allowed to give the difference back when the cursor is not
+    // standing in it. That is the whole rule. It cannot be "give it back once
+    // the cursor is on the panel again", which is the obvious version and loses
+    // the same race: the cursor IS on the panel for the first frames of the
+    // shrink, so the ghost would follow the edge down and arrive nowhere.
+    //
+    // The cost is an invisible piece of shell that eats clicks, and it lasts
+    // exactly as long as the cursor stays in it.
+    property rect held: Qt.rect(0, 0, 0, 0)
+
+    readonly property rect panelRect: Qt.rect(panel.x, panel.y, panel.width, panel.height)
+
+    function syncGhost(): void {
+        const r = root.panelRect;
+        if (!ghostPointer.hovered) {
+            root.held = r;
+            return;
+        }
+        const x = Math.min(root.held.x, r.x);
+        const y = Math.min(root.held.y, r.y);
+        root.held = Qt.rect(x, y, Math.max(root.held.x + root.held.width, r.x + r.width) - x, Math.max(root.held.y + root.held.height, r.y + r.height) - y);
+    }
+
+    onPanelRectChanged: root.syncGhost()
+
+    // The moment the cursor steps out, the loan is called in.
+    Connections {
+        target: ghostPointer
+
+        function onHoveredChanged(): void {
+            root.syncGhost();
+        }
+    }
+
+    // True while the cursor is on the panel itself, which keeps it open. The
+    // ghost counts: the space the panel just vacated is still the menu as far as
+    // the person reaching across it is concerned.
+    readonly property bool hovered: pointer.hovered || ghostPointer.hovered
 
     // True while the cursor is anywhere on the shell at all, which ALSO keeps it
     // open. Handed down rather than worked out here: the surface's input mask is
@@ -103,6 +155,9 @@ Item {
         grace.stop();
         root.currentKey = "";
         reveal.target = 0;
+        // Nothing left to protect, and a ghost outliving its menu would be a
+        // patch of screen that swallows clicks for no reason at all.
+        root.held = Qt.rect(0, 0, 0, 0);
     }
 
     // Leaving anything hoverable asks to close; only the timer running out
@@ -177,6 +232,25 @@ Item {
         // the catch-all was under the rows and heard nothing.
         HoverHandler {
             id: pointer
+        }
+    }
+
+    // Geometry and nothing else: it draws nothing, and an Item accepts no mouse
+    // buttons, so it does not stand between the panel and a press. It is only
+    // ever read by the window's input region and by the handler inside it.
+    //
+    // AFTER the panel, so it is not a lid over it. Handlers do not consume
+    // hover the way a MouseArea does, so both are told at once.
+    Item {
+        id: ghost
+
+        x: root.held.x
+        y: root.held.y
+        width: root.held.width
+        height: root.held.height
+
+        HoverHandler {
+            id: ghostPointer
         }
     }
 }
