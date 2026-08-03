@@ -116,7 +116,7 @@ Column {
 
                 visible: Bluetooth.enabled
                 open: root.opened === "adapter"
-                tip: "the adapter's own settings"
+                tip: "adapter settings"
                 onToggled: root.toggleLayer("adapter")
             }
         }
@@ -184,7 +184,7 @@ Column {
 
                 Expander {
                     open: entry.showing
-                    tip: "what else there is to know about this one"
+                    tip: "more"
                     onToggled: root.toggleLayer(entry.modelData.address)
                 }
             }

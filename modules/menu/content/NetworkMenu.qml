@@ -203,7 +203,7 @@ Column {
         detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachLabel() ? `${Network.activeName} · ${Network.reachLabel()}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
         onActivated: Network.setEnabled(!Network.enabled)
-        tip: Network.enabled ? "turn Wi-Fi off" : "turn Wi-Fi on"
+        tip: Network.enabled ? "turn off" : "turn on"
 
         Row {
             spacing: Appearance.padding.normal
@@ -219,7 +219,7 @@ Column {
 
                 visible: Network.available
                 open: root.opened === "adapter"
-                tip: "the adapter's own settings"
+                tip: "adapter settings"
                 onToggled: root.toggleLayer("adapter")
             }
         }
@@ -257,7 +257,7 @@ Column {
         Act {
             visible: Network.canCheck && Network.checking
             label: "Check now"
-            tip: "fetch something now instead of waiting for the next minute"
+            tip: "test internet"
             onActivated: Network.checkNow()
         }
 
@@ -350,7 +350,7 @@ Column {
                 // What pressing the ROW does, which is not what the row says.
                 // The label is the network's name and the detail is its state;
                 // neither of them is "and this is the button that joins it".
-                tip: entry.modelData.connected ? "leave this network" : entry.modelData.known || !Network.secured(entry.modelData) ? "join this network" : Network.enterprise(entry.modelData) ? "needs a profile this shell cannot make" : "ask for the password"
+                tip: entry.modelData.connected ? "disconnect" : entry.modelData.known || !Network.secured(entry.modelData) ? "join" : Network.enterprise(entry.modelData) ? "needs profile" : "needs password"
 
                 Row {
                     spacing: Appearance.padding.normal
@@ -363,7 +363,7 @@ Column {
                         // The meter is four bars and a percentage is a number.
                         // Reading one off the other is the guess this saves.
                         HoverTip {
-                            text: `${Network.percent(entry.modelData)}% signal`
+                            text: `${Network.percent(entry.modelData)}%`
                         }
                     }
 
@@ -371,7 +371,7 @@ Column {
                         anchors.verticalCenter: parent.verticalCenter
 
                         open: entry.showing
-                        tip: "what else there is to know about this one"
+                        tip: "more"
                         onToggled: root.toggleLayer(entry.modelData.name)
                     }
                 }
@@ -397,7 +397,7 @@ Column {
                 Act {
                     visible: entry.modelData.connected
                     label: "Disconnect"
-                    tip: "leave it, but keep the password"
+                    tip: "keeps password"
                     onActivated: entry.modelData.disconnect()
                 }
 
@@ -407,7 +407,7 @@ Column {
                 Act {
                     visible: entry.modelData.known
                     label: "Forget it"
-                    tip: "throw the password away, so joining asks again"
+                    tip: "drops password"
                     onActivated: {
                         root.opened = "";
                         Network.forget(entry.modelData);
