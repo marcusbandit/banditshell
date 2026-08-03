@@ -432,7 +432,24 @@ Singleton {
                     bow: 340,
                     bowSpread: 9,
                     // The disc that shows the mark you are on.
-                    badge: 72
+                    badge: 72,
+
+                    // How long a row waits before it travels, in ms.
+                    //
+                    // The results themselves are never delayed: they follow the
+                    // keyboard exactly, because a launcher that waits to tell you
+                    // what it found is a launcher that feels slow. What waits is
+                    // the MOTION. Every keystroke restarts this, so while your
+                    // hands are moving nothing ever gets past the pause and the
+                    // column simply holds still; stop for longer than this and it
+                    // glides into place. Fades are not delayed at all, so the
+                    // list is always saying the truth about what matches, even
+                    // mid-burst.
+                    //
+                    // Long enough to sit inside the gap between two keystrokes of
+                    // ordinary typing, short enough that a deliberate pause reads
+                    // as immediate.
+                    moveDelay: 80
                 },
 
                 // How long to keep watching for the window a launch opens, so

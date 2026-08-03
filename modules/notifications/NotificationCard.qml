@@ -76,13 +76,10 @@ Item {
     // played. At leave = 1 it is exactly one card-width clear of home.
     readonly property real throwX: dragX + flung * leave * Math.max(0, fullWidth - Math.abs(dragX))
 
-    // The countdown belongs to the ENTRY, not to this card. A Repeater over a
-    // plain array rebuilds every delegate when the array changes, so state kept
-    // here was reset by a neighbour being dismissed and nothing ever expired
-    // after the first one.
-    readonly property int timeout: entry?.timeout ?? 0
-    readonly property real remaining: entry?.remaining ?? 0
-
+    // The countdown itself belongs to the ENTRY and is not read here at all.
+    // Nothing on the card draws it: see the removed progress rule below the
+    // background. The card still PAUSES it, which is the part that matters.
+    //
     // PAUSED while the cursor is on it. A notification that expires from under
     // the pointer while you are reaching for its button is the single most
     // annoying thing a shell can do. Pushed to the entry so it survives a rebuild.
@@ -216,24 +213,18 @@ Item {
 
     readonly property real spineRoom: root.urgent ? spine.width + Appearance.padding.small : 0
 
-    // How long it has left, along the bottom edge. Without it, a notification
-    // vanishing mid-read reads as a glitch rather than as a timer.
+    // NO PROGRESS RULE. There used to be a hairline along the bottom edge
+    // draining with the timeout, on the argument that a card vanishing mid-read
+    // reads as a glitch unless something counted it down.
     //
-    // A label tier when it is paused rather than the ACCENT. The accent is for
-    // state that is wrong (the urgent bar above is the only one on this card),
-    // and "you are touching it" is not that; brightening the same line says the
-    // same thing without spending the one colour the shell reserves.
-    G2Rect {
-        anchors.left: parent.left
-        anchors.bottom: parent.bottom
-        anchors.margins: Appearance.padding.normal
-        width: Math.max(0, (parent.width - Appearance.padding.normal * 2) * root.remaining)
-        height: 2
-        radius: 1
-        color: root.held ? Appearance.colour.textDim : Appearance.colour.fillStronger
-        visible: root.timeout > 0
-    }
-
+    // It buys less than it costs. The bar is a clock on a thing you did not ask
+    // for and cannot usefully act on: knowing a notification has two seconds
+    // left does not help, it only starts a race, and the countdown already stops
+    // dead the moment the cursor arrives, so the one case where the remaining
+    // time would matter is the one case it is not running. What is left is a
+    // moving part on every card in the tray, drawing the eye to the corner that
+    // has nothing to say.
+    //
     // ONE padding tier inside the card, and it is the same one the tray puts
     // outside it, so the content sits two tiers in from the tray's edge without
     // either of them spending a bigger number. `large` here was 24 a side: 48px

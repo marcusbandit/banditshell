@@ -141,6 +141,46 @@ Item {
     // drawer if anything is in it.
     readonly property var keys: [root.star, ...root.letters, ...(Apps.buried.length ? [root.vault] : [])]
 
+    // How long a row waits before it travels to a new place. See the list's
+    // `displaced` transition, which is the whole reason this exists.
+    readonly property int moveDelay: Config.values.launcher.niagara.moveDelay
+
+    // ROW OBJECTS THAT SURVIVE A KEYSTROKE.
+    //
+    // ScriptModel's entire value is that it DIFFS: a query that narrows the list
+    // keeps the delegates of everything still in it, and what is kept is what can
+    // be MOVED to its new place rather than destroyed and built again somewhere
+    // else. It can only tell what survived if the objects it is handed are the
+    // same objects it was handed last time.
+    //
+    // This built fresh `{section, entry}` literals on every evaluation, and an
+    // object literal is not equal to its own previous self. So every row was new,
+    // every delegate was torn down and rebuilt, and there was nothing left in
+    // place for a transition to animate: typing was a series of cuts, which is
+    // exactly what it looked like. The rows are the same data either way; the
+    // identity is the whole difference.
+    //
+    // Keyed rather than kept one-per-entry, because an application is TWO rows
+    // when it is both a favourite and filed under its letter, and a list holding
+    // one object twice has no diff either. `app:` is deliberately shared between
+    // the alphabet and the search results, so the first letter you type keeps
+    // whatever was already on screen instead of replacing all of it.
+    property var rowKeys: ({})
+
+    function rowFor(key: string, section: string, entry: var): var {
+        const had = root.rowKeys[key];
+        if (had && had.entry === entry && had.section === section)
+            return had;
+        return root.rowKeys[key] = {
+            section: section,
+            entry: entry
+        };
+    }
+
+    function entryKey(entry: var): string {
+        return entry?.id || entry?.name || "";
+    }
+
     // ONE FLAT LIST of rows, sections included, rather than a list of lists.
     //
     // A ListView cannot scroll to something it has no row for, and the rail's
@@ -149,44 +189,23 @@ Item {
     // rather than a search through nested delegates.
     readonly property var rows: {
         if (query.text)
-            return Apps.search(query.text).map(entry => ({
-                        section: "",
-                        entry: entry
-                    }));
+            return Apps.search(query.text).map(entry => root.rowFor(`app:${root.entryKey(entry)}`, "", entry));
 
         const out = [];
         if (root.favourites.length) {
-            out.push({
-                section: root.star,
-                entry: null
-            });
+            out.push(root.rowFor(`section:${root.star}`, root.star, null));
             for (const entry of root.favourites)
-                out.push({
-                    section: "",
-                    entry: entry
-                });
+                out.push(root.rowFor(`fav:${root.entryKey(entry)}`, "", entry));
         }
         for (const key of root.letters) {
-            out.push({
-                section: key,
-                entry: null
-            });
+            out.push(root.rowFor(`section:${key}`, key, null));
             for (const entry of root.byLetter[key])
-                out.push({
-                    section: "",
-                    entry: entry
-                });
+                out.push(root.rowFor(`app:${root.entryKey(entry)}`, "", entry));
         }
         if (Apps.buried.length) {
-            out.push({
-                section: root.vault,
-                entry: null
-            });
+            out.push(root.rowFor(`section:${root.vault}`, root.vault, null));
             for (const entry of Apps.buried)
-                out.push({
-                    section: "",
-                    entry: entry
-                });
+                out.push(root.rowFor(`app:${root.entryKey(entry)}`, "", entry));
         }
         return out;
     }
@@ -339,7 +358,7 @@ Item {
     // The VIEW and the TAIL as well as the position, because the whole question
     // about this list is whether a section is in the middle of it, and that
     // cannot be read off a scroll offset alone.
-    readonly property string scrollInfo: `${query.text ? "search" : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}`
+    readonly property string scrollInfo: `${query.text ? `search "${query.text}"` : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}`
 
     // What had the keyboard before this took it; see ListLauncher, same reason.
     property string restoreTo: ""
@@ -355,6 +374,12 @@ Item {
         root.selected = root.firstApp(0, 1);
         list.reset();
         Qt.callLater(query.forceActiveFocus);
+        // ARRIVED AT, not travelled to. Closing does not clear the query, so a
+        // panel last left showing three results would otherwise open at three
+        // results tall and grow to full height inside itself while the panel is
+        // also rising: two animations, one of them meaning nothing. Deferred
+        // because the size being snapped to follows from the line above.
+        Qt.callLater(grow.snap);
     }
 
     function hide(): void {
@@ -495,6 +520,25 @@ Item {
 
     // How far out the rail is bowed, 0 to 1. Eased rather than snapped, so
     // arriving on the rail draws the curve out and leaving lets it fall back.
+    // How tall the column WANTS to be, chased rather than cut to.
+    //
+    // Same split, and the same speed, as a menu resizing: implicit is where it is
+    // going, the Follow is where it is. Every keystroke changes the result count,
+    // and because the list is centred in its well, a change in height moves
+    // everything on screen. Snapping that was most of what "snappy but not
+    // smooth" meant.
+    //
+    // The target is the CONTENT's height, not the well's. Opening is the panel's
+    // own animation and the list should sit exactly inside it the whole way up;
+    // only what the query does to the count is worth easing.
+    Follow {
+        id: grow
+
+        target: root.needed
+        speed: Appearance.anim.resizeSpeed
+        epsilon: 0.5
+    }
+
     Follow {
         id: bow
 
@@ -746,8 +790,8 @@ Item {
                     selectedTextColor: Appearance.colour.accentText
                     clip: true
 
-                    // Typing means you have stopped browsing. The column is a new
-                    // column, so it starts at its own top rather than at
+                    // Typing means you have stopped browsing. The column is a
+                    // new column, so it starts at its own top rather than at
                     // whatever offset the last letter left behind.
                     onTextChanged: {
                         if (text)
@@ -833,15 +877,106 @@ Item {
                     // is an estimate until every delegate has been built, so
                     // binding the height to it is a height that changes as you
                     // scroll.
-                    height: Math.min(well.height, root.needed)
+                    height: Math.max(0, Math.min(well.height, grow.value))
 
                     clip: true
                     model: ScriptModel {
                         values: root.rows
                     }
-                    reuseItems: true
-                    cacheBuffer: root.rowPitch * 4
+                    // NOT REUSED, and this is the price of the transitions below.
+                    //
+                    // Recycling is the right default for a long list and it is
+                    // incompatible with animating one. A row being removed has to
+                    // stay alive and visible while it fades, and a recycling view
+                    // wants that same item back immediately to hand it the
+                    // content of a row further down. Both happened: the item was
+                    // handed new text while its own removal was still running, so
+                    // it sat in the new row's place drawing the new row's name
+                    // over the top of it. Two names on one line, and not
+                    // transiently either, because whichever animation finished
+                    // last left it wherever it had got to.
+                    //
+                    // So the view builds and drops rows instead. Only the window
+                    // plus the buffer ever exists either way; what is lost is the
+                    // saving on CONSTRUCTION during a long flick, which is a real
+                    // cost and a smaller one than a permanently doubled row.
+                    reuseItems: false
+                    // A deeper buffer to spend some of that back: rows within
+                    // this much of the edge are kept rather than rebuilt, so
+                    // ordinary scrolling churns nothing.
+                    cacheBuffer: root.rowPitch * 8
 
+                    // WHAT A KEYSTROKE LOOKS LIKE.
+                    //
+                    // A row that stops matching fades out where it stands, a row
+                    // that starts matching fades in, and every row that survived
+                    // travels to its new place instead of being somewhere else on
+                    // the next frame. That last one is the whole effect: it is the
+                    // survivors moving that makes a narrowing list read as the
+                    // same list narrowing, rather than as one list replaced by
+                    // another. It is also the one that does nothing at all unless
+                    // the model can tell what survived, which is what the row
+                    // cache above is for.
+                    //
+                    // The fades start AT ONCE, on the keystroke, with no pause in
+                    // front of them. They are what makes the list feel like it is
+                    // keeping up, and they are cheap to watch because a row
+                    // changing opacity in place asks nothing of the eye.
+                    //
+                    // Out steeper than in, the same asymmetry the menus cross-fade
+                    // with: a leaver holds its line until it is gone, so if both
+                    // were linear there would be a moment of two legible names on
+                    // one line. OutCubic on the way to zero is steep first and
+                    // flat last, so the leaver is invisible well before the
+                    // arrival is readable.
+                    add: Transition {
+                        NumberAnimation {
+                            property: "opacity"
+                            from: 0
+                            to: 1
+                            duration: Appearance.anim.fast
+                        }
+                    }
+
+                    remove: Transition {
+                        NumberAnimation {
+                            property: "opacity"
+                            to: 0
+                            duration: Appearance.anim.fast
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    // MOVEMENT WAITS. Nothing else does.
+                    //
+                    // The results are never held back: fades run the instant a
+                    // keystroke lands, so the column is always telling the truth
+                    // about what matches. What is buffered is the TRAVEL, and
+                    // only the travel, because that is the part that costs
+                    // something to watch. Every keystroke restarts this pause, so
+                    // while your hands are moving no row ever gets far enough
+                    // through it to take a step: the column holds still, fading,
+                    // and settles into its new order the moment you stop. Type
+                    // "firefox" at speed and nothing slides at all; type it and
+                    // pause, and it glides once.
+                    //
+                    // The alternative was delaying the SEARCH, and that is the
+                    // one thing a launcher must not do. Waiting to tell you what
+                    // it found reads as the machine being slow, however little it
+                    // waits.
+                    displaced: Transition {
+                        SequentialAnimation {
+                            PauseAnimation {
+                                duration: root.moveDelay
+                            }
+
+                            NumberAnimation {
+                                property: "y"
+                                duration: Appearance.anim.normal
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+                    }
                     // The room under the last section, so it can be centred like
                     // every other one. See root.tail.
                     footer: Item {
@@ -865,6 +1000,7 @@ Item {
                         readonly property bool chosen: index === root.selected
                         readonly property bool under: index === root.hovered
                         readonly property bool away: !!entry && Apps.isHidden(entry)
+                        readonly property color ring: Appearance.colour.accent
 
                         // WHICH END of the row the pointer is on, from the row's
                         // own coordinates rather than from a second MouseArea
@@ -927,6 +1063,12 @@ Item {
                             text: row.modelData.section
                             font.pixelSize: Appearance.font.size.large
                             color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
                         }
 
                         Icon {
@@ -941,6 +1083,12 @@ Item {
                             size: Appearance.font.size.large
                             name: row.glyph
                             color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
                         }
 
                         G2Rect {
@@ -963,8 +1111,27 @@ Item {
                             // can see, and a boundary is the one way to mark a
                             // control without painting a disc that shouts.
                             color: row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
-                            stroke: row.chosen ? Appearance.colour.accent : "transparent"
-                            strokeWidth: row.chosen ? 2 : 0
+                            // The ring is always THERE and only sometimes
+                            // visible: a stroke is drawn inside the bounds and
+                            // takes its width off the radius, so switching the
+                            // width on and off would resize the squircle every
+                            // time the selection moved. Held at one width and
+                            // faded by its alpha, the geometry never moves and
+                            // there is something for a colour animation to cross.
+                            stroke: row.chosen ? row.ring : Qt.rgba(row.ring.r, row.ring.g, row.ring.b, 0)
+                            strokeWidth: 2
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
+
+                            Behavior on stroke {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
 
                             Image {
                                 id: art
@@ -1007,6 +1174,12 @@ Item {
                             font.pixelSize: Appearance.font.size.normal
                             color: row.chosen || row.under ? Appearance.colour.text : Appearance.colour.textDim
                             elide: Text.ElideRight
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
                         }
 
                         // PUT AWAY, or put back.
