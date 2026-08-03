@@ -289,6 +289,10 @@ Item {
 
                         entry: modelData
                         fullWidth: list.width
+                        // Asked for, and nothing in here expires while it is
+                        // open, so this is the half of the tray with time to
+                        // read in. See NotificationCard's `roomy`.
+                        roomy: root.expanded
                         onDismissed: Notifs.dismiss(modelData)
                     }
                 }

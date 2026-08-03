@@ -23,6 +23,16 @@ Item {
     required property var entry
     required property real fullWidth
 
+    // ROOM TO READ, in the one place there is time to.
+    //
+    // A popup is a glance: it arrives over what you were doing, it leaves on its
+    // own, and it is capped tight so a chatty app cannot take the screen. The
+    // hub is the opposite gesture. You went to the corner and asked for it, and
+    // nothing in it expires while you are looking, so the same caps there are
+    // not restraint, they are an ellipsis on the thing you opened the tray to
+    // read. Same card, told which of the two it is in.
+    property bool roomy: false
+
     signal dismissed
 
     readonly property var notification: entry?.notification ?? null
@@ -240,19 +250,45 @@ Item {
         // The sender's own icon when it gave one, our bell when it did not. An
         // app that bothered to identify itself should be recognised by its mark
         // rather than by reading its name.
+        //
+        // AND A PICTURE IS NOT A MARK. The spec has two fields here and they
+        // answer different questions: `app_icon` is who sent this, the image
+        // hint is what it is about. They were being read as one expression with
+        // the picture merely winning, so every album cover, avatar and
+        // screenshot preview was drawn at an app icon's size and centre-cropped
+        // square to fill it. A 40px crop out of the middle of a screenshot is
+        // not a small version of that screenshot, it is a swatch of it.
+        //
+        // So a card with a picture gets a picture: twice the size, and FITTED
+        // rather than filled, so nothing is cut off. There is nothing behind it
+        // to letterbox against, which was the reason to crop in the first place;
+        // the plate is hidden under any image, so what a wide picture leaves
+        // above and below it is the card, not a band of a different colour.
         Item {
             id: badge
-
-            width: Appearance.sizes.notificationBadge
-            height: width
 
             // An icon NAME is not a URL. `appIcon` is a freedesktop name, so
             // handing it straight to an Image failed silently and every app that
             // sent one instead of a pixmap wore the generic bell. The theme has
             // to be asked; the nullable form returns "" rather than a
             // placeholder, which is what lets the glyph take over.
-            readonly property string source: root.notification?.image || (root.notification?.appIcon ? Quickshell.iconPath(root.notification.appIcon, true) : "")
+            readonly property string picture: root.notification?.image ?? ""
+            readonly property string mark: root.notification?.appIcon ? Quickshell.iconPath(root.notification.appIcon, true) : ""
+
+            readonly property string source: badge.picture || badge.mark
             readonly property bool hasImage: source !== "" && art.ready
+
+            // Square either way, so the text column starts in the same place on
+            // every card and a list of them reads as a column rather than as a
+            // ragged edge. Which square depends on whether there is anything
+            // worth looking at.
+            //
+            // TWICE THE BADGE, derived rather than configured. It is the same
+            // slot doing a second job, so it has no business being a number
+            // anyone can move independently: the day the badge changed, a
+            // separate setting would quietly stop being twice it.
+            width: Appearance.sizes.notificationBadge * (badge.picture ? 2 : 1)
+            height: width
 
             // The plate is only there to hold the glyph. Under an image it would
             // be a frame around something already square, and a step of fill
@@ -275,17 +311,24 @@ Item {
                 color: root.urgent ? Appearance.colour.accent : Appearance.colour.textDim
             }
 
-            // CROPPED TO FILL, then masked to the plate's own squircle. Fitting
-            // an image INSIDE the plate was wrong twice over: anything not
-            // square letterboxed, so a screenshot thumbnail sat in a band of
-            // fill, and the image kept its own square corners inside a rounded
-            // plate. Both of those, and the reason, now live in G2Image, which
-            // is also what the media preview's cover goes through.
+            // A MARK is cropped to fill and a PICTURE is fitted whole.
+            //
+            // An app icon is square already, so filling its plate costs it
+            // nothing and letterboxing it would leave a step of fill at the
+            // corners, which reads as the icon not fitting. A picture is not
+            // square and is the thing you are being shown, so the same crop that
+            // is free for the one throws most of the other away.
+            //
+            // Either way it is masked to the plate's curve, because an image is
+            // the one shape that cannot go through G2Rect: it is a texture, not
+            // a path, so it would keep its own square corners over the plate's.
+            // See G2Image.
             G2Image {
                 id: art
 
                 anchors.fill: parent
                 source: badge.source
+                fillMode: badge.picture ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                 radius: Appearance.rounding.small
             }
         }
@@ -324,7 +367,7 @@ Item {
                 width: parent.width
                 text: root.notification?.summary ?? ""
                 wrapMode: Text.Wrap
-                maximumLineCount: 2
+                maximumLineCount: root.roomy ? 4 : 2
                 elide: Text.ElideRight
             }
 
@@ -342,7 +385,13 @@ Item {
                 // that notification exists. A card is allowed to be one line box
                 // taller than its neighbour; it is not allowed to hide the thing
                 // it came to say.
-                maximumLineCount: 3
+                //
+                // In the hub it is barely a cap at all. The tray is a Flickable
+                // that scrolls once it outgrows the screen, so a long message
+                // costs a scroll rather than the screen, and the cap is only
+                // still here to stop one deranged sender from making the list
+                // unnavigable.
+                maximumLineCount: root.roomy ? 12 : 3
                 elide: Text.ElideRight
                 topPadding: Appearance.padding.small
             }

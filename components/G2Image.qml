@@ -27,6 +27,24 @@ Item {
 
     readonly property bool ready: image.status === Image.Ready
 
+    // THE MASK FOLLOWS THE PICTURE, not the box it was given.
+    //
+    // Filling is the easy case: the picture covers the whole item, so a mask the
+    // size of the item is the picture's own outline. Fitting is not. A wide
+    // picture in a square box touches the sides and leaves the top and bottom
+    // empty, so a full-size mask rounds four corners of nothing and lets the
+    // picture keep its own square ones, which is the exact failure this
+    // component exists to prevent, arrived at from the other direction.
+    //
+    // The aspect is read off the loaded image rather than being asked for. That
+    // is safe only because `sourceSize` below is driven by the ITEM's size: were
+    // the item sized from this in turn, the decode would depend on the thing it
+    // decides and Qt would pick an order.
+    readonly property real aspect: image.implicitHeight > 0 ? image.implicitWidth / image.implicitHeight : 1
+    readonly property bool fitted: root.fillMode === Image.PreserveAspectFit
+    readonly property real drawnWidth: root.fitted ? Math.min(root.width, root.height * root.aspect) : root.width
+    readonly property real drawnHeight: root.fitted ? Math.min(root.height, root.width / root.aspect) : root.height
+
     Image {
         id: image
 
@@ -45,7 +63,9 @@ Item {
     G2Rect {
         id: mask
 
-        anchors.fill: parent
+        anchors.centerIn: parent
+        width: root.drawnWidth
+        height: root.drawnHeight
         radius: root.radius
         // Only the alpha matters; the colour is what makes it opaque.
         color: "white"
