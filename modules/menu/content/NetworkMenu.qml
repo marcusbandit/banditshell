@@ -63,8 +63,26 @@ Column {
 
     readonly property var rows: root.busy ? root.frozen : Network.enabled ? Network.networks.slice(0, Appearance.sizes.networkListMax) : []
 
-    onBusyChanged: if (root.busy)
-        root.frozen = root.rows
+    // THE NOTICES FREEZE TOO, and for the same reason, which is easy to miss
+    // because they are not part of the list.
+    //
+    // They sit ABOVE it, and `visible` on a child of a Column is a layout change
+    // rather than a repaint: one of them appearing or vanishing moves every row
+    // below it, password field included. And the state they read is not idle
+    // while you are typing. Joined-and-going-nowhere is exactly the state that
+    // rechecks every eight seconds, so the moment it changes its mind is a
+    // moment the field under your cursor jumps a row.
+    property bool frozenStranded: false
+    property bool frozenCaptive: false
+
+    readonly property bool stranded: root.busy ? root.frozenStranded : Network.stranded
+    readonly property bool captive: root.busy ? root.frozenCaptive : Network.captive
+
+    onBusyChanged: if (root.busy) {
+        root.frozen = root.rows;
+        root.frozenStranded = Network.stranded;
+        root.frozenCaptive = Network.captive;
+    }
 
     onWantScanChanged: Network.watch(root.wantScan)
     Component.onCompleted: Network.watch(root.wantScan)
@@ -104,11 +122,78 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
+    // SAYING IT, rather than having said it somewhere.
+    //
+    // "sign in required" already existed, in the row's detail line, in the faint
+    // tier, in the same slot that reads "wpa2, saved" on every other row. That
+    // slot describes a network; this is the reason nothing works, and setting it
+    // in the type reserved for what you do not need to read is how a shell tells
+    // you something without telling you.
+    //
+    // Worse, the sentence had no end. The shell knew a login page was waiting
+    // and offered no way to open one, so being informed meant going to find a
+    // browser and something to type into it, which is the work the message was
+    // supposed to save. A notice that names a problem it cannot act on is only a
+    // more articulate silence.
+    //
+    // So: its own line, the label size, and the shell's one accent, which
+    // Appearance reserves for state genuinely worth a colour and which nothing
+    // else in this menu spends. Pressing it does the thing.
+    component Notice: Item {
+        id: notice
+
+        property string icon: ""
+        property string label: ""
+        property string detail: ""
+        property string action: ""
+
+        signal activated
+
+        implicitWidth: parent ? parent.width : 0
+        implicitHeight: line.implicitHeight
+
+        G2Rect {
+            anchors.fill: parent
+            radius: Appearance.rounding.small
+            color: Appearance.colour.accentFill
+        }
+
+        MenuRow {
+            id: line
+
+            label: notice.label
+            detail: notice.detail
+            onActivated: notice.activated()
+
+            // Through `mark` rather than `icon`, because the glyph has to be the
+            // accent and MenuRow's own one is a label tier by definition.
+            mark: Component {
+                Icon {
+                    name: notice.icon
+                    size: line.iconSize
+                    color: Appearance.colour.accent
+                }
+            }
+
+            // Unanchored, like every other trailing glyph in this menu. The slot
+            // sizes itself from its children, so a child that centres itself on
+            // the slot is asking the slot how tall it is in order to say how
+            // tall the slot is.
+            Icon {
+                name: notice.action
+                color: Appearance.colour.accent
+            }
+        }
+    }
+
     MenuRow {
         width: root.width
         icon: Network.icon()
         label: "Wi-Fi"
-        detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : Network.connected ? Network.reachLabel() || Network.activeName : "not connected"
+        // The name AND what it is worth. This used to hand the whole line over
+        // to the reach label, so the moment there was something wrong the row
+        // stopped saying which network it was wrong about.
+        detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachLabel() ? `${Network.activeName} · ${Network.reachLabel()}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
         onActivated: Network.setEnabled(!Network.enabled)
 
@@ -194,6 +279,35 @@ Column {
         Fact {
             text: Network.deviceName ? `${Network.deviceName} · ${Network.address}` : Network.address
         }
+    }
+
+    // Joined and going nowhere, which is the state this menu exists to catch and
+    // the one it used to be quietest about. Two of them, because they are two
+    // different problems with two different next moves: a portal is a door you
+    // can open from here, and a dead uplink is not.
+    Notice {
+        width: root.width
+        // Both off Network.stranded, by way of the freeze above: it is the same
+        // property the status bar raises its alert from, and the bar saying
+        // something is wrong is what sends you in here to find out what. If the
+        // two could disagree, following the alert into the menu would find
+        // nothing waiting.
+        visible: root.stranded && root.captive
+        icon: "captive_portal"
+        label: "Sign in to use this network"
+        detail: "it wants a login page before it lets anything through"
+        action: "open_in_new"
+        onActivated: Network.openPortal()
+    }
+
+    Notice {
+        width: root.width
+        visible: root.stranded && !root.captive
+        icon: "cloud_off"
+        label: "No internet on this network"
+        detail: "joined, but nothing answers on the other side"
+        action: "refresh"
+        onActivated: Network.checkNow()
     }
 
     Separator {

@@ -467,6 +467,43 @@ Singleton {
                 linger: 1200
             },
 
+            // Wi-Fi, and the one question NetworkManager will not answer
+            // unasked.
+            network: {
+                // Whether NetworkManager actually FETCHES something to find out
+                // if the connection works, rather than inferring it from having
+                // a default route.
+                //
+                // On, and it costs one small HTTP request a minute and can tell
+                // a captive portal from the real internet. Off, and it guesses,
+                // and its guess is "fine" for every hotel network, every AP with
+                // a dead uplink, and every landing page you have not signed in
+                // to yet. The shell has the words for all of those and cannot
+                // say any of them without this.
+                checkForInternet: true,
+
+                // Which URL "open the login page" opens. Empty means ask
+                // NetworkManager for the URL it probes with, which is the right
+                // answer: that request is the one the portal intercepted, so it
+                // is the one that lands on the login page.
+                portalUri: ""
+            },
+
+            // The power panel, on the right edge.
+            session: {
+                // The square you press. Bigger than the 52 of the sidebar slab
+                // on purpose: everything in that slab is an indicator you glance
+                // at, and this is the one surface in the shell where a misplaced
+                // click ends the session. A target you have to arrive at
+                // deliberately is part of the safety, not decoration.
+                button: 56,
+
+                // The mark inside it, relative to the shell's icon size. The bar
+                // draws icons at 20 because they sit in a 52px band; in a 56px
+                // button that reads as a small glyph adrift in a large square.
+                iconScale: 1.4
+            },
+
             // Controls inside menus.
             control: {
                 // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.

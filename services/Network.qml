@@ -2,7 +2,9 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Networking
+import qs.config
 
 // NetworkManager, adapted.
 //
@@ -78,30 +80,117 @@ Singleton {
     // joined. A hotel's wifi associates perfectly and serves you a login page;
     // an AP with a dead uplink associates perfectly and serves you nothing. The
     // difference has a name in NetworkManager and the shell was not asking.
-    //
-    // The check is off by default, and while it is off NetworkManager guesses
-    // rather than measures, which is why turning it on is offered rather than
-    // assumed: it costs a small HTTP request per interval, and it is the only
-    // way to be told about a captive portal instead of discovering it in a
-    // browser.
     readonly property int connectivity: Networking.connectivity
     readonly property bool canCheck: Networking.canCheckConnectivity
     readonly property bool checking: Networking.connectivityCheckEnabled
     readonly property bool online: connectivity === NetworkConnectivity.Full
     readonly property bool captive: connectivity === NetworkConnectivity.Portal
 
+    // ON BY DEFAULT, rather than offered.
+    //
+    // This used to be off unless you went and found the switch, and off does not
+    // mean "do not answer": it means NetworkManager GUESSES. It sees a default
+    // route and reports Full. So every state below collapsed to "connected", the
+    // bar's alert could not fire, and a captive portal, the one case a wifi menu
+    // most needs to name, was indistinguishable from a working connection. The
+    // menu had the sentence "sign in required" written in it the whole time and
+    // was never in a position to say it.
+    //
+    // Offering it was the wrong shape for the trade. It costs one small HTTP
+    // request a minute; it buys the shell knowing what it is talking about. So
+    // it is on, and the switch turns it OFF.
+    //
+    // It is a NetworkManager-wide setting rather than something this shell owns,
+    // so the choice is REMEMBERED and reapplied, not re-forced at every launch
+    // over the top of a deliberate no. `wantChecking` is what config asks for;
+    // `checking` is what NetworkManager is actually doing, which is what the
+    // switch shows.
+    readonly property bool wantChecking: Config.values.network.checkForInternet
+
+    function applyChecking(): void {
+        if (root.canCheck && Networking.connectivityCheckEnabled !== root.wantChecking)
+            Networking.connectivityCheckEnabled = root.wantChecking;
+    }
+
+    // Deferred, because `canCheck` is false until NetworkManager is up, and the
+    // config file lands after the defaults do.
+    onWantCheckingChanged: root.applyChecking()
+    onCanCheckChanged: root.applyChecking()
+    Component.onCompleted: root.applyChecking()
+
     function setChecking(on: bool): void {
-        Networking.connectivityCheckEnabled = on;
+        Config.set("network.checkForInternet", on);
     }
 
     function checkNow(): void {
         Networking.checkConnectivity();
     }
 
+    // ASKING AT THE MOMENT IT MATTERS. NetworkManager's own check is on a timer,
+    // an interval that a fresh install sets to a minute, and the minute after
+    // joining a hotel network is exactly the minute you spend wondering why
+    // nothing loads. Waiting it out means the shell tells you what you have
+    // already worked out for yourself.
+    Timer {
+        id: settle
+
+        interval: 1500
+        onTriggered: if (root.checking)
+            root.checkNow()
+    }
+
+    onActiveNameChanged: settle.restart()
+
+    // And while the answer is bad, ask more often. Signing in happens in a
+    // browser, outside this shell, and there is no signal for "they finished":
+    // the only way the notice clears itself when you come back is to keep
+    // looking. Bounded to exactly that state, so a working connection is not
+    // paying for it.
+    Timer {
+        running: root.connected && root.checking && !root.online
+        interval: 8000
+        repeat: true
+        onTriggered: root.checkNow()
+    }
+
+    // WHERE THE LOGIN PAGE IS.
+    //
+    // NetworkManager knows, and for a good reason: the URL it fetches to test
+    // the connection is the URL the portal intercepted, and that redirect is
+    // literally how it concluded "Portal". So it is the one address guaranteed
+    // to land on the login page rather than on a cached copy of somewhere else.
+    //
+    // Quickshell does not expose the property, so it is read once off the bus.
+    // That is a read of one string at startup, not this shell growing a habit of
+    // driving NetworkManager through its command line; the fallback is only for
+    // a machine whose NetworkManager predates the property.
+    readonly property string portalUri: Config.values.network.portalUri || root.checkUri || "http://nmcheck.gnome.org/"
+
+    property string checkUri: ""
+
+    function openPortal(): void {
+        Quickshell.execDetached(["xdg-open", root.portalUri]);
+    }
+
+    Process {
+        running: true
+        command: ["busctl", "--system", "get-property", "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager", "org.freedesktop.NetworkManager", "ConnectivityCheckUri"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // `s "http://ping.archlinux.org/nm-check.txt"`
+                const m = text.trim().match(/^s\s+"(.*)"$/);
+                if (m)
+                    root.checkUri = m[1];
+            }
+        }
+    }
+
     // What the connection is worth, in the order a person would ask it: joined
-    // at all, then whether anything is on the other end.
+    // at all, then whether anything is on the other end. Empty while the check
+    // is off, because the only honest thing to say then is nothing.
     function reachLabel(): string {
-        if (!root.connected)
+        if (!root.connected || !root.checking)
             return "";
         switch (root.connectivity) {
         case NetworkConnectivity.Portal:
@@ -275,10 +364,23 @@ Singleton {
 
     // Joined, and going nowhere. Worth the bar's one accent, for the same reason
     // a muted microphone is: you will otherwise spend a minute blaming
-    // everything except the network. Only claimed when the check is ON, since
-    // with it off NetworkManager is guessing and a guess should not raise an
-    // alarm.
-    readonly property bool stranded: root.connected && root.checking && !root.online
+    // everything except the network.
+    //
+    // OFF THE LABEL, so there is one enumeration of what counts as broken rather
+    // than two that can drift apart. It used to be `!online`, which is not the
+    // same set: NetworkManager has a fifth state, Unknown, and it means "the
+    // check has not come back yet", not "there is nothing there". Its own
+    // documentation says a shell should assume the internet might be fine in
+    // that state and specifically not raise a portal window.
+    //
+    // Inverting Full swept Unknown in with Limited and None, and Unknown is
+    // exactly where every connection starts: for the second and a half between
+    // joining a network and the first check landing, and again at every launch
+    // while the check is being switched on, the bar lit its alert and the menu
+    // said "no internet" about a network that was about to be fine. A warning
+    // that fires every single time you join anything is one you learn to
+    // ignore, which would have cost the real one its whole meaning.
+    readonly property bool stranded: !!root.reachLabel()
 
     // Scanning costs power, so it runs while something is looking at the list
     // and stops when nothing is.
