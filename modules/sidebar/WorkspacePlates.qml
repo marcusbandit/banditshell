@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import qs.config
 import qs.components
@@ -88,6 +89,15 @@ Item {
     // How much of the plate underneath stays visible past the end of an open
     // card. Small: this is still a card on a card.
     readonly property real overhang: Appearance.padding.normal
+
+    // HOW MUCH THE PLATE YOU ARE ON STEPS BACK while a scratchpad lies over it.
+    //
+    // The accent means the thing you are looking at, and while a scratchpad is
+    // pulled over the screen the thing you are looking at is the scratchpad. So
+    // the accent goes with it, and what the plate keeps is the ghost of its own:
+    // enough to say you are still on that workspace and it is still what you
+    // come back to, not enough to argue with the card about which is which.
+    readonly property real ceded: 0.35
 
     // Where the plate you are on currently IS, smoothed like everything else, so
     // a card lying on it travels with it rather than after it.
@@ -448,7 +458,7 @@ Item {
                     topRightRadius: plate.topRightRadius
                     bottomRightRadius: plate.bottomRightRadius
                     color: Appearance.colour.accentFill
-                    opacity: slotItem.isActive ? 1 : 0
+                    opacity: slotItem.isActive ? (slotItem.covered ? root.ceded : 1) : 0
 
                     Behavior on opacity {
                         NumberAnimation {
@@ -458,14 +468,17 @@ Item {
                 }
 
                 // The one saturated thing in the sidebar, and it is three pixels
-                // wide, on the plate's hinge.
+                // wide, on the plate's hinge. It dims with the sheet while a card
+                // is over it, and the card carries the bright piece of it, so the
+                // ruler runs unbroken down the edge and is brightest where the
+                // thing you are actually looking at is.
                 G2Rect {
                     x: 0
                     width: root.tick
                     height: parent.height
                     radius: 0
                     color: Appearance.colour.accent
-                    opacity: slotItem.isActive ? 1 : 0
+                    opacity: slotItem.isActive ? (slotItem.covered ? root.ceded : 1) : 0
 
                     Behavior on opacity {
                         NumberAnimation {
@@ -632,22 +645,62 @@ Item {
                 onClicked: Hypr.toggleSpecial(pad.entry.name)
             }
 
+            // THE SHADOW, which is the only one in this shell and is here because
+            // everything else in the sidebar is a sheet lying flat ON the bar. A
+            // scratchpad is the one thing that is off it, and a card resting on a
+            // plate with nothing under its edge reads as a hole cut in the plate
+            // instead of a card on it.
+            //
+            // Cast from the card's own silhouette rather than drawn as a darker
+            // shape behind it, because a shape behind a translucent card shows
+            // straight through it. It is also why the card stopped being glass:
+            // see below.
+            MultiEffect {
+                anchors.fill: card
+                source: card
+                // Opaque by the halfway point rather than over the whole trip:
+                // the card is TRAVELLING, and a card you can see through most of
+                // the way is a card that is not there yet.
+                opacity: Math.min(1, pad.shown * 2)
+
+                shadowEnabled: true
+                shadowColor: "black"
+                shadowOpacity: 0.35
+                // Soft and barely offset: this is a card lifted off a plate by
+                // its own thickness, not a dialog floating over a page. A tight
+                // blur at this size comes out as a dark outline around the card,
+                // which is a border, and a border is the one thing the chassis
+                // spent so long learning not to draw.
+                blurMax: Appearance.padding.normal
+                shadowBlur: 1
+                shadowVerticalOffset: Math.round(Appearance.padding.small / 3)
+            }
+
             G2Rect {
                 id: card
 
                 anchors.fill: parent
+                // Drawn by the effect above, which needs it as a texture, so the
+                // scene must not also draw it directly. Multisampled, because a
+                // curve that antialiases itself into the scene has to be given
+                // the samples to do it with once it is drawing into a buffer.
+                layer.enabled: true
+                layer.samples: 4
+                visible: false
 
                 topLeftRadius: 0
                 bottomLeftRadius: 0
                 topRightRadius: Appearance.rounding.normal
                 bottomRightRadius: Appearance.rounding.normal
 
-                // THICKER GLASS, not another colour. The accent means "the
-                // workspace you are on" and the workspace you are on has not
-                // changed: something is lying on top of it. More material is how
-                // this shell says nearer, so this is two sheets where a plate is
-                // one, over a plate that is already there: a card on a card.
-                color: Appearance.colour.fillStrong
+                // A SURFACE, not more glass. Two veils at 14 and 18 percent over
+                // a plate is a card you can see the plate through, and the whole
+                // claim being made here is that this is in front of it: the marks
+                // underneath showed through their own cover, and a shadow cast on
+                // a plate would have shown through it too. So the card is the
+                // shell's panel material, which is what everything else that
+                // floats is made of, and the plate genuinely disappears behind it.
+                color: Appearance.colour.surface
 
                 G2Rect {
                     anchors.fill: parent
@@ -656,6 +709,29 @@ Item {
                     topRightRadius: card.topRightRadius
                     bottomRightRadius: card.bottomRightRadius
                     color: Appearance.colour.fillStronger
+                }
+
+                // THE ACCENT, WHICH CAME WITH IT. Same two pieces the active
+                // plate is wearing, the sheet and the three bright pixels on the
+                // hinge, because this is now the thing they mean: the plate is a
+                // workspace you are on, this is the one you are looking at.
+                G2Rect {
+                    anchors.fill: parent
+                    topLeftRadius: card.topLeftRadius
+                    bottomLeftRadius: card.bottomLeftRadius
+                    topRightRadius: card.topRightRadius
+                    bottomRightRadius: card.bottomRightRadius
+                    color: Appearance.colour.accentFill
+                    opacity: pad.shown
+                }
+
+                G2Rect {
+                    x: 0
+                    width: root.tick
+                    height: parent.height
+                    radius: 0
+                    color: Appearance.colour.accent
+                    opacity: pad.shown
                 }
 
                 Repeater {
