@@ -67,6 +67,31 @@ Item {
     readonly property string star: "favourites"
     readonly property string starIcon: "star"
 
+    // The last mark on the rail: everything you have put away. Held the same way
+    // the star is, and for the same reason, and it appears only when there is
+    // something in it, exactly like a letter.
+    //
+    // A drawer rather than a delete. Hiding an application you use twice a year
+    // has to be a cheap decision or nobody makes it, and it is only cheap if
+    // undoing it is one gesture away rather than a config file away.
+    readonly property string vault: "hidden"
+    readonly property string vaultIcon: "visibility_off"
+
+    // A section key drawn as a GLYPH rather than as itself, or "" when the key
+    // is already the thing to draw.
+    //
+    // The letters are text. The two keys that are not letters are icons: the
+    // star because Monocraft is a pixel face with no star in it and setting one
+    // renders the missing-glyph box, and the drawer because "hidden" is a word
+    // and the rail is a ruler with single marks on it.
+    function keyIcon(key: string): string {
+        if (key === root.star)
+            return root.starIcon;
+        if (key === root.vault)
+            return root.vaultIcon;
+        return "";
+    }
+
     readonly property Item maskItem: catcher
 
     // The blob the chassis melts in. This concept draws no background of its
@@ -84,9 +109,17 @@ Item {
     // The alphabet, as the applications actually installed make it. Everything
     // non-alphabetic lands under "#". Built from the data rather than from a
     // hardcoded A-Z, so the rail has no dead letters on it.
+    //
+    // WITHIN a letter, most-used first rather than alphabetical.
+    //
+    // The initial is the whole of what the rail asked for, so sorting by the
+    // rest of the name adds nothing: it is a second alphabetical sort applied to
+    // a set that was chosen alphabetically. Ranking by use makes the top of
+    // every letter the answer you probably wanted, which is what lets the first
+    // row under a letter be the selected one (see markSection).
     readonly property var byLetter: {
         const out = {};
-        for (const entry of Apps.all) {
+        for (const entry of Apps.visible) {
             const name = (entry.name ?? "").trim();
             if (!name)
                 continue;
@@ -97,15 +130,16 @@ Item {
             out[key].push(entry);
         }
         for (const key in out)
-            out[key].sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+            out[key] = Apps.byUse(out[key]);
         return out;
     }
 
     readonly property var letters: Object.keys(root.byLetter).sort()
     readonly property var favourites: Apps.search("").slice(0, root.favouriteCount)
 
-    // What the rail offers: the star, then whatever letters exist.
-    readonly property var keys: [root.star, ...root.letters]
+    // What the rail offers: the star, then whatever letters exist, then the
+    // drawer if anything is in it.
+    readonly property var keys: [root.star, ...root.letters, ...(Apps.buried.length ? [root.vault] : [])]
 
     // ONE FLAT LIST of rows, sections included, rather than a list of lists.
     //
@@ -143,24 +177,70 @@ Item {
                     entry: entry
                 });
         }
+        if (Apps.buried.length) {
+            out.push({
+                section: root.vault,
+                entry: null
+            });
+            for (const entry of Apps.buried)
+                out.push({
+                    section: "",
+                    entry: entry
+                });
+        }
         return out;
     }
 
-    // Where each section starts, in the list's own coordinates. Accumulated once
-    // per change rather than measured off the delegates, which only exist for
-    // the part of the list currently on screen.
-    readonly property var sectionY: {
+    // Where each section starts and how tall it is WITH its applications, in the
+    // list's own coordinates. Accumulated once per change rather than measured
+    // off the delegates, which only exist for the part of the list currently on
+    // screen.
+    //
+    // The height is the whole point: a section is a BLOCK, not a heading, and
+    // centring a letter means centring the letter and everything filed under it.
+    readonly property var sectionSpan: {
         const out = {};
         let y = 0;
+        let key = "";
         for (const row of root.rows) {
             if (row.section) {
-                out[row.section] = y;
+                key = row.section;
+                out[key] = {
+                    y: y,
+                    h: root.sectionPitch
+                };
                 y += root.sectionPitch;
             } else {
+                if (key)
+                    out[key].h += root.rowPitch;
                 y += root.rowPitch;
             }
         }
         return out;
+    }
+
+    // How tall the whole column wants to be. From the COUNT, never measured off
+    // the list: contentHeight is an estimate until every delegate has been
+    // built, and this is what decides whether the list is tall enough to need
+    // scrolling at all.
+    readonly property real needed: root.rowY(root.rows.length)
+
+    // SLACK UNDER THE LAST SECTION, so the last letter can sit in the middle of
+    // the view like every other one.
+    //
+    // Without it the bottom of the list is the bottom of the list: scrolling to
+    // Z pins Z's two applications to the floor, and the one section that cannot
+    // be centred is the one you reach by running the rail all the way down.
+    // Half a view minus half the block is exactly the room that costs.
+    readonly property real tail: {
+        if (root.needed <= list.height)
+            return 0;
+        for (let i = root.rows.length - 1; i >= 0; i--) {
+            const key = root.rows[i].section;
+            if (key)
+                return Math.max(0, (list.height - root.sectionSpan[key].h) / 2);
+        }
+        return 0;
     }
 
     // Which section the rail is pointing at, and where the HANDLE is: how far
@@ -176,13 +256,20 @@ Item {
     property real depth: 0
     property bool grabbing: false
 
-    // Whether hover is allowed to change the selection yet.
+    // WHICH ROW THE POINTER IS OVER, which is a different question from which
+    // row is selected, and this is the whole of the difference.
     //
-    // FALSE until the pointer MOVES. The panel arrives under a cursor that is
-    // not moving, so every row it lands on reports an enter and the launcher
-    // opens with whatever happened to be under the mouse selected. Arrival is
-    // not intent; motion is. Same reason the rail scrubs on motion only.
-    property bool hoverArmed: false
+    // Hover used to move the selection, guarded by a "has the pointer moved
+    // yet" flag. The guard could not work, because the pointer is not the only
+    // thing that moves: type a letter and the list under a perfectly still
+    // cursor is a different list, so a row you never pointed at arrives under
+    // the pointer, reports an enter, and takes the selection you were about to
+    // press Return on. The launcher opened whatever the mouse happened to be
+    // parked on.
+    //
+    // So hover is now only a LOOK. Selection moves for the keyboard, for the
+    // rail, and for a click, all of which are things you did on purpose.
+    property int hovered: -1
 
     // Being pulled out of the bottom edge by hand, and how far.
     //
@@ -219,6 +306,11 @@ Item {
     // scripted: a warped pointer delivers no motion inside a surface it is
     // already in, so nothing about the bow can be seen from the terminal
     // without this. Same reason `banditshell menu open` exists.
+    // A LATCH, because the CLI has no release: a terminal hands over a position
+    // and walks away, so something has to decide when the hold is over. A real
+    // hand arriving on the rail is that something, and so is the panel closing.
+    // Left latched, the bow never falls back to straight after a drag, because
+    // the drag was not what was holding it out.
     property bool scrubbing: false
 
     function scrubTo(fraction: real): void {
@@ -244,7 +336,10 @@ Item {
     // For `banditshell status`.
     readonly property real drawnHeight: panel.height
     readonly property int resultCount: root.rows.filter(r => !!r.entry).length
-    readonly property string scrollInfo: `${query.text ? "search" : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
+    // The VIEW and the TAIL as well as the position, because the whole question
+    // about this list is whether a section is in the middle of it, and that
+    // cannot be read off a scroll offset alone.
+    readonly property string scrollInfo: `${query.text ? "search" : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}`
 
     // What had the keyboard before this took it; see ListLauncher, same reason.
     property string restoreTo: ""
@@ -254,7 +349,9 @@ Item {
         root.shown = true;
         query.text = "";
         root.marked = "";
-        root.hoverArmed = false;
+        root.hovered = -1;
+        root.scrubbing = false;
+        root.grabbing = false;
         root.selected = root.firstApp(0, 1);
         list.reset();
         Qt.callLater(query.forceActiveFocus);
@@ -263,6 +360,8 @@ Item {
     function hide(): void {
         root.shown = false;
         query.focus = false;
+        root.scrubbing = false;
+        root.grabbing = false;
         Hypr.focusAddress(root.restoreTo);
         root.restoreTo = "";
     }
@@ -328,6 +427,34 @@ Item {
             list.scrollTo(top + height - list.height);
     }
 
+    // GO TO A SECTION: put its block in the middle of the view, and put the
+    // selection on the first thing in it.
+    //
+    // Centred rather than scrolled-to-top because a heading pinned to the top
+    // edge reads as the end of the list above it rather than as the start of the
+    // one below, and because the eye is already in the middle of the panel: that
+    // is where the rail's own handle is. Short sections then sit where you are
+    // looking instead of two hundred pixels above it.
+    //
+    // The selection follows because the sections are ranked by use now. The
+    // first row under a letter is the one you most likely meant, so arriving at
+    // the letter and pressing Return should open it without an arrow key in
+    // between.
+    function markSection(key: string): void {
+        root.marked = key;
+
+        const span = root.sectionSpan[key];
+        if (!span)
+            return;
+        list.scrollTo(span.y - Math.max(0, (list.height - span.h) / 2));
+
+        // The row straight after the heading, which is the first application
+        // filed under it. No search needed: the flat list puts them adjacent.
+        const at = root.rows.findIndex(row => row.section === key);
+        if (at >= 0 && root.rows[at + 1]?.entry)
+            root.selected = at + 1;
+    }
+
     // Which key a point on the rail is, computed from where it falls rather than
     // from a stack of hit areas: one area, one division, and it stays right
     // whatever the alphabet turns out to contain.
@@ -339,11 +466,24 @@ Item {
         const key = root.keys[index];
         if (key === root.marked)
             return;
-        root.marked = key;
-        list.scrollTo(root.sectionY[key] ?? 0);
+        root.markSection(key);
     }
 
-    onRowsChanged: root.selected = root.firstApp(0, 1)
+    // A new set of rows is a new selection, but not necessarily a new PLACE: a
+    // section still marked is where you are, so hiding something while browsing
+    // K leaves you in K rather than throwing you back to the favourites.
+    function reselect(): void {
+        // The row that WAS under the pointer is a different row now, or gone.
+        // Whatever the pointer is over, it will say so on the next enter.
+        root.hovered = -1;
+
+        if (root.marked && root.sectionSpan[root.marked])
+            root.markSection(root.marked);
+        else
+            root.selected = root.firstApp(0, 1);
+    }
+
+    onRowsChanged: root.reselect()
 
     Follow {
         id: rise
@@ -421,8 +561,9 @@ Item {
                 // the gesture the phone has, and it is what lets the pull depth
                 // mean anything.
                 onPressed: mouse => {
+                    // The hand takes the rail off the CLI; see root.scrubbing.
+                    root.scrubbing = false;
                     root.grabbing = true;
-                    root.hoverArmed = true;
                     root.grabAt(mouse.x, mouse.y);
                 }
 
@@ -443,7 +584,7 @@ Item {
                         required property string modelData
                         required property int index
 
-                        readonly property bool isStar: modelData === root.star
+                        readonly property string glyph: root.keyIcon(modelData)
                         readonly property bool active: modelData === root.marked
                         readonly property color tint: active ? Appearance.colour.accent : rail.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
 
@@ -464,19 +605,30 @@ Item {
                         width: rail.width
                         height: slot
 
+                        // Centred on the INK, not on the line box: a rail is a
+                        // ruler, and marks that are level with each other by
+                        // luck of which letters have descenders is not a ruler.
                         StyledText {
+                            id: letter
+
                             anchors.centerIn: parent
-                            visible: !mark.isStar
+                            anchors.horizontalCenterOffset: letter.inkOffsetX
+                            anchors.verticalCenterOffset: letter.inkOffsetY
+                            visible: !mark.glyph
                             text: mark.modelData
                             font.pixelSize: Appearance.font.size.small
                             color: mark.tint
                         }
 
                         Icon {
+                            id: markGlyph
+
                             anchors.centerIn: parent
-                            visible: mark.isStar
+                            anchors.horizontalCenterOffset: markGlyph.inkOffsetX
+                            anchors.verticalCenterOffset: markGlyph.inkOffsetY
+                            visible: !!mark.glyph
                             size: Appearance.font.size.small
-                            name: root.starIcon
+                            name: mark.glyph
                             color: mark.tint
                         }
                     }
@@ -496,7 +648,7 @@ Item {
                 // one. The lookup silently yielded undefined, and an undefined
                 // binding on `visible` leaves the property at its default, which
                 // is true: the star was drawn over every letter, always.
-                readonly property bool isStar: root.marked === root.star
+                readonly property string glyph: root.keyIcon(root.marked)
 
                 // BEYOND the deepest letter, not on top of it. The disc is the
                 // handle and the letters are the line it is pulling, so it has
@@ -512,19 +664,30 @@ Item {
                 opacity: bow.value
                 color: Appearance.colour.accent
 
+                // In the middle of the DISC, which means the middle of the
+                // letter, not the middle of the box the letter is delivered in.
+                // See StyledText.inkOffsetX.
                 StyledText {
+                    id: discLetter
+
                     anchors.centerIn: parent
-                    visible: !disc.isStar
+                    anchors.horizontalCenterOffset: discLetter.inkOffsetX
+                    anchors.verticalCenterOffset: discLetter.inkOffsetY
+                    visible: !disc.glyph
                     text: root.marked
                     font.pixelSize: Appearance.font.size.large
                     color: Appearance.colour.accentText
                 }
 
                 Icon {
+                    id: discGlyph
+
                     anchors.centerIn: parent
-                    visible: disc.isStar
+                    anchors.horizontalCenterOffset: discGlyph.inkOffsetX
+                    anchors.verticalCenterOffset: discGlyph.inkOffsetY
+                    visible: !!disc.glyph
                     size: Appearance.font.size.large
-                    name: root.starIcon
+                    name: disc.glyph
                     color: Appearance.colour.accentText
                 }
             }
@@ -583,9 +746,14 @@ Item {
                     selectedTextColor: Appearance.colour.accentText
                     clip: true
 
-                    // Typing means you have stopped browsing.
-                    onTextChanged: if (text)
-                        root.marked = ""
+                    // Typing means you have stopped browsing. The column is a new
+                    // column, so it starts at its own top rather than at
+                    // whatever offset the last letter left behind.
+                    onTextChanged: {
+                        if (text)
+                            root.marked = "";
+                        list.reset();
+                    }
 
                     Keys.onPressed: event => {
                         const page = Math.max(1, Math.floor(list.height / root.rowPitch) - 1);
@@ -620,10 +788,10 @@ Item {
                 }
             }
 
-            // EVERYTHING, in one column. The rail moves this; it never replaces
-            // it.
-            GlideList {
-                id: list
+            // THE ROOM the column has. The list is placed inside it rather than
+            // stretched to it; see list.height for why.
+            Item {
+                id: well
 
                 anchors.left: parent.left
                 anchors.right: rail.left
@@ -634,118 +802,283 @@ Item {
                 anchors.topMargin: Appearance.padding.large
                 anchors.bottomMargin: Appearance.padding.large
 
-                clip: true
-                model: ScriptModel {
-                    values: root.rows
+                StyledText {
+                    anchors.centerIn: parent
+                    visible: !root.rows.length
+                    text: query.text ? "nothing matches" : "no applications found"
+                    font.pixelSize: Appearance.font.size.normal
+                    color: Appearance.colour.textGhost
                 }
-                reuseItems: true
-                cacheBuffer: root.rowPitch * 4
 
-                delegate: Item {
-                    id: row
+                // EVERYTHING, in one column. The rail moves this; it never
+                // replaces it.
+                GlideList {
+                    id: list
 
-                    required property var modelData
-                    required property int index
+                    width: well.width
+                    anchors.verticalCenter: well.verticalCenter
 
-                    readonly property bool isSection: !!modelData.section
-                    readonly property var entry: modelData.entry
+                    // AS TALL AS IT NEEDS, up to the room available, and CENTRED
+                    // in what is left over.
+                    //
+                    // A search that returns three things used to leave them
+                    // pinned to the top of a panel the height of the screen,
+                    // with two feet of nothing under them: the results were as
+                    // far from the field you typed into as it is possible to put
+                    // them, and the panel read as mostly empty rather than as
+                    // mostly answer. Sized to the content, the three sit in the
+                    // middle of the column, where the eye already is.
+                    //
+                    // From the row COUNT, never from contentHeight: a ListView's
+                    // is an estimate until every delegate has been built, so
+                    // binding the height to it is a height that changes as you
+                    // scroll.
+                    height: Math.min(well.height, root.needed)
 
-                    width: list.width
-                    height: isSection ? root.sectionPitch : root.rowPitch
+                    clip: true
+                    model: ScriptModel {
+                        values: root.rows
+                    }
+                    reuseItems: true
+                    cacheBuffer: root.rowPitch * 4
 
-                    // The letter, in the MARGIN. Outside the icons rather than
-                    // above them, so every name in the list starts at one x and
-                    // the sections annotate a continuous column instead of
-                    // chopping it into blocks.
-                    StyledText {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: root.gutter
-
-                        visible: row.isSection && row.modelData.section !== root.star
-                        text: row.modelData.section
-                        font.pixelSize: Appearance.font.size.large
-                        color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+                    // The room under the last section, so it can be centred like
+                    // every other one. See root.tail.
+                    footer: Item {
+                        width: list.width
+                        height: root.tail
                     }
 
-                    Icon {
-                        anchors.left: parent.left
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: root.gutter
+                    delegate: Item {
+                        id: row
 
-                        visible: row.isSection && row.modelData.section === root.star
-                        size: Appearance.font.size.large
-                        name: root.starIcon
-                        color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
-                    }
+                        required property var modelData
+                        required property int index
 
-                    G2Rect {
-                        id: badge
+                        readonly property bool isSection: !!modelData.section
+                        readonly property var entry: modelData.entry
+                        readonly property string glyph: root.keyIcon(modelData.section)
 
-                        anchors.left: parent.left
-                        anchors.leftMargin: root.gutter
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: root.iconSize
-                        height: width
-                        // Half the width: the squircle at its roundest, which is
-                        // a circle that was never cut from one.
-                        radius: width / 2
+                        // THE THREE STATES, and they are three, not two. Chosen
+                        // is what Return opens; under is where the pointer
+                        // happens to be; away is filed in the drawer.
+                        readonly property bool chosen: index === root.selected
+                        readonly property bool under: index === root.hovered
+                        readonly property bool away: !!entry && Apps.isHidden(entry)
 
-                        visible: !row.isSection
-                        color: row.index === root.selected ? Appearance.colour.fillStrong : Appearance.colour.fill
+                        // WHICH END of the row the pointer is on, from the row's
+                        // own coordinates rather than from a second MouseArea
+                        // over the button.
+                        //
+                        // A nested hovering MouseArea TAKES the hover off the one
+                        // under it, so arriving at the button read as leaving the
+                        // row, which un-hovered the row, which took the button
+                        // away, which handed the hover back to the row, which
+                        // brought the button back. It flashed for as long as you
+                        // held still on it. One area cannot fight itself.
+                        readonly property bool atStow: pointer.containsMouse && pointer.mouseX >= stow.x
 
-                        Image {
-                            id: art
+                        width: list.width
+                        height: isSection ? root.sectionPitch : root.rowPitch
+
+                        // DECLARED FIRST, deliberately: declaration order is
+                        // input order in QML, so a row-wide target that comes
+                        // last sits on top of the control inside it and eats its
+                        // clicks.
+                        MouseArea {
+                            id: pointer
 
                             anchors.fill: parent
-                            anchors.margins: Appearance.padding.small
-                            source: row.entry?.icon ? Quickshell.iconPath(row.entry.icon, true) : ""
-                            fillMode: Image.PreserveAspectFit
-                            asynchronous: true
-                            visible: status === Image.Ready
-                            sourceSize.width: width * Screen.devicePixelRatio
-                            sourceSize.height: height * Screen.devicePixelRatio
+                            enabled: !row.isSection
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                            // A LOOK, and only a look. See root.hovered.
+                            onEntered: root.hovered = row.index
+                            onExited: if (root.hovered === row.index)
+                                root.hovered = -1
+
+                            onClicked: mouse => {
+                                // Right anywhere on the row does what the button
+                                // does, without having to aim at it.
+                                if (mouse.button === Qt.RightButton || row.atStow) {
+                                    Apps.setHidden(row.entry, !row.away);
+                                    return;
+                                }
+                                root.selected = row.index;
+                                root.accept();
+                            }
+                        }
+
+                        // The letter, in the MARGIN. Outside the icons rather than
+                        // above them, so every name in the list starts at one x and
+                        // the sections annotate a continuous column instead of
+                        // chopping it into blocks.
+                        StyledText {
+                            id: heading
+
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: heading.inkOffsetY
+                            width: root.gutter
+
+                            visible: row.isSection && !row.glyph
+                            text: row.modelData.section
+                            font.pixelSize: Appearance.font.size.large
+                            color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
                         }
 
                         Icon {
-                            anchors.centerIn: parent
-                            visible: !art.visible
-                            size: root.iconSize / 2
-                            name: "apps"
-                            color: Appearance.colour.textDim
-                        }
-                    }
+                            id: headingGlyph
 
-                    StyledText {
-                        anchors.left: badge.right
-                        anchors.leftMargin: Appearance.padding.large
-                        anchors.right: parent.right
-                        anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenterOffset: headingGlyph.inkOffsetY
+                            width: root.gutter
 
-                        visible: !row.isSection
-                        text: row.entry?.name ?? ""
-                        font.pixelSize: Appearance.font.size.normal
-                        color: row.index === root.selected ? Appearance.colour.text : Appearance.colour.textDim
-                        elide: Text.ElideRight
-                    }
+                            visible: row.isSection && !!row.glyph
+                            size: Appearance.font.size.large
+                            name: row.glyph
+                            color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+                        }
 
-                    MouseArea {
-                        anchors.fill: parent
-                        enabled: !row.isSection
-                        hoverEnabled: true
-                        cursorShape: Qt.PointingHandCursor
-                        // Motion arms it; arrival alone never selects. See
-                        // root.hoverArmed.
-                        onPositionChanged: {
-                            root.hoverArmed = true;
-                            root.selected = row.index;
+                        G2Rect {
+                            id: badge
+
+                            anchors.left: parent.left
+                            anchors.leftMargin: root.gutter
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: root.iconSize
+                            height: width
+                            // Half the width: the squircle at its roundest, which is
+                            // a circle that was never cut from one.
+                            radius: width / 2
+
+                            visible: !row.isSection
+                            // The fill ladder is HOVER, and the ring is
+                            // SELECTION. They have to be told apart at a glance
+                            // now that they are no longer the same thing: one
+                            // step along a fill ladder is not a difference you
+                            // can see, and a boundary is the one way to mark a
+                            // control without painting a disc that shouts.
+                            color: row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
+                            stroke: row.chosen ? Appearance.colour.accent : "transparent"
+                            strokeWidth: row.chosen ? 2 : 0
+
+                            Image {
+                                id: art
+
+                                anchors.fill: parent
+                                anchors.margins: Appearance.padding.small
+                                source: row.entry?.icon ? Quickshell.iconPath(row.entry.icon, true) : ""
+                                fillMode: Image.PreserveAspectFit
+                                asynchronous: true
+                                visible: status === Image.Ready
+                                sourceSize.width: width * Screen.devicePixelRatio
+                                sourceSize.height: height * Screen.devicePixelRatio
+                            }
+
+                            Icon {
+                                id: fallbackGlyph
+
+                                anchors.centerIn: parent
+                                anchors.horizontalCenterOffset: fallbackGlyph.inkOffsetX
+                                anchors.verticalCenterOffset: fallbackGlyph.inkOffsetY
+                                visible: !art.visible
+                                size: root.iconSize / 2
+                                name: "apps"
+                                color: Appearance.colour.textDim
+                            }
                         }
-                        onEntered: if (root.hoverArmed)
-                            root.selected = row.index
-                        onClicked: {
-                            root.selected = row.index;
-                            root.accept();
+
+                        StyledText {
+                            anchors.left: badge.right
+                            anchors.leftMargin: Appearance.padding.large
+                            // Stops at the button, whether or not the button is
+                            // showing: a name that reflows the moment a cursor
+                            // crosses it is worse than one that is short.
+                            anchors.right: stow.left
+                            anchors.rightMargin: Appearance.padding.normal
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            visible: !row.isSection
+                            text: row.entry?.name ?? ""
+                            font.pixelSize: Appearance.font.size.normal
+                            color: row.chosen || row.under ? Appearance.colour.text : Appearance.colour.textDim
+                            elide: Text.ElideRight
                         }
+
+                        // PUT AWAY, or put back.
+                        //
+                        // Under the pointer only. A launcher is a list you scan,
+                        // and a column of identical buttons down the right edge
+                        // is a column you have to read past every time; one that
+                        // is only ever on the row you are already looking at
+                        // costs nothing to have. Right-clicking the row is the
+                        // same action for anyone who has found it.
+                        G2Rect {
+                            id: stow
+
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: root.iconSize * 0.72
+                            height: width
+                            radius: width / 2
+
+                            visible: !row.isSection
+                            opacity: row.under ? 1 : 0
+                            color: row.atStow ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+
+                            // BOTH EASED. A control that arrives faded in and
+                            // then snaps its contents to a new colour reads as
+                            // two events, and the second one is a flash. It is
+                            // one thing lighting up, so it lights up at one
+                            // speed.
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
+
+                            Icon {
+                                id: stowGlyph
+
+                                anchors.centerIn: parent
+                                anchors.horizontalCenterOffset: stowGlyph.inkOffsetX
+                                anchors.verticalCenterOffset: stowGlyph.inkOffsetY
+                                size: Appearance.font.size.small
+                                name: row.away ? "visibility" : root.vaultIcon
+                                // One step, not a jump to full strength: the
+                                // disc under it is already saying the pointer is
+                                // here, and both of them shouting is the flash.
+                                color: row.atStow ? Appearance.colour.text : Appearance.colour.textFaint
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+                            }
+                        }
+
+                        // Said once the pointer has clearly settled on the
+                        // button, which is what Tooltips is for; asking on the
+                        // way past would put a label on every row you cross.
+                        onAtStowChanged: {
+                            if (row.atStow)
+                                Tooltips.request(row, row.away ? "put back in the list" : "hide from the list");
+                            else
+                                Tooltips.release(row);
+                        }
+
+                        Component.onDestruction: Tooltips.release(row)
                     }
                 }
             }

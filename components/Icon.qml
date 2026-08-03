@@ -63,11 +63,30 @@ Text {
     verticalAlignment: Text.AlignVCenter
     horizontalAlignment: Text.AlignHCenter
 
+    // OPTICAL CENTRING, for a mark placed inside a shape. See
+    // StyledText.inkOffsetX for what these are and why a centred anchor does not
+    // do it on its own.
+    //
+    // Measured off `text` rather than `name`, because what is drawn may be the
+    // fallback or a raw brand glyph, and it is the DRAWN thing that has to sit
+    // in the middle. From contentWidth rather than width, because this one is
+    // centre-aligned: the ink is measured from where the string actually starts,
+    // and that is the middle of the box, not its left edge.
+    readonly property real inkOffsetX: root.contentWidth / 2 - (ink.tightBoundingRect.x + ink.tightBoundingRect.width / 2)
+    readonly property real inkOffsetY: root.height / 2 - (root.baselineOffset + ink.tightBoundingRect.y + ink.tightBoundingRect.height / 2)
+
     TextMetrics {
         id: probe
 
         font: root.font
         text: root.name
+    }
+
+    TextMetrics {
+        id: ink
+
+        font: root.font
+        text: root.text
     }
 
     onResolvedChanged: if (!resolved && name && !root.glyph)

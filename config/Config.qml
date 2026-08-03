@@ -377,6 +377,21 @@ Singleton {
                 // tree; this decides which one the shell builds.
                 concept: "list",
 
+                // Applications PUT AWAY, keyed by desktop entry id.
+                //
+                // `NoDisplay` already removes the entries that admit they are
+                // not applications, and it is not enough: every toolkit ships a
+                // settings panel, every runtime an inspector, every font package
+                // a viewer, and they all declare themselves perfectly launchable.
+                // This is where you say otherwise. Nothing is lost, only filed:
+                // the rail's last mark is everything in here, and putting one
+                // back is the same gesture that put it away.
+                //
+                // A map rather than a list for the same reason `apps.icons` is
+                // one: Quickshell's IPC reads a bracketed argument as an argument
+                // LIST and splats it, so a list can never be set from the CLI.
+                hidden: ({}),
+
                 niagara: {
                     width: 760,
                     // How big an application's mark is in the column.
@@ -390,8 +405,16 @@ Singleton {
                     // How far the rail can be pulled toward the middle, and how
                     // many marks either side come with it. A CEILING, not a
                     // fixed depth: how far you actually pull is the gesture.
+                    //
+                    // The spread is the Gaussian's sigma IN MARKS, so it means
+                    // the same thing whatever the alphabet turns out to contain.
+                    // Narrow, the rail bent at one point and the letters two
+                    // above and below it barely moved, which reads as a kink
+                    // rather than as a line being drawn aside. Wide, most of the
+                    // rail comes with the hand and the taper has nowhere it can
+                    // be seen to start.
                     bow: 340,
-                    bowSpread: 5,
+                    bowSpread: 9,
                     // The disc that shows the mark you are on.
                     badge: 72
                 },

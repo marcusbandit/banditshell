@@ -29,6 +29,54 @@ Singleton {
 
     readonly property var all: DesktopEntries.applications.values.filter(e => !e.noDisplay)
 
+    // WHAT YOU PUT AWAY, keyed by desktop entry id.
+    //
+    // `NoDisplay` is the freedesktop answer to "this entry is not a thing a
+    // human launches", and the honour system it runs on is not widely observed:
+    // a machine with a compiler on it has a dozen entries for inspectors,
+    // settings panels and font viewers, all of them cheerfully displayable. So
+    // the launcher gets a second filter that answers to you rather than to the
+    // package.
+    //
+    // Filed, not deleted. `buried` is still a list, still sorted, and still one
+    // gesture from coming back; see `launcher.hidden` in config.json.
+    readonly property var hidden: Config.values.launcher.hidden
+
+    function isHidden(entry: var): bool {
+        return !!root.hidden[entry?.id ?? ""];
+    }
+
+    function setHidden(entry: var, away: bool): void {
+        const id = entry?.id;
+        if (!id)
+            return;
+
+        // A NEW object, for the same reason `record` builds one: QML only
+        // notices assignment, and Config.set copies what it is given.
+        const next = Object.assign({}, root.hidden);
+        if (away)
+            next[id] = true;
+        else
+            delete next[id];
+        Config.set("launcher.hidden", next);
+    }
+
+    // The two halves, derived rather than maintained, so hiding one thing
+    // updates every list that shows applications at once.
+    readonly property var visible: root.all.filter(e => !root.isHidden(e))
+    readonly property var buried: root.all.filter(e => root.isHidden(e)).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
+
+    // Most-used first, alphabetical between equals.
+    //
+    // The same tiebreak `search` applies WITHIN a tier, offered on its own for
+    // the places that group before they rank. A letter's section is already
+    // narrowed by its initial, so alphabetical order inside it says nothing you
+    // did not just ask for; which of them you actually open does.
+    function byUse(entries: var): var {
+        const now = Date.now();
+        return entries.slice().sort((a, b) => root.frecencyAt(b, now) - root.frecencyAt(a, now) || (a.name ?? "").localeCompare(b.name ?? ""));
+    }
+
     // What KIND of thing a window is, as one glyph.
     //
     // Keyed by freedesktop CATEGORY, not by application name. A name list is a
@@ -333,9 +381,12 @@ Singleton {
     // Everything that matches, best first. NOT truncated: the list scrolls, and
     // a cap is the wrong answer to "there are a lot of results" when the top of
     // the list is already the answer you wanted.
+    //
+    // Over `visible`, so something put away stays away when you go looking for
+    // it by name too. A filter that a search can walk around is not a filter.
     function search(needle: string): var {
         const now = Date.now();
-        return root.all.map(e => ({
+        return root.visible.map(e => ({
                     entry: e,
                     tier: root.tier(e, needle),
                     used: root.frecencyAt(e, now),

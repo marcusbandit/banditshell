@@ -10,6 +10,8 @@ import qs.config
 //      Appearance.font.size, never from an inline number.
 //      See ~/.claude/rules/type-scale.md.
 Text {
+    id: root
+
     font.family: Appearance.font.family
     // `small` is the body size. The pixel grid has no step between 9 and 18, so
     // the bottom of the ladder is the workhorse and the tiers above it are for
@@ -24,4 +26,30 @@ Text {
     // used.
     lineHeight: Math.round(font.pixelSize * 4 / 3)
     lineHeightMode: Text.FixedHeight
+
+    // OPTICAL CENTRING, for text placed INSIDE a shape.
+    //
+    // `anchors.centerIn` centres the text ITEM, and a text item is a line box:
+    // as tall as the ascent plus the descent, as wide as the advance. A glyph
+    // fills neither of those evenly. "Z" has no descender, so the room the line
+    // box reserves for one pushes it visibly high, and a character's side
+    // bearings are not symmetric either, so it sits off to one side as well. The
+    // letter on the rail's handle was centred by anchors and level with nothing.
+    //
+    // These are how far the INK's middle is from the box's middle. Hand them to
+    // horizontalCenterOffset / verticalCenterOffset and the glyph lands where it
+    // LOOKS centred, at any size, for any string, without a nudge value tuned by
+    // eye for one font and quietly wrong for the next.
+    //
+    // For a mark in a shape, not for running text: a paragraph wants its
+    // baselines on the grid, which is exactly what this moves off it.
+    readonly property real inkOffsetX: root.width / 2 - (ink.tightBoundingRect.x + ink.tightBoundingRect.width / 2)
+    readonly property real inkOffsetY: root.height / 2 - (root.baselineOffset + ink.tightBoundingRect.y + ink.tightBoundingRect.height / 2)
+
+    TextMetrics {
+        id: ink
+
+        font: root.font
+        text: root.text
+    }
 }
