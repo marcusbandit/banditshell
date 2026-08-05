@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import qs.modules.menu.content
 
 // What the sidebar contains.
 //
@@ -22,23 +23,55 @@ Item {
     property alias status: status
     property alias tray: tray
 
+    // What a full summoning pull measures against, bound by whoever owns the
+    // surface (the window can see the screen; this file cannot) and passed
+    // straight down to the clock's date. Zero until wired, which is safe: the
+    // Pull at the far end guards its own travel.
+    property real pullSpan: 0
+
     signal requested(string key)
     signal released
 
-    // Every key that opens a menu, in the order they are down the bar. The CLI
-    // lists these and opens by name, so a tray item is drivable from a terminal
-    // exactly as a gauge is.
-    readonly property var menuItems: [...tray.items, ...status.items]
+    // THE CALENDAR'S OPENERS, forwarded from the clock the way the two groups'
+    // requests are: the sidebar is the one thing the window talks to, so a
+    // control this deep says what happened and this file repeats it upward.
+    // `deliberate` mirrors the gauges' flag so the window can treat a tap on
+    // the date exactly as it treats a tap on a gauge, which is what lets a
+    // second tap on a pinned calendar close it.
+    signal calendarRequested(bool deliberate)
+    signal calendarPulled
+    signal calendarPullEnded(bool open)
+
+    // Every key that opens a menu, in the order they are down the bar: the
+    // tray, then the clock's calendar, then the gauges. The CLI lists these
+    // and opens by name, so the calendar is drivable from a terminal exactly
+    // as a tray item or a gauge is.
+    readonly property var menuItems: [...tray.items, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
 
+    // The calendar's row, in the exact shape the tray and the gauges declare
+    // theirs, so the menu layer and the CLI cannot tell it is not one of them.
+    // The title is the full date rather than the word "calendar", because a
+    // panel's first line should answer a question, and "what is today" is the
+    // one a calendar is opened for (DESIGN.md 2.4: the same information, in a
+    // fuller format, where there is room for it).
+    readonly property var calendarEntry: ({
+            key: "calendar",
+            title: Qt.formatDateTime(clock.now, "dddd d MMMM"),
+            body: calendarMenu
+        })
+
     // WHICH GROUP OWNS A KEY, answered here so nothing above the sidebar has to
-    // know there is more than one. Asked in the same order the bar is read in.
+    // know there is more than one. Asked in the same order the bar is read in;
+    // the calendar answers between the two groups because that is where the
+    // clock sits, and it is a straight comparison rather than a search because
+    // the clock is one control, not a list of them.
     function entryFor(key: string): var {
-        return tray.entryFor(key) ?? status.entryFor(key);
+        return tray.entryFor(key) ?? (key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
     }
 
     function iconFor(key: string): Item {
-        return tray.iconFor(key) ?? status.iconFor(key);
+        return tray.iconFor(key) ?? (key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
     // FULL WIDTH, like the workspaces below and for a related reason: a group in
@@ -81,11 +114,22 @@ Item {
 
         spacing: Appearance.padding.large
 
-        // Still centred, and now centred in the band rather than in a column the
-        // clock itself was setting the width of. Same line either way: the
-        // column used to be centred in the band too.
+        // FULL WIDTH now, where it used to centre itself: the date became a
+        // control aimed at across the whole band, and a target can only be as
+        // wide as the thing that was given the width (StatusIcon's lesson,
+        // again). The clock centres its own drawing, so nothing on screen
+        // moves; only how much of the band answers a press did.
         Clock {
-            anchors.horizontalCenter: parent.horizontalCenter
+            id: clock
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            pullSpan: root.pullSpan
+
+            onCalendarRequested: deliberate => root.calendarRequested(deliberate)
+            onCalendarPulled: root.calendarPulled()
+            onCalendarPullEnded: open => root.calendarPullEnded(open)
         }
 
         StatusIcons {
@@ -97,5 +141,16 @@ Item {
             onRequested: key => root.requested(key)
             onReleased: root.released()
         }
+    }
+
+    // The calendar's body, declared here rather than in either group because
+    // the entry that names it is this file's own: the clock is one control
+    // with one menu, not a group with a list. The menu layer is handed the
+    // Component and never looks inside, the same contract every gauge menu
+    // satisfies from StatusIcons.
+    Component {
+        id: calendarMenu
+
+        CalendarMenu {}
     }
 }
