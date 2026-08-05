@@ -10,8 +10,12 @@
 #   banditshell menu list|open <key>|close|toggle <key>|current|hover
 #   banditshell launcher toggle|open|close|scrub <0..1>
 #   banditshell session toggle|open|close
-#   banditshell settings toggle|open|close|pull|put|status
+#   banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status
 #                                pull = shell -> window, put = window -> shell
+#   banditshell notifications toggle|open|close|clear|status
+#   banditshell notch toggle|open|close|status
+#   banditshell calendar         toggle the calendar menu (menu toggle calendar)
+#   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
 #   banditshell status
@@ -21,6 +25,9 @@
 #   banditshell demo <key>       open a menu, screenshot it, close it
 #   banditshell lockpreview      draw the lock screen WITHOUT locking, and shoot it
 #   banditshell shaders          recompile components/blob/*.frag to .qsb
+#
+# Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
+# docs/hyprland-binds.example.conf is a ready-made set to copy or source.
 
 set -euo pipefail
 
@@ -105,8 +112,61 @@ session)
     ipc session "${1:-toggle}"
     ;;
 
+# The two verbs that take a value get spelled out; the rest pass through the
+# way session's do. `open` always sends its page and screen arguments, empty
+# when none was given, because the IPC function declares the parameters and an
+# omitted argument does not read as an empty one on the other side. The screen
+# goes second so `settings open icons` keeps meaning what it always meant; a
+# caller that wants to name a screen without naming a page passes "" for the
+# page, the same shape `menu open <key> <screen>` already has.
 settings)
-    ipc settings "${1:-toggle}"
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    toggle | close | pull | put | status) ipc settings "$sub" ;;
+    open) ipc settings open "${1:-}" "${2:-}" ;;
+    page)
+        [ $# -ge 1 ] || { echo "usage: banditshell settings page <key>" >&2; exit 2; }
+        ipc settings page "$1"
+        ;;
+    *) echo "usage: banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status" >&2; exit 2 ;;
+    esac
+    ;;
+
+notifications)
+    ipc notifications "${1:-toggle}"
+    ;;
+
+notch)
+    ipc notch "${1:-toggle}"
+    ;;
+
+# Sugar. The calendar is an ordinary menu with the key "calendar", registered
+# in the sidebar like the rest, so no IPC target of its own exists or should:
+# this is `menu toggle calendar` with fewer words, because the thing you bind
+# to a key deserves a shorter name than the thing it is implemented as. The
+# trailing "" is the screen argument every menu verb carries.
+calendar)
+    ipc menu toggle calendar ""
+    ;;
+
+# `up` and `down` move by the shell's configured step (the same one the wheel
+# and the sound menu use) and take an optional count of steps; `set` speaks
+# percent of the normal range, so 100 is full volume and anything above it is
+# amplification up to the shell's ceiling.
+volume)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    up | down) ipc volume "$sub" "${1:-}" ;;
+    set)
+        [ $# -ge 1 ] || { echo "usage: banditshell volume set <percent>" >&2; exit 2; }
+        ipc volume set "$1"
+        ;;
+    mute) ipc volume mute "${1:-}" ;;
+    status) ipc volume status ;;
+    *) echo "usage: banditshell volume up|down [n]|set <pct>|mute [on|off]|status" >&2; exit 2 ;;
+    esac
     ;;
 
 # No `unlock` here, and that is not an oversight: see the lock handler in

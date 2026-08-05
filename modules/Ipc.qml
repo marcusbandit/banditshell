@@ -5,7 +5,10 @@ import Quickshell.Io
 import qs.config
 import qs.services
 
-// The shell's control surface, for the `banditshell` CLI and later for keybinds.
+// The shell's control surface, for the `banditshell` CLI, and through the CLI
+// for keybinds: a Hyprland bind is an exec of a command line, so everything
+// reachable here is a hotkey away without the shell knowing or caring which
+// key. docs/hyprland-binds.example.conf is a worked set to copy from.
 //
 // It exists mostly so menus can be driven without a mouse. Hover is a fine way
 // to open something and an impossible one to test: you cannot script a cursor
@@ -165,6 +168,100 @@ Scope {
         }
     }
 
+    // The notification tray. The CLI takes the pull gesture's seat, not
+    // hover's: it writes the PIN, the one input in the tray's presence union
+    // that means "deliberately held out" (see NotificationTray.expanded). A
+    // separate shown flag written from here was rejected because presence is a
+    // derived union with exactly one deliberate writer; a second one would
+    // fight the gesture, and a tray opened by hotkey would stop answering the
+    // pull that is supposed to put it away. Through the pin, a hotkey and a
+    // pull land in the same state and leave by the same doors.
+    IpcHandler {
+        target: "notifications"
+
+        function open(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.notifications.pinned = true;
+            return "open";
+        }
+
+        // The pin is withdrawn on every screen, like `menu close`: "make it go
+        // away" is not a request about a particular monitor. The tray may
+        // still stand a moment where a cursor is resting on it, and that is
+        // hover's vote to cast, not this one's to override.
+        function close(): string {
+            for (const win of Shell.windows)
+                win.notifications.pinned = false;
+            return "closed";
+        }
+
+        function toggle(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.notifications.pinned = !win.notifications.pinned;
+            return win.notifications.pinned ? "open" : "closed";
+        }
+
+        // Through the service rather than the tray, because the history is one
+        // list for the whole session whichever screen happens to draw it.
+        function clear(): string {
+            Notifs.clear();
+            return "cleared";
+        }
+
+        // Pin and presence SEPARATELY, because them disagreeing is the failure
+        // this line exists to catch: expanded without the pin is hover holding
+        // the tray, which is fine, and pinned without expanded is the derived
+        // union dropping a term, which is a bug you could otherwise only infer.
+        function status(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            return `count=${Notifs.count} pinned=${win.notifications.pinned} expanded=${win.notifications.expanded}`;
+        }
+    }
+
+    // The top notch, the same shape as the tray above and for the same reason:
+    // the CLI writes the PIN and nothing else. `active` is the notch's derived
+    // union (hover, pull, pin), so `open` holds the notch out the way a pull
+    // does, and a cursor already resting on it keeps its own say when the pin
+    // is taken back.
+    IpcHandler {
+        target: "notch"
+
+        function open(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.notch.pinned = true;
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.notch.pinned = false;
+            return "closed";
+        }
+
+        function toggle(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.notch.pinned = !win.notch.pinned;
+            return win.notch.pinned ? "open" : "closed";
+        }
+
+        function status(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            return `pinned=${win.notch.pinned} active=${win.notch.active}`;
+        }
+    }
+
     // The settings page. Driven off the singleton rather than off a window,
     // unlike everything above it: the page is ONE page for the whole session,
     // which screen draws it is its own business, and half the time no shell
@@ -177,14 +274,56 @@ Scope {
             return Settings.open ? "open" : "closed";
         }
 
-        function open(): string {
-            Settings.show();
-            return "open";
+        // `page` is optional and names what the panel opens TO. Validated here
+        // rather than trusted to the service, because the caller is a keybind
+        // or a script: a typo that silently opened the panel on whatever page
+        // it last showed would look exactly like success. Naming a page also
+        // has to mean naming it when the panel is ALREADY up, so setPage runs
+        // as well: show carries the page for the summon, and setPage covers
+        // the panel that was open all along, which show leaves untouched.
+        //
+        // `screen` is optional too and names where the summon lands, the same
+        // way `menu open` takes one: a gesture opens things under the cursor,
+        // but IPC has no cursor, and this used to hand show a hardcoded ""
+        // so a script could only ever summon the panel onto the focused
+        // screen. That made the panel impossible to photograph whenever the
+        // focused screen was busy (a fullscreen window draws over every layer
+        // surface), which is exactly the kind of untestability this file
+        // exists to remove. Validated for the page's reason: show accepts any
+        // string and would assign the panel to a screen that does not exist,
+        // drawing it nowhere while this function reports "open". Only the
+        // SUMMON is steered; a panel already up stays on its screen, matching
+        // how show treats the argument, because teleporting a panel someone
+        // is looking at is a stranger outcome than ignoring the request.
+        function open(page: string, screen: string): string {
+            if (page && !Settings.pages.some(p => p.key === page))
+                return `no such page: ${page} (have: ${Settings.pages.map(p => p.key).join(", ")})`;
+            if (screen && !Shell.forScreen(screen))
+                return `no shell window on screen: ${screen}`;
+            Settings.show(screen, page);
+            if (page)
+                Settings.setPage(page);
+            return page ? `open at ${page}` : "open";
         }
 
         function close(): string {
             Settings.hide();
             return "closed";
+        }
+
+        // Change the page without touching presence, so a keybind can walk the
+        // panel while it stays put. An unknown key answers with the keys that
+        // exist: they live in the service, and a CLI error that does not name
+        // the valid inputs sends you source diving for a string. Bare, it
+        // reads the page back instead of erroring, because "which page is it
+        // on" is a question worth one word.
+        function page(key: string): string {
+            if (!key)
+                return Settings.page || "no page";
+            if (!Settings.pages.some(p => p.key === key))
+                return `no such page: ${key} (have: ${Settings.pages.map(p => p.key).join(", ")})`;
+            Settings.setPage(key);
+            return `page ${key}`;
         }
 
         // The two halves of the handover, by name rather than as a flag, for the
@@ -215,7 +354,89 @@ Scope {
         // feature has is the two halves disagreeing about who is drawing, and
         // from a screenshot that looks identical to nothing being open at all.
         function status(): string {
-            return [`open       ${Settings.open}`, `held by    ${Settings.floating ? "a window" : "the shell"}`, `screen     ${Settings.screenName || "-"}`, `window     ${Settings.windowOpen ? Settings.address || "opening" : "none"}`, `placed     ${Settings.placed}`, `handoff    ${Settings.handoff ? `${Settings.handoff.x},${Settings.handoff.y} ${Settings.handoff.w}x${Settings.handoff.h}` : "-"}`].join("\n");
+            return [`open       ${Settings.open}`, `page       ${Settings.page || "-"}`, `held by    ${Settings.floating ? "a window" : "the shell"}`, `screen     ${Settings.screenName || "-"}`, `window     ${Settings.windowOpen ? Settings.address || "opening" : "none"}`, `placed     ${Settings.placed}`, `handoff    ${Settings.handoff ? `${Settings.handoff.x},${Settings.handoff.y} ${Settings.handoff.w}x${Settings.handoff.h}` : "-"}`].join("\n");
+        }
+    }
+
+    // One wheel notch, signed, shared by `up` and `down` so the comment about
+    // what a step IS lives once. The step is Appearance's volumeStep, the same
+    // five points the wheel and the sound menu's slider move by, because a
+    // key, a wheel and a slider are one control on one value and a keybind
+    // that moved by its own private amount would be a second control. `count`
+    // lets a bind be a bigger jump without becoming a different verb;
+    // anything unparseable or non-positive is one step.
+    //
+    // The reply is the value that was ASKED for, not the node read back:
+    // PipeWire confirms on its own schedule, and the property on this same
+    // tick can still be the old number wearing a straight face.
+    function nudgeVolume(sign: int, count: string): string {
+        if (!Audio.ready)
+            return "no audio sink";
+        const n = parseFloat(count);
+        const steps = n > 0 ? n : 1;
+        const target = Audio.quantise(Audio.volume + sign * steps * Appearance.sizes.volumeStep);
+        Audio.setVolume(target);
+        return `${Math.round(target * 100)}%`;
+    }
+
+    // The output volume, driven through the Audio singleton the way settings
+    // is driven through its own: sound is one value for the session, not a
+    // per-window thing, so there is no window to guard for. No drawing here
+    // either, and none needed: the volume rail's linger restarts on ANY change
+    // to Audio.volume, whoever made it, so a hotkey through this handler gets
+    // the same on-screen readout a wheel notch gets, for free.
+    IpcHandler {
+        target: "volume"
+
+        function up(count: string): string {
+            return root.nudgeVolume(1, count);
+        }
+
+        function down(count: string): string {
+            return root.nudgeVolume(-1, count);
+        }
+
+        // `pct` is percent OF THE NORMAL RANGE: 100 means volume 1.0, full and
+        // unamplified, so the numbers here mean what a mixer's numbers mean
+        // everywhere else. Percent of the ceiling was rejected because then
+        // `set 100` would be +50% amplification and nothing else on the
+        // machine would agree with this CLI about what 67 sounds like. Values
+        // above 100 still work and reach into the same headroom the slider
+        // has; quantise clamps them to the ceiling.
+        function set(pct: string): string {
+            if (!Audio.ready)
+                return "no audio sink";
+            const n = parseFloat(pct);
+            if (!isFinite(n))
+                return `not a number: ${pct}`;
+            const target = Audio.quantise(n / 100);
+            Audio.setVolume(target);
+            return `${Math.round(target * 100)}%`;
+        }
+
+        // Bare, it toggles, which is what a mute KEY means. `on` and `off`
+        // exist for scripts, which cannot see the screen: a toggle is only a
+        // mute button when you know the state it started from. The reply is
+        // the state that was asked for, computed here rather than read back,
+        // for the same reason the nudge replies with its target.
+        function mute(state: string): string {
+            if (!Audio.ready)
+                return "no audio sink";
+            if (state && state !== "on" && state !== "off")
+                return `mute takes on or off, not: ${state}`;
+            const want = state === "on" || (state !== "off" && !Audio.muted);
+            if (want !== Audio.muted)
+                Audio.toggleMute();
+            return want ? "muted" : "unmuted";
+        }
+
+        // The ceiling is part of the answer because the range above 100 is
+        // real: a readout of 130% is only alarming if you cannot see that the
+        // scale runs to 150.
+        function status(): string {
+            if (!Audio.ready)
+                return "no audio sink";
+            return `volume=${Math.round(Audio.volume * 100)}% muted=${Audio.muted} ceiling=${Math.round(Audio.maxVolume * 100)}%`;
         }
     }
 
