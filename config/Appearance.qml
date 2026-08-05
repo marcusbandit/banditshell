@@ -269,6 +269,13 @@ Singleton {
         readonly property int dragThreshold: root.cfg.control.dragThreshold
         // The pull gesture's direction gate, one tolerance for a corner and one
         // for an edge, and its full-pull distance; see components/Pull.qml.
+        // The feel tokens: recognition, commitment, reversal and the throw.
+        // See Config's note; a gesture is a feel, and these are the rules that
+        // create it.
+        readonly property int pullSlack: root.cfg.control.pullSlack
+        readonly property real pullCommit: root.cfg.control.pullCommit
+        readonly property real pullReversal: root.cfg.control.pullReversal
+        readonly property real flickVelocity: root.cfg.control.flickVelocity
         readonly property int pullAngleCorner: root.cfg.control.pullAngleCorner
         readonly property int pullAngleEdge: root.cfg.control.pullAngleEdge
         readonly property real pullTravel: root.cfg.control.pullTravel
@@ -295,6 +302,7 @@ Singleton {
         readonly property int volumeRailLength: root.cfg.volume.railLength
         readonly property int volumeRailWidth: root.cfg.volume.railWidth
         readonly property int volumeLinger: root.cfg.volume.linger
+        readonly property real volumeGrabFraction: root.cfg.volume.grabFraction
 
         // The power panel, on the right edge. See modules/session/SessionMenu.qml.
         readonly property int sessionButton: root.cfg.session.button

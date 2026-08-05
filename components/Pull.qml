@@ -117,10 +117,17 @@ MouseArea {
     // A press that never became a pull and never went the wrong way.
     signal tapped
 
-    // Far enough to be a gesture rather than the wobble inside a click. The same
-    // number the bottom edge uses, because it is the same question being asked
-    // of the same hand.
-    readonly property real slack: Appearance.padding.large
+    // Far enough to be a gesture rather than the wobble inside a click, and NOT
+    // A PIXEL FURTHER. This read a padding tier, twenty-four pixels, on the
+    // argument that it was the number the bottom edge already used; a layout
+    // tier is the wrong unit for a feel question, and twenty-four was where
+    // half the dead feel lived. A short flick ended inside the slack and did
+    // nothing at all, and a long pull spent its first inch unacknowledged, the
+    // hand already moving and the surface still pretending nothing had begun.
+    // Recognition is what STARTS the tracking, and tracking is the entire
+    // signal that the gesture is working, so recognition has to come as early
+    // as telling a pull from a click's wobble allows.
+    readonly property real slack: Appearance.sizes.pullSlack
 
     // Floored, because the progress below divides by it and a panel measured
     // while it still has no height would hand it a zero.
@@ -159,13 +166,27 @@ MouseArea {
     // Where the press started, whether it has become a pull, whether it has
     // already disqualified itself, and which way it is going. The velocity is
     // smoothed, because the last single event before a finger lifts is noise as
-    // often as it is direction.
+    // often as it is direction, and it is kept in pixels per MILLISECOND, not
+    // per event, because the release below compares its MAGNITUDE against
+    // `pullReversal`. LaunchEdge smooths per event and is right to, because it
+    // only ever reads the sign, which no unit can change; a magnitude in px
+    // per event is really px times the device's event rate, and that rate
+    // spans nearly an order of magnitude across ordinary pointing hardware,
+    // so the same deliberate put-back would have counted as a change of mind
+    // from a touchpad and as lift-off noise from a 1000Hz mouse, whose steps
+    // are small precisely because they are frequent. Dividing each step by
+    // its own elapsed time is what GlideList and the settings pager's scroll
+    // axis already do, for the same reason: only time divides the event rate
+    // back out.
     property real fromX: 0
     property real fromY: 0
     property bool pulling: false
     property bool spent: false
     property real velocity: 0
     property real lastProj: 0
+    // When the last step landed, so its dt can be measured: a velocity in
+    // real time needs real time.
+    property real lastEvent: 0
     property real progress: 0
 
     preventStealing: true
@@ -194,6 +215,7 @@ MouseArea {
         root.spent = false;
         root.velocity = 0;
         root.lastProj = 0;
+        root.lastEvent = Date.now();
         root.progress = 0;
     }
 
@@ -234,10 +256,20 @@ MouseArea {
             root.lastProj = proj;
         }
 
-        // Smoothed the same way, with the same constant, as the bottom edge.
+        // Smoothed the same way, with the same constant, as the bottom edge,
+        // and divided by its own dt so the unit is px per ms: see `velocity`
+        // for why a magnitude the release will threshold cannot stay in
+        // per-event units. The dt clamp is GlideList's, both ends of it: a
+        // floor of one so a burst of events landing inside the same
+        // millisecond cannot divide toward infinity, a ceiling of a hundred
+        // so the first step after the slack, or after a mid-pull pause, reads
+        // as slow rather than being spread over a stale timestamp.
+        const now = Date.now();
+        const dt = Math.max(1, Math.min(100, now - root.lastEvent));
+        root.lastEvent = now;
         const step = proj - root.lastProj;
         root.lastProj = proj;
-        root.velocity += (step - root.velocity) * 0.4;
+        root.velocity += (step / dt - root.velocity) * 0.4;
 
         root.progress = Math.max(0, Math.min(proj / root.travelFull, 1));
         root.pulled(root.progress);
@@ -248,8 +280,31 @@ MouseArea {
         // because position asks "did you drag far enough" and momentum asks
         // "which way were you going", and only the second one is a question
         // about intent.
+        //
+        // But momentum alone read the answer at the WORST MOMENT OF THE
+        // GESTURE. The lift is the noisiest instant there is: a finger peeling
+        // off a surface drags the contact point backward as it goes, so the
+        // velocity of a flick that had obviously happened could arrive here a
+        // hair negative, and the clearest gesture a hand can make was being
+        // answered with the panel bouncing home. So past the commit point the
+        // question changes. A pull that has already covered `pullCommit` of
+        // its travel has said what it wants, and only a SUSTAINED backward
+        // motion, a real change of mind rather than lift-off recoil, takes it
+        // back: the velocity has to beat `pullReversal`, not merely be
+        // negative. The smoothed velocity is already the right measurand for
+        // that distinction, because smoothing is precisely what separates
+        // sustained motion from one noisy event; a raw last-event delta could
+        // not tell them apart no matter where the threshold sat. And the
+        // comparison only means one thing across devices because the velocity
+        // is measured against the clock rather than against the event stream:
+        // see `velocity` for the unit argument. Before the
+        // commit point nothing changes: a pull abandoned early still goes
+        // wherever it was travelling, which is what keeps this a drag rather
+        // than a switch with a long throw.
         if (root.pulling)
-            root.finished(root.velocity >= 0);
+            root.finished(root.velocity >= 0
+                || (root.progress >= Appearance.sizes.pullCommit
+                    && root.velocity > -Appearance.sizes.pullReversal));
         else if (!root.spent)
             // Consumers answer THIS and never MouseArea's own `clicked`.
             // `clicked` still fires for a press that set off across the

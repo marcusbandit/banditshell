@@ -7,8 +7,9 @@ import Quickshell.Io
 // User settings, backed by ~/.config/banditshell/config.json.
 //
 // Edit that file and the shell follows live, no restart. Delete it and it is
-// written back from the defaults below. A settings menu will just call
-// `Config.set("sidebar.width", 90)`; nothing else has to change for it to exist.
+// written back from the defaults below. The settings panel's pages just call
+// `Config.set("theme", "slate")`; nothing else had to change for them to exist,
+// which was the promise this file made back when they were hypothetical.
 //
 // `defaults` IS the schema. A key that is not in it is not a setting, and a key
 // that is in it always resolves, so a half-written config.json still boots.
@@ -546,7 +547,19 @@ Singleton {
                 // to see where a keypress landed, short enough that it is gone
                 // before you wonder how to dismiss it. It never outlives the
                 // cursor: hovering holds it open regardless.
-                linger: 1200
+                linger: 1200,
+
+                // HOW MUCH OF THE EDGE THE RAIL IS, as a fraction of the edge's
+                // height, centred. It was the whole edge less the two corner
+                // zones, and a control that owns an entire screen edge is a
+                // control that intercepts everything else that happens there: a
+                // scrollbar lives on the right edge of every window, and a rail
+                // the full height of the screen sat over all of them. A third
+                // of the edge is still an enormous target by this shell's
+                // standards, about three hundred and sixty pixels on the
+                // 1200px panel this was tuned on, and it leaves the rest of
+                // the edge to the windows.
+                grabFraction: 0.3
             },
 
             // Wi-Fi, and the one question NetworkManager will not answer
@@ -700,21 +713,59 @@ Singleton {
                 // which is tuned for a mouse; a touchpad flick and a finger both
                 // want to commit sooner.
                 dragThreshold: 6,
+                // THE FEEL TOKENS. A gesture is a feel, not a rule, and these
+                // four numbers are the rules that create it. Recognition early
+                // (slack), rejection rare (the angles), commitment generous
+                // (commit and reversal), so a sloppy half-swipe in roughly the
+                // right direction does the thing, and only a deliberate motion
+                // the other way undoes it.
+                //
+                // How far a press travels before it is a pull at all. This was
+                // a full padding tier, twenty-four pixels, and that is where
+                // half of the dead feel lived: a short flick never reached
+                // recognition, so it did nothing, and a long one spent its
+                // first inch unacknowledged, so the panel arrived late to its
+                // own gesture. Recognition is what makes the surface start
+                // tracking the hand, and tracking is the entire signal that the
+                // gesture is working; it should begin as early as telling a
+                // pull from a wobble allows.
+                pullSlack: 12,
+                // Once a pull is this far along, letting go keeps it even if
+                // the hand recoiled a little at the lift. Momentum alone
+                // decided before, and the lift is the noisiest moment of the
+                // whole gesture: a finger peeling off a screen drags the point
+                // backward, so the flick that obviously happened was answered
+                // with the panel bouncing home. A fraction of the full travel,
+                // like the travel itself.
+                pullCommit: 0.25,
+                // How fast the hand must actually be moving BACKWARD at the
+                // lift for that to count as a change of mind rather than as
+                // lift-off noise, in smoothed pixels per event. Below this,
+                // past the commit point, the pull stands.
+                pullReversal: 3,
+                // How fast a smoothed motion has to be, in pixels per event,
+                // to read as a throw regardless of how far it got. A flick is
+                // an intention expressed as speed, and asking it to also cover
+                // distance is asking it twice.
+                flickVelocity: 4,
                 // How far either side of a corner's own 45 degree diagonal
                 // still counts as "away from the corner", in degrees. The
                 // corner offers ninety degrees of directions into the screen;
-                // thirty either side spends sixty of them on this gesture and
-                // leaves fifteen at each end for gestures that run ALONG an
-                // edge, so a pull up the right-hand edge is still the volume
-                // rail's and not this one.
-                pullAngleCorner: 30,
+                // forty either side spends eighty of them on this gesture,
+                // because the corner gestures are the ones a whole hand aims
+                // and a hand aims loosely. What little is left at the ends
+                // still matters less than it did: nothing runs ALONG an edge
+                // right up to a corner any more, the volume rail having become
+                // a segment in the middle of its edge.
+                pullAngleCorner: 40,
                 // The same tolerance for a pull that starts on an EDGE rather
                 // than in a corner, which has twice the room to spend: an edge
                 // offers a hundred and eighty degrees of "away from it" where a
-                // corner offers ninety, so the same thirty would be a needlessly
-                // narrow slot on the more generous gesture. Sixty either side
-                // spends a hundred and twenty of them and still leaves thirty at
-                // each end for gestures that run ALONG the edge.
+                // corner offers ninety, so the corner's forty would be a
+                // needlessly narrow slot on the more generous gesture. Sixty
+                // either side spends a hundred and twenty of them and still
+                // leaves thirty at each end for gestures that run ALONG the
+                // edge.
                 pullAngleEdge: 60,
                 // A full pull, as a fraction of the surface it is dragged
                 // across. A diagonal gesture is measured against a diagonal and
@@ -727,20 +778,23 @@ Singleton {
                 // setting in here that is a real trade rather than a taste.
                 //
                 // The band is ten pixels and the gestures that live on it (the
-                // volume rail down the right, the notch across the top) are ten
-                // pixels of target. A cursor can be thrown at an edge and the
-                // edge stops it, so ten is plenty; a fingertip is nearer eight
-                // millimetres and has nothing to stop it, so ten is a miss. On
-                // they widen to `minTarget`, and the shell has to claim those
-                // pixels from the windows underneath to be able to answer in
-                // them at all.
+                // volume rail's segment in the middle of the right edge, the
+                // notch across the top) are ten pixels of target. A cursor can
+                // be thrown at an edge and the edge stops it, so ten is plenty;
+                // a fingertip is nearer eight millimetres and has nothing to
+                // stop it, so ten is a miss. On they widen to `minTarget`, and
+                // the shell has to claim those pixels from the windows
+                // underneath to be able to answer in them at all.
                 //
-                // WHAT IT COSTS: fourteen more pixels of every window's right
-                // edge and top-centre belong to the shell, and the right edge is
-                // where scrollbars live. That is a bad trade for a mouse and the
-                // only workable one for a hand, which is why it is a switch and
-                // not a decision made here. Off, the edges collapse back to the
-                // band exactly as they were.
+                // WHAT IT COSTS: fourteen more pixels of the middle third of
+                // every window's right edge, and of its top-centre, belong to
+                // the shell, and the right edge is where scrollbars live. Less
+                // than it cost when the rail ran the whole edge (see
+                // volume.grabFraction; the claim shrank with the rail), but
+                // still a bad trade for a mouse and the only workable one for
+                // a hand, which is why it is a switch and not a decision made
+                // here. Off, the edges collapse back to the band exactly as
+                // they were.
                 touchEdges: true,
                 // How many rows a list menu shows before it says "+N more". A
                 // street is eighty wifi networks and a menu that scrolls forever

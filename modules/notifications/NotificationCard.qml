@@ -70,7 +70,28 @@ Item {
     property int flung: 0
 
     readonly property real throwDistance: fullWidth * Appearance.sizes.dragDismissFraction
-    readonly property bool committed: Math.abs(pulled) >= throwDistance
+
+    // Committed by DISTANCE or by SPEED, either alone. Distance was the only
+    // test, and it quietly demanded that every throw be a long one: a short
+    // sharp flick, the most natural way a hand has of getting rid of
+    // something, stopped well short of the commit line and the card walked
+    // back home as if nothing had been said. A flick is an intention expressed
+    // as speed, and asking it to also cover distance is asking it twice. The
+    // distance test stays for the slow deliberate drag, which is the gesture
+    // it was actually measuring all along.
+    //
+    // The speed arm only counts speed pointing AWAY from home. An unsigned
+    // magnitude was tried first, and it read the cancel gesture as a throw:
+    // drag a card out, think better of it, bring it briskly back and release
+    // mid-return, and the return itself is fast enough to clear the
+    // threshold, so the change of mind DELETED the card, off the wrong edge,
+    // which is exactly the "dragging back cancels" promise of DESIGN.md 15
+    // broken by the arm that was added to honour flicks. Speed only means
+    // "throw" when it agrees with where the card is displaced, which is what
+    // the product's sign tests; a genuine flick always passes, because the
+    // flick's own travel is what put the card on that side of home in the
+    // first place.
+    readonly property bool committed: Math.abs(pulled) >= throwDistance || (pulled * drag.velocity > 0 && Math.abs(drag.velocity) >= Appearance.sizes.flickVelocity)
 
     // Where the card actually sits: the drag, plus however much of the fling has
     // played. At leave = 1 it is exactly one card-width clear of home.
@@ -464,6 +485,34 @@ Item {
         property real startedAt: 0
         property bool throwing: false
 
+        // How fast the hand is moving along the throw axis, in pixels per
+        // MILLISECOND, smoothed with the same 0.4 as everything else: the
+        // last single event before a finger lifts is noise as often as it is
+        // direction, and the smoothing is what turns a stream of jittery
+        // steps into one number that means "how fast was the hand actually
+        // going". The step is measured between successive values of the
+        // parent-frame dx rather than raw mouse.x, for the same reason the
+        // anchor is kept in parent coordinates: the card is the thing that
+        // moves, so its own frame is the one ruler that lies.
+        //
+        // Per millisecond and NOT per event, because `committed` compares
+        // this number against a threshold. Per-event was tried, on the
+        // argument that LaunchEdge already smooths per event; LaunchEdge gets
+        // away with that because it only ever reads the SIGN, which no unit
+        // can change, while a MAGNITUDE in px per event is really px times
+        // the device's event rate, and that rate spans nearly an order of
+        // magnitude across ordinary pointing hardware. The same physical
+        // flick that committed from a touchpad would have failed from a
+        // 1000Hz mouse, whose steps are small precisely because they are
+        // frequent. Dividing each step by its own elapsed time is what
+        // GlideList and the settings pager's scroll axis already do, for the
+        // same reason: only time divides the event rate back out.
+        property real velocity: 0
+        property real lastDx: 0
+        // When the last step landed, so its dt can be measured: a velocity in
+        // real time needs real time.
+        property real lastEvent: 0
+
         // Whether THIS press turned into a hold. `root.kept` is the lasting
         // answer and outlives the gesture on purpose; this one is per press,
         // because the release has to know what it is the end of and not what some
@@ -519,6 +568,9 @@ Item {
             throwing = false;
             holding = false;
             wandered = false;
+            velocity = 0;
+            lastDx = 0;
+            lastEvent = Date.now();
         }
 
         onPositionChanged: mouse => {
@@ -527,6 +579,28 @@ Item {
 
             const dx = root.x + mouse.x - anchorX;
             const dy = root.y + mouse.y - anchorY;
+
+            // Smoothed on EVERY move, before the arbitration below has decided
+            // whose gesture this is, exactly the way LaunchEdge does it. The
+            // flick this number exists to catch is over almost as soon as it
+            // has latched, so a velocity that only started counting once
+            // `throwing` was true would have a couple of events of history at
+            // the release where the smoothing needs a handful; the pre-latch
+            // motion is real motion and it belongs in the average. Counting it
+            // costs nothing when the gesture turns out to be the list's,
+            // because an unlatched release never reads it.
+            //
+            // The dt clamp is GlideList's, both ends of it: a floor of one so
+            // a burst of events landing inside the same millisecond cannot
+            // divide toward infinity, a ceiling of a hundred so the first
+            // step after the press, or after a mid-drag pause, reads as slow
+            // rather than being spread over a stale timestamp.
+            const now = Date.now();
+            const dt = Math.max(1, Math.min(100, now - lastEvent));
+            lastEvent = now;
+            const step = dx - lastDx;
+            lastDx = dx;
+            velocity += (step / dt - velocity) * 0.4;
 
             // WHOSE GESTURE IS THIS: the card's, or the list's.
             //
@@ -617,6 +691,18 @@ Item {
             }
 
             if (root.committed) {
+                // Which way it flies: the drag offset's own sign, in both
+                // arms. A speed commit used to take the VELOCITY's sign
+                // instead, guarding against a press that drifted one way
+                // before flicking the other and left a wrong-signed offset
+                // behind; the sign agreement inside `committed` now refuses
+                // any speed commit whose velocity opposes the offset (that
+                // shape is the cancel gesture, not a throw), so a speed
+                // commit that reaches this line agrees with the offset by
+                // construction and the branch would pick the same sign twice.
+                // A distance commit never wanted the velocity anyway: the
+                // card is out past the commit line on the offset's side, and
+                // flying it any other way would cross back over home.
                 root.flung = root.pulled < 0 ? -1 : 1;
                 return root.dismissed();
             }

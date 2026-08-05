@@ -44,8 +44,12 @@ Item {
     // rather than passed in: they are the same number by construction.
     readonly property real travelFull: Math.max(1, root.height - root.border * 2)
 
-    // Far enough to be a drag rather than the wobble in a click.
-    readonly property real slack: Appearance.padding.large
+    // Far enough to be a drag rather than the wobble in a click. The feel
+    // token, the same one Pull reads: this edge predates Pull and hand-rolls
+    // the same gesture, so when the shell's recognition distance moved from a
+    // padding tier to a feel token, leaving this at twenty-four would have made
+    // the bottom edge the one place a short flick still did nothing.
+    readonly property real slack: Appearance.sizes.pullSlack
 
     // How tall the thing you have to HIT is, which is not how tall the thing you
     // can SEE is.
@@ -115,13 +119,15 @@ Item {
         hoverEnabled: true
         preventStealing: true
 
-        // Where the press started, whether it has become a drag, and which way
-        // it is going. The velocity is smoothed, because the last single event
-        // before a finger lifts is noise as often as it is direction.
+        // Where the press started, whether it has become a drag, which way it
+        // is going, and how far it got. The velocity is smoothed, because the
+        // last single event before a finger lifts is noise as often as it is
+        // direction; the progress is kept for the release's commit clause.
         property real from: 0
         property bool pulling: false
         property real velocity: 0
         property real lastY: 0
+        property real progress: 0
 
         onPressed: mouse => {
             if (!root.armed) {
@@ -132,6 +138,7 @@ Item {
             zone.lastY = mouse.y;
             zone.pulling = false;
             zone.velocity = 0;
+            zone.progress = 0;
         }
 
         onPositionChanged: mouse => {
@@ -148,14 +155,22 @@ Item {
                 return;
 
             zone.pulling = true;
-            root.dragged(Math.max(0, Math.min((zone.from - mouse.y) / root.travelFull, 1)));
+            zone.progress = Math.max(0, Math.min((zone.from - mouse.y) / root.travelFull, 1));
+            root.dragged(zone.progress);
         }
 
         // A press that never became a drag is a click, and a click just opens
-        // it. One that did is answered by which way it was travelling.
+        // it. One that did is answered by which way it was travelling, with the
+        // same allowance Pull makes: the lift is the noisiest instant of the
+        // gesture, a finger peeling off drags the point backward, so past the
+        // commit fraction only a SUSTAINED backward motion (beating the
+        // reversal speed) still counts as a change of mind. This edge predates
+        // Pull and hand-rolls the same gesture, so it reads the same tokens for
+        // the same reasons; drifting apart here would make the bottom edge the
+        // one place a flick still bounced home off its own recoil.
         onReleased: {
             if (zone.pulling)
-                root.finished(zone.velocity >= 0);
+                root.finished(zone.velocity >= 0 || (zone.progress >= Appearance.sizes.pullCommit && zone.velocity > -Appearance.sizes.pullReversal));
             else
                 root.finished(true);
             zone.pulling = false;
