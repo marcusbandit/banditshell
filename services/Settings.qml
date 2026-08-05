@@ -43,6 +43,45 @@ Singleton {
     // draws it: the page is one page, not one per monitor.
     property string screenName: ""
 
+    // WHICH PAGE THE FACE IS SHOWING, and the register of pages it can show.
+    //
+    // On the singleton rather than on the face, and that placement is the
+    // handover argument again: the face is drawn twice (a shell card and a real
+    // window), and the whole point of the handover is that both surfaces show
+    // the same page. A page choice kept face-side would be two choices, one per
+    // copy, and pulling the page out would flip it back to whichever page the
+    // other copy last remembered.
+    //
+    // `pages` is DATA, not decoration. The face renders its rail from it and
+    // resolves each page's file by naming convention (key "icons" loads
+    // pages/IconsPage.qml), so adding a page here and dropping a <Key>Page.qml
+    // into modules/settings/pages/ is the entire recipe: no switch statement
+    // anywhere grows a case.
+    property string page: "icons"
+
+    readonly property var pages: [
+        {
+            key: "icons",
+            title: "Icons",
+            icon: "apps"
+        },
+        {
+            key: "appearance",
+            title: "Appearance",
+            icon: "palette"
+        }
+    ]
+
+    // Unknown keys are IGNORED rather than reset to a default or taken on
+    // faith. The rail is built from `pages` and cannot say a wrong key; the CLI
+    // and whatever keybind arrives later can, and a typo from those should
+    // change nothing at all rather than blank the face against a key no file
+    // answers to.
+    function setPage(key: string): void {
+        if (root.pages.some(p => p.key === key))
+            root.page = key;
+    }
+
     // The window that had the keyboard before the page took it, so it can have it
     // back. Same contract as the power panel's.
     property string restoreTo: ""
@@ -90,7 +129,19 @@ Singleton {
     // truthy screen name that no screen has, and every caller that does not name
     // one would assign the page to a monitor that does not exist and then draw
     // it nowhere.
-    function show(on: var): void {
+    // `which` optionally names the page the face should be showing. A KNOWN
+    // page key switches to it; anything else, including the missing argument,
+    // leaves the page alone, so every caller written before pages existed keeps
+    // meaning exactly what it meant. `var` for the screen argument's reason,
+    // and tested for stringness here rather than letting setPage's coercion
+    // sort it out: a missing argument arriving as the literal "undefined" is an
+    // accident this file already documents once, not a contract to lean on.
+    // Applied BEFORE the open guard, on purpose: "show me the icons page" is a
+    // request about the page as well as about the panel, and refusing the first
+    // half because the second was already granted would answer it with nothing.
+    function show(on: var, which: var): void {
+        if (typeof which === "string")
+            root.setPage(which);
         if (root.open)
             return;
         root.restoreTo = Hypr.focusedAddress;
@@ -111,11 +162,13 @@ Singleton {
         root.restoreTo = "";
     }
 
-    function toggle(on: var): void {
+    // The page rides through untouched: a toggle is a show or a hide, and hide
+    // has no use for one.
+    function toggle(on: var, which: var): void {
         if (root.open)
             root.hide();
         else
-            root.show(on);
+            root.show(on, which);
     }
 
     // THE PRESS THAT TURNS THE CARD INTO A WINDOW.

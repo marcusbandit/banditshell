@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 // The settings page itself: everything you can see of it, and nothing about
 // where it is being drawn.
@@ -20,6 +21,12 @@ import qs.components
 // windows it sits among rather than something emerging from the band, and melt
 // belongs where one thing comes out of another (DESIGN.md section 14). The
 // field's eight slots are also spoken for.
+//
+// WHAT IS ON IT is pages, and the face is only the frame: a rail that names
+// them, a pager that shows one, and the furniture (title, handover button,
+// corner grip) that belongs to the card rather than to any page. WHICH page is
+// showing lives on the Settings singleton, not here, because the face is drawn
+// twice and the two copies must agree; see Settings.page.
 Item {
     id: root
 
@@ -63,12 +70,506 @@ Item {
         }
 
         StyledText {
+            id: subtitle
+
             anchors.left: title.left
             anchors.top: title.bottom
             anchors.topMargin: Appearance.padding.small
 
             text: root.windowed ? "a window, for now" : "drawn by the shell"
             color: Appearance.colour.textFaint
+        }
+
+        // THE PAGE RAIL, down the card's left: the sidebar idiom in miniature.
+        // One icon per entry in Settings.pages, a fill behind the one you are
+        // on, a lift for the one under the cursor, and a tap to go there.
+        //
+        // NAVIGATION, not decoration, and quieter than the content on purpose:
+        // its resting icons sit at the faint tier, below anything a page draws,
+        // because a rail that competed with the rows beside it would read as a
+        // second column of settings. It brightens exactly as far as it is being
+        // used.
+        //
+        // A rail rather than tabs across the top for the reason the shell's own
+        // bar is vertical: the pages are peers you glance between, and a
+        // vertical strip of marks reads as places where a row of words reads as
+        // modes. It also leaves the title's line alone.
+        Column {
+            id: rail
+
+            // SIZED FROM THE MARK, floored at the minimum target, the same
+            // arithmetic as everything else that holds one icon: the slot
+            // exists to make the glyph hittable, so it is the glyph plus its
+            // air, never a number of its own.
+            readonly property real slot: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.normal * 2)
+
+            x: root.pad
+            anchors.top: subtitle.bottom
+            anchors.topMargin: Appearance.padding.large
+            spacing: Appearance.padding.small
+
+            Repeater {
+                model: Settings.pages
+
+                delegate: Item {
+                    id: stop
+
+                    required property var modelData
+
+                    readonly property bool current: stop.modelData.key === Settings.page
+                    readonly property bool hovered: tap.containsMouse
+
+                    width: rail.slot
+                    height: rail.slot
+
+                    G2Rect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.normal
+                        // `fill` is a hover and `fillStrong` is a selection;
+                        // that is Appearance's own ladder, used at face value
+                        // rather than restated in new numbers.
+                        color: stop.current ? Appearance.colour.fillStrong : Appearance.colour.fill
+                        opacity: stop.current || stop.hovered ? 1 : 0
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+                    }
+
+                    Icon {
+                        anchors.centerIn: parent
+                        name: stop.modelData.icon
+                        // Filled when it is the page you are on: Material
+                        // treats FILL as the state axis, so the same mark
+                        // saying "this one is on" is the font's own idiom
+                        // rather than a colour doing double duty.
+                        fill: stop.current ? 1 : 0
+                        color: stop.current ? Appearance.colour.text : stop.hovered ? Appearance.colour.textDim : Appearance.colour.textFaint
+
+                        Behavior on fill {
+                            NumberAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: tap
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: Settings.setPage(stop.modelData.key)
+                    }
+
+                    // The rail is icons alone, so this is the case a tooltip
+                    // exists for: a mark whose name is written nowhere. The
+                    // gauges in the sidebar refuse one because hovering them
+                    // opens a menu that says its own name; hovering this opens
+                    // nothing.
+                    HoverTip {
+                        text: stop.modelData.title
+                    }
+                }
+            }
+        }
+
+        // THE PAGER: the one page being read, and the gesture between pages.
+        //
+        // Every page is a Loader in a strip, all of them alive at once rather
+        // than one Loader whose source switches. Two reasons, and the second is
+        // the important one: the swipe below shows the neighbouring page WHILE
+        // the finger is still down, which a single reloading Loader cannot do;
+        // and a page keeps its state (the icons page's picker, a scroll
+        // position) across a visit to another page, which is the same argument
+        // that keeps SettingsFloat alive between uses. The cost is two pages'
+        // worth of rows existing at once, which is nothing.
+        Item {
+            id: pager
+
+            anchors.left: rail.right
+            anchors.leftMargin: Appearance.padding.large
+            anchors.right: parent.right
+            anchors.rightMargin: root.pad
+            anchors.top: rail.top
+            anchors.bottom: button.top
+            anchors.bottomMargin: Appearance.padding.large
+
+            // The strip slides and pages can be taller than the viewport, so
+            // everything past this rectangle is nobody's business.
+            clip: true
+
+            readonly property int pageIndex: Math.max(0, Settings.pages.findIndex(p => p.key === Settings.page))
+            // Floored, for Pull's reason: fractions divide by it, and a pager
+            // measured before layout would hand them a zero.
+            readonly property real extent: Math.max(1, pager.width)
+
+            // The view for the page currently showing. A function rather than
+            // a bound property, deliberately: Repeater.itemAt is not
+            // notifiable, so a binding on it would evaluate once against an
+            // empty Repeater, capture null, and never look again. Asked at
+            // event time it is always fresh.
+            function currentView(): var {
+                return pageViews.itemAt(pager.pageIndex);
+            }
+
+            // Where the strip stands: pageIndex pages in, chased by the same
+            // exponential smoothing everything in this shell tracks with. The
+            // drag below bypasses it while a finger is down and hands it the
+            // depth it let go at, which is the Follow handover every gesture
+            // here makes.
+            Follow {
+                id: slide
+
+                target: pager.pageIndex * pager.extent
+                speed: Appearance.anim.trackSpeed
+                epsilon: 0.5
+            }
+
+            // Placed, never travelled to: the first layout has no "from", and
+            // a face created while Settings.page rests on a later page would
+            // otherwise open mid-glide toward it.
+            Component.onCompleted: slide.snap()
+
+            // A resize is a reflow, not a journey. The window copy of this
+            // face can be resized by hand, which moves every page boundary at
+            // once; gliding to the same page at its new offset would show the
+            // neighbour sliding past mid-resize, so the strip snaps to where
+            // it already logically is.
+            onExtentChanged: slide.snap()
+
+            // THE SWIPE, and the current page's scroll: one hand-rolled
+            // MouseArea BEHIND the page content, which is the same discipline
+            // as every drag in this shell (DESIGN.md 15). Declaration order is
+            // input order, so the rows and buttons a page draws keep their own
+            // presses and only the page's quiet parts begin a gesture here.
+            //
+            // BOTH AXES live in this one area, arbitrated the way the
+            // notification card arbitrates against its list: the press takes
+            // no position at all until one axis has won, and it is decided
+            // ONCE. Sideways is the pager's, and moves between pages in
+            // Settings.pages order with the content following the finger.
+            // Up and down belongs to the page under the cursor, because a page
+            // taller than the viewport has to scroll and a scrolling page must
+            // still swipe: one area judging both is what keeps the two
+            // gestures from fighting over the same press.
+            MouseArea {
+                id: swipe
+
+                // Parent-frame anchors, Pull's invariant. This area happens to
+                // hold still inside the pager, so `mouse.x` alone would work
+                // today; the sum is written anyway so the day this area is
+                // given geometry the gesture does not quietly start measuring
+                // its own motion (DESIGN.md 15).
+                property real anchorX: 0
+                property real anchorY: 0
+
+                // Where the strip and the page's scroll stood at the press,
+                // so each axis drags relative to a fixed origin rather than
+                // integrating deltas that a clamp would corrupt.
+                property real fromOffset: 0
+                property real fromScroll: 0
+
+                // Which axis won. Two flags rather than one tri-state, so each
+                // branch below reads as the gesture it is; both false is the
+                // undecided wobble inside a click.
+                property bool paging: false
+                property bool scrolling: false
+
+                // The strip's offset while a page drag runs, and the smoothed
+                // velocity of whichever axis is live: the release reads the
+                // velocity, not the distance, because only speed is a question
+                // about intent (Pull's own release rule).
+                //
+                // THE VELOCITY'S UNIT DEPENDS ON THE AXIS, because the two
+                // releases spend it against tokens defined in different units.
+                // Paging smooths raw per-event steps, which is the unit
+                // flickVelocity is written in (Pull and the notification card
+                // read it the same way). Scrolling divides each step by its dt
+                // first, GlideList's own arithmetic, because coastMs is
+                // milliseconds OF A VELOCITY and only a per-millisecond figure
+                // multiplies against it into pixels. The first cut fed the
+                // per-event number to the coast anyway, and since Qt
+                // compresses mouse moves to about one event per frame, a
+                // per-event value is eight to sixteen times the per-ms one:
+                // every lifted drag flew a whole viewport or more and slammed
+                // into the clamp end. Only one axis is ever live in a press,
+                // so one property can wear both units without them meeting.
+                property real dragX: 0
+                property real velocity: 0
+                // When the last scroll step landed, so the step's dt can be
+                // measured: a velocity in real time needs real time.
+                property real lastEvent: 0
+
+                anchors.fill: parent
+
+                onPressed: mouse => {
+                    swipe.anchorX = swipe.x + mouse.x;
+                    swipe.anchorY = swipe.y + mouse.y;
+
+                    // A PRESS ARRESTS WHATEVER IS MOVING, before anything is
+                    // measured. Flickable stops a flick the instant a finger
+                    // lands, and GlideList halts its glide the moment a drag
+                    // takes over; the first cut of this handler recorded its
+                    // bookkeeping and left both Follows ticking, which meant a
+                    // coasting page kept sliding under a held finger, a tap
+                    // could not stop a runaway scroll (a release with no axis
+                    // latched settled into nothing), and a catch-drag snapped
+                    // the rows back to wherever they stood at press time the
+                    // moment the drag threshold latched. Halting FIRST also
+                    // makes the origins captured below the truth of what the
+                    // hand is holding rather than a photograph of a moving
+                    // thing. The page's glide can be stopped directly, value
+                    // and target pinched together through drag(); the strip's
+                    // cannot (see the strip's x binding), so its arrest is the
+                    // dragX capture below plus the strip wearing dragX for the
+                    // whole press.
+                    const page = pager.currentView();
+                    if (page)
+                        page.drag(page.position);
+
+                    swipe.fromOffset = slide.value;
+                    swipe.fromScroll = page ? page.position : 0;
+                    swipe.dragX = swipe.fromOffset;
+                    swipe.paging = false;
+                    swipe.scrolling = false;
+                    swipe.velocity = 0;
+                    swipe.lastEvent = Date.now();
+                }
+
+                onPositionChanged: mouse => {
+                    if (!swipe.pressed)
+                        return;
+
+                    const dx = swipe.x + mouse.x - swipe.anchorX;
+                    const dy = swipe.y + mouse.y - swipe.anchorY;
+
+                    if (!swipe.paging && !swipe.scrolling) {
+                        // Still inside the wobble of a click.
+                        if (Math.abs(dx) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
+                            return;
+                        // Whichever axis dominates at the moment the press
+                        // becomes a gesture owns it for the rest of the press:
+                        // a swipe that curves is still the gesture it set out
+                        // as, and re-judging every move would let a page being
+                        // dragged out be snatched back by its own scroll.
+                        if (Math.abs(dy) > Math.abs(dx))
+                            swipe.scrolling = true;
+                        else
+                            swipe.paging = true;
+                    }
+
+                    if (swipe.scrolling) {
+                        const page = pager.currentView();
+                        if (!page)
+                            return;
+                        // The finger owns the position: value and target move
+                        // together through drag(), so there is no smoothing
+                        // between the hand and the rows. Clamped hard at the
+                        // ends rather than rubber-banded; the band is what
+                        // makes a THROWN list feel physical, and this is a
+                        // held one.
+                        // Sampled in pixels per MILLISECOND, dt clamped the
+                        // way GlideList clamps it: a floor of one so a burst
+                        // of events inside the same tick cannot divide toward
+                        // infinity, a ceiling of a hundred so a step that
+                        // follows a pause (or the wobble before the threshold
+                        // latched) is not crushed toward zero by a dt that
+                        // measured waiting rather than movement. Smoothed for
+                        // GlideList's reason too: one event's dt is noisy
+                        // enough to throw a flick the wrong way if the last
+                        // sample happened to be a straggler.
+                        const now = Date.now();
+                        const dt = Math.max(1, Math.min(100, now - swipe.lastEvent));
+                        swipe.lastEvent = now;
+                        const before = page.position;
+                        page.drag(swipe.fromScroll - dy);
+                        swipe.velocity += ((page.position - before) / dt - swipe.velocity) * 0.4;
+                        return;
+                    }
+
+                    // Clamped to the strip's real ends: there is no page past
+                    // the last one to show a sliver of, and half-motion
+                    // overshoot with nothing under it reads as the card
+                    // tearing rather than resisting.
+                    const next = Math.max(0, Math.min(swipe.fromOffset - dx, (Settings.pages.length - 1) * pager.extent));
+                    swipe.velocity += (next - swipe.dragX - swipe.velocity) * 0.4;
+                    swipe.dragX = next;
+                }
+
+                onReleased: swipe.settle(true)
+                // A cancel is not a choice: the strip walks back to the page
+                // it was on, and a scroll simply stops where it is.
+                onCanceled: swipe.settle(false)
+
+                function settle(meant: bool): void {
+                    // Hand the smoother the offset the press ends at, the same
+                    // single assignment every drag in this shell ends with,
+                    // and done for EVERY exit rather than only for a latched
+                    // page drag: the strip wears dragX for the whole press
+                    // (see its x binding), so a tap or a scroll that caught
+                    // the strip mid-glide has been holding it still while the
+                    // Follow ticked on ignored underneath, and skipping the
+                    // handoff on those exits would cut the picture to wherever
+                    // the Follow had quietly got to. When the strip was
+                    // already at rest this is dragX writing slide.value's own
+                    // number back, a no-op.
+                    slide.value = swipe.dragX;
+
+                    if (swipe.paging) {
+                        // MOMENTUM before position: a flick is an intention
+                        // expressed as speed, so it turns the page it was
+                        // thrown toward however little ground it covered,
+                        // and only a slow release asks which page is nearer.
+                        const spot = swipe.dragX / pager.extent;
+                        const thrown = Math.abs(swipe.velocity) >= Appearance.sizes.flickVelocity;
+                        const landing = !meant ? pager.pageIndex : thrown ? (swipe.velocity > 0 ? Math.ceil(spot) : Math.floor(spot)) : Math.round(spot);
+                        const entry = Settings.pages[Math.max(0, Math.min(landing, Settings.pages.length - 1))];
+                        Settings.setPage(entry.key);
+                    } else if (swipe.scrolling && meant) {
+                        // The lift hands the glide its velocity, which is the
+                        // coast: the rows keep going and ease down instead of
+                        // stopping dead the instant contact breaks.
+                        const page = pager.currentView();
+                        if (page)
+                            page.coast(swipe.velocity);
+                    }
+                    swipe.paging = false;
+                    swipe.scrolling = false;
+                }
+            }
+
+            // THE STRIP: every page side by side, one viewport apart, slid as
+            // one object. While a PRESS is down the offset is the FINGER'S,
+            // not the smoother's, for the reason SettingsPanel pins `emerge`
+            // during a pull: a strip that lagged the hand by an easing's worth
+            // would be a switch wearing a picture of a drag.
+            //
+            // The WHOLE press, not just a latched page drag, because a press
+            // must also arrest a strip caught mid-glide and the slide cannot
+            // be halted the way the page's scroll can: its target is a bound
+            // expression, and assigning a bound property destroys the binding
+            // for good (the trap GlideList's reset() documents). So from the
+            // press on the strip wears dragX, frozen where it was caught and
+            // then following the finger if paging latches, while the Follow
+            // ticks on ignored in the background; settle() hands the Follow
+            // the held offset at release so the picture never cuts. `paging`
+            // stays in the condition even though it only holds while pressed:
+            // Qt drops `pressed` BEFORE delivering the release, and the flag
+            // keeps the finger's number authoritative across that sliver
+            // until settle() has done the handoff.
+            Row {
+                id: strip
+
+                x: -(swipe.pressed || swipe.paging ? swipe.dragX : slide.value)
+                height: pager.height
+
+                Repeater {
+                    id: pageViews
+
+                    model: Settings.pages
+
+                    delegate: Item {
+                        id: view
+
+                        required property var modelData
+
+                        width: pager.extent
+                        height: pager.height
+
+                        // The page's own vertical scroll: a target chased by a
+                        // Follow, which is the glide idiom GlideList uses,
+                        // carried here because a page is arbitrary content
+                        // rather than a uniform ListView. Wheel notches and
+                        // the drag above both move the target; the content
+                        // follows.
+                        property real target: 0
+                        readonly property real position: flow.value
+                        readonly property real limit: Math.max(0, content.implicitHeight - view.height)
+
+                        function scrollTo(y: real): void {
+                            view.target = Math.max(0, Math.min(y, view.limit));
+                        }
+
+                        // The finger owns the position while it is down: value
+                        // and target move together, so nothing smooths between
+                        // hand and content.
+                        function drag(y: real): void {
+                            view.scrollTo(y);
+                            flow.value = view.target;
+                        }
+
+                        // The lift's velocity spent as distance. `v` is in
+                        // pixels per MILLISECOND, never the per-event number
+                        // the paging axis smooths: coastMs is milliseconds of
+                        // the velocity the drag ended at, so only a per-ms
+                        // figure multiplies against it into pixels. This once
+                        // took the per-event value straight and coasted eight
+                        // to sixteen times too far, turning every lift into a
+                        // slam against the clamp end.
+                        function coast(v: real): void {
+                            view.scrollTo(flow.value + v * Appearance.sizes.coastMs);
+                        }
+
+                        // Content that SHRANK under the view - the icons page
+                        // swapping its long list for the short picker does it
+                        // on every pick - would otherwise leave the page
+                        // parked past its own end, which looks like the rows
+                        // scrolled off the top. GlideList's settle() learned
+                        // this the same way.
+                        onLimitChanged: view.scrollTo(view.target)
+
+                        Follow {
+                            id: flow
+
+                            target: view.target
+                            speed: Appearance.anim.scrollSpeed
+                            epsilon: 0.5
+                        }
+
+                        Loader {
+                            id: content
+
+                            width: view.width
+                            y: -view.position
+
+                            // THE DISPATCH TABLE IS A SPELLING RULE, not a
+                            // switch: key "icons" loads pages/IconsPage.qml,
+                            // and every page named in Settings.pages resolves
+                            // the same way, so adding one never adds a case
+                            // here (~/.claude/rules/math-over-hardcoding.md,
+                            // applied to dispatch).
+                            source: `pages/${view.modelData.key.charAt(0).toUpperCase() + view.modelData.key.slice(1)}Page.qml`
+                        }
+                    }
+                }
+            }
+
+            // The wheel scrolls the page it is over, by GlideList's own step,
+            // through the same target the drag uses. Deliberately NOT
+            // GlideList's split treatment where touchpad deltas move the
+            // content directly: that second pipeline earns its keep on a
+            // thousand-row launcher list, and a settings page is a few
+            // hundred pixels of rows; one path through the glide keeps this
+            // pager one mechanism instead of three.
+            WheelHandler {
+                onWheel: event => {
+                    const page = pager.currentView();
+                    if (!page)
+                        return;
+                    event.accepted = true;
+                    const step = event.pixelDelta.y !== 0 ? event.pixelDelta.y : event.angleDelta.y / 120 * Appearance.sizes.rowHeight * Appearance.sizes.wheelRows;
+                    page.scrollTo(page.target - step);
+                }
+            }
         }
 
         // THE BUTTON, at the bottom of the card rather than beside the title.

@@ -8,8 +8,8 @@ import qs.modules.menu.content
 
 // The system status section, and the menus behind it.
 //
-// Rendered FROM DATA: adding an indicator is a row in `items`, and connecting one
-// is filling in that row's bindings.
+// Rendered FROM DATA: adding an indicator is a row in `gauges`, and connecting
+// one is filling in that row's bindings.
 //
 // What is NOT here matters as much as what is. This row is for the four things
 // you reach for while doing something else: how loud, which network, which
@@ -42,6 +42,14 @@ Item {
     signal requested(string key, bool deliberate)
     signal released
 
+    // THE GAUGE THAT IS A DOOR. The settings gauge stopped having a menu (see
+    // its entry in `gauges` below), so its activation cannot travel on
+    // `requested`: that signal asks for a menu by key, and there is no menu to
+    // ask for. This one says the whole of what a tap on it means - open the
+    // settings panel - and says nothing about where, because which screen and
+    // which page are the consumer's decisions, not the bar's.
+    signal settingsRequested
+
     // Which icon the cursor is on, "" for none.
     //
     // This is ONE source of truth on purpose. Letting each icon fire its own
@@ -55,7 +63,10 @@ Item {
     // menu and goes on holding it, so it must not latch.
     onHoveredKeyChanged: hoveredKey ? root.requested(hoveredKey, false) : root.released()
 
-    readonly property var items: [
+    // THE DRAWN COLUMN, top to bottom. An entry that carries a `body` has a
+    // menu; the registry of menus below is derived from that, so the column
+    // and the registry cannot drift apart.
+    readonly property var gauges: [
         {
             key: "audio",
             title: "Sound",
@@ -90,10 +101,22 @@ Item {
             body: bluetoothMenu
         },
         {
+            // THE ONE GAUGE UNLIKE ITS FOUR SIBLINGS, and the difference is
+            // what its content became. The others answer a glance: how loud,
+            // which network, how much charge, each a menu's worth of state
+            // that a hover can hold open. What lived behind this one (the
+            // icon picker) grew into a PAGE of the settings panel, and a
+            // place is not a glance: it is somewhere you go and stay, and
+            // places live in the panel. So this entry carries no `body`,
+            // which keeps it out of the menu registry below - the CLI does
+            // not list it, openMenu cannot resolve it, hover opens nothing
+            // because there is nothing a hover could hold - and a tap on it
+            // travels on `settingsRequested` instead. The gauge keeps its
+            // slot and its mark because the bar is still where your hand
+            // goes to reach settings; only what answers has moved.
             key: "settings",
             title: "Settings",
-            icon: "tune",
-            body: settingsMenu
+            icon: "tune"
         },
         {
             key: "battery",
@@ -109,6 +132,14 @@ Item {
             body: batteryMenu
         }
     ]
+
+    // THE MENU REGISTRY: what the sidebar folds into menuItems, what the CLI
+    // lists, and the only keys openMenu can resolve. DERIVED, not written out
+    // a second time: an entry is a menu entry exactly when it has a menu, so
+    // the settings gauge falls out of here by the same fact that makes its
+    // hover silent, and adding a gauge can never update one list and forget
+    // the other.
+    readonly property var items: root.gauges.filter(g => g.body !== undefined)
 
     // The icon item for a key, so whoever positions a menu can ask where the
     // icon actually ended up rather than recomputing a layout only this file
@@ -169,12 +200,17 @@ Item {
         Repeater {
             id: repeater
 
-            model: root.items
+            model: root.gauges
 
             delegate: StatusIcon {
                 required property var modelData
 
                 readonly property string key: modelData.key
+
+                // Whether anything answers a hover here. Only the settings
+                // gauge says no today, and the test is the entry's shape
+                // rather than its name so that stays a fact about the data.
+                readonly property bool hasMenu: modelData.body !== undefined
 
                 // A Column positions its children and never resizes them, so a
                 // delegate left to itself would be one slot wide inside a
@@ -191,11 +227,21 @@ Item {
 
                 // Hover IS the request. Clicking is the same intent, and matters
                 // for touch and for keyboard-driven opens later.
+                //
+                // Only for a gauge with a menu to hold: the settings gauge
+                // never enters `hoveredKey` at all, rather than entering it
+                // and having the request fail downstream, because `hoveredKey`
+                // means "the icon whose menu the pointer is holding open" and
+                // a key that can never resolve to a menu would make that a
+                // lie. Leaving is unguarded on purpose; it can only clear a
+                // key this gauge set.
                 onHoveredChanged: {
-                    if (hovered)
-                        root.hoveredKey = key;
-                    else if (root.hoveredKey === key)
+                    if (hovered) {
+                        if (hasMenu)
+                            root.hoveredKey = key;
+                    } else if (root.hoveredKey === key) {
                         root.hoveredKey = "";
+                    }
                 }
 
                 // A PRESS IS DELIBERATE, and on a touchscreen a press is all
@@ -203,7 +249,26 @@ Item {
                 // synthesises a mouse from the touch, but it is gone the instant
                 // the finger lifts and it was never holding anything. This is
                 // the one that says the menu was actually asked for.
-                onActivated: root.requested(key, true)
+                //
+                // Unless there is no menu to ask for: the settings gauge's tap
+                // is the same intent aimed at a bigger thing, and it travels on
+                // its own signal (see settingsRequested).
+                onActivated: {
+                    if (hasMenu) {
+                        root.requested(key, true);
+                        return;
+                    }
+                    root.settingsRequested();
+                }
+
+                // The gauges refuse a tooltip (StatusIcon's closing note):
+                // hovering one opens a menu whose first line is its name, so a
+                // label would say the same word twice. That argument needs the
+                // menu. A gauge whose hover opens nothing is a bare mark, and
+                // this is how a mouse still learns its name.
+                HoverTip {
+                    text: hasMenu ? "" : modelData.title
+                }
             }
         }
     }
@@ -234,12 +299,6 @@ Item {
         id: soundMenu
 
         SoundMenu {}
-    }
-
-    Component {
-        id: settingsMenu
-
-        IconsMenu {}
     }
 
     Component {

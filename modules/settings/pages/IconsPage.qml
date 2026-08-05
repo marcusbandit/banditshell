@@ -6,28 +6,36 @@ import qs.config
 import qs.components
 import qs.services
 
-// SETTINGS: what each application looks like.
+// ICONS: what each application looks like.
 //
-// A DRAFT, and the first page of a settings menu that will have others. What it
-// does is the part that has to be right: the shell's automatic answer for an
-// application is a SUGGESTION, and this is where it can be overruled.
+// It began life as a menu hanging off the sidebar's settings gauge and moved
+// here when the settings panel grew pages, because it was never a glance: a
+// menu answers "how loud" while the cursor rests on a gauge, and this is a
+// place you go to make decisions that stick. What it does is the part that has
+// to be right either way: the shell's automatic answer for an application is a
+// SUGGESTION, and this is where it can be overruled.
 //
-// Two views in one panel, because the panel is 300px wide and a list plus a
-// picker side by side is neither. The list is every application this machine has
-// seen (AppIcons keeps that record); picking one swaps to its alternatives and
-// swaps back when it is chosen or dismissed.
+// Two views in one page, swapped rather than side by side. The width here is
+// the face's content area instead of a menu's column, but the argument
+// survives the move: a list beside a picker would halve both, and full-width
+// rows are what keep the application names readable. Picking one swaps to its
+// alternatives and swaps back when it is chosen or dismissed.
 //
 // The alternatives are FOUND, not invented: every icon file in every installed
 // theme whose name mentions the application, which is where "Telegram has a
 // plane in a circle and also a bare plane and also a monochrome panel version"
 // comes from. Nobody wrote that list; the machine already had it.
+//
+// WIDTH COMES FROM THE FACE. A page fills whatever the pager hands it and
+// asks only for height through implicitHeight, which is the entire sizing
+// contract a page has; nothing in here may measure a menu.
 Item {
     id: root
 
     // Which application's alternatives are showing, or "" for the list.
     property string picking: ""
-    // The alternative under the cursor, for the label under the row of them.
-    property string hint: ""
+    // A `hint` property lived here, written by every option's hover and read by
+    // nothing at all; the label it once fed is long gone, so it went too.
 
     implicitHeight: picking ? picker.implicitHeight : list.implicitHeight
 
@@ -183,9 +191,6 @@ Item {
                         // you get back to the automatic answer without a second
                         // control that only ever does that.
                         onClicked: AppIcons.assign(root.picking, option.current ? "" : option.modelData.spec)
-                        onEntered: root.hint = option.modelData.spec
-                        onExited: if (root.hint === option.modelData.spec)
-                            root.hint = ""
                     }
                 }
             }
