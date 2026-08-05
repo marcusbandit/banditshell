@@ -27,6 +27,12 @@ import qs.components
 // rather than one Loader. With one slot there is no way to keep showing the old
 // menu for even a frame after the new one exists, so however smoothly the box
 // travels, the thing inside it still cuts.
+//
+// A menu WANTING more height than the clamp allows SCROLLS inside it rather
+// than being cut: the panel keeps exactly the size the clamp gives it and the
+// body becomes a viewport onto the rest. The panel's own sizing must therefore
+// keep reading the body's IMPLICIT height, never the viewport's actual one;
+// see the page delegate for how that chain is kept honest.
 Item {
     id: root
 
@@ -149,7 +155,17 @@ Item {
             // NOT id: content. G2Rect's default property is called `content`, so
             // that id is shadowed inside any G2Rect below and every reference to
             // it silently resolves to the wrong thing.
-            delegate: Column {
+            //
+            // An ITEM now, no longer a Column, and the change is load-bearing. A
+            // positioner reports the sum of its children's ACTUAL heights, and
+            // the body below now lives in a viewport the panel clamps; a Column
+            // would therefore have reported the clamped height as the wanted
+            // height, the panel is sized FROM the wanted height, and the panel
+            // would never again have asked to grow past wherever it already
+            // was. The three children are placed by hand instead, so the wanted
+            // size can keep coming from the body's own implicit height while
+            // the viewport is free to be smaller than it.
+            delegate: Item {
                 id: page
 
                 required property int index
@@ -162,7 +178,15 @@ Item {
                 x: Appearance.padding.large
                 y: Appearance.padding.large
                 width: root.fullWidth - Appearance.padding.large * 2
-                spacing: Appearance.padding.normal
+
+                // The height this page WANTS: the chrome plus the body's own
+                // height, which is exactly the figure the Column used to add
+                // up. Read from the flickable's CONTENT and never from the
+                // flickable itself: the viewport is clamped by the panel and
+                // the panel is clamped from this number, so a wanted size that
+                // read the viewport back would be a circle that agrees with
+                // whatever it last said, and no menu could ever grow.
+                implicitHeight: view.y + view.contentHeight
 
                 // The outgoing page leaves faster than the incoming one arrives,
                 // squared against the same clock. A straight cross-dissolve has
@@ -184,26 +208,155 @@ Item {
                 onCurrentChanged: if (current)
                     root.pageHeight = implicitHeight
 
+                // A swap hands this slot a NEW menu, so the scroll goes home
+                // first. The slots are permanent and only the Loader's cargo
+                // changes, so the flickable outlives its contents, and without
+                // this the position would outlive them too: a fresh menu
+                // opening already halfway down its own list reads as broken,
+                // because nobody scrolled it there. It fires twice per swap
+                // (the body is cleared before it is set) and both writes say
+                // the same harmless thing. The OUTGOING page keeps its scroll
+                // while it fades, which is right: that position is what you
+                // were looking at, and it resets when its own turn comes.
+                onPageBodyChanged: view.contentY = 0
+
                 StyledText {
+                    id: heading
+
                     text: page.pageTitle.toUpperCase()
                     color: Appearance.colour.textDim
                     font.pixelSize: Appearance.font.size.small
                 }
 
                 Separator {
+                    id: rule
+
+                    y: heading.height + Appearance.padding.normal
                     width: page.width
                 }
 
-                // Loaded per menu, and thrown away when it closes: a menu that is
-                // not on screen should not be watching PipeWire. The outgoing
-                // page goes the moment the fade is done with it, for the same
-                // reason.
-                Loader {
-                    width: page.width
-                    active: root.reveal > 0 && (page.current || !fade.settled)
-                    sourceComponent: page.pageBody
+                // The body, in a VIEWPORT. A menu taller than the clamp used
+                // to be cut at the bottom with no way to reach the rest by
+                // wheel or by finger (the Sound menu with a dozen streams was
+                // the case); now the panel stays exactly the size the clamp
+                // computes and the overflow scrolls instead. The title and the
+                // rule stay pinned above it rather than scrolling away with
+                // the body: which menu you are in is not part of the document,
+                // and the chrome is one line tall, so pinning it costs the
+                // viewport almost nothing.
+                Flickable {
+                    id: view
 
-                    onLoaded: item.width = Qt.binding(() => page.width)
+                    // Half a pixel of slack for the two overflow tests below
+                    // (interactive and clip), because both sides of those
+                    // compares are the SAME length pushed through different
+                    // arithmetic. The page's wanted height adds view.y to the
+                    // content height, two fractional text-metric sums whose
+                    // addition rounds to the nearest double; the panel then
+                    // settles EXACTLY on the figure built from that, because
+                    // Follow lands by assignment rather than by decay; and the
+                    // viewport height subtracts the chrome back out, rounding
+                    // once more. Algebra says the viewport equals the content
+                    // whenever a menu fits, but the doubles land an ulp to
+                    // either side of equal, with the sign a coin flip per menu.
+                    // Landing LOW is the poisonous side: a fitting menu gets
+                    // clip plus an interactive flickable owning a scroll range
+                    // of a few ulps, and that phantom document swallows exactly
+                    // the presses on the gaps between rows that the comment on
+                    // `interactive` promises will fall through to the push-back
+                    // Pull. An exact compare was rejected for that reason, and
+                    // rounding both sides to whole pixels was rejected too: it
+                    // only moves the same knife edge from the ulp to the
+                    // half-pixel boundary that fractional text metrics sit on
+                    // all day. Slack is the honest version, because content
+                    // that overhangs by under half a pixel has nowhere to
+                    // scroll TO, so nothing real is being declined. The
+                    // notification tray states its compare exactly and is
+                    // merely less exposed, not immune: its round trip adds one
+                    // integer, which is exact until the sum crosses a binade.
+                    readonly property real overflowSlack: 0.5
+
+                    y: rule.y + rule.height + Appearance.padding.normal
+                    width: page.width
+
+                    // The viewport is whatever of the panel's LIVE height is
+                    // left under the chrome. Live rather than settled, so the
+                    // window onto the body grows with the panel's travel
+                    // instead of popping to the destination size ahead of it.
+                    height: Math.max(0, root.height - Appearance.padding.large * 2 - y)
+
+                    // The body's natural height, through the Loader: no menu
+                    // body sets an explicit height, so the loaded item sits at
+                    // its implicit size and the Loader wraps it. This is the
+                    // number the page's wanted size reads back out, which is
+                    // what keeps the panel sized by the content rather than by
+                    // the viewport.
+                    contentHeight: bodyLoader.height
+
+                    // Scrolls only when it has to, the notification tray's
+                    // rule: a menu that fits is a panel, and a
+                    // panel that always scrolled would be a document. While it
+                    // fits this is inert, so a press on the gaps between rows
+                    // still falls through to the push-back Pull behind the
+                    // panel; once it overflows, a drag on the list is a scroll
+                    // and the push is made from the padding ring around the
+                    // body instead, which is the tray's arrangement exactly.
+                    //
+                    // AND ONLY WHILE CURRENT. An opacity of nought is not
+                    // invisibility to input, so the outgoing page's flickable,
+                    // still loaded until the fade lets go of it, would
+                    // otherwise sit under the incoming one silently swallowing
+                    // the presses that were meant to fall through to the Pull:
+                    // an invisible document is not a thing anyone is trying to
+                    // scroll, so it takes nothing.
+                    interactive: page.current && contentHeight > height + overflowSlack
+                    // Clip costs a batch and a fitting menu is the common
+                    // case, so it is only paid for while the overflow exists.
+                    // On OVERFLOW, not on interactive, and the difference is
+                    // the outgoing page: it keeps its scroll position while it
+                    // fades (that position is what you were looking at), and
+                    // tying clip to the interactivity it just lost would
+                    // unclip it mid-fade and slide its scrolled-away rows up
+                    // over the title. The wrapper above already clips at the
+                    // panel's edge, so nothing bleeds out of the panel either
+                    // way; this clip is for scrolled content inside it.
+                    clip: contentHeight > height + overflowSlack
+                    // No rubber band. The overshoot is what makes a thrown
+                    // list feel physical, and pure noise on a menu: the end of
+                    // the streams is an answer, not a wall to bounce off.
+                    boundsBehavior: Flickable.StopAtBounds
+
+                    // Put the content back inside its own bounds when either
+                    // side of the inequality moves under it, which Flickable
+                    // does not do by itself: it fixes up after its OWN
+                    // movements and shrugs at everybody else's. A menu resizes
+                    // under its own feet constantly (a stream ends, a device
+                    // leaves), and scrolled to the bottom that strands the
+                    // viewport past the end of a list that no longer reaches
+                    // it. Same lesson GlideList's settle() records, at a tenth
+                    // of the machinery because there is no glide target to
+                    // keep honest here. Never while a finger holds the
+                    // content: the drag owns the position for as long as it
+                    // lasts, and the release runs Flickable's own fixup
+                    // anyway.
+                    onContentHeightChanged: if (!dragging)
+                        returnToBounds()
+                    onHeightChanged: if (!dragging)
+                        returnToBounds()
+
+                    // Loaded per menu, and thrown away when it closes: a menu
+                    // that is not on screen should not be watching PipeWire.
+                    // The outgoing page goes the moment the fade is done with
+                    // it, for the same reason.
+                    Loader {
+                        id: bodyLoader
+
+                        width: page.width
+                        active: root.reveal > 0 && (page.current || !fade.settled)
+                        sourceComponent: page.pageBody
+
+                        onLoaded: item.width = Qt.binding(() => page.width)
+                    }
                 }
             }
         }

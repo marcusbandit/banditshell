@@ -178,6 +178,20 @@ Item {
         anchors.leftMargin: -Appearance.padding.small
         anchors.rightMargin: anchors.leftMargin
         hoverEnabled: true
+        // The grab is the slider's from the press, and nothing may take it
+        // back. Menus scroll now, so this control lives inside a Flickable,
+        // and a Flickable steals any grab whose pointer then drifts far enough
+        // up or down: a bead dragged with the slightest slope was handed to
+        // the list mid-adjustment, the volume froze, and the menu scrolled
+        // instead. This is the exact inverse of the notification card's
+        // arbitration, and the reason it can be a constant here when it could
+        // not be there: a press on a card is ambiguous (a tap, a dismissal, or
+        // a scroll that merely started on the card), so the card has to leave
+        // the grab takeable until an axis wins. A slider press is never
+        // ambiguous. The control is the target, not the surface it sits on, so
+        // there is nothing to arbitrate and no one else the gesture could
+        // belong to.
+        preventStealing: true
         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
         // Mapped rather than offset by the margins above. Undoing those by hand
