@@ -303,6 +303,8 @@ Singleton {
         readonly property int volumeRailWidth: root.cfg.volume.railWidth
         readonly property int volumeLinger: root.cfg.volume.linger
         readonly property real volumeGrabFraction: root.cfg.volume.grabFraction
+        // What a full day-bar means on the calendar; see services/Usage.qml.
+        readonly property int usageCapHours: root.cfg.usage.capHours
 
         // The power panel, on the right edge. See modules/session/SessionMenu.qml.
         readonly property int sessionButton: root.cfg.session.button

@@ -334,7 +334,7 @@ Singleton {
                     blockGap: 3
                 },
                 status: {
-                    slot: 28,
+                    slot: 29,
                     gap: 4
                 },
 
@@ -343,7 +343,7 @@ Singleton {
                 // of thing in the bar and a second set of numbers is how they
                 // stop looking like it.
                 tray: {
-                    slot: 28,
+                    slot: 29,
                     gap: 4,
                     // How big the application's mark is inside that slot. Below
                     // the slot, so a busy icon has margin around it rather than
@@ -484,6 +484,16 @@ Singleton {
                 claimMs: 15000
             },
 
+            // The calendar's usage strip: how the shell remembers being used.
+            usage: {
+                // The day a bar fills at, in hours of the machine being awake.
+                // The calendar draws duration as a bar with no numbers on it, so
+                // something has to say what "full" means; ten hours is a long
+                // day at a desk, and a cap rather than a scale because a bar
+                // that kept growing would make every ordinary day look small.
+                capHours: 10
+            },
+
             notifications: {
                 // How long a popup stays when the sender does not say. Critical
                 // ones ignore this and stay until acted on.
@@ -591,7 +601,7 @@ Singleton {
                 // at, and this is the one surface in the shell where a misplaced
                 // click ends the session. A target you have to arrive at
                 // deliberately is part of the safety, not decoration.
-                button: 56,
+                button: 59,
 
                 // The mark inside it, relative to the shell's icon size. The bar
                 // draws icons at 20 because they sit in a 52px band; in a 56px
@@ -806,11 +816,13 @@ Singleton {
                 // last row cut in half.
                 streamListMax: 5,
                 deviceListMax: 7,
-                // 40 is Sequoia's measured Control Center row pitch. At 34 a
-                // two-line row (18px label + 9px detail, so 36px of line boxes)
-                // was taller than its own row height and the list read as
-                // cramped.
-                rowHeight: 40,
+                // 40 was Sequoia's measured Control Center row pitch (at 34 a
+                // two-line row's 36px of line boxes overflowed its own height
+                // and the list read as cramped), then lifted five percent for
+                // fingertips: a row is the thing a finger actually lands on,
+                // and the bar's slots moved by the same fraction so the whole
+                // bar keeps one density.
+                rowHeight: 42,
                 sliderHeight: 6,
                 toggleWidth: 34,
                 toggleHeight: 18
