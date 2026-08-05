@@ -36,6 +36,14 @@ PanelWindow {
     readonly property Launcher launcher: launcherLayer
     readonly property SessionMenu session: sessionLayer
     readonly property SettingsPanel settings: settingsLayer
+    // The tray and the notch register whole, but what the IPC handler actually
+    // writes on them is the PIN and nothing else: presence on both is a derived
+    // union (see NotificationTray.expanded), so a keybind pinning the tray and
+    // a hand pinning it must land in the same state and leave by the same
+    // doors. A separate CLI-owned flag was rejected for exactly that reason; a
+    // second writer would fight the gesture.
+    readonly property NotificationTray notifications: popups
+    readonly property TopNotch notch: topNotch
     // EVERYTHING IN THE BAR THAT OPENS A MENU, gauges and tray items alike. The
     // sidebar answers this rather than one group of it: which group a key
     // belongs to is the sidebar's business, and the CLI wants the whole list.
@@ -231,12 +239,16 @@ PanelWindow {
         // been pressed, so without this the widened target is a target only a
         // pointer that had already found the ten pixel band could reach.
         //
-        // THIS IS THE EXPENSIVE ONE. It runs almost the full height of the right
-        // edge, and while `touchEdges` is on it takes fourteen pixels there from
-        // whatever window is underneath, which is where scrollbars live. That
-        // trade is the whole reason `touchEdges` exists rather than the widening
-        // simply being done; see Config. Off, this collapses to the band the
-        // chassis already owns.
+        // THIS IS STILL THE EXPENSIVE ONE, but far less than it was: the rail
+        // became a centred third of the right edge rather than nearly the whole
+        // of it, and the mask takes this item's own geometry, so the always-on
+        // claim shrank with it without this file changing a line. While
+        // `touchEdges` is on it takes fourteen pixels over that third from
+        // whatever window is underneath, which is where scrollbars live; the
+        // other two thirds went back to the windows when the rail became a
+        // segment. That trade is the whole reason `touchEdges` exists rather
+        // than the widening simply being done; see Config. Off, this collapses
+        // to the band the chassis already owns.
         Region {
             intersection: Intersection.Combine
             item: volumeRail.grabItem
@@ -295,6 +307,14 @@ PanelWindow {
             anchors.topMargin: win.border
             anchors.bottomMargin: win.border
             width: chassis.barWidth
+
+            // What the clock's summoning pull measures against: the surface's
+            // diagonal, the same scale the notification tray's summon uses. A
+            // summon measures against the SURFACE because the menu it summons
+            // does not exist yet (Pull's travel note), and this is the first
+            // place on the way down that can see one; the sidebar and the
+            // clock just pass it along.
+            pullSpan: Math.hypot(win.width, win.height)
         }
 
         // THE TWO GROUPS SEPARATELY, where this used to listen to the sidebar's
@@ -333,6 +353,21 @@ PanelWindow {
                 win.openMenu(key, deliberate);
             }
 
+            // THE GAUGE THAT IS A DOOR (StatusIcons' phrase): the settings
+            // gauge has no menu, so its tap arrives on its own signal and
+            // goes to the service rather than to the menu layer. On THIS
+            // screen, the settings corner's argument exactly: the gauge you
+            // pressed is on a particular monitor and the page belongs where
+            // you are looking. Opened TO the icons page, because that is
+            // what lived behind this gauge when it was a menu, and a door
+            // that opened onto whichever page was last visited would be a
+            // different door every day. Toggle, so a second tap while the
+            // page is up puts it away: the same second-tap contract every
+            // pinned menu above keeps, aimed at a panel instead.
+            function onSettingsRequested(): void {
+                Settings.toggle(win.screen.name, "icons");
+            }
+
             function onReleased(): void {
                 menuLayer.release();
             }
@@ -364,6 +399,50 @@ PanelWindow {
 
             function onReleased(): void {
                 menuLayer.release();
+            }
+        }
+
+        // The clock's date, the third opener of menus and the one that is not a
+        // group: the calendar is one control's menu, so the sidebar forwards
+        // it under its own name rather than through either group's signal.
+        // There is no hover route to it at all (Clock.qml says why), so no
+        // release is forwarded and the grace timer never gets a vote: every
+        // open below is a pinned one.
+        Connections {
+            target: sidebar
+
+            // The gauges' contract, verbatim, aimed at one fixed key: a
+            // deliberate tap on the date while its own menu is pinned puts it
+            // away, and any other tap opens it. Repeating the two-line toggle
+            // rather than sharing it with the blocks above is deliberate;
+            // each handler states its whole meaning where it fires, and the
+            // three would only be shareable through a helper that took the
+            // key, which is more plumbing than the two lines are worth.
+            function onCalendarRequested(deliberate: bool): void {
+                if (deliberate && menuLayer.pinned && menuLayer.currentKey === "calendar") {
+                    menuLayer.hide();
+                    return;
+                }
+                win.openMenu("calendar", deliberate);
+            }
+
+            // The pull opens ON RECOGNITION, not on release (Clock's summon
+            // note): the menu has no honest partial reveal to track, so the
+            // panel is out and pinned the moment the gesture reads as a pull,
+            // and reversing before the release is decided about a calendar
+            // you can already see.
+            function onCalendarPulled(): void {
+                win.openMenu("calendar", true);
+            }
+
+            // The release only ever takes back: open=true means the pull
+            // stood, and the menu it opened is already up, so there is
+            // nothing to do that would not be doing it twice. False means
+            // the reversal was meant, and the menu goes back where it came
+            // from.
+            function onCalendarPullEnded(open: bool): void {
+                if (!open)
+                    menuLayer.hide();
             }
         }
 

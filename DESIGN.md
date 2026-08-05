@@ -389,7 +389,12 @@ banditshell/
 │   ├── settings/                the page that is a shell surface OR a window
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
 │   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole
-│   │   └── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
+│   │   ├── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
+│   │   └── pages/               one file per page; Settings.pages is the register,
+│   │       │                    and key "icons" loads IconsPage.qml by convention
+│   │       ├── IconsPage.qml    what each app looks like; grew out of the settings
+│   │       │                    gauge's old menu (a place, not a glance, so it left the bar)
+│   │       └── AppearancePage.qml  which palette the shell wears
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
@@ -397,13 +402,14 @@ banditshell/
 │   │   └── content/             one file per menu, all reading the real machine
 │   │       ├── SoundMenu.qml    NetworkMenu.qml   in the bar: the four gauges
 │   │       ├── BluetoothMenu.qml BatteryMenu.qml
+│   │       ├── CalendarMenu.qml a month; the clock's date is its opener
 │   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       └── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
-│       ├── Clock.qml            stacked HH / mm / date
+│       ├── Clock.qml            stacked HH / mm / date; the date opens the calendar
 │       ├── Workspaces.qml       picks which workspace style the sidebar wears
 │       ├── WorkspaceModel.qml   the column's layout + motion, shared by all of them
 │       ├── WorkspacePlates.qml  style: index tabs, length as state (`plates`/`icons`)
@@ -413,8 +419,10 @@ banditshell/
 │       ├── StatusIcon.qml       one indicator, service-agnostic
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
-└── bin/
-    └── banditshell              the CLI (linked into ~/bin)
+├── bin/
+│   └── banditshell              the CLI (linked into ~/bin)
+└── docs/
+    └── hyprland-binds.example.conf   the CLI as keybinds: a worked set to copy
 ```
 
 Import paths: Quickshell exposes the config root as the module `qs`, so a directory is
@@ -427,7 +435,8 @@ Import paths: Quickshell exposes the config root as the module `qs`, so a direct
 it and it is rewritten from the defaults. The `defaults` object in that file *is* the schema:
 a key not in it is not a setting, and a key in it always resolves, so a half-written config
 still boots. `Config.set("sidebar.width", 90)` writes and persists, which is the entire API the
-future settings menu needs.
+settings panel needs, and now uses: its pages (modules/settings/pages/) are drawn over exactly
+this call.
 
 Sizes are never listed, they are **derived**: each scale is a `base` and a list of multipliers,
 so `small / normal / large` are indices into data rather than three hardcoded numbers, and
@@ -534,12 +543,40 @@ already known to work.
 
 ```
 banditshell start|stop|restart|run|log
-banditshell menu list|open <key>|close|toggle <key>|current
+banditshell menu list|open <key>|close|toggle <key>|current|hover
+banditshell launcher toggle|open|close|scrub <0..1>
+banditshell session toggle|open|close
+banditshell settings toggle|open [page]|close|page <key>|pull|put|status
+banditshell notifications toggle|open|close|clear|status
+banditshell notch toggle|open|close|status
+banditshell calendar               sugar for `menu toggle calendar`
+banditshell volume up|down [n]|set <pct>|mute [on|off]|status
+banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
+banditshell picker open|freeze|clip|freezeclip|close
 banditshell status                 what the shell thinks the compositor said
+banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>
 banditshell shot [file]
 banditshell demo <key>             open, screenshot, close
+banditshell lockpreview            the lock screen's look, without the lock
+banditshell shaders                recompile components/blob/*.frag
 ```
+
+A CLI open is always a **pinned** open. Nobody driving a terminal has a pointer resting on
+anything, so an unpinned menu opened from here would be taken away by the grace timer a fifth
+of a second after the command printed `open`.
+
+The newer targets each follow a rule already stated elsewhere rather than inventing one.
+`notifications` and `notch` write the **pin** and nothing else: presence on both is a derived
+union (section 15), so a keybind and a hand land in the same state and leave by the same doors.
+`settings` drives the service rather than any window, because the page can be held by a real
+window instead of the shell; `open` takes an optional page, and `page` switches it without
+touching presence, so a keybind can walk the panel while it stays put. `volume` moves by the
+same configured step the wheel and the sound menu's slider use, so a keybind is the same
+control rather than a second one. `calendar` is sugar for `menu toggle calendar`: the calendar
+is an ordinary menu registered in the sidebar, and the thing you bind to a key deserves a
+shorter name than the thing it is implemented as. `docs/hyprland-binds.example.conf` is a
+worked set of Hyprland binds onto all of it.
 
 `status` exists for one failure in particular: the shell deriving its geometry from the
 compositor and quietly disagreeing with it. Printing rounding, smoothing, both gaps and the
@@ -991,6 +1028,22 @@ If the number the fraction is divided by is a dimension the gesture is itself
 collapsing, the scale shrinks as the push proceeds and the panel accelerates away
 from the hand: it runs off faster the further you push, which reads as the shell
 snatching it. Take the resting height, not the current one.
+
+**The feel is data, not code.** The pull's whole personality lives in a handful
+of numbers in Config's control block, read through `Appearance.sizes`:
+`pullSlack` is how far a press travels before it is a pull at all, which is how
+early the surface starts tracking the hand; `pullAngleCorner` and
+`pullAngleEdge` are how far off the gesture's own axis still counts, sized to
+the ninety degrees a corner has to spend and the hundred and eighty an edge
+does; `pullTravel` is what a full pull is, as a fraction of the surface, so the
+same swipe means the same thing on any display; `pullCommit` is how far along a
+pull letting go keeps it, so lift-off recoil cannot take back a gesture that
+obviously happened; `pullReversal` is how fast the hand must actually be moving
+backward at the lift to read as a change of mind rather than as noise; and
+`flickVelocity` is how fast a throw has to be to count regardless of distance,
+because a flick is intention expressed as speed. Together they say: recognition
+early, rejection rare, commitment generous. A gesture is a feel rather than a
+rule, but the rules are what create the feel.
 
 ---
 
