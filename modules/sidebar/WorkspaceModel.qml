@@ -4,7 +4,8 @@ import QtQuick
 import qs.config
 import qs.services
 
-// The workspace column's LAYOUT and MOTION, with no opinion about how it looks.
+// The workspace column's LAYOUT, MOTION and SCRUB, with no opinion about how
+// any of it looks.
 //
 // Every style in this directory draws the same numbers: which workspaces there
 // are, what is on each, how tall each one is, and where each one sits while the
@@ -121,7 +122,18 @@ Item {
         // END: workspaces are numbered from 1, so the list can only ever shrink
         // there. Both numbers have to have landed, or the column's total height
         // jumps by whatever was left of it.
-        while (out.length > root.slots.length && out[out.length - 1].h === 0 && out[out.length - 1].y === end)
+        //
+        // NEVER WHILE A PRESS IS DOWN. The styles size their slot Repeaters by
+        // this list, so a pop destroys the last delegate, and that delegate can
+        // be the doorway HOLDING THE GRAB: scrubbing up off a trailing empty
+        // workspace collapses the very slot the hand pressed on, and Qt does
+        // not promise `canceled` to an item mid-teardown, so the drag would die
+        // silently under a hand still moving and could leave the gesture state
+        // latched. A landed ghost is flat and draws nothing, so it simply waits
+        // the press out, and the tick after the release drops it. Held HERE
+        // rather than guarded in each style, because the model is the one place
+        // that knows a press is live at all.
+        while (!root.scrubHeld && out.length > root.slots.length && out[out.length - 1].h === 0 && out[out.length - 1].y === end)
             out.pop();
 
         root.live = out;
@@ -158,6 +170,189 @@ Item {
                     y: s.y,
                     h: s.h
                 }));
+    }
+
+    // THE SCRUB: a vertical drag anywhere on the numbered column, stepping the
+    // active workspace along it, so a finger changes workspace without aiming
+    // at a plate. It lives HERE rather than in the style because the gesture
+    // has several doorways: the plates' slot targets, the window rows lying on
+    // top of them, and the backstop under the gaps all take presses, and
+    // whichever one a hand lands on must be the same gesture. Tracked
+    // per-area it would be three gestures that disagree about where the drag
+    // began; fed through these three functions it is one, owned by the object
+    // every doorway already shares.
+    //
+    // Coordinates arrive in the WINDOW's frame: every caller maps its own
+    // mouse point all the way out to the scene before handing it over. That
+    // is Pull's parent-frame anchor, generalised one step further. The map
+    // reads the chain's offsets as they are NOW, so a slot gliding through a
+    // reflow or a plate giving up its hover swell cancels out of the
+    // difference and only the hand's own travel remains.
+    //
+    // The column's OWN frame, which this measured in first, is not still
+    // enough to be the anchor. The column is centred in the sidebar and its
+    // height IS the data: a window mapping or closing ANYWHERE re-centres it
+    // mid-gesture, whether or not the scrub caused it, and a shift read back
+    // through a moving frame is indistinguishable from hand travel
+    // (components/Pull.qml, the stationary-parent caveat). Half a pitch of
+    // phantom travel lands as phase in the ratchet, and one sharp event of it
+    // can shove the smoothed velocity past the flick threshold, so a release
+    // just after someone else's window closed could switch workspaces on its
+    // own. The window is the one frame the world cannot move, so the scrub
+    // measures against it and the column is free to rearrange itself under
+    // the gesture.
+
+    // ONE WORKSPACE OF TRAVEL IS THE SETTLED ONE-ROW PITCH: base plus gap,
+    // the same two numbers every slot in `slots` is built from. Deliberately
+    // NOT each slot's drawn height: a busy plate is taller than an idle one,
+    // so measuring the hand against the drawn column would price the step to
+    // workspace three differently from the step to workspace four depending
+    // on what happens to be open, and a drag must never be measured against a
+    // dimension the world can change under it (DESIGN.md 15). Equal
+    // workspaces, equal travel.
+    readonly property real scrubPitch: root.base + root.gap
+
+    // Whether a press is being tracked, whether it has latched into the
+    // scrub, and whether it has disqualified itself by setting off sideways.
+    // `scrubSpent` is Pull's `spent`, for Pull's reason: a press that was
+    // aimed across the column was aimed at something else, and it must not be
+    // allowed to become a tap later by wandering back.
+    property bool scrubHeld: false
+    property bool scrubbing: false
+    property bool scrubSpent: false
+
+    // The anchor, and it is a RATCHET rather than a fixed origin: every fired
+    // step advances it by one pitch, so the next boundary is a whole pitch
+    // away in EITHER direction. Zones cut across a fixed origin would leave a
+    // boundary one pixel behind every step just fired, and a hand resting on
+    // one would flap the desktop between two workspaces at tremor rate; the
+    // ratchet is a full pitch of hysteresis without inventing a second
+    // threshold.
+    property real scrubFromX: 0
+    property real scrubFromY: 0
+
+    // Where the count started and how far it has run: the workspace that was
+    // active at the press, and the net boundaries crossed since. The step is
+    // clamped to the column WHILE FIRING, not merely at dispatch: an
+    // over-drag past the end must not bank steps, or pulling back from the
+    // bottom of the column would spend its first pitches paying off a debt
+    // before the desktop moved at all. Clamped, the first pitch of reversal
+    // reverses.
+    property int scrubBase: 0
+    property int scrubStep: 0
+    property bool scrubFired: false
+
+    // The velocity, smoothed the same way, with the same constant, as Pull
+    // and the bottom edge: the last single event before a finger lifts is
+    // noise as often as it is direction.
+    property real scrubLastY: 0
+    property real scrubVelocity: 0
+
+    function scrubPress(x: real, y: real): void {
+        root.scrubHeld = true;
+        root.scrubbing = false;
+        root.scrubSpent = false;
+        root.scrubFromX = x;
+        root.scrubFromY = y;
+        root.scrubBase = Hypr.activeId;
+        root.scrubStep = 0;
+        root.scrubFired = false;
+        root.scrubLastY = y;
+        root.scrubVelocity = 0;
+    }
+
+    function scrubMove(x: real, y: real): void {
+        if (!root.scrubHeld || root.scrubSpent)
+            return;
+
+        const vstep = y - root.scrubLastY;
+        root.scrubLastY = y;
+        root.scrubVelocity += (vstep - root.scrubVelocity) * 0.4;
+
+        if (!root.scrubbing) {
+            const dx = x - root.scrubFromX;
+            const dy = y - root.scrubFromY;
+
+            // Still inside the wobble of a click, so nothing is decided yet.
+            // `dragThreshold` rather than Pull's larger slack, because the
+            // only competition here is the tap: there is no second gesture on
+            // the column for a hair-trigger to steal from, and a scrub that
+            // starts tracking early is a scrub that feels attached to the
+            // hand.
+            if (Math.hypot(dx, dy) < Appearance.sizes.dragThreshold)
+                return;
+
+            // Decided ONCE, at the moment the press becomes a gesture, the
+            // way Pull decides its direction. More across the column than
+            // along it is not this gesture, and it does not get to be a tap
+            // either.
+            if (Math.abs(dy) <= Math.abs(dx)) {
+                root.scrubSpent = true;
+                return;
+            }
+
+            root.scrubbing = true;
+        }
+
+        // Crossing a boundary fires the switch IMMEDIATELY, not at release:
+        // the whole point of scrubbing is watching the right workspace arrive
+        // under your hand, and a switch saved up for the lift would be
+        // operating the column blind, with the desktop as the answer instead
+        // of the preview. Math.trunc, toward zero, so the arithmetic is the
+        // same drag in both signs.
+        const inc = Math.trunc((y - root.scrubFromY) / root.scrubPitch);
+        if (inc === 0)
+            return;
+        root.scrubFromY += inc * root.scrubPitch;
+
+        // `count` is read at fire time, not saved at the press: window events
+        // land whenever they land, and the clamp should hold the scrub to the
+        // column as it is, not as it was.
+        const next = Math.max(1 - root.scrubBase, Math.min(root.count - root.scrubBase, root.scrubStep + inc));
+        if (next === root.scrubStep)
+            return;
+        root.scrubStep = next;
+        root.scrubFired = true;
+        Hypr.switchTo(root.scrubBase + next);
+    }
+
+    // Returns whether the press was CONSUMED by the gesture: latched or
+    // spent, either way the release means nothing more. Callers tap only when
+    // this says the press stayed a press, which is Pull's `tapped` contract
+    // read from the other end; they must never trust MouseArea's own
+    // `clicked`, which still fires for a press that scrubbed and ended back
+    // inside its own slot.
+    function scrubRelease(): bool {
+        const consumed = root.scrubbing || root.scrubSpent;
+
+        // THE FLICK: released still moving past `flickVelocity` with no
+        // boundary crossed steps one workspace the way it was thrown. A flick
+        // is an intention expressed as speed, and asking it to also cover a
+        // full pitch is asking it twice; the notification card's throw
+        // learned this first. Only when nothing fired, though: a scrub that
+        // already switched has been answered continuously the whole way, and
+        // a bonus step at the lift would overshoot the workspace the hand had
+        // settled on. Down the screen is down the column: y grows downward
+        // and so do the ids, so the velocity's sign is the direction.
+        if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Appearance.sizes.flickVelocity) {
+            const to = root.scrubBase + (root.scrubVelocity > 0 ? 1 : -1);
+            if (to >= 1 && to <= root.count)
+                Hypr.switchTo(to);
+        }
+
+        root.scrubHeld = false;
+        root.scrubbing = false;
+        root.scrubSpent = false;
+        return consumed;
+    }
+
+    // A grab torn away mid-gesture: no flick, no tap, just let go of the
+    // state. Whatever fired has fired; the scrub never rolls the desktop
+    // back, because every switch it made was watched and meant.
+    function scrubCancel(): void {
+        root.scrubHeld = false;
+        root.scrubbing = false;
+        root.scrubSpent = false;
     }
 
     Timer {

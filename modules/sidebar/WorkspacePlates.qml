@@ -44,6 +44,13 @@ import qs.services
 // the same grammar: length is state, a bar with nothing on it is a stub, a bar
 // with windows is as long as its marks need, and the one you have pulled open is
 // gone from the rack because it is out on the plate you are on.
+//
+// THE COLUMN IS ALSO A SURFACE YOU SCRUB. A vertical drag anywhere on the
+// numbered part of it steps the active workspace along with the hand, one
+// step per one-row pitch, switching at every boundary so the desktop is the
+// preview (DESIGN.md 15: the drag is the primary gesture, the tap is the
+// fallback that stays). The tracking lives in WorkspaceModel; this file only
+// wires its three press surfaces into it and keeps the rack out of it.
 Item {
     id: root
 
@@ -187,6 +194,56 @@ Item {
         pitch: root.pitch
     }
 
+    // THE BACKSTOP: the gap pixels, made part of the scrub. The drag is a
+    // gesture on the COLUMN, and the column is not one surface: each slot
+    // answers its own presses and the gaps between them answered nobody, so a
+    // drag that happened to start on one would simply not exist. Declared
+    // BEFORE both Repeaters, because declaration order is input order (see
+    // components/Pull.qml): the plates and the rack keep winning every press
+    // they already won, and this catches only what fell between.
+    //
+    // It ends at the column's end, ON PURPOSE, and that line is the boundary
+    // of the whole gesture. The rack below is not part of the scrub: a
+    // scratchpad is not a place along the column, it is a card pulled over
+    // wherever you already are, so a drag on its bars has no workspace to
+    // scrub to. The bars keep their tap and their hold, the stand-off above
+    // them stays dead, and the open card (drawn last, over the active plate)
+    // keeps its own tap for the same reason.
+    MouseArea {
+        id: backstop
+
+        x: 0
+        y: 0
+        width: root.width
+        height: layout.total
+
+        // Only once the drag is latched: before that a press is still allowed
+        // to turn out to be a tap, and nothing above should be told otherwise.
+        preventStealing: layout.scrubbing
+
+        // Mapped to the WINDOW, not to the column: the column re-centres
+        // whenever any workspace's height changes, and a moving frame would
+        // hand the model that shift as if the hand had made it. The model's
+        // scrub block carries the full argument; all three doorways map the
+        // same way, or they would disagree about where the drag began.
+        onPressed: mouse => {
+            const p = backstop.mapToItem(null, mouse.x, mouse.y);
+            layout.scrubPress(p.x, p.y);
+        }
+
+        onPositionChanged: mouse => {
+            if (!backstop.pressed)
+                return;
+            const p = backstop.mapToItem(null, mouse.x, mouse.y);
+            layout.scrubMove(p.x, p.y);
+        }
+
+        // A tap on a gap was nothing before this existed and is still
+        // nothing: the release is read only to close the gesture out.
+        onReleased: layout.scrubRelease()
+        onCanceled: layout.scrubCancel()
+    }
+
     // THE RACK: one bar per scratchpad, at the end of the column.
     //
     // A special workspace is not a sixth workspace, and this is not a sixth slot:
@@ -315,6 +372,8 @@ Item {
             // and a stub has to be as easy to hit as a full bar. Nothing else in
             // the rack's rows is reachable, so there is nothing to hit by mistake.
             MouseArea {
+                id: barMouse
+
                 x: 0
                 y: -root.barGap
                 width: root.width
@@ -325,6 +384,37 @@ Item {
                 onExited: if (root.racked === bar.index)
                     root.racked = -1
                 onClicked: Hypr.toggleSpecial(bar.entry.name)
+
+                // Whether the current press is the QUESTION rather than the
+                // toggle, so the release below only takes down a tip this
+                // press put up. Without the flag a plain click would release
+                // `bar` too, and Tooltips releases BY ITEM: the hold and the
+                // HoverTip share one, so a quick click under a resting cursor
+                // would tear down the label hover was still entitled to.
+                property bool naming: false
+
+                // HOVER CANNOT SERVE A FINGER: there is no cursor to rest, so
+                // the rack's names were unreachable on exactly the device
+                // that most needs labels. A press that stays past Qt's
+                // long-press beat asks the same question hover asks, through
+                // the same request, for the duration of the hold. Qt
+                // withholds `clicked` after `pressAndHold`, so holding a bar
+                // to learn its name never also operates it, which is the
+                // entire point of asking before acting.
+                onPressAndHold: {
+                    barMouse.naming = true;
+                    Tooltips.request(bar, bar.entry.label);
+                }
+
+                onReleased: if (barMouse.naming) {
+                    barMouse.naming = false;
+                    Tooltips.release(bar);
+                }
+
+                onCanceled: if (barMouse.naming) {
+                    barMouse.naming = false;
+                    Tooltips.release(bar);
+                }
 
                 // The one thing in the rack that says a name out loud. Position
                 // is what you actually navigate by once you know it; this is how
@@ -373,14 +463,68 @@ Item {
             // The click target is the whole width, plate or no plate: a 12px mark
             // is a mark, not a button, and reaching for a workspace should not
             // mean hitting it.
+            //
+            // AND A DOORWAY INTO THE SCRUB: press here and drag down the
+            // column, and the desktop steps workspace by workspace under the
+            // hand. The tracking itself lives in the model, because the gap
+            // backstop and the window rows feed the same gesture; this area
+            // only maps its events out to the window's frame (the backstop
+            // says why not the column's own) and hands them over. A press
+            // that never travels past the threshold is still the tap it
+            // always was.
             MouseArea {
+                id: slotMouse
+
                 anchors.fill: parent
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
+                preventStealing: layout.scrubbing
                 onEntered: root.hovered = slotItem.index
                 onExited: if (root.hovered === slotItem.index)
                     root.hovered = -1
-                onClicked: Hypr.switchTo(slotItem.info.id)
+
+                onPressed: mouse => {
+                    const p = slotMouse.mapToItem(null, mouse.x, mouse.y);
+                    layout.scrubPress(p.x, p.y);
+                }
+
+                onPositionChanged: mouse => {
+                    // Hover moves arrive here too (hoverEnabled), and a hover
+                    // is not a gesture.
+                    if (!slotMouse.pressed)
+                        return;
+                    const p = slotMouse.mapToItem(null, mouse.x, mouse.y);
+                    layout.scrubMove(p.x, p.y);
+                }
+
+                // NOT onClicked, for Pull's reason exactly: `clicked` also
+                // fires for a press that latched into the scrub and ended
+                // back inside the slot, and for one that set off sideways and
+                // wandered home, and both of those must do nothing here. The
+                // release asks the model what the press turned out to be, and
+                // only a press that stayed a press is the tap.
+                onReleased: {
+                    if (!layout.scrubRelease())
+                        Hypr.switchTo(slotItem.info.id);
+                }
+
+                onCanceled: layout.scrubCancel()
+
+                // A DOORWAY CAN DIE MID-PRESS. The model refuses to pop a
+                // trailing ghost while a press is down (see step()), which
+                // covers the collapse this file can cause itself; this is the
+                // net under any teardown that arrives anyway, because a grab
+                // that dies undelivered leaves `scrubbing` latched and every
+                // gate reading it (the swell, the hover colour, the marks'
+                // glow, both preventStealings) frozen until the next press.
+                // `onCanceled` cannot be trusted for this: Qt does not
+                // promise the signal to an item mid-teardown, and the
+                // destruction hook is the one that always runs while the
+                // context can still reach the model.
+                Component.onDestruction: {
+                    if (slotMouse.pressed)
+                        layout?.scrubCancel();
+                }
             }
 
             G2Rect {
@@ -403,7 +547,15 @@ Item {
                 // little taller: the tab answers the cursor before it is clicked,
                 // and it answers by moving, which is the only thing in this shell
                 // that ever means "yes, this one".
-                readonly property real swell: root.hovered === slotItem.index ? Appearance.sizes.wsHover : 0
+                //
+                // Held flat while the scrub is latched. The swell means "this
+                // one, if you press", and a hand mid-scrub is not choosing
+                // the plate it happens to be over: the active plate stepping
+                // down the column is the whole answer, and a second plate
+                // swelling under the press argues with it. It is also
+                // GEOMETRY, and geometry answering the cursor during a drag
+                // is the drag being fought by its own furniture.
+                readonly property real swell: root.hovered === slotItem.index && !layout.scrubbing ? Appearance.sizes.wsHover : 0
                 readonly property real reachTarget: (slotItem.isActive ? 1 : slotItem.isOccupied ? root.busyReach : root.emptyReach) + swell
                 readonly property real tallTarget: (solid ? 1 : 0.5) + swell
 
@@ -426,7 +578,10 @@ Item {
                 topRightRadius: Appearance.rounding.normal
                 bottomRightRadius: Appearance.rounding.normal
 
-                color: root.hovered === slotItem.index || slotItem.isActive ? Appearance.colour.fillStrong : Appearance.colour.fill
+                // Hover's half of this goes quiet during the scrub too, with
+                // the swell and for its reason; the active half is the thing
+                // the scrub is moving, so it stays.
+                color: (root.hovered === slotItem.index && !layout.scrubbing) || slotItem.isActive ? Appearance.colour.fillStrong : Appearance.colour.fill
 
                 Behavior on reach {
                     NumberAnimation {
@@ -507,7 +662,10 @@ Item {
                         required property var modelData
                         required property int index
                         readonly property bool focused: Hypr.isFocused(modelData)
-                        readonly property bool lit: focused || winMouse.containsMouse
+                        // Hover is cosmetic here and goes dark during the
+                        // scrub, like the plates' own: a mark glowing under a
+                        // drag promises a click the release will not make.
+                        readonly property bool lit: focused || (winMouse.containsMouse && !layout.scrubbing)
                         readonly property string appClass: Hypr.classOf(modelData)
 
                         x: (plate.width - root.slot) / 2
@@ -550,16 +708,63 @@ Item {
                         // workspace. Hyprland's focuswindow brings the workspace
                         // along with it, so this is strictly more than the plate's
                         // own click does.
+                        //
+                        // Also the third doorway into the scrub, fed through
+                        // the same model functions as the slot target and the
+                        // gap backstop: a busy plate is mostly window rows,
+                        // and a drag that died wherever a mark happened to be
+                        // would make the busiest workspaces the hardest ones
+                        // to leave.
                         MouseArea {
                             id: winMouse
 
                             anchors.fill: parent
                             hoverEnabled: true
                             cursorShape: Qt.PointingHandCursor
+                            preventStealing: layout.scrubbing
                             onEntered: root.hovered = slotItem.index
                             onExited: if (root.hovered === slotItem.index)
                                 root.hovered = -1
-                            onClicked: Hypr.focusClient(row.modelData)
+
+                            onPressed: mouse => {
+                                const p = winMouse.mapToItem(null, mouse.x, mouse.y);
+                                layout.scrubPress(p.x, p.y);
+                            }
+
+                            onPositionChanged: mouse => {
+                                if (!winMouse.pressed)
+                                    return;
+                                const p = winMouse.mapToItem(null, mouse.x, mouse.y);
+                                layout.scrubMove(p.x, p.y);
+                            }
+
+                            // The tap goes through the model's answer, never
+                            // `clicked`, for the reason the slot target says.
+                            onReleased: {
+                                if (!layout.scrubRelease())
+                                    Hypr.focusClient(row.modelData);
+                            }
+
+                            onCanceled: layout.scrubCancel()
+
+                            // The row dies with its window: the ScriptModel
+                            // above diffs by identity, so the pressed window
+                            // closing (or leaving the workspace) destroys
+                            // exactly this delegate, grab and all, and the
+                            // gesture state would stay latched (the slot
+                            // target's destruction note says why `canceled`
+                            // is not enough). Letting go cleanly is the
+                            // honest answer; keeping the row alive by
+                            // freezing the list while a scrub is latched was
+                            // rejected because the toplevel behind it is
+                            // already gone, and a blank mark under a live
+                            // grab is a worse lie than a drag that ends. The
+                            // next press resumes from wherever the desktop
+                            // actually is.
+                            Component.onDestruction: {
+                                if (winMouse.pressed)
+                                    layout?.scrubCancel();
+                            }
                         }
                     }
                 }

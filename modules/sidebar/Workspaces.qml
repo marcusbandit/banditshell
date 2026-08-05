@@ -7,6 +7,9 @@ import qs.config
 // to "what should a column of workspaces look like", and they share their layout
 // and their motion (WorkspaceModel) so only the drawing is written more than
 // once. Switch live with `banditshell set sidebar.workspaces.style <name>`.
+// The model also owns the vertical scrub (drag the column, step through
+// workspaces); today only `plates` wires its surfaces into it, so the other
+// two styles still switch by tap alone.
 //
 //   plates   index tabs hinged on the screen's edge, length as state, one mark
 //            per window. The one that works. What the mark IS (the app's own
