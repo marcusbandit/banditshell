@@ -119,7 +119,7 @@ Item {
         root.collapseToCentre = !panel.bottomAnchored;
         root.shown = false;
         query.focus = false;
-        Hypr.focusAddress(root.restoreTo);
+        Hypr.restoreFocus(root.restoreTo);
         root.restoreTo = "";
     }
 
@@ -128,6 +128,65 @@ Item {
             root.hide();
         else
             root.show();
+    }
+
+    // BEING MOVED BY HAND, and how far out it is while that lasts.
+    //
+    // Named and shaped exactly like the niagara concept's pair, because both
+    // concepts answer the same two calls from Launcher.qml and a forwarder that
+    // has to ask which one it is talking to is not a forwarder. It also means
+    // the bottom edge, which could only ever open this concept with a jump
+    // before, now drags it out the way it always dragged the other one out.
+    //
+    // While `dragging` is true the panel's reveal is the HAND'S rather than the
+    // animation's: the top edge has to be where the finger is or the gesture is
+    // a switch with a picture of a drag on it. The animation takes back over at
+    // the moment of release, from wherever the drag left it.
+    property bool dragging: false
+    property real dragProgress: 0
+
+    // How far out the panel is, 0 to 1, from whichever of the two currently has
+    // it. ONE expression, read by both the height and the y below, because a
+    // drag that moved one of them and left the other on the animation would tear
+    // the panel in half.
+    readonly property real revealed: root.dragging ? root.dragProgress : rise.value
+
+    function dragTo(fraction: real): void {
+        root.dragging = true;
+        root.dragProgress = Math.max(0, Math.min(fraction, 1));
+    }
+
+    function dragEnd(open: bool): void {
+        root.dragging = false;
+        // Hand the smoother the depth the drag ended at, so it carries on from
+        // there instead of snapping back to the edge to start the journey again.
+        rise.value = root.dragProgress;
+        if (open) {
+            // ONLY if it is not already up, which matters now that this call
+            // arrives from two different gestures. The bottom edge pulling a
+            // closed launcher out wants everything show() does; the panel's own
+            // put-away push, reversed mid-flight, wants none of it. show()
+            // clears the query and the selection, and deciding not to close
+            // something must not also throw away what you had typed into it. A
+            // launcher that is already shown has `rise` pointed at 1 anyway, so
+            // letting go simply walks it back up.
+            if (!root.shown)
+                root.show();
+        } else {
+            root.hide();
+            // Back into the EDGE, whatever the panel's own geometry would
+            // otherwise have picked. hide() chooses the way out from whether the
+            // panel was touching the bottom band, which is the right question
+            // for a dismissal that came from nowhere in particular; a push has
+            // already answered it with a direction, and folding into its own
+            // middle from wherever the finger left it would be a jump sideways
+            // out of the gesture that was still being made.
+            root.collapseToCentre = false;
+        }
+        // Back to nothing, so the NEXT press starts from the bottom. Left at the
+        // last drag's depth, a plain click would hand the animation a starting
+        // point half way up and the panel would appear already half open.
+        root.dragProgress = 0;
     }
 
     function accept(): void {
@@ -226,6 +285,107 @@ Item {
         onClicked: root.hide()
     }
 
+    // THE WAY BACK IN. Push the panel down and it goes back into the bottom edge
+    // it rose out of, which is the shell's one rule for getting rid of anything
+    // (DESIGN.md 15): everything goes back into the edge or corner it came out
+    // of, by the gesture that brought it out, reversed.
+    //
+    // It has to be HERE rather than on the bottom edge, because the bottom edge
+    // is not reachable once the launcher is up: LaunchEdge is armed only while
+    // the launcher is closed, and it clamps its own reported fraction at zero, so
+    // it can say "opening" and nothing else. The panel is what is on the screen,
+    // so the panel is what you push.
+    //
+    // AND IT FIXES A SECOND, WORSE THING while it is here. The panel's frame is
+    // `padding.large` on all four sides, and the frame, the gap above the
+    // separator and the separator itself are bare Items with no MouseArea in
+    // them. Every press that landed on any of that fell straight through to the
+    // `catcher` declared above and CLOSED the launcher. A cursor hits that frame
+    // occasionally; a nine-millimetre fingertip aiming at the search field or at
+    // the first row hits it constantly, so the launcher was dismissing itself on
+    // the way to being used. Covering the panel with this catches those presses
+    // here instead.
+    //
+    // `onTapped` is deliberately UNWIRED. A tap on the panel's own padding
+    // should do nothing at all: it was aimed at something and it missed, and the
+    // answer to a miss is to leave the screen alone rather than to guess. A tap
+    // OUTSIDE the panel still closes it via the catcher, which is the correct
+    // dismissal and the discoverable one.
+    Pull {
+        id: putAway
+
+        // A SIBLING of the panel wearing the panel's geometry, rather than a
+        // child filling it, and that is a correctness question rather than a
+        // preference.
+        //
+        // Pull measures the gesture in its PARENT's coordinates, because the
+        // parent is the frame that stays still while the pull item's own
+        // top-left is moved about by the thing it is driving (components/Pull.qml
+        // and DESIGN.md 15). Make it a child of the panel and the parent IS the
+        // thing being dragged: the panel's top edge tracks the finger by design,
+        // so a press origin measured against that edge never moves at all, every
+        // delta reported is only the frame-to-frame remainder, and the gesture
+        // collapses into noise. Out here the parent is this screen-sized item,
+        // which does not move, and the pull item's own y is exactly the panel's,
+        // so `y + mouse.y` is the finger's position on the screen and nothing
+        // else.
+        //
+        // It still sits UNDER the panel's contents, which is the other half of
+        // what the primitive asks for over a panel: declaration order is input
+        // order in QML, so declared before the panel it covers the same
+        // rectangle and gets only the presses the field, the rows and their own
+        // clicks did not want.
+        x: panel.x
+        y: panel.y
+        width: panel.width
+        height: panel.height
+
+        // Nothing to push away that is not up. `armed` rather than `enabled`,
+        // which is the mechanism the primitive provides for exactly this: an
+        // unarmed Pull refuses the press and lets it fall through, where a
+        // disabled MouseArea would have to be torn down mid-gesture to become
+        // one.
+        armed: root.open
+
+        // Straight down, back into the edge it rose from, written as the vector
+        // it is. These two numbers are the whole of what says which way this
+        // gesture runs.
+        dirX: 0
+        dirY: 1
+
+        // An EDGE's tolerance, not a corner's. A corner has ninety degrees of
+        // "into the screen" to divide between its gestures and an edge has a
+        // hundred and eighty, so the same number that is generous in a corner is
+        // stingy here.
+        angle: Appearance.sizes.pullAngleEdge
+
+        // The panel's own settled height, so one finger-length of panel is one
+        // finger-length of travel and the top edge stays under the hand.
+        //
+        // implicitHeight rather than `height`, and that is not a detail: `height`
+        // is `grow.value * revealed`, which this very gesture is collapsing, so
+        // the scale would shrink as you pushed and the panel would accelerate
+        // away from the finger measuring it. implicitHeight is where the panel
+        // SETTLES, which is a fact about the panel rather than about how far
+        // through the gesture you are, and it is never zero: it always contains
+        // at least the frame and the field.
+        travel: panel.implicitHeight
+
+        // TWO INVERSIONS, and both are real rather than bookkeeping.
+        //
+        // `dragTo` takes how far OPEN the panel is and this gesture reports how
+        // far PUT AWAY it is, so the two are one minus each other: a push that
+        // has travelled a quarter of the panel's height leaves three quarters of
+        // it showing.
+        onPulled: fraction => root.dragTo(1 - fraction)
+
+        // And `finished(true)` means the push CARRIED ON in its direction, which
+        // for a dismissal means gone, which is `open: false` to dragEnd. Reverse
+        // it mid-push and `finished(false)` arrives instead, and the launcher
+        // stays up with everything still typed into it.
+        onFinished: gone => root.dragEnd(!gone)
+    }
+
     Item {
         id: panel
 
@@ -247,7 +407,7 @@ Item {
         // the band, and opening carries it up to where it belongs while it fills
         // out. Closing runs the same path backwards, unless it never reached the
         // band, in which case it folds into its own middle instead.
-        y: root.collapseToCentre ? restY + (grow.value - height) / 2 : bandY + (restY - bandY) * rise.value
+        y: root.collapseToCentre ? restY + (grow.value - height) / 2 : bandY + (restY - bandY) * root.revealed
 
         width: root.panelWidth
 
@@ -266,7 +426,7 @@ Item {
         // growing towards was zero and it could never leave.
         implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + list.needed)
 
-        height: grow.value * rise.value
+        height: grow.value * root.revealed
 
         visible: height > 0
 

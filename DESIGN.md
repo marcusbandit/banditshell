@@ -4,11 +4,10 @@
 > Written 2026-07-28 as a reference. **Nothing is being built yet** - this is the
 > captured plan and philosophy to return to when work actually starts.
 
-Why this exists at all: caelestia is finished and excellent, but building it myself is
-the point. I want to be proud of my system and understand how the *entire* thing works.
-The constant urge to tweak caelestia is the tell that I'd rather own the whole mental
-model than live in someone else's. This document is so that intent survives the gap
-between now and whenever I actually start.
+Why this exists at all: caelestia is finished and excellent, but the constant urge to
+tweak it is the tell that I'd rather own the whole mental model than live in someone
+else's. This document is so that intent survives the gap between now and whenever I
+actually start.
 
 **Named 2026-08-01: banditshell.** Lives in `~/.banditshell`... no: `~/banditshell`, settings in
 `~/.config/banditshell/config.json`, driven by the `banditshell` CLI, and its Wayland surfaces
@@ -347,6 +346,7 @@ banditshell/
 │   │   └── BlobField.qml        the ShaderEffect that draws it
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
+│   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
@@ -360,6 +360,7 @@ banditshell/
 │   └── PasswordField.qml        inline secret entry
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
+│   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
 │   ├── Battery.qml              UPower
@@ -370,6 +371,7 @@ banditshell/
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from
 │   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
 │   ├── Apps.qml                 desktop entries, and ranked search over them
+│   ├── Settings.qml             the settings page's state, and its handover
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -384,6 +386,10 @@ banditshell/
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
 │   ├── picker/                  screenshot: hover a window or drag a region
+│   ├── settings/                the page that is a shell surface OR a window
+│   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
+│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole
+│   │   └── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
@@ -392,7 +398,9 @@ banditshell/
 │   │       ├── SoundMenu.qml    NetworkMenu.qml   in the bar: the four gauges
 │   │       ├── BluetoothMenu.qml BatteryMenu.qml
 │   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
-│   │       └── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
+│   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
+│   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
+│   │       └── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
 │       ├── Clock.qml            stacked HH / mm / date
@@ -402,7 +410,9 @@ banditshell/
 │       ├── WorkspaceMap.qml     style: a bar per window, as long as the window is wide
 │       ├── WorkspaceBlocks.qml  style: one square per window, on the pixel grid
 │       ├── StatusIcons.qml      the status section, rendered from data
-│       └── StatusIcon.qml       one indicator, service-agnostic
+│       ├── StatusIcon.qml       one indicator, service-agnostic
+│       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
+│       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 └── bin/
     └── banditshell              the CLI (linked into ~/bin)
 ```
@@ -754,6 +764,19 @@ somewhere, and bluetooth discovery is visible to other people as well.
 - `WifiSecurityType`'s "no security" member is `Open`, not `None`. Comparing
   against a member that does not exist yields `undefined`, every network compared
   unequal, and every one of them got a padlock.
+- **A dispatch is fire and forget, so a dispatch that fails is silent.** Hyprland
+  0.56 made its config parser Lua and took the dispatch socket with it: a request
+  is now a Lua expression, so `workspace 3` comes back as a syntax error and
+  `hl.dsp.focus({ workspace = 3 })` is the same instruction spelled the new way.
+  Every click in the workspace column had been landing, being sent, and being
+  refused for weeks, and nothing in the shell could tell: the clicks worked, the
+  hover worked, the plate lit up, and the compositor quietly said no in a log
+  nobody was reading. `Hypr.send()` keeps both spellings and probes ONCE at
+  startup with `hyprctl dispatch hl.dsp.no_op()`, a dispatcher that exists in
+  both worlds and does nothing in either. Not Quickshell's `Hyprland.usingLua`,
+  which reports whether IT is speaking Lua and is false on a compositor that
+  accepts nothing else. **When an action goes out on a socket that cannot answer,
+  something has to go and ask.**
 
 **Still placeholder: nothing.** Every menu in the sidebar is live. Notifications
 and the launcher (DESIGN.md sections 4 and 5) are the remaining capstones and
@@ -897,12 +920,77 @@ targets meet WCAG 2.2 SC 2.5.8's 24px floor, and the drag threshold is 6px rathe
 than Qt's mouse-tuned 10, because a touchpad flick covers less distance than a
 finger and should still commit.
 
+**A corner is only the cheapest target on the screen if there is a cursor to
+throw at it.** Fitts's law is an argument about a pointing device, and a finger
+brings none of it: there is no hover, so a corner that answers a cursor resting
+in it answers a touch with nothing at all, and the hover swell that says the
+corner is a control is invisible until after you have already committed to
+pressing it. So every corner has a second way in, and it is the same gesture in
+both hands: press in the corner and push away from it, roughly along the
+corner's own diagonal, and what lives there comes out with you.
+
+The direction is what makes it unambiguous. The corner offers ninety degrees of
+"into the screen" and the diagonal is the middle of them, so a tolerance either
+side of it can be generous and still leave the ends of the arc to the gestures
+that run ALONG an edge: a pull up the right-hand side is still the volume rail's.
+Which way it went is decided ONCE, at the moment the press travels far enough to
+be a gesture at all, because a press that set off along an edge and then curved
+inward was never a corner pull and must not become one retroactively.
+
+Everything about it is one vector. `dirX`/`dirY` say which way the gesture goes,
+the unit direction is that pair over its own length, the angle test is a dot
+product against it and the travel is the projection onto it; there is no
+per-corner branch anywhere, so a corner nobody has used yet works the day it is
+given one (see `~/.claude/rules/math-over-hardcoding.md`).
+
+**And it runs both ways, which is the whole reason it is a vector rather than a
+corner.** Putting a panel away is not a second gesture to design: it is this one
+pointed the other direction. So the rule for the whole shell is that **everything
+goes back into the edge or corner it came out of, by the gesture that brought it
+out, reversed.** The settings page pushes back down into its corner, the
+notification tray back up into its own, the launcher back down into the bottom
+edge it rose from, a menu back into the sidebar. Nothing has to be learned twice,
+and nothing needs a close button drawn on it, which matters because a close
+button is exactly the sort of small permanent control this shell is trying not to
+have (2.1, nothing at a glance).
+
+It also means the answer to "how do I get rid of this" is always the same answer,
+and it is always available: a panel that is on screen is a panel you can push,
+whereas a dismiss target has to be found first.
+
+**What the gesture opens decides how it closes.** A hover-opened panel closes
+when the pointer leaves, because the pointer leaving is the only thing that could
+have meant "done". Applied to a panel that was deliberately swiped open, that
+same rule takes it away the instant you reach for anything inside it, and on a
+touchscreen there is no pointer to leave in the first place. So a pulled panel is
+PINNED: hover no longer has an opinion about it, and it stays until it is pushed
+back where it came from.
+
 **Do not use `drag.target` on an item whose `x` is bound.** Qt's built-in drag
 assigns `x` imperatively, which destroys the binding and then fights whatever
 re-establishes it; the card did not move at all. Track the pointer and drive the
 offset instead, and keep the anchor in the PARENT's coordinates: `mouse.x` is
 relative to the item that is moving, so as the card slides right by d, `mouse.x`
 falls by d for the same physical pointer. `item.x + mouse.x` is the invariant.
+
+**And that invariant only holds while the PARENT is still.** `item.x + mouse.x`
+compensates for the item moving inside its parent; nothing in it compensates for
+the parent moving in the world. So a drag handler must never live inside the
+panel it is dragging: the panel is the thing the gesture moves, the handler would
+be measuring itself against its own effect, and the delta for a finger that never
+went anywhere comes out as whatever the panel did last frame. Declare it as a
+sibling wearing the panel's geometry instead. A parent that *scales* is worse
+again, because it rescales the child's coordinates as well as shifting them.
+
+This is the same bug as the `drag.target` one seen from the other end, and it is
+easy to reintroduce, because putting the handler inside the thing it drags is
+what looks tidy.
+
+**A drag's travel must come from the panel's SETTLED size, never its live one.**
+If the number the fraction is divided by is a dimension the gesture is itself
+collapsing, the scale shrinks as the push proceeds and the panel accelerates away
+from the hand: it runs off faster the further you push, which reads as the shell
+snatching it. Take the resting height, not the current one.
 
 ---
 

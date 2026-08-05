@@ -98,6 +98,17 @@ Item {
         const page = pages.itemAt(next);
         if (page) {
             page.pageTitle = root.title;
+            // CLEARED FIRST, so what arrives is always a NEW instance.
+            //
+            // Two menus are allowed to share one Component: every tray item
+            // does, because they are the same menu about different applications
+            // and the difference is a value the page reads on the way up. A
+            // Loader handed the component it is already holding does not rebuild,
+            // so crossing three tray icons faster than the fade settles left the
+            // third one showing the first one's rows. Unloading is what makes the
+            // page get built again, and being built again is when it reads which
+            // application it is now about.
+            page.pageBody = null;
             page.pageBody = root.body;
         }
 

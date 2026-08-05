@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
+import Quickshell.Io
 import qs.config
 
 // Adapter over Quickshell's Hyprland IPC.
@@ -112,10 +113,66 @@ Singleton {
         return "";
     }
 
+    // HOW A DISPATCH IS SPELLED, which stopped being one thing at Hyprland 0.56.
+    //
+    // Its config parser became Lua and the dispatch socket went with it: a
+    // request is no longer a dispatcher's name followed by its arguments, it is
+    // a Lua expression. `workspace 3` comes back as
+    //
+    //   [string "return hl.dispatch(workspace 3)"]:1: ')' expected near '3'
+    //
+    // which is to say every click in the sidebar was landing, being sent, and
+    // being refused as a syntax error. Nothing in the shell was broken and
+    // nothing in it worked.
+    //
+    // BOTH SPELLINGS ARE KEPT, because which one is right is a fact about the
+    // Hyprland that happens to be running rather than a decision this shell gets
+    // to make.
+    function send(lua: string, legacy: string): void {
+        Hyprland.dispatch(root.lua ? lua : legacy);
+    }
+
+    // WHICH ONE THIS HYPRLAND ANSWERS TO, asked once, by trying it.
+    //
+    // Not read off Quickshell's `usingLua`: that says whether QUICKSHELL is
+    // speaking Lua to the compositor, and it is false on a machine whose
+    // compositor accepts nothing else. The only reliable answer is the
+    // compositor's, so it is asked with the one dispatcher that exists in both
+    // worlds and does nothing in either. `no_op()`, written as a call, is a
+    // syntax error to the old parser and "ok" from the new one.
+    //
+    // A process rather than a dispatch, because a dispatch down the event socket
+    // cannot report back, and the whole question is what came back. Once: a
+    // compositor does not change parsers while it is running.
+    property bool lua: false
+
+    // Whether the question above has been ANSWERED, which is not the same as the
+    // answer being false.
+    //
+    // `lua` starts false and means "the old parser" the moment anything reads
+    // it, so a caller that runs before the probe comes back cannot tell "no"
+    // from "not asked yet" and will happily speak the wrong dialect once, at
+    // startup, which is the one moment nobody is watching the log. Anything that
+    // has to be phrased in the compositor's own language waits for this.
+    property bool parserKnown: false
+
+    Process {
+        running: true
+        command: ["hyprctl", "dispatch", "hl.dsp.no_op()"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.lua = text.trim() === "ok";
+                root.parserKnown = true;
+            }
+        }
+    }
+
     function toggleSpecial(name: string): void {
         // The dispatcher wants the bare name, not the `special:` prefix it
         // reports back to us.
-        Hyprland.dispatch(`togglespecialworkspace ${name.startsWith("special:") ? name.slice(8) : name}`);
+        const bare = name.startsWith("special:") ? name.slice(8) : name;
+        root.send(`hl.dsp.workspace.toggle_special("${bare}")`, `togglespecialworkspace ${bare}`);
     }
 
     // The focused window itself, not its address: it is the same object the
@@ -148,9 +205,39 @@ Singleton {
         root.focusAddress(client?.lastIpcObject?.address ?? "");
     }
 
+    // GO TO a window, pointer and all.
+    //
+    // Hyprland's focus dispatcher warps the cursor into whatever it focuses, and
+    // for this call that is the point: clicking a window in the sidebar, or
+    // claiming the one an application has just opened, is a request to BE there,
+    // and a pointer left behind hands focus straight back to whatever it is
+    // still sitting over the moment you twitch.
     function focusAddress(addr: string): void {
         if (addr)
-            Hyprland.dispatch(`focuswindow address:${addr}`);
+            root.send(`hl.dsp.focus({ window = "address:${addr}" })`, `focuswindow address:${addr}`);
+    }
+
+    // HAND THE KEYBOARD BACK, and do not touch the pointer.
+    //
+    // Every panel in this shell gives focus back to whatever had it on the way
+    // out, and not one of those is a request to go anywhere: you closed a panel,
+    // you did not ask to be moved. Warping threw the cursor from the corner you
+    // had just clicked to the middle of whatever happened to be underneath,
+    // which is most of a screen's travel for a gesture meant to change nothing
+    // but what has focus.
+    //
+    // The position is read and put back INSIDE THE SAME DISPATCH, so there is no
+    // frame in between for the pointer to be seen anywhere it was not sent. The
+    // shape is odd for a reason: a dispatch runs exactly one dispatcher, so the
+    // focusing is done as a side effect and the value handed back is the one
+    // that puts the cursor where it already was.
+    //
+    // The legacy parser cannot do this. `movecursor` needs coordinates and there
+    // is no way to read them in the same breath, so an older Hyprland keeps the
+    // warp rather than getting a version of this that is a frame late.
+    function restoreFocus(addr: string): void {
+        if (addr)
+            root.send(`(function() local p = hl.get_cursor_pos() hl.dispatch(hl.dsp.focus({ window = "address:${addr}" })) return hl.dsp.cursor.move({ x = p.x, y = p.y }) end)()`, `focuswindow address:${addr}`);
     }
 
     // Waiting for the window an application is about to open.
@@ -208,8 +295,29 @@ Singleton {
     }
 
     function switchTo(id: int): void {
-        Hyprland.dispatch(`workspace ${id}`);
+        root.send(`hl.dsp.focus({ workspace = ${id} })`, `workspace ${id}`);
     }
+
+    // The monitor the keyboard is on, by name. What "the screen" means to
+    // anything summoned by a keybind rather than reached for with the cursor.
+    readonly property string focusedScreen: Hyprland.focusedMonitor?.name ?? ""
+
+    // A WINDOW HAS MAPPED, with the address it will answer to.
+    //
+    // Anything that opens a window and then has something to say about it has to
+    // hear about it here: a window has no address until it exists, so there is no
+    // earlier moment to hold one. Emitted for every window, not only the claimed
+    // one; who cares is the listener's business.
+    signal windowOpened(addr: string, title: string)
+
+    // ...and it has gone. The counterpart, for anything holding an address that
+    // has stopped meaning anything.
+    signal windowClosed(addr: string)
+
+    // Hyprland has re-read its config, which drops every rule set with
+    // `hyprctl keyword` along with it. Anything that pushed one has to push it
+    // again, and this is the only warning it gets.
+    signal configReloaded
 
     // Hyprland pushes an event stream over its socket. Quickshell keeps its own
     // model in sync for some of it, but window counts only update when asked.
@@ -219,15 +327,32 @@ Singleton {
         function onRawEvent(event): void {
             const n = event.name;
 
-            if (n === "openwindow" && root.claiming) {
-                root.claiming = false;
-                claim.stop();
+            if (n === "openwindow") {
                 // WINDOWADDRESS,WORKSPACENAME,WINDOWCLASS,WINDOWTITLE, and the
-                // address arrives without its 0x.
-                const addr = (event.data ?? "").split(",")[0];
+                // address arrives without its 0x. The title is whatever is left:
+                // it can contain commas, and the three fields before it cannot.
+                const parts = (event.data ?? "").split(",");
+                const raw = parts[0] ?? "";
+                const addr = raw && !raw.startsWith("0x") ? `0x${raw}` : raw;
+
                 if (addr)
-                    root.focusAddress(addr.startsWith("0x") ? addr : `0x${addr}`);
+                    root.windowOpened(addr, parts.slice(3).join(","));
+
+                if (root.claiming) {
+                    root.claiming = false;
+                    claim.stop();
+                    root.focusAddress(addr);
+                }
             }
+
+            if (n === "closewindow") {
+                const raw = (event.data ?? "").trim();
+                if (raw)
+                    root.windowClosed(raw.startsWith("0x") ? raw : `0x${raw}`);
+            }
+
+            if (n === "configreloaded")
+                root.configReloaded();
 
             if (n === "activewindowv2") {
                 const addr = (event.data ?? "").trim();

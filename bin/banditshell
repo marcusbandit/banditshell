@@ -9,12 +9,17 @@
 #   banditshell start|stop|restart|run|log
 #   banditshell menu list|open <key>|close|toggle <key>|current|hover
 #   banditshell launcher toggle|open|close|scrub <0..1>
+#   banditshell session toggle|open|close
+#   banditshell settings toggle|open|close|pull|put|status
+#                                pull = shell -> window, put = window -> shell
+#   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
 #   banditshell status
 #   banditshell theme [name]
 #   banditshell get <key> | set <key> <value>
 #   banditshell shot [file]      screenshot, for checking a change actually landed
 #   banditshell demo <key>       open a menu, screenshot it, close it
+#   banditshell lockpreview      draw the lock screen WITHOUT locking, and shoot it
 #   banditshell shaders          recompile components/blob/*.frag to .qsb
 
 set -euo pipefail
@@ -96,6 +101,21 @@ launcher)
     fi
     ;;
 
+session)
+    ipc session "${1:-toggle}"
+    ;;
+
+settings)
+    ipc settings "${1:-toggle}"
+    ;;
+
+# No `unlock` here, and that is not an oversight: see the lock handler in
+# modules/Ipc.qml. The way back in is `loginctl unlock-session`, which works
+# from a TTY and over SSH, which is where you will be if you need it.
+lock)
+    ipc lock "${1:-lock}"
+    ;;
+
 picker)
     ipc picker "${1:-freezeclip}"
     ;;
@@ -144,6 +164,24 @@ demo)
     sleep 0.6
     grim "$out"
     ipc menu close >/dev/null
+    echo "$out"
+    ;;
+
+lockpreview)
+    # The lock screen's LOOK, without the lock. A session lock cannot be opened
+    # to look at, and the way back from one that drew wrong is a TTY, so the face
+    # is a plain Item that also fits in an ordinary overlay surface.
+    #
+    # Its own quickshell instance, on a timer, taking no input: it draws over
+    # everything for a few seconds and then goes away on its own whatever
+    # happens. Deliberately NOT killed with pkill afterwards, which would take
+    # the running shell with it.
+    mkdir -p "$SHOT_DIR"
+    out="${1:-$SHOT_DIR/lock.png}"
+    (cd "$HOME" && timeout 9 qs -p "$SHELL_DIR/lockpreview.qml" >/dev/null 2>&1) &
+    sleep 4
+    grim "$out"
+    wait
     echo "$out"
     ;;
 

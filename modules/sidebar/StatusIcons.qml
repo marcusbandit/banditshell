@@ -24,7 +24,22 @@ import qs.modules.menu.content
 Item {
     id: root
 
-    signal requested(string key)
+    // WHICH MENU, and WHETHER IT WAS ASKED FOR.
+    //
+    // The second argument is the difference between an open that something is
+    // holding and an open that has to hold itself. A hover is incidental: it
+    // says the pointer is here right now, it will say so again next frame, and
+    // the menu it opened is closed by the same input going away. A tap is
+    // deliberate and it is an INSTANT: it says nothing at all about the frame
+    // after it, so a menu opened by one has nothing continuous behind it and
+    // needs the latch at the other end (Menus.pinned).
+    //
+    // Both still arrive on ONE signal rather than two. Which menu is wanted is
+    // the same question either way, and the answer goes to the same place; the
+    // flag is a fact ABOUT the request, not a different kind of request. A
+    // second signal would mean every consumer wiring up both and getting the
+    // ordering between them wrong on the tap, which fires both in one gesture.
+    signal requested(string key, bool deliberate)
     signal released
 
     // Which icon the cursor is on, "" for none.
@@ -36,7 +51,9 @@ Item {
     // to that: a leave only clears the key if it is still that icon's.
     property string hoveredKey: ""
 
-    onHoveredKeyChanged: hoveredKey ? root.requested(hoveredKey) : root.released()
+    // The pointer arriving on an icon is an INCIDENTAL open: it asks for the
+    // menu and goes on holding it, so it must not latch.
+    onHoveredKeyChanged: hoveredKey ? root.requested(hoveredKey, false) : root.released()
 
     readonly property var items: [
         {
@@ -109,22 +126,44 @@ Item {
         return root.items.find(i => i.key === key) ?? null;
     }
 
-    implicitWidth: column.implicitWidth
+    // THE WIDTH IS GIVEN, the height is asked for. The sidebar hands this group
+    // the whole band so that each gauge's target can span it (StatusIcon's
+    // MouseArea is the whole of why), and taking `column.implicitWidth` instead
+    // would put it back to one slot and leave seventeen dead pixels either side
+    // of every gauge. Height is the group's own business: it is however tall the
+    // column of gauges came out.
+    implicitWidth: Appearance.sizes.statusSlot
     implicitHeight: column.implicitHeight
 
     // A quiet container, so the indicators read as one control rather than a
     // column of loose glyphs.
+    //
+    // AROUND THE GAUGES, not around the item, which are no longer the same
+    // rectangle. Filling the item would draw this fill the full width of the
+    // band, so the bar would wear a stripe down its bottom third instead of a
+    // pill around a column of icons. Pinned to the column, it is exactly the
+    // shape it always was: the drawn slot plus a small padding on every side.
     G2Rect {
-        anchors.fill: parent
-        anchors.margins: -Appearance.padding.small
+        anchors.horizontalCenter: parent.horizontalCenter
+        anchors.top: column.top
+        anchors.bottom: column.bottom
+        anchors.topMargin: -Appearance.padding.small
+        anchors.bottomMargin: -Appearance.padding.small
+        width: Appearance.sizes.statusSlot + Appearance.padding.small * 2
         radius: Appearance.rounding.normal
         color: Appearance.colour.fill
     }
 
+    // FULL WIDTH, so that the delegates in it have a full width to take. The
+    // column is not what you see: what you see is a slot-wide square inside each
+    // delegate, drawn where it always was because this is centred on the same
+    // line the old one-slot column stood on.
     Column {
         id: column
 
-        anchors.centerIn: parent
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.verticalCenter: parent.verticalCenter
         spacing: Appearance.sizes.statusGap
 
         Repeater {
@@ -136,6 +175,13 @@ Item {
                 required property var modelData
 
                 readonly property string key: modelData.key
+
+                // A Column positions its children and never resizes them, so a
+                // delegate left to itself would be one slot wide inside a
+                // full-width column and the dead lanes would still be there.
+                // Taken from the column rather than from `parent` so the
+                // reference is a typed one.
+                width: column.width
 
                 icon: modelData.icon
                 mark: modelData.mark ?? null
@@ -151,7 +197,13 @@ Item {
                     else if (root.hoveredKey === key)
                         root.hoveredKey = "";
                 }
-                onActivated: root.requested(key)
+
+                // A PRESS IS DELIBERATE, and on a touchscreen a press is all
+                // there is: the hover above fires there too, because Qt
+                // synthesises a mouse from the touch, but it is gone the instant
+                // the finger lifts and it was never holding anything. This is
+                // the one that says the menu was actually asked for.
+                onActivated: root.requested(key, true)
             }
         }
     }

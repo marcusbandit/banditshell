@@ -34,6 +34,16 @@ Singleton {
     property real gapsIn: 0
     property real borderSize: 0
 
+    // NATURAL SCROLLING, per device kind, which is not a look and is here anyway.
+    //
+    // Content scrolls; a control is pushed. The shell has both, and the second
+    // kind has to know which way a finger actually moved, because natural
+    // scrolling has already flipped the event before it arrives. The compositor
+    // is the only thing that knows the setting, and it is the same argument as
+    // the rounding: do not make the user say it twice.
+    property bool naturalScrollMouse: false
+    property bool naturalScrollTouchpad: false
+
     // Superellipse exponent -> our G2 smoothing factor.
     //
     // They describe the same idea in different parameters: p = 2 is a circular
@@ -55,21 +65,34 @@ Singleton {
     // One call for all five options: spawning five processes to read five
     // integers would be silly, and `getoption` only takes one option at a time,
     // so this is `--batch`. Each answer puts its value under a key named after
-    // its type, and gaps are a "custom" string of up to four numbers, so take
-    // the first.
+    // its type, and gaps are a STRING of up to four numbers, so take the first.
+    //
+    // Which key that string arrives under is a moving target: Hyprland filed it
+    // as `custom` until 0.56 and as `css` after. Reading only the old name did
+    // not fail, it fell through to a default of zero, so the chassis band became
+    // no band at all and the shell looked like it had simply stopped drawing one.
+    // An answer this file cannot read is dropped now instead of defaulted, which
+    // trips the count below, logs, and hands the numbers back to config.json.
     Process {
         id: hyprctl
 
-        command: ["hyprctl", "-j", "--batch", "getoption decoration:rounding ; getoption decoration:rounding_power ; getoption general:gaps_out ; getoption general:gaps_in ; getoption general:border_size"]
+        command: ["hyprctl", "-j", "--batch", "getoption decoration:rounding ; getoption decoration:rounding_power ; getoption general:gaps_out ; getoption general:gaps_in ; getoption general:border_size ; getoption input:natural_scroll ; getoption input:touchpad:natural_scroll"]
 
         stdout: StdioCollector {
             onStreamFinished: {
                 const nums = text.split("\n").filter(l => l.trim().startsWith("{")).map(line => {
                     try {
                         const o = JSON.parse(line);
-                        if (o.custom !== undefined)
-                            return parseFloat(o.custom.trim().split(/\s+/)[0]);
-                        return o.float ?? o.int ?? 0;
+                        const many = o.custom ?? o.css;
+                        if (many !== undefined)
+                            return parseFloat(String(many).trim().split(/\s+/)[0]);
+                        // As a NUMBER, including the flags: everything below
+                        // reads this array positionally and compares against 0,
+                        // so a bool has to arrive as one or the other rather
+                        // than as a third kind of thing.
+                        if (o.bool !== undefined)
+                            return o.bool ? 1 : 0;
+                        return o.float ?? o.int ?? null;
                     } catch (e) {
                         return null;
                     }
@@ -84,6 +107,14 @@ Singleton {
                 root.gapsIn = nums[3];
                 root.borderSize = nums[4];
                 root.available = true;
+
+                // Appended after the geometry, so a Hyprland too old to know
+                // these options still hands over the five that gate `available`
+                // and only the scroll flags fall back to false.
+                if (nums.length > 5)
+                    root.naturalScrollMouse = nums[5] !== 0;
+                if (nums.length > 6)
+                    root.naturalScrollTouchpad = nums[6] !== 0;
             }
         }
     }

@@ -1,0 +1,21 @@
+# The lock screen's question: "is this the same person who is already logged in?"
+#
+# Shipped HERE rather than in /etc/pam.d, because PamContext takes a
+# configDirectory and a lock screen that needs root to install is a lock screen
+# that does not exist on a fresh checkout. See services/Lock.qml.
+#
+# pam_unix reads /etc/shadow through the setuid unix_chkpwd helper, so this
+# authenticates correctly from the unprivileged process the shell runs as.
+# pam_faillock brackets it, so a machine left alone with someone patient locks
+# the account rather than offering unlimited guesses; its counter lives in
+# /run/faillock and is the user's own file.
+#
+# DELIBERATELY NOT `include system-login`. That stack adds pam_shells and
+# pam_nologin, which answer "may this account start a session" - a question that
+# was settled when the session started. A lock screen asks only whether the
+# person in front of it is the same one, and an /etc/nologin dropped by a
+# routine update must never be able to make an already-locked screen unopenable.
+auth        required                    pam_faillock.so     preauth
+auth        [success=1 default=bad]     pam_unix.so         nullok
+auth        [default=die]               pam_faillock.so     authfail
+auth        required                    pam_faillock.so     authsucc

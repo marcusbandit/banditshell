@@ -90,9 +90,35 @@ Item {
     // UNDER THE BUTTON someone was already aiming at: the exact bug this pause
     // exists to prevent, reintroduced by how it was measured. A HoverHandler is
     // passive and stays hovered while its own descendants are.
-    readonly property bool held: hover.hovered || drag.pressed
+    readonly property bool held: hover.hovered || drag.pressed || root.kept
     onHeldChanged: if (entry)
         entry.held = held
+
+    // KEPT: the touch answer to hover, and the pin a mouse never had.
+    //
+    // Everything above is an argument about a cursor. A HoverHandler receives no
+    // touch events at all, so on a touchscreen `hovered` is false for the whole
+    // life of every popup and the pause simply never happens: the notification
+    // runs its five seconds out mid-sentence and there is nothing a finger can do
+    // about it. The other disjunct, `drag.pressed`, DID pause it, and the price
+    // of using it was the card itself: letting go of a press that never travelled
+    // is a click, and a click dismisses (DESIGN.md 15), so the one touch gesture
+    // that paused a notification was also the one that deleted it.
+    //
+    // A finger cannot rest on something to say it is looking at it, so it HOLDS
+    // to say it. Past the press-and-hold interval the card latches this, the
+    // countdown stops, and the release that follows is no longer a click (see
+    // onReleased). The lift the card already does under a pointer is what says it
+    // happened, because `held` is what colours the background and this is now one
+    // of the three things that sets it.
+    //
+    // It is a LATCH and not a second kind of hover: nothing lets go of it, so a
+    // kept popup stays on the screen until it is thrown away, acted on, or the
+    // tray is cleared. That is the point of it. A mouse user gets the same pin,
+    // which they did not have before either: hovering suspends a countdown only
+    // while the pointer is parked on the card, so the moment you look away to
+    // read the thing the notification was about, it resumes and goes.
+    property bool kept: false
 
     width: fullWidth
     implicitHeight: body.implicitHeight + Appearance.padding.normal * 2
@@ -425,47 +451,170 @@ Item {
     MouseArea {
         id: drag
 
-        // The anchor is kept in the PARENT's coordinates. `mouse.x` is relative
-        // to this item and this item is what moves, so as the card slides right
-        // by d, mouse.x falls by d for the same physical pointer; the invariant
-        // is `root.x + mouse.x`.
-        property real anchor: 0
+        // The anchor is kept in the PARENT's coordinates, on BOTH axes. `mouse.x`
+        // is relative to this item and this item is what moves, so as the card
+        // slides right by d, mouse.x falls by d for the same physical pointer;
+        // the invariant is `root.x + mouse.x`, and `root.y + mouse.y` is the same
+        // expression on the axis the card never travels along itself. It is
+        // recorded all the same, because the arbitration below cannot judge which
+        // way a gesture went without both numbers, and the vertical one is the
+        // one that used to be missing entirely.
+        property real anchorX: 0
+        property real anchorY: 0
         property real startedAt: 0
         property bool throwing: false
+
+        // Whether THIS press turned into a hold. `root.kept` is the lasting
+        // answer and outlives the gesture on purpose; this one is per press,
+        // because the release has to know what it is the end of and not what some
+        // earlier press decided.
+        property bool holding: false
+
+        // Whether the press went UP OR DOWN the screen far enough to have meant
+        // it, which is not the same question as whether anything scrolled.
+        //
+        // The list only takes the gesture off this card when it can actually
+        // move: `view.interactive` is false while the tray fits, which is most of
+        // the time, and a Flickable that is not interactive steals nothing. So a
+        // swipe up a stack of two popups is never taken away, arrives at the
+        // release with `throwing` still false, and would be read as a click and
+        // DELETE the card: the same bug the arbitration below fixes, in the one
+        // case where handing the gesture over is not what fixes it.
+        //
+        // A click is a press that stayed where it was put. Once the finger has
+        // travelled a threshold's worth up or down, whatever it was, it was not a
+        // click, and the release owes it nothing.
+        property bool wandered: false
 
         anchors.fill: parent
         z: -1
         hoverEnabled: true
         acceptedButtons: Qt.LeftButton | Qt.MiddleButton
-        preventStealing: true
+
+        // ONLY ONCE THE CARD HAS COMMITTED TO A THROW, which is the other half of
+        // the arbitration below.
+        //
+        // It was a constant `true`, and with that this MouseArea won the press
+        // and never gave it back: the Flickable the cards live in could not take
+        // the grab for a scroll, so a finger that pressed a card and swiped up
+        // moved nothing at all, and the release then found `throwing` false and
+        // read the whole thing as a click, which DISMISSED the notification you
+        // had merely touched on the way past. The list could only be scrolled
+        // from the twelve pixels of gap between two cards.
+        //
+        // False for the whole of the undecided part leaves the Flickable free to
+        // steal the gesture the moment it decides the finger is scrolling; true
+        // from the instant the card latches locks it out for the rest of the
+        // throw, which is what the flag was there for in the first place.
+        preventStealing: drag.throwing
         // The gesture ADVERTISES itself. Drag is the primary way to get rid of a
         // notification (DESIGN.md 15) and nothing on the card says so; a hand
         // that closes when you press is the cheapest way to say it.
         cursorShape: drag.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
         onPressed: mouse => {
-            anchor = root.x + mouse.x;
+            anchorX = root.x + mouse.x;
+            anchorY = root.y + mouse.y;
             startedAt = root.dragX;
             throwing = false;
+            holding = false;
+            wandered = false;
         }
 
         onPositionChanged: mouse => {
             if (!pressed)
                 return;
-            const delta = root.x + mouse.x - anchor;
-            if (!throwing && Math.abs(delta) < Appearance.sizes.dragThreshold)
+
+            const dx = root.x + mouse.x - anchorX;
+            const dy = root.y + mouse.y - anchorY;
+
+            // WHOSE GESTURE IS THIS: the card's, or the list's.
+            //
+            // Both of them begin as a press on a card and there is nothing in the
+            // press itself to tell them apart, so the card takes no position at
+            // all until one axis has won. Vertical wins and this returns without
+            // latching, which leaves `preventStealing` false and the enclosing
+            // Flickable free to take the grab and scroll with the finger; the card
+            // then hears `canceled` instead of `released` and stays exactly where
+            // it was.
+            //
+            // Horizontal has to do TWO things to win. It has to travel past the
+            // threshold, so the wobble inside a click is not a throw, and it has
+            // to dominate the vertical, so a flick that is mostly up the screen is
+            // a scroll rather than a dismissal that happened to drift sideways. A
+            // threshold on its own is not arbitration: the first few pixels of a
+            // scroll cross it too, on whichever axis is being measured.
+            //
+            // Which is exactly what the old code did, and it is worth saying
+            // plainly. There was not merely no arbitration here, there was no
+            // vertical MEASUREMENT: the delta was the horizontal one and nothing
+            // ever looked at dy, so a straight swipe up produced a delta of about
+            // zero, never reached the threshold, never latched, and arrived at the
+            // release indistinguishable from a click. Between that and a
+            // `preventStealing` nobody could take back, swiping the list scrolled
+            // nothing and deleted the notification you started on.
+            //
+            // Decided ONCE, like every other gesture in the shell: past this the
+            // card owns the pointer and a throw that curves upward is still a
+            // throw. Re-testing on every move would let the list snatch a card
+            // that was already half way off the screen.
+            if (!throwing) {
+                if (Math.abs(dy) >= Appearance.sizes.dragThreshold)
+                    wandered = true;
+                if (Math.abs(dy) > Math.abs(dx))
+                    return;
+                if (Math.abs(dx) < Appearance.sizes.dragThreshold)
+                    return;
+                throwing = true;
+            }
+
+            root.pulled = dx;
+            root.dragX = root.resist(startedAt + dx);
+        }
+
+        // Long enough to be a decision rather than a press. See `kept`: this is
+        // the finger's way of saying what a cursor says by resting on the card,
+        // and it is the only one it has.
+        //
+        // NOT DURING A THROW. Qt runs this timer off the press alone and never
+        // cancels it for movement, so a card dragged out slowly and thought
+        // better of would cross the interval on the way and come back silently
+        // pinned. A hand on its way somewhere is not a hand reading something.
+        onPressAndHold: {
+            if (throwing)
                 return;
-            throwing = true;
-            root.pulled = delta;
-            root.dragX = root.resist(startedAt + delta);
+            holding = true;
+            root.kept = true;
         }
 
         onReleased: {
             // A click, which dismisses too: a mouse user who expects that should
             // not be told they are holding it wrong. It has no direction, so it
             // collapses in place rather than flinging.
-            if (!throwing)
-                return root.dismissed();
+            //
+            // UNLESS the press became a hold. The two gestures differ only in how
+            // long the finger stayed down, so a hold that dismissed on release
+            // would hand the card back the instant you finished pinning it, and
+            // "keep this one" and "throw this one away" would be the same motion
+            // told apart by a stopwatch nobody can see. The keep survives; the
+            // click that would have followed it does not happen.
+            //
+            // `holding` and not `root.kept`, and the difference matters. The keep
+            // is permanent by design, so guarding on it would mean a kept card
+            // could never be clicked away again, which takes back the one thing
+            // DESIGN.md 15 promises a mouse user. This flag is about this press
+            // only: hold once to pin, and a plain click afterwards still dismisses.
+            //
+            // ...and unless the finger wandered up or down the screen. See
+            // `wandered`: a list too short to scroll never takes the gesture off
+            // the card at all, so without this the arbitration above would only
+            // save the tray that HAS somewhere to scroll to, and the two popups
+            // you swipe at most often would go on deleting themselves.
+            if (!throwing) {
+                if (!holding && !wandered)
+                    root.dismissed();
+                return;
+            }
 
             if (root.committed) {
                 root.flung = root.pulled < 0 ? -1 : 1;
@@ -478,6 +627,27 @@ Item {
             settle.target = 0;
             root.pulled = 0;
             throwing = false;
+        }
+
+        // THE FLICKABLE TOOK IT, which is the arbitration above succeeding rather
+        // than anything going wrong. A stolen grab arrives here instead of at
+        // `onReleased`, and that difference is the whole reason this handler has
+        // to exist: `onReleased` dismisses, and a gesture that turned out to
+        // belong to the list must leave the card precisely as it found it.
+        //
+        // Usually nothing has moved, because a gesture can only be stolen while
+        // the card has not latched and an unlatched card has not written a pixel.
+        // The offset is walked home by the same spring the release uses anyway,
+        // rather than assumed to be zero: a cancel also arrives when the window
+        // loses the grab under a throw already in flight, and that one has a real
+        // offset to give back.
+        onCanceled: {
+            settle.value = root.dragX;
+            settle.target = 0;
+            root.pulled = 0;
+            throwing = false;
+            holding = false;
+            wandered = false;
         }
     }
 }

@@ -14,7 +14,11 @@ import qs.config
 ShaderEffect {
     id: root
 
-    readonly property int capacity: 8
+    // Twelve, and see blob.frag for why it is not eight. Three slots are spent
+    // permanently on panels that park off-screen rather than emptying, and the
+    // notification tray takes one per card, so the usable headroom is always
+    // several less than this number looks.
+    readonly property int capacity: 12
 
     // [{ x, y, w, h, radius }, ...] in this item's coordinates. A zero width
     // means nothing is drawn for that slot, which is how a closed panel costs
@@ -80,10 +84,16 @@ ShaderEffect {
     readonly property vector4d blob5: slotRect(5)
     readonly property vector4d blob6: slotRect(6)
     readonly property vector4d blob7: slotRect(7)
+    readonly property vector4d blob8: slotRect(8)
+    readonly property vector4d blob9: slotRect(9)
+    readonly property vector4d blob10: slotRect(10)
+    readonly property vector4d blob11: slotRect(11)
     readonly property vector4d blobRadius: Qt.vector4d(slotRadius(0), slotRadius(1), slotRadius(2), slotRadius(3))
     readonly property vector4d blobRadius2: Qt.vector4d(slotRadius(4), slotRadius(5), slotRadius(6), slotRadius(7))
+    readonly property vector4d blobRadius3: Qt.vector4d(slotRadius(8), slotRadius(9), slotRadius(10), slotRadius(11))
     readonly property vector4d blobSmooth: Qt.vector4d(slotSmooth(0), slotSmooth(1), slotSmooth(2), slotSmooth(3))
     readonly property vector4d blobSmooth2: Qt.vector4d(slotSmooth(4), slotSmooth(5), slotSmooth(6), slotSmooth(7))
+    readonly property vector4d blobSmooth3: Qt.vector4d(slotSmooth(8), slotSmooth(9), slotSmooth(10), slotSmooth(11))
 
     onPanelsChanged: if (panels.length > capacity)
         console.warn(`BlobField: ${panels.length} panels but only ${capacity} slots; the rest will not be drawn.`)

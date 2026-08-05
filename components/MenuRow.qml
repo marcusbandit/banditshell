@@ -177,7 +177,12 @@ Item {
     Item {
         id: stack
 
-        anchors.left: root.mark ? custom.right : root.icon || root.hasImage ? glyph.right : parent.left
+        // AFTER WHICHEVER MARK IS ACTUALLY DRAWN. The glyph and the image are
+        // alternatives in the same slot, and the glyph is a Text: with no name
+        // it is zero wide, so anchoring to it on an image-only row put the label
+        // at the left margin, straight through the picture. A row can only have
+        // one leading mark, so the anchor has to name the one it has.
+        anchors.left: root.mark ? custom.right : root.hasImage ? image.right : root.icon ? glyph.right : parent.left
         anchors.leftMargin: Appearance.padding.normal
         anchors.right: trailingSlot.left
         anchors.rightMargin: Appearance.padding.normal

@@ -256,8 +256,19 @@ Item {
             return 0;
         for (let i = root.rows.length - 1; i >= 0; i--) {
             const key = root.rows[i].section;
-            if (key)
-                return Math.max(0, (list.height - root.sectionSpan[key].h) / 2);
+            if (!key)
+                continue;
+            // GUARDED, because `rows` and `sectionSpan` are two separate
+            // bindings and this is a third that reads both of them. There is a
+            // window, at startup and after anything changes the set of installed
+            // applications, in which the rows have been rebuilt and the spans
+            // have not, and a key taken out of the new list has no entry in the
+            // old map: reading `.h` off that threw a TypeError into the log
+            // every time, for a state that corrects itself on the very next
+            // evaluation. No span means there is nothing to measure and so no
+            // room to leave, and this runs again the moment the map catches up.
+            const span = root.sectionSpan[key];
+            return span ? Math.max(0, (list.height - span.h) / 2) : 0;
         }
         return 0;
     }
@@ -309,10 +320,20 @@ Item {
         // Hand the animation the position the drag ended at, so it carries on
         // from there instead of snapping back to start the journey again.
         rise.value = root.dragProgress;
-        if (open)
-            root.show();
-        else
+        // ONLY show what is not already shown, which matters now that this call
+        // arrives from two different gestures. The bottom edge pulling a closed
+        // launcher out wants everything show() does; the panel's own put-away
+        // push, reversed mid-flight, wants none of it. show() clears the query,
+        // the marked section and the selection, and deciding NOT to close
+        // something must not also throw away what you had typed into it and
+        // where you had scrubbed to. A launcher that is already shown has `rise`
+        // pointed at 1 anyway, so letting go simply walks it back up.
+        if (open) {
+            if (!root.shown)
+                root.show();
+        } else {
             root.hide();
+        }
         // Back to nothing, so the NEXT press starts from the bottom. Left at the
         // last drag's depth, a plain click would hand the animation a starting
         // point half way up and the panel would appear already half open.
@@ -387,7 +408,7 @@ Item {
         query.focus = false;
         root.scrubbing = false;
         root.grabbing = false;
-        Hypr.focusAddress(root.restoreTo);
+        Hypr.restoreFocus(root.restoreTo);
         root.restoreTo = "";
     }
 
@@ -558,6 +579,108 @@ Item {
         enabled: root.open
         visible: root.open
         onClicked: root.hide()
+    }
+
+    // THE WAY BACK IN. Push the column down and it goes back into the bottom
+    // edge it rose out of, which is the shell's one rule for getting rid of
+    // anything (DESIGN.md 15): everything goes back into the edge or corner it
+    // came out of, by the gesture that brought it out, reversed.
+    //
+    // It has to be HERE rather than on the bottom edge, because the bottom edge
+    // is not reachable once the launcher is up: LaunchEdge is armed only while
+    // the launcher is closed, and it clamps its own reported fraction at zero, so
+    // it can say "opening" and nothing else. The panel is what is on the screen,
+    // so the panel is what you push.
+    //
+    // AND IT FIXES A SECOND, WORSE THING while it is here. The panel's frame is
+    // `padding.large` down every side, and the frame, the room around the field
+    // and the strip beside the rail are all bare Items with no MouseArea in
+    // them. Every press that landed on any of that fell straight through to the
+    // `catcher` declared above and CLOSED the launcher. A cursor hits that frame
+    // occasionally; a nine-millimetre fingertip aiming at a row or at the field
+    // hits it constantly, so the launcher was dismissing itself on the way to
+    // being used. Covering the panel with this catches those presses here
+    // instead.
+    //
+    // `onTapped` is deliberately UNWIRED. A tap on the panel's own padding
+    // should do nothing at all: it was aimed at something and it missed, and the
+    // answer to a miss is to leave the screen alone rather than to guess. A tap
+    // OUTSIDE the panel still closes it via the catcher, which is the correct
+    // dismissal and the discoverable one.
+    Pull {
+        id: putAway
+
+        // A SIBLING of the panel wearing the panel's geometry, rather than a
+        // child filling it, and that is a correctness question rather than a
+        // preference.
+        //
+        // Pull measures the gesture in its PARENT's coordinates, because the
+        // parent is the frame that stays still while the pull item's own
+        // top-left is moved about by the thing it is driving (components/Pull.qml
+        // and DESIGN.md 15). Make it a child of the panel and the parent IS the
+        // thing being dragged: the panel's top edge tracks the finger by design,
+        // so a press origin measured against that edge never moves at all, every
+        // delta reported is only the frame-to-frame remainder, and the gesture
+        // collapses into noise. Out here the parent is this screen-sized item,
+        // which does not move, and the pull item's own y is exactly the panel's,
+        // so `y + mouse.y` is the finger's position on the screen and nothing
+        // else.
+        //
+        // It still sits UNDER the panel's contents, which is the other half of
+        // what the primitive asks for over a panel: declaration order is input
+        // order in QML, so declared before the panel it covers the same
+        // rectangle and gets only the presses the rail, the rows and the field
+        // did not want. The rail in particular must go on winning, because a run
+        // down the rail is a downward drag too and it is emphatically not a
+        // request to put the launcher away.
+        x: panel.x
+        y: panel.y
+        width: panel.width
+        height: panel.height
+
+        // Nothing to push away that is not up. `armed` rather than `enabled`,
+        // which is the mechanism the primitive provides for exactly this: an
+        // unarmed Pull refuses the press and lets it fall through, where a
+        // disabled MouseArea would have to be torn down mid-gesture to become
+        // one.
+        armed: root.open
+
+        // Straight down, back into the edge it rose from, written as the vector
+        // it is. These two numbers are the whole of what says which way this
+        // gesture runs.
+        dirX: 0
+        dirY: 1
+
+        // An EDGE's tolerance, not a corner's. A corner has ninety degrees of
+        // "into the screen" to divide between its gestures and an edge has a
+        // hundred and eighty, so the same number that is generous in a corner is
+        // stingy here.
+        angle: Appearance.sizes.pullAngleEdge
+
+        // The panel's own settled height, so one finger-length of panel is one
+        // finger-length of travel and the top edge stays under the hand.
+        //
+        // `fullHeight` rather than `height`, and that is not a detail: `height`
+        // is `fullHeight * dragProgress`, which this very gesture is collapsing,
+        // so the scale would shrink as you pushed and the panel would accelerate
+        // away from the finger measuring it. fullHeight is where the panel
+        // SETTLES, which is a fact about the screen rather than about how far
+        // through the gesture you are, and it is never zero.
+        travel: panel.fullHeight
+
+        // TWO INVERSIONS, and both are real rather than bookkeeping.
+        //
+        // `dragTo` takes how far OPEN the panel is and this gesture reports how
+        // far PUT AWAY it is, so the two are one minus each other: a push that
+        // has travelled a quarter of the panel's height leaves three quarters of
+        // it showing.
+        onPulled: fraction => root.dragTo(1 - fraction)
+
+        // And `finished(true)` means the push CARRIED ON in its direction, which
+        // for a dismissal means gone, which is `open: false` to dragEnd. Reverse
+        // it mid-push and `finished(false)` arrives instead, and the launcher
+        // stays up with the query and the marked section exactly as they were.
+        onFinished: gone => root.dragEnd(!gone)
     }
 
     Item {
@@ -1012,7 +1135,26 @@ Item {
                         // away, which handed the hover back to the row, which
                         // brought the button back. It flashed for as long as you
                         // held still on it. One area cannot fight itself.
-                        readonly property bool atStow: pointer.containsMouse && pointer.mouseX >= stow.x
+                        //
+                        // From a HOVER HANDLER rather than from the MouseArea's
+                        // own `containsMouse`, and that is a touch fix rather
+                        // than a tidy-up. QQuickMouseArea::mousePressEvent calls
+                        // setHovered(true) itself, so a press synthesised from a
+                        // touch made `containsMouse` true the instant a finger
+                        // landed: a tap on the rightmost few pixels of a row
+                        // satisfied this test and HID the application instead of
+                        // launching it, with the stow disc fading in mid-press as
+                        // the only warning that it was about to. A HoverHandler
+                        // is passive and is offered no touch events at all, so
+                        // with a finger `under` and `atStow` are both simply
+                        // false and a tap anywhere on a row launches, which is
+                        // what a tap on an application should always do.
+                        //
+                        // It is the mirror of the lesson above, and of the one
+                        // NotificationTray records twice: hover belongs to
+                        // exactly ONE mechanism per item, and here it has to
+                        // belong to the mechanism that only a pointer can drive.
+                        readonly property bool atStow: hover.hovered && hover.point.position.x >= stow.x
 
                         width: list.width
                         height: isSection ? root.sectionPitch : root.rowPitch
@@ -1026,16 +1168,48 @@ Item {
 
                             anchors.fill: parent
                             enabled: !row.isSection
-                            hoverEnabled: true
+                            // NO hoverEnabled, deliberately, and it must stay
+                            // that way: a MouseArea reports itself hovered from
+                            // the moment a press lands on it, whatever produced
+                            // the press, so a finger looked exactly like a
+                            // cursor. See row.atStow. The hover is the
+                            // HoverHandler's now, and only a pointer can move it.
                             cursorShape: Qt.PointingHandCursor
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
-                            // A LOOK, and only a look. See root.hovered.
-                            onEntered: root.hovered = row.index
-                            onExited: if (root.hovered === row.index)
-                                root.hovered = -1
+                            // WHETHER THE PRESS ALREADY DID SOMETHING, so the
+                            // release does not do a second thing on top of it.
+                            property bool held: false
+
+                            onPressed: pointer.held = false
+
+                            // A LONG PRESS IS THE TOUCH RIGHT-CLICK, and this is
+                            // the same action `onClicked` gives a right button
+                            // below rather than a new one: put the application
+                            // away, or take it back out. Touch has no second
+                            // button and no hover, so with the stow disc now
+                            // correctly invisible to a finger there would
+                            // otherwise be no way to reach this at all from a
+                            // touchscreen. A press and hold is the conventional
+                            // way to reach a context action without a second
+                            // button, which is to say it is the gesture the hand
+                            // already has for exactly this.
+                            onPressAndHold: {
+                                pointer.held = true;
+                                Apps.setHidden(row.entry, !row.away);
+                            }
 
                             onClicked: mouse => {
+                                // The long press has already acted. Whether Qt
+                                // still delivers `clicked` after `pressAndHold`
+                                // is a detail of QQuickMouseArea's release path,
+                                // and this row should not depend on the answer
+                                // either way: on the build that does deliver it,
+                                // holding a row would hide the application and
+                                // then launch it, which is the worst of both.
+                                if (pointer.held)
+                                    return;
+
                                 // Right anywhere on the row does what the button
                                 // does, without having to aim at it.
                                 if (mouse.button === Qt.RightButton || row.atStow) {
@@ -1044,6 +1218,28 @@ Item {
                                 }
                                 root.selected = row.index;
                                 root.accept();
+                            }
+                        }
+
+                        // WHERE THE POINTER IS, and only ever the pointer.
+                        //
+                        // Passive by construction: a HoverHandler is offered
+                        // hover events and nothing else, so it cannot take a
+                        // press off the MouseArea above it and, which is the
+                        // whole point, it cannot be fooled by one either. See
+                        // row.atStow for why the MouseArea is no longer allowed
+                        // to answer this question.
+                        HoverHandler {
+                            id: hover
+
+                            enabled: !row.isSection
+
+                            // A LOOK, and only a look. See root.hovered.
+                            onHoveredChanged: {
+                                if (hover.hovered)
+                                    root.hovered = row.index;
+                                else if (root.hovered === row.index)
+                                    root.hovered = -1;
                             }
                         }
 

@@ -179,7 +179,15 @@ Singleton {
                 // told what the something is. Long enough that crossing a column
                 // of icons says nothing, short enough that stopping on one feels
                 // answered rather than waited for.
-                tooltip: 450
+                tooltip: 450,
+                // How long two surfaces both draw the settings page while it
+                // changes hands between the shell and a window. See
+                // modules/settings/. Two frames at 60Hz.
+                //
+                // A gap here is a black flash; an overlap is nothing at all,
+                // because both are drawing the same card in the same place. So
+                // it errs long.
+                handover: 32
             },
 
             // Which stop of the theme's ramp each role uses. The ramp runs 0
@@ -327,6 +335,24 @@ Singleton {
                 status: {
                     slot: 28,
                     gap: 4
+                },
+
+                // THE TRAY: what is running without a window. Built to the
+                // gauges' measurements, because the two groups are the same kind
+                // of thing in the bar and a second set of numbers is how they
+                // stop looking like it.
+                tray: {
+                    slot: 28,
+                    gap: 4,
+                    // How big the application's mark is inside that slot. Below
+                    // the slot, so a busy icon has margin around it rather than
+                    // touching its own hover fill.
+                    iconScale: 1.0,
+                    // A CAP, not a limit on what you may run. A tray is somebody
+                    // else's list and has no upper bound; without this a session
+                    // with fifteen background applications draws a column longer
+                    // than the workspaces underneath it.
+                    max: 8
                 }
             },
 
@@ -560,6 +586,90 @@ Singleton {
                 iconScale: 1.4
             },
 
+            // The settings page. See modules/settings/.
+            //
+            // ONE size for both halves of its life. The page is drawn by the
+            // shell or by a window depending on which you last asked for, and
+            // the whole point of the handover is that it is the same object
+            // either way: two sizes would make it a different object the moment
+            // it changed hands.
+            settings: {
+                width: 560,
+                height: 560
+            },
+
+            // The bottom-right corner, as a way in. See
+            // modules/SettingsCorner.qml.
+            //
+            // The one corner of the screen nothing else claims: the top-right is
+            // the notification tray's, the two on the left are the sidebar's, and
+            // the volume rail deliberately stops short of both ends of its edge so
+            // that no corner on this shell does two things.
+            corner: {
+                // WHAT THE CORNER BECOMES, relative to the shell's icon size, and
+                // the only number the corner has. How far it swells is the glyph
+                // plus its padding plus the band, computed from this: the swell
+                // is there to hold the mark, so a size of its own would be a
+                // second opinion about the same thing.
+                //
+                // Bigger than the 1.4 the power panel's buttons use. Those are
+                // marks inside a button and read against its edge; this one has
+                // no plate around it and is the entire thing you are looking at.
+                iconScale: 1.6
+            },
+
+            // The lock screen. See modules/lock/.
+            lock: {
+                // How wide the field you type into is. Wide enough that a long
+                // password does not scroll inside it, narrow enough that it
+                // reads as one control rather than as a bar across the screen.
+                fieldWidth: 360,
+
+                // How far back the wallpaper goes while the screen is locked.
+                //
+                // The compositor cannot help here. Its blur rule matches
+                // `namespace banditshell`, and a session lock surface is not a
+                // layer surface, so it has no namespace to match: this is the
+                // one surface in the shell that blurs its own ground. See
+                // modules/lock/LockSurface.qml.
+                blur: 0.8,
+
+                // Exposure, not a black sheet. A scrim at this strength flattens
+                // the picture toward grey; pulling the brightness down keeps the
+                // wallpaper's own contrast underneath the blur.
+                //
+                // THIS FAR DOWN because of the font. Monocraft's stems are one
+                // device pixel, so there is nothing for anti-aliasing to work
+                // with and mid-tones turn the text to mush; DESIGN.md section 6
+                // is blunt about it - pixel text goes on abyss or void, never on
+                // a mid-tone. A wallpaper is a picture with a bright part
+                // somewhere, and the clock has to be legible over whichever part
+                // it lands on, so the ground goes back until it is a ground.
+                dim: 0.8,
+
+                // Pulled toward grey as well as down. The shell is one cool
+                // green hue family and a wallpaper is not: left saturated, the
+                // ground argues with the chassis sitting on it instead of
+                // receding behind it. Enough that the picture reads as material,
+                // not so much that it stops being the wallpaper.
+                desaturate: 0.45,
+
+                // The marks that stand in for what you typed.
+                //
+                // Material Symbols' `circle` is a solid disc filling most of its
+                // em box, so it is drawn at half the shell's icon size: a
+                // password mark is punctuation rather than an icon, and at full
+                // size a dozen of them do not fit the field.
+                dotScale: 0.5,
+
+                // How fast the screen arrives. SLOWER than the shell's own
+                // reveal, which is tuned for a panel you asked for and were
+                // already looking at. This is a change of context rather than a
+                // panel opening, and something that takes the whole screen
+                // should be seen to arrive rather than simply be there.
+                revealSpeed: 9
+            },
+
             // Controls inside menus.
             control: {
                 // WCAG 2.2 SC 2.5.8 Target Size (Minimum), AA.
@@ -590,6 +700,48 @@ Singleton {
                 // which is tuned for a mouse; a touchpad flick and a finger both
                 // want to commit sooner.
                 dragThreshold: 6,
+                // How far either side of a corner's own 45 degree diagonal
+                // still counts as "away from the corner", in degrees. The
+                // corner offers ninety degrees of directions into the screen;
+                // thirty either side spends sixty of them on this gesture and
+                // leaves fifteen at each end for gestures that run ALONG an
+                // edge, so a pull up the right-hand edge is still the volume
+                // rail's and not this one.
+                pullAngleCorner: 30,
+                // The same tolerance for a pull that starts on an EDGE rather
+                // than in a corner, which has twice the room to spend: an edge
+                // offers a hundred and eighty degrees of "away from it" where a
+                // corner offers ninety, so the same thirty would be a needlessly
+                // narrow slot on the more generous gesture. Sixty either side
+                // spends a hundred and twenty of them and still leaves thirty at
+                // each end for gestures that run ALONG the edge.
+                pullAngleEdge: 60,
+                // A full pull, as a fraction of the surface it is dragged
+                // across. A diagonal gesture is measured against a diagonal and
+                // a straight one against the distance it covers, and a fraction
+                // rather than a pixel count because a distance that is a
+                // comfortable swipe on one display is either trivial or
+                // impossible on another.
+                pullTravel: 0.12,
+                // WHETHER THE SCREEN EDGES ARE SIZED FOR A FINGER, and the one
+                // setting in here that is a real trade rather than a taste.
+                //
+                // The band is ten pixels and the gestures that live on it (the
+                // volume rail down the right, the notch across the top) are ten
+                // pixels of target. A cursor can be thrown at an edge and the
+                // edge stops it, so ten is plenty; a fingertip is nearer eight
+                // millimetres and has nothing to stop it, so ten is a miss. On
+                // they widen to `minTarget`, and the shell has to claim those
+                // pixels from the windows underneath to be able to answer in
+                // them at all.
+                //
+                // WHAT IT COSTS: fourteen more pixels of every window's right
+                // edge and top-centre belong to the shell, and the right edge is
+                // where scrollbars live. That is a bad trade for a mouse and the
+                // only workable one for a hand, which is why it is a switch and
+                // not a decision made here. Off, the edges collapse back to the
+                // band exactly as they were.
+                touchEdges: true,
                 // How many rows a list menu shows before it says "+N more". A
                 // street is eighty wifi networks and a menu that scrolls forever
                 // is worse than one that admits what it left out.

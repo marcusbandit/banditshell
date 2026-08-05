@@ -68,6 +68,14 @@ Singleton {
         // actually comes from.
         readonly property color surface: root.rampAt(root.cfg.colour.surface, root.cfg.material.surfaceAlpha)
 
+        // THE SAME MATERIAL WITH NOTHING BEHIND IT.
+        //
+        // Same point on the ramp, no alpha. For the one thing in this shell that
+        // is not a shell surface: a real window, which the compositor frames and
+        // does not blur the way it blurs a layer. Translucency there is not depth,
+        // it is the wallpaper coming through the page.
+        readonly property color surfaceSolid: root.rampAt(root.cfg.colour.surface, 1)
+
         // Label tiers.
         readonly property color text: root.veil(root.cfg.material.label[0])
         readonly property color textDim: root.veil(root.cfg.material.label[1])
@@ -203,6 +211,7 @@ Singleton {
 
         readonly property int grace: root.cfg.anim.grace
         readonly property int tooltip: root.cfg.anim.tooltip
+        readonly property int handover: root.cfg.anim.handover
     }
 
     readonly property QtObject sizes: QtObject {
@@ -240,6 +249,14 @@ Singleton {
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 
+        // The tray, at the top of the bar. See modules/sidebar/TrayIcons.qml.
+        // Its mark derives from the shell's icon size like every other mark, so
+        // the whole bar rescales from one number.
+        readonly property int traySlot: root.cfg.sidebar.tray.slot
+        readonly property int trayGap: root.cfg.sidebar.tray.gap
+        readonly property int trayIcon: Math.round(root.font.iconSize * root.cfg.sidebar.tray.iconScale)
+        readonly property int trayMax: root.cfg.sidebar.tray.max
+
         readonly property real melt: root.cfg.blob.melt
         readonly property real meltFeather: root.cfg.blob.feather
 
@@ -250,6 +267,14 @@ Singleton {
         readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction
         readonly property real dragResistance: root.cfg.control.dragResistance
         readonly property int dragThreshold: root.cfg.control.dragThreshold
+        // The pull gesture's direction gate, one tolerance for a corner and one
+        // for an edge, and its full-pull distance; see components/Pull.qml.
+        readonly property int pullAngleCorner: root.cfg.control.pullAngleCorner
+        readonly property int pullAngleEdge: root.cfg.control.pullAngleEdge
+        readonly property real pullTravel: root.cfg.control.pullTravel
+        // Whether the screen-edge gestures are sized for a finger or for a
+        // cursor; see the note in Config.qml, it is a trade rather than a taste.
+        readonly property bool touchEdges: root.cfg.control.touchEdges
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property real wheelRows: root.cfg.control.wheelRows
         readonly property real coastMs: root.cfg.control.coastMs
@@ -274,6 +299,34 @@ Singleton {
         // The power panel, on the right edge. See modules/session/SessionMenu.qml.
         readonly property int sessionButton: root.cfg.session.button
         readonly property int sessionIcon: Math.round(root.font.iconSize * root.cfg.session.iconScale)
+
+        // The settings page, at rest. See modules/settings/.
+        //
+        // ONE size for both halves of its life: the page is drawn by the shell
+        // or by a window depending on which you last asked for, and the point of
+        // the handover is that it is the same object either way.
+        readonly property int settingsWidth: root.cfg.settings.width
+        readonly property int settingsHeight: root.cfg.settings.height
+
+        // The bottom-right corner, as a way in. The corner's SIZE is not here:
+        // it is derived from this mark in modules/SettingsCorner.qml, because
+        // the swell exists to hold the glyph.
+        readonly property int cornerIcon: Math.round(root.font.iconSize * root.cfg.corner.iconScale)
+
+        // The lock screen. See modules/lock/LockSurface.qml.
+        //
+        // The field's height is DERIVED, not configured: it is one line of the
+        // body size in its own box, and the one number that decides how tall a
+        // line is here is StyledText's fixed 4/3 line box. Configuring it
+        // separately would let the two disagree the first time the type scale
+        // moved.
+        readonly property int lockField: root.cfg.lock.fieldWidth
+        readonly property real lockFieldHeight: Math.round(root.font.size.small * 4 / 3) + root.padding.normal * 2
+        readonly property real lockBlur: root.cfg.lock.blur
+        readonly property real lockDim: root.cfg.lock.dim
+        readonly property real lockDesaturate: root.cfg.lock.desaturate
+        readonly property int lockDot: Math.round(root.font.iconSize * root.cfg.lock.dotScale)
+        readonly property real lockReveal: root.cfg.lock.revealSpeed
 
         readonly property int menuWidth: root.cfg.menu.width
         readonly property int menuMinHeight: root.cfg.menu.minHeight

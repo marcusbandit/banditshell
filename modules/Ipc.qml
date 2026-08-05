@@ -138,6 +138,114 @@ Scope {
         }
     }
 
+    // The power panel. Opened on the FIRST screen rather than the focused one,
+    // the same way every other handler here works: a keybind that ends the
+    // session should put the question in one known place, not wherever the
+    // cursor happened to be resting.
+    IpcHandler {
+        target: "session"
+
+        function toggle(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.session.toggle();
+            return win.session.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Shell.forScreen("")?.session.show();
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.session.hide();
+            return "closed";
+        }
+    }
+
+    // The settings page. Driven off the singleton rather than off a window,
+    // unlike everything above it: the page is ONE page for the whole session,
+    // which screen draws it is its own business, and half the time no shell
+    // window is drawing it at all because it has been pulled out into a window.
+    IpcHandler {
+        target: "settings"
+
+        function toggle(): string {
+            Settings.toggle();
+            return Settings.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Settings.show();
+            return "open";
+        }
+
+        function close(): string {
+            Settings.hide();
+            return "closed";
+        }
+
+        // The two halves of the handover, by name rather than as a flag, for the
+        // same reason the picker has four verbs: a keybind is a string, and a
+        // flag in a keybind is a thing to get wrong once and never notice.
+        //
+        // `pull` needs a rect and takes none: it uses the one the card is
+        // actually occupying, which is the only rect that makes the handover
+        // invisible and is not something a caller could know.
+        function pull(): string {
+            const win = Shell.forScreen(Settings.screenName);
+            if (!Settings.open || Settings.floating)
+                return "not on the shell";
+            if (!win)
+                return `no shell window on screen: ${Settings.screenName}`;
+            win.settings.popOut();
+            return "pulled out";
+        }
+
+        function put(): string {
+            if (!Settings.floating)
+                return "not in a window";
+            Settings.popIn();
+            return "put back";
+        }
+
+        // Which of the two is holding it, and where. The whole failure mode this
+        // feature has is the two halves disagreeing about who is drawing, and
+        // from a screenshot that looks identical to nothing being open at all.
+        function status(): string {
+            return [`open       ${Settings.open}`, `held by    ${Settings.floating ? "a window" : "the shell"}`, `screen     ${Settings.screenName || "-"}`, `window     ${Settings.windowOpen ? Settings.address || "opening" : "none"}`, `placed     ${Settings.placed}`, `handoff    ${Settings.handoff ? `${Settings.handoff.x},${Settings.handoff.y} ${Settings.handoff.w}x${Settings.handoff.h}` : "-"}`].join("\n");
+        }
+    }
+
+    // The lock screen. ONE DIRECTION ONLY, deliberately: this can put the screen
+    // up and cannot take it down.
+    //
+    // Not because an IPC unlock would be a hole in the lock - anything that can
+    // reach this socket is already running as the user, which is the thing a
+    // locked screen is not protecting against - but because there should be
+    // exactly one documented way back in from outside, and logind already is
+    // one. `loginctl unlock-session` works from a TTY or over SSH, needs a
+    // session rather than a socket, and is honoured in services/Lock.qml. A
+    // second route here would be a second thing to remember at the one moment
+    // nobody wants to be remembering anything.
+    IpcHandler {
+        target: "lock"
+
+        function lock(): string {
+            Lock.lock();
+            return "locked";
+        }
+
+        // Whether the shell believes it is locked, which is worth being able to
+        // ask separately from what logind believes: those two disagreeing is
+        // exactly the failure this shell would otherwise be blind to.
+        function status(): string {
+            return Lock.active ? "locked" : "unlocked";
+        }
+    }
+
     IpcHandler {
         target: "shell"
 

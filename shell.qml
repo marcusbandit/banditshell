@@ -4,7 +4,9 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import qs.modules
+import qs.modules.lock
 import qs.modules.picker
+import qs.modules.settings
 
 // banditshell.
 //
@@ -29,6 +31,16 @@ ShellRoot {
     Ipc {
         picker: picker
     }
+
+    // The lock, like Ipc, is shell-wide rather than per-screen: ext-session-lock
+    // is one lock over the session, and it grows its own surface on each output.
+    LockScreen {}
+
+    // The settings page's OTHER body: a real window, for when you want the page
+    // to sit beside the thing it is changing. Shell-wide and hidden until asked
+    // for, because a window is on whichever monitor it has been dragged to
+    // rather than on all of them. The shell-drawn half is in ShellWindow.
+    SettingsFloat {}
 
     Variants {
         model: Quickshell.screens

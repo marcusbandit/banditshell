@@ -59,6 +59,14 @@ Singleton {
     function recordFit(path: string, box: var): void {
         if (!path || !box)
             return;
+        // ONLY WHAT WILL STILL BE THERE TOMORROW. An image provider's url names
+        // a live object rather than a file (`image://qsimage/0x...` is a tray
+        // item's pixmap, and the address is different next session), so a
+        // measurement filed under one can never be found again and the table
+        // would grow by every icon in the tray on every boot. Measuring one is
+        // a 64x64 scan; keeping a key that cannot match is a leak.
+        if (path.startsWith("image://"))
+            return;
         const next = Object.assign({}, root.fits);
         next[path] = box;
         root.fits = next;

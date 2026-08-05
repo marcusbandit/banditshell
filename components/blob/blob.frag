@@ -79,9 +79,20 @@ layout(std140, binding = 0) uniform buf {
 
     // Panels. Each is x, y, w, h; a width of zero means the slot is unused.
     // A uniform block cannot hold a variable-length array, so the slots are
-    // written out. Eight is the ceiling, and eight is exactly what can be out at
-    // once: a menu, the launcher, the notch, the notification tray, the launch
-    // edge, the volume rail, the session panel, and a tooltip.
+    // written out.
+    //
+    // TWELVE. It was eight, and eight was described here as "exactly what can be
+    // out at once", which was true of the list of things that existed at the time
+    // and is not a property of anything. The ninth summonable thing (the corner
+    // nook) made the count wrong, and the count was ALSO already wrong in one
+    // direction nobody had hit: the notification tray contributes one slot per
+    // card, so four notifications and a tooltip overflowed a ceiling that was
+    // meant to have room to spare.
+    //
+    // Three of the eight are spent permanently on panels that park off-screen
+    // rather than emptying (the notch, the volume rail, the session panel), so
+    // the headroom was never eight to begin with. Twelve leaves the tray real
+    // room. It costs 4 vec4s of uniform and four more smin evaluations per pixel.
     vec4 blob0;
     vec4 blob1;
     vec4 blob2;
@@ -90,9 +101,14 @@ layout(std140, binding = 0) uniform buf {
     vec4 blob5;
     vec4 blob6;
     vec4 blob7;
+    vec4 blob8;
+    vec4 blob9;
+    vec4 blob10;
+    vec4 blob11;
     // Corner radius per panel, four to a vec4, in the same order.
     vec4 blobRadius;
     vec4 blobRadius2;
+    vec4 blobRadius3;
 
     // MELT WIDTH PER PANEL, same packing again.
     //
@@ -107,6 +123,7 @@ layout(std140, binding = 0) uniform buf {
     // when it does not ask for its own.
     vec4 blobSmooth;
     vec4 blobSmooth2;
+    vec4 blobSmooth3;
 
     vec4 colour;
     vec4 frameColour;
@@ -214,6 +231,10 @@ void main() {
     d = min(d, meltPanel(shell, p, blob5, blobRadius2.y, blobSmooth2.y));
     d = min(d, meltPanel(shell, p, blob6, blobRadius2.z, blobSmooth2.z));
     d = min(d, meltPanel(shell, p, blob7, blobRadius2.w, blobSmooth2.w));
+    d = min(d, meltPanel(shell, p, blob8, blobRadius3.x, blobSmooth3.x));
+    d = min(d, meltPanel(shell, p, blob9, blobRadius3.y, blobSmooth3.y));
+    d = min(d, meltPanel(shell, p, blob10, blobRadius3.z, blobSmooth3.z));
+    d = min(d, meltPanel(shell, p, blob11, blobRadius3.w, blobSmooth3.w));
 
     // Clipped to the screen's own edge, so the body cannot spill into the
     // rounded-off corners of the display.

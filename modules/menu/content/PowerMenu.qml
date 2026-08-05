@@ -1,81 +1,39 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
-import Quickshell.Io
 import qs.config
 import qs.components
+import qs.services
 
-// Power. This one is real, and it is the one menu that can lose your work.
+// Power, as a menu: the same choices the right-edge panel offers, in the shape a
+// menu takes. Parked for the dashboard; the panel is what a keybind opens.
 //
 // Every entry asks first. Not a modal, not an "are you sure" that trains people
 // to click yes: the row itself becomes the confirmation, in place, and anything
 // else you do cancels it. A power menu that acts on the first click is one
 // mis-hover away from ending your session, and this one opens on hover.
+//
+// WHICH actions exist, and what each one runs, is in services/Power.qml. This
+// file decides only what asking looks like here.
 Column {
     id: root
 
     property string arming: ""
+
+    readonly property var actions: Power.actions
 
     spacing: Appearance.padding.small
 
     // Disarm as soon as attention moves elsewhere.
     Component.onDestruction: root.arming = ""
 
-    Process {
-        id: runner
-    }
-
-    readonly property var actions: [
-        {
-            key: "lock",
-            icon: "lock",
-            label: "Lock",
-            detail: "",
-            // Locking is harmless and instant, so it is the one that does not ask.
-            safe: true,
-            command: ["loginctl", "lock-session"]
-        },
-        {
-            key: "suspend",
-            icon: "bedtime",
-            label: "Suspend",
-            detail: "sleep to RAM",
-            safe: true,
-            command: ["systemctl", "suspend"]
-        },
-        {
-            key: "logout",
-            icon: "logout",
-            label: "Log out",
-            detail: "ends this session",
-            command: ["loginctl", "terminate-user", ""]
-        },
-        {
-            key: "reboot",
-            icon: "restart_alt",
-            label: "Restart",
-            detail: "",
-            command: ["systemctl", "reboot"]
-        },
-        {
-            key: "poweroff",
-            icon: "power_settings_new",
-            label: "Shut down",
-            detail: "",
-            command: ["systemctl", "poweroff"]
+    function activate(entry: var): void {
+        if (entry.safe || root.arming === entry.key) {
+            Power.run(entry);
+            root.arming = "";
+        } else {
+            root.arming = entry.key;
         }
-    ]
-
-    function run(entry: var): void {
-        const cmd = entry.command.slice();
-        // terminate-user needs the actual user, and hardcoding a name in a
-        // config file is how a power menu ends up logging out someone else.
-        if (entry.key === "logout")
-            cmd[2] = Quickshell.env("USER");
-        runner.command = cmd;
-        runner.running = true;
-        root.arming = "";
     }
 
     Repeater {
@@ -94,12 +52,7 @@ Column {
             detail: row.armed ? "press again" : modelData.detail
             selected: row.armed
 
-            onActivated: {
-                if (modelData.safe || row.armed)
-                    root.run(modelData);
-                else
-                    root.arming = modelData.key;
-            }
+            onActivated: root.activate(row.modelData)
         }
     }
 

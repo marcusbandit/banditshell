@@ -35,6 +35,13 @@ Text {
     // size axis below has to know the rendered size.
     property real size: Appearance.font.iconSize
 
+    // SOLID or outlined, 0 to 1. Material Symbols treats FILL as a STATE axis
+    // rather than a style one: the same mark, filled, is how the set says "this
+    // one is on". So it belongs here as a property of the mark, not as a second
+    // icon name to remember, and it takes fractions because the axis does - a
+    // mark can be filled part of the way as it turns on.
+    property real fill: 0
+
     readonly property bool resolved: probe.width <= font.pixelSize * 1.7
 
     text: root.glyph || (resolved ? name : fallback)
@@ -49,7 +56,8 @@ Text {
     // the rendered size, clamped into the axis's real range rather than to a
     // number picked here.
     font.variableAxes: ({
-            opsz: Math.max(20, Math.min(48, root.size))
+            opsz: Math.max(20, Math.min(48, root.size)),
+            FILL: root.fill
         })
 
     // CurveRendering, set explicitly rather than left to the default. Native
