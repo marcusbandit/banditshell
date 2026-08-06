@@ -3,8 +3,10 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.services
 
-// What the compositor says about itself.
+// What the compositor says about itself, and the one thing the shell says
+// back: the theme, onto the window borders. See the push section at the end.
 //
 // This lives in config/ rather than services/ because it is a SOURCE OF
 // SETTINGS, exactly like config.json: Appearance reads it to answer "how round
@@ -58,7 +60,13 @@ Singleton {
             niriConfig.reload();
     }
 
-    Component.onCompleted: refresh()
+    Component.onCompleted: {
+        refresh();
+        // For the case where the parser probe had already answered by the time
+        // this singleton loaded; when it has not, onParserKnownChanged below is
+        // what pushes. The same pair Settings keeps for its window rules.
+        pushBorderColours();
+    }
 
     // Hyprland ------------------------------------------------------------
     //
@@ -145,6 +153,147 @@ Singleton {
             // niri draws plain circular corners, so no smoothing to inherit.
             root.roundingPower = 2;
             root.available = true;
+        }
+    }
+
+    // The theme, pushed back ----------------------------------------------
+    //
+    // Everything above is the compositor telling the shell what it looks like.
+    // This is the one thing that flows the OTHER way: when the theme changes,
+    // the window border colours go to Hyprland, so choosing "slate" recolours
+    // the desktop itself and not just the panels drawn over it.
+    //
+    // It is also the one place config/ reaches into services/ (the qs.services
+    // import above). The push has to speak whichever dialect the compositor
+    // answers to, and Hypr owns the probe that learned it; duplicating that
+    // probe here so the layering stayed pretty would be two processes asking
+    // the compositor the same question at every startup.
+    //
+    // Deliberately NOT gated on `compositor.follow`. Follow governs geometry
+    // the compositor owns: rounding and gaps are the compositor's decision and
+    // the shell agrees with it. A border's COLOUR is the theme's, and the theme
+    // is the shell's to declare, so this direction gets its own switch rather
+    // than borrowing one that answers the opposite question.
+    //
+    // The switch exists for the user whose hyprland.conf paints borders
+    // deliberately: the greensteel theme conf this shell grew up beside draws a
+    // five-stop specular sweep, and a flat accent is a downgrade to whoever
+    // made that. `?? true` because the push is the behaviour that was asked for
+    // by name; a config.json from before the key existed should mean yes, not
+    // a silent no. Turning it OFF does not repaint the file's own colours back,
+    // because the shell never knew them; the compositor's next config reload
+    // restores them, and always was the only thing that did.
+    readonly property bool pushBorders: Appearance.cfg.compositor.pushBorders ?? true
+
+    // The focused window wears the accent. "Which window has the keyboard" is
+    // exactly the kind of state the accent is reserved for, and it is the same
+    // colour the sidebar already spends on "which workspace you are on".
+    readonly property color activeBorder: Appearance.colour.accent
+
+    // Unfocused windows wear the shell's faint outline: the separator,
+    // FLATTENED over the solid surface colour. Two rejected spellings, one per
+    // half. Pushing the separator with its own alpha would hand a 0.1-alpha
+    // veil to a compositor that composites borders over the WALLPAPER, not
+    // over the shell's material, so the line would all but vanish on a bright
+    // picture and take its colour from whatever it crossed. And naming a raw
+    // ramp stop would be a magic index pretending to be a decision, when the
+    // separator token already says "faint outline" and moves with the theme's
+    // material settings. Flattening one over the other reproduces what a faint
+    // line on a panel actually looks like, as one opaque colour the compositor
+    // cannot composite wrong. (On greensteel this lands a step away from the
+    // hand-picked inactive stop in the user's own hyprland theme conf, which
+    // is the derivation agreeing with taste.)
+    readonly property color inactiveBorder: {
+        const line = Appearance.colour.separator;
+        const ground = Appearance.colour.surfaceSolid;
+        const over = (a, b, t) => a + (b - a) * t;
+        return Qt.rgba(over(ground.r, line.r, line.a), over(ground.g, line.g, line.a), over(ground.b, line.b, line.a), 1);
+    }
+
+    // The RESOLVED colours are watched, never the theme's name: a palette
+    // edited live in Themes.qml, a different accent tier, a moved surface stop
+    // all change these two properties, and a rename that changes no colour
+    // says nothing. Qt.callLater because a theme swap changes both in the same
+    // tick, and two hyprctl processes saying the same sentence is one too
+    // many; callLater coalesces the pair into one push.
+    onActiveBorderChanged: Qt.callLater(root.pushBorderColours)
+    onInactiveBorderChanged: Qt.callLater(root.pushBorderColours)
+    // Flipping the switch on pushes immediately rather than waiting for the
+    // next theme change, so the setting answers the moment it is touched.
+    onPushBordersChanged: Qt.callLater(root.pushBorderColours)
+
+    // One colour channel as two hex digits. Both dialect spellings below are
+    // assembled from CHANNELS, never sliced out of Qt's own string: Qt spells
+    // a colour "#AARRGGBB" with the alpha pair FIRST, and drops that pair
+    // entirely when the alpha is ff, so any slice offset depends on the value
+    // it was meant to be reading. Channels read as numbers cannot be surprised.
+    function channelHex(v: real): string {
+        const n = Math.round(v * 255);
+        return (n < 16 ? "0" : "") + n.toString(16);
+    }
+
+    // Both parser dialects, exactly as Settings.installRules: which one is
+    // right is a fact about the Hyprland that happens to be running rather
+    // than a decision this shell gets to make.
+    //
+    // The legacy parser takes `keyword general:col.active_border` with the
+    // colour spelled rgba(RRGGBBAA), alpha LAST. The Lua parser refuses
+    // `keyword` outright ("keyword can't work with non-legacy parsers"), and
+    // its `hl.config` takes one nested table in which a border colour is a
+    // GRADIENT, `{ colors = {...}, angle }`, each stop spelled "0xAARRGGBB",
+    // alpha FIRST. Handing it the legacy string instead is not accepted:
+    // `rgba(...) rgba(...) 45deg` comes back as `invalid color`, which was
+    // found by trying it against a live 0.56, not by reading anything. A flat
+    // colour is a one-stop gradient with no angle worth naming.
+    function pushBorderColours(): void {
+        // parserKnown, not just isHyprland: `lua` reads false while the probe
+        // is still in flight, and false is also a real answer. See Hypr.
+        if (!root.isHyprland || !root.pushBorders || !Hypr.parserKnown)
+            return;
+
+        const active = root.activeBorder;
+        const inactive = root.inactiveBorder;
+
+        if (Hypr.lua) {
+            const stop = c => `"0x${root.channelHex(c.a)}${root.channelHex(c.r)}${root.channelHex(c.g)}${root.channelHex(c.b)}"`;
+            pusher.exec(["hyprctl", "eval", `hl.config({ general = { col = { active_border = { colors = { ${stop(active)} } }, inactive_border = { colors = { ${stop(inactive)} } } } } })`]);
+            return;
+        }
+
+        const stop = c => `rgba(${root.channelHex(c.r)}${root.channelHex(c.g)}${root.channelHex(c.b)}${root.channelHex(c.a)})`;
+        pusher.exec(["hyprctl", "--batch", `keyword general:col.active_border ${stop(active)} ; keyword general:col.inactive_border ${stop(inactive)}`]);
+    }
+
+    Connections {
+        target: Hypr
+
+        // A config reload re-applies the user's own file over anything set by
+        // keyword or hl.config, the borders included, so the theme has to say
+        // itself again. Same contract as Settings' window rules.
+        function onConfigReloaded(): void {
+            root.pushBorderColours();
+        }
+
+        // The compositor has just said which language it speaks. The colours
+        // were known long before it did; this is the last thing the push was
+        // waiting on.
+        function onParserKnownChanged(): void {
+            root.pushBorderColours();
+        }
+    }
+
+    Process {
+        id: pusher
+
+        // hyprctl exits 0 whether or not it liked the request, so the exit
+        // code says nothing; a refusal is a line on stdout that is not `ok`.
+        // The same collector Settings' ruler keeps, for the same reason.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const complaints = text.split("\n").map(l => l.trim()).filter(l => l && l !== "ok");
+                if (complaints.length > 0)
+                    console.warn(`Compositor: the compositor refused a border colour: ${complaints.join("; ")}`);
+            }
         }
     }
 }
