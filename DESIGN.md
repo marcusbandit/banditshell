@@ -373,6 +373,8 @@ banditshell/
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
 │   ├── Settings.qml             the settings page's state, and its handover
+│   ├── Power.qml                the ways a session can end, and how each is done
+│   ├── Lock.qml                 whether the screen is locked, and what decides it
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -384,9 +386,20 @@ banditshell/
 │   ├── media/
 │   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
 │   │   └── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
+│   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
+│   ├── MicIndicator.qml         dictation, while the microphone is actually open
+│   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
+│   ├── lock/                    the lock: one compositor surface per screen, one face
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
+│   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
+│   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
+│   │   ├── KeyBoard.qml         the same binds, on the keys your hands know
+│   │   ├── KeyCap.qml           one key: a width in units, a legend, a state
+│   │   ├── Chord.qml            one chord, in whichever vocabulary is being spoken
+│   │   └── Segments.qml         a row of choices of which exactly one is taken
 │   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── settings/                the page that is a shell surface OR a window
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
@@ -1064,6 +1077,44 @@ same rule takes it away the instant you reach for anything inside it, and on a
 touchscreen there is no pointer to leave in the first place. So a pulled panel is
 PINNED: hover no longer has an opinion about it, and it stays until it is pushed
 back where it came from.
+
+**Escape is the pin's other door.** A pinned panel has no pointer holding it and
+nothing that will take it away on its own, so the push back into its edge is one
+way out and the keyboard is the other: **Escape closes whatever is open, however
+it was opened.** One sentence covers the launcher, the power panel, the hotkey
+sheet, a pinned menu, a pinned notification tray and a pinned notch, and it has
+to hold for the routes that have no pointer in them at all, because a keybind
+running `banditshell notch open` leaves the cursor resting on somebody else's
+window.
+
+**Pinned is the whole set, and hover is deliberately not in it.** A tray the
+cursor is merely resting in is closed by the cursor leaving; it needs no key, and
+giving it one would cost far more than it saves. A layer surface receives no keys
+at all unless its window asks the compositor for them, and asking is not free:
+while the shell holds the keyboard the window underneath does not, so a shell
+that took it every time a pointer crossed a corner would be swallowing somebody's
+typing on behalf of a panel they never asked for. A pin is somebody having said
+so, and it is the one state that does not expire, which is exactly what makes it
+the set worth spending the keyboard on. The grab lasts precisely as long as the
+pin, and not one moment longer.
+
+The honest cost is that a pinned tray or notch left up while you go back to
+typing swallows the keystrokes, and clicking the other window does not win the
+keyboard back, because an exclusive layer surface keeps it. Asking for keys only
+once the shell has been CLICKED is the alternative, and it is rejected for being
+dead in the case the rule exists for: a panel summoned by a keybind has never
+been clicked, so Escape would do nothing until you had gone and touched the very
+thing you were trying to get rid of. What is left is a grab that is always
+visible on screen and has four ways out: Escape, the corner or strip that
+summoned it, the summoning gesture reversed, and the CLI.
+
+**One surface, one answer.** Qt gives active focus to exactly one item, so two
+pinned things can never both be listening, and a panel that hands the focus back
+after closing hands it nowhere. The shell's root item is therefore a focus scope
+holding the fallback: focus cleared inside a scope lands on the scope, so the
+surface answers for whichever panel is not holding it. Escape then takes one
+thing per press, in the order the press would have found if the focus had been
+where it belonged.
 
 **Do not use `drag.target` on an item whose `x` is bound.** Qt's built-in drag
 assigns `x` imperatively, which destroys the binding and then fights whatever

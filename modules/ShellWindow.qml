@@ -142,7 +142,54 @@ PanelWindow {
     // the sheet before Escape did anything. Clicking the sheet is the one thing
     // that cannot be asked for, because a click off the card is what the
     // catcher answers by closing it.
-    WlrLayershell.keyboardFocus: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    //
+    // AND ANYTHING THAT WAS PINNED, which is the newest group and the one that
+    // does not fit the sentence the first four make. A pinned menu, a pinned
+    // notification tray and a pinned notch are not things you are in the middle
+    // of typing into; they want exactly one key, and it is Escape.
+    //
+    // PINNED IS THE WHOLE TEST, and each surface answers it for itself
+    // (Menus.wantsEscape, NotificationTray.wantsEscape, TopNotch.wantsEscape),
+    // so this line never has to know what any of them is made of. HOVER IS
+    // DELIBERATELY NOT IN IT. A tray the cursor is resting in is closed by the
+    // cursor leaving, so it needs no key at all, and a shell that took the
+    // keyboard off the focused window every time a pointer crossed the top-right
+    // corner would be swallowing somebody's typing on behalf of a panel they
+    // never asked for. A pin is somebody having said so; it is the one state
+    // that does not go away on its own; and that is exactly the set that has to
+    // be given a door.
+    //
+    // THE MENU IS NAMED TWICE HERE, under two properties, and that is not a
+    // duplicate. `needsKeyboard` is a live prompt wanting EVERY key, which is
+    // why the three panels above each close a menu that claims it: two things
+    // cannot read one keyboard. `wantsEscape` is a menu somebody asked for
+    // wanting ONE key, and nothing excludes it, because a menu you left up is
+    // not in that fight. Folding them together would have closed every pinned
+    // menu the instant the launcher opened. Menus' own note says why its term is
+    // the PIN rather than the pinned menu being the one on screen: an incidental
+    // hover menu drifting over a pinned one would otherwise drop and retake the
+    // compositor's keyboard once per gauge the cursor crosses.
+    //
+    // EXCLUSIVE, LIKE THE REST, and this was the close call of the three. While
+    // the term is true the compositor sends every key here and none to the
+    // window underneath, and neither the tray nor the notch fills the screen, so
+    // nothing in the picture explains where the typing went; nor does clicking
+    // the other window get it back, because an exclusive layer keeps the
+    // keyboard through that. On demand was the cautious answer and is rejected
+    // for being dead in the case this exists for: `banditshell notifications
+    // open` and `notch open` are meant to be bound to keys, they leave the
+    // pointer resting on somebody else's window, and on demand Escape would then
+    // do nothing until you had gone and clicked the very thing you were trying
+    // to get rid of. That is word for word the sheet's argument above, and the
+    // requirement here is absolute: Escape closes what is open, however it was
+    // opened.
+    //
+    // What keeps the grab honest is that it cannot outlive its reason. It is
+    // true only while something is PINNED; a pin is one Escape, one tap on the
+    // corner or the strip, one push back into the edge it came out of, or one
+    // CLI call from being gone; and the surface holding the keyboard is on
+    // screen the whole time it holds it.
+    WlrLayershell.keyboardFocus: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -314,10 +361,93 @@ PanelWindow {
     // reads as leaving the shell. A watcher that is their PARENT hears both: the
     // bare chassis, because nothing else accepted it, and every control, because
     // ancestors are told what their children took.
-    Item {
+    //
+    // AND A FOCUSSCOPE RATHER THAN AN ITEM, which is one word doing the same job
+    // for the keyboard that the paragraph above does for the pointer.
+    //
+    // Qt gives active focus to exactly ONE item in a window, and every panel here
+    // takes it for itself the moment it wants a key: each runs the same
+    // `Qt.callLater(keys.forceActiveFocus)`. Two pinned surfaces therefore cannot
+    // both hold it, and that much is harmless, because whichever holds it answers
+    // Escape, closes, and hands the focus back. The hole is where it goes back
+    // TO. Clearing focus inside a plain item hands active focus to the window's
+    // root item, which is an ANCESTOR of everything drawn here, and a key event
+    // travels UP from the focused item, never down: measured in a test window,
+    // the state left behind by pinning the tray, opening the launcher over it and
+    // closing the launcher again is a window where no item holds the focus at
+    // all, while this surface goes on asking the compositor for every key because
+    // the tray is still pinned. Every one of those keys is dropped on the floor,
+    // and the tray can no longer be closed by the key that exists to close it.
+    //
+    // A focus scope catches exactly that: clearing focus inside a scope gives
+    // active focus to the SCOPE. So it lands here, on the one item that is an
+    // ancestor of every panel and can therefore answer for all of them. The
+    // rejected alternative was to have each surface re-take the focus when it
+    // noticed it had lost it, which is two items that both want it taking turns,
+    // and the one after that was to have each new pin close the others, which is
+    // a shell deciding you may only have asked for one thing.
+    //
+    // `focus: true` is the other half. It makes this the item holding focus
+    // before anything has been opened at all, so the first Escape of a session
+    // works like the tenth; a panel that asks still wins it the instant it asks,
+    // so nothing about the launcher's search field changes.
+    FocusScope {
         id: body
 
         anchors.fill: parent
+        focus: true
+
+        // ESCAPE, FOR WHATEVER IS OPEN, and only ever as the fallback.
+        //
+        // Every panel answers its own Escape and ACCEPTS the event, and an
+        // accepted key stops travelling, so while any of them holds the focus
+        // this handler is not reached and cannot double-close anything. It runs
+        // in the state the note above describes, where the focus came back here
+        // because a panel handed it over while another one is still up, and it
+        // then has to say what that panel would have said.
+        //
+        // ONE THING PER PRESS, and the order is what the press would have found
+        // if the focus had been where it belonged. Whichever panel took the
+        // keyboard for itself goes first, because it is the thing you are in the
+        // middle of doing (the three are mutually exclusive, so at most one of
+        // them is up). Then the pinned menu, which is the only one of the rest
+        // that also holds the POINTER, since its catcher covers the screen. Then
+        // the settings page, which is a document you left open on purpose. Then
+        // the notch and the tray, which are readouts hanging off an edge and are
+        // the least in anybody's way. Those last two cannot overlap on screen, so
+        // the order between them decides nothing except which of two presses
+        // takes which, and the notch is written first because it hangs over the
+        // middle of the screen where the tray keeps to its corner.
+        //
+        // THE TRAY AND THE NOTCH DROP THE PIN rather than being closed, which is
+        // what their own handlers do, and what the corner tap and the push-back
+        // do as well. Presence on both is a union and the pin is one term of it,
+        // so a cursor still resting in the tray holds it open until the cursor
+        // leaves. Ordering them closed from here would be exactly the argument
+        // those unions exist to end.
+        Keys.onPressed: event => {
+            if (event.key !== Qt.Key_Escape)
+                return;
+
+            if (launcherLayer.open)
+                launcherLayer.hide();
+            else if (sessionLayer.open)
+                sessionLayer.hide();
+            else if (cheatLayer.open)
+                cheatLayer.hide();
+            else if (menuLayer.wantsEscape)
+                menuLayer.hide();
+            else if (settingsLayer.docked)
+                settingsLayer.hide();
+            else if (topNotch.wantsEscape)
+                topNotch.pinned = false;
+            else if (popups.wantsEscape)
+                popups.pinned = false;
+            else
+                return;
+
+            event.accepted = true;
+        }
 
         HoverHandler {
             id: onShell
@@ -487,6 +617,33 @@ PanelWindow {
             inset: win.border + Appearance.sizes.gap
             // Flush with the band's inner edge, so each card melts into the shell.
             edgeInset: win.border
+
+            // WHO IS ALREADY READING THE KEYBOARD, so that a pin cannot take it
+            // off them.
+            //
+            // Every pinned surface here grabs the window's focus for its own
+            // Escape (the tray, the notch and the menu layer all run the same
+            // deferred forceActiveFocus), and Qt gives active focus to exactly
+            // ONE item in a window. A pin can arrive at any moment: `banditshell
+            // notifications open` is meant to be bound to a key, and a compositor
+            // bind is still delivered while a layer surface holds the keyboard.
+            // Landing on top of the launcher it took the caret out of the search
+            // field, which went on drawing and stopped hearing, and nothing gave
+            // it back, because the exclusions written on the three panels below
+            // fire when a panel OPENS and this pin arrived second.
+            //
+            // THE SAME TERMS keyboardFocus's first half names, because it is the
+            // same question: who wants EVERY key. A menu holding a live prompt is
+            // one of them however little it looks like a panel. The settings page
+            // is deliberately not: it asks on demand and answers only Escape, so
+            // a pin taking the focus from it costs one extra press through the
+            // fallback above rather than a field that has gone deaf.
+            //
+            // Handed down rather than looked up, like every other property on
+            // these layers: this file is the one place that can see all of them
+            // at once, and a tray reaching up here by id would be the layer
+            // reading the file that declares it.
+            keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
         }
 
         Menus {
@@ -498,6 +655,14 @@ PanelWindow {
 
             // The whole surface, not this panel: see `body` above.
             shellHovered: onShell.hovered
+
+            // The tray's note above, MINUS ONE TERM. A menu's own live prompt is
+            // this layer's business rather than this file's, so Menus asks its
+            // own `needsKeyboard` inside the grab and is handed only the three
+            // panels it cannot see. Naming its own claim here as well would be
+            // one fact in two places, and the copy out here would be the one to
+            // go stale.
+            keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open
         }
 
         Launcher {
@@ -616,6 +781,75 @@ PanelWindow {
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
+
+            // THE SHEET'S TWO CHOICES, KEPT ACROSS A RESTART. This is the other
+            // half of the contract written over `board` and `symbols` in
+            // CheatSheet.qml: the sheet holds them for the session and says
+            // plainly that it cannot give itself a key in config.json, because
+            // the schema is Config's defaults block. The key exists now, so this
+            // is what makes it real rather than a setting that lies.
+            //
+            // HERE RATHER THAN IN THE SHEET, which is the compromise and not the
+            // design. The sheet's own note asks for `readonly property bool
+            // board: Config.get(...)` with the pick handler calling `Config.set`,
+            // and that is where this belongs the next time that file is open: one
+            // line each, no handlers, and no window in the middle of it. Wired
+            // from out here it works today and it breaks loudly rather than
+            // quietly if the sheet ever takes the job back, because assigning to
+            // a readonly property is a warning on the console.
+            //
+            // Read on completion AND on the file landing, because either can
+            // happen first. Config reads config.json asynchronously, so a shell
+            // starting cold has the defaults at this moment and the real answer a
+            // moment later; a hot reload has it the other way round, with the
+            // values already loaded before this panel exists. Neither order can
+            // lose the setting, and neither can write over it: the guard below
+            // means a restore never becomes a save.
+            Component.onCompleted: {
+                cheatLayer.board = Config.get("cheatsheet.board");
+                cheatLayer.symbols = Config.get("cheatsheet.symbols");
+            }
+
+            // Written where the choice changes rather than where it is made, so
+            // that the CLI route persists too: `banditshell config set
+            // cheatsheet.board true` moves the sheet through the block below, and
+            // a pick moves the file through this one. Each handler carries its
+            // own guard rather than sharing a helper, which is the same call the
+            // three menu toggles above make: the guard is the whole of what the
+            // handler means, and it stops the restore below bouncing back as a
+            // second write of a value the file already holds.
+            onBoardChanged: {
+                if (cheatLayer.board !== Config.get("cheatsheet.board"))
+                    Config.set("cheatsheet.board", cheatLayer.board);
+            }
+
+            onSymbolsChanged: {
+                if (cheatLayer.symbols !== Config.get("cheatsheet.symbols"))
+                    Config.set("cheatsheet.symbols", cheatLayer.symbols);
+            }
+        }
+
+        // THE FILE ANSWERING BACK, which is what makes the two settings above
+        // behave like settings rather than like a cache of the last click.
+        //
+        // Config watches config.json, so this fires for a hand edit, for the
+        // generic `banditshell config set`, and for the sheet's own pick coming
+        // back round. It is also the only thing that makes the choice agree
+        // across SCREENS: there is one of these surfaces per monitor and
+        // therefore one sheet per monitor, and without this a pick made on one
+        // would leave the other still drawing the view it was last shown.
+        //
+        // A Connections rather than a binding on the properties themselves,
+        // because `board` and `symbols` are written by the sheet's own pick
+        // handlers, and a binding is destroyed by the first thing that assigns
+        // through it: the sheet would toggle once and then never again.
+        Connections {
+            target: Config
+
+            function onValuesChanged(): void {
+                cheatLayer.board = Config.get("cheatsheet.board");
+                cheatLayer.symbols = Config.get("cheatsheet.symbols");
+            }
         }
 
         // The settings page, in the middle of the content area. The one panel
@@ -698,6 +932,11 @@ PanelWindow {
 
             anchors.fill: parent
             border: win.border
+
+            // The tray's note above, verbatim and for the same reason: a pin must
+            // not take the keyboard off whatever is being typed into, and `notch
+            // open` is as much a keybind as `notifications open` is.
+            keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
         }
 
         // Dictation, when the microphone is actually open. It shares the top
