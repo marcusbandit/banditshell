@@ -419,8 +419,10 @@ Item {
         onTapped: root.pinned = !root.pinned
     }
 
-    // THE WAY BACK: the corner's pull, pointed the other way, and made from
-    // wherever on the tray your hand has already got to.
+    // THE WAY BACK: the corner's pull answered on the tray's own body, made from
+    // wherever on the tray your hand has already got to, and pointed the way the
+    // tray actually leaves rather than back at the corner it came from (see
+    // `dirX` below, which is where that stopped being the same thing).
     //
     // A SIBLING of the tray wearing the tray's rectangle, and NOT a child of it,
     // which is a correctness requirement rather than a matter of taste. Pull
@@ -444,6 +446,17 @@ Item {
     // interactive and lets presses through. That is the same arrangement `z: -1`
     // buys the notification card's drag area inside its own card, and the z is
     // not needed once the order says it.
+    //
+    // A SCROLL REACHES FURTHER THAN A PRESS DOES, and that is a fact about the
+    // two inputs rather than a hole in the arrangement above. A card takes the
+    // press it is given because it needs it for its own throw and its own tap; a
+    // card given a scroll hands it straight back unless it is already throwing,
+    // and the Flickable hands it back too while the list fits, so a stream over a
+    // card lands here where a press over the same card never would. That is the
+    // right answer for an input nobody above wanted, and it is exactly why the
+    // direction below had to stop being a diagonal: over a press the ambiguity
+    // with a scroll could not arise, because there was no scroll to be ambiguous
+    // with.
     Pull {
         id: push
 
@@ -467,37 +480,71 @@ Item {
         // reversal rather than leaving it half made.
         visible: tray.visible
 
-        // Up and to the right: the corner pull's `(-1, 1)` negated, which is the
-        // whole of what "the same gesture, reversed" means once the direction is
-        // a vector rather than a corner the component was told to sit in. Move
-        // the tray to another corner and these two numbers and the corner's two
-        // are the entire change.
+        // STRAIGHT OUT THROUGH THE RIGHT-HAND EDGE, which is the only way the
+        // tray actually goes. This said `(1, -1)`, the corner pull's `(-1, 1)`
+        // negated, on the argument that the way back is the way in reversed. The
+        // way in is a corner and the way out is not: `pushBack` drives `tray.x`
+        // and the fade and touches `y` nowhere, so the diagonal was naming a
+        // motion the tray does not make, and a gesture that points somewhere its
+        // effect does not go is a gesture whose tracking cannot agree with what
+        // you are looking at.
+        //
+        // AND THE DIAGONAL STOPPED BEING SAFE THE DAY TWO FINGERS COULD MAKE IT.
+        // A press is exclusive: a hand that puts a button down on the tray's
+        // padding and drags is doing this and nothing else. A scroll is the
+        // ambient input, the motion a hand makes to READ this list, and it
+        // arrives here whenever the cards hand it back and the list is short
+        // enough that the Flickable below is not interactive and hands it back
+        // too. Around `(1, -1)` the corner tolerance left an ordinary upward
+        // scroll five degrees outside the gate: one pixel of rightward drift per
+        // eleven of travel is inside the jitter of a real touchpad, so the tray a
+        // hand was trying to read slid into the corner and dropped its pin, while
+        // the same drift the other way did nothing at all and the gesture read as
+        // random. Along the axis it travels there is no such neighbour.
+        //
+        // Move the tray to another corner and these two numbers, the corner's two
+        // and the anchors are still the entire change.
         dirX: 1
-        dirY: -1
+        dirY: 0
+
+        // AN EDGE'S TOLERANCE, now that the direction is an edge's normal. The
+        // corner figure was right for a diagonal, where ninety degrees of "off
+        // the screen" are shared out between the gestures that run along the two
+        // edges meeting there; a normal has a hundred and eighty to spend and one
+        // neighbour worth refusing, which is the vertical scroll of the list
+        // underneath. Sixty degrees leaves the corner-ward shove a hand naturally
+        // makes, at forty-five, fifteen degrees inside the gate, and puts that
+        // vertical scroll thirty degrees outside it, which is a margin no jitter
+        // crosses.
+        //
+        // Symmetric about the normal, so a shove made downward-and-right sends
+        // the tray exactly as one made upward-and-right does. That is not a
+        // second gesture smuggled in: the tray leaves through the right-hand edge
+        // whichever diagonal the hand chose, and refusing one of them would be
+        // refusing a hand that was already doing the right thing.
+        angle: Appearance.sizes.pullAngleEdge
 
         // A PUTTING-AWAY pull, so it measures against the thing being pushed
         // rather than against the screen: the tray is right there under the hand
         // and the point of the drag is that it tracks it. Pull's own `travel`
         // note has the two cases; this is the second one.
         //
-        // THE SETTLED RECTANGLE, never a live one. A travel computed from
-        // something the gesture is itself collapsing or moving shrinks as the
-        // gesture proceeds, which makes the fraction accelerate and the panel run
-        // away from the hand. So the width is asked of `panelWidth`, which is
-        // where the tray's width comes from in the first place, rather than of
-        // the item this push is busy shoving; the two are the same number today
-        // and only one of them is guaranteed to stay that way. The height is the
-        // tray's own, because nothing here touches it: a tray holding two
-        // notifications is a shorter push than one holding ten, which is right,
-        // since it is a smaller thing to shove.
-        travel: Math.hypot(root.panelWidth, tray.height)
-
-        // The default `angle` is the corner tolerance and that is the correct one
-        // here, because what this is aimed at IS a corner: there are ninety
-        // degrees of "off the screen" to divide up, and thirty either side of the
-        // diagonal still leaves the ends of the arc to the gestures that run
-        // ALONG an edge. The edge figure would swallow a swipe that was really
-        // running up the right-hand side.
+        // ONE PANEL WIDTH, because that IS the distance: the binding on `tray.x`
+        // moves it exactly one width for a full fraction, so the travel and the
+        // effect are the same number and the tray's edge stays under the hand the
+        // whole way. It was the diagonal of the width and the height while the
+        // direction was diagonal, and the height in it meant a tall tray answered
+        // a long push with a short movement, falling behind the finger by however
+        // many notifications happened to be in it.
+        //
+        // THE SETTLED WIDTH, never a live one. A travel computed from something
+        // the gesture is itself moving shrinks as the gesture proceeds, which
+        // makes the fraction accelerate and the panel run away from the hand. So
+        // it is asked of `panelWidth`, which is where the tray's width comes from
+        // in the first place, rather than of the item this push is busy shoving;
+        // the two are the same number today and only one of them is guaranteed to
+        // stay that way.
+        travel: root.panelWidth
 
         // NO hoverEnabled, for the reason this file has already recorded twice. A
         // hoverEnabled MouseArea is the topmost thing that gets hover and

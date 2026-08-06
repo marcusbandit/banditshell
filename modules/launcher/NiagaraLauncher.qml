@@ -742,6 +742,39 @@ Item {
                 onReleased: root.grabbing = false
                 onCanceled: root.grabbing = false
 
+                // A SCROLL OVER THE RAIL IS SWALLOWED, and it has to be said
+                // out loud here or the rail becomes the one place two fingers
+                // close the launcher.
+                //
+                // The put-away Pull is a sibling declared BEFORE the panel
+                // wearing the panel's whole rectangle, so it lies under every
+                // pixel of this rail, and its direction is straight DOWN. A
+                // wheel event a MouseArea does not accept falls past it to
+                // whatever is underneath, so without this line a two-finger
+                // push down the rail, which is exactly the motion that scrubs
+                // toward the end of the alphabet, would clear the Pull's angle
+                // gate and dismiss the launcher out from under the hand. The
+                // invariant is already written on that Pull for the press path,
+                // "a run down the rail is a downward drag too and it is
+                // emphatically not a request to put the launcher away", and the
+                // press path keeps it by owning the press; input order alone
+                // does not keep it for a scroll, because owning a press is not
+                // owning a wheel.
+                //
+                // SWALLOWED rather than answered, which is the other half of
+                // the rule and not a gap in it. The rail scrubs to a POSITION:
+                // grabAt is handed where on the rail the pointer is, so the
+                // list goes to the letter under the finger rather than moving by
+                // however far it travelled. A scroll reports motion and never a
+                // position, so there is nothing here for it to be given, which
+                // is the same answer a Slider's bead and the volume rail reach
+                // for the same reason. Faking an origin, taking the first event
+                // of a stream as the grab point and stepping from there, was
+                // rejected outright: the grab point would be wherever the
+                // pointer happened to rest rather than where the hand aimed, so
+                // the first flick would snap the list to a letter nobody chose.
+                onWheel: wheel => wheel.accepted = true
+
                 Repeater {
                     model: root.keys
 

@@ -965,16 +965,23 @@ Item {
         //
         // Per millisecond and NOT per event, because `committed` compares
         // this number against a threshold. Per-event was tried, on the
-        // argument that LaunchEdge already smooths per event; LaunchEdge gets
-        // away with that because it only ever reads the SIGN, which no unit
-        // can change, while a MAGNITUDE in px per event is really px times
-        // the device's event rate, and that rate spans nearly an order of
-        // magnitude across ordinary pointing hardware. The same physical
-        // flick that committed from a touchpad would have failed from a
-        // 1000Hz mouse, whose steps are small precisely because they are
-        // frequent. Dividing each step by its own elapsed time is what
-        // GlideList and the settings pager's scroll axis already do, for the
-        // same reason: only time divides the event rate back out.
+        // argument that the bottom edge smoothed per event and seemed fine; a
+        // MAGNITUDE in px per event is really px times the device's event
+        // rate, and that rate spans nearly an order of magnitude across
+        // ordinary pointing hardware. The same physical flick that committed
+        // from a touchpad would have failed from a 1000Hz mouse, whose steps
+        // are small precisely because they are frequent. Dividing each step by
+        // its own elapsed time is what GlideList and the settings pager's
+        // scroll axis already do, for the same reason: only time divides the
+        // event rate back out. The bottom edge is on the clock now too; it was
+        // reading a per-event magnitude against `pullReversal` and got away
+        // with it only because nobody had swiped it from two devices in a row.
+        //
+        // A STREAM IS A THIRD RATE AGAIN, which is what settled the argument
+        // for good. A touchpad's scroll events arrive at neither a mouse's rate
+        // nor a mouse's step size, so the two-finger path below would have
+        // needed its own threshold had this number not already been in a unit
+        // that means one thing everywhere.
         property real velocity: 0
         property real lastDx: 0
         // When the last step landed, so its dt can be measured: a velocity in
@@ -986,6 +993,22 @@ Item {
         // because the release has to know what it is the end of and not what some
         // earlier press decided.
         property bool holding: false
+
+        // WHOSE GESTURE A STREAM IS, latched, and the one piece of state the
+        // scroll path needs that the drag path gets for free.
+        //
+        // On the drag path the LIST settles this. A finger that sets off up or
+        // down the screen makes the Flickable steal the grab, the card hears
+        // `canceled` instead of `released`, and it is out of that gesture for
+        // good; the axis test below can afford to be re-asked on every move
+        // because in practice it is only ever asked twice. A scroll has no grab
+        // to steal and nothing can take it off the card, so the same test asked
+        // repeatedly would let a long read down the tray latch a throw the
+        // moment the hand drifted sideways at the end of it, a hundred pixels
+        // into somebody's scrolling. So the stream's axis is decided ONCE and
+        // stays decided, which is what every other gesture in this shell does
+        // and what the positive latch below already did.
+        property bool scrolling: false
 
         // Whether the press went UP OR DOWN the screen far enough to have meant
         // it, which is not the same question as whether anything scrolled.
@@ -1029,25 +1052,64 @@ Item {
         // that closes when you press is the cheapest way to say it.
         cursorShape: drag.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
+        // THE GESTURE ITSELF, in functions rather than inside the press
+        // handlers, so the drag path and the two-finger path RUN the same
+        // machinery instead of merely agreeing about it. Pull's own refactor,
+        // at the same seam: a second copy would drift, and this is the copy
+        // with every hard-won correction in it, the axis judged once, the
+        // velocity divided by its own dt, the sign gate on the flick commit.
+        //
+        // The split falls exactly where the two inputs differ, which is only
+        // the ORIGIN: a press has a place on the card and has to remember it, a
+        // scroll reports motion and has nothing to remember. Everything after
+        // the subtraction is common.
+
+        // A new gesture. Everything the press used to zero, and nothing about
+        // where it started, because that is the one thing the two inputs do not
+        // share.
+        function begin(): void {
+            drag.startedAt = root.dragX;
+            drag.throwing = false;
+            drag.scrolling = false;
+            drag.holding = false;
+            drag.wandered = false;
+            drag.velocity = 0;
+            drag.lastDx = 0;
+            drag.lastEvent = Date.now();
+        }
+
         onPressed: mouse => {
-            anchorX = root.x + mouse.x;
-            anchorY = root.y + mouse.y;
-            startedAt = root.dragX;
-            throwing = false;
-            holding = false;
-            wandered = false;
-            velocity = 0;
-            lastDx = 0;
-            lastEvent = Date.now();
+            // A PRESS TAKES THE GESTURE OVER, and takes it over cleanly. Both
+            // paths write one set of state, so a stream still running when a
+            // hand lands has to be concluded before the press touches any of
+            // it: concluded by its own rule, so a card two fingers had already
+            // thrown is ANSWERED rather than left halfway off the screen with
+            // nothing arriving to say which way it went. Left alone instead,
+            // the stream would still be holding a total measured from where the
+            // fingers began, and its next event would hand that stale distance
+            // to a state the press had since zeroed, jumping the card a
+            // card-width in one step. Pull's line, for Pull's reason.
+            scroll.finish();
+
+            drag.anchorX = root.x + mouse.x;
+            drag.anchorY = root.y + mouse.y;
+            drag.begin();
         }
 
         onPositionChanged: mouse => {
-            if (!pressed)
+            if (!drag.pressed)
                 return;
 
-            const dx = root.x + mouse.x - anchorX;
-            const dy = root.y + mouse.y - anchorY;
+            drag.advance(root.x + mouse.x - drag.anchorX, root.y + mouse.y - drag.anchorY);
+        }
 
+        // One step, given how far the gesture has travelled IN TOTAL since it
+        // began. Totals rather than steps, because the threshold, the
+        // arbitration and the offset are all questions about the whole journey,
+        // and because a path that reported steps would have to keep its own
+        // running sum, which is this subtraction written a second time
+        // somewhere it can go stale.
+        function advance(dx: real, dy: real): void {
             // Smoothed on EVERY move, before the arbitration below has decided
             // whose gesture this is, exactly the way LaunchEdge does it. The
             // flick this number exists to catch is over almost as soon as it
@@ -1064,11 +1126,11 @@ Item {
             // step after the press, or after a mid-drag pause, reads as slow
             // rather than being spread over a stale timestamp.
             const now = Date.now();
-            const dt = Math.max(1, Math.min(100, now - lastEvent));
-            lastEvent = now;
-            const step = dx - lastDx;
-            lastDx = dx;
-            velocity += (step / dt - velocity) * 0.4;
+            const dt = Math.max(1, Math.min(100, now - drag.lastEvent));
+            drag.lastEvent = now;
+            const step = dx - drag.lastDx;
+            drag.lastDx = dx;
+            drag.velocity += (step / dt - drag.velocity) * 0.4;
 
             // WHOSE GESTURE IS THIS: the card's, or the list's.
             //
@@ -1100,18 +1162,50 @@ Item {
             // card owns the pointer and a throw that curves upward is still a
             // throw. Re-testing on every move would let the list snatch a card
             // that was already half way off the screen.
-            if (!throwing) {
+            if (!drag.throwing) {
                 if (Math.abs(dy) >= Appearance.sizes.dragThreshold)
-                    wandered = true;
+                    drag.wandered = true;
                 if (Math.abs(dy) > Math.abs(dx))
                     return;
                 if (Math.abs(dx) < Appearance.sizes.dragThreshold)
                     return;
-                throwing = true;
+                drag.throwing = true;
             }
 
             root.pulled = dx;
-            root.dragX = root.resist(startedAt + dx);
+            root.dragX = root.resist(drag.startedAt + dx);
+        }
+
+        // THE STREAM'S OWN ARBITRATION, which is the same question the drag
+        // path asks and the drag path only has to answer half of.
+        //
+        // Everything above is reachable by two fingers unchanged; the one thing
+        // that is not is what happens when the gesture turns out to be the
+        // LIST'S. A press hands itself over by simply not latching, because the
+        // Flickable then steals the grab and the card is out of it. A stream
+        // cannot be stolen, so the handing over has to be written down: once
+        // the fingers have gone far enough up or down the screen to have meant
+        // it, and further that way than sideways, this stream is the tray's for
+        // the rest of its life and the card is finished with it. See
+        // `scrolling` for why that has to LATCH where the drag path's version
+        // does not.
+        //
+        // Both terms, and both for the reason the arbitration above gives: the
+        // vertical has to dominate, so a throw that curves upward is still a
+        // throw, and it has to clear the same threshold, so the first pixel of
+        // noise in a sideways hand does not give the whole stream away.
+        function stream(dx: real, dy: real): void {
+            if (!drag.throwing) {
+                if (drag.scrolling)
+                    return;
+
+                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) >= Appearance.sizes.dragThreshold) {
+                    drag.scrolling = true;
+                    return;
+                }
+            }
+
+            drag.advance(dx, dy);
         }
 
         // Long enough to be a decision rather than a press. See `kept`: this is
@@ -1152,11 +1246,30 @@ Item {
             // the card at all, so without this the arbitration above would only
             // save the tray that HAS somewhere to scroll to, and the two popups
             // you swipe at most often would go on deleting themselves.
-            if (!throwing) {
-                if (!holding && !wandered)
+            if (!drag.throwing) {
+                if (!drag.holding && !drag.wandered)
                     root.dismissed();
                 return;
             }
+
+            drag.conclude();
+        }
+
+        // The end, however the input announced it: a lifted button, or a
+        // touchpad stream that stopped sending.
+        //
+        // THE CLICK IS NOT IN HERE, and neither are the two things that veto
+        // it, and that absence is the one part of this split worth checking
+        // twice. A press that stayed where it was put is a click and a click
+        // dismisses; a stream that travelled nowhere did NOTHING, because there
+        // was no press for it to have been instead. `holding` and `wandered`
+        // are both answers to that same question about a press, so all three
+        // stay in onReleased together. Moved in here, two fingers resting on a
+        // card would delete it, which is the shortest possible route to a tray
+        // that empties itself.
+        function conclude(): void {
+            if (!drag.throwing)
+                return;
 
             if (root.committed) {
                 // Which way it flies: the drag offset's own sign, in both
@@ -1180,7 +1293,7 @@ Item {
             settle.value = root.dragX;
             settle.target = 0;
             root.pulled = 0;
-            throwing = false;
+            drag.throwing = false;
         }
 
         // THE FLICKABLE TOOK IT, which is the arbitration above succeeding rather
@@ -1199,9 +1312,74 @@ Item {
             settle.value = root.dragX;
             settle.target = 0;
             root.pulled = 0;
-            throwing = false;
-            holding = false;
-            wandered = false;
+            drag.throwing = false;
+            drag.holding = false;
+            drag.wandered = false;
+            drag.scrolling = false;
+        }
+
+        // THE SCROLL PATH: two fingers across a card throw it away, exactly as
+        // dragging it does. The shell's rule (see components/ScrollGesture.qml)
+        // rather than this card's idea, which is why the machinery above was
+        // split out to be shared rather than a second throw written here.
+        //
+        // THIS IS THE DELICATE ONE, and the reason is geometry. Wheel events go
+        // to the topmost item under the pointer and stop at the first one that
+        // accepts, and the topmost item over a card is the card: it sits INSIDE
+        // the tray's Flickable, so it is a descendant and is offered every
+        // scroll before the list that the scroll is nearly always meant for. A
+        // card that simply took what it was offered would be a tray that could
+        // not be scrolled anywhere except the twelve pixels of gap between two
+        // rows, which is the exact bug `preventStealing` above was narrowed to
+        // fix, reintroduced through the other input.
+        //
+        // So the card gives the event BACK, on the same test and at the same
+        // instant `preventStealing` goes true: `accepted` is false for the
+        // whole of the undecided part and false forever once the stream has
+        // been judged the list's, and it is true only while a throw is latched.
+        // The event then carries on to the Flickable and the tray scrolls.
+        //
+        // THE UNDECIDED EVENTS GO TO THE LIST rather than being held back, and
+        // that is the deliberate half of it. They cannot be handed on later:
+        // QML has no way to re-dispatch an event it consumed, so anything held
+        // back while the axis is being judged is simply lost, and losing the
+        // first events of a scroll is losing the first events of EVERY scroll
+        // in the tray, since the cards are what the tray is made of. Given
+        // away, they cost a horizontal swipe almost nothing, because a swipe
+        // sideways reports a vertical pixelDelta of about zero and the list
+        // moves by that: the noise in a sideways hand, not a scroll.
+        onWheel: wheel => {
+            // A PRESS OWNS THE GESTURE WHILE IT LASTS. Both paths write one set
+            // of state, so a scroll arriving mid-drag would be two inputs
+            // steering the same throw. Refusing rather than ignoring, so the
+            // event still reaches the list underneath.
+            if (drag.pressed) {
+                wheel.accepted = false;
+                return;
+            }
+
+            // A MOUSE WHEEL IS NOT A SWIPE. feed() refuses it and sets
+            // `accepted` false itself, so a notch falls straight through to the
+            // Flickable and scrolls the tray exactly as it did before this
+            // handler existed. Returning here rather than falling into the line
+            // below, which would read `throwing` off whatever the last stream
+            // left behind.
+            if (!scroll.feed(wheel))
+                return;
+
+            wheel.accepted = drag.throwing;
+        }
+
+        ScrollGesture {
+            id: scroll
+
+            // A stream is a press, a total is a delta, and a lapse is a
+            // release. The middle one goes through the stream's own arbitration
+            // rather than straight into advance(): see stream() for the one
+            // thing two fingers have to decide that a finger does not.
+            onBegan: drag.begin()
+            onMoved: (dx, dy) => drag.stream(dx, dy)
+            onEnded: drag.conclude()
         }
     }
 }
