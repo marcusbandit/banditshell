@@ -80,6 +80,54 @@ Singleton {
     readonly property string kind: root.kindOf(root.current)
     readonly property bool moves: root.movesOf(root.current)
 
+    // SVGs THAT WANT TO MOVE AND CANNOT, by path.
+    //
+    // An SVG can animate two ways, SMIL's `<animate>` elements and CSS
+    // keyframes, and this shell draws neither: Qt's SVG renderer supports no
+    // animation at all, and QQuickImage rasterises an SVG once and never asks
+    // it again. So an animated SVG is a wallpaper of its first frame.
+    //
+    // That is a perfectly defensible limit and a terrible surprise, which is
+    // the whole reason this map exists. A file called `drifting-blobs.svg` that
+    // sits perfectly still looks like the shell being broken; a card that says
+    // "SVG, drawn as a still" looks like the shell knowing what it is doing.
+    // Measured rather than guessed, because plenty of SVGs are not animated and
+    // labelling those would be its own lie.
+    property var frozen: ({})
+
+    function isFrozen(path: string): bool {
+        return root.frozen[path] === true;
+    }
+
+    // ONE grep FOR THE WHOLE FOLDER, the poster maker's argument exactly: a
+    // process per file would make the picker's first opening a burst of them.
+    // `-l` prints the ones that matched and nothing else, which is the map.
+    function findFrozen(): void {
+        const svgs = root.available.filter(p => p.toLowerCase().endsWith(".svg"));
+        if (!svgs.length) {
+            root.frozen = {};
+            return;
+        }
+        // Both spellings, and `animation:` for the CSS shorthand that names a
+        // keyframe set without the word `keyframes` appearing near it.
+        freezer.command = ["grep", "-l", "-E", "-e", "<animate", "-e", "@keyframes", "-e", "animation *:", ...svgs];
+        freezer.running = true;
+    }
+
+    Process {
+        id: freezer
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = {};
+                for (const line of text.trim().split("\n"))
+                    if (line)
+                        out[line] = true;
+                root.frozen = out;
+            }
+        }
+    }
+
     // WHETHER IT IS SHOWN, which is a separate question from which one it is.
     //
     // Kept apart from `current` on purpose: clearing the path to hide the
@@ -332,6 +380,7 @@ done`, root.posterDir, ...videos];
                 if (!root.available.length)
                     console.warn(`Wallpaper: nothing usable in ${root.dir}`);
                 root.makePosters();
+                root.findFrozen();
             }
         }
     }

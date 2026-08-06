@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import qs.config
 import qs.components
 import qs.services
@@ -176,13 +177,37 @@ Item {
     // Missing, and it opens from the middle. That is the honest answer for a
     // choice that came from the keyboard: Enter has no place on the screen.
     function accept(path: string, from: var): void {
-        if (from) {
-            const c = from.mapToItem(root, from.width / 2, from.height / 2);
-            Wallpaper.setFrom(path, c.x / Math.max(1, root.width), c.y / Math.max(1, root.height));
-        } else {
+        root.acceptAt(path, from);
+    }
+
+    // `at` is a point in this item's coordinates, which is the whole screen, or
+    // null for a choice with no place on it.
+    function acceptAt(path: string, at: var): void {
+        if (at)
+            Wallpaper.setFrom(path, at.x / Math.max(1, root.width), at.y / Math.max(1, root.height));
+        else
             Wallpaper.setFrom(path, 0.5, 0.5);
-        }
         root.hide();
+    }
+
+    // WHAT A CARD SAYS ABOUT ITSELF, or "" for the ordinary case.
+    //
+    // A still picture is what a wallpaper is expected to be and gets no badge.
+    // The three that move get one, and so does the fourth thing, which is the
+    // one worth the most: an SVG that declares an animation and is drawn as a
+    // still anyway, because Qt animates neither SMIL nor CSS and rasterises an
+    // SVG once. Unbadged, that file is a wallpaper that mysteriously sits
+    // there; badged, it is a shell that knows its own limit. See
+    // Wallpaper.frozen.
+    function badgeFor(path: string): string {
+        const k = Wallpaper.kindOf(path);
+        if (k === "motion")
+            return "GIF";
+        if (k === "video")
+            return "VIDEO";
+        if (k === "audio")
+            return "AUDIO";
+        return Wallpaper.isFrozen(path) ? "SVG · STILL" : "";
     }
 
     // THE KEYBOARD, on a surface built for a finger, and it is not a
@@ -301,15 +326,61 @@ Item {
             color: Appearance.colour.surface
         }
 
+        // THE SHAPE OF THAT SOFTNESS: opaque across the middle, nothing at the
+        // two ends. Only the alpha is read, so the colour is arbitrary and
+        // white is the conventional way to say "keep this".
+        //
+        // An eighth either side. Enough that a card is visibly on its way out
+        // rather than being cut off, short enough that the two cards beside the
+        // middle one are still pictures you can judge.
+        Item {
+            id: fade
+
+            anchors.fill: strip
+            visible: false
+            layer.enabled: true
+
+            Rectangle {
+                anchors.fill: parent
+                gradient: Gradient {
+                    orientation: Gradient.Horizontal
+
+                    GradientStop {
+                        position: 0
+                        color: "transparent"
+                    }
+                    GradientStop {
+                        position: 0.13
+                        color: "white"
+                    }
+                    GradientStop {
+                        position: 0.87
+                        color: "white"
+                    }
+                    GradientStop {
+                        position: 1
+                        color: "transparent"
+                    }
+                }
+            }
+        }
+
         // WHAT YOU ARE LOOKING AT, said in words because a picture cannot say
         // its own name and because the kind matters: a file that turns out to
         // be a video behaves differently once it is on the desktop, and this is
         // where you find that out rather than after choosing it.
+        //
+        // UNDER THE CARDS. It was above them, and above is where a title goes:
+        // a heading announcing a section. This is not a heading, it is a
+        // CAPTION, the label under the photograph saying which photograph it
+        // is, and the difference is which way the eye travels. The panel is the
+        // same height either way; the words simply changed ends with the air
+        // that was already spent on them.
         Row {
             id: caption
 
-            anchors.top: parent.top
-            anchors.topMargin: Appearance.padding.large
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: Appearance.padding.large
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: Appearance.padding.normal
 
@@ -325,10 +396,14 @@ Item {
             // colour.
             Pill {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: strip.currentKind && strip.currentKind !== "still"
+                visible: !!root.badgeFor(strip.currentPath)
                 interactive: false
-                colour: Appearance.colour.accentFill
-                text: strip.currentKind === "motion" ? "GIF" : strip.currentKind === "video" ? "VIDEO" : "AUDIO"
+                // IN A FILL AND NOT THE ACCENT for an SVG that wanted to move,
+                // because that badge is saying the opposite thing: the other
+                // three announce a capability and this one admits a limit, and
+                // the shell's colour for state is not the colour for "no".
+                colour: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                text: root.badgeFor(strip.currentPath)
             }
         }
 
@@ -360,7 +435,7 @@ Item {
         PathView {
             id: strip
 
-            readonly property string currentPath: root.entries[currentIndex] ?? ""
+            readonly property string currentPath: root.entries[strip.centre] ?? ""
             readonly property string currentKind: Wallpaper.kindOf(strip.currentPath)
 
             // How much of the running stream has already been paid out in
@@ -377,30 +452,269 @@ Item {
             // motions ADD UP to the travel and nothing is lost to rounding.
             property real scrubSpent: 0
 
-            // THE INDEX, WRAPPED. Every mover in here goes through this, so
-            // "one past the end" means the first one everywhere rather than in
-            // whichever of them remembered to say so. The double modulo is
+            // WHERE THE STRIP IS, in cards, as a real number that is allowed to
+            // run past either end: the wrap happens where it is applied, not
+            // where it is stored, so a strip thrown round the folder eleven
+            // times does not have to think about it.
+            //
+            // ONE OWNER. PathView has its own physics and they are turned off
+            // (`interactive: false`, and see the note there): a view that both
+            // moves itself and is moved is a view with two answers about where
+            // it is, and the seam between them is where a gesture goes wrong.
+            // Every input in this file sets `goal`; the finger writes `glide`
+            // directly while it is down; nothing else touches either.
+            property real goal: 0
+
+            // EXPONENTIAL SMOOTHING, which is what this shell uses for anything
+            // that chases a target (~/.claude/rules/animation-smoothing.md) and
+            // what a strip letting go of your finger should do: fast while it
+            // is far from the card it is going to, gentle as it lands, and no
+            // fixed duration to be wrong at either end of the distance.
+            Follow {
+                id: glide
+
+                target: strip.goal
+                speed: Appearance.anim.scrollSpeed
+                // In CARDS, so the default quarter-pixel epsilon would be a
+                // quarter of a card and stop it visibly short.
+                epsilon: 0.002
+            }
+
+            // The wrap, for an int and for a real. The double modulo is
             // JavaScript's: -1 % 18 is -1, not 17.
             function wrapped(i: int): int {
                 const n = root.entries.length;
                 return n ? ((i % n) + n) % n : 0;
             }
 
+            function wrapReal(x: real): real {
+                const n = root.entries.length;
+                return n ? ((x % n) + n) % n : 0;
+            }
+
+            // How many cards from the middle to `i`, by whichever way round is
+            // shorter. On a ring the two answers differ by the whole count and
+            // only one of them is what a tap meant.
+            function shortest(i: int): int {
+                const n = root.entries.length;
+                if (!n)
+                    return 0;
+                let d = strip.wrapped(i - strip.centre);
+                return d > n / 2 ? d - n : d;
+            }
+
             function step(delta: int): void {
-                strip.currentIndex = strip.wrapped(strip.currentIndex + delta);
+                // From the GOAL and not from where the strip currently is, so
+                // steps asked for faster than the glide can land them add up
+                // instead of fighting: three notches in a third of a second is
+                // three cards, not one and a bit.
+                strip.goal = Math.round(strip.goal) + delta;
             }
 
             // Put a card in the middle WITHOUT travelling to it. Opening the
             // picker on the wallpaper you are wearing must not look like the
-            // strip scrolling there from wherever it was left, so the offset is
-            // assigned rather than animated: `positionViewAtIndex` is a list's
-            // verb and a path has no equivalent, but `offset` is the thing
-            // underneath both and setting it is the jump.
+            // strip scrolling there from wherever it was left.
             function jumpTo(i: int): void {
-                const n = root.entries.length;
-                strip.currentIndex = strip.wrapped(i);
-                if (n)
-                    strip.offset = strip.wrapped(n - strip.currentIndex);
+                strip.goal = strip.wrapped(i);
+                glide.value = strip.goal;
+            }
+
+            // WHERE THE CARDS ACTUALLY SIT, and the one line that has to agree
+            // with Qt rather than with this file.
+            //
+            // PathView spaces items by the PATH's capacity and not by the
+            // model's, which is the thing to get right and easy to get wrong.
+            // Its own arithmetic, with no highlight range so no hidden term:
+            //
+            //     pos = fmod((i + offset) / count, 1) * count / pathItemCount
+            //
+            // and an item is on the path while `pos` is under one. Setting that
+            // to a half and solving for the offset that centres card `p`:
+            //
+            //     (p + offset) mod count = pathItemCount / 2
+            //     offset = pathItemCount / 2 - p
+            //
+            // It reads like it should be `count / 2`, which is what it was, and
+            // the difference is invisible in the arithmetic and obvious on the
+            // screen: the caption named one wallpaper and a different card sat
+            // in the middle wearing the ring.
+            // ASSIGNED, NOT BOUND, and that is not a style choice: PathView
+            // writes `offset` itself in several places (a model change, a
+            // regenerate, its own snapping), and a C++ write to a property
+            // BREAKS the QML binding on it permanently. The strip did exactly
+            // that: the caption named one wallpaper, a different card sat in
+            // the middle wearing the ring, and the offset in the log was a
+            // number this file had never computed. An assignment cannot be
+            // broken, because the next tick of the smoother makes it again.
+            function place(): void {
+                strip.offset = strip.wrapReal(root.slots / 2 - glide.value);
+            }
+
+            Connections {
+                target: glide
+
+                function onValueChanged(): void {
+                    strip.place();
+                }
+            }
+
+            // The path's capacity is a term in `place()`, so a screen or a
+            // folder that changes it has to re-place: the offset is assigned
+            // and would otherwise keep the old capacity's answer until the
+            // next tick of the smoother, which for a strip standing still is
+            // never.
+            Connections {
+                target: root
+
+                function onSlotsChanged(): void {
+                    strip.place();
+                }
+            }
+
+            Component.onCompleted: strip.place()
+
+            // WHICH CARD IS IN THE MIDDLE, and deliberately NOT `currentIndex`.
+            //
+            // Setting a PathView's currentIndex is a request for it to bring
+            // that item into its highlight range, which is a thing it does by
+            // moving the offset on its own clock. There is no highlight range
+            // here and the offset is this file's, so the whole mechanism is one
+            // more way for the view to disagree with itself. `centre` is the
+            // same question asked of the position we already own.
+            readonly property int centre: strip.wrapped(Math.round(glide.value))
+
+            // WHERE THE STRIP WAS WHEN THE FINGER LANDED, so the drag is
+            // measured from its origin rather than accumulated frame by frame.
+            // Accumulating loses a little every time the pointer is coalesced
+            // and the card ends up somewhere the hand did not put it.
+            property real dragFrom: 0
+
+            // THE FINGER, and the whole of what PathView used to do for itself.
+            //
+            // A MouseArea AND NOT A DragHandler, and it is a correctness
+            // question rather than a taste one: A FINGER COULD NOT DRIVE THIS.
+            //
+            // Qt delivers a touch as a touch, and synthesises a mouse press
+            // from it for items that only speak mouse. Pointer handlers see the
+            // real touch and negotiate a grab for it, which is the better
+            // mechanism and is also the one that quietly did nothing here: the
+            // strip could be thrown with a pointing device and not with a hand,
+            // on a panel whose entire reason for existing is that it is the one
+            // surface in this shell built for a hand. Every other gesture in
+            // the shell (Pull, LaunchEdge) is a MouseArea and every one of them
+            // works with touch, because synthesis is the path that is actually
+            // exercised. This joins them.
+            //
+            // ONE INPUT FOR THE WHOLE STRIP, which is the other half of the
+            // change. The cards used to carry a TapHandler each, and a
+            // MouseArea over them would have taken the grab and killed those
+            // taps. So the tap lives here too, and which card was tapped is
+            // asked of the view (`indexAt`) rather than of whichever item the
+            // press happened to land on. Fewer moving parts, one place where
+            // "what did the hand do" is decided.
+            MouseArea {
+                id: swipe
+
+                anchors.fill: parent
+                enabled: root.open
+                cursorShape: Qt.PointingHandCursor
+                // The press must not fall through to the push-away Pull behind
+                // the panel: a sideways drag over the cards is not a dismissal.
+                preventStealing: true
+
+                // Where the strip was and where the finger was when it landed,
+                // so the drag is measured from its origin rather than
+                // accumulated frame by frame: accumulation loses a little every
+                // time a pointer event is coalesced.
+                property real from: 0
+                property real fromX: 0
+                property bool dragging: false
+
+                // Smoothed pixels per millisecond, for the throw. The last
+                // event before a lift is noise as often as it is direction,
+                // which is why this is an average and not the final step.
+                property real velocity: 0
+                property real lastX: 0
+                property real lastAt: 0
+
+                onPressed: mouse => {
+                    swipe.from = glide.value;
+                    swipe.fromX = mouse.x;
+                    swipe.lastX = mouse.x;
+                    swipe.lastAt = Date.now();
+                    swipe.velocity = 0;
+                    swipe.dragging = false;
+                }
+
+                onPositionChanged: mouse => {
+                    if (!swipe.pressed)
+                        return;
+
+                    const now = Date.now();
+                    const dt = Math.max(1, now - swipe.lastAt);
+                    swipe.velocity += ((mouse.x - swipe.lastX) / dt - swipe.velocity) * 0.4;
+                    swipe.lastX = mouse.x;
+                    swipe.lastAt = now;
+
+                    if (!swipe.dragging && Math.abs(mouse.x - swipe.fromX) < Appearance.sizes.dragThreshold)
+                        return;
+                    swipe.dragging = true;
+
+                    // THE STRIP UNDER THE HAND, one to one and not smoothed:
+                    // while a finger is down the position IS the finger, and
+                    // anything between them is lag. `glide.value` is written
+                    // directly rather than through `goal`, so the smoother
+                    // picks up from exactly where the drag left it instead of
+                    // starting its journey from wherever it had got to.
+                    glide.value = swipe.from - (mouse.x - swipe.fromX) / root.pitch;
+                    strip.goal = glide.value;
+                }
+
+                onReleased: mouse => {
+                    if (!swipe.dragging) {
+                        // A PRESS THAT NEVER TRAVELLED is a tap, and which card
+                        // it was is the view's question rather than this one's.
+                        const i = strip.indexAt(mouse.x, mouse.y);
+                        if (i < 0)
+                            return;
+                        // The middle one is a choice; any other centres itself
+                        // first, which is what a finger landing off to the side
+                        // of a carousel means everywhere else. By the short way
+                        // round, because the strip is a ring.
+                        if (i === strip.centre)
+                            // FROM WHERE THE FINGER WAS, not from the card's
+                            // centre. `currentItem` would be the wrong item
+                            // anyway (PathView's currentIndex is unused here,
+                            // see `centre`), and the point you touched is a
+                            // better origin than the middle of what you touched:
+                            // the picture grows out of your fingertip.
+                            root.acceptAt(root.entries[i], swipe.mapToItem(root, mouse.x, mouse.y));
+                        else
+                            strip.step(strip.shortest(i));
+                        return;
+                    }
+
+                    // LET GO. Two things happen and they are the two the strip
+                    // was asked for: it takes whatever the hand was still doing
+                    // as a throw, and then it ROUNDS, so wherever the throw
+                    // lands it lands on a card rather than between two. The
+                    // glide above carries it there by exponential smoothing.
+                    //
+                    // `velocity` is pixels per millisecond and `coastMs` is the
+                    // shell's token for how many milliseconds of it a flick is
+                    // worth, so the two multiply to pixels with nothing
+                    // reinterpreted. Negated because a hand going left brings
+                    // later cards in from the right.
+                    const thrown = -swipe.velocity * Appearance.sizes.coastMs / root.pitch;
+                    strip.goal = Math.round(glide.value + thrown);
+                    swipe.dragging = false;
+                }
+
+                onCanceled: {
+                    if (swipe.dragging)
+                        strip.goal = Math.round(glide.value);
+                    swipe.dragging = false;
+                }
             }
 
             // Where two fingers have got to, in cards. Given the TOTAL travel
@@ -446,8 +760,8 @@ Item {
                     strip.step(cards);
             }
 
-            anchors.top: caption.bottom
-            anchors.topMargin: Appearance.padding.normal
+            anchors.top: parent.top
+            anchors.topMargin: Appearance.padding.large
             anchors.left: parent.left
             anchors.right: parent.right
             // Taller than the cards by however much the centre one is lifted, so
@@ -456,48 +770,60 @@ Item {
             // the thing you are looking at.
             height: root.cardHeight * root.centreScale
 
+            // THE ENDS OF THE STRIP GO SOFT.
+            //
+            // A carousel clipped by a panel edge has a hard vertical line down
+            // each side with half a card behind it, and what that reads as is a
+            // window cut into something rather than a strip that carries on. It
+            // also makes the panel feel FULL, edge to edge, which is the last
+            // thing a control you are looking past should feel like.
+            //
+            // A mask rather than a pair of gradient overlays painted on top,
+            // because an overlay has to be the colour of what is behind it and
+            // there is a live wallpaper behind it: any colour picked here would
+            // be right on one wallpaper and a smear on the next. Eating the
+            // alpha is the only version that is honest about the background it
+            // does not know.
+            //
+            // Only while the panel is up. A layer is an offscreen pass and this
+            // one has no reason to run for a strip nobody can see.
+            layer.enabled: root.open
+            layer.effect: MultiEffect {
+                maskEnabled: true
+                maskSource: fade
+            }
+
             model: root.entries
             pathItemCount: root.slots
 
-            // WHERE THE MIDDLE IS, in the path's own 0-to-1. Both bounds at the
-            // halfway mark and the range STRICTLY enforced means the view has
-            // exactly one place it is allowed to rest, and `currentIndex` is
-            // therefore always the card sitting in it.
-            preferredHighlightBegin: 0.5
-            preferredHighlightEnd: 0.5
-            highlightRangeMode: PathView.StrictlyEnforceRange
-            highlightMoveDuration: Appearance.anim.normal
-
-            // NO SNAP, AND THAT IS WHAT GIVES IT MOMENTUM.
+            // NO HIGHLIGHT RANGE, NO SNAP, NOT INTERACTIVE: three lines that
+            // between them turn every one of PathView's own physics off.
             //
-            // It reads backwards, so: `SnapToItem` does not mean "settle on a
-            // card", it means "settle no more than one card from where you let
-            // go", which is a cap on the COAST. A throw was therefore worth
-            // exactly as much as a slow push of the same distance, and the
-            // strip felt like it had no weight, which is precisely the
-            // complaint. `NoSnap` lifts the cap and lets the flick spend its
-            // velocity.
+            // Together they mean it computes a card's place from `offset` and
+            // nothing else, adds no term of its own, and never moves itself.
+            // Everything those features do (hold a card in the middle, settle
+            // on one when you let go, carry a throw) is done above and below
+            // instead, by hand, and that is not reinvention for its own sake.
             //
-            // Nothing is lost by turning it off, because StrictlyEnforceRange
-            // above is what actually holds a card in the middle: it will not
-            // let the view rest anywhere except with one centred, wherever the
-            // coast happens to run out. Snapping was never the thing doing
-            // that; it was only limiting how far you could get.
+            // IT WAS INTERACTIVE, and the tuning is what went wrong.
+            // `maximumFlickVelocity` and `flickDeceleration` are in PIXELS per
+            // second, inherited from the flickable family, and were read as the
+            // ITEMS a PathView's offset counts in: the cap was set to eight,
+            // meaning eight pixels a second, so every throw was clamped to a
+            // card crossing the panel in about a minute. What that looks like
+            // is a strip that appears to stop where you left it and then very
+            // slowly keeps going, which is exactly the report.
+            //
+            // Writing 6000 instead of 8 fixes that number. It does not fix the
+            // shape of the problem, which is TWO OWNERS of one position: a view
+            // that both moves itself and is moved has two answers about where
+            // it is, and the seam between them is where a gesture goes wrong.
+            // The settle is also the whole feel of a carousel and PathView's is
+            // a fixed-duration animation, where every other moving thing in
+            // this shell arrives by exponential smoothing.
+            highlightRangeMode: PathView.NoHighlightRange
             snapMode: PathView.NoSnap
-
-            // How the coast dies away, in path-units per second squared. The
-            // default is tuned for a list of text where overshooting is a
-            // nuisance; a carousel of pictures is a thing you rummage through,
-            // and the whole point of throwing it is to cover ground.
-            flickDeceleration: 60
-            maximumFlickVelocity: 8
-
-            // A DRAG STARTS ANYWHERE ON A CARD. A PathView only takes a press
-            // within `dragMargin` of the path itself, which is a line through
-            // the middle of the strip, so at the default of zero the only
-            // draggable part of a card is the one row of pixels its centre sits
-            // on. Half the height either way is the whole card.
-            dragMargin: strip.height / 2
+            interactive: false
 
             // EVERY CARD, BUILT ON THE WAY UP. `cacheItemCount` is the number
             // kept alive off the path, so setting it to the rest of the folder
@@ -740,7 +1066,7 @@ Item {
                 required property string modelData
                 required property int index
 
-                readonly property bool centred: card.index === strip.currentIndex
+                readonly property bool centred: card.index === strip.centre
 
                 width: root.cardWidth
                 height: root.cardHeight
@@ -765,30 +1091,21 @@ Item {
                 opacity: card.PathView.cardOpacity ?? 0
                 z: card.PathView.cardZ ?? 0
 
-                // WHAT A CARD IS BEFORE ITS PICTURE ARRIVES, and what it stays
-                // for a file that has no picture at all. A plate and the mark
-                // for its kind, so a strip mid-decode is a strip of cards
-                // rather than a row of holes.
+                // WHAT A CARD IS BEFORE ITS PICTURE ARRIVES, and what it
+                // stays for a file that has no picture at all. A plate and
+                // nothing on it: a strip mid-decode is a strip of cards rather
+                // than a row of holes.
+                //
+                // IT USED TO CARRY THE MARK FOR ITS KIND, a faint image or film
+                // or note glyph in the middle, and that was one idea too many.
+                // The kind is already said twice, by the badge on the card and
+                // by the caption, and a ghost icon under every picture is a
+                // watermark on all twenty-two of them to answer a question
+                // about one. Gone.
                 G2Rect {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
                     color: Appearance.colour.fill
-
-                    Icon {
-                        anchors.centerIn: parent
-                        size: Appearance.font.iconSize * 1.6
-                        color: Appearance.colour.textGhost
-                        name: {
-                            const k = Wallpaper.kindOf(card.modelData);
-                            if (k === "video")
-                                return "movie";
-                            if (k === "motion")
-                                return "gif_box";
-                            if (k === "audio")
-                                return "music_note";
-                            return "image";
-                        }
-                    }
                 }
 
                 G2Image {
@@ -809,12 +1126,10 @@ Item {
                     anchors.bottom: parent.bottom
                     anchors.margins: Appearance.padding.small
 
-                    readonly property string kind: Wallpaper.kindOf(card.modelData)
-
-                    visible: kind && kind !== "still"
+                    visible: !!root.badgeFor(card.modelData)
                     interactive: false
-                    colour: Appearance.colour.accentFill
-                    text: kind === "motion" ? "GIF" : kind === "video" ? "VIDEO" : "AUDIO"
+                    colour: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                    text: root.badgeFor(card.modelData)
                 }
 
                 // THE MARK ON THE ONE YOU ARE ALREADY WEARING. Not a selection
@@ -830,44 +1145,6 @@ Item {
                     visible: card.modelData === Wallpaper.current
                 }
 
-                // ONE TAP IS THE WHOLE INTERACTION. Not a tap to select and a
-                // button to apply: the card is the thing and choosing it is the
-                // only thing you can do to it. A card that is not centred
-                // centres itself first, which is what a finger landing off to
-                // the side of a carousel means everywhere else.
-                // A TapHandler AND NOT A MouseArea, and the difference is the
-                // entire reason the strip can be dragged at all.
-                //
-                // A MouseArea takes an exclusive grab on the press and holds it
-                // until the release. A Flickable knows to steal that grab back
-                // once the press has travelled far enough to be a drag, which
-                // is why the list this replaced could be thrown even with a
-                // MouseArea on every row; a PathView does not, so every press
-                // that landed on a card was a press the carousel never saw, and
-                // the only draggable parts of the strip were the gaps between
-                // the cards.
-                //
-                // A TapHandler is passive: it watches the press, asks for the
-                // grab only at the release, and gives up the moment anything
-                // else claims the motion as a drag. So a tap is a tap and a
-                // drag is a drag, decided by what the hand actually did rather
-                // than by which item happened to be underneath it.
-                TapHandler {
-                    onTapped: {
-                        // A card that is not centred centres itself first,
-                        // which is what a finger landing off to the side of a
-                        // carousel means everywhere else. Only the middle one
-                        // is a choice.
-                        if (card.centred)
-                            root.accept(card.modelData, card);
-                        else
-                            strip.currentIndex = card.index;
-                    }
-                }
-
-                HoverHandler {
-                    cursorShape: Qt.PointingHandCursor
-                }
             }
         }
 
