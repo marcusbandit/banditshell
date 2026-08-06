@@ -123,7 +123,28 @@ Singleton {
             // the windows without being told twice. Hyprland and niri.
             // Falls back to the manual values if the compositor can't be read.
             compositor: {
-                follow: true
+                follow: true,
+
+                // And the one thing that flows the OTHER way: the theme's
+                // border colours pushed OUT to Hyprland, so picking a theme
+                // recolours the desktop and not only the panels drawn over it.
+                // Its own switch rather than a second reading of `follow`,
+                // because it answers the opposite question; config/Compositor.qml
+                // owns that argument and the reason to turn it off (a
+                // hyprland.conf that paints its borders deliberately).
+                //
+                // DECLARED HERE OR IT CANNOT BE SET AT ALL, which is why this
+                // line exists at all: the switch was written and read and never
+                // given a home. `set()` refuses a key that is not already in the
+                // defaults, and `merge()` walks the DEFAULTS' keys, so a key
+                // added to config.json by hand is dropped silently on load. A
+                // documented escape hatch nobody can take is worse than none,
+                // because the documentation says it is there.
+                //
+                // True, matching the `?? true` on the reading side: the push is
+                // the behaviour asked for by name, so a config.json written
+                // before this key existed means yes rather than a silent no.
+                pushBorders: true
             },
 
             rounding: {

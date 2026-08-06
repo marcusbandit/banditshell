@@ -370,6 +370,7 @@ banditshell/
 │   ├── SysInfo.qml              /proc and /sys: cpu, memory, temperature
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from
 │   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
+│   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
 │   ├── Settings.qml             the settings page's state, and its handover
 │   └── Shell.qml                which ShellWindows exist
@@ -385,6 +386,7 @@ banditshell/
 │   │   └── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
 │   ├── WallpaperWindow.qml      background layer, below every window
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
 │   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── settings/                the page that is a shell surface OR a window
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
@@ -549,6 +551,7 @@ banditshell session toggle|open|close
 banditshell settings toggle|open [page]|close|page <key>|pull|put|status
 banditshell notifications toggle|open|close|clear|status
 banditshell notch toggle|open|close|status
+banditshell hotkeys toggle|open|close|status
 banditshell calendar               sugar for `menu toggle calendar`
 banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
@@ -578,11 +581,24 @@ is an ordinary menu registered in the sidebar, and the thing you bind to a key d
 shorter name than the thing it is implemented as. `docs/hyprland-binds.example.conf` is a
 worked set of Hyprland binds onto all of it.
 
+`hotkeys` is the one target that is not a second way in but the **only** way in. The sheet it
+opens recites the user's own config rather than the shell's state, so it is drawn from
+`hyprctl binds -j` on every open and there is no gauge, edge or gesture that could summon it;
+the keybind is the control, and it has to keep working across a config the shell never sees.
+`status` therefore prints what the sheet *read* rather than whether it is up, because the
+failure this panel actually has is a screen of chords with nothing beside them, and from a
+screenshot that looks identical whatever caused it: a bind registered from Lua or a plugin is
+reported with no dispatcher this side can read, which is the compositor declining to say and
+not the shell failing to parse. Binding it is the one bind with a trap in it, because `?` is a
+shifted character and which physical key it is shifted from is a property of the keyboard
+LAYOUT: `SHIFT + slash` on US, `SHIFT + plus` on Danish, and Hyprland says nothing at all about
+a key name it cannot resolve, it simply never fires.
+
 `status` exists for one failure in particular: the shell deriving its geometry from the
 compositor and quietly disagreeing with it. Printing rounding, smoothing, both gaps and the
 window border side by side makes that visible instead of subtly wrong.
 
-Two things worth keeping in mind, both learned the hard way:
+Three things worth keeping in mind, all learned the hard way:
 
 - **`pkill -f` matches the command line of the shell that runs it.** `pkill -f 'qs -p …'`
   killed its own invoking shell before the rest of the command ran, which silently stopped a
@@ -591,6 +607,17 @@ Two things worth keeping in mind, both learned the hard way:
   within a surface.** It is fine for entering the shell from elsewhere and useless for testing
   a slide from one icon to the next; `ydotool mousemove` produces real relative motion, and
   that is what exposed the hover race.
+- **`hyprctl dispatch` speaks Lua here too, so every dispatcher you type by hand needs the new
+  spelling.** The bullet in section 11 is about what the SHELL sends; this is the same fact
+  pointed at your own terminal, and it catches every checklist written before 0.56. On this box
+  `hyprctl dispatch togglespecialworkspace communication` comes back with `')' expected near
+  'communication'` and does nothing at all; the form that works is
+  `hyprctl dispatch 'hl.dsp.workspace.toggle_special("communication")'`, which is what
+  `Hypr.toggleSpecial` sends and what the user's own SUPER+grave is bound to. Note the name as
+  well: bare `togglespecialworkspace` with no argument toggles the unnamed `special` workspace,
+  which is empty, so a check written that way would have proved nothing even on a compositor
+  that accepted it. `hyprctl binds -j` reporting every bind as dispatcher `__lua` is the tell
+  that a machine is in this world.
 
 ---
 
@@ -774,7 +801,7 @@ What the plates get that the first two attempts did not:
 Every menu reads the real machine. Quickshell ships bindings for PipeWire,
 UPower, NetworkManager, bluez and MPRIS, so none of it shells out.
 
-Three rules came out of writing them, and they are worth keeping:
+Four rules came out of writing them, and they are worth keeping:
 
 **A service adapts, it does not relay.** The list NetworkManager gives is not the
 list a menu wants: NM reports every BSSID, so one mesh appears four times, in
@@ -814,6 +841,29 @@ somewhere, and bluetooth discovery is visible to other people as well.
   which reports whether IT is speaking Lua and is false on a compositor that
   accepts nothing else. **When an action goes out on a socket that cannot answer,
   something has to go and ask.**
+- **A tray icon that re-registers while the shell is starting can name a bus
+  connection it has already dropped**, and every shell start logs one
+  `quickshell.service.sni.watcher: Ignoring invalid StatusNotifierItem
+  registration of :1.NNN/StatusNotifierItem`. It is not this repo's line and
+  there is nothing here to fix: Quickshell hosts the watcher, and its
+  `RegisterStatusNotifierItem` looks the named service up with `GetNameOwner`
+  before accepting it, so a client that reconnects in the same breath as it
+  registers is correctly refused under the name that no longer exists. The
+  clients here that do it are Telegram and blueman-tray, both of which rebuild
+  their D-Bus connection when the watcher reappears, and both of which are in the
+  tray a moment later under their new names. **Check
+  `RegisteredStatusNotifierItems` before believing an icon is missing:** the
+  warning names the registration that failed, not the item that is gone, and on
+  this machine the five that should be there are all there.
+
+**A record outlives the thing it describes.** A notification belongs to the
+sender, and a sender that quits takes its object with it, so a card bound
+straight to the live handle loses its summary, its body and its icon the moment
+the app that sent it closes: what is left in the history is a bare bell over an
+empty line. `services/NotifEntry.qml` copies the content at arrival and re-copies
+it whenever the live object changes, keeping the handle itself only for talking
+back to the sender, so a notification whose sender dies simply stops updating.
+**A sender's death is not the shell's amnesia.**
 
 **Still placeholder: nothing.** Every menu in the sidebar is live. Notifications
 and the launcher (DESIGN.md sections 4 and 5) are the remaining capstones and
