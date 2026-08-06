@@ -416,7 +416,23 @@ Singleton {
     // before 1 is added, so one number per app carries the whole curve.
     readonly property real halfLifeDays: Config.values.launcher.halfLifeDays
     readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/usage.json`
+
+    // `frecency.json` AND NOT `usage.json`, which is not a rename for tidiness:
+    // the old name was already taken. services/Usage.qml keeps the machine's
+    // awake-time diary in `${dir}/usage.json` as an ARRAY OF SPANS, this keeps a
+    // table of scores keyed by app id, and both wrote the whole file on every
+    // write. Whichever wrote last simply erased the other: the launcher parsed
+    // the diary's array, indexed it by app id, got nothing, and ranked every app
+    // at zero for as long as that state has existed, and the next launch would
+    // have written its object back over a year of the calendar's history. The
+    // state directory is shared on purpose (AppIcons is in there too) and one
+    // file per thing remembered is what makes that safe.
+    //
+    // Nothing is migrated across, because there is nothing left to migrate: the
+    // file under the old name is the diary's, and it is the diary's to keep. The
+    // launcher starts its scores from empty, which is where they effectively
+    // were anyway, and earns them back in a few launches.
+    readonly property string path: `${root.dir}/frecency.json`
 
     property var usage: ({})
 
@@ -462,7 +478,21 @@ Singleton {
 
         onLoaded: {
             try {
-                root.usage = JSON.parse(text()) ?? {};
+                // THE SHAPE IS CHECKED, not assumed, and an array is refused by
+                // name because `typeof [] === "object"` would let one through.
+                // A wrong-shaped file used to be indistinguishable from an empty
+                // one here: every lookup on it returned undefined, every score
+                // came out zero, and the launcher went on ranking by name
+                // without a word. That silence is the reason the collision above
+                // survived as long as it did, so anything that is not a plain
+                // table of scores starts over loudly instead.
+                const data = JSON.parse(text());
+                if (data && typeof data === "object" && !Array.isArray(data)) {
+                    root.usage = data;
+                } else {
+                    console.warn(`Apps: ${root.path} does not hold a table of scores, starting the usage record over.`);
+                    root.usage = {};
+                }
             } catch (e) {
                 console.warn(`Apps: ${root.path} is not valid JSON, starting the usage record over.`, e);
                 root.usage = {};

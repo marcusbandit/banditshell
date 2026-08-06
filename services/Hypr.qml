@@ -321,9 +321,52 @@ Singleton {
     // The legacy parser cannot do this. `movecursor` needs coordinates and there
     // is no way to read them in the same breath, so an older Hyprland keeps the
     // warp rather than getting a version of this that is a frame late.
+    //
+    // AND THE ADDRESS IS CHECKED BEFORE IT IS SPOKEN, which is the whole of what
+    // was missing. Every caller of this is a panel handing back an address it
+    // snapshotted when it OPENED, and a window is free to die while a panel is
+    // up: close the last window on a workspace with the settings sheet over it
+    // and the address the sheet is holding names nothing by the time it is
+    // used. Dispatched anyway, Hyprland answers "hl.focus: window not found",
+    // the shell writes a warning nobody can act on, and the keyboard is handed
+    // nowhere at all, silently, on every dismissal from then on.
+    //
+    // NOT PUSHED INTO `focusAddress` ABOVE, which is the obvious place to put
+    // one check for both and is wrong for that one. Its second caller is the
+    // claim on a window that has just MAPPED (see claimNextWindow), and at that
+    // moment the address is younger than the model: the check would refuse the
+    // one dispatch that has to happen and the launcher would stop focusing what
+    // it launched. The two calls differ in exactly this, so the guard belongs to
+    // the one whose address is old by construction.
+    //
+    // SAYING NOTHING when the window is gone is deliberately the whole of the
+    // recovery. The alternative considered was falling back to the front-most
+    // window of the workspace, and it was rejected as an opinion this function
+    // has no right to: the compositor has already chosen who gets the keyboard
+    // when a window dies, and a panel closing is not a request to overrule it.
     function restoreFocus(addr: string): void {
-        if (addr)
+        if (addr && root.stillOpen(addr))
             root.send(`(function() local p = hl.get_cursor_pos() hl.dispatch(hl.dsp.focus({ window = "address:${addr}" })) return hl.dsp.cursor.move({ x = p.x, y = p.y }) end)()`, `focuswindow address:${addr}`);
+    }
+
+    // IS THERE STILL A WINDOW AT THIS ADDRESS, asked of the model rather than of
+    // the compositor.
+    //
+    // `Hyprland.toplevels` is kept in step with the same event stream this file
+    // reads, so the answer is already in the process and costs a walk of a list
+    // that is never longer than the windows on the machine. `hyprctl clients`
+    // would be the authority, and it was rejected for being an ASYNCHRONOUS
+    // one: the caller above has to decide whether to dispatch in the turn it is
+    // asked, and an answer that lands two frames later is no use to it.
+    //
+    // The two spellings are both here to be reconciled. Quickshell's model
+    // writes an address bare and Hyprland's event stream writes it with its
+    // `0x`, so both ends are stripped before they are compared; neither format
+    // is this shell's to change, and comparing them as they come would answer
+    // "no window" for every window there is.
+    function stillOpen(addr: string): bool {
+        const bare = (addr.startsWith("0x") ? addr.slice(2) : addr).toLowerCase();
+        return Hyprland.toplevels.values.some(t => (t.address ?? "").toLowerCase() === bare);
     }
 
     // Waiting for the window an application is about to open.
@@ -380,6 +423,44 @@ Singleton {
         });
     }
 
+    // HOW MANY WINDOWS EACH MONITOR IS SHOWING, by monitor name.
+    //
+    // { "DP-1": 0, "eDP-1": 3 }, and the zero is the interesting one: a monitor
+    // whose count is zero is one where the desktop itself is what you are
+    // looking at. The wallpaper reads this to decide whether an animation is
+    // worth running (modules/WallpaperWindow.qml), which is a question that can
+    // only be asked per monitor, because a window opened on the left screen has
+    // no opinion about the picture on the right one.
+    //
+    // A PROPERTY rather than a function, unlike clientsOn below, and the
+    // difference is that this one is READ BY A BINDING that has to re-run every
+    // time a window opens anywhere. A binding does track properties read
+    // through a function call, but only the ones it happens to reach on the
+    // path it took, so a function that returns early leaves the caller
+    // subscribed to less than it asked about. Computing every monitor at once
+    // touches everything every time and cannot go stale.
+    //
+    // A special workspace pulled over a monitor COUNTS, and counts instead of
+    // rather than as well as the workspace underneath: it is drawn on top, so
+    // what is on it is what is in front of the wallpaper. An empty special is
+    // not a state Hyprland keeps for long, which is the one case this reads
+    // optimistically.
+    readonly property var occupancy: {
+        const out = {};
+        for (const mon of Hyprland.monitors.values) {
+            const special = mon.lastIpcObject?.specialWorkspace;
+            const id = special?.name ? special.id : mon.activeWorkspace?.id;
+            out[mon.name] = id === undefined ? 0 : Hyprland.toplevels.values.filter(c => c.workspace?.id === id).length;
+        }
+        return out;
+    }
+
+    // Nothing known about a screen is the same as nothing on it: a monitor the
+    // compositor has not told us about yet is one the shell cannot say is busy.
+    function windowsOn(screen: string): int {
+        return root.occupancy[screen] ?? 0;
+    }
+
     function switchTo(id: int): void {
         root.send(`hl.dsp.focus({ workspace = ${id} })`, `workspace ${id}`);
     }
@@ -433,8 +514,37 @@ Singleton {
 
             if (n === "closewindow") {
                 const raw = (event.data ?? "").trim();
-                if (raw)
-                    root.windowClosed(raw.startsWith("0x") ? raw : `0x${raw}`);
+                if (raw) {
+                    const gone = raw.startsWith("0x") ? raw : `0x${raw}`;
+
+                    // AND THE REMEMBERED ADDRESS IS FORGOTTEN WITH IT, before
+                    // anybody is told, so a listener that reads `focusedAddress`
+                    // out of `windowClosed` reads the truth rather than the
+                    // window it was just told had gone.
+                    //
+                    // This is the other half of `stillOpen`'s job and not a
+                    // duplicate of it. That guard saves the panel already up,
+                    // holding a snapshot nothing can reach; this one stops the
+                    // dead address being handed to the NEXT panel, and the one
+                    // after that, because `focusedAddress` is what every panel
+                    // snapshots on the way in.
+                    //
+                    // It is needed precisely because of the rule three
+                    // paragraphs down: an empty activewindowv2 is ignored, so
+                    // that focus moving to a layer surface does not erase the
+                    // window a panel has to remember across. Closing the LAST
+                    // window on a workspace sends exactly that empty payload,
+                    // and with nothing else to correct it the address of a dead
+                    // window stayed here for the rest of the session. It also
+                    // stopped `isFocused` matching anything at all, so the
+                    // sidebar quietly showed no window as focused until the next
+                    // focus change: the same staleness, spending itself
+                    // somewhere nobody would have thought to look.
+                    if (root.focusedAddress === gone)
+                        root.focusedAddress = "";
+
+                    root.windowClosed(gone);
+                }
             }
 
             if (n === "configreloaded")
