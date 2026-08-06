@@ -556,6 +556,7 @@ banditshell calendar               sugar for `menu toggle calendar`
 banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
 banditshell picker open|freeze|clip|freezeclip|close
+banditshell wallpaper toggle|on|off|next|prev|status
 banditshell status                 what the shell thinks the compositor said
 banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>
@@ -580,6 +581,17 @@ control rather than a second one. `calendar` is sugar for `menu toggle calendar`
 is an ordinary menu registered in the sidebar, and the thing you bind to a key deserves a
 shorter name than the thing it is implemented as. `docs/hyprland-binds.example.conf` is a
 worked set of Hyprland binds onto all of it.
+
+`wallpaper` is the one target whose whole job is **reading before writing**. Every verb on it
+is a write to `config.json` that `set wallpaper.enabled` or `set wallpaper.current` could make
+by hand, so on the face of it the target is redundant; what a key cannot do is ask for the
+opposite of a value it has not read, or the next one along a list. `toggle` and `next` are
+those two questions, and the rest are there so the target answers the whole thing rather than
+only the halves a hotkey needs. Turning it off is a **light going out, not a surface going
+away**: the window stays, the images keep their sources, `current` keeps its path, so what is
+left is the black `WallpaperWindow` was already painting behind the picture and coming back is
+a fade rather than a decode. The lock screen follows the same flag, because its ground is made
+of this same picture and `LockSurface` is black underneath it.
 
 `hotkeys` is the one target that is not a second way in but the **only** way in. The sheet it
 opens recites the user's own config rather than the shell's state, so it is drawn from

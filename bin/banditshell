@@ -20,6 +20,7 @@
 #   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
+#   banditshell wallpaper toggle|on|off|next|prev|status
 #   banditshell status
 #   banditshell theme [name]
 #   banditshell get <key> | set <key> <value>
@@ -203,6 +204,19 @@ lock)
 
 picker)
     ipc picker "${1:-freezeclip}"
+    ;;
+
+# The wallpaper the shell draws itself. Every one of these is a write to
+# config.json that `set wallpaper.enabled` or `set wallpaper.current` could make
+# by hand; what they add is the two a KEY needs, which is the two that have to
+# read the value before writing it: the opposite of whatever it is now, and the
+# next one along. Bare `wallpaper` is the toggle, like `settings` and `session`.
+wallpaper)
+    sub="${1:-toggle}"
+    case "$sub" in
+    toggle | on | off | next | prev | status) ipc wallpaper "$sub" ;;
+    *) echo "usage: banditshell wallpaper toggle|on|off|next|prev|status" >&2; exit 2 ;;
+    esac
     ;;
 
 status) ipc shell status ;;

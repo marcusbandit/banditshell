@@ -515,6 +515,52 @@ Scope {
         }
     }
 
+    // THE WALLPAPER. Every verb here is a write to config.json that `set` could
+    // already make, and that is exactly why the target exists: a keybind cannot
+    // read a value before writing it, so "the other one" and "the opposite of
+    // whatever it is now" are the two things a setter can never be asked for
+    // from a key. `toggle` and `next` are those two questions; `on`, `off` and
+    // `status` are here so the target answers the whole question rather than
+    // only the halves a hotkey needs.
+    IpcHandler {
+        target: "wallpaper"
+
+        function toggle(): string {
+            Wallpaper.toggle();
+            return Wallpaper.enabled ? "on" : "off";
+        }
+
+        function on(): string {
+            Wallpaper.setEnabled(true);
+            return "on";
+        }
+
+        function off(): string {
+            Wallpaper.setEnabled(false);
+            return "off";
+        }
+
+        // Through the list, wrapping, which is what the shell has instead of a
+        // picker. Silent about the switch on purpose: changing wallpaper while
+        // it is turned off is a perfectly sensible thing to do, and the answer
+        // says which one it landed on rather than whether you can see it.
+        function next(): string {
+            Wallpaper.step(1);
+            return Wallpaper.name || "nothing to step to";
+        }
+
+        function prev(): string {
+            Wallpaper.step(-1);
+            return Wallpaper.name || "nothing to step to";
+        }
+
+        // Which one, whether it is showing, and how many there were to choose
+        // from: the third is what tells a wrong `dir` from an empty one.
+        function status(): string {
+            return `${Wallpaper.enabled ? "on" : "off"} ${Wallpaper.name || "(nothing set)"} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
+        }
+    }
+
     // The lock screen. ONE DIRECTION ONLY, deliberately: this can put the screen
     // up and cannot take it down.
     //
