@@ -93,6 +93,10 @@ Item {
         // the folder rather than on the wallpaper you are looking at makes the
         // first thing it does an unasked-for change.
         strip.positionAt(Math.max(0, root.entries.indexOf(Wallpaper.current)));
+        // DEFERRED, the launcher's reason: focus is only worth taking once the
+        // window has actually asked the compositor for the keyboard, and that
+        // follows from `shown` in the same pass this is running in.
+        Qt.callLater(root.forceActiveFocus);
     }
 
     function hide(): void {
@@ -116,6 +120,25 @@ Item {
         Wallpaper.set(path);
         root.hide();
     }
+
+    // THE KEYBOARD, on a surface built for a finger, and it is not a
+    // contradiction: this panel takes the compositor's keyboard while it is up
+    // (it has to, or Escape could not reach it), so the arrow keys are already
+    // being delivered here and doing nothing. A row of things with one of them
+    // centred is a list, whatever it is drawn as, and a list that ignores the
+    // arrow keys is a list that feels broken to the half of the world that
+    // reaches for them first.
+    //
+    // Escape is deliberately NOT here. ShellWindow owns that key for every
+    // panel at once, in one ordered list, because which surface a dismissal is
+    // for depends on what else is up; a local handler would take it out of that
+    // order. See its Keys.onPressed.
+    Keys.onLeftPressed: strip.positionAt(Math.max(0, strip.currentIndex - 1))
+    Keys.onRightPressed: strip.positionAt(Math.min(root.entries.length - 1, strip.currentIndex + 1))
+    Keys.onReturnPressed: if (strip.currentPath)
+        root.accept(strip.currentPath)
+    Keys.onEnterPressed: if (strip.currentPath)
+        root.accept(strip.currentPath)
 
     // Pulled by hand, exactly the launcher's pair of calls and for exactly its
     // reasons: while `dragging` is true the panel's reveal is the HAND'S rather
@@ -365,6 +388,25 @@ Item {
                     radius: Appearance.rounding.normal
                     source: Wallpaper.faceOf(card.modelData)
                     fillMode: Image.PreserveAspectCrop
+                }
+
+                // THAT THIS ONE MOVES, on the card rather than only in the
+                // caption above. The caption says it about the centred card,
+                // which is the one you can already see; this is so the strip
+                // can be SCANNED for the ones that are not simply a picture,
+                // which is the one thing a thumbnail genuinely cannot show:
+                // every card is a still, including the cards that are not.
+                Pill {
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    anchors.margins: Appearance.padding.small
+
+                    readonly property string kind: Wallpaper.kindOf(card.modelData)
+
+                    visible: kind && kind !== "still"
+                    interactive: false
+                    colour: Appearance.colour.accentFill
+                    text: kind === "motion" ? "GIF" : kind === "video" ? "VIDEO" : "AUDIO"
                 }
 
                 // THE MARK ON THE ONE YOU ARE ALREADY WEARING. Not a selection
