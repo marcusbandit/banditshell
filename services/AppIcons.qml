@@ -139,8 +139,26 @@ Singleton {
     onWatchingChanged: root.observe()
     // Whatever was open before the file came back is still open now, and now
     // there is something to merge it into.
+    //
+    // DEFERRED, and only on this edge. `loaded` goes true inside the FileView's
+    // own onLoaded below, so this handler runs while the read is still being
+    // delivered, and observe() ends in save() the moment it meets a window class
+    // the table has never heard of. Handing a FileView setText from inside the
+    // load it is still finishing makes it drop that load and then warn
+    // ("quickshell.io.fileview: got operation finished from dropped operation")
+    // when the dropped operation reports back. services/Usage.qml had the same
+    // shape and warned on every single startup, because its first read always
+    // ends in a write; this one only fires when there is a NEW application open
+    // at shell start, which is why it has been sitting here quietly instead.
+    // Latent is not fixed: the first morning you launch something before the
+    // shell it would have warned, once, for no reason a reader could act on.
+    //
+    // The other edge is left alone deliberately. onWatchingChanged is a window
+    // opening or closing, which arrives from Hyprland's event socket and is
+    // nowhere near a file read, so deferring it too would buy nothing and put a
+    // turn of lag between a window appearing and the shell noticing it.
     onLoadedChanged: if (root.loaded)
-        root.observe()
+        Qt.callLater(root.observe)
 
     function observe(): void {
         if (!root.loaded)
