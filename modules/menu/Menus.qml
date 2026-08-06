@@ -148,6 +148,114 @@ Item {
     // desktop, whatever a stale claim says.
     readonly property bool needsKeyboard: root.open && Prompts.active
 
+    // WHETHER ESCAPE HAS TO REACH THIS LAYER, which is a different request from
+    // `needsKeyboard` above and is deliberately not folded into it.
+    //
+    // `needsKeyboard` says a field is waiting to be typed into. It wants EVERY
+    // key, which is why the launcher, the power panel and the hotkey sheet each
+    // close a menu that claims it (ShellWindow says so three times): two things
+    // cannot read one keyboard. This wants ONE key. Widening `needsKeyboard` to
+    // mean both would have made those three exclusions fire for a menu somebody
+    // merely left up, so reaching for the launcher would have taken away the
+    // audio panel you were reading, which is precisely the surprise ShellWindow's
+    // own note says it will not have. Two claims, because they are two claims.
+    //
+    // THE PIN ITSELF, not `pinned`, and the difference is one gauge of drift.
+    // `pinned` is the pin AND the menu it names being the one on screen, so
+    // crossing a neighbouring gauge makes it false by arithmetic (see pinnedKey)
+    // and true again on the way back. As a keyboard request that is a grab
+    // dropped and retaken per crossing, and a layer surface dropping the keyboard
+    // hands it back to whatever window is underneath: a focus change and a border
+    // repaint every time a hand wanders four pixels up the bar, for a menu that
+    // never went anywhere. What has to be asked here is "did somebody ask for a
+    // menu, and is one still up", which is what the KEY answers on its own. The
+    // incidental menu the drift put on screen is closed by the same Escape,
+    // because hide() is one answer for the whole layer rather than for a key.
+    readonly property bool wantsEscape: root.pinnedKey !== ""
+
+    // WHETHER SOMETHING ELSE IN THIS WINDOW IS ALREADY READING EVERY KEY. Handed
+    // down rather than worked out here, for the reason `shellHovered` below is
+    // handed down: the launcher, the power panel and the hotkey sheet are
+    // ShellWindow's to know about, and a layer that went looking for them by id
+    // would be reaching up into the file that declares it.
+    //
+    // IT GATES THE GRAB AND NOTHING ELSE. Qt gives active focus to exactly ONE
+    // item in a window, so a pin going on while one of those three is up takes
+    // the caret out of the launcher's search field: the field goes on drawing and
+    // stops hearing, and nothing anywhere gives it back, because ShellWindow's
+    // exclusions fire when those panels OPEN and this pin arrived second. A menu
+    // loses nothing by waiting. What a pin wants is ONE key, and while the focus
+    // is elsewhere ShellWindow's Escape fallback says exactly what this layer
+    // would have said; what the field wants is every key, and there is nothing
+    // that can say that on its behalf.
+    property bool keyboardHeld: false
+
+    // THE GRAB ITSELF, in one place, because the two handlers below arrive at it
+    // from opposite directions and every condition on it belongs to both.
+    //
+    // ASKED AGAIN HERE rather than only at the signal that queued it, which is
+    // the whole reason this is a function rather than two calls to
+    // forceActiveFocus. The grab is deferred (see below), and between the request
+    // and this running the layer can have closed, the pin can have come off, a
+    // field can have claimed the keyboard or a panel that takes every key can
+    // have opened: a callLater bound straight to `keys.forceActiveFocus` carries
+    // out a request the shell has stopped meaning.
+    //
+    // `open` IS THE TERM THAT WAS MISSING, and it is not a hypothetical. hide()
+    // clears currentKey BEFORE pinnedKey, so a menu holding a live prompt drops
+    // `needsKeyboard` a line before it drops `wantsEscape`, and the second
+    // handler below fired in between, with the pin still on, and handed the
+    // window's focus to a layer that was already off screen. That layer's Escape
+    // handler then answered every press with a hide() of nothing and accepted it,
+    // so a tray or a notch pinned underneath, whose surface is holding the
+    // compositor's keyboard exclusively, could no longer be closed by key at all.
+    // Reordering the two writes in hide() fixes that one path and leaves the next
+    // caller to rediscover it; asking the state at the moment of the grab cannot
+    // be got wrong from outside.
+    function claimKeys(): void {
+        if (root.open && root.wantsEscape && !root.needsKeyboard && !root.keyboardHeld)
+            keys.forceActiveFocus();
+    }
+
+    // Taken when the pin goes on, handed back when it comes off.
+    //
+    // DEFERRED, like every other panel here: the surface only asks the compositor
+    // for the keyboard once this has propagated (ShellWindow's keyboardFocus), and
+    // focus forced before that lands is focus in a surface with no keys to give.
+    //
+    // Handing it back is not merely tidiness. Nothing arrives here once the
+    // surface stops asking, so leaving the focus on `keys` breaks nothing today;
+    // what it would leave behind is a hidden layer's item holding the window's
+    // focus while a panel that IS on screen goes looking for it.
+    onWantsEscapeChanged: {
+        if (root.wantsEscape)
+            Qt.callLater(root.claimKeys);
+        else
+            keys.focus = false;
+    }
+
+    // A PROMPT ENDING GIVES THE KEY BACK, and without this the second Escape of
+    // the pair goes nowhere.
+    //
+    // PasswordField takes the window's focus the moment it appears and answers
+    // its own Escape by cancelling, which is the right order: the first Escape
+    // answers the question you are being asked, the second puts away the thing
+    // that asked it. But the field takes the focus off `keys` to do it and hands
+    // it back to nobody, so the second press would arrive at an item that has
+    // stopped listening. Asked of `needsKeyboard` falling rather than of the
+    // field, which this file never sees and must not have to: the claim is kept
+    // in Prompts precisely so no menu has to know one exists.
+    //
+    // THROUGH claimKeys RATHER THAN GATED ON THE PIN HERE, because the two claims
+    // do NOT drop at once, which is what this handler used to assume and what
+    // hide() plainly does not do: it clears the key first and the pin second, so
+    // this fires in between, with `wantsEscape` still true, for a menu that has
+    // already gone. Every condition the grab needs is stated once, up there.
+    onNeedsKeyboardChanged: {
+        if (!root.needsKeyboard)
+            Qt.callLater(root.claimKeys);
+    }
+
     // What the chassis needs to melt this panel into the shell's body. A closed
     // panel has zero width, which the field skips, so it costs nothing rather
     // than leaving a stub behind.
@@ -568,6 +676,49 @@ Item {
 
         HoverHandler {
             id: ghostPointer
+        }
+    }
+
+    // THE KEYBOARD, on an item of its own rather than on the panel, and last in
+    // the file rather than beside the property that asks for it.
+    //
+    // ON ITS OWN because the panel is invisible until the reveal has moved off
+    // zero, and an invisible item cannot hold focus: focusing the panel on the
+    // way up would silently do nothing and the first Escape would go to the
+    // desktop. The settings page says the same sentence over its own `keys`, and
+    // SessionMenu learned it first. This one has no size and is always visible,
+    // so it is always focusable.
+    //
+    // LAST because every item above it says where it stands in this layer's input
+    // order, and this one stands nowhere in it: it draws nothing, has no geometry
+    // and accepts no mouse buttons at all, so the catcher is still the first thing
+    // a stray press meets and the ghost is still the last thing hover reaches.
+    // Declared among them, both of those sentences would have needed a footnote
+    // about an item that takes no input.
+    Item {
+        id: keys
+
+        Keys.onPressed: event => {
+            // hide(), so the layer is put away WHOLE: the key, the pin, the
+            // reveal and the ghost go together, and a menu that Escape left
+            // half-latched would come back pinned the next time the cursor
+            // crossed its gauge. It is the same call the catcher and the
+            // push-back make, which is the point: however the menu was opened,
+            // it leaves by one door.
+            //
+            // AND ONLY WHILE THERE IS ONE, which is not made redundant by the
+            // grab now checking the same thing. That decides when this item is
+            // given the focus; this decides what it is entitled to answer while
+            // it still has it, and the two are a frame apart at every handover.
+            // An accepted key stops travelling, so a press answered here on
+            // behalf of a closed layer is a press ShellWindow's fallback never
+            // sees, and hide() on a closed layer does nothing at all: the whole
+            // exchange would be this item eating Escape for a tray, a notch or a
+            // page that is on screen and waiting for it.
+            if (event.key === Qt.Key_Escape && root.open) {
+                root.hide();
+                event.accepted = true;
+            }
         }
     }
 }

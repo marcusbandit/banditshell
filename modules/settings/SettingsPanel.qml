@@ -296,8 +296,24 @@ Item {
     }
 
     onDockedChanged: {
-        if (!root.docked)
+        if (!root.docked) {
+            // AND HANDED BACK, which is the half with nothing on screen to
+            // remind anybody it was missing. Focus is not the keyboard here
+            // (see `keys` below), so a stale focus costs nothing while this
+            // window is asking the compositor for nothing; the trouble is that
+            // the window is SHARED. A pinned tray or notch asks for the
+            // keyboard exclusively (ShellWindow's keyboardFocus says why), and
+            // the key those pins exist to answer would then be delivered to a
+            // closed page's item, accepted there, and spent on a Settings.hide
+            // that early-returns: an Escape that cannot put away the thing it
+            // was aimed at, and an exclusive grab with nothing left able to
+            // release it. Every other focus-taking panel in this shell performs
+            // the same handover (Menus, NotificationTray, TopNotch, SessionMenu,
+            // CheatSheet, both launchers) and for the milder version of exactly
+            // this reason.
+            keys.focus = false;
             return;
+        }
 
         // Placed, never travelled to. Both ways in have a place the card is
         // supposed to already be: home when it is opened, and the window's own
@@ -324,11 +340,52 @@ Item {
     // The keyboard, on an item of its own rather than on the card: the card is
     // invisible until the reveal has moved off zero, and an invisible item cannot
     // hold focus. See SessionMenu, which learned this the same way.
+    //
+    // AND IT IS ONLY HALF OF WHAT ESCAPE NEEDS, which is worth writing down here
+    // rather than being re-derived by the next person who tries it. Focus inside
+    // the window is not the keyboard: the surface is granted the keyboard ON
+    // DEMAND while the page is docked (ShellWindow's keyboardFocus says why, at
+    // length), and on demand means the compositor hands it over when the surface
+    // is CLICKED. Until something on the shell has been clicked, no key event
+    // reaches this window at all and this item, focused or not, hears nothing.
+    // So Escape closes the page from the moment the page, the band, a gauge or
+    // any other part of the shell has been touched, and not before.
+    //
+    // The two ways to close that gap were both measured against the paragraph
+    // this file opens with, and both were rejected:
+    //
+    //   ASK EXCLUSIVELY while docked. That is what every other summoned panel
+    //   does, and it is exactly what a settings page must not do: the page is a
+    //   thing you leave open while you go and look at what you changed, and an
+    //   exclusive grab means you cannot type into the thing you opened it to
+    //   change. It would trade a keypress for the page's whole reason to be
+    //   dismissable by click-through in the first place.
+    //
+    //   ASK ON DEMAND ALWAYS, so the click that opens the page is itself the
+    //   click that hands the surface the keyboard. The corner tap lands while
+    //   the surface is still asking for nothing, so it cannot be the one; making
+    //   the shell ask unconditionally would mean every press on a gauge, a
+    //   workspace pip or the bare band took the keyboard off the focused window,
+    //   which is a far larger surprise than the one being fixed, and it would
+    //   break for the CLI and keybind routes anyway, since neither clicks
+    //   anything.
+    //
+    // What is left is honest: the page answers Escape the moment the keyboard
+    // can reach it, and the CLI closes it from anywhere.
     Item {
         id: keys
 
+        // GATED ON `docked`, which is not the same guard as the release above
+        // and does not make it redundant. The release moves the focus; this
+        // decides what this item is entitled to answer while it still has it,
+        // which covers the frame the release has not propagated through yet and,
+        // more than that, covers the state the release cannot reach at all: the
+        // page pulled out into a WINDOW. There `docked` is false while the page
+        // is very much open, the window draws the card and answers for it, and
+        // an ungated handler here would spend an Escape aimed at whatever else
+        // is pinned on closing the user's settings window instead.
         Keys.onPressed: event => {
-            if (event.key === Qt.Key_Escape) {
+            if (root.docked && event.key === Qt.Key_Escape) {
                 root.hide();
                 event.accepted = true;
             }

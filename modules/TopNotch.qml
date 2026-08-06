@@ -79,6 +79,67 @@ Item {
     readonly property bool active: zone.containsMouse || notchZone.containsMouse || root.pinned || root.pulling
     readonly property Item maskItem: notchZone
 
+    // WHETHER ESCAPE HAS TO REACH THE NOTCH, for the window to read: a layer
+    // surface is handed no key events at all unless its window asks the
+    // compositor for them, and the window is the only thing that can ask (see
+    // ShellWindow's keyboardFocus).
+    //
+    // THE PIN, and not `active`, though the union above is what "the notch is
+    // out" means everywhere else in this file. The other three terms belong to a
+    // pointer: a hovered notch is closed by the pointer leaving, and a pull is a
+    // finger that has not let go yet. Neither is a thing that was ASKED for, and
+    // a shell that took the keyboard off the window underneath every time a
+    // cursor brushed the top of the screen would be swallowing somebody's typing
+    // for a notch they never opened. The pin is the one term that means somebody
+    // said so, and the only one that will not go away on its own, which is
+    // exactly the set that needs a key to get rid of.
+    readonly property bool wantsEscape: root.pinned
+
+    // WHETHER SOMETHING ELSE IN THIS WINDOW IS ALREADY READING EVERY KEY. Handed
+    // down rather than worked out here, because the launcher, the power panel,
+    // the hotkey sheet and a menu holding a live prompt are ShellWindow's to know
+    // about, and a notch that went looking for them by id would be reaching up
+    // into the file that declares it. The notification tray carries this same
+    // pair in full; the argument is word for word the same one.
+    //
+    // IT GATES THE GRAB AND NOTHING ELSE. Qt gives active focus to exactly ONE
+    // item in a window, so a pin arriving while one of those is up takes the
+    // caret out of the launcher's search field, and nothing gives it back:
+    // ShellWindow's exclusions fire when a panel OPENS, and `banditshell notch
+    // open` is meant to be bound to a key, so the pin routinely arrives second.
+    // The notch loses nothing by waiting, because what a pin wants is ONE key and
+    // ShellWindow's Escape fallback drops it exactly as this item's own handler
+    // would.
+    property bool keyboardHeld: false
+
+    // THE GRAB ITSELF, behind both questions asked at the moment it happens
+    // rather than at the moment it was queued: it is deferred, so between the pin
+    // going on and this running the pin can have come off again or a panel that
+    // takes every key can have opened over it, and a callLater bound straight to
+    // `keys.forceActiveFocus` would carry out a request the shell has stopped
+    // meaning.
+    function claimKeys(): void {
+        if (root.wantsEscape && !root.keyboardHeld)
+            keys.forceActiveFocus();
+    }
+
+    // Taken when the pin goes on and handed back when it comes off, DEFERRED:
+    // the surface only asks the compositor for the keyboard once `wantsEscape`
+    // has propagated, and focus forced before that lands is focus in a surface
+    // with no keys to give. Every panel in this shell that answers a key does
+    // this dance; SessionMenu wrote it down first.
+    //
+    // Handing it back is the half that is easy to skip. Nothing arrives once the
+    // surface stops asking, so a stale focus breaks nothing on its own; what it
+    // leaves behind is a notch that has gone home holding the window's focus
+    // while a panel that IS on screen goes looking for it.
+    onWantsEscapeChanged: {
+        if (root.wantsEscape)
+            Qt.callLater(root.claimKeys);
+        else
+            keys.focus = false;
+    }
+
     // THE SUMMON STRIP, in the mask ALWAYS, unlike the notch itself.
     //
     // `maskItem` is granted on `active`, and nothing can make `active` true
@@ -426,6 +487,40 @@ Item {
                 anchors.bottom: parent.bottom
                 height: implicitHeight
                 visible: root.showsMedia
+            }
+        }
+    }
+
+    // THE KEYBOARD, on an item of its own rather than on the notch, and last in
+    // the file rather than beside the property that asks for it.
+    //
+    // ON ITS OWN because everything the notch draws hangs off `descent`, which is
+    // zero for the whole of the time the notch is away and for the first frames
+    // of every arrival, and an item with no height and nothing drawn is not a
+    // thing to hang the shell's only Escape on. SessionMenu learned this with
+    // visibility and the settings page repeats it; the reason is the same, that
+    // focus taken on a thing which is not there yet is focus taken on nothing.
+    // This one has no geometry to lose and is never hidden.
+    //
+    // LAST because everything above it sits somewhere deliberate in this file's
+    // input order (the strip over the notch, the push-back under its contents)
+    // and this sits nowhere in it: no geometry, no drawing, no mouse buttons.
+    // Declared among them it would have been a fourth item in an ordering that
+    // three comments already spend a paragraph each on.
+    Item {
+        id: keys
+
+        Keys.onPressed: event => {
+            // ONE claim dropped, not an order to close, which is exactly what
+            // the strip's tap and the push-back's release both say. `active` is
+            // a union and this is one term of it: with a cursor still resting on
+            // the notch it stays out on hover, and that is right rather than a
+            // miss, because the pointer has not gone anywhere and the notch will
+            // follow it home. Writing `active` here would be the argument that
+            // union exists to end.
+            if (event.key === Qt.Key_Escape) {
+                root.pinned = false;
+                event.accepted = true;
             }
         }
     }
