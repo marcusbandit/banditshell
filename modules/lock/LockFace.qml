@@ -72,11 +72,16 @@ Item {
     // The wallpaper the desktop had. Never drawn directly: it is the source the
     // effect reads, and drawing it as well would put a sharp copy under a
     // blurred one.
+    //
+    // Empty when the wallpaper is turned off, and the effect below goes with it:
+    // an unset source never reaches Ready. What is left is LockSurface's black,
+    // which is the same ground the desktop shows, and the clock has never had a
+    // better one to stand on.
     Image {
         id: paper
 
         anchors.fill: parent
-        source: Wallpaper.current
+        source: Wallpaper.enabled ? Wallpaper.current : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         sourceSize.width: root.width

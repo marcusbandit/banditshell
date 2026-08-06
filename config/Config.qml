@@ -358,6 +358,18 @@ Singleton {
             },
 
             wallpaper: {
+                // Whether the picture is drawn at all.
+                //
+                // Off is not "no wallpaper set": `current` keeps its path, the
+                // file stays decoded, and the surface keeps standing there
+                // painting the black it already paints behind the picture. So
+                // turning it back on is a fade rather than a load, and the
+                // desktop goes bare without the shell forgetting anything.
+                //
+                // The lock screen follows it, because a wallpaper turned off is
+                // a wallpaper you do not want to see, and the lock's ground is
+                // made of this same picture.
+                enabled: true,
                 dir: "~/Pictures/Wallpapers",
                 current: "~/Pictures/Wallpapers/shaded_landscape.png"
             },

@@ -74,43 +74,69 @@ PanelWindow {
         }
     }
 
-    Image {
-        id: a
+    // TURNED OFF is a light going out, not a surface going away.
+    //
+    // The window stays, the sources stay, the cross-fade underneath keeps
+    // working: only this group's opacity moves, so what is left is the black
+    // this surface was already painting behind the picture. Changing wallpaper
+    // while it is off still happens, silently, and comes back already right.
+    //
+    // A group rather than a term in each Image's own opacity, because these two
+    // are mid-cross-fade half the time and folding a second reason to be
+    // invisible into that expression is how one of them gets stuck. No `layer`:
+    // ungrouped opacity multiplies per child, which is exactly the blend the
+    // cross-fade already wants.
+    Item {
+        id: picture
 
         anchors.fill: parent
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        // Decoded at the size it is drawn at, not the file's own: a 4K png on a
-        // 1080p screen is four times the memory for no pixels anyone can see.
-        sourceSize.width: win.width
-        sourceSize.height: win.height
+        opacity: Wallpaper.enabled ? 1 : 0
 
-        opacity: win.showB ? 0 : 1
         Behavior on opacity {
             NumberAnimation {
                 duration: Appearance.anim.slow
             }
         }
 
-        onStatusChanged: win.settled(a)
-    }
+        Image {
+            id: a
 
-    Image {
-        id: b
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            // Decoded at the size it is drawn at, not the file's own: a 4K png
+            // on a 1080p screen is four times the memory for no pixels anyone
+            // can see.
+            sourceSize.width: win.width
+            sourceSize.height: win.height
 
-        anchors.fill: parent
-        fillMode: Image.PreserveAspectCrop
-        asynchronous: true
-        sourceSize.width: win.width
-        sourceSize.height: win.height
-
-        opacity: win.showB ? 1 : 0
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.anim.slow
+            opacity: win.showB ? 0 : 1
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.slow
+                }
             }
+
+            onStatusChanged: win.settled(a)
         }
 
-        onStatusChanged: win.settled(b)
+        Image {
+            id: b
+
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectCrop
+            asynchronous: true
+            sourceSize.width: win.width
+            sourceSize.height: win.height
+
+            opacity: win.showB ? 1 : 0
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.slow
+                }
+            }
+
+            onStatusChanged: win.settled(b)
+        }
     }
 }

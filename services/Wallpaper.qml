@@ -20,6 +20,18 @@ Singleton {
     readonly property string dir: Config.values.wallpaper.dir.replace("~", Quickshell.env("HOME"))
     readonly property string current: Config.values.wallpaper.current.replace("~", Quickshell.env("HOME"))
 
+    // WHETHER IT IS SHOWN, which is a separate question from which one it is.
+    //
+    // Kept apart from `current` on purpose: clearing the path to hide the
+    // picture would mean the shell has to guess one when you want it back, and
+    // the guess is never the one you had. This says only "not right now", so
+    // the choice survives being turned off. See config/Config.qml.
+    readonly property bool enabled: Config.values.wallpaper.enabled
+
+    // The name of the file, for the places that show which one it is. Empty
+    // when nothing is set, rather than the "" a split would leave.
+    readonly property string name: root.current.split("/").pop()
+
     // Absolute paths, sorted, of everything in `dir` we can show.
     property var available: []
 
@@ -27,6 +39,14 @@ Singleton {
 
     function set(path: string): void {
         Config.set("wallpaper.current", path);
+    }
+
+    function setEnabled(on: bool): void {
+        Config.set("wallpaper.enabled", on);
+    }
+
+    function toggle(): void {
+        root.setEnabled(!root.enabled);
     }
 
     // Next/previous in the listing, wrapping. Enough to flick through them from
