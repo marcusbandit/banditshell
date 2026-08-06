@@ -21,6 +21,8 @@
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
 #   banditshell wallpaper toggle|on|off|next|prev|status
+#   banditshell wallpapers toggle|open|close|status
+#                                the picker: the bottom edge's second pull
 #   banditshell status
 #   banditshell theme [name]
 #   banditshell get <key> | set <key> <value>
@@ -217,6 +219,12 @@ wallpaper)
     toggle | on | off | next | prev | status) ipc wallpaper "$sub" ;;
     *) echo "usage: banditshell wallpaper toggle|on|off|next|prev|status" >&2; exit 2 ;;
     esac
+    ;;
+
+# The picker, which is a surface rather than a setting: plural for the folder,
+# singular above for the one you are wearing. See the note on its IPC target.
+wallpapers)
+    ipc wallpapers "${1:-toggle}"
     ;;
 
 status) ipc shell status ;;

@@ -11,6 +11,7 @@ import qs.modules.notifications
 import qs.modules.session
 import qs.modules.settings
 import qs.modules.sidebar
+import qs.modules.wallpaper
 import qs.services
 
 // The shell. One surface per screen, and everything the shell draws lives in it.
@@ -35,6 +36,7 @@ PanelWindow {
     // reference keeps shell.qml from having to wire anything up.
     readonly property Menus menus: menuLayer
     readonly property Launcher launcher: launcherLayer
+    readonly property WallpaperPicker wallpapers: wallpaperLayer
     readonly property SessionMenu session: sessionLayer
     readonly property SettingsPanel settings: settingsLayer
     // NAMED FOR THE IPC TARGET, not for the type, like every line above it:
@@ -189,7 +191,7 @@ PanelWindow {
     // corner or the strip, one push back into the edge it came out of, or one
     // CLI call from being gone; and the surface holding the keyboard is on
     // screen the whole time it holds it.
-    WlrLayershell.keyboardFocus: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: launcherLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -240,6 +242,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: launcherLayer.open ? launcherLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: wallpaperLayer.open ? wallpaperLayer.maskItem : null
         }
 
         // The whole screen while the power panel is out, so a click anywhere
@@ -431,6 +438,8 @@ PanelWindow {
 
             if (launcherLayer.open)
                 launcherLayer.hide();
+            else if (wallpaperLayer.open)
+                wallpaperLayer.hide();
             else if (sessionLayer.open)
                 sessionLayer.hide();
             else if (cheatLayer.open)
@@ -461,7 +470,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -679,9 +688,27 @@ PanelWindow {
             onOpenChanged: if (open) {
                 sessionLayer.hide();
                 cheatLayer.hide();
+                wallpaperLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
+        }
+
+        // THE SECOND THING THE BOTTOM EDGE DOES. Out of the same edge, in the
+        // same motion, as the alternative to what is already up rather than as
+        // a panel of its own: see the edge below, and WallpaperPicker's own
+        // note. Mutually exclusive with the launcher because they occupy the
+        // same place on the screen and are reached by the same gesture, which
+        // is as exclusive as two things get.
+        WallpaperPicker {
+            id: wallpaperLayer
+
+            anchors.fill: parent
+            originX: chassis.barWidth
+            inset: win.border
+
+            onOpenChanged: if (open)
+                launcherLayer.hide()
         }
 
         // Power, on the right edge, summoned by keybind rather than reached for.
@@ -913,18 +940,87 @@ PanelWindow {
 
         // The bottom edge, as a way in: it swells under the cursor, opens on a
         // click, and opens on a push up from it.
+        //
+        // AND IT DOES A SECOND THING ON THE SECOND PULL. The edge used to be
+        // disarmed the moment the launcher was up, on the theory that an edge
+        // whose panel is already out has nothing left to offer. It has: the
+        // same motion, made again, is how a touchscreen walks through what
+        // lives in one place, and the two things that live at the bottom of
+        // this screen are the launcher and the wallpapers. So a pull with the
+        // launcher up is a pull for the picker, and the launcher goes as the
+        // picker arrives.
+        //
+        // Which one the pull is FOR is decided at the press rather than at the
+        // release, because the drag has to track the right panel the whole way
+        // up. `armed` is still false once the picker itself is up: at that
+        // point there genuinely is nothing further along, and a third pull
+        // should do nothing rather than cycle back to the launcher, which would
+        // make the edge a carousel nobody asked for.
         LaunchEdge {
             id: launchEdge
 
+            // Which panel this pull is driving. Latched on the press, so a
+            // launcher that closes mid-drag (because the picker it is handing
+            // over to has opened) cannot move the gesture to a different panel
+            // halfway through it.
+            property var target: null
+
             anchors.fill: parent
             border: win.border
-            span: launcherLayer.panelWidth
-            // Pointless while the thing it opens is already open, and worse than
-            // pointless: the launcher's own panel comes out of the same edge.
-            armed: !launcherLayer.open
+            span: launcherLayer.open ? wallpaperLayer.panelWidth : launcherLayer.panelWidth
 
-            onDragged: fraction => launcherLayer.dragTo(fraction)
-            onFinished: open => launcherLayer.dragEnd(open)
+            // ARMED EVEN AT THE END OF THE STACK, where the pull has nowhere
+            // left to go. It has to be: unarmed, the press falls through to
+            // whatever is under the band, which with the picker up is the
+            // dismiss catcher, and a swipe UP would put the panel away. That is
+            // the one thing a swipe up must never do. Armed, the press is
+            // consumed and the gesture simply saturates, which is what the
+            // phone this borrows from does at the end of its own stack.
+            armed: true
+
+            // WHICH PANEL THIS PULL IS FOR, decided once.
+            //
+            // The bottom edge holds two things and one pull moves you one step
+            // along them: nothing up, and it is the launcher; the launcher up,
+            // and it is the wallpapers. At the end there is no third thing, and
+            // the answer is nothing at all rather than a wrap back to the
+            // start: a gesture that cycles is a gesture you have to count, and
+            // the whole appeal of this one is that it is the same motion
+            // meaning the same "further in" every time.
+            //
+            // Latched at the earliest moment the gesture says anything, and NOT
+            // re-read after that. `pressed` is that moment for a finger on the
+            // edge; a gesture that arrives some other way (a two-finger scroll
+            // has no press) says its first word in `dragged`, so that latches
+            // too when nothing has yet. Deciding it twice is the bug this
+            // exists to prevent: the launcher closes the instant the picker
+            // opens, so a second reading mid-drag would hand the rest of the
+            // gesture to a different panel.
+            property bool aimed: false
+
+            function aim(): void {
+                if (launchEdge.aimed)
+                    return;
+                launchEdge.aimed = true;
+                launchEdge.target = wallpaperLayer.open ? null : launcherLayer.open ? wallpaperLayer : launcherLayer;
+            }
+
+            onPressed: {
+                launchEdge.aimed = false;
+                launchEdge.aim();
+            }
+
+            onDragged: fraction => {
+                launchEdge.aim();
+                launchEdge.target?.dragTo(fraction);
+            }
+
+            onFinished: open => {
+                launchEdge.aim();
+                launchEdge.target?.dragEnd(open);
+                launchEdge.aimed = false;
+                launchEdge.target = null;
+            }
         }
 
         TopNotch {

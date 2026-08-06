@@ -133,6 +133,76 @@ Singleton {
         root.set(root.available[next]);
     }
 
+    // A PICTURE OF A THING THAT IS NOT A PICTURE.
+    //
+    // The picker draws a card per wallpaper, and Image can decode every kind in
+    // the list except one: it will show a GIF's first frame and rasterise an
+    // SVG, and it has no idea what to do with an mp4. So every video gets a
+    // still lifted out of it once, into the cache, and the card draws that.
+    //
+    // { path: posterPath } for the videos that have one. A path that is not in
+    // here draws itself, which is the right answer for every other kind and the
+    // right FALLBACK for a video whose poster has not been made yet: an Image
+    // pointed at an mp4 fails to load and shows nothing, which is exactly what
+    // an empty card looks like anyway.
+    property var posters: ({})
+
+    function poster(path: string): string {
+        return root.posters[path] ?? "";
+    }
+
+    // What a card should actually point at.
+    function faceOf(path: string): string {
+        const k = root.kindOf(path);
+        if (k === "audio")
+            return "";
+        return k === "video" ? root.poster(path) : path;
+    }
+
+    readonly property string posterDir: `${Quickshell.env("XDG_CACHE_HOME") || `${Quickshell.env("HOME")}/.cache`}/banditshell/posters`
+
+    // ONE PROCESS FOR THE WHOLE FOLDER, not one per file. A wallpaper folder
+    // holds a handful of videos at most, ffmpeg opens each of them for a single
+    // frame, and spawning a Process per file would mean the picker's first
+    // opening is a burst of them. The script prints `source<TAB>poster` for
+    // everything it has, whether it made it just now or found it already there,
+    // so the map is built from what EXISTS rather than from what was attempted.
+    //
+    // Keyed by a hash of the full path, so two folders' `loop.mp4` are two
+    // posters, and `-n` leaves an existing one alone: this runs on every
+    // re-list and must be free when nothing has changed.
+    function makePosters(): void {
+        const videos = root.available.filter(p => root.kindOf(p) === "video");
+        if (!videos.length) {
+            root.posters = {};
+            return;
+        }
+        posterer.command = ["sh", "-c", `mkdir -p "$0" || exit 0
+for f in "$@"; do
+  h=$(printf %s "$f" | md5sum | cut -d" " -f1)
+  out="$0/$h.jpg"
+  [ -f "$out" ] || ffmpeg -v error -y -ss 0 -i "$f" -frames:v 1 -vf scale=640:-2 "$out" </dev/null >/dev/null 2>&1
+  [ -f "$out" ] && printf '%s\\t%s\\n' "$f" "$out"
+done`, root.posterDir, ...videos];
+        posterer.running = true;
+    }
+
+    Process {
+        id: posterer
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = {};
+                for (const line of text.trim().split("\n")) {
+                    const tab = line.indexOf("\t");
+                    if (tab > 0)
+                        out[line.slice(0, tab)] = line.slice(tab + 1);
+                }
+                root.posters = out;
+            }
+        }
+    }
+
     function refresh(): void {
         lister.running = true;
     }
@@ -156,6 +226,7 @@ Singleton {
                 root.available = text.trim().split("\n").filter(l => l).sort();
                 if (!root.available.length)
                     console.warn(`Wallpaper: nothing usable in ${root.dir}`);
+                root.makePosters();
             }
         }
     }

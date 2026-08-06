@@ -557,7 +557,53 @@ Scope {
         // Which one, whether it is showing, and how many there were to choose
         // from: the third is what tells a wrong `dir` from an empty one.
         function status(): string {
-            return `${Wallpaper.enabled ? "on" : "off"} ${Wallpaper.name || "(nothing set)"} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
+            return `${Wallpaper.enabled ? "on" : "off"} ${Wallpaper.kind || "?"} ${Wallpaper.name || "(nothing set)"} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
+        }
+    }
+
+    // THE PICKER, which is a SURFACE and therefore its own target rather than
+    // another verb on the one above.
+    //
+    // Plural against that one's singular, and the distinction is real: this
+    // panel is about the folder, that target is about the one you are wearing.
+    // Everything here opens and closes a thing on the screen and writes
+    // nothing; everything there writes a setting and draws nothing.
+    //
+    // It is reached by GESTURE first (a second pull on the bottom edge, see
+    // modules/wallpaper/WallpaperPicker.qml) and this is the second way in, for
+    // the same reason every other surface in this file has one: a gesture
+    // cannot be scripted, so a panel with no CLI is a panel that can only be
+    // tested by hand.
+    IpcHandler {
+        target: "wallpapers"
+
+        function toggle(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.wallpapers.toggle();
+            return win.wallpapers.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Shell.forScreen("")?.wallpapers.show();
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.wallpapers.hide();
+            return "closed";
+        }
+
+        // What the strip is centred on, which is what the desktop is showing
+        // while this is up, which is not yet what the setting says. All three
+        // of those being different at once is exactly the state a preview is.
+        function status(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            return `${win.wallpapers.open ? "open" : "closed"} showing=${Wallpaper.shownName || "-"} set=${Wallpaper.name || "-"} of ${Wallpaper.available.length}`;
         }
     }
 

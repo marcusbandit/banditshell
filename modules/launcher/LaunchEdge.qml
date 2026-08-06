@@ -75,6 +75,23 @@ Item {
     // would be the only part of the swell you could not touch.
     readonly property Item maskItem: zone
 
+    // A GESTURE HAS STARTED, before anything is known about where it goes.
+    //
+    // Emitted on the press rather than on the first movement, because what this
+    // edge opens depends on what is already open, and that has to be decided
+    // once at the start: the panel this pull is for is the panel it has to
+    // track, and a launcher that closes halfway through the drag (because the
+    // thing it is handing over to has opened) must not move the gesture onto a
+    // different panel while a finger is still on the screen.
+    //
+    // A SCROLL STREAM STARTING COUNTS AS ONE, and the name is the only thing
+    // about it that is now slightly wrong. Two fingers have no press, but they
+    // have exactly the same need: a stream that set off while the launcher was
+    // open must go on driving the panel it set off against even if the launcher
+    // closes under it halfway through. The alternative is to leave the consumer
+    // deciding per event, which is the bug this signal exists to prevent, made
+    // worse by an input that cannot be interrupted by letting go.
+    signal pressed
     // How far out the panel has been pulled, 0 to 1.
     signal dragged(real fraction)
     // Let go: true carries on up, false puts it back.
