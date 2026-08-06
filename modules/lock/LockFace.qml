@@ -81,7 +81,13 @@ Item {
         id: paper
 
         anchors.fill: parent
-        source: Wallpaper.enabled ? Wallpaper.current : ""
+        // THE FACE of the wallpaper rather than the wallpaper, which for
+        // everything except a video are the same file. A lock screen wants a
+        // still: this ground is blurred to nothing recognisable and dimmed most
+        // of the way to black, so a video playing under all that would be a
+        // decoder running for a picture that is, by construction, unreadable.
+        // A video's poster frame gets the same treatment and looks identical.
+        source: Wallpaper.enabled ? Wallpaper.faceOf(Wallpaper.current) : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
         sourceSize.width: root.width

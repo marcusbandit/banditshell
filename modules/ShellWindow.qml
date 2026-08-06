@@ -998,11 +998,25 @@ PanelWindow {
             // gesture to a different panel.
             property bool aimed: false
 
+            // WHAT THE PULL IS LEAVING, when it is leaving something. A pull
+            // for the picker is also a pull AWAY from the launcher, and the two
+            // halves are one motion rather than a change that happens at the
+            // end of one: the launcher goes down by exactly as much as the
+            // picker comes up, so the finger is holding a handover rather than
+            // holding one panel while another waits its turn behind it.
+            //
+            // It also makes the gesture reversible in the way the rest of this
+            // shell is. Push halfway and change your mind, and the launcher
+            // comes back up from where it had got to, with everything still
+            // typed into it.
+            property var leaving: null
+
             function aim(): void {
                 if (launchEdge.aimed)
                     return;
                 launchEdge.aimed = true;
                 launchEdge.target = wallpaperLayer.open ? null : launcherLayer.open ? wallpaperLayer : launcherLayer;
+                launchEdge.leaving = launchEdge.target === wallpaperLayer ? launcherLayer : null;
             }
 
             onPressed: {
@@ -1013,13 +1027,25 @@ PanelWindow {
             onDragged: fraction => {
                 launchEdge.aim();
                 launchEdge.target?.dragTo(fraction);
+                // One minus, because it is the same fraction seen from the
+                // other end: a picker a quarter of the way out is a launcher
+                // three quarters of the way home.
+                launchEdge.leaving?.dragTo(1 - fraction);
             }
 
             onFinished: open => {
                 launchEdge.aim();
                 launchEdge.target?.dragEnd(open);
+                // INVERTED, and the inversion is the whole point: the pull
+                // carrying on means the picker arrives AND the launcher leaves,
+                // and reversing means neither. `dragEnd(true)` on a launcher
+                // that is already shown simply walks it back up from where the
+                // drag left it, which is exactly what changing your mind should
+                // look like.
+                launchEdge.leaving?.dragEnd(!open);
                 launchEdge.aimed = false;
                 launchEdge.target = null;
+                launchEdge.leaving = null;
             }
         }
 
