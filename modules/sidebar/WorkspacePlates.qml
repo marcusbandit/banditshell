@@ -97,13 +97,32 @@ Item {
     // card. Small: this is still a card on a card.
     readonly property real overhang: Appearance.padding.normal
 
-    // HOW MUCH THE PLATE YOU ARE ON STEPS BACK while a scratchpad lies over it.
+    // THE GHOST: what the plate you are on wears while a scratchpad lies over
+    // it. "Active but not seen", and each half of that is said by a different
+    // piece of the plate:
     //
-    // The accent means the thing you are looking at, and while a scratchpad is
-    // pulled over the screen the thing you are looking at is the scratchpad. So
-    // the accent goes with it, and what the plate keeps is the ghost of its own:
-    // enough to say you are still on that workspace and it is still what you
-    // come back to, not enough to argue with the card about which is which.
+    // - It KEEPS its full reach and its lit sheet. Length is the state in this
+    //   style, so "held open behind what you are looking at" is said the
+    //   loudest way the grammar has: the plate does not retract, it stays
+    //   pulled all the way out under the card, holding the place you come back
+    //   to. Dropping it to the busy fill was rejected because the lip peeking
+    //   past the card's end would then read as just another inactive plate
+    //   that a card happens to be lying on.
+    // - The accent SHEET leaves entirely, because the sheet means "the thing
+    //   you are looking at" and the card is now wearing it: two tinted sheets
+    //   in one stack is the focus claimed twice, which is exactly the argument
+    //   the ghost exists not to have.
+    // - The accent HAIRLINE stays, dimmed to this fraction. The ruler down the
+    //   screen's edge must not break, so the card carries the bright segment
+    //   and the plate keeps a quiet one above and below it that says which
+    //   workspace is behind the card, and moves the moment the workspace
+    //   underneath changes.
+    //
+    // An OUTLINE around the plate (G2Rect can stroke) was the other candidate
+    // and was rejected: G2Rect's own note says a ring is for a control that
+    // joins nothing, a plate is body hinged on the screen's edge, and the
+    // stroke would have run down the hinge too, a hairline seam on the one
+    // join this shell spent a whole chassis learning never to draw.
     readonly property real ceded: 0.35
 
     // Where the plate you are on currently IS, smoothed like everything else, so
@@ -273,7 +292,11 @@ Item {
                     label: "",
                     windows: []
                 })
-            readonly property bool open: !!bar.entry.name && Hypr.openSpecial === bar.entry.name
+            // Matched against the MODEL's shown special, which rides the event
+            // stream (services/Hypr.qml): the bar lights, and the card lifts,
+            // on the same frame the compositor says so, not an IPC round trip
+            // later.
+            readonly property bool open: !!bar.entry.name && layout.special === bar.entry.name
             readonly property bool lit: root.racked === bar.index
             readonly property int marks: root.barMarks(bar.entry)
 
@@ -281,12 +304,22 @@ Item {
             y: root.barY(bar.index)
             // Hover swells it the same fraction a plate swells by, so the rack
             // answers the cursor in the language the column already speaks.
+            // The OPEN bar wears that swell all the time, and the strong fill
+            // with it: that pair is what "the active plate" translates to down
+            // here, where a plate says "you are here" with its full reach and
+            // its second sheet and a bar has neither to spend. Not the accent,
+            // which the rack never wears: the card out on the plate is
+            // carrying it, and a second accented shape would be the focus
+            // claimed twice (see `ceded`).
             //
             // A bar whose card is OUT falls back to the empty stub rather than
             // disappearing: the rack is a set of slots and one of them is empty
             // right now, which is a different thing from the rack being shorter.
-            // Where the card itself is, is answered by the card.
-            width: Math.round((bar.open ? root.span * root.emptyReach : root.barWidth(bar.entry)) * (1 + (bar.lit ? Appearance.sizes.wsHover : 0)))
+            // Where the card itself is, is answered by the card; the lit stub
+            // answers WHICH slot it is out of, because this stub is also the
+            // summoner that puts it back (the reversed gesture, DESIGN.md 15),
+            // and the way home must not be dressed as just another empty slot.
+            width: Math.round((bar.open ? root.span * root.emptyReach : root.barWidth(bar.entry)) * (1 + (bar.open || bar.lit ? Appearance.sizes.wsHover : 0)))
             height: root.barH
 
             // Square on the screen's edge, like everything else hinged there.
@@ -301,8 +334,10 @@ Item {
             // A scratchpad is not more important than the workspace it will lie
             // on, so it cannot be brighter than one: what separates a full bar
             // from an empty one here is length and a mark, exactly as it is up
-            // the column.
-            color: bar.lit ? Appearance.colour.fillStrong : Appearance.colour.fill
+            // the column. The open bar holds the strong fill for as long as its
+            // card is out, which is hover's colour meant permanently: the same
+            // word the plates use, said at the rack's own volume.
+            color: bar.open || bar.lit ? Appearance.colour.fillStrong : Appearance.colour.fill
 
             Behavior on width {
                 NumberAnimation {
@@ -453,8 +488,13 @@ Item {
             // A scratchpad is lying on this plate, so its windows are behind
             // one: you cannot see them, and neither should their marks, which
             // would otherwise show through the card and read as two icons in the
-            // same place.
-            readonly property bool covered: slotItem.isActive && Hypr.openSpecial !== ""
+            // same place. This is also the plate that wears the GHOST (see
+            // `ceded`), and it follows `isActive`: switch the workspace under
+            // an open card and the ghost walks to the new plate with the card
+            // on top of it. Derived from the model's `eclipsed` rather than
+            // asked of Hypr here, so every style reads the same fact from the
+            // object they already share instead of rediscovering it apiece.
+            readonly property bool covered: slotItem.isActive && layout.eclipsed
 
             y: slotItem.geom.y
             width: root.width
@@ -605,7 +645,12 @@ Item {
 
                 // The second sheet: the accent, over the neutral one rather than
                 // instead of it, so the active plate reads as thicker glass with
-                // colour in it and not as a stain on the bar.
+                // colour in it and not as a stain on the bar. Gone ENTIRELY
+                // while a card lies on the plate, not merely dimmed as it once
+                // was: the sheet is the mark of the thing you are looking at,
+                // the card took that job with it, and a second tint bleeding
+                // past the card's edge argued quietly with the card about which
+                // of them is the focus (see `ceded` for the whole ghost).
                 G2Rect {
                     anchors.fill: parent
                     topLeftRadius: plate.topLeftRadius
@@ -613,7 +658,7 @@ Item {
                     topRightRadius: plate.topRightRadius
                     bottomRightRadius: plate.bottomRightRadius
                     color: Appearance.colour.accentFill
-                    opacity: slotItem.isActive ? (slotItem.covered ? root.ceded : 1) : 0
+                    opacity: slotItem.isActive && !slotItem.covered ? 1 : 0
 
                     Behavior on opacity {
                         NumberAnimation {
@@ -623,10 +668,12 @@ Item {
                 }
 
                 // The one saturated thing in the sidebar, and it is three pixels
-                // wide, on the plate's hinge. It dims with the sheet while a card
-                // is over it, and the card carries the bright piece of it, so the
-                // ruler runs unbroken down the edge and is brightest where the
-                // thing you are actually looking at is.
+                // wide, on the plate's hinge. It dims to `ceded` while a card is
+                // over it, and it is the one piece of accent the ghost keeps
+                // where the sheet keeps none: the card carries the bright
+                // segment, so the ruler runs unbroken down the edge and is
+                // brightest where the thing you are actually looking at is,
+                // with the quiet remainder saying which workspace is behind it.
                 G2Rect {
                     x: 0
                     width: root.tick
@@ -812,7 +859,9 @@ Item {
                     label: "",
                     windows: []
                 })
-            readonly property bool open: !!pad.entry.name && Hypr.openSpecial === pad.entry.name
+            // The model's shown special, same as the bar: the card starts its
+            // travel on the event's frame, not after the monitor refresh.
+            readonly property bool open: !!pad.entry.name && layout.special === pad.entry.name
 
             readonly property var windows: pad.entry.windows.slice(0, root.maxWindows)
             readonly property int rows: Math.max(1, pad.windows.length)

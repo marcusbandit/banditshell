@@ -26,6 +26,22 @@ Item {
 
     readonly property int count: Hypr.count
 
+    // THE SPECIAL LYING OVER THE SCREEN, carried by the MODEL rather than read
+    // from Hypr by each style. Every style already shares this object for its
+    // geometry, and "you are on a workspace you cannot currently see" is a
+    // fact about the column, not about any one drawing of it: a style derives
+    // its ghost as `isActive && eclipsed` and inherits sane behaviour the day
+    // it learns to draw specials at all. Asked of Hypr in each file instead,
+    // blocks and map would ship with the accent sitting on a covered plate
+    // until someone noticed, which is exactly the per-style branching the
+    // model exists to prevent.
+    //
+    // `special` is the wire name ("special:magic", "" when none), for the one
+    // style question `eclipsed` cannot answer: WHICH card is out, so the rack
+    // can light the right bar and the card can know it is the one travelling.
+    readonly property string special: Hypr.specialShown
+    readonly property bool eclipsed: special !== ""
+
     // THE LAYOUT: { id, y, h, windows, rest } per slot, in one pass. Where slot i
     // sits depends on what the slots above it are holding, so nothing knows its
     // own y and adding a workspace or a window changes only the data this runs

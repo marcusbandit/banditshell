@@ -101,16 +101,102 @@ Singleton {
         return out;
     }
 
-    // The special workspace currently pulled over the screen, by name, or "".
-    // Read off the MONITOR rather than off the workspace list, because the
-    // question is not which ones exist, it is which one you are looking at.
-    readonly property string openSpecial: {
-        for (const mon of Hyprland.monitors.values) {
-            const name = mon.lastIpcObject?.specialWorkspace?.name ?? "";
-            if (name)
-                return name;
+    // THE SPECIAL WORKSPACE PULLED OVER THE FOCUSED SCREEN, by wire name
+    // ("special:magic"), or "" when none is up. This is the sidebar's "what
+    // are you actually looking at": while it is non-empty the numbered
+    // workspace is still where you ARE, but not what you SEE, and anything
+    // wearing an accent should be reading this before it lights up.
+    //
+    // Set from the EVENT'S OWN PAYLOAD, not read off the monitors' model as
+    // `openSpecial` used to be: that answer is refreshed by an IPC round trip
+    // AFTER the event lands, so anything reading it in the same turn as the
+    // event got the PREVIOUS screen, and a card animating open was chasing
+    // state a frame staler than the gesture that opened it. Same lesson as
+    // `focusedAddress` below, learned on the other socket.
+    //
+    // DERIVED FROM THE MAP BELOW, which is the correction to the paragraph that
+    // used to stand here. This was one bare string assigned by the event
+    // handler, on the argument that "a special is summoned onto the monitor you
+    // are focused on, so the latest event is the focused screen's answer". That
+    // argument is only true of events that ORIGINATE on the focused monitor,
+    // and the handler accepted every one: it parsed the monitor name out of the
+    // payload for the sole purpose of throwing it away. So a bind or a window
+    // rule toggling a scratchpad on the OTHER screen wrote its answer into the
+    // value every consumer reads as "the special over MY screen", and with the
+    // seed below already conceding the point (it believes `m.focused` and
+    // nothing else) the field was demonstrably load-bearing on one path and
+    // discarded on the other.
+    //
+    // Keeping the shape of the reading side is deliberate: consumers ask one
+    // string and get the focused screen's answer, exactly as before, so nothing
+    // downstream changes. The difference is that an event about DP-1 now lands
+    // in DP-1's slot instead of in everybody's, and moving the keyboard between
+    // monitors re-reads the map rather than waiting for the next toggle to
+    // correct a value that was never about this screen.
+    readonly property string specialShown: root.specialByMonitor[root.focusedScreen] ?? ""
+
+    // WHICH SPECIAL IS OVER WHICH MONITOR, keyed by the monitor's own name,
+    // "" for a monitor whose special has been dismissed.
+    //
+    // Set from the EVENT'S OWN PAYLOAD, for the reason above, and REASSIGNED
+    // rather than mutated in place: a `var` property notifies on the object
+    // changing identity, not on a key being written into the one it already
+    // holds, and `specialShown` is a binding over it. A special coming or going
+    // is an event a user caused, a handful a minute at the very most, so a
+    // fresh object per event costs nothing worth counting.
+    //
+    // A map is also what lets a per-screen consumer eventually ask about ITS
+    // screen rather than about the focused one; nothing does yet (see
+    // modules/sidebar/WorkspaceModel.qml, which is instantiated per screen and
+    // still reads the focused answer), and that is a smaller wrongness than the
+    // one this replaces because it at least tracks the screen you are looking
+    // at.
+    property var specialByMonitor: ({})
+
+    // One monitor's answer, replacing whatever it said before.
+    function noteSpecial(monitor: string, name: string): void {
+        const next = Object.assign({}, root.specialByMonitor);
+        next[monitor] = name;
+        root.specialByMonitor = next;
+    }
+
+    // SEEDED AT STARTUP, BY ASKING. The event stream begins at zero and says
+    // nothing about the past, but the shell can restart while a scratchpad is
+    // up, and a shell that comes back believing the screen is bare puts the
+    // accent on a plate nobody is looking at until the next toggle corrects
+    // it. Which special is over the screen is a property of the MONITOR, so
+    // the monitors are asked, once, and every one of them is believed: the
+    // scan used to keep only `m.focused`, which was the single-value shape
+    // forcing a choice the compositor was answering in full.
+    //
+    // A MONITOR ALREADY IN THE MAP IS LEFT ALONE, which is the whole of what
+    // the old `specialHeard` flag did and it is now asked per monitor rather
+    // than globally. A process is slower than a socket, so an event can land
+    // first, and a seed overwriting it would replace the newer truth with an
+    // older snapshot; a key only ever appears here because an event put it
+    // there, so its presence IS "the socket has already spoken for this
+    // screen". Globally, the same guard would have thrown away the seed for
+    // every other monitor on account of one event.
+    Process {
+        running: true
+        command: ["hyprctl", "-j", "monitors"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // hyprctl can come back empty or half-written while the
+                // compositor is starting or dying, and a bad seed is not worth
+                // an exception: the event stream tells the truth soon enough.
+                let mons = [];
+                try {
+                    mons = JSON.parse(text);
+                } catch (e) {}
+                const next = Object.assign({}, root.specialByMonitor);
+                for (const m of mons)
+                    if (m.name && !(m.name in next))
+                        next[m.name] = m.specialWorkspace?.name ?? "";
+                root.specialByMonitor = next;
+            }
         }
-        return "";
     }
 
     // HOW A DISPATCH IS SPELLED, which stopped being one thing at Hyprland 0.56.
@@ -358,6 +444,34 @@ Singleton {
                 const addr = (event.data ?? "").trim();
                 if (addr && addr !== ",")
                     root.focusedAddress = addr.startsWith("0x") ? addr : `0x${addr}`;
+            }
+
+            // A SCRATCHPAD CAME OVER THE SCREEN, OR LEFT IT. The payload is
+            // NAME,MONITOR: "activespecial>>special:probe,eDP-1" opening,
+            // "activespecial>>,eDP-1" closing, with the name simply absent
+            // (measured, not assumed: those are the literal lines off
+            // .socket2.sock). Split at the LAST comma rather than the first,
+            // which is openwindow's reasoning read from the other end: a
+            // monitor's name cannot contain a comma and a special's name is
+            // the user's to invent, so the name is whatever the monitor field
+            // leaves behind.
+            //
+            // AND THE MONITOR IS KEPT, not merely isolated so it can be
+            // dropped. It is half of what the event says, and filing the name
+            // under it is the whole of why `specialByMonitor` is a map; see
+            // that property for what the single value it replaces got wrong.
+            //
+            // A payload with no comma at all is not a shape this compositor has
+            // been seen to send, so it is attributed to the focused screen: the
+            // exact assumption the old single value made about EVERY event,
+            // which is defensible for the one case where the monitor genuinely
+            // was not stated and indefensible for the rest.
+            if (n === "activespecial") {
+                const data = event.data ?? "";
+                const cut = data.lastIndexOf(",");
+                const monitor = cut >= 0 ? data.slice(cut + 1) : root.focusedScreen;
+                const name = cut >= 0 ? data.slice(0, cut) : data;
+                root.noteSpecial(monitor, name);
             }
 
             // `activespecial` is the one that says a scratchpad came or went,
