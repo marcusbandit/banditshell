@@ -49,8 +49,12 @@ import qs.services
 // numbered part of it steps the active workspace along with the hand, one
 // step per one-row pitch, switching at every boundary so the desktop is the
 // preview (DESIGN.md 15: the drag is the primary gesture, the tap is the
-// fallback that stays). The tracking lives in WorkspaceModel; this file only
-// wires its three press surfaces into it and keeps the rack out of it.
+// fallback that stays). Two fingers scrolled down the column are the same
+// gesture and not a second one: same direction, same pitch, same switch at
+// every boundary, because a laptop's touchpad is how this shell is used most
+// and a gesture that only exists for a press does not exist there. The
+// tracking lives in WorkspaceModel for both inputs; this file only wires its
+// three surfaces into it and keeps the rack out of it.
 Item {
     id: root
 
@@ -228,6 +232,14 @@ Item {
     // scrub to. The bars keep their tap and their hold, the stand-off above
     // them stays dead, and the open card (drawn last, over the active plate)
     // keeps its own tap for the same reason.
+    //
+    // THE BOUNDARY IS THE SAME ONE FOR TWO FINGERS, and for the rack it costs
+    // nothing to hold: this rectangle stops at the column's end, the bars sit
+    // a whole stand-off below it, and nothing of the scrub lies underneath
+    // them, so a scroll over a bar reaches the same nothing a drag on one
+    // does. The open card is the single exception and answers it itself, down
+    // where it is drawn: it lies ON the active plate, so it is the one
+    // surface with a doorway underneath to fall through to.
     MouseArea {
         id: backstop
 
@@ -261,6 +273,15 @@ Item {
         // nothing: the release is read only to close the gesture out.
         onReleased: layout.scrubRelease()
         onCanceled: layout.scrubCancel()
+
+        // AND THE SAME GESTURE MADE WITH TWO FINGERS, in one line, because
+        // the model tracks the scroll through the very functions these
+        // handlers call and the primitive writes `accepted` into the event
+        // itself. So a touchpad stream becomes a scrub and a mouse wheel is
+        // handed straight back to fall through to whatever wanted it, which
+        // above this column is nothing: the sidebar holds no scrollable
+        // anything, so there is no list here to take a scroll away from.
+        onWheel: wheel => layout.scrubWheel(wheel)
     }
 
     // THE RACK: one bar per scratchpad, at the end of the column.
@@ -550,6 +571,15 @@ Item {
 
                 onCanceled: layout.scrubCancel()
 
+                // The fingers' doorway, exactly as on the backstop. Each
+                // surface takes its own because wheel events go to whichever
+                // item is topmost under the pointer and stop at the first one
+                // that accepts, so a scroll started over a plate never
+                // reaches the backstop underneath it: a single handler down
+                // there would answer only the gaps, which is the one part of
+                // the column a hand almost never lands on.
+                onWheel: wheel => layout.scrubWheel(wheel)
+
                 // A DOORWAY CAN DIE MID-PRESS. The model refuses to pop a
                 // trailing ghost while a press is down (see step()), which
                 // covers the collapse this file can cause itself; this is the
@@ -794,6 +824,14 @@ Item {
 
                             onCanceled: layout.scrubCancel()
 
+                            // The third fingers' doorway, and the one that
+                            // makes the rule true rather than nearly true: a
+                            // busy plate is mostly window rows, so a column
+                            // that answered scrolls everywhere except on its
+                            // marks would be a column you could not swipe
+                            // wherever it had anything on it.
+                            onWheel: wheel => layout.scrubWheel(wheel)
+
                             // The row dies with its window: the ScriptModel
                             // above diffs by identity, so the pressed window
                             // closing (or leaving the workspace) destroys
@@ -897,6 +935,23 @@ Item {
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: Hypr.toggleSpecial(pad.entry.name)
+
+                // A SCROLL OVER THE CARD IS SWALLOWED, which is the whole of
+                // what its press already does and therefore the whole of the
+                // rule: the two inputs answer alike, including where the
+                // answer is nothing. It has to be said out loud here and
+                // nowhere else in the rack, because this is the one piece of
+                // it that lies OVER the column. A wheel event this area did
+                // not accept falls past it to the plate's own doorway
+                // underneath, so the single surface that refuses the drag
+                // would be the single surface a swipe went straight through
+                // and scrubbed the workspace behind it.
+                //
+                // Blocked here rather than by declaring the card lower in the
+                // file, which would have handed the press away with it: the
+                // card genuinely is on top, its tap depends on that, and
+                // input order is what says so.
+                onWheel: wheel => wheel.accepted = true
             }
 
             // THE SHADOW, which is the only one in this shell and is here because

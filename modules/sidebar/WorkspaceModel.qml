@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.config
+import qs.components
 import qs.services
 
 // The workspace column's LAYOUT, MOTION and SCRUB, with no opinion about how
@@ -217,6 +218,21 @@ Item {
     // own. The window is the one frame the world cannot move, so the scrub
     // measures against it and the column is free to rearrange itself under
     // the gesture.
+    //
+    // AND TWO FINGERS ON A TOUCHPAD ARE THE SAME GESTURE, through the same
+    // three functions rather than beside them. A scroll reports motion and
+    // never a position, so it has no window point to anchor with; what it
+    // hands over is the TOTAL travel since the stream began, which is exactly
+    // the number the drag path computes for itself one line into scrubMove
+    // (`y - scrubFromY`). Fed in from an origin of zero, the arithmetic below
+    // is then identical in both signs and for both inputs: one ratchet, one
+    // angle test, one clamp and one flick, so the two can never drift into
+    // disagreeing about what a swipe down the column means. A scroll path
+    // with a ratchet of its own would have been a second opinion to keep in
+    // step by hand, which is the thing the three doorways were already merged
+    // into one gesture to avoid. See components/ScrollGesture.qml for how a
+    // stream is told from a wheel, which way its signs run, and why its end
+    // has to be inferred from silence.
 
     // ONE WORKSPACE OF TRAVEL IS THE SETTLED ONE-ROW PITCH: base plus gap,
     // the same two numbers every slot in `slots` is built from. Deliberately
@@ -264,7 +280,45 @@ Item {
     property real scrubLastY: 0
     property real scrubVelocity: 0
 
+    // THE PRESS DOORWAY, which is the shared start plus one thing only a
+    // press has to do: TAKE THE GESTURE OVER from a scroll stream that is
+    // still coasting. `finish` ends that stream by its own rule, so whatever
+    // the fingers did is answered before the hand's gesture starts from where
+    // it landed, and it is a no-op when nothing is running, which is nearly
+    // always.
+    //
+    // Neither alternative survives being written down. Dropping the stream
+    // silently would leave the desktop wherever its last event scrubbed it
+    // with no release ever run, so a flick that was on its way to one more
+    // workspace simply stops. Leaving it running is worse: its next total
+    // arrives measured from zero while `scrubFromY` now holds a window
+    // coordinate several hundred pixels down the screen, and that difference
+    // is a whole column's worth of pitches in one event, which the clamp
+    // would land on workspace one. Then its lapse would call scrubRelease
+    // under a hand still holding the press, and the press's own release would
+    // find nothing latched and fire a TAP for a gesture that had scrubbed.
+    //
+    // The one thing the takeover can be caught by is a flick firing on the
+    // way out while `scrubBase` below reads the workspace it was flicked
+    // FROM, because Hyprland answers a switch over IPC and not within the
+    // call. It needs a press landing inside the coast of a thrown scroll,
+    // roughly a tenth of a second, and the same staleness already exists for
+    // a tap that lands that soon after any other switch. Buying it back would
+    // mean re-reading the base after the first step, which is a second source
+    // of truth for where the scrub started, and the ratchet is built on there
+    // being one.
     function scrubPress(x: real, y: real): void {
+        scroll.finish();
+        root.scrubBegin(x, y);
+    }
+
+    // What both inputs actually start from, and the reason it is not simply
+    // the body of scrubPress: a stream cannot take ITSELF over. By the time
+    // `began` reaches the handler below, the primitive has already marked the
+    // gesture live, so a `finish` from in here would end the stream that is
+    // still being started, fire `ended` into a scrub nobody has begun yet,
+    // and hand the following event a gesture with no state behind it.
+    function scrubBegin(x: real, y: real): void {
         root.scrubHeld = true;
         root.scrubbing = false;
         root.scrubSpent = false;
@@ -369,6 +423,50 @@ Item {
         root.scrubHeld = false;
         root.scrubbing = false;
         root.scrubSpent = false;
+    }
+
+    // THE SCROLL DOORWAY, which every surface that already has a press
+    // doorway wires itself into with one line of its own onWheel. It lives
+    // here beside the other four for the reason the whole scrub does: the
+    // column has several surfaces and they must all be the same gesture, and
+    // a style that learns to be scrubbed gets the fingers in the same commit
+    // it gets the hand. The answer is passed straight back because the
+    // primitive has already written it into the event, so a caller that
+    // ignores it is still correct and a mouse wheel still falls through to
+    // whatever wanted it, which over this column is nothing at all.
+    function scrubWheel(wheel: var): bool {
+        return scroll.feed(wheel);
+    }
+
+    ScrollGesture {
+        id: scroll
+
+        // A press owns the column for as long as it is down. `scrubHeld` is
+        // true for whichever input is holding the scrub, so the second term
+        // is this gesture recognising its own hold: without it the flag its
+        // own `began` sets would read as somebody else's. Nothing is lost by
+        // the redundancy, because refusing here only ever refuses to START a
+        // stream (the primitive's rule) and one already in flight is left
+        // alone to finish either way.
+        armed: !root.scrubHeld || scroll.active
+
+        // Totals from an origin of zero, straight into the drag's own
+        // functions: both report x rightward and y downward in this item's
+        // pixels, so fingers down the column step the same way a hand dragged
+        // down it does, and every sign below is written once.
+        //
+        // The velocity the release reads comes out in the same unit on both
+        // paths, which is what lets them share `flickVelocity` as well as the
+        // arithmetic: Qt compresses pointer moves to about one event a frame,
+        // a touchpad sends about a frame's travel per event, so a per-event
+        // step means the same thing in each. A conversion here would be a
+        // number the drag path does not apply and the two feels would part.
+        onBegan: root.scrubBegin(0, 0)
+        onMoved: (dx, dy) => root.scrubMove(dx, dy)
+        // The release, minus the tap: a scroll never had a press, so there is
+        // nothing for it to have stayed. The answer is dropped for that
+        // reason rather than overlooked.
+        onEnded: root.scrubRelease()
     }
 
     Timer {

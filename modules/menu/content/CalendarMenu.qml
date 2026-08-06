@@ -22,7 +22,17 @@ import qs.services
 // release, and it shows what it is doing while it does it. The months are a
 // horizontal strip, the shown month in the middle and a neighbour either side,
 // the strip follows the finger, and the release decides by what is mostly on
-// screen and which way the hand was still going. Chevrons would also have been
+// screen and which way the hand was still going.
+//
+// AND TWO FINGERS ON A TOUCHPAD ARE THAT SAME DRAG, through
+// components/ScrollGesture.qml: a laptop has no edge to push and no third hand
+// to hold a button down while it swipes, so a month gesture that only existed
+// for a press would not exist at all on the machine this shell is used on most.
+// The two inputs are not two implementations of one feel here, they are one:
+// the press and the stream both run begin/advance/settle below, and the only
+// line either of them owns alone is where its own motion is measured from.
+//
+// Chevrons would also have been
 // two more permanent controls, which is the furniture this shell does not keep
 // (DESIGN.md 2.1); the one button that remains is the title, because "take me
 // back to today" from eight months away is a real errand with no gesture. The
@@ -339,23 +349,41 @@ Column {
             id: pager
 
             // The press anchor, in the parent's frame per the invariant
-            // above, re-anchored at the moment the press becomes a page (see
-            // below) so the threshold pixels are spent on deciding rather
-            // than on a jump.
+            // above, and the ONE thing the two inputs do not share: a press
+            // has a place and has to remember it, a stream has motion and
+            // nothing to remember (components/ScrollGesture.qml's own split).
+            // Only the press handlers and the tap read it, which is why the
+            // three gesture functions below take totals and never a position:
+            // a scroll reports how far the fingers went and never where they
+            // are, so anything asking WHERE would have no answer on that path.
             property real fromX: 0
             property real fromY: 0
             property real startSlide: 0
-            // Latched ONCE per press, like every gesture in the shell: a
-            // press that set off vertically was never a page and must not
-            // become one by curving round, and one that latched stays latched
-            // however it wanders.
+            // Where along the gesture's own horizontal total the page began,
+            // captured at the moment it latches so the threshold pixels are
+            // spent on deciding rather than on a jump. Kept as a TOTAL rather
+            // than as a re-read of the pointer, because a total is the one
+            // coordinate both inputs can state: a scroll never reports a
+            // position, only how far the fingers have gone.
+            property real originX: 0
+            // Latched ONCE per gesture, like every gesture in the shell: one
+            // that set off vertically was never a page and must not become one
+            // by curving round, and one that latched stays latched however it
+            // wanders.
             property bool paging: false
             property bool spent: false
             // Smoothed with the same constant as Pull and the bottom edge,
             // because the last event before a release is noise as often as it
-            // is direction.
+            // is direction. In pixels PER EVENT, not per millisecond, because
+            // `flickVelocity` is written in that unit and is read here at face
+            // value (the notification card and the workspace scrub read it the
+            // same way); Pull's own velocity is per-ms because `pullReversal`
+            // is, and the two tokens must not be crossed.
             property real velocity: 0
-            property real lastX: 0
+            // The horizontal total at the previous step, so a step can be
+            // differenced back out of it. A total in, a step out, which is
+            // what lets the press hand over the same numbers the stream does.
+            property real lastDx: 0
 
             anchors.fill: parent
             // AND THE WEEKDAY INITIALS ABOVE, plus the Column's air on both
@@ -372,34 +400,51 @@ Column {
             // the swipe with nothing, a dead band across the middle of a
             // live gesture.
             anchors.topMargin: -(initials.height + root.spacing * 2)
-            // Nothing in a menu flicks today, but the grab must survive
-            // anything that ever does; the same line Pull takes.
+            // The menu's own viewport DOES flick now (MenuPanel wraps every
+            // body in one, and a menu past the clamp scrolls in it), so this is
+            // no longer insurance against a hypothetical: it is what stops a
+            // month swipe from being taken away mid-gesture by the scroll
+            // behind it. The price is that a vertical DRAG on the grid still
+            // does nothing rather than scrolling a long calendar, because a
+            // MouseArea that keeps its grab cannot hand one back. The scroll
+            // path has no such price and does not pay it: see the wheel handler,
+            // where a vertical stream is never claimed in the first place.
             preventStealing: true
             // The gesture advertises itself (DESIGN.md 2.3): nothing drawn on
             // the grid says it slides, so the cursor does, the same way the
             // notification card's does.
             cursorShape: pager.pressed ? Qt.ClosedHandCursor : Qt.OpenHandCursor
 
-            onPressed: mouse => {
-                pager.fromX = pager.x + mouse.x;
-                pager.fromY = pager.y + mouse.y;
-                pager.lastX = pager.fromX;
+            // THE GESTURE ITSELF, in three functions both inputs call, which
+            // is the whole of how a touchpad stream and a press are kept from
+            // becoming two opinions about what a month swipe is. The split
+            // falls exactly where the inputs differ, which is only the origin;
+            // everything after the subtraction is common. Pull's own
+            // arrangement, for Pull's own reason.
+
+            // A new gesture. Everything the press used to zero, and nothing
+            // about where it started.
+            function begin(): void {
                 pager.startSlide = root.slide;
+                pager.originX = 0;
+                pager.lastDx = 0;
                 pager.paging = false;
                 pager.spent = false;
                 pager.velocity = 0;
             }
 
-            onPositionChanged: mouse => {
-                if (!pager.pressed || pager.spent)
+            // One step, given how far the gesture has travelled IN TOTAL since
+            // it began, in this area's own pixels. Totals rather than steps
+            // because the threshold test and the slide are both questions
+            // about the whole journey, and because a path reporting steps
+            // would have to keep its own running sum, which is this
+            // subtraction written a second time somewhere it can go stale.
+            function advance(dx: real, dy: real): void {
+                if (pager.spent)
                     return;
 
-                const px = pager.x + mouse.x;
-                const dx = px - pager.fromX;
-                const dy = pager.y + mouse.y - pager.fromY;
-
-                const step = px - pager.lastX;
-                pager.lastX = px;
+                const step = dx - pager.lastDx;
+                pager.lastDx = dx;
                 pager.velocity += (step - pager.velocity) * 0.4;
 
                 if (!pager.paging) {
@@ -407,23 +452,29 @@ Column {
                     if (Math.abs(dx) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
                         return;
 
-                    // WHICH AXIS WON, judged once, the moment the press
-                    // becomes a gesture at all. Vertical wins and the press
-                    // is spent: it is not a page, and it is no longer a tap
-                    // either, so the release owes it nothing. There is no
-                    // scroll under this grid for a vertical gesture to be
-                    // handed on to; it is simply not this.
+                    // WHICH AXIS WON, judged once, the moment the gesture
+                    // becomes a gesture at all. Vertical wins and it is spent:
+                    // it is not a page, and it is no longer a tap either, so
+                    // the release owes it nothing.
+                    //
+                    // On the PRESS path that is the end of it: this area holds
+                    // the grab and a MouseArea cannot give one back, so a
+                    // vertical drag on the grid does nothing at all, exactly
+                    // as it always has. On the SCROLL path being spent is also
+                    // what hands the REST of the stream on to the menu's own
+                    // viewport, which is a scroll this grid did not use to have
+                    // under it; see the wheel handler for how that is done.
                     if (Math.abs(dy) > Math.abs(dx)) {
                         pager.spent = true;
                         return;
                     }
 
                     pager.paging = true;
-                    // Re-anchored, so the page starts from where the finger
-                    // is NOW rather than jumping the threshold's worth it
-                    // spent proving itself. The slide is re-read too, because
-                    // `settle` may have moved it since the press.
-                    pager.fromX = px;
+                    // Re-anchored, so the page starts from where the hand is
+                    // NOW rather than jumping the threshold's worth it spent
+                    // proving itself. The slide is re-read too, because
+                    // `settle` may have moved it since the gesture began.
+                    pager.originX = dx;
                     pager.startSlide = root.slide;
                     return;
                 }
@@ -431,10 +482,23 @@ Column {
                 // Content follows the finger, clamped to one pane: the strip
                 // holds one neighbour each side, so travel past that would
                 // drag blank canvas on screen.
-                root.slide = Math.max(-months.width, Math.min(months.width, pager.startSlide + (px - pager.fromX)));
+                root.slide = Math.max(-months.width, Math.min(months.width, pager.startSlide + (dx - pager.originX)));
             }
 
-            onReleased: {
+            // The end, however the input announced it: a lifted button, or a
+            // touchpad stream that stopped sending. What follows is the same
+            // question either way, which is the point of the split.
+            //
+            // NAMED FOR PULL'S, and it therefore SHADOWS the `settle` Follow at
+            // the bottom of this file for every expression written inside this
+            // area: an object's own members beat a component-scoped id. Nothing
+            // in here wants that Follow (the strip is walked home through
+            // root.glide(), which is evaluated in root's scope where the id
+            // still means the Follow), and the name is worth keeping because it
+            // is the word every other gesture in the shell uses for this exact
+            // moment. Anyone adding a line here that wants the smoother has to
+            // reach it through root.
+            function settle(): void {
                 if (pager.paging) {
                     // WHICH MONTH WINS: the one that is mostly on screen, or
                     // the one the hand was still travelling toward fast
@@ -460,18 +524,110 @@ Column {
                     if (half || onward)
                         root.page(root.slide > 0 ? -1 : 1);
                     root.glide();
-                } else if (!pager.spent) {
-                    root.poke(pager.fromX, pager.fromY);
                 }
                 pager.paging = false;
                 pager.spent = false;
             }
 
+            // THE DRAG PATH: a press, its origin, and the release.
+
+            onPressed: mouse => {
+                // A PRESS TAKES THE GESTURE OVER, and takes it over cleanly.
+                // Both paths write one set of state, so a stream still running
+                // when a hand lands is concluded by its own rule first: a page
+                // two fingers had half-turned is ANSWERED rather than
+                // abandoned mid-strip, and the stale total it was measuring
+                // from cannot be handed to state the press has since zeroed.
+                // Pull says the same thing at the same place.
+                scroll.finish();
+
+                pager.fromX = pager.x + mouse.x;
+                pager.fromY = pager.y + mouse.y;
+                pager.begin();
+            }
+
+            onPositionChanged: mouse => {
+                if (pager.pressed)
+                    pager.advance(pager.x + mouse.x - pager.fromX, pager.y + mouse.y - pager.fromY);
+            }
+
+            onReleased: {
+                // The TAP lives here rather than in settle(), because it is the
+                // one thing on this path the other path cannot have: a scroll
+                // has no press to have been a tap instead, so a stream that
+                // never became a page did nothing at all.
+                if (!pager.paging && !pager.spent)
+                    root.poke(pager.fromX, pager.fromY);
+
+                pager.settle();
+            }
+
             onCanceled: {
+                // Not settle(): a cancel is not a release. The grab was taken
+                // away rather than let go, so there is no intent in it to read
+                // a momentum out of, and it always goes back.
                 if (pager.paging)
                     root.glide();
                 pager.paging = false;
                 pager.spent = false;
+            }
+
+            // THE SCROLL PATH: two fingers, answered as the same swipe, and
+            // answered on ONE AXIS ONLY.
+            //
+            // This calendar is a BODY inside MenuPanel's viewport, and a menu
+            // taller than the panel's clamp scrolls inside it. That viewport is
+            // an ANCESTOR of this area, and today a scroll over the grid
+            // reaches it purely by falling through: the pager had no wheel
+            // handling at all, so the event walked up the chain to the
+            // Flickable. Taking every scroll here would take that away, and a
+            // long month would become a document that could no longer be read.
+            //
+            // QML cannot hand an event on once it has been accepted, so the
+            // split is made by DECLINING rather than by re-dispatching. The
+            // gesture is fed every event, because a stream cannot be judged
+            // without being measured, and `accepted` then answers yes only
+            // while the horizontal total is the bigger one. A scroll that is
+            // vertical from its first event is therefore never claimed at all
+            // and lands on the viewport exactly as it does now, which is
+            // better than the drag path manages: a press is a grab and is
+            // consumed either way. One that sets off sideways and then turns
+            // spends its opening events here, which IS the drag path's own
+            // property and the price of judging an axis at all.
+            //
+            // The comparison is the same one advance() latches on, ties
+            // included: there an exact tie fails `Math.abs(dy) > Math.abs(dx)`
+            // and becomes a page, so `>=` here claims it, and the axis this
+            // file acts on can never disagree with the axis it claims.
+            //
+            // Past the latch the claim stops asking. `paging` claims
+            // unconditionally, because a swipe that set off sideways and then
+            // curved down is still the page it set out as and an `accepted`
+            // that went on re-judging would start scrolling the menu underneath
+            // a page still following the fingers. `spent` is the mirror and
+            // never claims again, which is what hands the rest of a vertical
+            // stream to the viewport.
+            onWheel: wheel => {
+                if (!scroll.feed(wheel))
+                    return;
+
+                wheel.accepted = pager.paging || (!pager.spent && Math.abs(scroll.dx) >= Math.abs(scroll.dy));
+            }
+
+            ScrollGesture {
+                id: scroll
+
+                // A press owns the gesture while it lasts, so no stream may
+                // START under one. A stream already running is not refused,
+                // for the primitive's reason, and cannot be: the press above
+                // has already finished it.
+                armed: !pager.pressed
+
+                // The whole adoption, three lines: a stream is a press, a total
+                // is a delta, and a lapse is a release.
+                onBegan: pager.begin()
+                onMoved: (dx, dy) => pager.advance(dx, dy)
+                onEnded: pager.settle()
             }
         }
 

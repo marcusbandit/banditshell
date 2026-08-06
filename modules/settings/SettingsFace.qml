@@ -278,6 +278,17 @@ Item {
             // taller than the viewport has to scroll and a scrolling page must
             // still swipe: one area judging both is what keeps the two
             // gestures from fighting over the same press.
+            //
+            // AND TWO FINGERS ON A TOUCHPAD ARRIVE HERE TOO, through
+            // components/ScrollGesture.qml, which is why this area holds both
+            // axes rather than leaving the vertical one to the wheel handler
+            // below. The primitive cannot re-dispatch an event it has taken and
+            // neither can QML, so the site with two live axes has to be the
+            // site that judges them: a stream is fed in whole, the axis is
+            // latched ONCE in the same advance() the press runs, and the two
+            // behaviours are driven from the one pair of totals. That is the
+            // drag path's own structure, so the two inputs stay identical by
+            // construction rather than by agreement.
             MouseArea {
                 id: swipe
 
@@ -286,12 +297,17 @@ Item {
                 // today; the sum is written anyway so the day this area is
                 // given geometry the gesture does not quietly start measuring
                 // its own motion (DESIGN.md 15).
+                //
+                // They are also the ONE thing the two inputs do not share: a
+                // press has a place and has to remember it, a stream has motion
+                // and nothing to remember. Nothing past onPositionChanged
+                // mentions them again.
                 property real anchorX: 0
                 property real anchorY: 0
 
-                // Where the strip and the page's scroll stood at the press,
-                // so each axis drags relative to a fixed origin rather than
-                // integrating deltas that a clamp would corrupt.
+                // Where the strip and the page's scroll stood when the gesture
+                // began, so each axis drags relative to a fixed origin rather
+                // than integrating deltas that a clamp would corrupt.
                 property real fromOffset: 0
                 property real fromScroll: 0
 
@@ -318,8 +334,13 @@ Item {
                 // compresses mouse moves to about one event per frame, a
                 // per-event value is eight to sixteen times the per-ms one:
                 // every lifted drag flew a whole viewport or more and slammed
-                // into the clamp end. Only one axis is ever live in a press,
+                // into the clamp end. Only one axis is ever live in a gesture,
                 // so one property can wear both units without them meeting.
+                // A touchpad stream reports the same two shapes for the same
+                // reason, so nothing about the units changes on that path: the
+                // scroll axis is still divided by a real dt off the same clock,
+                // and only the paging axis's per-event figure shifts with the
+                // event rate (see the paging branch below).
                 property real dragX: 0
                 property real velocity: 0
                 // When the last scroll step landed, so the step's dt can be
@@ -328,11 +349,16 @@ Item {
 
                 anchors.fill: parent
 
-                onPressed: mouse => {
-                    swipe.anchorX = swipe.x + mouse.x;
-                    swipe.anchorY = swipe.y + mouse.y;
+                // THE GESTURE ITSELF, in three functions both inputs call. The
+                // split falls exactly where the inputs differ, which is only
+                // the origin; everything after the subtraction is common, so a
+                // touchpad stream cannot drift into being a second opinion
+                // about what a page swipe is. Pull's own arrangement.
 
-                    // A PRESS ARRESTS WHATEVER IS MOVING, before anything is
+                // A new gesture: everything the press used to zero, and nothing
+                // about where it started.
+                function begin(): void {
+                    // A GESTURE ARRESTS WHATEVER IS MOVING, before anything is
                     // measured. Flickable stops a flick the instant a finger
                     // lands, and GlideList halts its glide the moment a drag
                     // takes over; the first cut of this handler recorded its
@@ -348,7 +374,9 @@ Item {
                     // and target pinched together through drag(); the strip's
                     // cannot (see the strip's x binding), so its arrest is the
                     // dragX capture below plus the strip wearing dragX for the
-                    // whole press.
+                    // whole gesture. A touchpad stream catches a glide exactly
+                    // the same way, which is why this is a function both inputs
+                    // call rather than the body of a press handler.
                     const page = pager.currentView();
                     if (page)
                         page.drag(page.position);
@@ -362,22 +390,31 @@ Item {
                     swipe.lastEvent = Date.now();
                 }
 
-                onPositionChanged: mouse => {
-                    if (!swipe.pressed)
-                        return;
-
-                    const dx = swipe.x + mouse.x - swipe.anchorX;
-                    const dy = swipe.y + mouse.y - swipe.anchorY;
-
+                // One step, given how far the gesture has travelled IN TOTAL
+                // since it began, in this area's own pixels. Totals rather than
+                // steps because both the threshold test and the two offsets are
+                // questions about the whole journey, and because a path
+                // reporting steps would have to keep its own running sum, which
+                // is this subtraction written a second time somewhere it can go
+                // stale.
+                function advance(dx: real, dy: real): void {
                     if (!swipe.paging && !swipe.scrolling) {
                         // Still inside the wobble of a click.
                         if (Math.abs(dx) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
                             return;
-                        // Whichever axis dominates at the moment the press
-                        // becomes a gesture owns it for the rest of the press:
-                        // a swipe that curves is still the gesture it set out
+                        // Whichever axis dominates at the moment the gesture
+                        // becomes a gesture owns it for the rest of it: a swipe
+                        // that curves is still the gesture it set out
                         // as, and re-judging every move would let a page being
                         // dragged out be snatched back by its own scroll.
+                        //
+                        // ON THE SCROLL PATH THIS IS THE WHOLE ARBITRATION, and
+                        // it has to be, because a touchpad stream is fed in
+                        // whole and there is nowhere to hand the other axis on
+                        // to: the wheel handler below is an ancestor's, so
+                        // declining would only send a vertical scroll to the
+                        // very glide this page's drag replaces. One judgement,
+                        // both behaviours, one pair of totals.
                         if (Math.abs(dy) > Math.abs(dx))
                             swipe.scrolling = true;
                         else
@@ -417,21 +454,28 @@ Item {
                     // the last one to show a sliver of, and half-motion
                     // overshoot with nothing under it reads as the card
                     // tearing rather than resisting.
+                    //
+                    // The paging velocity stays in pixels PER EVENT, the unit
+                    // `flickVelocity` is written in and the one the scrolling
+                    // branch above deliberately does not use. A touchpad
+                    // reports faster than a pointer does (one event per input
+                    // frame against one per rendered frame), so a scroll flick
+                    // has to be quicker than a drag flick to clear the same
+                    // threshold; the majority rule in settle() carries the
+                    // ordinary case either way, and converting the unit here
+                    // would silently move the threshold for the mouse too.
                     const next = Math.max(0, Math.min(swipe.fromOffset - dx, (Settings.pages.length - 1) * pager.extent));
                     swipe.velocity += (next - swipe.dragX - swipe.velocity) * 0.4;
                     swipe.dragX = next;
                 }
 
-                onReleased: swipe.settle(true)
-                // A cancel is not a choice: the strip walks back to the page
-                // it was on, and a scroll simply stops where it is.
-                onCanceled: swipe.settle(false)
-
+                // The end, however the input announced it: a lifted button, a
+                // cancelled grab, or a touchpad stream that stopped sending.
                 function settle(meant: bool): void {
-                    // Hand the smoother the offset the press ends at, the same
+                    // Hand the smoother the offset the gesture ends at, the same
                     // single assignment every drag in this shell ends with,
                     // and done for EVERY exit rather than only for a latched
-                    // page drag: the strip wears dragX for the whole press
+                    // page drag: the strip wears dragX for the whole gesture
                     // (see its x binding), so a tap or a scroll that caught
                     // the strip mid-glide has been holding it still while the
                     // Follow ticked on ignored underneath, and skipping the
@@ -462,31 +506,102 @@ Item {
                     swipe.paging = false;
                     swipe.scrolling = false;
                 }
+
+                // THE DRAG PATH: a press, its origin, and the release.
+
+                onPressed: mouse => {
+                    // A PRESS TAKES THE GESTURE OVER, and takes it over
+                    // cleanly. Both paths write one set of state, so a stream
+                    // still running when a hand lands is concluded by its own
+                    // rule first: a page two fingers had half-turned is
+                    // ANSWERED rather than abandoned mid-strip, and the stale
+                    // total it was measuring from cannot be handed to state the
+                    // press has since zeroed. Before begin(), because begin()
+                    // is what the ending would otherwise land on top of.
+                    scroll.finish();
+
+                    swipe.anchorX = swipe.x + mouse.x;
+                    swipe.anchorY = swipe.y + mouse.y;
+                    swipe.begin();
+                }
+
+                onPositionChanged: mouse => {
+                    if (swipe.pressed)
+                        swipe.advance(swipe.x + mouse.x - swipe.anchorX, swipe.y + mouse.y - swipe.anchorY);
+                }
+
+                onReleased: swipe.settle(true)
+                // A cancel is not a choice: the strip walks back to the page
+                // it was on, and a scroll simply stops where it is.
+                onCanceled: swipe.settle(false)
+
+                // THE SCROLL PATH: two fingers, answered as the same swipe.
+                //
+                // Fed from this area's OWN wheel signal, which is what puts it
+                // in front of the pager's WheelHandler below: wheel events walk
+                // the items under the pointer from the top down, and this area
+                // is a CHILD of the pager, so it is asked first and a handler
+                // parked on the parent is asked only for what this declines.
+                // That is the priority written down rather than arranged, which
+                // is the whole reason ScrollGesture is a function call and not a
+                // handler of its own.
+                //
+                // What this declines is exactly a MOUSE WHEEL, because the
+                // primitive refuses one: a notch has one axis and no motion in
+                // it to track, and it already means something here. So a wheel
+                // falls through to the handler below and keeps scrolling the
+                // page through its glide, unchanged, while a touchpad becomes
+                // the swipe. A scroll arriving while a press is down is
+                // declined too (see `armed`), and lands on the same handler,
+                // which is the one honest thing to do with an input the press
+                // has already taken.
+                onWheel: wheel => scroll.feed(wheel)
+
+                ScrollGesture {
+                    id: scroll
+
+                    // A press owns the gesture while it lasts, so no stream may
+                    // START under one. A running stream is not refused, for the
+                    // primitive's reason, and cannot be: the press above has
+                    // already finished it.
+                    armed: !swipe.pressed
+
+                    // The whole adoption, three lines: a stream is a press, a
+                    // total is a delta, and a lapse is a release. The lapse is
+                    // `meant`, because fingers that stop sending have let go on
+                    // purpose; only a grab taken away is not a choice.
+                    onBegan: swipe.begin()
+                    onMoved: (dx, dy) => swipe.advance(dx, dy)
+                    onEnded: swipe.settle(true)
+                }
             }
 
             // THE STRIP: every page side by side, one viewport apart, slid as
-            // one object. While a PRESS is down the offset is the FINGER'S,
+            // one object. While a GESTURE is running the offset is the HAND'S,
             // not the smoother's, for the reason SettingsPanel pins `emerge`
             // during a pull: a strip that lagged the hand by an easing's worth
             // would be a switch wearing a picture of a drag.
             //
-            // The WHOLE press, not just a latched page drag, because a press
-            // must also arrest a strip caught mid-glide and the slide cannot
-            // be halted the way the page's scroll can: its target is a bound
-            // expression, and assigning a bound property destroys the binding
-            // for good (the trap GlideList's reset() documents). So from the
-            // press on the strip wears dragX, frozen where it was caught and
-            // then following the finger if paging latches, while the Follow
-            // ticks on ignored in the background; settle() hands the Follow
-            // the held offset at release so the picture never cuts. `paging`
-            // stays in the condition even though it only holds while pressed:
-            // Qt drops `pressed` BEFORE delivering the release, and the flag
-            // keeps the finger's number authoritative across that sliver
-            // until settle() has done the handoff.
+            // The WHOLE gesture, not just a latched page drag, because a
+            // gesture must also arrest a strip caught mid-glide and the slide
+            // cannot be halted the way the page's scroll can: its target is a
+            // bound expression, and assigning a bound property destroys the
+            // binding for good (the trap GlideList's reset() documents). So
+            // from the press or the stream's first event the strip wears dragX,
+            // frozen where it was caught and then following the hand if paging
+            // latches, while the Follow ticks on ignored in the background;
+            // settle() hands the Follow the held offset at the end so the
+            // picture never cuts.
+            //
+            // Both inputs are named because both have one, and `paging` covers
+            // the sliver at the end of each where neither is: Qt drops
+            // `pressed` BEFORE delivering the release, and ScrollGesture clears
+            // `active` before firing its lapse, so the flag is what keeps the
+            // hand's number authoritative until settle() has done the handoff.
             Row {
                 id: strip
 
-                x: -(swipe.pressed || swipe.paging ? swipe.dragX : slide.value)
+                x: -(swipe.pressed || scroll.active || swipe.paging ? swipe.dragX : slide.value)
                 height: pager.height
 
                 Repeater {
@@ -570,13 +685,23 @@ Item {
                 }
             }
 
-            // The wheel scrolls the page it is over, by GlideList's own step,
-            // through the same target the drag uses. Deliberately NOT
-            // GlideList's split treatment where touchpad deltas move the
-            // content directly: that second pipeline earns its keep on a
-            // thousand-row launcher list, and a settings page is a few
-            // hundred pixels of rows; one path through the glide keeps this
-            // pager one mechanism instead of three.
+            // THE MOUSE WHEEL, and only it, now that the swipe above takes a
+            // touchpad as a gesture: this is an ancestor of that area, so it is
+            // asked second and sees exactly what the area declines. A notch
+            // scrolls the page it is over, by GlideList's own step, through the
+            // same target the drag uses, which is what a notch has always meant
+            // here and what it must go on meaning: it has one axis and no
+            // motion in it to track, so there is no swipe in it to find.
+            //
+            // The pixel branch is not dead. It answers a touchpad scroll the
+            // swipe declined because a press was already down, which is the one
+            // case where the gesture is spoken for and the scroll still has to
+            // do something honest.
+            //
+            // Still deliberately NOT GlideList's split treatment for the notch
+            // itself: that second pipeline earns its keep on a thousand-row
+            // launcher list, and a settings page is a few hundred pixels of
+            // rows.
             WheelHandler {
                 onWheel: event => {
                     const page = pager.currentView();
