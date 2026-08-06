@@ -115,6 +115,54 @@ Item {
         Settings.hide();
     }
 
+    // WHETHER THE PRESS UNDER WAY BEGAN ON THE GRIP, decided at the moment it
+    // began and then simply remembered.
+    //
+    // The Pull's `fromX`/`fromY` survive until the next press and are the right
+    // ORIGIN to judge (see the Pull's `onTapped` for why the origin and not the
+    // release point), but a point is only half of a hit test: the other half is
+    // where the grip was when the finger touched it, and the grip is on a card
+    // that is very often moving. `emerge` is mid-flight for the whole of the
+    // opening and closing animation, the fx/fy Follows are mid-flight for the
+    // whole of a flight home from a window, and `armed: root.docked` excludes
+    // none of that, so a press is perfectly free to land while the grip is
+    // travelling. Resolving the stored point at RELEASE asked the geometry
+    // where it is NOW: release a shove at sixty per cent, tap a quiet part of
+    // the page while it finishes opening, and the grip can arrive under the
+    // recorded point in time to close a page you tapped the surface of, which
+    // is exactly the trap the Pull's comment says this must not be. The inverse
+    // is the same bug being polite: a real tap on the grip of a card flying
+    // home maps outside it, and the close does nothing.
+    //
+    // So the answer is taken while the two halves are contemporaneous, and the
+    // release only reads it back.
+    property bool pressedGrip: false
+
+    // Whether a point, in THIS item's coordinates, lands on the face's corner
+    // grip. The Pull records its press origin in its parent's frame, and its
+    // parent is this item (that siblinghood is load-bearing, see the Pull
+    // below), so the origin can be handed straight in here. Mapped INTO the
+    // grip rather than the grip's rect mapped out, because mapFromItem walks
+    // the whole ancestor chain and therefore survives the card's scale
+    // transform; restating the grip's position arithmetic on this side would
+    // be a second copy of geometry SettingsFace already owns, wrong the first
+    // time the grip moved.
+    //
+    // ANSWERED WHEN THE PRESS LANDS, NEVER WHEN IT LIFTS, which is the point of
+    // `pressedGrip` below and the one thing about this function that is not
+    // obvious. Walking the ancestor chain is what makes the scale transform
+    // survivable, and it is also what makes the answer a fact about WHEN it was
+    // asked: the chain it walks is the card's live one, and the card's rect and
+    // scale are driven by `emerge` and by the fx/fy Follows, all of which move.
+    // Asked at release about a point recorded at press, it would be hit-testing
+    // this instant's grip against the last instant's finger.
+    function pressOnGrip(x: real, y: real): bool {
+        const grip = face.gripItem;
+        if (!grip || !grip.visible)
+            return false;
+        return grip.contains(grip.mapFromItem(root, x, y));
+    }
+
     // Hand the page to a window, at exactly the rect the card occupies THIS
     // frame rather than the one it rests at. Pulling it out mid-flight is a
     // perfectly reasonable thing to do, and the window should still land on it.
@@ -323,11 +371,20 @@ Item {
     // mouse at all, fall through to here. That is what a `z: -1` inside the card
     // would have bought, and out here it comes free.
     //
-    // AND NO `onTapped`, deliberately. A tap on the page's own surface does
-    // nothing at all: there is no click-away dismissal here (see `maskItem`
-    // above for why a settings page in particular has to survive being clicked
-    // past), and a page that closed when you pressed the space beside its own
-    // title would be that same trap drawn in a smaller box.
+    // AND `onTapped` ANSWERS EXACTLY ONE RECTANGLE. A tap on the page's own
+    // surface still does nothing at all: there is no click-away dismissal here
+    // (see `maskItem` above for why a settings page in particular has to
+    // survive being clicked past), and a page that closed when you pressed the
+    // space beside its own title would be that same trap drawn in a smaller
+    // box. The one exception is the corner grip, because the grip is the mark
+    // that already points at the close, and a mark you can see but not press
+    // is a lie about half of itself (SettingsFace says the rest). The handler
+    // lives HERE, on the Pull, rather than as a MouseArea on the grip, because
+    // a press on the grip is ambiguous until it moves: it may be this tap or
+    // the first inch of the shove, and only the Pull can tell a tap from a
+    // pull from a spent press, that arbitration being the whole of what it is.
+    // A MouseArea over the grip would win the press by stacking order and the
+    // shove could never start from the one mark that draws its direction.
     Pull {
         id: shoveBack
 
@@ -398,6 +455,44 @@ Item {
 
         onPulled: fraction => root.pushTo(fraction)
         onFinished: gone => root.pushEnd(gone)
+
+        // THE HIT TEST, TAKEN WHILE THE PRESS IS THE PRESENT TENSE. See
+        // `pressedGrip` for why the answer cannot wait for the release.
+        //
+        // The point is assembled here rather than read off `fromX`/`fromY`,
+        // and it is the same sum: the Pull's press handler stores
+        // `x + mouse.x` for the reason it explains, and `x + mouseX` is that
+        // expression evaluated from the outside. Taking it here removes the
+        // question of whether the Pull's own `onPressed` has run yet, because
+        // MouseArea cannot report itself pressed before it has stored the
+        // position that pressed it: `mouseX` is defined exactly while a button
+        // is down, so the instant this fires is the first instant it is valid.
+        // The alternative, hooking the Pull's `onPressed` from out here, would
+        // have been a second handler on a signal the component already handles
+        // for its own gesture, which is a thing to reach for only when there is
+        // nothing else that answers.
+        //
+        // Unarmed presses are rejected by the Pull and never become a tap, so
+        // an answer recorded for one is simply overwritten by the next press
+        // that counts.
+        onPressedChanged: {
+            if (shoveBack.pressed)
+                root.pressedGrip = root.pressOnGrip(shoveBack.x + shoveBack.mouseX, shoveBack.y + shoveBack.mouseY);
+        }
+
+        // The press that stayed a tap and never set off the wrong way. Gated
+        // to the grip by WHERE IT BEGAN, not where it ended: `pressedGrip` is
+        // the answer about the Pull's own press origin, in this item's frame,
+        // taken when that origin and the grip were the same age. Judging the
+        // release point instead would let a press that wobbled off the grip
+        // within the slack stop counting as the tap it plainly was. A press
+        // that became a shove never reaches this signal, and a press that went
+        // the wrong way is spent and reaches nothing, so the three outcomes
+        // cannot shadow each other.
+        onTapped: {
+            if (root.pressedGrip)
+                root.hide();
+        }
     }
 
     Item {
@@ -445,9 +540,22 @@ Item {
         opacity: root.pulling ? root.pullProgress : reveal.value
 
         SettingsFace {
+            id: face
+
             anchors.fill: parent
 
             windowed: false
+
+            // The grip's pressed feedback, computed on THIS side of the seam
+            // because only this side can see the press: the Pull owns it (a
+            // hover area's `containsMouse` freezes under somebody else's
+            // grab, so the face cannot sense it honestly). Re-evaluated on
+            // press and release, which are the only edges that matter; the
+            // origin does not move during a drag, so a shove that began on
+            // the grip keeps its ribs lit for the whole ride, which is the
+            // right feedback for a hand that is using the mark as the handle
+            // it draws itself as.
+            gripHeld: shoveBack.pressed && root.pressOnGrip(shoveBack.fromX, shoveBack.fromY)
             onHandover: root.popOut()
         }
     }

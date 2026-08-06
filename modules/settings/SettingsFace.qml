@@ -47,6 +47,23 @@ Item {
 
     signal handover
 
+    // THE GRIP, HANDED OUT AS A RECTANGLE. The tap that closes the page lives
+    // on SettingsPanel's Pull, not here (see the grip below for why the grip
+    // cannot own a press), so the panel needs to know where the grip IS to tell
+    // a tap on it from a tap on the rest of the page's quiet surface. Handing
+    // out the Item rather than numbers is what keeps the geometry in one place:
+    // the panel maps into it and asks `contains`, and the grip's own size
+    // arithmetic is never restated anywhere.
+    readonly property Item gripItem: grip
+
+    // Lit while the panel's Pull is holding a press that began on the grip.
+    // WRITTEN BY THE PANEL, not sensed here, because the face deliberately
+    // cannot see that press: the Pull behind the card owns it (again, see the
+    // grip), and a hover area's `containsMouse` freezes for the duration of
+    // somebody else's grab, so the face has no honest way to know. The float
+    // copy never sets it and never should: its grip is not drawn.
+    property bool gripHeld: false
+
     readonly property real pad: Appearance.padding.large
 
     G2Rect {
@@ -653,12 +670,31 @@ Item {
         // boundary flag decides, and like the first it is about the page's edge
         // rather than about anything inside it.
         //
-        // It takes no clicks of its own and must not: the Pull behind the page
-        // already answers a press anywhere on the empty surface, so a MouseArea
-        // here would be a smaller target sitting in the middle of a bigger one
-        // that already works. It is drawn at the quietest weight any text on
-        // this page uses, because it is an affordance and not the thing the page
-        // is about.
+        // IT TAKES NO PRESSES OF ITS OWN, AND YET IT IS THE PAGE'S ONE TAP
+        // TARGET, and those two sentences are not in tension: they are the same
+        // decision seen from input and from meaning.
+        //
+        // From meaning: a mark that points at the close gesture but cannot be
+        // pressed is a lie about half of itself, and the gesture's whole
+        // discoverability problem (see above) reappears for anyone who tries
+        // the obvious thing and clicks the mark. So tapping the grip closes
+        // the page.
+        //
+        // From input: a press that lands here is AMBIGUOUS until it moves. It
+        // may be the tap that closes, or the first inch of the shove that
+        // closes by dragging, and only the Pull behind the card can tell those
+        // apart, because telling them apart is the whole of what a Pull is. A
+        // MouseArea here that accepted the press would win it by stacking
+        // order, the Pull would never see it, and the one place on the page
+        // that most invites the shove (the mark that draws the shove's own
+        // diagonal) would be the one place the shove could not start. So the
+        // press falls through to SettingsPanel's Pull exactly as it always
+        // did, and the panel answers the Pull's `tapped` gated to this
+        // rectangle: the grip contributes WHERE, the Pull decides WHAT.
+        //
+        // The minTarget floor on `span` below was there for legibility; it is
+        // load-bearing now, because it is what makes the grip a target you can
+        // aim at in both hittable dimensions rather than three thin lines.
         Item {
             id: grip
 
@@ -678,6 +714,21 @@ Item {
             height: grip.span
 
             visible: !root.windowed
+
+            // The affordance's other half: the cursor says "clickable" before
+            // the ribs do. Qt.NoButton is the entire trick; with no buttons
+            // accepted the press is never taken, so it falls through to the
+            // Pull (see the header above), while hover and the cursor shape
+            // still work, because those ride on hover events rather than on
+            // the press. This area is a sign, not a control.
+            MouseArea {
+                id: feel
+
+                anchors.fill: parent
+                acceptedButtons: Qt.NoButton
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+            }
 
             Repeater {
                 model: grip.ribs
@@ -713,10 +764,23 @@ Item {
                     y: grip.span - rib.reach / Math.SQRT2 - rib.height / 2
                     rotation: -45
 
-                    // The subtitle's weight, not the title's, and not the
-                    // watermark tier below it: this is live and worth finding,
-                    // and it is not what the page is for.
-                    color: Appearance.colour.textFaint
+                    // The subtitle's weight at rest, not the title's, and not
+                    // the watermark tier below it: this is live and worth
+                    // finding, and it is not what the page is for. It climbs
+                    // the label ladder as the hand closes in, the same rungs
+                    // the rail's icons use: dim under the cursor, full while
+                    // the press the Pull is holding began here (`gripHeld`,
+                    // written by the panel; the face cannot sense that press
+                    // itself, see the property). Weight rather than a fill
+                    // behind the ribs, because a fill would box the mark and
+                    // the mark's whole shape is that it is the corner itself.
+                    color: root.gripHeld ? Appearance.colour.text : feel.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Appearance.anim.fast
+                        }
+                    }
                 }
             }
         }
