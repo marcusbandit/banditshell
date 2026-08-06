@@ -109,9 +109,30 @@ Singleton {
     readonly property string shownName: root.shown.split("/").pop()
     readonly property string shownKind: root.kindOf(root.shown)
 
+    // WHERE THE CHANGE CAME FROM, normalised 0 to 1 across the screen.
+    //
+    // The new wallpaper opens out of this point (components/reveal.frag), so a
+    // card you pressed is visibly the thing the picture arrived from. Anything
+    // that has no point to have come from, which is every keybind and every CLI
+    // verb, leaves it in the middle, where a circle growing out of nowhere in
+    // particular is the honest answer.
+    //
+    // ONE POINT FOR EVERY SCREEN, deliberately. It is normalised, so the same
+    // fraction lands in the same relative place on each monitor, and a
+    // wallpaper is one setting rather than one per screen: the change should
+    // read as one event happening everywhere, not as two circles racing.
+    property point origin: Qt.point(0.5, 0.5)
+
     function set(path: string): void {
         root.preview = "";
         Config.set("wallpaper.current", path);
+    }
+
+    // Chosen from somewhere. `x` and `y` are 0 to 1 across the screen the
+    // choice was made on.
+    function setFrom(path: string, x: real, y: real): void {
+        root.origin = Qt.point(x, y);
+        root.set(path);
     }
 
     function setEnabled(on: bool): void {
@@ -124,9 +145,15 @@ Singleton {
 
     // Next/previous in the listing, wrapping. Enough to flick through them from
     // a keybind or the CLI without a picker.
+    //
+    // The reveal opens from the EDGE the new one is coming from rather than
+    // from the middle: stepping forward is a picture arriving from the right,
+    // and a circle that grows from the right edge says which direction you are
+    // travelling through the folder without a single word on the screen.
     function step(delta: int): void {
         if (!root.available.length)
             return;
+        root.origin = Qt.point(delta > 0 ? 1 : 0, 0.5);
         const i = root.available.indexOf(root.current);
         // Not in the list (someone set a path elsewhere): start at the front.
         const next = i < 0 ? 0 : (i + delta + root.available.length) % root.available.length;

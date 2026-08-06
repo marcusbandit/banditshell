@@ -276,10 +276,14 @@ shaders)
     # This is that build step; run it after editing any .frag.
     qsb="${QSB:-/usr/lib/qt6/bin/qsb}"
     [ -x "$qsb" ] || { echo "banditshell: qsb not found (install qt6-shadertools)" >&2; exit 1; }
-    for f in "$SHELL_DIR"/components/blob/*.frag; do
+    # EVERY .frag under components/, wherever it sits. It used to be the one
+    # directory the first shader happened to live in, so the second one was
+    # written, committed, and silently never compiled: the shell loaded the
+    # stale .qsb that was not there and drew nothing at all.
+    while IFS= read -r f; do
         "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
-        echo "$(basename "$f") -> $(basename "$f").qsb"
-    done
+        echo "${f#"$SHELL_DIR/"} -> ${f#"$SHELL_DIR/"}.qsb"
+    done < <(find "$SHELL_DIR/components" -name '*.frag' | sort)
     ;;
 
 demo)

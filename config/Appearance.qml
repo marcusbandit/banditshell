@@ -292,6 +292,11 @@ Singleton {
         readonly property int pickerOutline: root.cfg.picker.outline
         readonly property int launcherWidth: root.cfg.launcher.width
         readonly property int launcherIcon: root.cfg.launcher.iconSize
+        // How long a new wallpaper takes to open over the old one. A duration
+        // among the sizes because that is where every other configured number
+        // the shell reads lands; see Config's note on why it is not one of the
+        // animation tiers.
+        readonly property int wallpaperReveal: root.cfg.wallpaper.reveal
         readonly property int notchTrack: root.cfg.notch.trackWidth
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge

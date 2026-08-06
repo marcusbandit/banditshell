@@ -64,12 +64,37 @@ Item {
     readonly property real cardWidth: Math.round(root.cardHeight / 9 * 16)
     readonly property real cardGap: Appearance.padding.normal
 
+    // ONE CARD OF TRAVEL. Everything that moves the strip is measured in these:
+    // the path's own spacing, the scrub, the wheel. A single number, so the
+    // three cannot disagree about how far a card is.
+    readonly property real pitch: root.cardWidth + root.cardGap
+
+    // HOW MANY CARDS THE PATH HOLDS, computed from the room rather than picked.
+    // Two more than fit, so a card is fully drawn before it reaches the edge of
+    // the panel and fully gone after it leaves, instead of popping into
+    // existence at the boundary. Never fewer than three, or there is no centre
+    // to be either side of.
+    readonly property int slots: Math.max(3, Math.round(root.panelWidth / root.pitch) + 2)
+
+    // HOW BIG THE CENTRE IS, and it is over one on purpose: the card in the
+    // middle is not merely the largest of a row, it is lifted out of the row.
+    // Its neighbours are what a card looks like at rest and it is bigger than
+    // that, which is what makes the strip read as having a focus rather than a
+    // gradient.
+    readonly property real centreScale: 1.08
+    readonly property real nearScale: 0.82
+    readonly property real farScale: 0.72
+
     // The panel is as wide as the screen it is on, less the bar and the frame.
     // A carousel that is narrower than the room it has sits in two dead strips
     // that look like they should scroll and do not.
     readonly property real panelWidth: Math.max(root.cardWidth, root.width - root.originX - root.inset)
 
-    readonly property real panelHeight: Appearance.padding.large * 2 + caption.implicitHeight + Appearance.padding.normal + root.cardHeight + Appearance.padding.large
+    // The strip's own height rather than a card's, because the centre card is
+    // lifted past one and the panel clips: measured from the card, the biggest
+    // it ever gets would have its top and bottom shaved off at exactly the
+    // moment it is the thing being looked at.
+    readonly property real panelHeight: Appearance.padding.large * 2 + caption.implicitHeight + Appearance.padding.normal + root.cardHeight * root.centreScale + Appearance.padding.large
 
     // The whole screen while it is open, so a tap anywhere outside lands on the
     // shell and can dismiss it.
@@ -92,7 +117,7 @@ Item {
         // Start where you already are. Opening a picker on the first file in
         // the folder rather than on the wallpaper you are looking at makes the
         // first thing it does an unasked-for change.
-        strip.positionAt(Math.max(0, root.entries.indexOf(Wallpaper.current)));
+        strip.jumpTo(Math.max(0, root.entries.indexOf(Wallpaper.current)));
         // DEFERRED, the launcher's reason: focus is only worth taking once the
         // window has actually asked the compositor for the keyboard, and that
         // follows from `shown` in the same pass this is running in.
@@ -116,8 +141,23 @@ Item {
     }
 
     // Chosen, which is the one gesture here that writes anything.
-    function accept(path: string): void {
-        Wallpaper.set(path);
+    //
+    // AND WHERE IT WAS CHOSEN FROM, because the new wallpaper opens out of that
+    // point rather than fading in (components/reveal.frag). `from` is an item
+    // whose centre is the place the choice happened: the card you pressed. It
+    // is mapped into this item, which is the whole screen, and normalised,
+    // which is what the shader wants and what makes the same fraction mean the
+    // same relative place on a second monitor.
+    //
+    // Missing, and it opens from the middle. That is the honest answer for a
+    // choice that came from the keyboard: Enter has no place on the screen.
+    function accept(path: string, from: var): void {
+        if (from) {
+            const c = from.mapToItem(root, from.width / 2, from.height / 2);
+            Wallpaper.setFrom(path, c.x / Math.max(1, root.width), c.y / Math.max(1, root.height));
+        } else {
+            Wallpaper.setFrom(path, 0.5, 0.5);
+        }
         root.hide();
     }
 
@@ -133,12 +173,16 @@ Item {
     // panel at once, in one ordered list, because which surface a dismissal is
     // for depends on what else is up; a local handler would take it out of that
     // order. See its Keys.onPressed.
-    Keys.onLeftPressed: strip.positionAt(Math.max(0, strip.currentIndex - 1))
-    Keys.onRightPressed: strip.positionAt(Math.min(root.entries.length - 1, strip.currentIndex + 1))
+    // Wrapping like everything else that moves the strip: the arrows walk off
+    // one end and back in the other, because the strip does.
+    Keys.onLeftPressed: strip.step(-1)
+    Keys.onRightPressed: strip.step(1)
+    // No `from`: Enter has no place on the screen, so the reveal opens from the
+    // middle. See accept().
     Keys.onReturnPressed: if (strip.currentPath)
-        root.accept(strip.currentPath)
+        root.accept(strip.currentPath, null)
     Keys.onEnterPressed: if (strip.currentPath)
-        root.accept(strip.currentPath)
+        root.accept(strip.currentPath, null)
 
     // Pulled by hand, exactly the launcher's pair of calls and for exactly its
     // reasons: while `dragging` is true the panel's reveal is the HAND'S rather
@@ -264,13 +308,30 @@ Item {
 
         // THE STRIP.
         //
-        // A ListView rather than a Row in a Flickable, for the snapping: a
-        // carousel that stops between two cards has no centre, and the centre
-        // is the whole interface here. StrictlyEnforceRange with both
-        // preferred bounds at the middle means the view cannot rest anywhere
-        // except with a card centred, and `currentIndex` is therefore always
-        // the one being previewed.
-        ListView {
+        // A PathView, and every one of the three things that make this carousel
+        // feel like one comes out of that choice rather than out of anything
+        // written here.
+        //
+        //   IT NEVER ENDS. A PathView's items run round the path, so the last
+        //   wallpaper is followed by the first and you can keep throwing the
+        //   strip in one direction forever. A list has two ends, and an end is a
+        //   wall you hit while your hand is still moving.
+        //
+        //   THE MIDDLE IS BIGGER, continuously. The scale comes off
+        //   PathAttributes interpolated ALONG the path, so a card grows as it
+        //   approaches the centre and shrinks as it leaves, every frame of the
+        //   way. A list can only ask "is this the current one", which is a step
+        //   function: cards popped between two sizes as the index flipped, and
+        //   a pop is the opposite of the thing this is for.
+        //
+        //   IT HAS MOMENTUM. A flick coasts across as many cards as it was
+        //   thrown hard enough to reach and then snaps to whichever one it
+        //   arrives at, because SnapToItem snaps where the motion stops.
+        //   SnapOneItem, which the ListView had, moves exactly one card however
+        //   hard you throw it, and that is the whole of why the old strip felt
+        //   dead: the hand did something and the interface did the same small
+        //   thing regardless.
+        PathView {
             id: strip
 
             readonly property string currentPath: root.entries[currentIndex] ?? ""
@@ -290,20 +351,36 @@ Item {
             // motions ADD UP to the travel and nothing is lost to rounding.
             property real scrubSpent: 0
 
-            function positionAt(i: int): void {
-                strip.currentIndex = i;
-                strip.positionViewAtIndex(i, ListView.Center);
+            // THE INDEX, WRAPPED. Every mover in here goes through this, so
+            // "one past the end" means the first one everywhere rather than in
+            // whichever of them remembered to say so. The double modulo is
+            // JavaScript's: -1 % 18 is -1, not 17.
+            function wrapped(i: int): int {
+                const n = root.entries.length;
+                return n ? ((i % n) + n) % n : 0;
+            }
+
+            function step(delta: int): void {
+                strip.currentIndex = strip.wrapped(strip.currentIndex + delta);
+            }
+
+            // Put a card in the middle WITHOUT travelling to it. Opening the
+            // picker on the wallpaper you are wearing must not look like the
+            // strip scrolling there from wherever it was left, so the offset is
+            // assigned rather than animated: `positionViewAtIndex` is a list's
+            // verb and a path has no equivalent, but `offset` is the thing
+            // underneath both and setting it is the jump.
+            function jumpTo(i: int): void {
+                const n = root.entries.length;
+                strip.currentIndex = strip.wrapped(i);
+                if (n)
+                    strip.offset = strip.wrapped(n - strip.currentIndex);
             }
 
             // Where two fingers have got to, in cards. Given the TOTAL travel
             // of the stream, not a step, which is the shape ScrollGesture hands
             // out; the subtraction below is what turns one back into the other.
             function scrub(dx: real): void {
-                // One card of travel is one card of strip: the delegate plus
-                // the gap the view spaces it by, which is exactly the pitch it
-                // snaps on, so the strip moves under the fingers at the rate
-                // dragging it would (~/.claude/rules/math-over-hardcoding.md).
-                const pitch = root.cardWidth + root.cardGap;
                 // Fingers to the LEFT push the strip left, which brings the
                 // next card in from the right, so the index rises as `dx`
                 // falls. The same sentence the notch path spells as
@@ -311,43 +388,205 @@ Item {
                 // the hand went rather than which way it was clicked. Rounded,
                 // so the card turns over at the halfway mark exactly as the
                 // view's own snap does.
-                const steps = Math.round((-dx - strip.scrubSpent) / pitch);
+                const steps = Math.round((-dx - strip.scrubSpent) / root.pitch);
                 if (steps === 0)
                     return;
 
-                const next = Math.max(0, Math.min(root.entries.length - 1, strip.currentIndex + steps));
-                // Only what the strip ACTUALLY moved is spent, so the ends of
-                // the folder do not bank travel: fingers that carried on
-                // pushing past the last card find it turning back the moment
-                // they reverse, instead of first having to repay the distance
-                // they spent against a card that was not there.
-                strip.scrubSpent += (next - strip.currentIndex) * pitch;
-                strip.currentIndex = next;
+                // NOTHING IS CLAMPED any more, and the note about not banking
+                // travel at the ends went with it: there are no ends. Every
+                // step the fingers pay for is a step the strip takes, so the
+                // spend is simply the travel and the two can never drift.
+                strip.scrubSpent += steps * root.pitch;
+                strip.step(steps);
+            }
+
+            // WHAT THE FINGERS WERE STILL DOING WHEN THEY LEFT.
+            //
+            // A stream has no release event and no rubber band, so a touchpad
+            // swipe stopped dead at whatever card the last delta landed on
+            // however hard it was thrown: the one input a laptop actually
+            // scrolls with was the one with no weight behind it. This is the
+            // coast, and it is the same arithmetic the drag's flick does in
+            // C++: the speed the gesture ended at, spent over the time a flick
+            // is allowed to keep going, divided by what a card occupies.
+            //
+            // `coastMs` is the shell's own token for exactly this, documented
+            // in the milliseconds of the ending velocity a flick is worth, and
+            // `vx` is in pixels per millisecond, so the two multiply to pixels
+            // with nothing reinterpreted between them.
+            function coast(vx: real): void {
+                const cards = Math.round(-vx * Appearance.sizes.coastMs / root.pitch);
+                if (cards)
+                    strip.step(cards);
             }
 
             anchors.top: caption.bottom
             anchors.topMargin: Appearance.padding.normal
             anchors.left: parent.left
             anchors.right: parent.right
-            height: root.cardHeight
+            // Taller than the cards by however much the centre one is lifted, so
+            // the biggest it gets still fits inside the view rather than being
+            // clipped along its top and bottom edges at the one moment it is
+            // the thing you are looking at.
+            height: root.cardHeight * root.centreScale
 
-            orientation: ListView.Horizontal
             model: root.entries
-            spacing: root.cardGap
+            pathItemCount: root.slots
 
-            // The strip is centred by its own PADDING rather than by margins on
-            // the view, so the first and last cards can reach the middle: a
-            // view that stops with its first item at the left edge cannot
-            // centre it, and the first wallpaper in the folder would be the one
-            // you could never preview.
-            leftMargin: (width - root.cardWidth) / 2
-            rightMargin: leftMargin
-
-            snapMode: ListView.SnapOneItem
-            highlightRangeMode: ListView.StrictlyEnforceRange
-            preferredHighlightBegin: (width - root.cardWidth) / 2
-            preferredHighlightEnd: (width + root.cardWidth) / 2
+            // WHERE THE MIDDLE IS, in the path's own 0-to-1. Both bounds at the
+            // halfway mark and the range STRICTLY enforced means the view has
+            // exactly one place it is allowed to rest, and `currentIndex` is
+            // therefore always the card sitting in it.
+            preferredHighlightBegin: 0.5
+            preferredHighlightEnd: 0.5
+            highlightRangeMode: PathView.StrictlyEnforceRange
             highlightMoveDuration: Appearance.anim.normal
+
+            // NO SNAP, AND THAT IS WHAT GIVES IT MOMENTUM.
+            //
+            // It reads backwards, so: `SnapToItem` does not mean "settle on a
+            // card", it means "settle no more than one card from where you let
+            // go", which is a cap on the COAST. A throw was therefore worth
+            // exactly as much as a slow push of the same distance, and the
+            // strip felt like it had no weight, which is precisely the
+            // complaint. `NoSnap` lifts the cap and lets the flick spend its
+            // velocity.
+            //
+            // Nothing is lost by turning it off, because StrictlyEnforceRange
+            // above is what actually holds a card in the middle: it will not
+            // let the view rest anywhere except with one centred, wherever the
+            // coast happens to run out. Snapping was never the thing doing
+            // that; it was only limiting how far you could get.
+            snapMode: PathView.NoSnap
+
+            // How the coast dies away, in path-units per second squared. The
+            // default is tuned for a list of text where overshooting is a
+            // nuisance; a carousel of pictures is a thing you rummage through,
+            // and the whole point of throwing it is to cover ground.
+            flickDeceleration: 60
+            maximumFlickVelocity: 8
+
+            // A DRAG STARTS ANYWHERE ON A CARD. A PathView only takes a press
+            // within `dragMargin` of the path itself, which is a line through
+            // the middle of the strip, so at the default of zero the only
+            // draggable part of a card is the one row of pixels its centre sits
+            // on. Half the height either way is the whole card.
+            dragMargin: strip.height / 2
+
+            // EVERY CARD, BUILT ON THE WAY UP. `cacheItemCount` is the number
+            // kept alive off the path, so setting it to the rest of the folder
+            // means the whole folder is instantiated and every picture is
+            // decoding from the moment the shell starts rather than from the
+            // moment a card scrolls into view. That is what makes the strip
+            // whole the instant it opens instead of filling in behind you.
+            //
+            // CAPPED, because this is memory: each card holds a decoded
+            // thumbnail for as long as it lives. Forty is a big wallpaper
+            // folder and a few tens of megabytes; past that the tail loads the
+            // ordinary way, as it is scrolled to.
+            cacheItemCount: Math.max(0, Math.min(root.entries.length, 40) - root.slots)
+
+            // THE PATH: a straight line through the middle of the strip, as
+            // long as the cards it has to hold. Nothing about it is a position;
+            // the attributes along it are what every card reads as it passes,
+            // and the interpolation between them is the whole animation.
+            path: Path {
+                id: line
+
+                readonly property real span: root.slots * root.pitch
+                readonly property real cy: strip.height / 2
+                readonly property real cx: strip.width / 2
+
+                startX: cx - span / 2
+                startY: cy
+
+                PathAttribute {
+                    name: "cardScale"
+                    value: root.farScale
+                }
+                PathAttribute {
+                    name: "cardOpacity"
+                    value: 0.4
+                }
+                PathAttribute {
+                    name: "cardZ"
+                    value: 0
+                }
+
+                // The two waypoints either side of the middle are what give the
+                // centre a POP rather than a gradient. Without them the scale
+                // ramps linearly from one end of the path to the other and the
+                // middle card is only marginally bigger than its neighbours;
+                // with them, most of the growth is spent in the last card's
+                // width of travel, so a card visibly rises as it arrives.
+                PathLine {
+                    x: line.cx - root.pitch
+                    y: line.cy
+                }
+                PathAttribute {
+                    name: "cardScale"
+                    value: root.nearScale
+                }
+                PathAttribute {
+                    name: "cardOpacity"
+                    value: 0.75
+                }
+                PathAttribute {
+                    name: "cardZ"
+                    value: 1
+                }
+
+                PathLine {
+                    x: line.cx
+                    y: line.cy
+                }
+                PathAttribute {
+                    name: "cardScale"
+                    value: root.centreScale
+                }
+                PathAttribute {
+                    name: "cardOpacity"
+                    value: 1
+                }
+                PathAttribute {
+                    name: "cardZ"
+                    value: 2
+                }
+
+                PathLine {
+                    x: line.cx + root.pitch
+                    y: line.cy
+                }
+                PathAttribute {
+                    name: "cardScale"
+                    value: root.nearScale
+                }
+                PathAttribute {
+                    name: "cardOpacity"
+                    value: 0.75
+                }
+                PathAttribute {
+                    name: "cardZ"
+                    value: 1
+                }
+
+                PathLine {
+                    x: line.cx + line.span / 2
+                    y: line.cy
+                }
+                PathAttribute {
+                    name: "cardScale"
+                    value: root.farScale
+                }
+                PathAttribute {
+                    name: "cardOpacity"
+                    value: 0.4
+                }
+                PathAttribute {
+                    name: "cardZ"
+                    value: 0
+                }
+            }
 
             // Touch handles itself. THE OTHER TWO DEVICES DO NOT, and they want
             // opposite treatment, which is why one handler answers both here
@@ -405,19 +644,68 @@ Item {
                     // rather than left to `blocking` to imply.
                     event.accepted = true;
 
-                    if (event.angleDelta.y > 0 || event.angleDelta.x < 0)
-                        strip.currentIndex = Math.max(0, strip.currentIndex - 1);
-                    else
-                        strip.currentIndex = Math.min(root.entries.length - 1, strip.currentIndex + 1);
+                    const back = event.angleDelta.y > 0 || event.angleDelta.x < 0;
+                    strip.step(back ? -strip.spin() : strip.spin());
                 }
             }
 
-            // LIVE, and this is the point of the whole panel. The card in the
+            // A WHEEL HAS MOMENTUM TOO, and it is the only device here that has
+            // to be given it rather than having it.
+            //
+            // A finger throws the strip and the view coasts; a touchpad hands
+            // over a distance and the strip travels it. A wheel says one word,
+            // "forward", however hard it is spun, so a notch that always moves
+            // one card makes a fast spin take as long as a slow one and the
+            // wheel feel geared down to nothing on a folder of fifty.
+            //
+            // So the STEP grows with the rate. Notches arriving faster than a
+            // deliberate one-at-a-time click are read as a spin and each is
+            // worth more, up to a cap, and the count decays back to one as soon
+            // as the hand stops. Which is what a wheel with inertia in it does
+            // mechanically, and what every other wheel on this desktop does not.
+            property real lastNotch: 0
+            property int notchStep: 1
+
+            function spin(): int {
+                const now = Date.now();
+                const gap = now - strip.lastNotch;
+                strip.lastNotch = now;
+                // Under a tenth of a second apart is a spin rather than a
+                // click. Every notch inside that window is worth one more card
+                // than the last, to a cap: past about five the strip is moving
+                // faster than the pictures can be looked at and the extra speed
+                // buys nothing but a blur.
+                strip.notchStep = gap < 120 ? Math.min(5, strip.notchStep + 1) : 1;
+                return strip.notchStep;
+            }
+
+            // LIVE, and this is the point of the whole panel: the card in the
             // middle is on the desktop behind you at full size while you decide
             // about it.
-            onCurrentPathChanged: {
-                if (root.open && strip.currentPath)
-                    Wallpaper.preview = strip.currentPath;
+            //
+            // BUT NOT ON EVERY CARD THAT PASSES. Once the strip could be thrown
+            // rather than stepped, the middle became somewhere cards travel
+            // THROUGH: one flick puts a dozen of them there for a frame each,
+            // and every one of those was a full-screen wallpaper being decoded
+            // and put up on the desktop. The desktop strobed and the flick
+            // stuttered, and both were the same fact, which is that the preview
+            // was bound to a value that had become a stream.
+            //
+            // So the preview waits for the strip to STOP. Long enough that
+            // cards flying past the middle cost nothing at all, short enough
+            // that arriving at one and looking at it does not feel like a
+            // request that has to be waited on.
+            onCurrentPathChanged: settle.restart()
+
+            Timer {
+                id: settle
+
+                interval: 90
+
+                onTriggered: {
+                    if (root.open && strip.currentPath)
+                        Wallpaper.preview = strip.currentPath;
+                }
             }
 
             delegate: Item {
@@ -431,25 +719,25 @@ Item {
                 width: root.cardWidth
                 height: root.cardHeight
 
-                // The one off to the side is smaller and dimmer, so the strip
-                // has a middle you can see rather than a row of equals. Scale
-                // rather than size: a card that changed size would move its
-                // neighbours, and the whole strip would breathe as it scrolled.
-                scale: card.centred ? 1 : 0.88
-                opacity: card.centred ? 1 : 0.55
-
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
+                // OFF THE PATH, NOT OUT OF A CONDITION.
+                //
+                // These three come from the PathAttributes the path is strung
+                // with, interpolated at wherever this card currently sits on
+                // it, which means they are continuous: a card grows every frame
+                // of its approach and shrinks every frame of its departure.
+                // They used to be `centred ? a : b` with a Behavior smoothing
+                // the step, and the difference is the whole feel of the thing.
+                // A Behavior animates AFTER the fact, on its own clock, so the
+                // strip and the sizes were two motions that happened to be
+                // running at once; this is one motion, and the size is a
+                // property of where the card is rather than a reaction to it.
+                //
+                // Defaulted with `?? `, because a delegate exists for a moment
+                // before the view has placed it on the path and the attached
+                // values are undefined until it has.
+                scale: card.PathView.cardScale ?? root.farScale
+                opacity: card.PathView.cardOpacity ?? 0
+                z: card.PathView.cardZ ?? 0
 
                 // WHAT A CARD IS BEFORE ITS PICTURE ARRIVES, and what it stays
                 // for a file that has no picture at all. A plate and the mark
@@ -521,15 +809,38 @@ Item {
                 // only thing you can do to it. A card that is not centred
                 // centres itself first, which is what a finger landing off to
                 // the side of a carousel means everywhere else.
-                MouseArea {
-                    anchors.fill: parent
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: {
+                // A TapHandler AND NOT A MouseArea, and the difference is the
+                // entire reason the strip can be dragged at all.
+                //
+                // A MouseArea takes an exclusive grab on the press and holds it
+                // until the release. A Flickable knows to steal that grab back
+                // once the press has travelled far enough to be a drag, which
+                // is why the list this replaced could be thrown even with a
+                // MouseArea on every row; a PathView does not, so every press
+                // that landed on a card was a press the carousel never saw, and
+                // the only draggable parts of the strip were the gaps between
+                // the cards.
+                //
+                // A TapHandler is passive: it watches the press, asks for the
+                // grab only at the release, and gives up the moment anything
+                // else claims the motion as a drag. So a tap is a tap and a
+                // drag is a drag, decided by what the hand actually did rather
+                // than by which item happened to be underneath it.
+                TapHandler {
+                    onTapped: {
+                        // A card that is not centred centres itself first,
+                        // which is what a finger landing off to the side of a
+                        // carousel means everywhere else. Only the middle one
+                        // is a choice.
                         if (card.centred)
-                            root.accept(card.modelData);
+                            root.accept(card.modelData, card);
                         else
-                            strip.positionAt(card.index);
+                            strip.currentIndex = card.index;
                     }
+                }
+
+                HoverHandler {
+                    cursorShape: Qt.PointingHandCursor
                 }
             }
         }
@@ -550,6 +861,10 @@ Item {
 
             onBegan: strip.scrubSpent = 0
             onMoved: dx => strip.scrub(dx)
+            // The fourth line, and it is what a swipe on a touchpad was
+            // missing: fingers that leave while still moving leave the strip
+            // moving. See strip.coast().
+            onEnded: strip.coast(scroll.vx)
         }
     }
 }

@@ -408,6 +408,18 @@ Singleton {
                 // frame, which is a perfectly good still.
                 animate: true,
 
+                // HOW LONG A NEW WALLPAPER TAKES TO ARRIVE, in ms.
+                //
+                // Its own number rather than one of the shell's animation
+                // tiers, and deliberately far longer than any of them: those
+                // are tuned for a panel you asked for and are already looking
+                // at, where anything you can watch is something in your way.
+                // This is the whole screen changing underneath everything, and
+                // it is the one motion in this shell that is meant to be
+                // watched rather than merely be over. swww's own default is
+                // about this.
+                reveal: 900,
+
                 // WHETHER A WALLPAPER MAY MAKE A NOISE. A video file carries an
                 // audio track and an audio file is nothing but one, and this is
                 // the switch that lets either out. Off, and off is the right
