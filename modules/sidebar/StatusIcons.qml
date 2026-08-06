@@ -42,14 +42,6 @@ Item {
     signal requested(string key, bool deliberate)
     signal released
 
-    // THE GAUGE THAT IS A DOOR. The settings gauge stopped having a menu (see
-    // its entry in `gauges` below), so its activation cannot travel on
-    // `requested`: that signal asks for a menu by key, and there is no menu to
-    // ask for. This one says the whole of what a tap on it means - open the
-    // settings panel - and says nothing about where, because which screen and
-    // which page are the consumer's decisions, not the bar's.
-    signal settingsRequested
-
     // Which icon the cursor is on, "" for none.
     //
     // This is ONE source of truth on purpose. Letting each icon fire its own
@@ -100,24 +92,23 @@ Item {
             available: Bluetooth.available,
             body: bluetoothMenu
         },
-        {
-            // THE ONE GAUGE UNLIKE ITS FOUR SIBLINGS, and the difference is
-            // what its content became. The others answer a glance: how loud,
-            // which network, how much charge, each a menu's worth of state
-            // that a hover can hold open. What lived behind this one (the
-            // icon picker) grew into a PAGE of the settings panel, and a
-            // place is not a glance: it is somewhere you go and stay, and
-            // places live in the panel. So this entry carries no `body`,
-            // which keeps it out of the menu registry below - the CLI does
-            // not list it, openMenu cannot resolve it, hover opens nothing
-            // because there is nothing a hover could hold - and a tap on it
-            // travels on `settingsRequested` instead. The gauge keeps its
-            // slot and its mark because the bar is still where your hand
-            // goes to reach settings; only what answers has moved.
-            key: "settings",
-            title: "Settings",
-            icon: "tune"
-        },
+        // THERE IS NO SETTINGS GAUGE HERE, AND THERE MUST NOT BE ONE AGAIN.
+        //
+        // It was removed on purpose, and the reason is what the four remaining
+        // gauges have in common: each answers a GLANCE. How loud, which
+        // network, is it connected, how much charge, all of it a menu's worth
+        // of state that a hover can hold open and a look can finish. What lived
+        // behind the settings gauge grew into PAGES of the settings panel, and
+        // a place is not a glance: it is somewhere you go and stay. A door
+        // standing in a row of gauges reads as a fifth gauge, so a hand goes to
+        // it expecting the same kind of answer and gets a whole panel instead.
+        //
+        // Settings has three ways in that are all better than a slot in this
+        // column: the bottom-right corner (its own place, and the page grows
+        // out of exactly the point you pressed), `banditshell settings`, and
+        // therefore any keybind. Nothing was lost by taking the slot back; the
+        // bar got shorter, which is the point of a bar that shows nothing at a
+        // glance.
         {
             key: "battery",
             title: "Battery",
@@ -132,6 +123,7 @@ Item {
             body: batteryMenu
         }
     ]
+
 
     // THE MENU REGISTRY: what the sidebar folds into menuItems, what the CLI
     // lists, and the only keys openMenu can resolve. DERIVED, not written out
@@ -207,9 +199,15 @@ Item {
 
                 readonly property string key: modelData.key
 
-                // Whether anything answers a hover here. Only the settings
-                // gauge says no today, and the test is the entry's shape
-                // rather than its name so that stays a fact about the data.
+
+                // Whether anything answers a hover here. Every gauge in the
+                // column says yes today, the one that did not having been
+                // removed, and this stays because it is a fact about the
+                // ENTRY's shape rather than about the list's current contents:
+                // an entry is a menu entry exactly when it has a menu, and the
+                // registry above is filtered by the same test. A gauge added
+                // tomorrow without a body is silent on hover by construction
+                // rather than by somebody remembering.
                 readonly property bool hasMenu: modelData.body !== undefined
 
                 // A Column positions its children and never resizes them, so a
@@ -228,9 +226,9 @@ Item {
                 // Hover IS the request. Clicking is the same intent, and matters
                 // for touch and for keyboard-driven opens later.
                 //
-                // Only for a gauge with a menu to hold: the settings gauge
-                // never enters `hoveredKey` at all, rather than entering it
-                // and having the request fail downstream, because `hoveredKey`
+                // Only for a gauge with a menu to hold: a bodyless entry never
+                // enters `hoveredKey` at all, rather than entering it and
+                // having the request fail downstream, because `hoveredKey`
                 // means "the icon whose menu the pointer is holding open" and
                 // a key that can never resolve to a menu would make that a
                 // lie. Leaving is unguarded on purpose; it can only clear a
@@ -249,23 +247,14 @@ Item {
                 // synthesises a mouse from the touch, but it is gone the instant
                 // the finger lifts and it was never holding anything. This is
                 // the one that says the menu was actually asked for.
-                //
-                // Unless there is no menu to ask for: the settings gauge's tap
-                // is the same intent aimed at a bigger thing, and it travels on
-                // its own signal (see settingsRequested).
-                onActivated: {
-                    if (hasMenu) {
-                        root.requested(key, true);
-                        return;
-                    }
-                    root.settingsRequested();
-                }
+                onActivated: root.requested(key, true)
 
                 // The gauges refuse a tooltip (StatusIcon's closing note):
                 // hovering one opens a menu whose first line is its name, so a
                 // label would say the same word twice. That argument needs the
-                // menu. A gauge whose hover opens nothing is a bare mark, and
-                // this is how a mouse still learns its name.
+                // menu, so it is asked of the entry rather than assumed: a
+                // bodyless gauge opens nothing on hover, which makes it a bare
+                // mark, and a bare mark has to say its own name somehow.
                 HoverTip {
                     text: hasMenu ? "" : modelData.title
                 }

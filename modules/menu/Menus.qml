@@ -35,13 +35,16 @@ import qs.components
 // close it. Reaching for the menu meant lifting, and lifting was what killed it.
 //
 // So a menu that was asked for outright is PINNED, and the pin is a latch that
-// hover has no opinion about. It goes on by a tap, by the CLI, or by the grace
-// timer noticing that no pointer was ever involved; it comes off by hide()
-// alone. That is the same shape the notification tray writes down at its own
-// `pinned`, for the same reason, and it is the rule DESIGN.md 15 states for the
-// whole shell: what hover opened, hover closes; what was asked for stays until
-// it is put away, and putting it away is the gesture that brought it out,
-// reversed.
+// hover cannot undo. It goes on by a tap, by the CLI, or by the grace timer
+// noticing that no pointer was ever involved; it comes off by hide() alone. It
+// is fastened to the MENU rather than to the layer (see pinnedKey), so hover
+// still decides which menu is on screen and therefore whether the latch is
+// currently holding anything, and a pinned menu wandered away from and come
+// back to is pinned again. That is the same shape the notification tray writes
+// down at its own `pinned`, for the same reason, and it is the rule DESIGN.md 15
+// states for the whole shell: what hover opened, hover closes; what was asked
+// for stays until it is put away, and putting it away is the gesture that
+// brought it out, reversed.
 Item {
     id: root
 
@@ -58,15 +61,65 @@ Item {
     // cursor does not pull the floor out from under it.
     readonly property Item maskItem: ghost
 
+    // WHICH MENU WAS ASKED FOR OUTRIGHT, by key, and "" for none. What everything
+    // else reads is `pinned` below; this is the thing that latch is fastened TO.
+    //
+    // A KEY, NOT A FLAG, and the difference is the whole of a bug where clicking
+    // a gauge a second time did nothing at all. A flag belongs to the LAYER, so
+    // it has to be taken off whenever the layer starts showing something else,
+    // and drifting past a neighbouring gauge is exactly that:
+    //
+    //   click the audio gauge, and a flag goes on: the audio menu is latched;
+    //   drift a few pixels up the bar, and crossing the network gauge asks for
+    //     its menu incidentally, which under a flag took the latch off;
+    //   drift back down, and the audio menu comes back, no longer latched;
+    //   click the audio gauge again, and ShellWindow's toggle asks `pinned`,
+    //     gets false, and so pins the menu instead of putting it away. Nothing
+    //     visible happens at all. Closing it takes a THIRD click.
+    //
+    // The gauges sit four pixels apart and their targets meet in the middle of
+    // that gap, so "drift a few pixels" is most of what a hand does between two
+    // clicks.
+    //
+    // Fastened to a key it means what it says. The audio menu is the pinned one;
+    // it is unlatched while something else is on screen and latched again when
+    // it comes back, and nothing has to be remembered to un-say as the layer
+    // changes what it is showing.
+    //
+    // THE TOGGLE IS THE WHOLE OF WHAT THE KEY FIXES, and the neighbouring bug it
+    // does NOT fix is written down here so nobody reads a wider claim into it. A
+    // pin still dies with the visit: pin the audio menu, drift up onto the
+    // network gauge, which puts its menu on screen incidentally and makes
+    // `pinned` false by arithmetic, and then leave the shell from there.
+    // release() sees no pin and starts the grace timer, the timer sees no pin,
+    // no hover and a pointer that was very much here, and hide() closes the
+    // incidental menu and clears the key with it. The menu somebody asked for is
+    // gone, and coming back does not bring it. Only the narrower case is cured:
+    // wander onto a neighbour and back onto the pinned menu before leaving, and
+    // the latch is holding again by the time the pointer goes.
+    //
+    // Curing the rest is not a test that belongs here. Nothing wants the
+    // incidental menu to survive being abandoned; what should happen is that
+    // abandoning it puts the PINNED one back, and this layer cannot do that,
+    // because it is handed a title, a body and a centre per open (see show())
+    // and deliberately remembers nothing about a key it is not showing. Whoever
+    // knows what a key means would have to be asked to open it again.
+    property string pinnedKey: ""
+
     // PINNED: this menu was asked for outright, so nothing that merely wandered
     // off gets to take it away. See the header for why an instant needs a latch
     // where a continuous state does not.
+    //
+    // DERIVED, so there is one fact here rather than two to keep in step: the
+    // latch is on exactly while the menu on screen is the menu that was asked
+    // for. That is the shape NotificationTray.expanded writes down, for the same
+    // reason, and it is why nothing below has to clear anything on a swap.
     //
     // The rejected alternative was to leave this file alone and simply not run
     // the grace timer for touch. Nothing here can tell a touchscreen from a
     // mouse that has not moved yet, and a timer that never fires is a menu that
     // can never be closed, which is the other half of the same bug.
-    property bool pinned: false
+    readonly property bool pinned: root.pinnedKey !== "" && root.pinnedKey === root.currentKey
 
     // Whether a POINTER has been on the shell at all since this menu opened.
     //
@@ -225,27 +278,27 @@ Item {
         }
         reveal.target = 1;
 
-        // THE LATCH, and the only two things this call is allowed to do to it.
+        // THE LATCH, and the one thing this call is allowed to do to it.
         //
-        // A deliberate open puts it on, and nothing here ever takes it off
-        // again, because hide() is the one thing that ends a menu outright.
+        // A deliberate open fastens it to the menu being opened, and nothing
+        // here ever takes it off again, because hide() is the one thing that
+        // ends a menu outright.
         //
-        // An INCIDENTAL open of a DIFFERENT menu takes it off, which reads as
-        // the opposite of "the second gauge you tapped is as deliberate as the
-        // first" and is exactly what makes that work. One tap on a touchscreen
+        // AN INCIDENTAL OPEN TAKES NOTHING OFF, and no longer has to. `pinned`
+        // is derived from the key it was fastened to (see pinnedKey), so a hover
+        // that puts a different menu on screen unlatches the layer by arithmetic
+        // rather than by forgetting, which is what makes "the second gauge you
+        // tapped is as deliberate as the first" work. One tap on a touchscreen
         // makes TWO requests: Qt synthesises a mouse from the touch, so the
         // icon's containsMouse goes true under the finger and the press arrives
         // here as a hover, and the release arrives as the tap. If the press
         // carried the previous menu's pin across onto this one, the tap an
         // instant later would find its own menu already latched and read as a
         // SECOND tap on it, which is the gesture that CLOSES: tapping a second
-        // gauge would open it and put it away again in one press. Dropping the
-        // pin here costs nothing, because the tap that follows pins the new menu
-        // itself, and a hover-driven swap has a pointer holding it anyway.
+        // gauge would open it and put it away again in one press. It cannot,
+        // because the pin names the menu it belongs to and that is not this one.
         if (pin)
-            root.pinned = true;
-        else if (swapping)
-            root.pinned = false;
+            root.pinnedKey = key;
     }
 
     function hide(): void {
@@ -254,7 +307,13 @@ Item {
         // THE ONE THING THAT ENDS A MENU OUTRIGHT, so it is the one thing that
         // takes the latch off. Everything else in this file either adds a reason
         // to stay or asks; this is the answer.
-        root.pinned = false;
+        //
+        // CLEARED, rather than left to the derivation above. `pinned` is already
+        // false the instant currentKey is, so this changes nothing today; a key
+        // left lying here would fasten itself back on the next time that same
+        // menu opened, and a menu that a passing cursor opened would come up
+        // latched by a click somebody made minutes ago.
+        root.pinnedKey = "";
         reveal.target = 0;
         // Nothing left to protect, and a ghost outliving its menu would be a
         // patch of screen that swallows clicks for no reason at all.
@@ -335,7 +394,7 @@ Item {
             // CLI's open makes for defaulting to pinned, arrived at from the
             // other end: no pointer, nothing to hold it, so hold it here.
             if (!root.sawPointer) {
-                root.pinned = true;
+                root.pinnedKey = root.currentKey;
                 return;
             }
 

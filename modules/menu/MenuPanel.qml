@@ -23,10 +23,14 @@ import qs.components
 // swapped for another and to a menu that grows under its own feet, which is the
 // same event as far as the panel is concerned.
 //
-// The contents CROSS-FADE while it moves, which is why there are two page slots
-// rather than one Loader. With one slot there is no way to keep showing the old
-// menu for even a frame after the new one exists, so however smoothly the box
-// travels, the thing inside it still cuts.
+// The contents ARRIVE AT ONCE and the page they replaced fades out from under
+// them, which is why there are two page slots rather than one Loader. With one
+// slot there is no way to keep showing the old menu for even a frame after the
+// new one exists, so however smoothly the box travels, the thing inside it
+// still cuts. What must never be delayed is the ARRIVAL: the menu just pointed
+// at is legible on the frame it is built, whatever state the services behind it
+// are in, and the panel travels to fit it afterwards rather than the other way
+// round. See the page delegate's opacity and the viewport's height.
 //
 // A menu WANTING more height than the clamp allows SCROLLS inside it rather
 // than being cut: the panel keeps exactly the size the clamp gives it and the
@@ -118,8 +122,14 @@ Item {
             page.pageBody = root.body;
         }
 
-        // Nothing to cross with while the panel is shut: the new page arrives
-        // whole, at the size it asks for, and the reveal does the animating.
+        // Nothing to cross with while the panel is shut, so the page being
+        // replaced is not faded out of an empty panel, it is simply already
+        // gone: the fade lands on 1 rather than starting from it, which is the
+        // outgoing page's opacity at nought (see the delegate). The arriving
+        // page never reads this either way, being at full strength from the
+        // start, which is not the same thing as hiding what it replaces; what
+        // `closed` still decides is whether the first size is taken or
+        // travelled to, which is `unsized` below.
         const closed = root.reveal === 0;
         fade.value = closed ? 1 : 0;
         fade.target = 1;
@@ -188,13 +198,56 @@ Item {
                 // whatever it last said, and no menu could ever grow.
                 implicitHeight: view.y + view.contentHeight
 
-                // The outgoing page leaves faster than the incoming one arrives,
-                // squared against the same clock. A straight cross-dissolve has
-                // both at half opacity in the middle, which over two pages of
-                // text is the moment it reads as neither; this way the old menu
-                // is mostly gone by the time the new one is legible, and the ink
-                // never doubles up.
-                opacity: current ? fade.value : (1 - fade.value) * (1 - fade.value)
+                // THE INCOMING PAGE IS AT FULL STRENGTH FROM THE FRAME IT IS
+                // BUILT. Only the outgoing one is on a clock.
+                //
+                // Both used to be, the incoming rising and the outgoing falling
+                // squared against the same number, and that is precisely what
+                // made switching menus feel slow. Crossing from one gauge to the
+                // next, the first frames showed the menu just left at full
+                // strength and the one now being pointed at at nothing, and the
+                // hundred milliseconds after that showed both at once, which
+                // over two pages of text reads as neither. Move down a column of
+                // icons at any ordinary speed and the panel never once showed
+                // the menu the cursor was actually on. A menu must arrive with
+                // whatever it has and fill in as its services answer; nothing
+                // about the arrival may wait on a clock, because "not finished
+                // loading" is the normal state of a menu about a live machine
+                // and not a reason to go on showing a different one.
+                //
+                // The outgoing page still LEAVES rather than being cut, and it
+                // leaves squared, so one frame on it is at a bit over half
+                // strength and by the fourth it is down to a tenth.
+                //
+                // WHAT THAT COSTS IS A DOUBLE IMAGE, and it is written down as
+                // what it is rather than as the z below makes it sound. A page
+                // draws no background: it is a heading, a rule and a body
+                // standing over the chassis field, because the panel is a hole
+                // in that field rather than a surface (the class comment says
+                // so). Ordering the draw is therefore ALL the z does, the
+                // arriving page occludes nothing, and for as long as the fade
+                // lasts the two pages' ink adds wherever both of them put ink on
+                // the same line. Every menu's heading sits on exactly the same
+                // line, so crossing from the Sound gauge to the Network one
+                // shows both words superimposed, at FULL strength on the swap
+                // frame itself: swap() assigns fade.value = 0 and a Qt timer
+                // does not tick on the frame it was started, so the outgoing
+                // page renders at least one whole frame before any decay begins.
+                // Under a tenth of a second all told, and that is the entire
+                // price of arriving at once.
+                //
+                // Three alternatives, all worse. Cutting the outgoing page takes
+                // the second slot's whole reason with it: the panel is one
+                // object changing its contents, and an object does not change by
+                // jump cut. Giving the page an opaque fill would occlude
+                // properly and cannot be had here, a fill being a rectangle
+                // drawn inside the melt. Seeding fade.value above 0 in the open
+                // case, the way the closed case seeds it to 1, would take the
+                // peak off the double image and shorten it by a frame, and the
+                // only honest seed is one step of the fade's own decay: Follow
+                // does not publish its step, so that number would be this file's
+                // private copy of Follow's tick, wrong the moment either moves.
+                opacity: current ? 1 : (1 - fade.value) * (1 - fade.value)
                 // The arriving page is always the one on top, so the crossing
                 // never depends on which slot happens to be first.
                 z: current ? 1 : 0
@@ -279,11 +332,41 @@ Item {
                     y: rule.y + rule.height + Appearance.padding.normal
                     width: page.width
 
-                    // The viewport is whatever of the panel's LIVE height is
-                    // left under the chrome. Live rather than settled, so the
-                    // window onto the body grows with the panel's travel
-                    // instead of popping to the destination size ahead of it.
-                    height: Math.max(0, root.height - Appearance.padding.large * 2 - y)
+                    // The viewport is whatever of the panel's SETTLED height is
+                    // left under the chrome. Settled, not live, and that is the
+                    // difference between the content waiting on the box and the
+                    // box travelling to fit content that is already in place.
+                    //
+                    // Live was what it used to be, so that the window onto the
+                    // body grew with the travel rather than popping to the
+                    // destination ahead of it. What that actually bought was a
+                    // couple of hundred milliseconds after every swap in which
+                    // the viewport was SHORTER than the menu inside it: a menu
+                    // that fits perfectly well arrived as a clipped, scrolling
+                    // document and only settled into being a panel once the
+                    // travel landed. That is exactly the "it has not finished
+                    // loading" the switch is meant not to have, and it was not
+                    // only cosmetic, because `interactive` below is decided by
+                    // the same comparison: for that window a drag on a slider in
+                    // a menu just switched to was read as a drag on a list and
+                    // scrolled it instead.
+                    //
+                    // Nothing pops, because the wrapper above clips at the
+                    // panel's live edge: the rows are laid out where they will
+                    // finally sit and the panel's edge sweeps down over them.
+                    // That is what the width has always done (contents at full
+                    // width, revealed by a panel growing over them), and it is
+                    // what the class comment means by implicitHeight being where
+                    // the panel is GOING: a layout question is asked of the
+                    // destination, and only the drawing and the melt want the
+                    // size it happens to be passing through.
+                    //
+                    // No loop, though the two sizes now name each other in the
+                    // same file: the page's wanted height reads the body's own
+                    // implicit height through `contentHeight` below and never
+                    // this, and `pageHeight` is pushed by hand rather than
+                    // bound, so nothing here can be asked for its own answer.
+                    height: Math.max(0, root.implicitHeight - Appearance.padding.large * 2 - y)
 
                     // The body's natural height, through the Loader: no menu
                     // body sets an explicit height, so the loaded item sits at
