@@ -356,6 +356,8 @@ banditshell/
 │   ├── BatteryMeter.qml         a drawn battery: every level, and charging as motion
 │   ├── Slider.qml               a bead on a rail; read-only loses the bead
 │   ├── Toggle.qml               a switch
+│   ├── reveal.frag             the blob a new wallpaper opens through
+│   ├── RevealMask.qml          its QML side; a layer.effect, so it masks anything
 │   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out
 │   │                            to be: picture, SVG, GIF or video, behind one `ready`
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
@@ -649,6 +651,66 @@ longer on screen stops holding a decoder open.
 
 An audio file shows the black behind the surface and is muted unless `wallpaper.audio` says
 otherwise. It is a gimmick, and it costs one line to let it be one.
+
+### A wallpaper arrives; it does not fade in
+
+`components/reveal.frag` is a **mask on the incoming picture**, not a blend of two of them, and
+that shape is the whole design. The outgoing wallpaper draws normally underneath and the new
+one draws over it with its alpha eaten away outside a growing outline, so what you see through
+the hole is simply the layer below: nothing is captured into a texture, nothing is kept live,
+and a video underneath goes on playing through the hole because it is still the scene drawing
+itself. It is a `layer.effect`, so it never has to know whether it is masking a photograph, an
+SVG or a video.
+
+**Not a circle.** A disc growing out of a point is the obvious shape and reads as a mechanism:
+it is the one outline with no information in it, so the eye has nothing to follow and what it
+sees is a wipe effect rather than an arrival. The radius is modulated by three sines in the
+angle instead, at frequencies 3, 5 and 7 with halving amplitudes. Whole numbers keep the shape
+closed (the modulation has to come back to itself over a turn or there is a seam down one
+side); odd and coprime keeps it from reading as symmetrical; falling amplitudes make it a blob
+rather than a flower. The lobes flatten as it grows, which is both what a drop of ink does and
+what lets it reach every corner instead of leaving four bays of the old wallpaper in them. A
+seed shifts the phases per transition, so no two changes arrive in the same shape.
+
+**It opens from where the choice was made**: the card you pressed, the edge you are stepping
+toward with `wallpaper next`, the middle for a keybind that has no place on the screen. That is
+the thing a fade can never have, and it is what makes the change read as caused. swww does this
+family of transitions and the shape is borrowed knowingly; what is not borrowed is the origin.
+
+The trap, recorded because it was fallen into: padding the radius by the lobe depth looks
+obviously right and is wrong, because the lobes are already zero at the end. It overshot by a
+third, so the screen was covered at three quarters of the way through, which under a
+front-loaded easing was a quarter of the DURATION.
+
+### The picker's strip is a PathView, and that is three features
+
+**It never ends.** A PathView's items run round the path, so the last wallpaper is followed by
+the first and the strip can be thrown one way forever. A list has two ends, and an end is a wall
+you hit while your hand is still moving.
+
+**The middle is bigger, continuously.** Scale, opacity and z come off `PathAttribute`s
+interpolated along the path, so a card grows every frame of its approach. Done as
+`isCurrentItem ? a : b` with a `Behavior`, which is what it was, the size is a reaction running
+on its own clock beside the scroll; done along the path it is a property of where the card is.
+
+**It has momentum.** `SnapToItem` does not mean "settle on a card", it means "settle no more
+than one card from where you let go", which is a cap on the coast: a throw was worth exactly as
+much as a slow push of the same distance. `NoSnap` lifts it, and `StrictlyEnforceRange` is what
+was holding a card in the middle all along.
+
+Two more, because the other input devices have no momentum to be given back. A **wheel** says
+only "forward" however hard it is spun, so notches arriving faster than a deliberate click are
+worth more than one card each, to a cap. A **touchpad stream** has no release event, so the
+velocity it ended at is spent over `coastMs` and converted to cards.
+
+And the preview **waits for the strip to stop**. Once it could be thrown, the middle became
+somewhere cards travel through, and every card that passed was a full-screen wallpaper being
+decoded and put on the desktop.
+
+The delegates carry a `TapHandler` and not a `MouseArea`, and that is not a style preference: a
+MouseArea takes an exclusive grab on press, a Flickable knows to steal it back once the press
+becomes a drag and **a PathView does not**, so every press that landed on a card was one the
+carousel never saw and only the gaps between cards could be dragged.
 
 `hotkeys` is the one target that is not a second way in but the **only** way in. The sheet it
 opens recites the user's own config rather than the shell's state, so it is drawn from
