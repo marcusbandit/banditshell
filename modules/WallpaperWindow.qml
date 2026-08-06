@@ -87,7 +87,14 @@ PanelWindow {
     // Only swap when the one that just decoded is the hidden one AND it is still
     // what we want; a stale decode arriving late must not pull the old picture
     // back to the front.
-    function settled(slot: WallpaperSource): void {
+    // `var` rather than the type it always is, and a null guard in front of it,
+    // because this is called from a slot's own onReadyChanged and that can fire
+    // while the pair is still being built: a typed parameter is COERCED at the
+    // call, and coercing an object that does not exist yet yields null rather
+    // than an error, so the guard has to be here rather than at the call site.
+    function settled(slot: var): void {
+        if (!slot || !back)
+            return;
         if (slot.ready && slot === back && slot.path === Wallpaper.shown) {
             showB = !showB;
             retire.restart();

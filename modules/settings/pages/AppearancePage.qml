@@ -35,10 +35,12 @@ Item {
 
         // ------------------------------------------------------- wallpaper
 
-        // A SWITCH, not a picker. Which wallpaper it is stays a question for
-        // the folder and the CLI until a picker earns its place here; whether
-        // there is one at all is a thing you want to change in a second and
-        // change back, and that is what a switch is for.
+        // SWITCHES, not a picker. WHICH wallpaper is a question you answer by
+        // looking at wallpapers, and that belongs on a surface the size of the
+        // screen with the candidate actually on the desktop behind it: it is
+        // the bottom edge's second swipe, see modules/wallpaper/. What is left
+        // here is the two things about a wallpaper that are settings rather
+        // than choices, both of them a switch you flip and unflip in a second.
         //
         // The row itself flips it as well as the toggle on it, MenuRow's usual
         // contract: the whole line is the target, because the switch alone is
@@ -47,16 +49,44 @@ Item {
             width: list.width
             icon: "wallpaper"
             label: "Wallpaper"
-            // What it would show, even while it is off. The choice survives
+            // What it would show, even while it is off, and what KIND that is
+            // for the three that are not simply a picture: a file that turns
+            // out to be a video behaves differently once it is up, and the
+            // detail line is where that is worth knowing. The choice survives
             // being turned off, so the row goes on saying what the choice is
             // rather than going blank and making the setting look lost.
-            detail: Wallpaper.name || "nothing set"
+            detail: Wallpaper.name ? (Wallpaper.kind === "still" ? Wallpaper.name : `${Wallpaper.name} · ${Wallpaper.kind}`) : "nothing set"
             tip: Wallpaper.enabled ? "turn it off" : "turn it on"
             onActivated: Wallpaper.toggle()
 
             Toggle {
                 checked: Wallpaper.enabled
                 onToggled: Wallpaper.toggle()
+            }
+        }
+
+        // THE ONE RULE THAT MAKES A MOVING WALLPAPER AFFORDABLE, offered as a
+        // switch because it is the only part of it worth arguing with. What it
+        // costs when it is on is stated rather than left to be discovered: the
+        // whole reason animated wallpapers are usually a bad idea is a decoder
+        // running behind a full screen of windows, and this row is the shell
+        // saying it does not do that.
+        //
+        // Shown only when it could matter. A folder of photographs has nothing
+        // to animate, and a switch for a thing you do not have is a setting you
+        // have to think about for no reason.
+        MenuRow {
+            width: list.width
+            visible: Wallpaper.available.some(p => Wallpaper.movesOf(p)) || Wallpaper.moves
+            icon: "motion_photos_on"
+            label: "Play animated wallpapers"
+            detail: "only on an empty workspace"
+            tip: Config.values.wallpaper.animate ? "stop playing them" : "play them"
+            onActivated: Config.set("wallpaper.animate", !Config.values.wallpaper.animate)
+
+            Toggle {
+                checked: Config.values.wallpaper.animate
+                onToggled: Config.set("wallpaper.animate", !Config.values.wallpaper.animate)
             }
         }
 

@@ -354,6 +354,8 @@ banditshell/
 │   ├── BatteryMeter.qml         a drawn battery: every level, and charging as motion
 │   ├── Slider.qml               a bead on a rail; read-only loses the bead
 │   ├── Toggle.qml               a switch
+│   ├── WallpaperSource.qml      one wallpaper, whatever kind of file it turns out
+│   │                            to be: picture, SVG, GIF or video, behind one `ready`
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
@@ -368,7 +370,8 @@ banditshell/
 │   ├── Bluetooth.qml            bluez: adapter and devices
 │   ├── Media.qml                MPRIS, with a stable choice of player
 │   ├── SysInfo.qml              /proc and /sys: cpu, memory, temperature
-│   ├── Wallpaper.qml            the current wallpaper and the list to pick from
+│   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
+│   │                            what kind each file is, and a poster frame per video
 │   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
@@ -389,7 +392,8 @@ banditshell/
 │   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
-│   ├── WallpaperWindow.qml      background layer, below every window
+│   ├── WallpaperWindow.qml      background layer, below every window; two slots
+│   │                            that cross-fade, motion only on an empty workspace
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
 │   ├── lock/                    the lock: one compositor surface per screen, one face
@@ -400,6 +404,9 @@ banditshell/
 │   │   ├── KeyCap.qml           one key: a width in units, a legend, a state
 │   │   ├── Chord.qml            one chord, in whichever vocabulary is being spoken
 │   │   └── Segments.qml         a row of choices of which exactly one is taken
+│   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
+│   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
+│   │                            is on the real desktop while you decide about it
 │   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── settings/                the page that is a shell surface OR a window
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
@@ -409,7 +416,8 @@ banditshell/
 │   │       │                    and key "icons" loads IconsPage.qml by convention
 │   │       ├── IconsPage.qml    what each app looks like; grew out of the settings
 │   │       │                    gauge's old menu (a place, not a glance, so it left the bar)
-│   │       └── AppearancePage.qml  which palette the shell wears
+│   │       └── AppearancePage.qml  which palette the shell wears, and the two
+│                               switches a wallpaper has (WHICH one is the picker's)
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
@@ -570,6 +578,7 @@ banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
 banditshell picker open|freeze|clip|freezeclip|close
 banditshell wallpaper toggle|on|off|next|prev|status
+banditshell wallpapers toggle|open|close|status   the picker; the edge's second swipe
 banditshell status                 what the shell thinks the compositor said
 banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>
@@ -605,6 +614,39 @@ away**: the window stays, the images keep their sources, `current` keeps its pat
 left is the black `WallpaperWindow` was already painting behind the picture and coming back is
 a fade rather than a decode. The lock screen follows the same flag, because its ground is made
 of this same picture and `LockSurface` is black underneath it.
+
+`wallpapers`, plural, is the picker, and it is a **surface** rather than a setting: everything
+on it opens and closes something on the screen and writes nothing, where everything on the
+singular target writes something and draws nothing.
+
+### A wallpaper is not only a picture
+
+Three kinds of file live behind one surface, and what separates them is only which Qt element
+can draw the file, never anything about how it looks. Stills (png, jpg, webp, bmp, avif, and
+**SVG**) are an `Image`; motion (gif, apng) is an `AnimatedImage`; video (mp4, webm, mkv, mov)
+and the audio-only files that have no picture in them at all are a `MediaPlayer`. All of it is
+behind `components/WallpaperSource.qml`, which exposes `path`, `playing` and `ready`, so
+`WallpaperWindow`'s two-slot cross-fade knows about none of it: both slots answer the same
+question, has this decoded far enough to show, and that question has three spellings and one
+meaning.
+
+SVG is a still like any other **once `sourceSize` is set**, and that one line is the whole of
+what makes a vector wallpaper worth having. An SVG has no pixels of its own; Qt rasterises it
+at whatever size it is told and then scales the result like any bitmap, so an unset
+`sourceSize` rasterises at the document's few hundred pixels and a wallpaper-sized blur is what
+reaches the screen.
+
+**Motion runs only while the workspace is empty, per monitor.** A video behind a full screen of
+windows is a decoder thread and a GPU surface producing frames that are, by definition,
+entirely covered, and that is the whole of what makes animated wallpapers a bad idea on a
+laptop. `Hypr.occupancy` answers it per monitor, because a window opened on the left screen has
+no opinion about the picture on the right one. **Paused, never stopped**: the last frame stays
+on screen, so a busy workspace shows a still rather than a hole, and coming back does not
+restart the clip. The slot that leaves the front is let go a fade later, so a video that is no
+longer on screen stops holding a decoder open.
+
+An audio file shows the black behind the surface and is muted unless `wallpaper.audio` says
+otherwise. It is a gimmick, and it costs one line to let it be one.
 
 `hotkeys` is the one target that is not a second way in but the **only** way in. The sheet it
 opens recites the user's own config rather than the shell's state, so it is drawn from

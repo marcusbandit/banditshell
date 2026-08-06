@@ -203,7 +203,23 @@ done`, root.posterDir, ...videos];
         }
     }
 
+    // THE COMMAND IS BUILT HERE, not bound.
+    //
+    // It used to be a binding on `dir`, and that quietly meant changing the
+    // folder did nothing until the next restart. `onDirChanged` and the
+    // command's own binding are two separate consequences of the same notify,
+    // and QML does not promise which runs first: the handler fired, `running`
+    // went true, and the process started on the command it still had, which was
+    // the OLD folder's. The listing came back identical and the setting looked
+    // inert.
+    //
+    // Assigned at the moment the listing starts, which is the only moment the
+    // question "which folder" has one answer.
     function refresh(): void {
+        // The pattern is BUILT from `formats` rather than written out, so a
+        // format added up there is offered down here without this line being
+        // touched. `-iregex` matches the whole path, hence the leading `.*`.
+        lister.command = ["find", root.dir, "-maxdepth", "1", "-type", "f", "-iregex", `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
         lister.running = true;
     }
 
@@ -216,10 +232,7 @@ done`, root.posterDir, ...videos];
     Process {
         id: lister
 
-        // The pattern is BUILT from `formats` rather than written out, so a
-        // format added up there is offered down here without this line being
-        // touched. `-iregex` matches the whole path, hence the leading `.*`.
-        command: ["find", root.dir, "-maxdepth", "1", "-type", "f", "-iregex", `.*\\.\\(${root.extensions.join("\\|")}\\)$`]
+        // No `command` here: refresh() sets it. See its note.
 
         stdout: StdioCollector {
             onStreamFinished: {
