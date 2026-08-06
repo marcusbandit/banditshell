@@ -24,6 +24,17 @@ import qs.services
 // the strip follows the finger, and the release decides by what is mostly on
 // screen and which way the hand was still going.
 //
+// WHICH WAY IS FORWARD IS A SETTING, defaulting to a swipe RIGHTWARD landing
+// on the NEXT month, which is the reading this shell was asked for by name and
+// the opposite of what a strip of paper under the fingers would do. Config's
+// `calendar.rightGoesForward` argues both sides at length and this file does
+// not repeat the argument; what it owes the setting is that the inversion be
+// total, so the whole mapping from the hand to the strip turns on ONE
+// multiplier applied at ONE line (see `gestureSign` and advance()) and every
+// number after it is already in the strip's own frame. That is what makes it
+// impossible for the month previewed under the fingers to be a different month
+// from the one the release commits to.
+//
 // AND TWO FINGERS ON A TOUCHPAD ARE THAT SAME DRAG, through
 // components/ScrollGesture.qml: a laptop has no edge to push and no third hand
 // to hold a button down while it swipes, so a month gesture that only existed
@@ -84,7 +95,29 @@ Column {
     // Whether the shown month IS today's month, which is the gate on the way
     // home: the pill in the heading only exists while this is false, because
     // a button that does nothing has no business being drawn.
-    readonly property bool onToday: root.shownYear === root.today.getFullYear() && root.shownMonth === root.today.getMonth()
+    //
+    // NOT NAMED `onToday`, AND THE NAME IS THE WHOLE OF THE BUG IT FIXES.
+    //
+    // There is a `today` property a few lines up, so QML already owns the
+    // identifier `onToday`: that is the handler slot for a signal named
+    // `today`. Declaring a property by that name is accepted, and then the
+    // binding written against it is parsed as a HANDLER DECLARATION rather
+    // than as a property binding, so the property keeps its default and is
+    // never evaluated again. Measured live before the rename: the property
+    // read false while the identical expression evaluated in place read true,
+    // with `shownYear` 2026 against `todayYear` 2026 and `shownMonth` 7
+    // against `todayMonth` 7. Nothing about the comparison was wrong; the
+    // binding was simply not there.
+    //
+    // What it looked like: the "Today" pill drawn while the calendar was
+    // already showing today's month, which is precisely the button whose
+    // entire argument is that it hides when it has nothing to do.
+    //
+    // The rejected fix was to keep the name and push the value from a
+    // function instead of binding it. That works and it hides the trap: the
+    // next `onSomething` property added to a file that also has a `something`
+    // fails the same silent way. A name QML does not already mean is the fix.
+    readonly property bool showingToday: root.shownYear === root.today.getFullYear() && root.shownMonth === root.today.getMonth()
 
     // The plate has just been asked for again: home() announces its arrival
     // and the pane holding today re-lights the accent (see the plate), so the
@@ -107,11 +140,40 @@ Column {
     // this simply show the full row; the bar still carries how long.
     readonly property int dotCap: 4
 
-    // How far the strip of months is displaced, in pixels, positive when it
-    // has been dragged toward the previous month. Written by the finger while
-    // the drag runs and by `settle` afterwards, never by both at once; the
-    // same arrangement as the notification tray's pushBack.
+    // How far the strip of months is displaced, in pixels, positive when the
+    // strip has been pushed RIGHT, which is what brings the PREVIOUS month
+    // into view: pane -1 is laid out a full pane to the left, so a positive
+    // slide is exactly what walks it onto the screen.
+    //
+    // A fact about the strip's geometry and deliberately NOT about the hand,
+    // which is what it used to be ("dragged toward the previous month") and
+    // could no longer be once which way the hand has to move became a setting.
+    // Everything that reads this value reads the geometry: the panes' x, the
+    // hit test in `poke`, and the release's choice of month. None of them ask
+    // what `gestureSign` says, and none of them can be wrong when it changes.
+    //
+    // Written by the finger while the gesture runs and by `settle` afterwards,
+    // never by both at once; the same arrangement as the notification tray's
+    // pushBack.
     property real slide: 0
+
+    // WHICH WAY THE MONTHS RUN UNDER THE HAND, as the one number the setting
+    // becomes: the multiplier that turns the gesture's own horizontal travel
+    // into the strip's.
+    //
+    // -1 by default, because the default is that a swipe to the RIGHT lands on
+    // the NEXT month, and the next month is pane +1, which is off to the right
+    // and can only be walked on screen by pushing the strip LEFT. So the hand
+    // and the content travel opposite ways, which is precisely what the paper
+    // reading refuses to do and what nearly every other carousel therefore
+    // refuses too. +1 is that paper reading, the strip going exactly where the
+    // hand puts it; Config's `calendar.rightGoesForward` is where the two are
+    // argued against each other, because the argument is a taste and not a
+    // fact about this file.
+    //
+    // A binding rather than a value read at creation, so flipping the setting
+    // takes effect on the calendar already open rather than on the next one.
+    readonly property int gestureSign: Appearance.sizes.calendarRightGoesForward ? -1 : 1
 
     spacing: Appearance.padding.normal
 
@@ -133,6 +195,15 @@ Column {
     // Called from rest (a tap) it leaves the strip displaced a full pane the
     // other way, which is exactly the start of the animation a drag release
     // wants, so both routes settle through `glide`.
+    //
+    // `delta` IS ABSOLUTE and `gestureSign` never reaches here: +1 is one month
+    // later and -1 one month earlier, whatever direction a hand would have had
+    // to move to ask for it. That matters because most of the callers have no
+    // direction to speak of. `home()` and `poke()` both compute a number of
+    // months from two dates and pass it, and a "Today" pill that went the wrong
+    // way because of a swipe preference would be nonsense. Only the release
+    // below turns a direction into a delta, and it does so by reading the
+    // strip's geometry rather than the hand's.
     function page(delta: int): void {
         const to = new Date(root.shownYear, root.shownMonth + delta, 1);
         root.shownYear = to.getFullYear();
@@ -281,7 +352,7 @@ Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
-            visible: !root.onToday
+            visible: !root.showingToday
             text: "Today"
 
             onClicked: root.home()
@@ -359,13 +430,18 @@ Column {
             property real fromX: 0
             property real fromY: 0
             property real startSlide: 0
-            // Where along the gesture's own horizontal total the page began,
+            // Where along the gesture's horizontal total the page began,
             // captured at the moment it latches so the threshold pixels are
             // spent on deciding rather than on a jump. Kept as a TOTAL rather
             // than as a re-read of the pointer, because a total is the one
             // coordinate both inputs can state: a scroll never reports a
             // position, only how far the fingers have gone.
-            property real originX: 0
+            //
+            // In the STRIP's frame, like everything else advance() keeps: it is
+            // written from `travel` and subtracted from `travel`, so the
+            // direction setting cancels out of it entirely rather than having
+            // to be remembered here.
+            property real originTravel: 0
             // Latched ONCE per gesture, like every gesture in the shell: one
             // that set off vertically was never a page and must not become one
             // by curving round, and one that latched stays latched however it
@@ -379,11 +455,18 @@ Column {
             // value (the notification card and the workspace scrub read it the
             // same way); Pull's own velocity is per-ms because `pullReversal`
             // is, and the two tokens must not be crossed.
+            //
+            // THE STRIP'S SPEED, not the hand's, because advance() converts
+            // before it differences. A positive velocity means the strip is
+            // travelling right whichever way the hand had to move to send it
+            // there, which is the only reason the release may compare it
+            // against `slide` at all: two numbers share a sign only while they
+            // are measured in the same frame.
             property real velocity: 0
-            // The horizontal total at the previous step, so a step can be
+            // The strip's total at the previous step, so a step can be
             // differenced back out of it. A total in, a step out, which is
             // what lets the press hand over the same numbers the stream does.
-            property real lastDx: 0
+            property real lastTravel: 0
 
             anchors.fill: parent
             // AND THE WEEKDAY INITIALS ABOVE, plus the Column's air on both
@@ -426,8 +509,8 @@ Column {
             // about where it started.
             function begin(): void {
                 pager.startSlide = root.slide;
-                pager.originX = 0;
-                pager.lastDx = 0;
+                pager.originTravel = 0;
+                pager.lastTravel = 0;
                 pager.paging = false;
                 pager.spent = false;
                 pager.velocity = 0;
@@ -439,17 +522,35 @@ Column {
             // about the whole journey, and because a path reporting steps
             // would have to keep its own running sum, which is this
             // subtraction written a second time somewhere it can go stale.
+            //
+            // AND THE ONE LINE THE DIRECTION SETTING IS, at the top, where the
+            // hand's total becomes the STRIP's. Every line after it works in
+            // the strip's frame: the smoothed velocity, the origin the page
+            // re-anchors on, the slide itself, and therefore the release, which
+            // reads nothing else. The alternative was a sign flipped at the
+            // release instead, and it is worth naming because it is the obvious
+            // one-character version of this change and it is wrong: the panes
+            // follow the slide, so the month that had slid in under the fingers
+            // would have been precisely the month the release then refused, and
+            // the calendar would have spent the whole gesture previewing a lie.
+            // Converted here there is only one number, so the preview and the
+            // commit cannot be two opinions.
+            //
+            // The two axis tests below read MAGNITUDES, so they ask the same
+            // question in either frame and the setting cannot move where a
+            // gesture latches, only which way it then goes.
             function advance(dx: real, dy: real): void {
                 if (pager.spent)
                     return;
 
-                const step = dx - pager.lastDx;
-                pager.lastDx = dx;
+                const travel = dx * root.gestureSign;
+                const step = travel - pager.lastTravel;
+                pager.lastTravel = travel;
                 pager.velocity += (step - pager.velocity) * 0.4;
 
                 if (!pager.paging) {
                     // Still inside the wobble of a tap: nothing is decided.
-                    if (Math.abs(dx) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
+                    if (Math.abs(travel) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
                         return;
 
                     // WHICH AXIS WON, judged once, the moment the gesture
@@ -464,7 +565,7 @@ Column {
                     // what hands the REST of the stream on to the menu's own
                     // viewport, which is a scroll this grid did not use to have
                     // under it; see the wheel handler for how that is done.
-                    if (Math.abs(dy) > Math.abs(dx)) {
+                    if (Math.abs(dy) > Math.abs(travel)) {
                         pager.spent = true;
                         return;
                     }
@@ -474,15 +575,20 @@ Column {
                     // NOW rather than jumping the threshold's worth it spent
                     // proving itself. The slide is re-read too, because
                     // `settle` may have moved it since the gesture began.
-                    pager.originX = dx;
+                    pager.originTravel = travel;
                     pager.startSlide = root.slide;
                     return;
                 }
 
-                // Content follows the finger, clamped to one pane: the strip
+                // Content follows the gesture, clamped to one pane: the strip
                 // holds one neighbour each side, so travel past that would
-                // drag blank canvas on screen.
-                root.slide = Math.max(-months.width, Math.min(months.width, pager.startSlide + (dx - pager.originX)));
+                // drag blank canvas on screen. FOLLOWS, not merely reacts to,
+                // in either direction the setting picks: under the paper
+                // reading the strip goes where the hand goes, and under the
+                // default it goes the other way at exactly the same rate, so
+                // the month you are asking for is the month arriving under your
+                // fingers and it arrives one pixel per pixel.
+                root.slide = Math.max(-months.width, Math.min(months.width, pager.startSlide + (travel - pager.originTravel)));
             }
 
             // The end, however the input announced it: a lifted button, or a
@@ -501,7 +607,7 @@ Column {
             function settle(): void {
                 if (pager.paging) {
                     // WHICH MONTH WINS: the one that is mostly on screen, or
-                    // the one the hand was still travelling toward fast
+                    // the one the STRIP was still travelling toward fast
                     // enough to mean it; either is enough. Majority answers
                     // the slow, careful drag that stopped dead; the velocity
                     // answers the flick that meant "next" without covering
@@ -519,6 +625,17 @@ Column {
                     // rather than Pull's `pullReversal` because the question
                     // is theirs, "does this motion earn a page at all", not
                     // Pull's "was a committed gesture really taken back".
+                    //
+                    // ALL THREE TERMS ARE THE STRIP'S and none of them has
+                    // heard of `gestureSign`, which is what keeps this
+                    // paragraph true under either setting. `slide` is where the
+                    // strip stands and `velocity` is where it is going, both in
+                    // the same frame, so their product still asks "is it going
+                    // further the way it already leans"; and a positive slide
+                    // still means pane -1 is the one on screen, so it still
+                    // commits to the previous month. The hand is nowhere in
+                    // here on purpose: it was converted away one function
+                    // above, which is why what you saw arriving is what you get.
                     const half = Math.abs(root.slide) > months.width / 2;
                     const onward = root.slide * pager.velocity > 0 && Math.abs(pager.velocity) >= Appearance.sizes.flickVelocity;
                     if (half || onward)
@@ -596,9 +713,12 @@ Column {
             // property and the price of judging an axis at all.
             //
             // The comparison is the same one advance() latches on, ties
-            // included: there an exact tie fails `Math.abs(dy) > Math.abs(dx)`
-            // and becomes a page, so `>=` here claims it, and the axis this
-            // file acts on can never disagree with the axis it claims.
+            // included: there an exact tie fails `Math.abs(dy) >
+            // Math.abs(travel)` and becomes a page, so `>=` here claims it, and
+            // the axis this file acts on can never disagree with the axis it
+            // claims. `travel` is this same `scroll.dx` with the direction
+            // setting folded in, which is a sign and never a size, so the two
+            // magnitudes are the same number and the tie stays a tie.
             //
             // Past the latch the claim stops asking. `paging` claims
             // unconditionally, because a swipe that set off sideways and then

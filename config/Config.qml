@@ -541,6 +541,49 @@ Singleton {
                 claimMs: 15000
             },
 
+            // The calendar's month gesture. See
+            // modules/menu/content/CalendarMenu.qml.
+            calendar: {
+                // WHICH MONTH A RIGHTWARD SWIPE ASKS FOR, and the one setting
+                // in this file that exists because two entirely reasonable
+                // people read the same gesture in opposite directions. You are
+                // expected to have an opinion about it; neither answer is a
+                // bug, and nothing in here can settle it for you.
+                //
+                // FALSE is DIRECT MANIPULATION, and it is what almost every
+                // other piece of software ships. The strip of months is a sheet
+                // of paper under your fingers: push the paper to the right and
+                // what was off its left edge, the EARLIER month, walks into
+                // view, exactly as it would on a desk. Nothing about it is
+                // arbitrary, the content simply goes where the hand puts it, and
+                // it is the reading iOS, Android, every photo viewer and every
+                // page of every book already agree on. It is a genuinely strong
+                // default and it is the one being turned off here.
+                //
+                // TRUE is SWIPE FORWARD TO GO FORWARD, and it is the default
+                // because it is the reading that was asked for by name: a swipe
+                // to the right means LATER, the way a fast-forward arrow points
+                // right and the way time runs left to right on every calendar
+                // ever printed. The hand is not pushing the paper here, it is
+                // pointing at where it wants to be, which is the same thing a
+                // "next" button does with none of the paper's geometry in the
+                // way.
+                //
+                // The two readings are each coherent all the way through: the
+                // month sliding in under your fingers is always the month the
+                // release lands on, whichever way round it is, because the
+                // preview and the commit are the same number and not two
+                // opinions (see CalendarMenu's advance()). So try it, and if
+                // your hand disagrees with your sentence, which happens often
+                // enough to be why the industry settled where it did, set this
+                // false and the strip goes back to being paper.
+                //
+                // The ABSOLUTE routes never ask either way: the "Today" pill and
+                // a tap on a dim neighbouring day both name the month they want
+                // rather than a direction, so this cannot reach them.
+                rightGoesForward: true
+            },
+
             // The calendar's usage strip: how the shell remembers being used.
             usage: {
                 // The day a bar fills at, in hours of the machine being awake.

@@ -313,6 +313,18 @@ Singleton {
         // What a full day-bar means on the calendar; see services/Usage.qml.
         readonly property int usageCapHours: root.cfg.usage.capHours
 
+        // WHICH MONTH A RIGHTWARD SWIPE ASKS THE CALENDAR FOR. True is the
+        // gesture going forward in time with the hand, false is the strip of
+        // months behaving like paper under it; Config carries the whole
+        // argument, which is a real one in both directions.
+        //
+        // A token here rather than a read straight off Config the way the
+        // cheatsheet's two preferences are, because it is not an answer the UI
+        // stored for itself: it decides what a gesture MEANS, which is the job
+        // `touchEdges`, `dragThreshold` and the pull tolerances above already
+        // have, and it belongs with them.
+        readonly property bool calendarRightGoesForward: root.cfg.calendar.rightGoesForward
+
         // The power panel, on the right edge. See modules/session/SessionMenu.qml.
         readonly property int sessionButton: root.cfg.session.button
         readonly property int sessionIcon: Math.round(root.font.iconSize * root.cfg.session.iconScale)
