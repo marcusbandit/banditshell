@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -224,7 +223,15 @@ Item {
         id: hover
     }
 
-    Component.onCompleted: grow.target = 1
+    // Both doors, exactly as NotifEntry takes its snapshot through two: the
+    // handler above covers a picture that becomes copyable while this card is
+    // already on screen, and this covers the far commoner case of a card built
+    // for an entry that wanted a copy before the card existed, which fires no
+    // change signal because nothing changed.
+    Component.onCompleted: {
+        grow.target = 1;
+        root.beginCopy();
+    }
 
     // Reversible, because an entry that merely timed out RESETS: it leaves the
     // popups and stays in the tray as the same object. A delegate that outlives
@@ -369,43 +376,54 @@ Item {
         Item {
             id: badge
 
-            // An icon NAME is not a URL. `appIcon` is a freedesktop name, so
-            // handing it straight to an Image failed silently and every app that
-            // sent one instead of a pixmap wore the generic bell. The theme has
-            // to be asked; the nullable form returns "" rather than a
-            // placeholder, which is what lets the glyph take over.
+            // BOTH OFF THE SNAPSHOT, AND BOTH ALREADY ANSWERED. The card asks
+            // the entry what to draw and draws it; neither of these is a lookup
+            // any more.
             //
-            // Both off the snapshot, like everything else the card draws. The
-            // mark is the field that made the failure LOOK like a design
-            // choice rather than a bug: a dead sender's `appIcon` reads as
-            // nothing, nothing is not an icon name, and the plate fell back to
-            // the generic bell, so a tray of tombstones came out as a tidy
-            // column of identical bells instead of as something obviously
-            // broken.
-            readonly property string picture: root.entry?.image ?? ""
-            readonly property string mark: root.entry?.appIcon ? Quickshell.iconPath(root.entry.appIcon, true) : ""
+            // `picture` used to be the raw `image` field and `mark` used to be
+            // `Quickshell.iconPath(appIcon)` computed right here, and the pair
+            // of them is what the tray full of identical bells was made of. The
+            // resolution moved into services/NotifEntry.qml, which has the
+            // whole argument: a picture that arrived as raw pixels has to be
+            // copied to a file before its sender lets go of it, and an app_icon
+            // is a name that has to be asked of the theme, of what you picked
+            // for that application, and of the desktop entry, in that order.
+            // Both are questions about WHAT WAS SENT rather than about how to
+            // draw it, and both have to keep answering after the sender is
+            // gone, which is the entry's whole job.
+            readonly property string picture: root.entry?.picture ?? ""
+            readonly property string mark: root.entry?.mark ?? ""
 
-            readonly property string source: badge.picture || badge.mark
+            readonly property bool marked: mark !== "" && sign.ready
 
-            readonly property bool hasImage: source !== "" && art.ready
+            // NEITHER OF THEM LOADED is what the plate and the bell are for,
+            // which is a narrower claim than the one that used to be made here.
+            // The old expression picked ONE source, the picture when there was
+            // one and the mark otherwise, so a card whose picture had died fell
+            // straight past the sender's own mark to the generic bell: Discord
+            // sends both an avatar and `discord`, and the avatar dying took the
+            // Discord logo down with it. They are two images now precisely so
+            // that losing the first uncovers the second.
+            readonly property bool hasImage: badge.pictured || badge.marked
 
-            // THE PICTURE IS THE ONE SNAPSHOT FIELD THAT DOES NOT SURVIVE ITS
-            // SENDER, because it is not data. For an image-data hint quickshell
-            // hands out an `image://qsimage/<id>` URL, and the registration
-            // behind that id belongs to the Notification object: the entry
-            // copies the string at arrival, and the string outlives the pixels
-            // by however long Qt's pixmap cache happens to hold the texture.
-            // Everything else the card draws is a copy of what the sender said;
-            // this one is only a copy of where the sender kept it.
+            // THE ROOM FOR A PICTURE IS TAKEN ON THE LOAD, NEVER ON THE STRING,
+            // and that stays true now that the picture survives its sender.
             //
-            // So the ROOM for a picture is taken on the LOAD, never on the
-            // string. It used to be taken on the string, and a card whose sender
-            // had gone came out twice as wide holding nothing: the load failed,
-            // the plate and the bell came back, and they came back at double
-            // size with a half-size glyph rattling around in them, which is a
-            // worse card than the plain one it would have drawn had the picture
-            // never been claimed. Depending on the cache made it intermittent
-            // too, which is the hardest kind of wrong to be told about.
+            // It used to be taken on the string, and a card whose sender had
+            // gone came out twice as wide holding nothing: the load failed, the
+            // plate and the bell came back, and they came back at double size
+            // with a half-size glyph rattling around in them, which is a worse
+            // card than the plain one it would have drawn had the picture never
+            // been claimed. Depending on Qt's pixmap cache to paper over it made
+            // it intermittent too, which is the hardest kind of wrong to be told
+            // about.
+            //
+            // A copy of the picture is now taken at arrival (see `copier`
+            // below), so the death this defended against is far rarer than it
+            // was. Rarer is not never: a sender that hangs up inside the frame
+            // or two the copy takes still gets away, and this is what makes that
+            // card an ordinary one-square card wearing the sender's mark instead
+            // of a double-width hole.
             readonly property bool pictured: picture !== "" && art.ready
 
             // Square either way, so the text column starts in the same place on
@@ -441,19 +459,47 @@ Item {
                 color: root.urgent ? Appearance.colour.accent : Appearance.colour.textDim
             }
 
-            // A MARK is cropped to fill and a PICTURE is fitted whole.
+            // A MARK is cropped to fill and a PICTURE is fitted whole, and they
+            // are TWO IMAGES because they are two facts.
             //
             // An app icon is square already, so filling its plate costs it
             // nothing and letterboxing it would leave a step of fill at the
             // corners, which reads as the icon not fitting. A picture is not
             // square and is the thing you are being shown, so the same crop that
-            // is free for the one throws most of the other away.
+            // is free for the one throws most of the other away. One item cannot
+            // hold both fill modes, and more to the point one item cannot fall
+            // back: an Image whose source failed shows nothing, and nothing is
+            // what a Discord card was showing where its logo should have been.
+            // Stacked, the picture simply covers the mark while it is there.
             //
             // Either way it is masked to the plate's curve, because an image is
             // the one shape that cannot go through G2Rect: it is a texture, not
             // a path, so it would keep its own square corners over the plate's.
             // See G2Image.
-            //
+
+            // THE SENDER'S MARK, always exactly one badge, whatever the badge
+            // itself is doing. Sized off the constant rather than anchored to
+            // fill, because the badge doubles when a picture loads and this
+            // would double with it: an icon re-decoded at twice the size to be
+            // drawn at none of it, since it is hidden in exactly that case.
+            G2Image {
+                id: sign
+
+                anchors.left: parent.left
+                anchors.top: parent.top
+                width: Appearance.sizes.notificationBadge
+                height: width
+
+                source: badge.mark
+                fillMode: Image.PreserveAspectCrop
+                radius: Appearance.rounding.small
+                // Under the picture rather than instead of it. Both are the
+                // sender's, and when there is a picture it is the more specific
+                // of the two: a Discord avatar says which conversation this is,
+                // where the Discord logo only says which application.
+                visible: !badge.pictured
+            }
+
             // SIZED OFF THE STRING WHERE THE BADGE IS SIZED OFF THE LOAD, which
             // is the one place those two questions have to be told apart. It
             // cannot simply fill the badge: `sourceSize` inside G2Image is
@@ -478,8 +524,8 @@ Item {
                 width: Appearance.sizes.notificationBadge * (badge.picture ? 2 : 1)
                 height: width
 
-                source: badge.source
-                fillMode: badge.picture ? Image.PreserveAspectFit : Image.PreserveAspectCrop
+                source: badge.picture
+                fillMode: Image.PreserveAspectFit
                 radius: Appearance.rounding.small
             }
         }
@@ -647,6 +693,245 @@ Item {
                     }
                 }
             }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // THE COPY, AND WHY IT IS TAKEN IN A CARD AND NOT IN THE SERVICE.
+    //
+    // A notification that carries its avatar as raw pixels (Discord, and every
+    // Electron app, because that is what libnotify's pixbuf call sends) hands
+    // out a url into a provider its own object owns. When the sender hangs up,
+    // and Discord hangs up constantly, the provider goes and the url resolves to
+    // nothing. services/NotifEntry.qml has the measurements and the policy: what
+    // is borrowed, where a copy goes, which copy is current. What is left is the
+    // act of copying, and this is the only place in the shell that can perform
+    // it.
+    //
+    // MEASURED, because the obvious home for this was the service and it does
+    // not work there. Qt renders nothing for an item that is not in a window: an
+    // Image inside a Singleton loads its pixels perfectly happily and then
+    // `grabToImage` answers "item is not attached to a window" and returns
+    // false, and a Canvas in the same position never paints at all, so `save()`
+    // writes nothing and reports false. Both were tried in a throwaway
+    // quickshell instance before a line of this was written. There is no
+    // offscreen route; the pixels can only be got out through something that is
+    // being drawn, and in this shell the things being drawn are cards.
+    //
+    // Which card does it does not matter, and every screen has one for the same
+    // entry, so the entry carries the flag that stops them all doing it at once.
+    // The one thing that DID matter is that a card exists at all for every
+    // notification that arrives, and it does: Notifs puts each arrival at the
+    // head of `popups` before the cap is applied, so the newest is never the one
+    // pushed off the end, and the tray draws `popups` whenever it is not
+    // expanded and `history` when it is. The arrival is in whichever of those
+    // two the tray is showing.
+    readonly property real copyCap: Appearance.sizes.notificationBadge * 4
+
+    // The url that MIGHT want copying, or nothing. Read as one expression so the
+    // handler below fires both when a picture becomes copyable and when a
+    // replace hands the entry a different one; a bare flag would not, since it
+    // is already true in the second case and stays true.
+    //
+    // ASKED OF `copyPath` AND NOT OF `wantsCopy`, which is the whole of what
+    // this line has to get right. `wantsCopy` is the honest question and it was
+    // what stood here, but it counts `copying` among its terms and `copying` is
+    // the first thing the handler below writes: the binding fed the handler, the
+    // handler fed the binding, and the running shell said "Binding loop detected
+    // for property borrowedPicture" out loud for every picture that arrived. It
+    // terminated on the second pass and the copy still landed, which is exactly
+    // what made it worth fixing rather than leaving: a warning nobody can act on
+    // in a log that is otherwise clean, resting on an ordering inside beginCopy
+    // that was never chosen for that job. `copyPath` is the half of the same
+    // question that no card ever writes to (borrowed pixels, and a directory to
+    // put them in), so it changes when the picture does and stays put while the
+    // copy is claimed.
+    //
+    // THE POLICY DID NOT MOVE HERE with it. This is a trigger and not a
+    // decision: whether the copy is actually wanted is still `wantsCopy`, asked
+    // once inside beginCopy where the claim is made, so the card goes on knowing
+    // nothing about live-ness, caching or the claim itself. Duplicating those
+    // terms in the condition would have silenced the loop too, and would have
+    // put NotifEntry's policy in two files to do it.
+    readonly property string borrowedPicture: root.entry?.copyPath ? root.entry.image : ""
+
+    onBorrowedPictureChanged: root.beginCopy()
+
+    // THE URL THIS CARD HAS A LOAD OF, which is the whole of its claim on the
+    // entry's copy.
+    //
+    // The entry carries one flag for every screen's card, so it can say that
+    // SOMEBODY is copying and can never say which of them: a card reading it
+    // cannot tell its own claim from another card's. That is not a difference
+    // the flag can be taught, because the entry has no business knowing that
+    // cards exist at all (its own comments say so, and the whole of its policy
+    // is written without them). So each card keeps its half of the fact here and
+    // refuses to put down a claim it never took. Held from the moment the load
+    // starts to the moment it ends, by whichever door: the copier's source is
+    // non-empty exactly when this string is.
+    property string claimed: ""
+
+    // LATCHED rather than bound, which is the whole reason this is a function
+    // and not a binding on `copier.source`. Claiming the copy sets the entry's
+    // flag, the flag takes `wantsCopy` false, and a bound source would drop to
+    // nothing on the same turn and cancel the load it had just started. Assigned
+    // once, the load survives its own claim, and it survives the sender dying
+    // halfway through it as well, which is the case worth surviving.
+    //
+    // `wantsCopy` IS THE ONLY GUARD LEFT. It used to be joined by a test that
+    // this card's copier was not already loading that very url, which read like
+    // caution and was the hole the duplicate copies came through: a card whose
+    // claim had been dropped by someone else took the early return and never
+    // re-asserted it, so the flag stayed down with a load still in flight and
+    // the next card built started a second one of the same url. Nobody can drop
+    // this card's claim any more (see releaseCopy), and `wantsCopy` counts the
+    // flag among its terms, so arriving here at all means the copy is unclaimed
+    // and this card is free to take it.
+    function beginCopy(): void {
+        const e = root.entry;
+        if (!e || !e.wantsCopy)
+            return;
+        root.claimed = e.image;
+        e.copying = true;
+        copier.source = e.image;
+    }
+
+    // The pixels are in a texture; put them in a file.
+    //
+    // NAMED AFTER THE URL THE PIXELS CAME FROM, which is the one this card
+    // latched and not whatever the entry is showing by now. Asking the entry for
+    // `copyPath` here was the same question a moment later, and it answers about
+    // the CURRENT picture: a replace landing during the load (Discord edits
+    // constantly, and a full asynchronous decode is a wide window to land in)
+    // filed the OLD pixels under the NEW url's name, keep() compared that name
+    // against the same property and of course agreed with it, and the entry was
+    // left holding the previous avatar under the current one's name with
+    // `cached === copyPath` for good, so no correct copy was ever taken again. A
+    // wrong picture rather than a missing one, which is the harder kind to
+    // notice. Off the claim the two guards are finally different questions: this
+    // one says what these bytes ARE, and keep() says whether that is still the
+    // picture anybody wants.
+    function finishCopy(): void {
+        const e = root.entry;
+        const claim = root.claimed;
+        const target = e?.copyPathFor(claim) ?? "";
+        if (!target)
+            return root.releaseCopy();
+
+        // A url and not a bare path. QQuickItemGrabResult has an overload for
+        // each and the string one is the deprecated half; handing it a plain
+        // "/home/..." is the shape most likely to be resolved to the wrong one
+        // and fail silently.
+        const ok = copier.grabToImage(result => {
+            if (result.saveToFile(Qt.resolvedUrl(`file://${target}`)))
+                e.keep(target);
+            else
+                console.warn(`Notifications: could not write ${target}; ${e.appName} keeps its picture only until its sender closes it.`);
+
+            // AND LET GO ONLY IF THIS IS STILL THE PICTURE BEING HELD. A grab
+            // answers a frame later at the earliest, and a replace landing in
+            // that frame has already sent this card round again with a newer
+            // claim and a newer load: releasing then would cancel a load that
+            // has nothing to do with the bytes just written, and hand the entry
+            // back a flag somebody (this card) is still using.
+            if (root.claimed === claim)
+                root.releaseCopy();
+        });
+
+        if (!ok)
+            root.releaseCopy();
+    }
+
+    // LET GO OF THE CLAIM, and of nobody else's.
+    //
+    // Every door out of a load comes through here: the load that errored, the
+    // grab that refused, the copy that landed, and the card being torn down. The
+    // guard is the whole point of the function. The flag lives on the entry and
+    // any card can write it, so this used to hand it back whether or not this
+    // card had ever taken it, and on a machine with two outputs that is a card
+    // per screen for the same notification: the tray on the OTHER screen
+    // swapping between its popups and its history destroys a card that had
+    // copied nothing, that card dropped the claim of the card that was mid-load,
+    // and the next delegate built took the flag it found down and started a
+    // second copy of the same url. Both landed on the same path, and the second
+    // landing deleted the first one's file out from under `cached`.
+    //
+    // The picture goes on being drawn straight from the sender for as long as
+    // the sender is there, which is exactly what happened before any of this
+    // existed, so failing here costs the old behaviour and nothing more.
+    function releaseCopy(): void {
+        if (!root.claimed)
+            return;
+        root.claimed = "";
+        copier.source = "";
+        if (root.entry)
+            root.entry.copying = false;
+    }
+
+    // AND IF THIS CARD GOES AWAY MID-COPY, the claim goes with it.
+    //
+    // The claim lives on the entry and the work lives on the card, and the card
+    // is the shorter-lived of the two: the tray tears its delegates down every
+    // time it swaps between showing the popups and showing the history, and a
+    // grab whose item is destroyed never calls back. Without this the flag would
+    // stay up for the life of the entry and no other card would ever try again,
+    // which is a picture silently lost to a collapse that happened to land in
+    // the wrong frame.
+    //
+    // DROPPED ONLY IF THIS CARD WAS HOLDING IT, which releaseCopy decides and
+    // this line no longer has an opinion about. Dropping it unconditionally was
+    // the same statement to write and a different thing to mean: every card of
+    // every screen said it on the way out, including the ones that had never
+    // copied anything.
+    //
+    // Handed to the card built in this one's place rather than to the cards
+    // already standing. `beginCopy` runs from the completion handler as well as
+    // from the trigger above, so a delegate replacing this one picks the copy up
+    // as it is built, which is the collapse this is written for; a card already
+    // up on another screen sees nothing change and does not start a second copy,
+    // which is the half of this that used to go wrong.
+    Component.onDestruction: root.releaseCopy()
+
+    Image {
+        id: copier
+
+        // NOT BOUND. See beginCopy: the assignment is what keeps the load alive
+        // across the flag that stops the other screens' cards from repeating it.
+
+        // Invisible, and it still renders: grabToImage takes an effect reference
+        // on the item exactly the way `layer.enabled` does, which is why
+        // G2Image's own hidden Image can be fed to a MultiEffect. It draws
+        // nothing on the card and takes no room in any layout, being a child of
+        // the card's root rather than of the body.
+        visible: false
+        asynchronous: true
+        smooth: true
+        // Never cached. This image is loaded once, read once, and then wanted
+        // by nobody, and every one of them is a different url, so leaving them
+        // in Qt's pixmap cache would be holding a decoded avatar per
+        // notification for the life of the shell: the leak this whole change
+        // exists to avoid, moved from the sender's memory into ours.
+        cache: false
+
+        // FULL SIZE, decoded, then scaled down by the item. `sourceSize` is
+        // deliberately not set: it would have to be computed from the loaded
+        // size, which is the ring G2Image warns about one screenful up, and the
+        // pictures that arrive this way are avatars rather than photographs.
+        //
+        // The cap is FOUR badges, derived from the slot this will be drawn in
+        // rather than picked: the card draws a picture at two badges, so this
+        // keeps a copy with a doubling of headroom for a screen with more pixels
+        // than points, and refuses to spend disk on the rest.
+        readonly property real shrink: Math.min(1, root.copyCap / Math.max(1, implicitWidth, implicitHeight))
+
+        width: implicitWidth * shrink
+        height: implicitHeight * shrink
+
+        onStatusChanged: {
+            if (copier.status === Image.Ready)
+                root.finishCopy();
+            else if (copier.status === Image.Error)
+                root.releaseCopy();
         }
     }
 
