@@ -276,9 +276,53 @@ Item {
             readonly property string currentPath: root.entries[currentIndex] ?? ""
             readonly property string currentKind: Wallpaper.kindOf(strip.currentPath)
 
+            // How much of the running stream has already been paid out in
+            // cards, in pixels of finger travel. It is what makes the scrub
+            // below RELATIVE to wherever the strip has got to rather than
+            // absolute from the card the fingers began on, and that is not a
+            // stylistic choice: this handler is not the only thing that moves
+            // the strip while two fingers are down, since whatever the wheel
+            // handler is not given the view underneath it flicks by itself. An
+            // index computed from the fingers' total alone would then be an
+            // answer about a fraction of the journey applied to the whole of
+            // it, and would drag the carousel back to where this handler on its
+            // own thought it should be. Counted in whole pitches, the two
+            // motions ADD UP to the travel and nothing is lost to rounding.
+            property real scrubSpent: 0
+
             function positionAt(i: int): void {
                 strip.currentIndex = i;
                 strip.positionViewAtIndex(i, ListView.Center);
+            }
+
+            // Where two fingers have got to, in cards. Given the TOTAL travel
+            // of the stream, not a step, which is the shape ScrollGesture hands
+            // out; the subtraction below is what turns one back into the other.
+            function scrub(dx: real): void {
+                // One card of travel is one card of strip: the delegate plus
+                // the gap the view spaces it by, which is exactly the pitch it
+                // snaps on, so the strip moves under the fingers at the rate
+                // dragging it would (~/.claude/rules/math-over-hardcoding.md).
+                const pitch = root.cardWidth + root.cardGap;
+                // Fingers to the LEFT push the strip left, which brings the
+                // next card in from the right, so the index rises as `dx`
+                // falls. The same sentence the notch path spells as
+                // `angleDelta.x < 0`, phrased for a device that reports where
+                // the hand went rather than which way it was clicked. Rounded,
+                // so the card turns over at the halfway mark exactly as the
+                // view's own snap does.
+                const steps = Math.round((-dx - strip.scrubSpent) / pitch);
+                if (steps === 0)
+                    return;
+
+                const next = Math.max(0, Math.min(root.entries.length - 1, strip.currentIndex + steps));
+                // Only what the strip ACTUALLY moved is spent, so the ends of
+                // the folder do not bank travel: fingers that carried on
+                // pushing past the last card find it turning back the moment
+                // they reverse, instead of first having to repay the distance
+                // they spent against a card that was not there.
+                strip.scrubSpent += (next - strip.currentIndex) * pitch;
+                strip.currentIndex = next;
             }
 
             anchors.top: caption.bottom
@@ -305,12 +349,62 @@ Item {
             preferredHighlightEnd: (width + root.cardWidth) / 2
             highlightMoveDuration: Appearance.anim.normal
 
-            // Touch handles itself. This is for the mouse: a notch moves one
-            // card rather than a number of pixels, because with snapping on,
-            // pixels would be dragged back to the nearest card anyway and the
-            // wheel would feel like it was fighting the view.
+            // Touch handles itself. THE OTHER TWO DEVICES DO NOT, and they want
+            // opposite treatment, which is why one handler answers both here
+            // rather than one rule being applied to whatever arrives.
+            //
+            // A NOTCH IS A REQUEST, not a distance: it moves one card rather
+            // than a number of pixels, because with snapping on, pixels would
+            // be dragged back to the nearest card anyway and the wheel would
+            // feel like it was fighting the view.
+            //
+            // TWO FINGERS ARE A SWIPE (components/ScrollGesture.qml, and the
+            // rule the whole shell now runs on), and this carousel was the one
+            // scroll site the rule had not reached. A touchpad reports an angle
+            // alongside its pixels, so a stream fell into the notch path above
+            // and was answered as a hundred notches a second: one flick walked
+            // the entire folder past the middle, and because every card that
+            // passes goes up on the ACTUAL DESKTOP, the desktop repainted with
+            // every wallpaper you own in about a second. The one input that
+            // most wants to scrub this strip was the one it could not survive.
+            //
+            // So a stream scrubs, the way a finger dragging the strip does: how
+            // far the fingers have travelled, divided by what one card
+            // occupies. Reversible for the whole gesture, because that division
+            // is against the stream's TOTAL rather than against a count of the
+            // events it happened to arrive in, so fingers brought back bring
+            // the cards back with them.
+            //
+            // A vertical stream therefore moves nothing, which is the right
+            // answer twice over: a horizontal carousel has no second axis to
+            // spend one on, and it is what a finger dragging up the strip
+            // already gets, since the view takes that press and has nowhere to
+            // put it. A NOTCH still steps, because a wheel has one axis and
+            // "which way did you turn it" is the only question it can answer;
+            // fingers say where they went, and where they went was nowhere the
+            // strip runs.
+            //
+            // Nothing gets past the strip either way: what this takes it blocks
+            // (a handler's default), and the horizontal flicking of the view
+            // itself is underneath it for anything it does not, so no scroll
+            // made over the cards falls through to the push-back Pull behind the
+            // panel and puts the picker away from the one part of it that is a
+            // control, exactly as a finger's drag over the cards cannot.
             WheelHandler {
                 onWheel: event => {
+                    // feed() takes a touchpad and refuses a wheel, and it is
+                    // asked FIRST because a touchpad reports both deltas and
+                    // would otherwise be read as the notches it is not.
+                    if (scroll.feed(event))
+                        return;
+
+                    // A wheel, then, and feed() has already set `accepted`
+                    // false on its way out: that is its rule for handing one
+                    // back to whatever else might want it, and here the answer
+                    // below IS what wanted it, so the claim is made again
+                    // rather than left to `blocking` to imply.
+                    event.accepted = true;
+
                     if (event.angleDelta.y > 0 || event.angleDelta.x < 0)
                         strip.currentIndex = Math.max(0, strip.currentIndex - 1);
                     else
@@ -438,6 +532,24 @@ Item {
                     }
                 }
             }
+        }
+
+        // The strip's two fingers, kept OUTSIDE the strip. It has no input of
+        // its own, so where it sits changes nothing about who gets what; it
+        // sits here because a Flickable's default property posts its children
+        // into the content it scrolls, and a helper that quietly travelled
+        // sideways with the cards would be a thing to explain later for no
+        // reason at all.
+        //
+        // Three lines, the shell's adoption everywhere: a stream is a press, a
+        // total is a delta, and the lapse that ends it needs nothing done,
+        // because the strip is already resting on the card the last step named
+        // and the view's own snap holds it there.
+        ScrollGesture {
+            id: scroll
+
+            onBegan: strip.scrubSpent = 0
+            onMoved: dx => strip.scrub(dx)
         }
     }
 }
