@@ -28,11 +28,15 @@ Singleton {
 
     readonly property int count: history.length
     readonly property bool any: count > 0
-    // Through .notification: `history` holds { notification, time } wrappers, so
-    // reading .urgency off the wrapper is always undefined and the sidebar never
-    // went accent for a critical notification, which is the ONE case the design
-    // reserves colour for.
-    readonly property bool anyUrgent: history.some(e => e.notification?.urgency === NotificationUrgency.Critical)
+    // Off the ENTRY's own urgency, never through .notification. That read has
+    // been wrong twice in two different ways: first because `history` held
+    // plain { notification, time } wrappers and .urgency off the wrapper was
+    // always undefined, and then because the live object dies when the sender
+    // closes the notification, so a critical alert from a sender that hung up
+    // stopped counting as critical, which is the ONE case the design reserves
+    // colour for. The entry snapshots urgency at arrival, so this stays true
+    // for as long as the entry does.
+    readonly property bool anyUrgent: history.some(e => e.urgency === NotificationUrgency.Critical)
 
     // How long a popup lives, in ms. 0 means it stays until acted on.
     function timeoutFor(n: var): int {
@@ -110,12 +114,35 @@ Singleton {
     }
 
     function clear(): void {
-        // Copy first: this mutates the lists being walked.
-        for (const entry of root.history.slice())
-            entry.notification?.dismiss();
+        // Everything in flight, deduplicated: a popup that is also in history
+        // is one entry in two lists, and destroying it twice is a warning in
+        // the log. Transient popups and rows mid-exit are in the union too;
+        // the old loop walked only `history`, so a transient popup cleared
+        // mid-flight kept its entry (and its tracked notification) forever.
+        const all = [...new Set([...root.history, ...root.popups, ...root.leaving])];
+
+        // Lists FIRST, teardown second. `dismiss()` makes the server emit
+        // `closed` synchronously, and the entry's closed handler flips `live`,
+        // which the arrival hook below answers by expiring popups: with the
+        // lists already empty that hook finds nothing to expire and the sweep
+        // has nothing to double-handle. Dismissing first re-entered the lists
+        // this function was busy emptying.
         root.history = [];
         root.popups = [];
         root.leaving = [];
+
+        for (const entry of all) {
+            // `?.` carries the dead-sender case: a notification the sender
+            // already closed reads as null here, and there is nobody left to
+            // tell anyway.
+            entry.notification?.dismiss();
+            // Entries are created objects parented to this singleton, so
+            // dropping the last reference is not enough to free them; the old
+            // clear() leaked every entry it removed. destroy() is deferred by
+            // the engine, so the delegates torn down by the list change above
+            // never see a half-dead entry.
+            entry.destroy();
+        }
     }
 
     // On their way out, waiting on the sweep.
@@ -198,6 +225,43 @@ Singleton {
                 timeout: root.timeoutFor(notification)
             });
 
+            // THE SENDER CAN HANG UP WHILE THE POPUP IS STILL ON THE SCREEN,
+            // and this is the hook that answers it.
+            //
+            // CloseNotification, or a replace chain ending in one, closes a
+            // notification nobody has read yet. The entry hears `closed` and
+            // flips `live`, which takes the action pills off the card because
+            // there is nobody left to press them at, and until this connection
+            // existed that was the whole of the answer: the card stayed on the
+            // screen, inert, with no way to act on it. For a Critical one it
+            // stayed FOREVER, because its timeout is 0 by design (see
+            // timeoutFor), so nothing is counting and no tick will ever expire
+            // it; the only ways out were throwing it away by hand or clearing
+            // the tray. A card that cannot be acted on and will not leave is
+            // exactly what `live` was added to let this service answer, and
+            // NotifEntry has promised for as long as the flag has existed that
+            // the answer is made here.
+            //
+            // EXPIRED, not dismissed. A sender withdrawing its notification is
+            // not you reading it, so the row leaves the screen and stays in the
+            // hub with the words it arrived with, which is the same answer this
+            // service already gives a popup that merely ran out of time.
+            //
+            // Connected from HERE rather than decided inside the entry, because
+            // an entry does not know whether it is a popup, and deciding list
+            // membership from inside a list element is how re-entrancy bugs
+            // start. The membership test is the other half of that: drop() and
+            // clear() both take an entry out of the lists and THEN dismiss it,
+            // and every one of those dismissals comes straight back here as a
+            // `live` flip. Finding the entry already gone from `popups` is how
+            // this hook knows there is nothing left to take off the screen,
+            // rather than putting an entry that is being torn down back into
+            // `leaving` for the sweep to walk over.
+            entry.liveChanged.connect(() => {
+                if (!entry.live && root.popups.includes(entry))
+                    root.expire(entry);
+            });
+
             // Anything pushed off the end of the history is gone for good, so
             // it has to be destroyed rather than merely forgotten.
             const evicted = [entry, ...root.history].slice(root.maxHistory);
@@ -208,6 +272,20 @@ Singleton {
                 // holding leaves the view with a dangling row.
                 root.popups = root.popups.filter(e => e !== old);
                 root.leaving = root.leaving.filter(e => e !== old);
+                // AND THE SENDER'S OBJECT WITH IT, which is the one this branch
+                // used to forget. `tracked` above is what asks quickshell to
+                // hold the Notification past this callback, and it holds every
+                // tracked one until the notification is CLOSED: destroying our
+                // entry drops our reference and nothing else, so an evicted one
+                // stranded its Notification, and with it the decoded image the
+                // notification carries (a full-size avatar or album cover), for
+                // the life of the shell. Once `maxHistory` is reached that is
+                // one stranded object per notification arriving, which on a
+                // chatty session is all of them. drop() and clear() both do
+                // this already; eviction is the third door out of the lists and
+                // it has the same duty. `?.` because a sender that hung up long
+                // ago reads as null here and needs no telling.
+                old.notification?.dismiss();
                 old.destroy();
             }
 

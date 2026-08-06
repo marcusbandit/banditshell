@@ -35,8 +35,72 @@ Item {
 
     signal dismissed
 
+    // THE SENDER'S OBJECT, AND IT IS HERE TO BE TALKED TO, NEVER TO BE READ.
+    //
+    // Every displayed field below comes off the ENTRY's snapshot instead, and
+    // that swap is the whole of the fix for a tray full of blank plates.
+    // Quickshell destroys this object when the SENDER closes the notification,
+    // and a chatty app (Discord above all) closes and replaces its
+    // notifications constantly, so a history drawn through this reference
+    // filled up with tombstones: fifty unread and most of the cards a bell on a
+    // bare fill row with no app, no summary and no body. What a notification
+    // said is not the sender's to unsay by hanging up. See
+    // services/NotifEntry.qml, which owns the copy and the argument for it.
+    //
+    // And it does not merely go empty, it goes SILENTLY STALE, which is why
+    // every use of it below is guarded on `live` rather than on a null test.
+    //
+    // The READ is safe: destroying a QObject nulls a `var`'s referent, so the
+    // engine hands back null rather than a dangling pointer and `?.`
+    // short-circuits on it exactly as it would on anything else null. Measured
+    // rather than assumed, because the opposite was written here once and it is
+    // the kind of claim that gets correct code "hardened" by whoever reads it
+    // next: a destroyed object held in a `var` compares === null, is falsy,
+    // answers `?.` with undefined, and throws only through a bare `.`. The `?.`
+    // in Notifs' teardown paths is doing real work and needs no help.
+    //
+    // What is NOT safe is the binding. Destruction emits no change signal, so
+    // this expression is never re-evaluated and neither is anything written in
+    // terms of it: `notification !== null` would be false the moment somebody
+    // asked, and nothing asks. Every stale binding sits there answering with
+    // whatever it computed while the sender was alive. `live` is a real
+    // property with a real change signal behind it (NotifEntry flips it from
+    // `closed`, which quickshell emits before it destroys anything), so it is
+    // the only form of this question that wakes the things that depend on the
+    // answer.
     readonly property var notification: entry?.notification ?? null
-    readonly property bool urgent: !!notification && notification.urgency === NotificationUrgency.Critical
+
+    // Whether there is anybody left on the other end to invoke an action on.
+    // Nothing that DISPLAYS reads this; it gates talking back, and it gates the
+    // action pills, because a button that cannot invoke is worse than no button.
+    readonly property bool live: entry?.live ?? false
+
+    // Off the entry's snapshotted urgency, never through the object above. A
+    // critical alert from a sender that has hung up is still critical, and the
+    // spine is the one place this design spends colour on a state, so it is the
+    // one that could least afford to go quiet when the object died.
+    readonly property bool urgent: entry?.urgency === NotificationUrgency.Critical
+
+    // A CARD IS NEVER A BARE PLATE.
+    //
+    // Some senders really do post a notification with nothing in it: no app
+    // name, no summary, no body, only an icon hint or an action. While the card
+    // read through the dead-object path that shape was indistinguishable from
+    // the bug, so there was nothing to tell apart and no reason to handle it.
+    // Now that the words outlive their sender, a wordless card is a rare and
+    // HONEST thing rather than a symptom, and it still has to say something: a
+    // fill row with a bell in it and no text reads as the shell having lost the
+    // notification, which is exactly the impression this whole change exists to
+    // undo.
+    //
+    // So the shell answers in its own voice, in brackets and in the quiet
+    // colour tier, and those two things together are what say the words are
+    // OURS rather than the sender's. The rejected alternative was to invent a
+    // plausible-looking headline, the app's name promoted or a flat
+    // "Notification": that is the shell putting words in the sender's mouth,
+    // and a card that looks like it was written is worse than one that admits
+    // nothing was.
+    readonly property bool wordless: !entry?.appName && !entry?.summary && !entry?.body
 
     // Arrival: unfolds downwards out of the tray and fades up. EXPONENTIAL,
     // because another notification can land on top of it mid-flight and it has
@@ -310,11 +374,39 @@ Item {
             // sent one instead of a pixmap wore the generic bell. The theme has
             // to be asked; the nullable form returns "" rather than a
             // placeholder, which is what lets the glyph take over.
-            readonly property string picture: root.notification?.image ?? ""
-            readonly property string mark: root.notification?.appIcon ? Quickshell.iconPath(root.notification.appIcon, true) : ""
+            //
+            // Both off the snapshot, like everything else the card draws. The
+            // mark is the field that made the failure LOOK like a design
+            // choice rather than a bug: a dead sender's `appIcon` reads as
+            // nothing, nothing is not an icon name, and the plate fell back to
+            // the generic bell, so a tray of tombstones came out as a tidy
+            // column of identical bells instead of as something obviously
+            // broken.
+            readonly property string picture: root.entry?.image ?? ""
+            readonly property string mark: root.entry?.appIcon ? Quickshell.iconPath(root.entry.appIcon, true) : ""
 
             readonly property string source: badge.picture || badge.mark
+
             readonly property bool hasImage: source !== "" && art.ready
+
+            // THE PICTURE IS THE ONE SNAPSHOT FIELD THAT DOES NOT SURVIVE ITS
+            // SENDER, because it is not data. For an image-data hint quickshell
+            // hands out an `image://qsimage/<id>` URL, and the registration
+            // behind that id belongs to the Notification object: the entry
+            // copies the string at arrival, and the string outlives the pixels
+            // by however long Qt's pixmap cache happens to hold the texture.
+            // Everything else the card draws is a copy of what the sender said;
+            // this one is only a copy of where the sender kept it.
+            //
+            // So the ROOM for a picture is taken on the LOAD, never on the
+            // string. It used to be taken on the string, and a card whose sender
+            // had gone came out twice as wide holding nothing: the load failed,
+            // the plate and the bell came back, and they came back at double
+            // size with a half-size glyph rattling around in them, which is a
+            // worse card than the plain one it would have drawn had the picture
+            // never been claimed. Depending on the cache made it intermittent
+            // too, which is the hardest kind of wrong to be told about.
+            readonly property bool pictured: picture !== "" && art.ready
 
             // Square either way, so the text column starts in the same place on
             // every card and a list of them reads as a column rather than as a
@@ -325,7 +417,7 @@ Item {
             // slot doing a second job, so it has no business being a number
             // anyone can move independently: the day the badge changed, a
             // separate setting would quietly stop being twice it.
-            width: Appearance.sizes.notificationBadge * (badge.picture ? 2 : 1)
+            width: Appearance.sizes.notificationBadge * (badge.pictured ? 2 : 1)
             height: width
 
             // The plate is only there to hold the glyph. Under an image it would
@@ -361,10 +453,31 @@ Item {
             // the one shape that cannot go through G2Rect: it is a texture, not
             // a path, so it would keep its own square corners over the plate's.
             // See G2Image.
+            //
+            // SIZED OFF THE STRING WHERE THE BADGE IS SIZED OFF THE LOAD, which
+            // is the one place those two questions have to be told apart. It
+            // cannot simply fill the badge: `sourceSize` inside G2Image is
+            // driven by this item's own size, so a picture whose box grew when
+            // it loaded would be changing the decode that decides the box. That
+            // is not a theoretical objection. Measured, Qt sees the ring, and
+            // after the first replace it BREAKS the badge's width binding
+            // outright: the badge stayed at a single square forever with a
+            // fitted picture rattling around in it, and no warning anyone can
+            // see at runtime.
+            //
+            // So the room a picture MIGHT need is claimed off the string, which
+            // no load can move, and the decode happens once at the size it will
+            // finally be drawn at. When there is no picture, or the picture is
+            // dead, this box is bigger than the badge and draws nothing at all,
+            // which costs a few pixels of empty item and is invisible.
             G2Image {
                 id: art
 
-                anchors.fill: parent
+                anchors.left: parent.left
+                anchors.top: parent.top
+                width: Appearance.sizes.notificationBadge * (badge.picture ? 2 : 1)
+                height: width
+
                 source: badge.source
                 fillMode: badge.picture ? Image.PreserveAspectFit : Image.PreserveAspectCrop
                 radius: Appearance.rounding.small
@@ -382,8 +495,8 @@ Item {
 
             StyledText {
                 width: parent.width
-                visible: !!root.notification?.appName
-                text: root.notification?.appName ?? ""
+                visible: !!root.entry?.appName
+                text: root.entry?.appName ?? ""
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
                 elide: Text.ElideRight
@@ -401,9 +514,27 @@ Item {
             // often enough ("Connection Established") that a one-line cap turned
             // most notifications into an ellipsis, and a truncated headline reads
             // as broken where a wrapped one reads as written.
+            //
+            // It is also the slot that ANSWERS FOR THE CARD when there is
+            // nothing at all to say. See `wordless`: the placeholder goes here
+            // rather than in a row of its own, because a card with no words
+            // still has the same shape as one with words, and adding a special
+            // element for the empty case would be a second layout to keep in
+            // step with the first. The quiet colour is what marks it as the
+            // shell talking; the bright tier is reserved for what the sender
+            // actually wrote.
             StyledText {
                 width: parent.width
-                text: root.notification?.summary ?? ""
+                // Hidden when it is genuinely empty, which is a card that has
+                // an app name or a body but no summary. An empty Text is not a
+                // zero-height Text: it still reserves its whole line box, so
+                // without this the column carried a blank line where the
+                // headline would have been and the card read as having lost
+                // something. It can never hide the wordless case away, because
+                // that case is exactly when `text` is the placeholder.
+                visible: !!text
+                text: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
+                color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
                 wrapMode: Text.Wrap
                 maximumLineCount: root.roomy ? 4 : 2
                 elide: Text.ElideRight
@@ -411,8 +542,8 @@ Item {
 
             StyledText {
                 width: parent.width
-                visible: !!root.notification?.body
-                text: root.notification?.body ?? ""
+                visible: !!root.entry?.body
+                text: root.entry?.body ?? ""
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textDim
                 wrapMode: Text.Wrap
@@ -444,12 +575,47 @@ Item {
                 id: actions
 
                 width: parent.width
-                visible: (root.notification?.actions?.length ?? 0) > 0
+
+                // THE ONE PART OF THE CARD THAT DIES WITH THE SENDER, and it
+                // has to, because an action is not information, it is a call
+                // back to a process that is no longer listening. So this is the
+                // one place `live` is allowed to change what is on screen: the
+                // words stay forever and the buttons go when there is nobody to
+                // press them at.
+                //
+                // The count comes off the snapshot and the liveness off the
+                // flag, which is a pair rather than one test on purpose: the
+                // snapshot remembers that there WERE actions (it is never
+                // re-taken after the object dies), and `live` is the only thing
+                // that can still tell you whether they mean anything.
+                //
+                // Invisible rather than emptied, so the row COLLAPSES: a Column
+                // skips an invisible child entirely, where a visible Flow with
+                // no pills in it would still spend its topPadding and leave the
+                // card with a band of dead air under the body.
+                visible: root.live && (root.entry?.hasActions ?? false)
                 topPadding: Appearance.padding.normal
                 spacing: Appearance.padding.small
 
                 Repeater {
-                    model: root.notification?.actions ?? []
+                    // The one read of `actions` there is, and the `live` test
+                    // carries it for a reason that is NOT the optional chain
+                    // beside it. `?.` would keep this expression from throwing
+                    // on its own: the dead reference reads as null (see the
+                    // property, where that is measured rather than assumed), so
+                    // the chain would fall through to []. If that were the whole
+                    // problem the chain alone would be enough.
+                    //
+                    // It is not. Nothing signals the death, so this binding is
+                    // never re-evaluated and the Repeater keeps the array it
+                    // built while the sender was alive: a list of Action objects
+                    // that were destroyed along with the notification they
+                    // belong to. Every delegate then reads `modelData.text` off
+                    // one of them, and that bare `.` is the read that really
+                    // does throw, once per pill, every time the row is rebuilt.
+                    // `live` changes when the object dies and takes the model to
+                    // [] with it, which is the only thing here that can.
+                    model: root.live ? (root.notification?.actions ?? []) : []
 
                     delegate: Pill {
                         required property var modelData
@@ -458,7 +624,24 @@ Item {
                         width: Math.min(implicitWidth, actions.width)
 
                         onClicked: {
-                            modelData.invoke();
+                            // Guarded even though the pills are already hidden
+                            // when the sender is gone, because the two are not
+                            // simultaneous: the press lands, the sender closes
+                            // the notification in the same frame, and the
+                            // release arrives here after the bindings above
+                            // have taken the row away. That is a rare race and
+                            // an unguarded invoke through a destroyed object is
+                            // a TypeError in the log, which is a poor trade for
+                            // one clause.
+                            //
+                            // The dismissal happens either way. Pressing a
+                            // notification's button is a decision ABOUT the
+                            // notification, and it stays made whether or not
+                            // anybody was there to hear it; leaving the card
+                            // sitting in the tray because the invoke missed
+                            // would answer a deliberate act with nothing.
+                            if (root.live)
+                                modelData.invoke();
                             root.dismissed();
                         }
                     }

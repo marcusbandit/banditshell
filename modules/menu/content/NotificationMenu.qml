@@ -60,17 +60,40 @@ Column {
         delegate: MenuRow {
             id: row
 
+            // THE ENTRY ITSELF, NEVER ITS `notification`.
+            //
+            // Every field below is the entry's own snapshot, because the
+            // sender's live object is Quickshell's and it dies when the SENDER
+            // says so: a close, or a replace chain ending in one, destroys it
+            // and every read through the reference yields nothing afterwards.
+            // Chatty apps (Discord above all, `notify-send -r`, progress
+            // updates) close and replace constantly, so a list drawn through
+            // that reference fills up with tombstones: a bare bell, no app, no
+            // summary, no body, and a critical alert from a hung-up sender
+            // stops colouring itself because its urgency went with the object.
+            //
+            // This is the row the popup card already learned: it was fixed
+            // there and left standing here, so the SAME notification read
+            // correctly as a popup and blank in the hub you go to precisely
+            // because you missed the popup. See services/NotifEntry.qml, which
+            // owns the copy and the argument for it, and Notifs.anyUrgent,
+            // which is this read made twice wrong and now goes off the entry.
+            //
+            // Guarded with `?.` for the ordinary null case only, exactly as the
+            // card guards `entry`: an entry is destroyed by Notifs when the
+            // list drops it, and the list change tears this delegate down with
+            // it, so there is no dangling-reference case here of the kind the
+            // sender's object has.
             required property var modelData
 
-            readonly property var n: modelData.notification
-            readonly property bool urgent: n?.urgency === NotificationUrgency.Critical
+            readonly property bool urgent: modelData?.urgency === NotificationUrgency.Critical
 
             width: root.width
-            icon: Notifs.icon(n)
-            label: n?.summary ?? ""
+            icon: Notifs.icon(modelData)
+            label: modelData?.summary ?? ""
             // App and body on one line: the hub is a list, and a list whose rows
             // are three lines tall stops being scannable at about four entries.
-            detail: [n?.appName, n?.body].filter(s => s).join(" - ")
+            detail: [modelData?.appName, modelData?.body].filter(s => s).join(" - ")
             selected: row.urgent
 
             onActivated: Notifs.dismiss(modelData)
