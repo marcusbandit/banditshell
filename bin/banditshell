@@ -14,6 +14,8 @@
 #                                pull = shell -> window, put = window -> shell
 #   banditshell notifications toggle|open|close|clear|status
 #   banditshell notch toggle|open|close|status
+#   banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]
+#                                every bind the compositor knows, read live
 #   banditshell calendar         toggle the calendar menu (menu toggle calendar)
 #   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
@@ -139,6 +141,29 @@ notifications)
 
 notch)
     ipc notch "${1:-toggle}"
+    ;;
+
+# The hotkey sheet. Bare, it toggles, like every other panel here: this is the
+# verb a key is bound to, and the key that put the sheet up is the key that
+# should take it down. `status` prints what the sheet actually read, which is
+# the question worth asking from a terminal, because a sheet full of chords with
+# nothing beside them is the compositor declining to say rather than this shell
+# failing to parse.
+#
+# The screen is sent on every verb that has one, empty when none was named,
+# because the IPC function DECLARES the parameter and an omitted argument is not
+# an empty one on the other side: it is a "too few arguments" error and nothing
+# happens at all. `settings open` says the same thing above; this is the same
+# trap one target along. `close` takes none, because putting the sheet away
+# reaches every screen on purpose.
+hotkeys)
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    close) ipc hotkeys close ;;
+    toggle | open | status) ipc hotkeys "$sub" "${1:-}" ;;
+    *) echo "usage: banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]" >&2; exit 2 ;;
+    esac
     ;;
 
 # Sugar. The calendar is an ordinary menu with the key "calendar", registered

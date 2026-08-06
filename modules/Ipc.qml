@@ -168,6 +168,81 @@ Scope {
         }
     }
 
+    // The hotkey sheet: every bind the compositor knows about, read off it
+    // rather than out of a list in this repo. Driven exactly like the power
+    // panel above, and for the same reason: it is summoned by name from
+    // wherever you were, so it belongs on ONE known screen rather than on
+    // whichever one happens to hold the focused window, and `close` reaches
+    // every screen because "put it away" is not a question about a monitor.
+    //
+    // This is also the target that the keybind actually goes through. The sheet
+    // is the one panel here whose whole content is the user's own config, so it
+    // has to be openable the moment that config changes, without the shell
+    // being restarted or knowing anything about which key was pressed.
+    //
+    // AN OPTIONAL SCREEN, exactly as `menu open` takes one, and the empty string
+    // still means the first window, so every keybind and every line of
+    // docs/hyprland-binds.example.conf goes on meaning what it meant. The
+    // paragraph above is about the DEFAULT and it stands: a sheet you summoned by
+    // name belongs in one known place rather than under whichever window has the
+    // focus. What it was never an argument for is the sheet being the one panel
+    // in this file that CANNOT be named a screen, which is what it had become:
+    // `menu` and `settings` both take one, so a sweep can put them on a headless
+    // output and photograph them there, and this panel alone had to be opened on
+    // the user's own display, over the user's own work, to be looked at at all.
+    // A default is not the same thing as a restriction.
+    IpcHandler {
+        target: "hotkeys"
+
+        function toggle(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+            win.hotkeys.toggle();
+            return win.hotkeys.open ? "open" : "closed";
+        }
+
+        // GUARDED, unlike the power panel's `open` just above, which answers
+        // "open" whether or not there was a window to open anything on. Both
+        // shapes are in this file and this is the better one: the header's rule
+        // is that a CLI printing nothing on success cannot be told from one that
+        // did nothing, and a CLI printing "open" over an empty screen is worse
+        // than either.
+        function open(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+            win.hotkeys.show();
+            return "open";
+        }
+
+        // No screen here, deliberately, and `menu close` is written the same way:
+        // "put it away" is not a question about a monitor, and a close that
+        // needed to be told which screen would leave a sheet up on the one you
+        // forgot to name.
+        function close(): string {
+            for (const win of Shell.windows)
+                win.hotkeys.hide();
+            return "closed";
+        }
+
+        // WHAT IT READ, not just whether it is up, because the failure this
+        // panel actually has is a sheet full of chords with nothing beside them,
+        // and from a screenshot that looks the same whatever caused it. `binds`
+        // separates "hyprctl said nothing" from "hyprctl said plenty";
+        // `described` separates a config full of `bindd` from one whose binds
+        // are registered from Lua or a plugin, which Hyprland reports with no
+        // dispatcher this side can read. On this machine that second number is
+        // 1 out of 82, and knowing it is the compositor's answer rather than the
+        // sheet's parsing is the whole point of printing it.
+        function status(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+            return `open=${win.hotkeys.open} binds=${win.hotkeys.rows.length} described=${win.hotkeys.rows.length - win.hotkeys.unnamed} groups=${win.hotkeys.sections.length}`;
+        }
+    }
+
     // The notification tray. The CLI takes the pull gesture's seat, not
     // hover's: it writes the PIN, the one input in the tray's presence union
     // that means "deliberately held out" (see NotificationTray.expanded). A
