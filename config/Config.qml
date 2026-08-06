@@ -23,6 +23,21 @@ Singleton {
             // Name from Themes.qml. Try "slate".
             theme: "greensteel",
 
+            // DRESS THE SHELL IN THE WALLPAPER'S OWN COLOURS instead of the
+            // named palette above.
+            //
+            // THIS SWITCH DOES NOTHING YET, and it is here anyway rather than
+            // being added on the day it works, because the half of it that IS
+            // done is the half worth being able to look at: the wallpaper's
+            // dominant colours are measured on every change and published on
+            // the Wallpaper service (`banditshell wallpaper palette`, and the
+            // swatches on the appearance page). What is missing is the whole
+            // design question after the measurement, which is which of six
+            // colours is a surface, which is an accent, and what happens when a
+            // photograph offers nothing that clears 4.5:1 against anything else
+            // in it. Turning this on today changes the value and not the shell.
+            themeFromWallpaper: false,
+
             // Every scale is a BASE and a list of multipliers. The list length is
             // the number of tiers, so the shell never hardcodes a size: it asks
             // for tier 0/1/2 and the maths does the rest.

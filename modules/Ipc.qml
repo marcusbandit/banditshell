@@ -588,6 +588,17 @@ Scope {
             return Wallpaper.name || "nothing to step to";
         }
 
+        // WHAT THE WALLPAPER IS MADE OF, one colour per line with the fraction
+        // of the picture it stands for. Measured on every change and published
+        // whether or not anything wears it; `themeFromWallpaper` is the switch
+        // that would, and it is not wired to anything yet on purpose. See
+        // scripts/palette.py and config/Config.qml.
+        function palette(): string {
+            if (!Wallpaper.palette.length)
+                return "no palette (nothing measured yet, or the file could not be read)";
+            return Wallpaper.palette.map(c => `${c.colour} ${Math.round(c.share * 100)}%`).join("\n");
+        }
+
         // Which one, whether it is showing, and how many there were to choose
         // from: the third is what tells a wrong `dir` from an empty one.
         function status(): string {

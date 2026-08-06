@@ -90,6 +90,68 @@ Item {
             }
         }
 
+        // THE SWITCH THAT DOES NOT WORK YET, and the thing that makes it worth
+        // having on the page anyway.
+        //
+        // The measurement is real: the wallpaper's dominant colours are pulled
+        // out of it on every change (scripts/palette.py) and drawn in this row
+        // as the swatches it WOULD wear. What is not built is everything after
+        // that, which is which of six colours is a surface and which is an
+        // accent, and what a shell does when a photograph offers no pair that
+        // clears the contrast this one holds itself to. See config/Config.qml.
+        //
+        // So the row says so. A setting that lies about being wired up is worse
+        // than one that is missing, and a row that shows you the answer it has
+        // and admits it cannot use it yet is neither.
+        MenuRow {
+            width: list.width
+            visible: Wallpaper.palette.length > 0
+            icon: "colorize"
+            label: "Theme from wallpaper"
+            detail: "not worn yet"
+            tip: "the colours it would use are on the right"
+            onActivated: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
+
+            Row {
+                spacing: Appearance.padding.normal
+
+                // WHAT IT FOUND, in the order it found it, biggest share first.
+                //
+                // Sized by SHARE rather than all alike, because that is the one
+                // fact a row of equal chips throws away: these are not six
+                // colours the wallpaper contains, they are six colours it is
+                // made of in wildly different amounts, and a picture that is
+                // four fifths one blue should say so. The width runs between a
+                // stem and a full swatch, so even the smallest is still a
+                // colour rather than a line.
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Appearance.font.stem
+
+                    Repeater {
+                        model: Wallpaper.palette
+
+                        delegate: G2Rect {
+                            required property var modelData
+
+                            readonly property real swatch: Appearance.font.size.normal
+
+                            width: Math.max(Appearance.font.stem * 2, Math.round(swatch * Math.min(1, modelData.share * 2.5)))
+                            height: swatch
+                            radius: Appearance.rounding.small
+                            color: modelData.colour
+                        }
+                    }
+                }
+
+                Toggle {
+                    anchors.verticalCenter: parent.verticalCenter
+                    checked: Config.values.themeFromWallpaper
+                    onToggled: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
+                }
+            }
+        }
+
         // -------------------------------------------------------- palettes
 
         // The one boundary space alone would not carry: a switch and a list of

@@ -242,6 +242,71 @@ done`, root.posterDir, ...videos];
     //
     // Assigned at the moment the listing starts, which is the only moment the
     // question "which folder" has one answer.
+    // WHAT COLOURS THE WALLPAPER IS MOSTLY MADE OF.
+    //
+    // [{ colour: "#1b3a34", share: 0.41 }, ...], most of the picture first, and
+    // the shares sum to one. Gathered and published and NOTHING ELSE: nothing
+    // in the shell wears these yet. `theme.fromWallpaper` is the switch that
+    // would, and it is deliberately a switch with no wiring behind it, because
+    // deciding which of six colours is a surface and which is an accent is a
+    // whole design question and this is only the measurement it would need.
+    //
+    // OFF THE COMMITTED WALLPAPER, not the previewed one. Scrubbing a picker
+    // puts a dozen wallpapers on the desktop in a second and none of them is a
+    // decision; a palette that chased that would spawn a dozen processes to
+    // answer a question nobody asked.
+    property var palette: []
+
+    readonly property color dominant: root.palette.length ? root.palette[0].colour : "transparent"
+
+    function measure(): void {
+        const face = root.faceOf(root.current);
+        if (!face) {
+            root.palette = [];
+            return;
+        }
+        // Both arguments assigned here rather than bound, for the reason
+        // refresh() spells out below: a handler and a binding are two
+        // consequences of one notify and QML does not promise the order, so a
+        // bound command can start on the previous path.
+        paletter.command = ["python3", Quickshell.shellPath("scripts/palette.py"), face];
+        paletter.running = true;
+    }
+
+    // A WALLPAPER CAN CHANGE FASTER THAN IT CAN BE MEASURED. `wallpaper next`
+    // held down walks the folder at the speed of the key repeat, and each step
+    // would otherwise start a python and an ffmpeg for a wallpaper that is
+    // already not the current one by the time they finish. The last one to
+    // stand still for a moment is the only one worth asking about.
+    onCurrentChanged: settle.restart()
+    onPostersChanged: settle.restart()
+
+    Timer {
+        id: settle
+
+        interval: 250
+        onTriggered: root.measure()
+    }
+
+    Process {
+        id: paletter
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = [];
+                for (const line of text.trim().split("\n")) {
+                    const bits = line.trim().split(/\s+/);
+                    if (bits.length === 2 && bits[0].startsWith("#"))
+                        out.push({
+                            colour: bits[0],
+                            share: parseFloat(bits[1])
+                        });
+                }
+                root.palette = out;
+            }
+        }
+    }
+
     function refresh(): void {
         // The pattern is BUILT from `formats` rather than written out, so a
         // format added up there is offered down here without this line being

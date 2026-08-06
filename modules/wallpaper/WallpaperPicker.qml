@@ -39,6 +39,20 @@ Item {
     required property real originX
     required property real inset
 
+    // HOW WIDE THE LAUNCHER IS, and therefore how wide this is.
+    //
+    // The two panels come out of the same edge by the same gesture and one
+    // replaces the other, so they are the same object as far as the hand is
+    // concerned, and an object does not change size when you look at it twice.
+    // A little wider rather than the same, because a strip of pictures needs
+    // more room than a column of rows and because the difference says which of
+    // the two you are looking at before you have read anything.
+    //
+    // Taken from the LIVE launcher rather than from the config, so it tracks
+    // whichever concept is running: the list one and the niagara one are
+    // different widths and both are correct.
+    required property real launcherSpan
+
     readonly property bool open: shown
     property bool shown: false
 
@@ -85,10 +99,20 @@ Item {
     readonly property real nearScale: 0.82
     readonly property real farScale: 0.72
 
-    // The panel is as wide as the screen it is on, less the bar and the frame.
-    // A carousel that is narrower than the room it has sits in two dead strips
-    // that look like they should scroll and do not.
-    readonly property real panelWidth: Math.max(root.cardWidth, root.width - root.originX - root.inset)
+    // A PANEL, NOT A BAR ACROSS THE SCREEN.
+    //
+    // It used to be everything left of the frame once the sidebar had taken its
+    // share, on the argument that a carousel narrower than its room has two
+    // dead strips beside it. That argument was about the carousel and forgot
+    // what the panel is FOR: you are looking at a wallpaper, on the desktop,
+    // behind it, and a control that takes the full width of the screen to help
+    // you look at the screen is in its own way.
+    //
+    // A quarter wider than the launcher. Floored at two and a half cards,
+    // because the centre one has to sit BETWEEN its neighbours or there is no
+    // strip to read, only a picture with edges; and capped at the room there
+    // actually is, for a small screen where those two disagree.
+    readonly property real panelWidth: Math.min(root.width - root.originX - root.inset, Math.max(root.launcherSpan * 1.25, root.pitch * 2.5))
 
     // The strip's own height rather than a card's, because the centre card is
     // lifted past one and the panel clips: measured from the card, the biggest
@@ -258,10 +282,12 @@ Item {
         readonly property real bandY: root.height - root.inset
         readonly property real restY: bandY - root.panelHeight
 
-        // Against the bar rather than centred in the screen: the panel is what
-        // is left of the width once the shell's own body has taken its share,
-        // so its left edge is where that body ends.
-        x: root.originX
+        // CENTRED, the way the launcher it replaces is centred, and clamped off
+        // the bar for the case where the two cannot both be had. It used to be
+        // pinned against the bar, which was right while it was as wide as the
+        // room and is wrong now that it is a panel: two panels that swap places
+        // under one gesture have to arrive in the same place.
+        x: Math.max(root.originX, (root.width - width) / 2)
         y: panel.bandY + (panel.restY - panel.bandY) * root.revealed
 
         width: root.panelWidth

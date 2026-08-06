@@ -706,6 +706,11 @@ PanelWindow {
             anchors.fill: parent
             originX: chassis.barWidth
             inset: win.border
+            // Whatever the live launcher concept is actually as wide as, with a
+            // floor for the moment before its loader has built one: a zero
+            // would size the picker off its own minimum for one frame and it
+            // would visibly settle.
+            launcherSpan: Math.max(launcherLayer.panelWidth, Appearance.sizes.launcherWidth)
 
             onOpenChanged: if (open)
                 launcherLayer.hide()
