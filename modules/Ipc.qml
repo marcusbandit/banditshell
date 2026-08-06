@@ -251,13 +251,34 @@ Scope {
     // fight the gesture, and a tray opened by hotkey would stop answering the
     // pull that is supposed to put it away. Through the pin, a hotkey and a
     // pull land in the same state and leave by the same doors.
+    //
+    // AN OPTIONAL SCREEN on every verb that pins one, exactly as `hotkeys` and
+    // `menu` take one, with the empty string still meaning the first window so
+    // every existing keybind goes on meaning what it meant. The paragraph above
+    // is about WHICH INPUT the CLI stands in for and it is untouched; what the
+    // tray had additionally become was the panel that could only be pinned on
+    // Shell.windows[0], and that is a restriction nobody argued for.
+    //
+    // It was found by a sweep that could not photograph the expanded tray at
+    // all. A screenshot goes to a throwaway headless output and never to the
+    // user's own screen, so a panel that can only be pinned on window zero is a
+    // panel that can only be looked at over the user's work: the pin landed on
+    // eDP-1 while the camera was pointed at a headless output, and the shot came
+    // back correctly showing an empty corner. The tray's own popup path put a
+    // card on every screen and covered the card, but the PINNED, expanded tray,
+    // which is the whole of what this verb exists to produce, had no way to be
+    // seen. A default is not the same thing as a restriction, which is the
+    // sentence `hotkeys` above already had to be taught.
+    //
+    // `close` and `clear` stay screenless for their own reasons, written at
+    // each.
     IpcHandler {
         target: "notifications"
 
-        function open(): string {
-            const win = Shell.forScreen("");
+        function open(screen: string): string {
+            const win = Shell.forScreen(screen);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             win.notifications.pinned = true;
             return "open";
         }
@@ -272,10 +293,10 @@ Scope {
             return "closed";
         }
 
-        function toggle(): string {
-            const win = Shell.forScreen("");
+        function toggle(screen: string): string {
+            const win = Shell.forScreen(screen);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             win.notifications.pinned = !win.notifications.pinned;
             return win.notifications.pinned ? "open" : "closed";
         }
@@ -291,10 +312,16 @@ Scope {
         // this line exists to catch: expanded without the pin is hover holding
         // the tray, which is fine, and pinned without expanded is the derived
         // union dropping a term, which is a bug you could otherwise only infer.
-        function status(): string {
-            const win = Shell.forScreen("");
+        //
+        // NAMEABLE, because that failure is a per-window one: `pinned` and
+        // `expanded` are read off a particular tray, so a status that could only
+        // ever read window zero's could not tell you whether the tray you just
+        // pinned somewhere else had actually come out. `count` is the service's
+        // and is the same number whichever window answers.
+        function status(screen: string): string {
+            const win = Shell.forScreen(screen);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             return `count=${Notifs.count} pinned=${win.notifications.pinned} expanded=${win.notifications.expanded}`;
         }
     }
@@ -304,13 +331,20 @@ Scope {
     // union (hover, pull, pin), so `open` holds the notch out the way a pull
     // does, and a cursor already resting on it keeps its own say when the pin
     // is taken back.
+    //
+    // THE SAME SHAPE INCLUDES THE SCREEN, which is the whole reason to say
+    // "the same shape" rather than to write the four functions out twice. The
+    // notch is pinned per window exactly as the tray is, it is photographed the
+    // same way and therefore cannot be photographed for the same reason, and a
+    // handler that read window zero alone while the one above it took a name
+    // would leave that sentence false the day someone relied on it.
     IpcHandler {
         target: "notch"
 
-        function open(): string {
-            const win = Shell.forScreen("");
+        function open(screen: string): string {
+            const win = Shell.forScreen(screen);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             win.notch.pinned = true;
             return "open";
         }
@@ -321,18 +355,18 @@ Scope {
             return "closed";
         }
 
-        function toggle(): string {
-            const win = Shell.forScreen("");
+        function toggle(screen: string): string {
+            const win = Shell.forScreen(screen);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             win.notch.pinned = !win.notch.pinned;
             return win.notch.pinned ? "open" : "closed";
         }
 
-        function status(): string {
-            const win = Shell.forScreen("");
+        function status(screen: string): string {
+            const win = Shell.forScreen(screen);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             return `pinned=${win.notch.pinned} active=${win.notch.active}`;
         }
     }

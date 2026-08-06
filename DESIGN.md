@@ -347,6 +347,8 @@ banditshell/
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
+│   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
+│   ├── GlideList.qml            a list that scrolls by pixels and coasts when let go
 │   ├── Separator.qml            a hairline divider
 │   ├── StyledText.qml           the ONE text element
 │   ├── Icon.qml                 the ONE icon glyph; verifies the name exists
@@ -1073,6 +1075,255 @@ The touch-friendliness that follows is mostly free, and the rest is arithmetic:
 targets meet WCAG 2.2 SC 2.5.8's 24px floor, and the drag threshold is 6px rather
 than Qt's mouse-tuned 10, because a touchpad flick covers less distance than a
 finger and should still commit.
+
+**A two-finger scroll on a touchpad IS a swipe.** Anywhere this shell answers a
+drag it answers the same motion made with two fingers, in the same direction,
+with the same recognition, the same tracking the whole way through, the same
+right to change your mind halfway, and the same commit at the end. Put the
+pointer over the calendar, move two fingers sideways, and the month pages. Put it
+in the strip along the bottom of the screen, push two fingers up, and the
+launcher rises with them exactly as far as they went and comes back down if they
+do. A laptop has no touchscreen edge to push and no third hand free to hold a
+button while it swipes, so a gesture that exists only for a press is a gesture
+that does not exist on the machine this shell is used on most.
+
+**It lives in ONE component, and that is the whole of the decision.**
+`components/ScrollGesture.qml` is a non-visual item you feed wheel events to, and
+what it reports back is a gesture: `began` is the press, `moved(dx, dy)` is the
+delta, `ended` is the release. `Pull` adopts it once, so the settings corner, the
+notch and its push-back, the notification tray both ways, both launcher panels,
+the wallpaper picker, the cheatsheet, the menus and the clock's summon all answer
+two fingers without a line changing at any of those call sites. That is exactly
+why it is a component and not a paragraph in this document: the rule is about
+everything added LATER as much as about what is here now, and the next thing
+built on a pull inherits it before anyone has thought about touchpads at all. A
+site with its own hand-rolled drag adopts it in four lines and gets the same
+feel, rather than a second opinion about what a swipe is. Written out per site it
+would be nine slightly different opinions, and the tenth would forget.
+
+What it hands out is the TOTAL travel since the gesture began, never the
+individual steps, because the total is the shape a drag already hands out: every
+consumer here computes "where the pointer is now, less where it started" and runs
+its slack test, its angle test and its progress against that one number.
+Reporting steps would be the same running sum written once per site and rounded
+slightly differently at each.
+
+It hands out one thing a drag does not, and only because a stream is the one
+place it cannot be recovered afterwards: a SPEED, in pixels per millisecond. A
+site that differences the totals it is given gets pixels per event, which is
+pixels times whatever rate the device happened to send at, and the sending rate
+is the single thing that provably differs between a compressed stream of pointer
+moves and a touchpad's own stream. Position is the same question on both inputs;
+speed is not, so the primitive answers it once, on the clock, and every consumer
+that wants a flick threshold can ask a number that means the same thing from both
+hands. The honest state of that today is that the existing sites do NOT agree
+with each other and did not before any of this: `flickVelocity` is documented in
+pixels per event and read at face value by the calendar and the settings pager,
+while the notification card and `pullReversal` are already per millisecond.
+Nothing converts silently between them, and the primitive's own field is the one
+place a new site can start out right.
+
+**Three facts make it work, and every one of them is easy to get wrong twice.**
+
+*Pixels tell a touchpad from a wheel.* A mouse wheel reports an angle and no
+pixels; a touchpad reports both. `pixelDelta.x !== 0 || pixelDelta.y !== 0` is the
+entire test, and `VolumeRail` had already written it before the primitive existed.
+
+*Natural scrolling has to be asked two ways.* Qt sets `inverted` when the input
+stack has already flipped the axis, which is the direct answer where it is
+present and is simply absent on some setups, so the compositor is asked what a
+touchpad is set to as well (`Compositor.naturalScrollTouchpad`) and either one
+saying yes is enough. After that a single line covers both axes, because natural
+scrolling is precisely the statement that the content follows the fingers:
+`finger = pixelDelta * (natural ? 1 : -1)`. Get that sign backwards and every
+gesture in the shell runs the wrong way round, which is why it was read off
+libinput's own header, off Qt's installed Plasma slider for the x axis, and off
+this shell's two already-shipped scroll consumers, rather than recalled.
+
+*A scroll stream has no release, so its end has to be inferred.* Fingers that
+lift send no farewell, and fingers that merely stop moving send nothing either,
+so the only evidence in both cases is silence. The end is therefore a timer
+restarted by every event and lapsing at `anim.fast`, which is precisely what
+`GlideList`'s coast already does for the identical question, under a floor of
+fifty milliseconds that no setting can get below: every duration in this shell is
+a tier off `anim.base`, `banditshell set anim.base 0` is accepted as written, and
+a lapse of zero would make every single event its own complete gesture and stop
+every touchpad gesture in the shell working with nothing in the logs. A feel
+token is allowed to be zero; a gesture timer is not. It also tells the
+two silences apart by itself, without asking: fingers that slowed to a stop
+before they left have spent their velocity and end a slow gesture, and fingers
+that lifted mid-motion leave behind the speed they were making, which is what a
+throw is.
+
+The honest cost of that timer is that a scroll-pull cannot be HELD. A finger can
+sit at forty percent indefinitely and change its mind a second later; a stream
+that goes quiet for `anim.fast`, 150ms at the default scale, is declared over and
+committed. The outcome still matches the drag, because a drag released while
+stationary has no backward velocity and commits too, but the timing does not. Qt
+does deliver a scroll PHASE, and `ScrollEnd` would land the commit at the lift
+itself instead of a beat after it; it is deliberately unused, because a stack
+that brackets every frame rather than every gesture would fragment a swipe into
+one-event gestures too short to be recognised at all, and that is the feature
+silently not working rather than working differently. A timeout can only ever
+feel slightly late. It is the first thing to revisit when someone can watch real
+phases on real hardware.
+
+**And the one thing this must never do is take the mouse wheel.** A notch already
+means something nearly everywhere a gesture lives: the right edge is volume, a
+`GlideList` scrolls, the settings pager scrolls the page it is over, a slider
+steps, a tray icon hands the notch to the application that owns it. Redefining
+the wheel as "swipe" would break all of that at once and buy nothing, because a
+wheel has one axis and no motion in it to track. So an event carrying no
+`pixelDelta` is handed straight back with `accepted` false and falls through to
+whoever wanted it, and every site that had a wheel meaning keeps it unchanged:
+the touchpad branch is tried first, and a wheel simply arrives where it always
+did.
+
+**Priority is stated, not stacked.** The primitive takes its events from a
+function the consumer calls, never from a handler of its own, because a handler
+would insert itself into the delivery order by GEOMETRY: wheel events go to the
+topmost item under the pointer and stop at the first thing that accepts, so an
+instance parked beside a list, inside the settings pager or over the volume rail
+would win or lose the event depending on where it happened to sit in the tree.
+Those sites own their wheel already and only they can say whether a given scroll
+is a swipe or is scrolling. This shell has paid once before for input decided by
+stacking rather than said out loud, when the volume rail lost its own hover to
+its own readout.
+
+Two structural rules follow, and both are load-bearing. **Declaration order is
+input order**, so a scrollable declared AFTER a gesture keeps its scrolling and
+the gesture answers only the surface the list does not cover, which is what every
+pull consumer already asks for its presses. And **a surface lying OVER a gesture
+that refuses the drag must refuse the scroll out loud**: a `MouseArea` with no
+`onWheel` leaves `accepted` false and the scroll falls through it to whatever is
+underneath, so the one surface that ignores a press would be the one surface a
+swipe went straight through. The open scratchpad card in `WorkspacePlates` is the
+live example, and it accepts the wheel purely to eat it. The inverse is the
+quieter trap: a surface that accepts a wheel and then does nothing with it
+silently kills the gesture underneath, and nothing reports it.
+
+**Declaration order covers presses better than it covers scrolls, and that gap is
+where this rule leaks.** A press lands on exactly one item, so declaring the
+gesture FIRST protects every child from it without any child knowing the
+arrangement exists. A wheel walks DOWN the stack until something accepts, so the
+same arrangement protects only the children that accept wheels, and any child
+that takes presses and not wheels hands its scrolls to the gesture underneath.
+The two inputs then disagree in the most confusing direction available: the drag
+does nothing on that child, and the scroll moves the panel the child is sitting
+on. So the second rule above is not only about surfaces that refuse a drag.
+**Anything that owns a press over a gesture owns the wheel as well**, to answer
+it, to eat it, or to hand it on deliberately, and a surface that owns a whole
+drag of its own owns it twice over. The Niagara launcher's alphabet rail was the
+live instance and now eats it; `MenuRow` and the launcher's search field are the
+remaining ones, named below.
+
+**Adopting it by hand is four lines and four obligations, and the obligations are
+the part nobody guesses.** All five sites that own their own drag had to discover
+every one of them, so they are written down here once rather than a sixth time.
+
+- **Split the gesture into `begin` / `advance(total)` / `settle` and let both
+  inputs run the same three.** The seam falls exactly where the two inputs
+  differ, which is only the origin: a press has a place on the surface and has to
+  remember it, a stream has motion and nothing to remember. Everything after the
+  subtraction is common, and a second copy of it is the copy without the
+  corrections in it.
+- **A press must conclude a running stream before it touches any state.**
+  `scroll.finish()` is the first line of every `onPressed` here. Leave it out and
+  the press zeroes state that a live stream is still measuring against, so the
+  stream's next event hands a total measured from where the fingers began to a
+  gesture that has since started over, and the panel jumps its whole travel in
+  one step. Ending it by its own rule also ANSWERS a pull two fingers had
+  half-opened, rather than abandoning it halfway with nothing ever saying which
+  way it went.
+- **The tap stays in `onReleased` and must NEVER move into the shared end.** A
+  press that travelled nowhere was a click; a stream that travelled nowhere did
+  nothing at all, because there was no press for it to have been instead. This is
+  the most dangerous line in the whole adoption: with the tap in the shared
+  settle, two fingers brushing the bottom of the screen open the launcher, two
+  fingers resting on a notification delete it, and two fingers on a menu row
+  activate it. None of that reads as a gesture bug from the outside. The shell
+  simply starts doing things by itself.
+- **Gate the stream on the press.** `armed: !x.pressed` on the `ScrollGesture`,
+  or the same test written into `onWheel`, is what stops two inputs steering one
+  gesture from two origins; the press is the more deliberate of them and keeps
+  it. A running stream is not refused by that gate and cannot be, because the
+  press above has already finished it.
+
+**Where the rule holds today, honestly.**
+
+Free, through `Pull`, with nothing at the call site: the settings corner, the
+notch's pull-down and its push-back, the notification tray's corner and its push,
+both launcher panels' put-away, the wallpaper picker's put-away, the cheatsheet's
+push, the menus' put-back, and the clock's summon of the calendar.
+
+Adopted by hand, because each of these owns its own drag: the bottom edge that
+raises the launcher and then the wallpapers (`LaunchEdge`), the notification
+card's throw (`NotificationCard`), the calendar's month paging (`CalendarMenu`),
+the settings pager's horizontal pages and vertical page scroll together
+(`SettingsFace`), and the workspace scrub (`WorkspaceModel`, driving
+`WorkspacePlates`).
+
+Deliberately not swipes, and none of these is a gap. A `Slider`'s bead and the
+volume rail track an absolute POSITION rather than a motion, so a wheel over them
+already steps the value and a touchpad steps it the same way down the same path,
+which is the same answer reached without the primitive. The screenshot picker's
+region drag is two absolute corners, and a scroll has no position to give it. A
+tray icon's wheel belongs to the application behind it under the
+StatusNotifierItem protocol and is not ours to reinterpret. The Niagara
+launcher's alphabet rail is the same case as the bead, one level up: it scrubs
+the list to the letter UNDER the pointer rather than by a distance, so a stream
+that reports motion and never a position has nothing to give it. It swallows the
+wheel rather than ignoring it, because the launcher's put-away pull lies under
+the whole rail and a two-finger push down the rail is a downward swipe pointed
+straight at it. And a `GlideList` scrolling when you scroll it is the correct
+answer, not a missing one.
+
+Genuinely uncovered, named rather than smoothed over:
+
+- **A control that takes presses but not wheels leaks its scrolls to the pull
+  underneath it.** `MenuRow`'s row-wide click target is the live one: a menu that
+  fits its panel leaves the viewport non-interactive, so a leftward two-finger
+  scroll begun on a ROW falls through the row and the inert `Flickable` to the
+  menu's put-back and pushes the menu away, while a leftward drag on that same
+  row does nothing at all, because the row owns the press. The launcher's search
+  field and the notch's contents have the same shape. Eating the wheel on the row
+  is not the fix and was rejected: the rows are most of what a menu that DOES
+  overflow gets scrolled by, so the row would have to know whether the panel
+  around it overflows, which is a question it currently has no way to ask.
+
+- **The wallpaper picker's carousel.** Its `WheelHandler` steps one card per
+  event off `angleDelta`, which a touchpad reports as well, so a two-finger
+  scroll across the strip steps as many cards as it sends events instead of one
+  card per swipe. The panel's put-away pull is covered; the strip inside it is
+  not.
+- **The `map` and `blocks` workspace styles have no scrub at all**, on either
+  input. They satisfy the rule only in the sense that there is no drag there for
+  a scroll to match, which is not the same as satisfying it.
+- **A vertical drag on the calendar grid still does nothing** while a vertical
+  scroll now scrolls the menu behind it, which is the one place in the shell
+  where the two inputs knowingly disagree. The cause predates all of this
+  (`preventStealing` plus a `MouseArea` that cannot hand a grab back) and the fix
+  is a press-path change nobody has been able to exercise.
+- **None of it has been driven by a real hand.** Two-finger scroll events cannot
+  be synthesised here, so every claim above rests on reading the real event
+  fields, on the sign derivation, and on the components building and binding
+  cleanly in the live shell. The x axis has no previously shipped consumer in
+  this codebase: if horizontal gestures run backwards, the single fix is the
+  `sign` line in `ScrollGesture.feed()`, and everything downstream follows it.
+
+**One open question, and it needs a hand rather than a file.** The rule was asked
+for with the sentence "imagine putting my mouse at the calendar and then i swipe
+with two fingers to the right it should then go to the next month". The
+calendar's drag has always been direct manipulation: push the strip right and the
+earlier month arrives from the left, which is what a sheet of paper does and what
+natural scrolling means by "the content follows the fingers". The scroll now does
+exactly what the drag does, which is this rule working correctly, and it means
+two fingers rightward currently give the PREVIOUS month. Flipping it is two lines
+in `CalendarMenu`, the travel term in `advance` and the momentum product in
+`settle`, and it would flip BOTH inputs at once, which is the only acceptable way
+to do it: the same physical motion meaning opposite things depending on which
+device made it is this rule broken at the very first site that adopts it. It was
+left alone rather than guessed at.
 
 **A corner is only the cheapest target on the screen if there is a cursor to
 throw at it.** Fitts's law is an argument about a pointing device, and a finger

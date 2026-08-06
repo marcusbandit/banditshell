@@ -12,8 +12,8 @@
 #   banditshell session toggle|open|close
 #   banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status
 #                                pull = shell -> window, put = window -> shell
-#   banditshell notifications toggle|open|close|clear|status
-#   banditshell notch toggle|open|close|status
+#   banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]
+#   banditshell notch toggle [screen]|open [screen]|close|status [screen]
 #   banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]
 #                                every bind the compositor knows, read live
 #   banditshell calendar         toggle the calendar menu (menu toggle calendar)
@@ -138,12 +138,34 @@ settings)
     esac
     ;;
 
+# The tray and the notch, both pinned PER WINDOW, so both name a screen on the
+# verbs that pin one. Bare, they toggle, like every other panel here.
+#
+# The screen is sent on every verb that has one, empty when none was named, for
+# the reason spelled out under `hotkeys` below: the IPC function declares the
+# parameter, and an omitted argument is a "too few arguments" error on the other
+# side rather than an empty one, so a pass-through that dropped it would turn
+# `notifications open` into a no-op. `close` and `clear` take none, because
+# putting the tray away reaches every screen on purpose and the history is one
+# list for the whole session.
 notifications)
-    ipc notifications "${1:-toggle}"
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    close | clear) ipc notifications "$sub" ;;
+    toggle | open | status) ipc notifications "$sub" "${1:-}" ;;
+    *) echo "usage: banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]" >&2; exit 2 ;;
+    esac
     ;;
 
 notch)
-    ipc notch "${1:-toggle}"
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    close) ipc notch close ;;
+    toggle | open | status) ipc notch "$sub" "${1:-}" ;;
+    *) echo "usage: banditshell notch toggle [screen]|open [screen]|close|status [screen]" >&2; exit 2 ;;
+    esac
     ;;
 
 # The hotkey sheet. Bare, it toggles, like every other panel here: this is the
