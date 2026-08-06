@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.config
+import qs.modules.cheatsheet
 import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
@@ -36,6 +37,14 @@ PanelWindow {
     readonly property Launcher launcher: launcherLayer
     readonly property SessionMenu session: sessionLayer
     readonly property SettingsPanel settings: settingsLayer
+    // NAMED FOR THE IPC TARGET, not for the type, like every line above it:
+    // modules/Ipc.qml reaches this as `win.hotkeys` and `hotkeys status` reads
+    // `rows`, `unnamed` and `sections` off it. The sheet is the one panel here
+    // whose entire content is the USER'S config rather than the shell's state,
+    // so the CLI is not merely a second way in, it is the only way in: there is
+    // no gauge, no edge and no gesture that summons it, only a key bound to
+    // `banditshell hotkeys toggle`.
+    readonly property CheatSheet hotkeys: cheatLayer
     // The tray and the notch register whole, but what the IPC handler actually
     // writes on them is the PIN and nothing else: presence on both is a derived
     // union (see NotificationTray.expanded), so a keybind pinning the tray and
@@ -50,6 +59,16 @@ PanelWindow {
     readonly property var statusItems: sidebar.menuItems
     readonly property var statusKeys: sidebar.menuKeys
     readonly property bool cursorOnShell: onShell.hovered
+
+    // THE USAGE LOG, MENTIONED SO THAT IT EXISTS. A QML singleton is created the
+    // first time something reads it and never a moment before, so a diary of
+    // when this machine was awake whose only reader is the calendar would open
+    // its first span when somebody first looked at a month, and would have
+    // missed the boot it exists to record. Letting the calendar be the one that
+    // touches it was the rejected alternative, and it is what the log did when
+    // it first landed; this line is the whole fix, because the surface it sits
+    // on lives exactly as long as the shell does. See services/Usage.qml.
+    readonly property var usage: Usage
 
     Component.onCompleted: Shell.register(win)
     Component.onDestruction: Shell.unregister(win)
@@ -114,7 +133,16 @@ PanelWindow {
     // Exclusive still wins when both apply: the launcher's search field takes
     // every printable key, and losing those to a page nobody is typing into
     // would be the worse failure.
-    WlrLayershell.keyboardFocus: launcherLayer.open || sessionLayer.open || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    //
+    // THE HOTKEY SHEET ASKS OUTRIGHT, on the power panel's argument and one of
+    // its own. It has no field and nothing to type into, so it wants exactly
+    // one key, but that key is Escape and it has to work from wherever the
+    // sheet was summoned: a keybind opens it while the pointer is still resting
+    // on whatever window you were reading, and on demand would mean clicking
+    // the sheet before Escape did anything. Clicking the sheet is the one thing
+    // that cannot be asked for, because a click off the card is what the
+    // catcher answers by closing it.
+    WlrLayershell.keyboardFocus: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -173,6 +201,17 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: sessionLayer.open ? sessionLayer.maskItem : null
+        }
+
+        // The whole screen while the sheet is out, so a click anywhere off it
+        // puts it away. Word for word the power panel's case above: summoned by
+        // keybind rather than reached for, so there is no edge to leave and
+        // nothing else to dismiss it. Gated on `open` and not on the card's
+        // visibility, so the region does not disappear from under a push that
+        // has driven the card to transparent but not yet let go of it.
+        Region {
+            intersection: Intersection.Combine
+            item: cheatLayer.open ? cheatLayer.maskItem : null
         }
 
         // The card, and only while the shell is the one drawing it: the moment a
@@ -353,34 +392,29 @@ PanelWindow {
                 win.openMenu(key, deliberate);
             }
 
-            // THE GAUGE THAT IS A DOOR (StatusIcons' phrase): the settings
-            // gauge has no menu, so its tap arrives on its own signal and
-            // goes to the service rather than to the menu layer. On THIS
-            // screen, the settings corner's argument exactly: the gauge you
-            // pressed is on a particular monitor and the page belongs where
-            // you are looking. Opened TO the icons page, because that is
-            // what lived behind this gauge when it was a menu, and a door
-            // that opened onto whichever page was last visited would be a
-            // different door every day. Toggle, so a second tap while the
-            // page is up puts it away: the same second-tap contract every
-            // pinned menu above keeps, aimed at a panel instead.
-            function onSettingsRequested(): void {
-                Settings.toggle(win.screen.name, "icons");
-            }
+            // THERE IS NO SETTINGS HANDLER HERE ANY MORE. A gauge that was a
+            // door stood in the column, emitting a `settingsRequested` of its
+            // own that this block answered; StatusIcons took it out on purpose
+            // (its own note says why: a place is not a glance) and the signal
+            // went with it. A Connections handler for a signal the target does
+            // not declare is not inert, it is a warning on every reload and a
+            // paragraph of reasoning about a control nobody can press, so it is
+            // gone rather than kept "in case". Settings is reached by the
+            // bottom-right corner, by `banditshell settings`, and therefore by
+            // any keybind.
 
             function onReleased(): void {
                 menuLayer.release();
             }
         }
 
-        // The tray, whose request cannot say which kind it is: TrayIcons turns
-        // a hover, a right button and a long press into the same one-word
-        // signal, and it forwards from a delegate rather than owning the state,
-        // so there is nowhere in it to hang the flag without changing what it
-        // forwards. So every tray request is INCIDENTAL here, which is exactly
-        // right for the pointer and leaves the finger to Menus: a menu no
-        // pointer was ever on latches itself when the grace timer notices, and
-        // nothing is guessed anywhere about which device is in use.
+        // The tray, wired exactly like the gauges above and carrying the same
+        // second word: TrayIcons says whether a menu was asked for outright or
+        // merely wandered into, so a hover stays incidental and the right
+        // button and the long press do not. This block used to guess, because
+        // the tray forwarded one word and there was nowhere in it to hang the
+        // flag; the flag exists now, so the toggle below is the gauges' two
+        // lines verbatim rather than a weaker version of them.
         Connections {
             target: sidebar.tray
 
@@ -473,10 +507,16 @@ PanelWindow {
             originX: chassis.barWidth
             inset: win.border
 
-            // See the session panel below: two overlays that both take the
-            // keyboard cannot both be up.
-            onOpenChanged: if (open)
-                sessionLayer.hide()
+            // See the session panel below: nothing that takes the keyboard
+            // outright can be up with anything else that does, and a menu
+            // holding a live prompt is one of those things however little it
+            // looks like a panel.
+            onOpenChanged: if (open) {
+                sessionLayer.hide();
+                cheatLayer.hide();
+                if (menuLayer.needsKeyboard)
+                    menuLayer.hide();
+            }
         }
 
         // Power, on the right edge, summoned by keybind rather than reached for.
@@ -489,8 +529,93 @@ PanelWindow {
             // Whichever asked for the keyboard second would be typing into the
             // other one: the launcher's search field takes every printable key,
             // including the ones this panel navigates with.
-            onOpenChanged: if (open)
-                launcherLayer.hide()
+            //
+            // AND A MENU HOLDING A PROMPT, which is the fourth exclusive state
+            // and the one that was in nobody's list. `keyboardFocus` above names
+            // four terms and only three of them excluded each other, because a
+            // menu is normally not a keyboard thing at all: it asks for the
+            // keyboard ONLY while a field inside it is waiting to be typed into
+            // (Menus.needsKeyboard), which is rare enough to have been missed
+            // and is exactly when losing it hurts most. Whichever of these panels
+            // opens over a live prompt calls `forceActiveFocus` on its own key
+            // item, which takes the caret out of that field: the password can no
+            // longer be typed, and the click that would put the caret back lands
+            // on the new panel's screen-filling catcher and dismisses that
+            // instead. The prompt is dead the moment the keyboard moves, so it is
+            // put away honestly rather than left on screen pretending to listen.
+            //
+            // Gated on `needsKeyboard` and NOT on the menu merely being open. A
+            // menu with nothing to type into is a readout the cursor wandered
+            // into, it fights over nothing, and closing it here would take away
+            // the audio menu somebody left up because they reached for the
+            // launcher.
+            onOpenChanged: if (open) {
+                launcherLayer.hide();
+                cheatLayer.hide();
+                if (menuLayer.needsKeyboard)
+                    menuLayer.hide();
+            }
+        }
+
+        // EVERY BIND THE COMPOSITOR KNOWS ABOUT, summoned by name and drawn
+        // from `hyprctl binds -j` on every open. It is the only panel here that
+        // recites something the shell does not own, which is exactly why it
+        // asks the compositor afresh each time instead of being handed a list:
+        // the sheet is what you open after changing a bind, so a cached one is
+        // wrong at the moment it is consulted. See modules/cheatsheet/.
+        //
+        // NOTHING IS PASSED DOWN TO IT. It reads the same band and sidebar
+        // tokens the chassis derives its hole from, so it centres in the
+        // content area on its own; if Chassis's formula ever changes, the
+        // honest fix is to hand it the hole the way the settings page is handed
+        // one, and there is a note in the file saying so.
+        //
+        // IT CONTRIBUTES NO BLOB and must not be added to `chassis.panels`. The
+        // field is for things that GROW OUT of the shell's body, where the
+        // fillet says the two are connected (DESIGN.md 14); this is a document
+        // floating clear of every band, and a melt reaching that far would be
+        // claiming a connection that is not there. The field has twelve slots
+        // and ten sources already, so the restraint is not free either.
+        CheatSheet {
+            id: cheatLayer
+
+            anchors.fill: parent
+
+            // The third panel that takes the keyboard outright, so it excludes
+            // the other two and both of them exclude it, and a menu holding a
+            // live prompt is the fourth (the session panel above carries that
+            // argument in full). Stated on each of them rather than in one
+            // place, matching how the first two already exclude each other:
+            // each panel says what it does to the others where it is declared,
+            // and a central arbiter would be one more thing to keep in step
+            // with the list.
+            //
+            // AND THE SETTINGS PAGE, which the other two deliberately leave
+            // alone. Its own note below says why and it stands: a page you left
+            // open while you went to look at what you changed should survive
+            // somebody reaching for the launcher. This panel is the one
+            // exception because it is the one that STANDS IN THE SAME
+            // RECTANGLE. Both centre themselves in the chassis's hole; the page
+            // is declared after this one, so it draws and takes input ON TOP of
+            // the sheet; and this panel takes the keyboard the instant it opens,
+            // which pulls focus off the page and leaves its Escape dead. What
+            // that added up to was a settings card sitting opaque over the
+            // middle of the sheet, hiding the rows and swallowing the presses
+            // aimed at them, dismissable by neither key nor click. Two
+            // documents cannot share one hole, so the one just asked for wins.
+            //
+            // Only while the SHELL is drawing it. A page a window has taken over
+            // is a window like any other, standing wherever its owner put it and
+            // nowhere near this rectangle, and closing it from here would be a
+            // layer surface reaching outside itself.
+            onOpenChanged: if (open) {
+                launcherLayer.hide();
+                sessionLayer.hide();
+                if (settingsLayer.docked)
+                    settingsLayer.hide();
+                if (menuLayer.needsKeyboard)
+                    menuLayer.hide();
+            }
         }
 
         // The settings page, in the middle of the content area. The one panel
@@ -516,6 +641,40 @@ PanelWindow {
             // all unless you click it, so there is nothing to fight over, and
             // closing somebody's settings page because they reached for the
             // launcher would be a surprise with no reason behind it.
+            //
+            // THE HOTKEY SHEET IS THE EXCEPTION, and about geometry rather than
+            // about the keyboard: it is the only other panel that centres itself
+            // in the chassis's hole, so the two are drawn one on top of the
+            // other in the same rectangle. Its declaration above carries that
+            // argument; the block below is the other half of it, because an
+            // exclusion stated in one direction is only half an exclusion.
+        }
+
+        // THE SHEET GIVES WAY TO THE PAGE, the way the page gives way to the
+        // sheet. Both are reachable while the other is up: the settings corner
+        // is declared after the sheet and so sits above its catcher, and
+        // `banditshell settings` and any keybind for it work from anywhere. The
+        // sheet is what goes, because the page is what was just asked for and
+        // the sheet is one keypress from being back.
+        //
+        // A Connections RATHER THAN AN `onDockedChanged` WRITTEN ON THE PANEL
+        // ABOVE, and that is load-bearing rather than a style choice.
+        // SettingsPanel declares its own `onDockedChanged` (it snaps the card's
+        // four followers so an opening page is placed rather than flown to, and
+        // takes focus there), and a handler written at the usage site is an
+        // assignment to that same slot: it would REPLACE the panel's own
+        // instead of running beside it, and the page would animate in from
+        // wherever it last happened to be with no keyboard. Connections adds a
+        // second receiver and leaves the first alone. The three panels above can
+        // safely write their handlers inline only because none of them declares
+        // one internally.
+        Connections {
+            target: settingsLayer
+
+            function onDockedChanged(): void {
+                if (settingsLayer.docked)
+                    cheatLayer.hide();
+            }
         }
 
         // The bottom edge, as a way in: it swells under the cursor, opens on a
