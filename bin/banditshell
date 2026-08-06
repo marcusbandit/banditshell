@@ -16,7 +16,23 @@
 #   banditshell notch toggle [screen]|open [screen]|close|status [screen]
 #   banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]
 #                                every bind the compositor knows, read live
+#   banditshell close            shut every surface. THE WAY OUT if the desktop
+#                                looks frozen: a surface holding the keyboard
+#                                leaves no window focused and swallows clicks.
+#                                Bind it; you cannot type your way out.
 #   banditshell calendar         toggle the calendar menu (menu toggle calendar)
+#   banditshell clock            toggle the clock menu (menu toggle clock)
+#   banditshell timer start <duration> [label]|pause|resume|toggle|cancel [handle]|status
+#                                durations: 10m, 90s, 2h, 1h30m, or a bare number of minutes
+#                                a handle is the id or the position `timer status` prints;
+#                                without one, the timer about to go off
+#   banditshell alarm list|status|snooze|stop|enable <handle>|disable <handle>|remove <handle>
+#                    add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]
+#                                times: 07:00, 7:30pm, 0700, 7
+#                                days:  mon,wed | mon-fri | weekdays | weekends | daily | once
+#                                --run is a shell command, --ask sends the text to Claude
+#   banditshell zone list|find <text>|add <place>|remove <place>
+#                                a place is an IANA id, or enough of one to name only itself
 #   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
@@ -117,6 +133,38 @@ session)
     ipc session "${1:-toggle}"
     ;;
 
+# THE WAY OUT, and the reason it exists is worth writing down.
+#
+# Several surfaces take the keyboard EXCLUSIVELY while they are up (the
+# launcher, the power panel, the hotkey sheet, a pinned menu) and put a
+# full-screen region into the input mask so that a click anywhere off them
+# puts them away. That is correct for each of them on its own. The failure it
+# creates is that a surface left open by something that died mid-sequence, or
+# a pin that got stuck, takes the whole desktop with it: no window holds focus,
+# so a bind like `layoutmsg, focus l` has nothing to act on, and every click
+# lands on the shell instead of on what is under it. The screen looks frozen.
+#
+# You cannot type your way out of that, because the terminal does not have the
+# keyboard either. A compositor keybind still fires (Hyprland handles binds
+# before the event reaches any client), so the only rescue that can work is a
+# bind pointed at this, and that is why this verb exists and why it is one
+# word. See docs/hyprland-binds.example.conf for the suggested binding.
+#
+# It closes everything unconditionally and never fails: each verb is allowed to
+# error (a surface that is not open, an IPC target that is not registered yet)
+# without stopping the ones after it, because the whole point is to be the thing
+# that works when something else has not.
+close | panic)
+    for target in "menu close" "launcher close" "session close" "hotkeys close" \
+                  "settings close" "notifications close" "notch close" "picker close"; do
+        # Unquoted on purpose: this is the one place a verb and its argument
+        # travel as one string and have to come apart again.
+        # shellcheck disable=SC2086
+        ipc $target >/dev/null 2>&1 || true
+    done
+    echo "closed everything"
+    ;;
+
 # The two verbs that take a value get spelled out; the rest pass through the
 # way session's do. `open` always sends its page and screen arguments, empty
 # when none was given, because the IPC function declares the parameters and an
@@ -198,6 +246,101 @@ hotkeys)
 # trailing "" is the screen argument every menu verb carries.
 calendar)
     ipc menu toggle calendar ""
+    ;;
+
+# The same sugar for the clock, which is an ordinary menu with the key "clock".
+# The three targets below drive everything behind it without it being open at
+# all, which is the whole reason services/Clock.qml is a singleton: a countdown
+# that only exists while somebody is looking at it is not a countdown.
+clock)
+    ipc menu toggle clock ""
+    ;;
+
+# Countdowns. Bare, it says what is counting, because that is the question you
+# type in a terminal; `start` is the one worth a keybind, and `toggle` is the
+# other one, for the same reason `volume mute` toggles. Every other verb takes
+# an optional handle, the id or the position `status` prints beside it, and
+# without one means the timer about to go off, which is the only thing a key
+# could mean. The handle is sent empty rather than dropped, for the reason
+# spelled out under `hotkeys` above: the IPC function declares the parameter.
+timer)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    status) ipc timer status ;;
+    pause | resume | toggle | cancel) ipc timer "$sub" "${1:-}" ;;
+    start)
+        [ $# -ge 1 ] || { echo "usage: banditshell timer start <duration> [label]" >&2; exit 2; }
+        ipc timer start "$1" "${2:-}"
+        ;;
+    *) echo "usage: banditshell timer start <duration> [label]|pause|resume|toggle|cancel [handle]|status" >&2; exit 2 ;;
+    esac
+    ;;
+
+# Alarms. `add` is the only verb in this file with options, and they are FLAGS
+# rather than positions because a keybind is a line somebody writes once and
+# reads a year later: counting empty arguments to reach the fifth one is the
+# mistake this shape cannot make. They are collected here and handed to the IPC
+# function in its own fixed order, which is the division of labour set out in
+# the alarm handler's comment in modules/Ipc.qml.
+#
+# --run and --ask are one slot said two ways (a shell command to run, a message
+# to send), so the last one on the line wins; there is no alarm that does both.
+alarm)
+    sub="${1:-list}"
+    shift || true
+    case "$sub" in
+    list | status | snooze | stop) ipc alarm "$sub" ;;
+    enable | disable | remove)
+        [ $# -ge 1 ] || { echo "usage: banditshell alarm $sub <handle>" >&2; exit 2; }
+        ipc alarm "$sub" "$1"
+        ;;
+    add)
+        [ $# -ge 1 ] || { echo "usage: banditshell alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]" >&2; exit 2; }
+        when="$1"
+        shift
+        days=""
+        label=""
+        mode=""
+        payload=""
+        while [ $# -gt 0 ]; do
+            # Every flag here takes a value, so one sitting at the end of the
+            # line is a value that was forgotten rather than a flag that means
+            # something alone. Checked BEFORE the shift, because `shift 2` with
+            # one argument left fails, and under `set -e` a failed shift ends
+            # the script with no message and an exit code nobody reads.
+            [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
+            case "$1" in
+            --days) days="$2" ;;
+            --label) label="$2" ;;
+            --run) mode="command"; payload="$2" ;;
+            --ask) mode="cloud"; payload="$2" ;;
+            *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
+            esac
+            shift 2
+        done
+        ipc alarm add "$when" "$days" "$label" "$mode" "$payload"
+        ;;
+    *) echo "usage: banditshell alarm list|status|snooze|stop|add <time> [options]|enable <handle>|disable <handle>|remove <handle>" >&2; exit 2 ;;
+    esac
+    ;;
+
+# Places. The argument is EVERYTHING that follows, joined back into one string,
+# so `zone add new york` works without quotes: the tz database writes that space
+# as an underscore, and both spellings are normalised to the same key on the
+# other side (zoneKey in modules/Ipc.qml). There is no label to pass, because
+# the city the panel draws is read off the id itself.
+zone)
+    sub="${1:-list}"
+    shift || true
+    case "$sub" in
+    list) ipc zone list ;;
+    find | add | remove)
+        [ $# -ge 1 ] || { echo "usage: banditshell zone $sub <place>" >&2; exit 2; }
+        ipc zone "$sub" "$*"
+        ;;
+    *) echo "usage: banditshell zone list|find <text>|add <place>|remove <place>" >&2; exit 2 ;;
+    esac
     ;;
 
 # `up` and `down` move by the shell's configured step (the same one the wheel
