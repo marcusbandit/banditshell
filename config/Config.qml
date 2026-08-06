@@ -392,7 +392,31 @@ Singleton {
                 // made of this same picture.
                 enabled: true,
                 dir: "~/Pictures/Wallpapers",
-                current: "~/Pictures/Wallpapers/shaded_landscape.png"
+                current: "~/Pictures/Wallpapers/shaded_landscape.png",
+
+                // A WALLPAPER THAT MOVES, and the one rule that makes one
+                // affordable.
+                //
+                // GIFs and video play only while the workspace on that monitor
+                // is EMPTY. A moving wallpaper behind a full screen of windows
+                // is a decoder running for pixels nobody can see, which is the
+                // whole of what makes animated wallpapers a bad idea on a
+                // laptop; gated on an empty workspace it costs something only
+                // in the moments you are actually looking at the desktop.
+                //
+                // Off, motion never runs and an animated wallpaper is its first
+                // frame, which is a perfectly good still.
+                animate: true,
+
+                // WHETHER A WALLPAPER MAY MAKE A NOISE. A video file carries an
+                // audio track and an audio file is nothing but one, and this is
+                // the switch that lets either out. Off, and off is the right
+                // default by a wide margin: a desktop that makes noise at you
+                // is a desktop you turn off within the hour. It exists because
+                // the format list already had to decide what to do with a file
+                // that has no picture in it, and "play it over black" was one
+                // line more than refusing.
+                audio: false
             },
 
             // How the shell's body melts together. See components/blob/blob.frag.
@@ -580,11 +604,51 @@ Singleton {
                 // the edge and another inside a menu would be two controls.
                 step: 0.05,
 
-                // The readout's meter. Long enough to read as a level rather
-                // than as a lit dot, narrow enough that it is a mark on the band
-                // and not a panel: this is a glance, not an instrument.
-                railLength: 180,
+                // HOW THICK THE METER IS, and now the only part of its size that
+                // is a setting at all.
+                //
+                // Its LENGTH used to sit here as `railLength: 180`, and that
+                // number was measured against a rail which ran nearly the whole
+                // screen edge. The readout is a pill beside the band now, three
+                // of its own glyphs tall, derived from the icon it stands under
+                // (modules/VolumeRail.qml): the meter follows the type scale
+                // instead of having to be re-chosen every time the font base
+                // moves. Left here it would have been a second and disagreeing
+                // opinion about one shape, which is exactly how a stale magic
+                // number goes on looking like a setting.
+                //
+                // Ten reads as a stick rather than as a bar, which is the point.
+                // The value is carried by how much of the stick is lit, and a
+                // meter wide enough to be a surface in its own right starts
+                // wanting a border and a label to go with it. Under about twenty
+                // this only changes the stick, because the panel takes the larger
+                // of this and the icon above it; past twenty the whole readout
+                // widens with it.
                 railWidth: 10,
+
+                // HOW LONG THE METER IS, in glyphs of the icon standing under it.
+                //
+                // The comment above says the meter is "three of its own glyphs
+                // tall, derived from the icon it stands under", and that is the
+                // right shape for the setting, but the number itself was left in
+                // modules/VolumeRail.qml with nothing declaring it. A key that is
+                // not in these defaults DOES NOT EXIST: `set()` refuses it, and
+                // `merge()` walks the defaults' keys so a hand-edited config.json
+                // drops it silently. Read through Appearance it came back
+                // undefined, and undefined times a height is NaN, which travels
+                // straight through the content height into the panel height and
+                // out into the blob's own rectangle. A NaN-sized blob is not a
+                // small blob, it is an absent one: the readout drew its glyph and
+                // its meter over the wallpaper with no body behind them at all.
+                //
+                // THREE, because the meter is a stick and a stick has to be long
+                // enough to read as a length rather than as a mark, while the
+                // readout stays something you glance at. It is expressed in
+                // glyphs rather than pixels so it follows the type scale: change
+                // the font base and the meter keeps its proportion to the icon it
+                // belongs with, which is what the old pixel `railLength` could
+                // not do.
+                meterGlyphs: 3,
 
                 // How long the readout stays after the last change. Long enough
                 // to see where a keypress landed, short enough that it is gone
@@ -672,6 +736,42 @@ Singleton {
                 // marks inside a button and read against its edge; this one has
                 // no plate around it and is the entire thing you are looking at.
                 iconScale: 1.6
+            },
+
+            // The hotkey sheet: every bind the compositor knows about, read off
+            // hyprctl and drawn on demand. See modules/cheatsheet/.
+            //
+            // TWO PREFERENCES AND NOT ONE SIZE. Everything the sheet draws is
+            // derived from the type scale and the padding tiers, so there is
+            // nothing here to make it bigger with; what is here is the two
+            // choices the sheet itself offers, so that the answer you gave it
+            // last week is still the answer when the shell comes back up. They
+            // are preferences rather than design tokens, which is why they are
+            // read straight off Config (the way `theme` is) and get no entry in
+            // Appearance.
+            cheatsheet: {
+                // WHICH VIEW: the list of every bind grouped by chord, or the
+                // drawn keyboard with the bound keys lit.
+                //
+                // The list, because it is the view that can show EVERYTHING. The
+                // board can only mark a bind that lands on a key it draws, so a
+                // mouse bind, a `code:` bind and a chord on a key this layout
+                // does not have are all invisible on it, and a sheet that quietly
+                // omits binds is worse than a plain list at the job the sheet
+                // exists to do. The board is the better answer to "where is that
+                // key", which is the question you ask second.
+                board: false,
+
+                // HOW A CHORD IS SPELLED: the modifier's word (SUPER, SHIFT) or
+                // its mark (a penguin, an arrow, a caret).
+                //
+                // Words, because words are what the config file you would go and
+                // edit says. The marks are shorter and they are also a convention
+                // you have to already know: no penguin is printed on the key, and
+                // somebody opening this sheet to find out what a bind IS should
+                // not have to decode the answer. They are there for when you do
+                // know them and would rather the chord fitted on one line.
+                symbols: false
             },
 
             // The lock screen. See modules/lock/.

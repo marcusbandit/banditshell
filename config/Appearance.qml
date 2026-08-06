@@ -299,8 +299,15 @@ Singleton {
 
         // The right edge, as a volume rail. See modules/VolumeRail.qml.
         readonly property real volumeStep: root.cfg.volume.step
-        readonly property int volumeRailLength: root.cfg.volume.railLength
+        // The meter's THICKNESS, and no length beside it: the readout is three
+        // of its own glyphs tall and derives that from the icon it stands under,
+        // so the length is arithmetic in the rail rather than a token here. See
+        // the note over `railWidth` in Config for what used to be here.
         readonly property int volumeRailWidth: root.cfg.volume.railWidth
+        // The meter's length, in glyphs of the icon under it. Read by
+        // modules/VolumeRail.qml, and it was read there before it was declared
+        // anywhere: see the note in Config, and the NaN that reached the blob.
+        readonly property int volumeMeterGlyphs: root.cfg.volume.meterGlyphs
         readonly property int volumeLinger: root.cfg.volume.linger
         readonly property real volumeGrabFraction: root.cfg.volume.grabFraction
         // What a full day-bar means on the calendar; see services/Usage.qml.
