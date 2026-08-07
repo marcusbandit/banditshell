@@ -381,13 +381,34 @@ Singleton {
     // the shell writes a warning nobody can act on, and the keyboard is handed
     // nowhere at all, silently, on every dismissal from then on.
     //
+    // THE CHECK IS "CAN YOU SEE IT", NOT "DOES IT EXIST", and the difference is
+    // a whole workspace. `focusedAddress` is only ever written by a focus event
+    // and Hyprland sends none when you arrive on an EMPTY workspace (the empty
+    // payload it does send is ignored two hundred lines down, for a reason that
+    // still stands), so standing on a bare workspace the remembered address is
+    // the window you were using before you left, alive and well and somewhere
+    // else entirely. Focusing it is not a focus at all: Hyprland goes to where
+    // that window is, which means Escape on an empty workspace threw the whole
+    // screen back to the workspace you had just come from. A panel closing is
+    // never a request to travel, so a remembered window that is not on screen
+    // right now is treated exactly like one that has died, and the keyboard is
+    // left wherever the compositor puts it. On an empty workspace that is
+    // nowhere, which is the correct answer and the one that was asked for.
+    //
+    // ON SCREEN ANYWHERE, not on the workspace this panel happens to be drawn
+    // over. With two monitors the window you were last in can be sitting in
+    // plain sight on the other one, and handing the keyboard back to a window
+    // you are looking at is the good half of this behaviour rather than the bad
+    // half: nothing moves, nothing switches, the focus goes where it was.
+    //
     // NOT PUSHED INTO `focusAddress` ABOVE, which is the obvious place to put
     // one check for both and is wrong for that one. Its second caller is the
     // claim on a window that has just MAPPED (see claimNextWindow), and at that
     // moment the address is younger than the model: the check would refuse the
     // one dispatch that has to happen and the launcher would stop focusing what
-    // it launched. The two calls differ in exactly this, so the guard belongs to
-    // the one whose address is old by construction.
+    // it launched. Its first is the sidebar being CLICKED, which is a request to
+    // travel and must still cross workspaces. The calls differ in exactly this,
+    // so the guard belongs to the one that is meant to change nothing.
     //
     // SAYING NOTHING when the window is gone is deliberately the whole of the
     // recovery. The alternative considered was falling back to the front-most
@@ -395,12 +416,12 @@ Singleton {
     // has no right to: the compositor has already chosen who gets the keyboard
     // when a window dies, and a panel closing is not a request to overrule it.
     function restoreFocus(addr: string): void {
-        if (addr && root.stillOpen(addr))
+        if (addr && root.onScreen(addr))
             root.send(`(function() local p = hl.get_cursor_pos() hl.dispatch(hl.dsp.focus({ window = "address:${addr}" })) return hl.dsp.cursor.move({ x = p.x, y = p.y }) end)()`, `focuswindow address:${addr}`);
     }
 
-    // IS THERE STILL A WINDOW AT THIS ADDRESS, asked of the model rather than of
-    // the compositor.
+    // IS THERE A WINDOW AT THIS ADDRESS AND IS IT IN FRONT OF YOU, asked of the
+    // model rather than of the compositor.
     //
     // `Hyprland.toplevels` is kept in step with the same event stream this file
     // reads, so the answer is already in the process and costs a walk of a list
@@ -414,9 +435,25 @@ Singleton {
     // `0x`, so both ends are stripped before they are compared; neither format
     // is this shell's to change, and comparing them as they come would answer
     // "no window" for every window there is.
-    function stillOpen(addr: string): bool {
+    //
+    // VISIBLE means the window's workspace is the one a monitor is showing, or
+    // is a special pulled over one, which is the same pair `occupancy` below
+    // counts and for the same reason: a scratchpad hidden again is off screen,
+    // and a window on it is as unreachable as one two workspaces away. Asked of
+    // every monitor rather than of the focused one, per the paragraph above.
+    //
+    // Workspace id zero is a window the model has not placed yet, and an unplaced
+    // window is not one anybody is looking at.
+    function onScreen(addr: string): bool {
         const bare = (addr.startsWith("0x") ? addr.slice(2) : addr).toLowerCase();
-        return Hyprland.toplevels.values.some(t => (t.address ?? "").toLowerCase() === bare);
+        const client = Hyprland.toplevels.values.find(t => (t.address ?? "").toLowerCase() === bare);
+        const id = client?.workspace?.id ?? 0;
+        if (id === 0)
+            return false;
+        return Hyprland.monitors.values.some(mon => {
+            const special = mon.lastIpcObject?.specialWorkspace;
+            return mon.activeWorkspace?.id === id || (!!special?.name && special.id === id);
+        });
     }
 
     // Waiting for the window an application is about to open.
@@ -572,7 +609,7 @@ Singleton {
                     // out of `windowClosed` reads the truth rather than the
                     // window it was just told had gone.
                     //
-                    // This is the other half of `stillOpen`'s job and not a
+                    // This is the other half of `onScreen`'s job and not a
                     // duplicate of it. That guard saves the panel already up,
                     // holding a snapshot nothing can reach; this one stops the
                     // dead address being handed to the NEXT panel, and the one
