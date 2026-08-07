@@ -133,6 +133,7 @@ Singleton {
     Component.onCompleted: {
         root.applyChecking();
         root.networks = root.scan;
+        scanSettle.restart();
     }
 
     function setChecking(on: bool): void {
@@ -577,10 +578,55 @@ Singleton {
     // ignore, which would have cost the real one its whole meaning.
     readonly property bool stranded: !!root.reachLabel()
 
-    // Scanning costs power, so it runs while something is looking at the list
-    // and stops when nothing is.
-    function watch(on: bool): void {
-        if (root.wifiDevice)
-            root.wifiDevice.scannerEnabled = on;
+    // THE SCANNER, and why nothing hovers it on and off any more.
+    //
+    // This used to run while a menu was looking at the list and stop when it
+    // was not, which is the obvious arrangement and costs more than anything
+    // else in this shell. Writing `scannerEnabled` is a SYNCHRONOUS trip to
+    // NetworkManager that waits on the radio: measured in place, at the moment
+    // the wifi menu opened and again when it closed, it blocked the GUI thread
+    // for 1622ms, 1507ms, 1643ms and 1552ms. Four freezes of a second and a
+    // half for one pass along the gauge column. It is the whole of why hovering
+    // the bar felt broken, and it is why the panel's own `settle` debounce
+    // helped and could not fix it: a debounce moves a stall, and this one was
+    // simply too big to have anywhere to move to.
+    //
+    // AND IT IS NOT A REFRESH. With the scanner off, NetworkManager reports one
+    // network, the one you are connected to. The list this menu exists to show
+    // does not exist unless this is on. So it cannot be dropped, only decided
+    // once instead of forty times a minute.
+    //
+    // So it is a REMEMBERED PREFERENCE, exactly like the connectivity check
+    // above and for a related reason: it is a NetworkManager-wide state rather
+    // than something this shell owns, the choice is the user's, and applying it
+    // costs enough that it must be applied once. `wantScanning` is what config
+    // asks for; `scanning` is what NetworkManager is actually doing, which is
+    // what the switch in the menu shows.
+    readonly property bool wantScanning: Config.values.network.keepListFresh
+
+    // DEFERRED, and not merely because `wifiDevice` arrives late (it does, and
+    // `onWifiDeviceChanged` covers that). The second and a half has to land
+    // somewhere, and a moment after launch is the only place in the whole
+    // session where nothing is on screen for it to interrupt.
+    Timer {
+        id: scanSettle
+
+        interval: 4000
+        onTriggered: root.applyScanning()
+    }
+
+    function applyScanning(): void {
+        if (root.wifiDevice && root.wifiDevice.scannerEnabled !== root.wantScanning)
+            root.wifiDevice.scannerEnabled = root.wantScanning;
+    }
+
+    onWantScanningChanged: root.applyScanning()
+    onWifiDeviceChanged: scanSettle.restart()
+
+    // Asked for by the switch in the menu, and paid for by whoever flipped it:
+    // this is the one moment the pause is honest, because it is the answer to
+    // something somebody just did.
+    function setScanning(on: bool): void {
+        Config.set("network.keepListFresh", on);
     }
 }

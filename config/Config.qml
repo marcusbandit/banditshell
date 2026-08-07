@@ -766,6 +766,26 @@ Singleton {
                 // say any of them without this.
                 checkForInternet: true,
 
+                // WHETHER THE RADIO KEEPS A LIST OF WHAT IS AROUND, for the
+                // whole session rather than for the moment you are looking.
+                //
+                // It reads like a refresh and it is not: with the scanner off,
+                // NetworkManager reports exactly one network, the one you are
+                // on. Off, this menu is a list of one; on, it is the street.
+                //
+                // AND IT IS A SESSION-LONG SETTING because turning it on or off
+                // costs a second and a half of frozen shell, measured: the
+                // property write is a synchronous trip to NetworkManager that
+                // waits on the radio itself. That is fine once, at startup,
+                // where nothing is on screen to stutter; it is not fine twice
+                // every time a cursor crosses the wifi gauge, which is what it
+                // used to be and what made the bar feel broken.
+                //
+                // Turn it off and the shell stops scanning and says so. That is
+                // the whole of the power trade, made once, by you, rather than
+                // guessed at forty times a minute by a menu watching a cursor.
+                keepListFresh: true,
+
                 // Which URL "open the login page" opens. Empty means ask
                 // NetworkManager for the URL it probes with, which is the right
                 // answer: that request is the one the portal intercepted, so it

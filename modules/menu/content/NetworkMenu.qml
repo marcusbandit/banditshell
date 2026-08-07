@@ -95,8 +95,11 @@ Column {
     // So the radio keeps scanning and the VIEW freezes: while something is open,
     // `rows` hands back the same array by reference, which is the only thing a
     // Repeater treats as "nothing happened".
-    property bool wantScan: true
-
+    //
+    // THE RADIO IS NO LONGER THIS MENU'S TO SWITCH, either. It was, and the
+    // switch cost a second and a half of frozen shell each way; Network's own
+    // note has the measurements. It is a session-long preference now, so this
+    // file only shows it.
     readonly property bool busy: !!root.asking || !!root.opened
 
     property var frozen: []
@@ -123,11 +126,6 @@ Column {
         root.frozenStranded = Network.stranded;
         root.frozenCaptive = Network.captive;
     }
-
-    readonly property bool scanning: root.showing && root.wantScan
-
-    onScanningChanged: Network.watch(root.scanning)
-    Component.onDestruction: Network.watch(false)
 
     // Put away on the way out, so what comes back is the menu rather than the
     // half-typed password and the unrolled layer you walked away from. It also
@@ -279,11 +277,19 @@ Column {
         width: root.width
         open: root.opened === "adapter"
 
+        // THE ONE SWITCH IN THIS SHELL THAT COSTS SOMETHING TO FLIP, and it says
+        // so. Off, NetworkManager reports only the network you are on, so this
+        // is not "stop refreshing", it is "stop having a list"; and the flip
+        // itself pauses the shell for a moment, because the write waits on the
+        // radio. Both facts belong on the row rather than in a file: a control
+        // that hangs for a second without warning reads as broken, and one that
+        // empties a list you were reading reads as a bug.
         Choice {
             label: "Keep the list fresh"
-            detail: root.wantScan ? "" : "the list is whatever it last saw"
-            on: root.wantScan
-            onFlipped: root.wantScan = !root.wantScan
+            detail: Network.wantScanning ? "" : "only the network you are on"
+            on: Network.scanning
+            tip: "pauses for a moment"
+            onFlipped: Network.setScanning(!Network.wantScanning)
         }
 
         Choice {
