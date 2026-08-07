@@ -108,6 +108,23 @@ Singleton {
         // green show through whatever sits on it.
         readonly property color accentText: root.rampAt(1, 1)
 
+        // THE TWO ENDS OF THE RAMP, opaque, which is the most contrast this
+        // theme owns. Everything else here is one light at different strengths
+        // and is meant to sit ON the material; this pair is for the rare object
+        // that has to be read by something other than a person looking at it.
+        //
+        // A QR code is the case that made them exist. A camera has none of the
+        // context a reader has: it thresholds a picture, and a translucent label
+        // tier over a blurred wallpaper has no threshold. So the code is drawn
+        // as ink on paper, and "black on white" is spelled in the theme's own
+        // darkest and lightest rather than in #000 and #fff, which belong to no
+        // palette and would read as a hole cut in the shell.
+        //
+        // Indexed off the ramp's LENGTH rather than off 10, so a theme with a
+        // different number of stops still lands on its own extremes.
+        readonly property color ink: root.rampAt(0, 1)
+        readonly property color paper: root.rampAt(root.theme.ramp.length - 1, 1)
+
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour

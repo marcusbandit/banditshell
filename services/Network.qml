@@ -157,7 +157,15 @@ Singleton {
             root.checkNow()
     }
 
-    onActiveNameChanged: settle.restart()
+    onActiveNameChanged: {
+        settle.restart();
+        // A different network is a different secret, and the one being held is
+        // now somebody else's. See the share card below.
+        if (root.sharing)
+            root.readCard();
+        else
+            root.dropCard();
+    }
 
     // And while the answer is bad, ask more often. Signing in happens in a
     // browser, outside this shell, and there is no signal for "they finished":
@@ -478,6 +486,210 @@ Singleton {
             n.connect();
         return "";
     }
+
+    // THE SAME CARD, FACING OUT.
+    //
+    // A wifi password is the worst string anybody is ever asked to read ALOUD,
+    // for every reason it is the worst one to retype, plus one more: the person
+    // typing it cannot see it. The square of dots carries it exactly, and a
+    // screen is a perfectly good thing to hold up.
+    //
+    // NOTHING HERE IS HELD UNLESS THE CARD IS ON SCREEN. The card is the
+    // passphrase in machine-readable form, so building one means having the
+    // passphrase, and a shell has no business keeping a secret it was not asked
+    // for. `sharing` is set by whoever is showing the card and cleared when it
+    // goes away; the secret is fetched then and dropped after, and it does not
+    // survive the layer rolling back up, a change of network, or the menu being
+    // walked away from.
+    property bool sharing: false
+
+    property string secret: ""
+    property string secretTrouble: ""
+
+    function share(on: bool): void {
+        root.sharing = on;
+    }
+
+    onSharingChanged: {
+        if (root.sharing)
+            root.readCard();
+        else
+            root.dropCard();
+    }
+
+    // WHERE THE SECRET LIVES, which is two questions away from the network.
+    //
+    // NetworkManager splits a connection in two: the ACTIVE one, which is what
+    // is running, and the SAVED one, which is what is stored, and the passphrase
+    // is only ever on the second. Quickshell's network object is neither, so
+    // this walks the bus for it: the list of active connections, then the type
+    // and saved path of each, then the secrets of whichever one is wifi.
+    //
+    // It READS, which is the whole reason it is allowed. This is the same
+    // exception `checkUri` above makes: a property NetworkManager exposes and
+    // Quickshell does not, asked for directly. The wall at the top of
+    // NetworkMenu is about CONSTRUCTING settings profiles through a command
+    // line when there is an API for it; there is no API for this at all, and
+    // nothing here changes anything.
+    property var candidates: []
+    property string savedPath: ""
+
+    function readCard(): void {
+        root.dropCard();
+        // An open network's card carries no password, so there is nothing to
+        // go and get and no reason to touch the bus.
+        if (!root.connected || !root.secured(root.active) || root.enterprise(root.active))
+            return;
+        actives.running = true;
+    }
+
+    function dropCard(): void {
+        actives.running = false;
+        root.candidates = [];
+        root.savedPath = "";
+        root.secret = "";
+        root.secretTrouble = "";
+    }
+
+    Process {
+        id: actives
+
+        command: ["busctl", "--system", "--json=short", "get-property", "org.freedesktop.NetworkManager", "/org/freedesktop/NetworkManager", "org.freedesktop.NetworkManager", "ActiveConnections"]
+
+        // EVERY ANSWER IS CHECKED AGAINST THE CARD STILL BEING UP, here and in
+        // both handlers below. A reply is asynchronous and dropping the card
+        // does not un-ask the question, so the last word on a network you have
+        // stopped showing arrives after the shell has finished forgetting it.
+        // Unguarded, that is a stale sentence on the next card at best and the
+        // previous network's passphrase reinstalled after `dropCard` at worst.
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.sharing)
+                    return;
+                try {
+                    root.candidates = JSON.parse(text.trim()).data ?? [];
+                } catch (e) {
+                    root.candidates = [];
+                }
+                if (!root.candidates.length)
+                    root.secretTrouble = "NetworkManager is not admitting to this connection";
+            }
+        }
+
+        onExited: code => {
+            if (code !== 0 && root.sharing)
+                root.secretTrouble = "could not ask NetworkManager for the passphrase";
+        }
+    }
+
+    // ONE PROBE PER CANDIDATE, ALL AT ONCE, rather than a walk that has to
+    // remember where it was. There are three or four active connections on any
+    // machine, the question asked of each is the same two properties, and the
+    // wifi one answers by writing down where its saved connection is. A queue
+    // and an index would be more code and one more thing to get wrong when the
+    // list changes underneath it.
+    Instantiator {
+        model: root.candidates
+
+        delegate: QtObject {
+            id: probe
+
+            required property string modelData
+
+            readonly property Process ask: Process {
+                running: true
+                command: ["busctl", "--system", "--json=short", "get-property", "org.freedesktop.NetworkManager", probe.modelData, "org.freedesktop.NetworkManager.Connection.Active", "Type", "Connection"]
+
+                stdout: StdioCollector {
+                    onStreamFinished: {
+                        // One JSON object per line, per property, in the order
+                        // they were asked for.
+                        const lines = text.trim().split("\n");
+                        if (!root.sharing || lines.length < 2)
+                            return;
+                        try {
+                            if (JSON.parse(lines[0]).data === "802-11-wireless")
+                                root.savedPath = JSON.parse(lines[1]).data;
+                        } catch (e) {
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // SET, NOT BOUND, like every other command in this shell that runs more than
+    // once: a bound argument list updates the moment the path does, which is not
+    // reliably after the handler that stopped the process still reading the old
+    // one.
+    onSavedPathChanged: {
+        keys.running = false;
+        if (!root.savedPath)
+            return;
+        keys.command = ["busctl", "--system", "--json=short", "call", "org.freedesktop.NetworkManager", root.savedPath, "org.freedesktop.NetworkManager.Settings.Connection", "GetSecrets", "s", "802-11-wireless-security"];
+        keys.running = true;
+    }
+
+    Process {
+        id: keys
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (!root.sharing)
+                    return;
+                try {
+                    // a{sa{sv}}: one setting group per key, and the passphrase
+                    // is the one variant inside the security group.
+                    root.secret = JSON.parse(text.trim()).data[0]["802-11-wireless-security"].psk.data ?? "";
+                } catch (e) {
+                    root.secret = "";
+                }
+                if (!root.secret)
+                    root.secretTrouble = "NetworkManager would not hand over the passphrase";
+            }
+        }
+
+        onExited: code => {
+            if (code !== 0 && root.sharing)
+                root.secretTrouble = "not allowed to read this network's passphrase";
+        }
+    }
+
+    // ESCAPED, because a passphrase containing a semicolon is completely
+    // ordinary and an unescaped one ends the field early: the phone would join
+    // with half a password and blame itself. The inverse of the unescaping
+    // `parseQr` does, over the same five characters.
+    function escapeQr(s: string): string {
+        return s.replace(/([\\;,:"])/g, "\\$1");
+    }
+
+    // WHAT THE `T:` FIELD SAYS. The card format's vocabulary is narrower than
+    // NetworkManager's: anything that wants a passphrase is WPA, WEP is WEP, and
+    // anything that joins without one is nopass. Read off the same label the row
+    // shows, rather than a second table that could drift out of step with it.
+    function cardSecurity(n: var): string {
+        if (!root.secured(n))
+            return "nopass";
+        return root.securityLabel(n).indexOf("wep") >= 0 ? "WEP" : "WPA";
+    }
+
+    // The card itself, in the format on the back of every router. Empty until
+    // there is something honest to put in it, which for a secured network means
+    // until the secret has actually arrived.
+    readonly property string card: {
+        if (!root.activeName || root.enterprise(root.active))
+            return "";
+        const kind = root.cardSecurity(root.active);
+        const head = `WIFI:T:${kind};S:${root.escapeQr(root.activeName)};`;
+        if (kind === "nopass")
+            return `${head};`;
+        return root.secret ? `${head}P:${root.escapeQr(root.secret)};;` : "";
+    }
+
+    // WHY THERE IS NO CARD, when there is none. An enterprise network is the one
+    // case that is not a failure and never resolves: its credentials are a
+    // profile, and the format has no field for one.
+    readonly property string cardTrouble: !root.connected ? "join a network first" : root.enterprise(root.active) ? `${root.activeName} signs in with a profile, and a card cannot carry one` : root.secretTrouble
 
     // WHY IT DID NOT WORK. NetworkManager says so, over a signal per network,
     // and nothing was listening: a rejected passphrase closed the prompt, left

@@ -369,8 +369,11 @@ banditshell/
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
 │   ├── PasswordField.qml        inline secret entry
-│   └── QrScanner.qml            the camera, and whatever code it finds; needs
-│                                zxing-cpp's `ZXingReader` on PATH to decode
+│   ├── QrScanner.qml            the camera, and whatever code it finds; needs
+│   │                            zxing-cpp's `ZXingReader` on PATH to decode
+│   └── QrCode.qml               the same square the other way round: a string as
+│                                a card, ink on paper, every module a G2 corner
+│                                that asks its neighbours; needs `qrencode`
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window

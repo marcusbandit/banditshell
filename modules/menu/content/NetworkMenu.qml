@@ -60,6 +60,18 @@ Column {
     onOpenedChanged: if (root.opened !== "code")
         root.said = ""
 
+    // WHETHER THE CARD IS ACTUALLY IN FRONT OF SOMEBODY, which is a stricter
+    // question than whether its layer is open: a menu built and waiting to be
+    // pointed at has `showing` false, and an unread card would still be holding
+    // the passphrase.
+    //
+    // Derived rather than set from the two handlers that could each imply it,
+    // because both of them fire and the answer must not depend on which fired
+    // last. This is the only thing that switches the secret on and off.
+    readonly property bool showingCard: root.showing && root.opened === "share"
+
+    onShowingCardChanged: Network.share(root.showingCard)
+
     // A CODE, ACTED ON. Joining is an answer, so the camera goes away and takes
     // the layer with it: the list underneath is where the result of a join is
     // legible, and leaving a lens open over it would be the shell carrying on
@@ -418,6 +430,79 @@ Column {
                 note: root.said
 
                 onDecoded: text => root.tookCode(text)
+            }
+        }
+    }
+
+    // THE SAME SQUARE, THE OTHER WAY ROUND.
+    //
+    // Directly under the camera, because the two are one pair and the pair is
+    // the point: a code is how a network is handed over, and a shell that can
+    // only read one is half a conversation. This is the answer to being asked
+    // "what's the wifi" in your own kitchen, which is a question nobody has ever
+    // enjoyed answering out loud.
+    //
+    // ONLY WHILE YOU ARE ON SOMETHING. There is no card for a network you have
+    // not joined: the shell would have to know a passphrase it has never been
+    // told. The row is absent rather than dead, because "share the network you
+    // are not on" is not a thing that can be explained by greying it out.
+    MenuRow {
+        width: root.width
+        visible: Network.enabled && Network.connected
+        icon: "qr_code_2"
+        label: "Show the code"
+        detail: "for their camera"
+        onActivated: root.toggleLayer("share")
+        tip: root.opened === "share" ? "put it away" : "show the code"
+
+        Expander {
+            open: root.opened === "share"
+            tip: "the code"
+            onToggled: root.toggleLayer("share")
+        }
+    }
+
+    MenuLayer {
+        width: root.width
+        open: root.opened === "share"
+
+        // BUILT WITH THE LAYER AND THROWN AWAY WITH IT, like the camera above
+        // and for a sharper reason: what this holds is the passphrase. See
+        // Network's note on `sharing`; the secret is fetched when the card goes
+        // up and dropped the moment it comes down, and `showingCard` above is
+        // the one place that is decided.
+        Loader {
+            width: parent.width
+
+            active: root.showingCard
+
+            sourceComponent: Column {
+                width: parent.width
+                spacing: Appearance.padding.small
+
+                QrCode {
+                    id: card
+
+                    width: parent.width
+                    text: Network.card
+                    // The network's own name on the card, because a phone that
+                    // has scanned it says nothing back and the person holding
+                    // the laptop should be able to see they offered the right
+                    // one.
+                    caption: Network.activeName
+                }
+
+                // THE SAME LINE THE SCANNER HAS, in the same place, saying the
+                // same three kinds of thing: what is wrong with the writer, what
+                // is wrong with the network, or what to do next.
+                StyledText {
+                    width: parent.width
+                    leftPadding: Appearance.padding.normal
+                    text: card.trouble || Network.cardTrouble || (Network.card ? "hold it up to a phone" : "reading the passphrase")
+                    color: card.trouble || Network.cardTrouble ? Appearance.colour.accent : Appearance.colour.textFaint
+                    font.pixelSize: Appearance.font.size.small
+                    wrapMode: Text.WordWrap
+                }
             }
         }
     }
