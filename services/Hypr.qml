@@ -14,9 +14,6 @@ import qs.config
 Singleton {
     id: root
 
-    // Workspaces always shown, even when empty.
-    readonly property int persistentCount: Appearance.sizes.wsPersistent
-
     // THE NUMBERED WORKSPACE YOU ARE ON, which is not always the focused one:
     // opening a scratchpad focuses IT, and its id is negative. The workspace
     // underneath has not changed and neither has the answer to "where am I", so
@@ -29,20 +26,73 @@ Singleton {
         return Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
     }
 
-    // { id: windowCount } for every workspace Hyprland currently knows about.
-    // Special workspaces have negative ids and are left out.
-    readonly property var windows: {
-        const out = {};
-        for (const ws of Hyprland.workspaces.values)
-            if (ws.id > 0)
-                out[ws.id] = ws.lastIpcObject?.windows ?? 0;
-        return out;
-    }
+    // HOW MANY SLOTS THE COLUMN DRAWS: the persistent set, always, even when
+    // every one of them is empty. A FIXED SET OF PLACES rather than a list of
+    // whatever the compositor happens to be holding.
+    //
+    // It used to grow to cover the focused workspace and the highest live one
+    // as well, which sounds accommodating and is exactly how a session comes up
+    // with an eleven-slot column: Hyprland numbers workspaces from wherever the
+    // last session left off, so ONE window sitting on workspace 11 stretches
+    // the column past any length a person chose, and the six empty slots in the
+    // middle are places nothing will ever be. A column whose height is decided
+    // by the desktop's history is a different shape every boot, and the sidebar
+    // is centred on it, so everything else moves too.
+    //
+    // Derived, not enumerated: the number is `sidebar.workspaces.persistent`
+    // and every slot is built from it, so setting it to nine gives nine (see
+    // ~/.claude/rules/math-over-hardcoding.md).
+    //
+    // WHAT THIS GIVES UP is a plate for a workspace off the end of the set. A
+    // window opened on workspace 9 by a bind of your own is still there and
+    // still switched to; the column just does not draw it, the same way it
+    // draws no numbered plate for a special. The one case where that mattered
+    // and could be answered rather than accepted is the boot, below.
+    readonly property int count: Appearance.sizes.wsPersistent
 
-    // How many slots to render. Always enough for the persistent set, the
-    // focused workspace, and the highest live one. Derived from the data, never
-    // a hardcoded list of slots.
-    readonly property int count: Math.max(persistentCount, activeId, ...Object.keys(windows).map(Number))
+    // HOME AT BOOT, and only when the shell would otherwise come up looking at
+    // a workspace it has nowhere to draw. Where you are is the compositor's
+    // business every other minute of the day; a session that starts on
+    // workspace 11 with a five-slot column is the one moment it is the shell's,
+    // because the accent then sits on no plate at all and the sidebar is
+    // quietly wrong about where you are before you have touched it.
+    //
+    // ONCE, and conditionally. A reload is a fresh `Component.onCompleted` as
+    // far as this file is concerned, and being yanked back to workspace one
+    // every time a QML file is saved would be unusable; anywhere inside the
+    // column, which is nearly always, this does nothing whatsoever.
+    //
+    // WAITED FOR, TWICE, rather than read at startup, because two separate
+    // answers have to be in before the question means anything.
+    //
+    // The first is Hyprland's own. Quickshell talks to it over a socket, so
+    // `activeId` is its own fallback of 1 until the first reply lands, and
+    // asking before then finds the shell already home and arms nothing.
+    // `known` going non-zero IS that reply: the earliest instant the question
+    // can be asked truthfully.
+    //
+    // The second is `parserKnown`, for the reason written over it. `switchTo`
+    // goes out through `send`, which picks its dialect from a probe that is a
+    // whole process round-trip away, and `lua` reads false while it is in
+    // flight. This is the exact caller that comment warns about: it fires once,
+    // at startup, in the one moment nobody is watching the log, and a switch
+    // spelled in the wrong dialect is refused as a syntax error rather than
+    // failing loudly. So it waits, and both handlers below call in because
+    // either answer can be the one that arrives last.
+    readonly property int known: Hyprland.workspaces.values.length
+    property bool homed: false
+
+    onKnownChanged: root.home()
+    onParserKnownChanged: root.home()
+    Component.onCompleted: root.home()
+
+    function home(): void {
+        if (root.homed || root.known === 0 || !root.parserKnown)
+            return;
+        root.homed = true;
+        if (root.activeId > root.count)
+            root.switchTo(1);
+    }
 
     // { id: [toplevel, ...] } for every workspace that has any. The indicators
     // draw one icon per entry, so this is the difference between knowing a
