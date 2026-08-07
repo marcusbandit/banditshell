@@ -165,33 +165,30 @@ Item {
     Component.onCompleted: root.resetHistory()
 
     // The daemon's event stream.
-    Socket {
+    //
+    // The Socket lives inside a Loader because a Quickshell Socket that fails
+    // its FIRST connect is dead for good: `connected` reads false from then on,
+    // and neither reassigning `path` nor pushing `connected` back through false
+    // and up again will make it try a second time. Retrying means building a
+    // NEW socket, which is what toggling `active` does.
+    //
+    // That is not a hypothetical. The shell and the daemon are both started off
+    // graphical-session.target, so whoever wins the race decides: if the shell
+    // reaches this line before the daemon has bound its socket, the connect
+    // fails with ServerNotFoundError and the indicator is dark for the whole
+    // session. The retry below used to just re-assign `connected = true`, which
+    // is a no-op on a dead socket, so it never recovered.
+    Loader {
         id: events
 
-        path: root.socketPath
-        connected: true
+        active: true
+        sourceComponent: eventSocket
 
-        parser: SplitParser {
-            splitMarker: "\n"
-            onRead: line => {
-                let msg;
-                try {
-                    msg = JSON.parse(line);
-                } catch (e) {
-                    return;
-                }
-                if (msg.phase !== undefined)
-                    root.phase = msg.phase;
-                if (msg.level !== undefined) {
-                    root.level = msg.level;
-                    if (root.phase === "listening")
-                        root.pushLevel(msg.level);
-                }
-            }
-        }
+        // The real connection state, from whichever socket is currently loaded.
+        readonly property bool up: item?.connected ?? false
 
-        onConnectionStateChanged: {
-            if (!connected) {
+        onUpChanged: {
+            if (!up) {
                 // No daemon, no microphone open. Anything else would leave a
                 // "listening" pill on screen with nothing behind it.
                 root.phase = "idle";
@@ -200,14 +197,46 @@ Item {
         }
     }
 
-    // The socket only exists while the daemon does, and the daemon restarts
-    // (package upgrade, config change, a crash). Without this the shell would
-    // silently never show the indicator again until the next login.
+    Component {
+        id: eventSocket
+
+        Socket {
+            path: root.socketPath
+            connected: true
+
+            parser: SplitParser {
+                splitMarker: "\n"
+                onRead: line => {
+                    let msg;
+                    try {
+                        msg = JSON.parse(line);
+                    } catch (e) {
+                        return;
+                    }
+                    if (msg.phase !== undefined)
+                        root.phase = msg.phase;
+                    if (msg.level !== undefined) {
+                        root.level = msg.level;
+                        if (root.phase === "listening")
+                            root.pushLevel(msg.level);
+                    }
+                }
+            }
+        }
+    }
+
+    // The socket only exists while the daemon does, and the daemon starts late,
+    // restarts (package upgrade, config change, a crash) and takes its socket
+    // with it when it goes. So the shell keeps knocking until something answers.
+    // Without this the indicator would stay dark until the next login.
     Timer {
         interval: 2000
-        running: !events.connected
+        running: !events.up
         repeat: true
-        onTriggered: events.connected = true
+        onTriggered: {
+            events.active = false;
+            events.active = true;
+        }
     }
 
     // Exponential approach, the same one the notch drops with, so this arrives
