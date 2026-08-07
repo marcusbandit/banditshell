@@ -749,8 +749,27 @@ Item {
                         root.selected = index;
                         root.reading = modelData;
                     }
+                    pointed: index === root.hovered
+
                     onEntered: root.hovered = index
-                    onExited: if (root.hovered === index)
+                    // DELIBERATELY NOT CLEARED HERE. A row that grows when it is
+                    // pointed at reflows the list under a pointer that has not
+                    // moved, so it can drop its own hover, shrink, get it back
+                    // and strobe. Letting go is therefore ANOTHER row's job (the
+                    // onEntered above) or the pointer's, by leaving the list
+                    // (offList below). Neither can be caused by this row
+                    // resizing, so the loop cannot close. See ClipRow.pointed.
+                    onExited: {}
+                }
+
+                // THE OTHER WAY THE LATCH LETS GO. A row hands the pointer to
+                // whichever row takes it next, and this is what happens when
+                // nothing does because the pointer left the list altogether.
+                // Passive, so it never takes an event off a row or the wheel.
+                HoverHandler {
+                    id: offList
+
+                    onHoveredChanged: if (!offList.hovered)
                         root.hovered = -1
                 }
 

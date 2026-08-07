@@ -64,7 +64,24 @@ Item {
     // three sizes in this shell and a paragraph is not the thing a view is about
     // (~/.claude/rules/type-scale.md). What text has instead is the full view, a
     // right-arrow away.
-    readonly property bool focused: root.selected || root.hovered
+    // WHETHER THE POINTER IS ON THIS ROW, decided by the LIST and handed down,
+    // not read off this row's own HoverHandler.
+    //
+    // THE ROW MUST NOT BE ABLE TO UN-HOVER ITSELF. Growing changes
+    // implicitHeight, which reflows the list under a pointer that has not moved;
+    // the pointer then lands somewhere else, the row shrinks, the layout goes
+    // back, the pointer is on it again, and it grows. That is a loop with a
+    // frame of delay in it, so it does not settle, it strobes, and it is exactly
+    // what an image row did.
+    //
+    // The list latches which row is pointed at and only changes its mind when
+    // ANOTHER row claims the pointer or the pointer leaves the list entirely.
+    // Neither of those can be caused by this row resizing, so the loop has no
+    // way to close. `hovered` below is still the honest local answer and is what
+    // the controls use, because they do not resize anything.
+    property bool pointed: false
+
+    readonly property bool focused: root.selected || root.pointed
 
     Follow {
         id: grow
@@ -123,7 +140,9 @@ Item {
             // circular arc it exists to replace.
             radius: Appearance.rounding.normal
             color: root.selected ? Appearance.colour.fillStrong : Appearance.colour.fill
-            opacity: root.selected || root.hovered ? 1 : 0
+            // The LATCHED answer, so the plate under a growing row does not
+            // blink off and on with it. See `pointed`.
+            opacity: root.focused ? 1 : 0
 
             Behavior on opacity {
                 NumberAnimation {
