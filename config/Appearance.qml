@@ -299,6 +299,14 @@ Singleton {
         readonly property int pickerOutline: root.cfg.picker.outline
         readonly property int launcherWidth: root.cfg.launcher.width
         readonly property int launcherIcon: root.cfg.launcher.iconSize
+
+        // What was copied. See modules/clipboard/.
+        readonly property int clipboardWidth: root.cfg.clipboard.width
+        readonly property int clipboardPreview: root.cfg.clipboard.preview
+        readonly property int clipboardLines: root.cfg.clipboard.previewLines
+        // A row's mark, sized like every other mark in the shell rather than in
+        // pixels of its own, so the whole thing rescales from the one number.
+        readonly property int clipboardIcon: Math.round(root.font.iconSize * root.cfg.clipboard.iconScale)
         // How long a new wallpaper takes to open over the old one. A duration
         // among the sizes because that is where every other configured number
         // the shell reads lands; see Config's note on why it is not one of the

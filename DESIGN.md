@@ -362,6 +362,8 @@ banditshell/
 │   │                            to be: picture, SVG, GIF or video, behind one `ready`
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
+│   ├── Segments.qml             a row of choices of which exactly one is taken;
+│   │                            the sheet's two questions and the clipboard's tabs
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
 │   ├── PasswordField.qml        inline secret entry
 │   └── QrScanner.qml            the camera, and whatever code it finds; needs
@@ -381,6 +383,9 @@ banditshell/
 │   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
+│   ├── Clipboard.qml            what has been copied, and what each of them IS;
+│   │                            runs its own wl-paste watcher, because the type
+│   │                            list is the only place "file" differs from "text"
 │   ├── Settings.qml             the settings page's state, and its handover
 │   ├── Power.qml                the ways a session can end, and how each is done
 │   ├── Lock.qml                 whether the screen is locked, and what decides it
@@ -401,6 +406,10 @@ banditshell/
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots
 │   │                            that cross-fade, motion only on an empty workspace
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── clipboard/               what you copied; the launcher's twin
+│   │   ├── ClipboardPanel.qml   two tabs, a list, and `/` for the search that
+│   │   │                        is not there until it is asked for
+│   │   └── ClipRow.qml          one thing copied: its kind, or the picture itself
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
 │   ├── lock/                    the lock: one compositor surface per screen, one face
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
@@ -408,8 +417,7 @@ banditshell/
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
 │   │   ├── KeyBoard.qml         the same binds, on the keys your hands know
 │   │   ├── KeyCap.qml           one key: a width in units, a legend, a state
-│   │   ├── Chord.qml            one chord, in whichever vocabulary is being spoken
-│   │   └── Segments.qml         a row of choices of which exactly one is taken
+│   │   └── Chord.qml            one chord, in whichever vocabulary is being spoken
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
 │   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
 │   │                            is on the real desktop while you decide about it
@@ -448,6 +456,10 @@ banditshell/
 │       ├── StatusIcon.qml       one indicator, service-agnostic
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
+├── scripts/
+│   ├── palette.py               a wallpaper's dominant colours
+│   └── clip-record.sh           one clipboard event, as one line of JSON: the
+│                                MIME types, and the bytes when they are not text
 ├── bin/
 │   └── banditshell              the CLI (linked into ~/bin)
 └── docs/
@@ -574,6 +586,7 @@ already known to work.
 banditshell start|stop|restart|run|log
 banditshell menu list|open <key>|close|toggle <key>|current|hover
 banditshell launcher toggle|open|close|scrub <0..1>
+banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status
 banditshell session toggle|open|close
 banditshell settings toggle|open [page]|close|page <key>|pull|put|status
 banditshell notifications toggle|open|close|clear|status
@@ -1514,6 +1527,67 @@ backward at the lift to read as a change of mind rather than as noise; and
 because a flick is intention expressed as speed. Together they say: recognition
 early, rejection rare, commitment generous. A gesture is a feel rather than a
 rule, but the rules are what create the feel.
+
+## 16. The clipboard records itself, and the reason is TYPES
+
+The clipboard menu was the first panel built on somebody else's data, and it
+ended up not being. Worth writing down, because the pull to read an existing
+store is strong and the argument against it is not obvious until you look at
+what a clipboard actually carries.
+
+A selection is not a value. It is an OFFER, made in several MIME types at once,
+and the receiving application picks the one it can use. Drag a song out of a file
+manager and the clipboard offers `text/uri-list` **and** `text/plain`; a
+screenshot offers `image/png`; a copied paragraph offers four spellings of text.
+That type list is the only place in the entire system where the difference
+between a file, a picture, a sound and a sentence is written down.
+
+Every clipboard manager throws it away. `clipse` stores four fields, `value` /
+`recorded` / `filePath` / `pinned`, and not one of them is a type: a path, a URL
+and a paragraph all arrive as `value` and come back indistinguishable. So a menu
+built on that store cannot answer "is this audio" except by looking at the text
+and guessing from the extension, which is wrong for every file without one and
+for every sentence that happens to contain a dot. **The feature that was asked
+for was not implementable on the available data**, which is the only good reason
+to go one layer down.
+
+So `scripts/clip-record.sh` runs under `wl-paste --watch` and asks
+`wl-paste --list-types`, and `services/Clipboard.qml` decides what the answer
+means. The split follows section 8's layering exactly one notch further out than
+usual: the script answers what only the compositor can answer (the type list,
+percent-decoding a URI, `file` on the far end of it, saving bytes that are not
+text), and every judgement about that answer is QML. "Audio" is therefore a MIME
+test in a service and not a filename test in a shell, and changing what counts as
+audio does not involve a shell script.
+
+Three things fell out of owning the recorder that could not have been retrofitted:
+
+- **`CLIPBOARD_STATE=sensitive` is honoured.** wl-clipboard tells a watcher when
+  a selection is a password, and the right answer is to record nothing, silently.
+  A manager that stored it and a menu that hid it would still have written the
+  secret to disk.
+- **Deduplication is by content.** A picture is named by the hash of its bytes,
+  so the same screenshot copied twice is one file, and re-copying anything moves
+  it rather than adding it. A history that grew a duplicate every time you
+  re-copied the same command buries everything else within a day.
+- **A pin means something.** It survives the cap, it survives `clear`, and
+  re-copying the pinned thing does not lose it, because the identity carries
+  forward. A promise that a thing stays cannot be conditional on how much has
+  been copied since.
+
+The existing clipse history is imported once, and the pictures are **copied**
+rather than referenced. Referencing them in place was the obvious thing and it is
+wrong: it would leave a third of the imported history owned by the tool being
+replaced, so `clipse -clean`, whose whole job is reaping exactly those files,
+would quietly empty twenty-eight rows of history months later. Importing means
+taking a copy, or it is not importing.
+
+The honest cost is a second watcher on the session if the old manager is left
+running. That is harmless (both see every selection, neither can disturb the
+other's store) and it is why `clipboard status` reports whether this one is
+actually recording: a history that has quietly stopped growing looks exactly like
+an afternoon in which nothing was copied, and it is the one failure the panel
+itself cannot show.
 
 ---
 

@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Wayland
 import qs.config
 import qs.modules.cheatsheet
+import qs.modules.clipboard
 import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
@@ -36,6 +37,9 @@ PanelWindow {
     // reference keeps shell.qml from having to wire anything up.
     readonly property Menus menus: menuLayer
     readonly property Launcher launcher: launcherLayer
+    // The launcher's twin: the same gesture out of the same band, over the same
+    // list machinery, showing what you copied instead of what you can run.
+    readonly property ClipboardPanel clipboard: clipLayer
     readonly property WallpaperPicker wallpapers: wallpaperLayer
     readonly property SessionMenu session: sessionLayer
     readonly property SettingsPanel settings: settingsLayer
@@ -191,7 +195,7 @@ PanelWindow {
     // corner or the strip, one push back into the edge it came out of, or one
     // CLI call from being gone; and the surface holding the keyboard is on
     // screen the whole time it holds it.
-    WlrLayershell.keyboardFocus: launcherLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -242,6 +246,13 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: launcherLayer.open ? launcherLayer.maskItem : null
+        }
+
+        // The launcher's, unchanged, for the panel that comes out of the same
+        // band and is put away the same way.
+        Region {
+            intersection: Intersection.Combine
+            item: clipLayer.open ? clipLayer.maskItem : null
         }
 
         Region {
@@ -438,6 +449,8 @@ PanelWindow {
 
             if (launcherLayer.open)
                 launcherLayer.hide();
+            else if (clipLayer.open)
+                clipLayer.hide();
             else if (wallpaperLayer.open)
                 wallpaperLayer.hide();
             else if (sessionLayer.open)
@@ -470,7 +483,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -652,7 +665,7 @@ PanelWindow {
             // these layers: this file is the one place that can see all of them
             // at once, and a tray reaching up here by id would be the layer
             // reading the file that declares it.
-            keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
+            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
         }
 
         Menus {
@@ -682,7 +695,7 @@ PanelWindow {
             // panels it cannot see. Naming its own claim here as well would be
             // one fact in two places, and the copy out here would be the one to
             // go stale.
-            keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open
+            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open
         }
 
         Launcher {
@@ -700,6 +713,33 @@ PanelWindow {
                 sessionLayer.hide();
                 cheatLayer.hide();
                 wallpaperLayer.hide();
+                clipLayer.hide();
+                if (menuLayer.needsKeyboard)
+                    menuLayer.hide();
+            }
+        }
+
+        // WHAT YOU COPIED. The launcher's twin, and stated as one: same band,
+        // same rise, same put-away, same exclusive keyboard, and the same list
+        // that a click off it dismisses.
+        //
+        // Mutually exclusive with every other panel that takes the keyboard
+        // outright, for the reason the power panel's note spells out: whichever
+        // asked second would be typing into the first. This one has a stronger
+        // form of the same problem, because its list answers bare letters (`p`
+        // keeps a row, `x` throws one away) rather than only navigation keys.
+        ClipboardPanel {
+            id: clipLayer
+
+            anchors.fill: parent
+            originX: chassis.barWidth
+            inset: win.border
+
+            onOpenChanged: if (open) {
+                launcherLayer.hide();
+                wallpaperLayer.hide();
+                sessionLayer.hide();
+                cheatLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -723,8 +763,10 @@ PanelWindow {
             // would visibly settle.
             launcherSpan: Math.max(launcherLayer.panelWidth, Appearance.sizes.launcherWidth)
 
-            onOpenChanged: if (open)
-                launcherLayer.hide()
+            onOpenChanged: if (open) {
+                launcherLayer.hide();
+                clipLayer.hide();
+            }
         }
 
         // Power, on the right edge, summoned by keybind rather than reached for.
@@ -759,6 +801,7 @@ PanelWindow {
             // launcher.
             onOpenChanged: if (open) {
                 launcherLayer.hide();
+                clipLayer.hide();
                 cheatLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
@@ -818,6 +861,7 @@ PanelWindow {
             // layer surface reaching outside itself.
             onOpenChanged: if (open) {
                 launcherLayer.hide();
+                clipLayer.hide();
                 sessionLayer.hide();
                 if (settingsLayer.docked)
                     settingsLayer.hide();
@@ -1074,7 +1118,7 @@ PanelWindow {
             // The tray's note above, verbatim and for the same reason: a pin must
             // not take the keyboard off whatever is being typed into, and `notch
             // open` is as much a keybind as `notifications open` is.
-            keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
+            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
         }
 
         // LOAD-BEARING, and its blob above must stay in `panels`. This is the

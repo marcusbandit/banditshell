@@ -27,6 +27,33 @@ Item {
 
     readonly property bool ready: image.status === Image.Ready
 
+    // The load itself, for a caller that has to tell "not yet" from "never".
+    // `ready` is false for both, and they want opposite things drawn: a plate
+    // waiting for a decode should stay empty, and one pointed at a file that is
+    // gone should say so rather than look like it is still trying.
+    readonly property int status: image.status
+    readonly property int implicitSourceWidth: image.implicitWidth
+    readonly property int implicitSourceHeight: image.implicitHeight
+
+    // WHAT SIZE TO DECODE AT, which defaults to the item's own size and must NOT
+    // when the item is sized from the picture.
+    //
+    // The note above `aspect` says the decode may not depend on the thing it
+    // decides, and this is the property that lets a caller keep that promise. A
+    // plate that takes its WIDTH from `aspect` and leaves these alone builds a
+    // loop that oscillates rather than settles: the width changes, the new width
+    // is a new decode size, the reload drops `ready`, the caller's aspect falls
+    // back to its placeholder, the width changes again. On screen that is a
+    // thumbnail flickering between square and its real shape, forever, and it
+    // costs a full decode every frame it does it.
+    //
+    // Pin ONE of them and leave the other at zero. Qt reads a zero dimension as
+    // "unset" and scales the other preserving the aspect ratio, so the decode
+    // size is fixed, `implicitWidth`/`implicitHeight` still report the picture's
+    // true proportions, and nothing the caller derives from them feeds back.
+    property real decodeWidth: root.width
+    property real decodeHeight: root.height
+
     // THE MASK FOLLOWS THE PICTURE, not the box it was given.
     //
     // Filling is the easy case: the picture covers the whole item, so a mask the
@@ -53,8 +80,8 @@ Item {
         fillMode: root.fillMode
         asynchronous: true
         smooth: true
-        sourceSize.width: root.width * Screen.devicePixelRatio
-        sourceSize.height: root.height * Screen.devicePixelRatio
+        sourceSize.width: root.decodeWidth * Screen.devicePixelRatio
+        sourceSize.height: root.decodeHeight * Screen.devicePixelRatio
         // Rendered to a texture for the mask to eat, never to the scene.
         layer.enabled: true
         visible: false

@@ -9,6 +9,11 @@
 #   banditshell start|stop|restart|run|log
 #   banditshell menu list|open <key>|close|toggle <key>|current|hover
 #   banditshell launcher toggle|open|close|scrub <0..1>
+#   banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status
+#                                what you copied; <n> is the index `list` prints.
+#                                `status` says whether it is actually RECORDING,
+#                                which a history that has quietly stopped growing
+#                                cannot tell you any other way.
 #   banditshell session toggle|open|close
 #   banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status
 #                                pull = shell -> window, put = window -> shell
@@ -130,6 +135,22 @@ launcher)
     fi
     ;;
 
+# The verbs that take an index are spelled out; the rest pass through the way
+# session's do. An index is whatever `clipboard list` printed in its first
+# column, which is why that verb prints one.
+clipboard)
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    toggle | open | close | list | clear | status) ipc clipboard "$sub" ;;
+    use | pin | remove)
+        [ $# -ge 1 ] || { echo "usage: banditshell clipboard $sub <index>" >&2; exit 2; }
+        ipc clipboard "$sub" "$1"
+        ;;
+    *) echo "usage: banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status" >&2; exit 2 ;;
+    esac
+    ;;
+
 session)
     ipc session "${1:-toggle}"
     ;;
@@ -156,7 +177,7 @@ session)
 # without stopping the ones after it, because the whole point is to be the thing
 # that works when something else has not.
 close | panic)
-    for target in "menu close" "launcher close" "session close" "hotkeys close" \
+    for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
                   "settings close" "notifications close" "notch close" "picker close"; do
         # Unquoted on purpose: this is the one place a verb and its argument
         # travel as one string and have to come apart again.

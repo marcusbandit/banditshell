@@ -580,6 +580,75 @@ Singleton {
                 claimMs: 15000
             },
 
+            // What has been copied, and getting it back. See
+            // services/Clipboard.qml and modules/clipboard/.
+            clipboard: {
+                // Wider than the launcher, and for a reason the launcher does
+                // not have: a launcher row is a NAME, which is short and which
+                // you recognise before you have read it. A clipboard row is a
+                // fragment of whatever you were doing, and the only thing that
+                // makes one distinguishable from the three others copied out of
+                // the same file is how much of it you can see.
+                width: 980,
+
+                // How tall a picture's row is allowed to get. A thumbnail is
+                // the one row that genuinely cannot be read at text height:
+                // scaled into a line box a screenshot is a grey smudge, and
+                // telling two grey smudges apart is exactly the task.
+                preview: 132,
+
+                // How many lines of a text entry are shown before it is cut.
+                // Enough to tell a paragraph from a command, not so many that
+                // one paste owns the screen.
+                previewLines: 4,
+
+                // How big a row's kind mark is, against the shell's icon size.
+                // Larger than a menu's glyph for the same reason the launcher's
+                // is: this is a list scanned by shape before it is read.
+                iconScale: 1.4,
+
+                // WHAT THE SHELL RUNS ITSELF.
+                //
+                // The history is this shell's own, recorded by
+                // scripts/clip-record.sh under `wl-paste --watch`, and not read
+                // out of another clipboard manager's store. The reason is types:
+                // a clipboard offers its contents as several MIME types at once
+                // and that list is the only place the difference between a file,
+                // a picture, a sound and a sentence is written down. clipse
+                // keeps four fields and no type among them, so a path, a URL and
+                // a paragraph come back indistinguishable and a menu built on it
+                // can only guess from the text. Turn this off to run the watcher
+                // yourself, or to freeze the history where it is.
+                record: true,
+
+                // How many entries are kept. Old ones fall off the end, except
+                // pinned ones, which never do.
+                maxEntries: 400,
+
+                // CEILINGS ON WHAT IS STORED, in bytes. A clipboard is not a
+                // place anything agreed to be kept: copying a disk image offers
+                // it to whoever asks, and a history that took every offer would
+                // answer one paste by filling the disk. Past these the event is
+                // recorded as having happened and the bytes are dropped, which
+                // is the honest outcome; the row says what was copied without
+                // claiming to still have it.
+                maxText: 1048576,
+                maxBlob: 33554432,
+
+                // Bring the existing clipse history in, ONCE, the first time
+                // this runs. Nothing is written back to clipse and nothing of
+                // its is deleted; the entries are read and copied. The flag
+                // flips itself to false afterwards so a later clipse session
+                // cannot re-seed over history this shell has since collected.
+                //
+                // Those entries arrive with no type information, because clipse
+                // never had any. They are classified by the same sniffing every
+                // history entry falls back to and will be right about a picture
+                // and a URL and wrong about the occasional path; entries
+                // recorded HERE carry the real type list and need none of it.
+                importClipse: true
+            },
+
             // The calendar's month gesture. See
             // modules/menu/content/CalendarMenu.qml.
             calendar: {

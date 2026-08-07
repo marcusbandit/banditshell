@@ -2,14 +2,16 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.config
-import qs.components
 
 // A SEGMENTED CONTROL: one row of mutually exclusive choices, of which exactly
 // one is taken.
 //
-// It exists because the sheet has two of these questions to ask (which view, and
-// how a chord is spelled) and neither of them fits the two controls the shell
-// already owns. A Toggle is a SWITCH: it says one thing is on or off, and both
+// It exists because the hotkey sheet had two of these questions to ask (which
+// view, and how a chord is spelled) and neither of them fits the two controls
+// the shell already owns. It lives here rather than beside the sheet because the
+// clipboard's tabs are the same question a third time, and a control that knows
+// nothing about the thing it is asked on behalf of belongs with the rest of the
+// primitives (DESIGN.md 8: components know nothing about the shell). A Toggle is a SWITCH: it says one thing is on or off, and both
 // of the sheet's questions are a choice between two named alternatives, neither
 // of which is the absence of the other. "List" is not "not board", and "words"
 // is not "not symbols"; a switch labelled "board" would be asking you to read
