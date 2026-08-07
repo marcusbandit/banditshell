@@ -705,7 +705,7 @@ Singleton {
                 // has to lie about where the other is. Under about twenty-four
                 // they part company again and the handle needs an invisible
                 // target grown around it, which is the arrangement this replaced.
-                railWidth: 30,
+                trackWidth: 30,
 
                 // HOW LONG THE METER IS, in glyphs of the icon standing under it.
                 //
@@ -744,7 +744,7 @@ Singleton {
                 // which the track's length decides. See modules/VolumeRail.qml.
                 // Either way it follows the type scale, which is what the old
                 // pixel `railLength` could not do.
-                meterGlyphs: 9,
+                trackIcons: 9,
 
                 // THE HAZARD LADDER'S TOP TWO RUNGS, and the only absolute
                 // colours in this shell.

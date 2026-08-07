@@ -330,7 +330,7 @@ Item {
     // already used it: an icon font is only usually monospaced, and a panel
     // measured off what is currently drawn would resize as the level changed
     // the glyph.
-    readonly property real meterLength: Appearance.font.iconSize * Appearance.sizes.volumeMeterGlyphs
+    readonly property real meterLength: Appearance.font.iconSize * Appearance.sizes.volumeTrackIcons
 
     // THE TRACK AND THE PUCK THAT RIDES IT, both out of the one token.
     //
@@ -350,7 +350,7 @@ Item {
     // as the grab having gone wrong. What answers the press is the value moving
     // and the fill's colour, which is plenty and is on the axis the gesture is
     // actually about.
-    readonly property real trackWidth: Appearance.sizes.volumeRailWidth
+    readonly property real trackWidth: Appearance.sizes.volumeTrackWidth
     readonly property real handleSize: root.trackWidth
     readonly property real stopDot: Math.max(Appearance.font.stem, Math.round(root.trackWidth / 6))
 
