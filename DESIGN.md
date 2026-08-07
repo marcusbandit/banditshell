@@ -364,6 +364,9 @@ banditshell/
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
 │   │                            the sheet's two questions and the clipboard's tabs
+│   ├── highlight.js             what language is this, and where are its tokens
+│   ├── CodeBlock.qml            that, coloured from the theme, one delegate per
+│   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
 │   ├── PasswordField.qml        inline secret entry
 │   └── QrScanner.qml            the camera, and whatever code it finds; needs
@@ -408,8 +411,12 @@ banditshell/
 │   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
 │   ├── clipboard/               what you copied; the launcher's twin
 │   │   ├── ClipboardPanel.qml   two tabs, a list, and `/` for the search that
-│   │   │                        is not there until it is asked for
-│   │   └── ClipRow.qml          one thing copied: its kind, or the picture itself
+│   │   │                        is not there until it is asked for; the list and
+│   │   │                        the page are two halves of one strip
+│   │   ├── ClipRow.qml          one thing copied: its kind, or the picture
+│   │   │                        itself, which grows when it is the one you are on
+│   │   └── ClipDetail.qml       one thing properly: whole, formatted, coloured.
+│   │                            A right arrow or a swipe right away
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
 │   ├── lock/                    the lock: one compositor surface per screen, one face
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
