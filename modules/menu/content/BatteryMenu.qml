@@ -8,50 +8,96 @@ import qs.services
 // On a desktop it says so rather than drawing an empty battery, because UPower
 // hands over a display device whether or not there is a battery behind it and
 // the difference between "0%" and "none" matters.
+//
+// ONE BLOCK, not a header and then a list. Everything the menu knows fits
+// beside the tank, and the tank is sized to be exactly as tall as it: a fixed
+// panel with a fixed drawing in it has one honest width for whatever sits next
+// to the drawing, and one honest height for the drawing. Laid out the other way
+// round, with the tank at whatever size it was drawn at, the column beside it
+// was two lines of text floating in the middle of an empty half-panel.
 Column {
     id: root
 
     spacing: Appearance.padding.normal
 
-    // THE LEVEL, DRAWN. The tank says the percentage as a height and as a
-    // number, so the headline beside it does not have to: it says the two things
-    // a height cannot, which are which direction the level is going and how long
-    // it has left. The read-only Slider that used to sit under this went with
-    // the icon, being a third telling of the one fact the tank draws.
     Row {
         width: parent.width
         visible: Battery.available
         spacing: Appearance.padding.large
 
+        // AS TALL AS WHAT IS BESIDE IT. The tank takes a height and works its
+        // own width back out of it, so this is the only number the layout has to
+        // decide. Its own minimum still wins if the readouts ever get shorter
+        // than the number the tank has to hold.
         BatteryTank {
             id: tank
 
+            height: stats.implicitHeight
             level: Battery.percentage
             charging: Battery.charging
         }
 
-        // WHATEVER THE TANK LEAVES, and stated rather than implied: this is a
-        // fixed-width panel with a fixed-width tank in it, so the column beside
-        // it has exactly one width it can be, and a line of text that works it
-        // out from its own length instead runs off the end of the menu. "plugged
-        // in" at the 18px tier is wider than what is left.
+        // WHATEVER THE TANK LEAVES, stated rather than implied: a line of text
+        // that works its width out from its own length runs off the end of a
+        // fixed panel, and "plugged in" at the 27px tier is wider than what is
+        // left. Every line elides for the same reason.
+        //
+        // Nothing in here may WRAP. The tank's height is this column's implicit
+        // height and this column's width is what the tank leaves, so a line free
+        // to grow taller as it gets narrower would be a loop.
         Column {
+            id: stats
+
             anchors.verticalCenter: parent.verticalCenter
             width: parent.width - tank.width - parent.spacing
-            spacing: Appearance.padding.small
+            spacing: Appearance.padding.large
 
-            StyledText {
-                width: parent.width
-                text: Battery.state
-                color: Battery.low ? Appearance.colour.accent : Appearance.colour.text
-                elide: Text.ElideRight
-            }
+            Repeater {
+                model: !Battery.available ? [] : [
+                    {
+                        // The state leads, because it is the one thing the tank
+                        // cannot draw: a tank at 76% looks the same whether that
+                        // number is on its way up or on its way down.
+                        lead: true,
+                        value: Battery.state,
+                        note: Battery.timeLabel() || "fully charged"
+                    },
+                    {
+                        lead: false,
+                        value: Battery.rate > 0 ? `${Battery.rate.toFixed(1)} W` : "idle",
+                        // "input" rather than "charging" while it charges: the
+                        // state above already says charging, and a menu that
+                        // says one word twice reads as two facts.
+                        note: Battery.charging ? "input" : "draw"
+                    },
+                    {
+                        lead: false,
+                        value: Battery.health > 0 ? `${Math.round(Battery.health)}%` : "unknown",
+                        note: "health"
+                    }
+                ]
 
-            StyledText {
-                width: parent.width
-                text: Battery.timeLabel() || "fully charged"
-                color: Appearance.colour.textDim
-                elide: Text.ElideRight
+                delegate: Column {
+                    required property var modelData
+
+                    width: stats.width
+                    spacing: 0
+
+                    StyledText {
+                        width: parent.width
+                        text: parent.modelData.value
+                        font.pixelSize: parent.modelData.lead ? Appearance.font.size.normal : Appearance.font.size.small
+                        color: parent.modelData.lead && Battery.low ? Appearance.colour.accent : Appearance.colour.text
+                        elide: Text.ElideRight
+                    }
+
+                    StyledText {
+                        width: parent.width
+                        text: parent.modelData.note
+                        color: parent.modelData.lead ? Appearance.colour.textDim : Appearance.colour.textFaint
+                        elide: Text.ElideRight
+                    }
+                }
             }
         }
     }
@@ -64,45 +110,12 @@ Column {
 
         StyledText {
             text: "no battery"
-            font.pixelSize: Appearance.font.size.large
+            font.pixelSize: Appearance.font.size.normal
         }
 
         StyledText {
             text: "this machine runs on mains"
-            font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
-        }
-    }
-
-    Separator {
-        width: parent.width
-        visible: Battery.available
-    }
-
-    Repeater {
-        // No `schedule` row: the estimate is the headline's second line now, and
-        // a menu that says the same thing twice reads as two facts.
-        model: !Battery.available ? [] : [
-            {
-                icon: "bolt",
-                label: Battery.rate > 0 ? `${Battery.rate.toFixed(1)} W` : "idle",
-                detail: Battery.charging ? "charging" : "draw"
-            },
-            {
-                icon: "favorite",
-                label: Battery.health > 0 ? `${Math.round(Battery.health)}%` : "unknown",
-                detail: "health"
-            }
-        ]
-
-        delegate: MenuRow {
-            required property var modelData
-
-            width: root.width
-            interactive: false
-            icon: modelData.icon
-            label: modelData.label
-            detail: modelData.detail
         }
     }
 }
