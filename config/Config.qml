@@ -519,6 +519,41 @@ Singleton {
                 // LIST and splats it, so a list can never be set from the CLI.
                 hidden: ({}),
 
+                // WHAT YOU PUT AT THE TOP, keyed by desktop entry id, valued by
+                // the moment you put it there.
+                //
+                // The star used to be the frecency table's first seven, and that
+                // is a good ranking which reads as noise: the row order changes
+                // under you as the week goes on, nothing you did put anything
+                // there, and a list nobody chose is a list nobody trusts. So the
+                // star is a list you WRITE now, and ranking stays where ranking
+                // earns its keep, inside a letter and inside a search.
+                //
+                // The VALUE is a timestamp rather than `true`, because the star
+                // has an order and the order is yours: a new favourite lands at
+                // the bottom instead of shuffling everything above it. Empty is
+                // not an error, it is the first run, and the launcher stands the
+                // most-used list in until you have starred something.
+                //
+                // A map rather than a list for the same reason `hidden` is one.
+                favourites: ({}),
+
+                // FOLDERS, keyed by a name-shaped id you can read in this file.
+                //
+                //   "media": { "name": "Media", "since": 1723..., "apps": { "mpv": 1723... } }
+                //
+                // A folder is a place in the STAR, not a second filing system:
+                // the alphabet below it still holds every application installed,
+                // exactly once, whatever you have grouped up here. So a folder
+                // has a `since` of its own and sits among the loose favourites
+                // in the order you made it, and its members carry theirs, which
+                // is the order they sit in inside it.
+                //
+                // An application is in at most one folder, and being in one is
+                // what pins it: `favourites` and this are kept agreeing by
+                // services/Apps.qml rather than by whoever edits the file.
+                folders: ({}),
+
                 niagara: {
                     width: 760,
                     // How big an application's mark is in the column.
@@ -526,8 +561,14 @@ Singleton {
                     // How wide the alphabet rail is. Narrow on purpose: it is a
                     // ruler, not a column of buttons.
                     rail: 44,
-                    // How many of your most-used applications are on screen when
-                    // nothing has been typed or scrubbed.
+                    // How many most-used applications STAND IN for the star
+                    // until you have put something there yourself.
+                    //
+                    // A first run with an empty star would be a launcher that
+                    // opens on the letter A, which is the one thing the star
+                    // exists to prevent. So the machine's guess fills it, and
+                    // the moment you star anything the guess stands down for
+                    // good: see `launcher.favourites`.
                     favourites: 7,
                     // How far the rail can be pulled toward the middle, and how
                     // many marks either side come with it. A CEILING, not a

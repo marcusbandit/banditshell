@@ -17,10 +17,8 @@ import qs.services
 //
 // Three things carry it across to a desktop:
 //
-//   THE STAR. The list does not begin at A. It begins with what you actually
-//   use, under a star, and the alphabet follows underneath. Niagara asks you to
-//   choose those; the shell already knows, off the same frecency the list
-//   concept ranks by.
+//   THE STAR. The list does not begin at A. It begins with the handful of things
+//   you actually reach for, under a star, and the alphabet follows underneath.
 //
 //   THE RAIL IS AN INDEX, NOT A FILTER. Everything is in the column the whole
 //   time; running down the rail scrolls to a letter rather than replacing what
@@ -32,6 +30,31 @@ import qs.services
 //
 // It rises out of the BOTTOM band and the search sits at the bottom, where a
 // phone puts what it expects to be reached.
+//
+// THE STAR IS CHOSEN, NOT COMPUTED, and that was the one place this file argued
+// with the launcher it is named after. Niagara asks you to pick your favourites;
+// this took the frecency table's first seven instead, on the grounds that the
+// shell already knew. It did know, and the section still read as random, because
+// a ranking is not a choice: the order changed under you as the week went on,
+// nothing you had done put anything there, and there was no way to say "not
+// that one" about a row you were looking straight at. A list nobody chose is a
+// list nobody trusts, however good the sort is. So the star is a list you write
+// now (see services/Apps.qml), ranking keeps the jobs it is actually good at,
+// which are ordering a letter and answering a query, and the machine's guess
+// stands in only until you have starred your first thing.
+//
+// WHAT A ROW CAN HAVE DONE TO IT is asked for by holding it down or by the right
+// button, and it opens modules/launcher/AppMenu.qml. Hiding used to be a disc on
+// the right end of every row and is one line in there now; the disc could not
+// have grown a second action, and it was invisible to a finger besides.
+//
+// AND A ROW CARRIES ITS APPLICATION'S NOTIFICATIONS, because the launcher is
+// where you go when you are looking for an application and "three unread" is
+// part of what you are looking for. A swipe across the row is the answer to
+// them: left throws them away, right opens the row if the row is a folder and
+// otherwise throws them away too, which is the whole rule and the reason the
+// gesture needs no legend. Inside a folder there is nothing left to open, so
+// both directions clear.
 Item {
     id: root
 
@@ -135,11 +158,62 @@ Item {
     }
 
     readonly property var letters: Object.keys(root.byLetter).sort()
-    readonly property var favourites: Apps.search("").slice(0, root.favouriteCount)
+
+    // WHAT IS IN THE STAR: folders and loose applications, in the order you
+    // pinned them. Apps owns the merge, because the two halves are stored
+    // separately and only that file knows the rules that keep them agreeing.
+    readonly property var pinned: Apps.pinned
+
+    // THE MACHINE'S GUESS, and only until the star is yours. The moment
+    // anything is starred this is empty for good, so a first run opens on
+    // something useful and never quietly competes with a list you built.
+    readonly property var standIns: Apps.starred ? [] : Apps.search("").slice(0, root.favouriteCount)
 
     // What the rail offers: the star, then whatever letters exist, then the
-    // drawer if anything is in it.
-    readonly property var keys: [root.star, ...root.letters, ...(Apps.buried.length ? [root.vault] : [])]
+    // drawer if anything is in it. Nothing at all inside a folder, where there
+    // is no alphabet to index.
+    readonly property var keys: root.opened ? [] : [root.star, ...root.letters, ...(Apps.buried.length ? [root.vault] : [])]
+
+    // ------------------------------------------------------------------
+    // WHICH FOLDER IS OPEN, "" for the column itself.
+    //
+    // A MODE OF THE ONE COLUMN rather than a second panel sliding over it. A
+    // folder holds a handful of things you chose; giving that its own surface
+    // would be a whole window's worth of ceremony for six rows, and it would
+    // break the one thing the concept is built on, which is that there is only
+    // ever one list and everything moves it rather than replacing it.
+    property string opened: ""
+
+    readonly property var openedFolder: root.opened ? Apps.folders[root.opened] : null
+
+    // IN THE ORDER YOU FILED THEM, not by use. Inside a folder every row is
+    // something you put there by hand, so re-sorting them by this week's habits
+    // would undo the only thing a folder is: an arrangement.
+    readonly property var openedApps: root.opened ? Apps.folderApps(root.opened) : []
+
+    function enterFolder(key: string): void {
+        if (!key || !Apps.folders[key])
+            return;
+        root.closeMenu();
+        root.opened = key;
+        query.text = "";
+        root.marked = "";
+        list.reset();
+        root.selected = root.firstPick(0, 1);
+    }
+
+    // BACK TO WHERE THE FOLDER IS, not to the top of the column. Leaving a
+    // folder should put you looking at the row you opened, the same way closing
+    // anything in this shell puts you back where you opened it from; the star
+    // is where every folder lives, so marking it is exactly that.
+    function leaveFolder(): void {
+        if (!root.opened)
+            return;
+        root.closeMenu();
+        root.opened = "";
+        list.reset();
+        root.markSection(root.star);
+    }
 
     // How long a row waits before it travels to a new place. See the list's
     // `displaced` transition, which is the whole reason this exists.
@@ -167,18 +241,42 @@ Item {
     // whatever was already on screen instead of replacing all of it.
     property var rowKeys: ({})
 
-    function rowFor(key: string, section: string, entry: var): var {
-        const had = root.rowKeys[key];
-        if (had && had.entry === entry && had.section === section)
-            return had;
-        return root.rowKeys[key] = {
-            section: section,
-            entry: entry
+    // A ROW IS FIVE FIELDS, and every caller supplies all five, because the
+    // identity test above is an equality check per field and `undefined` is not
+    // `""`: a row built with three of them would never match itself on the next
+    // evaluation and would be rebuilt on every keystroke, which is precisely the
+    // failure this cache exists to prevent. So the shape is filled in HERE
+    // rather than trusted to the six places that build one.
+    //
+    //   section  which section this row heads, "" for a row that is content
+    //   title    a heading drawn as text, for the letters
+    //   icon     a heading drawn as a glyph, for the star, the drawer, the way
+    //            back out of a folder
+    //   entry    an application
+    //   folder   a folder, by key
+    function rowFor(key: string, spec: var): var {
+        const want = {
+            section: spec.section ?? "",
+            title: spec.title ?? "",
+            icon: spec.icon ?? "",
+            entry: spec.entry ?? null,
+            folder: spec.folder ?? ""
         };
+
+        const had = root.rowKeys[key];
+        if (had && had.section === want.section && had.title === want.title && had.icon === want.icon && had.entry === want.entry && had.folder === want.folder)
+            return had;
+        return root.rowKeys[key] = want;
     }
 
     function entryKey(entry: var): string {
         return entry?.id || entry?.name || "";
+    }
+
+    // Something a selection can land on, which a heading is not. Folders count:
+    // Return on one opens it, the same as Return on an application launches it.
+    function pickable(row: var): bool {
+        return !!row && (!!row.entry || !!row.folder);
     }
 
     // ONE FLAT LIST of rows, sections included, rather than a list of lists.
@@ -189,23 +287,67 @@ Item {
     // rather than a search through nested delegates.
     readonly property var rows: {
         if (query.text)
-            return Apps.search(query.text).map(entry => root.rowFor(`app:${root.entryKey(entry)}`, "", entry));
+            return Apps.search(query.text).map(entry => root.rowFor(`app:${root.entryKey(entry)}`, {
+                    entry: entry
+                }));
+
+        // INSIDE A FOLDER the column is the folder, and its heading is the way
+        // back out. One row rather than a chrome bar above the list, because
+        // the heading slot already exists, already sits in the margin, and is
+        // already the thing that says where in the column you are.
+        if (root.opened) {
+            const out = [root.rowFor(`open:${root.opened}`, {
+                    section: root.opened,
+                    icon: "arrow_back",
+                    title: root.openedFolder?.name ?? ""
+                })];
+            for (const entry of root.openedApps)
+                out.push(root.rowFor(`in:${root.opened}:${root.entryKey(entry)}`, {
+                    entry: entry
+                }));
+            return out;
+        }
 
         const out = [];
-        if (root.favourites.length) {
-            out.push(root.rowFor(`section:${root.star}`, root.star, null));
-            for (const entry of root.favourites)
-                out.push(root.rowFor(`fav:${root.entryKey(entry)}`, "", entry));
+        if (root.pinned.length || root.standIns.length) {
+            out.push(root.rowFor(`section:${root.star}`, {
+                section: root.star,
+                icon: root.starIcon
+            }));
+            for (const pin of root.pinned)
+                out.push(pin.kind === "folder" ? root.rowFor(`folder:${pin.key}`, {
+                    folder: pin.key
+                }) : root.rowFor(`fav:${pin.key}`, {
+                    entry: pin.entry
+                }));
+            // KEYED THE SAME as a real favourite, deliberately: the row a guess
+            // put there and the row your star puts there are the same
+            // application in the same place, so starring it should keep the row
+            // rather than swap one for an identical one.
+            for (const entry of root.standIns)
+                out.push(root.rowFor(`fav:${root.entryKey(entry)}`, {
+                    entry: entry
+                }));
         }
         for (const key of root.letters) {
-            out.push(root.rowFor(`section:${key}`, key, null));
+            out.push(root.rowFor(`section:${key}`, {
+                section: key,
+                title: key
+            }));
             for (const entry of root.byLetter[key])
-                out.push(root.rowFor(`app:${root.entryKey(entry)}`, "", entry));
+                out.push(root.rowFor(`app:${root.entryKey(entry)}`, {
+                    entry: entry
+                }));
         }
         if (Apps.buried.length) {
-            out.push(root.rowFor(`section:${root.vault}`, root.vault, null));
+            out.push(root.rowFor(`section:${root.vault}`, {
+                section: root.vault,
+                icon: root.vaultIcon
+            }));
             for (const entry of Apps.buried)
-                out.push(root.rowFor(`app:${root.entryKey(entry)}`, "", entry));
+                out.push(root.rowFor(`app:${root.entryKey(entry)}`, {
+                    entry: entry
+                }));
         }
         return out;
     }
@@ -379,7 +521,7 @@ Item {
     // The VIEW and the TAIL as well as the position, because the whole question
     // about this list is whether a section is in the middle of it, and that
     // cannot be read off a scroll offset alone.
-    readonly property string scrollInfo: `${query.text ? `search "${query.text}"` : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}`
+    readonly property string scrollInfo: `${query.text ? `search "${query.text}"` : root.opened ? `folder "${root.openedFolder?.name ?? root.opened}"` : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}${root.menuOpen ? ", menu open" : ""}`
 
     // What had the keyboard before this took it; see ListLauncher, same reason.
     property string restoreTo: ""
@@ -392,7 +534,12 @@ Item {
         root.hovered = -1;
         root.scrubbing = false;
         root.grabbing = false;
-        root.selected = root.firstApp(0, 1);
+        // AT THE TOP OF THE COLUMN, whatever folder was open last time. A
+        // launcher opens on the star; being dropped back inside a folder you
+        // finished with is the same surprise as opening on the letter A.
+        root.opened = "";
+        root.closeMenu();
+        root.selected = root.firstPick(0, 1);
         list.reset();
         Qt.callLater(query.forceActiveFocus);
         // ARRIVED AT, not travelled to. Closing does not clear the query, so a
@@ -408,8 +555,22 @@ Item {
         query.focus = false;
         root.scrubbing = false;
         root.grabbing = false;
+        root.closeMenu();
         Hypr.restoreFocus(root.restoreTo);
         root.restoreTo = "";
+    }
+
+    // ESCAPE UNWINDS ONE THING AT A TIME, innermost first, which is the only
+    // reading of the key that is ever wrong to nobody: a sheet over a folder
+    // over a launcher is three states deep and closing all three because the
+    // outermost one heard the key is a launcher that throws away work.
+    function back(): void {
+        if (root.menuOpen)
+            root.closeMenu();
+        else if (root.opened)
+            root.leaveFolder();
+        else
+            root.hide();
     }
 
     function toggle(): void {
@@ -420,22 +581,31 @@ Item {
     }
 
     function accept(): void {
-        const entry = root.rows[root.selected]?.entry;
-        if (entry) {
-            Apps.launch(entry);
+        const row = root.rows[root.selected];
+
+        // A FOLDER IS OPENED, NOT LAUNCHED, and the launcher stays up: you
+        // asked to look inside something, which is the opposite of being done
+        // with the launcher.
+        if (row?.folder) {
+            root.enterFolder(row.folder);
+            return;
+        }
+
+        if (row?.entry) {
+            Apps.launch(row.entry);
             root.restoreTo = "";
             Hypr.claimNextWindow();
         }
         root.hide();
     }
 
-    // The next row that is an application, because a section is a label and
+    // The next row a selection can land on, because a section is a label and
     // selecting one would mean pressing Return on a letter.
-    function firstApp(from: int, step: int): int {
+    function firstPick(from: int, step: int): int {
         const n = root.rows.length;
         for (let i = 0; i < n; i++) {
             const at = ((from + i * step) % n + n) % n;
-            if (root.rows[at]?.entry)
+            if (root.pickable(root.rows[at]))
                 return at;
         }
         return 0;
@@ -443,7 +613,7 @@ Item {
 
     function move(delta: int): void {
         if (root.rows.length)
-            root.selectRow(root.firstApp(root.selected + delta, delta >= 0 ? 1 : -1));
+            root.selectRow(root.firstPick(root.selected + delta, delta >= 0 ? 1 : -1));
     }
 
     // Where a row starts, accumulated. NOT GlideList.reveal, which divides the
@@ -497,7 +667,7 @@ Item {
         // The row straight after the heading, which is the first application
         // filed under it. No search needed: the flat list puts them adjacent.
         const at = root.rows.findIndex(row => row.section === key);
-        if (at >= 0 && root.rows[at + 1]?.entry)
+        if (at >= 0 && root.pickable(root.rows[at + 1]))
             root.selected = at + 1;
     }
 
@@ -506,7 +676,7 @@ Item {
     // whatever the alphabet turns out to contain.
     function scrubAt(y: real): void {
         const n = root.keys.length;
-        if (n <= 0 || query.text)
+        if (n <= 0 || query.text || root.opened)
             return;
         const index = Math.max(0, Math.min(Math.floor(y / rail.height * n), n - 1));
         const key = root.keys[index];
@@ -526,10 +696,77 @@ Item {
         if (root.marked && root.sectionSpan[root.marked])
             root.markSection(root.marked);
         else
-            root.selected = root.firstApp(0, 1);
+            root.selected = root.firstPick(0, 1);
     }
 
     onRowsChanged: root.reselect()
+
+    // THE FOLDER YOU ARE IN CAN STOP EXISTING while you are standing in it: its
+    // own menu offers to break it up, and config.json is watched, so a hand
+    // editing that file out from under the shell does the same thing. Either
+    // way the column would go on showing a heading with nothing under it and no
+    // way back, so leaving is not a decision here, it is the only state left.
+    onOpenedFolderChanged: if (root.opened && !root.openedFolder)
+        root.leaveFolder()
+
+    // ------------------------------------------------------------------
+    // THE CONTEXT SHEET: which row asked for it, and where that row was.
+    //
+    // Held HERE rather than inside the delegate, for the reason every menu in
+    // this shell is held one level up from what opened it: a delegate is torn
+    // down when the list changes, and the list changes on the very first thing
+    // the sheet does. A menu owned by the row that opened it would destroy
+    // itself the moment you starred anything.
+    property var menuEntry: null
+    property string menuFolder: ""
+    property real menuAt: 0
+
+    readonly property bool menuOpen: !!root.menuEntry || !!root.menuFolder
+
+    // WHERE THE ROW WAS, in the panel's coordinates, so the sheet can sit
+    // beside it. Taken once, at the moment of asking: the list is free to
+    // scroll afterwards and the sheet stays where it was put, which is what
+    // every other menu on every other desktop does and what stops a sheet from
+    // chasing a row through a flick.
+    //
+    // A NUMBER rather than the row itself, because the keyboard has no row to
+    // hand over. A delegate knows exactly where it is and says so; the key
+    // below has only an index, and works the position out from the same
+    // arithmetic the scrolling already uses.
+    function openMenuAt(y: real, entry: var, folder: string): void {
+        root.menuAt = y;
+        root.menuEntry = entry;
+        root.menuFolder = folder;
+    }
+
+    // THE SHEET, FROM THE KEYBOARD, because everything else in this launcher is
+    // reachable without leaving the home row and a list you drive with the
+    // arrow keys should not need a hand on the mouse to say "not that one, star
+    // this one". The Menu key and Shift+F10 are what the toolkits already agree
+    // this means, so there is nothing here to learn.
+    function openMenuForSelection(): void {
+        const row = root.rows[root.selected];
+        if (!root.pickable(row))
+            return;
+
+        // The row's middle, in the list's own coordinates, then in the panel's.
+        // rowY is the accumulator the selection already scrolls by, so the sheet
+        // lands beside the row for the same reason the row is on screen at all.
+        const mid = root.rowY(root.selected) + root.rowPitch / 2 - list.contentY;
+        root.openMenuAt(list.mapToItem(panel, 0, mid).y, row.entry, row.folder);
+    }
+
+    function closeMenu(): void {
+        root.menuEntry = null;
+        root.menuFolder = "";
+        // The sheet's name field takes the keyboard while it is up, and the
+        // launcher is a search box first: without this the next thing typed
+        // after closing a sheet goes into a field that is no longer on screen.
+        // Guarded on the launcher still being open, because hide() closes the
+        // sheet on its way out and has just dropped the focus on purpose.
+        if (root.shown)
+            Qt.callLater(query.forceActiveFocus);
+    }
 
     Follow {
         id: rise
@@ -578,7 +815,9 @@ Item {
         anchors.fill: parent
         enabled: root.open
         visible: root.open
-        onClicked: root.hide()
+        onClicked: {
+            root.hide();
+        }
     }
 
     // THE WAY BACK IN. Push the column down and it goes back into the bottom
@@ -715,11 +954,26 @@ Item {
                 anchors.rightMargin: Appearance.padding.normal
                 anchors.topMargin: Appearance.padding.large
                 anchors.bottomMargin: Appearance.padding.large
-                width: root.railWidth
+
+                // NOTHING TO INDEX INSIDE A FOLDER, so the ruler goes and the
+                // column takes the width back. Eased rather than switched,
+                // because the well is anchored to this edge: a rail that
+                // vanished on one frame would snap every row in the list a
+                // finger's width to the right, and entering a folder is already
+                // a change of contents without also being a jump.
+                width: root.opened ? 0 : root.railWidth
+                enabled: !root.opened
 
                 hoverEnabled: true
                 preventStealing: true
                 cursorShape: Qt.SizeVerCursor
+
+                Behavior on width {
+                    NumberAnimation {
+                        duration: Appearance.anim.normal
+                        easing.type: Easing.OutCubic
+                    }
+                }
 
                 // PRESS AND DRAG, not hover. Passing a cursor over the rail is
                 // not a request to go anywhere, and treating it as one made the
@@ -949,18 +1203,82 @@ Item {
                     // Typing means you have stopped browsing. The column is a
                     // new column, so it starts at its own top rather than at
                     // whatever offset the last letter left behind.
+                    //
+                    // AND IT LEAVES THE FOLDER, because a search is over
+                    // everything installed and always has been. Searching
+                    // inside a folder is the wrong shape of question for a
+                    // place that holds six things you chose: you can already
+                    // see all of them.
                     onTextChanged: {
-                        if (text)
+                        if (text) {
                             root.marked = "";
+                            root.opened = "";
+                            root.closeMenu();
+                        }
                         list.reset();
                     }
 
                     Keys.onPressed: event => {
                         const page = Math.max(1, Math.floor(list.height / root.rowPitch) - 1);
 
+                        // THE SHEET TAKES THE KEYS WHILE IT IS UP, and it has to,
+                        // because it is over the list it would otherwise be
+                        // scrolling: arrowing "down the menu" while the column
+                        // behind it moved instead is a control that answers
+                        // somewhere you are not looking. The field keeps the keys
+                        // it is the field for, so you can still type, and Escape
+                        // goes on unwinding one layer at a time.
+                        //
+                        // The naming face is not here: it has a TextInput of its
+                        // own which takes the focus, so these handlers are not
+                        // reached at all while a folder is being named.
+                        if (root.menuOpen) {
+                            switch (event.key) {
+                            case Qt.Key_Escape:
+                                root.back();
+                                break;
+                            case Qt.Key_Down:
+                            case Qt.Key_Tab:
+                                sheet.step(1);
+                                break;
+                            case Qt.Key_Up:
+                            case Qt.Key_Backtab:
+                                sheet.step(-1);
+                                break;
+                            case Qt.Key_Return:
+                            case Qt.Key_Enter:
+                                sheet.activate();
+                                break;
+                            default:
+                                return;
+                            }
+                            event.accepted = true;
+                            return;
+                        }
+
                         switch (event.key) {
                         case Qt.Key_Escape:
-                            root.hide();
+                            root.back();
+                            break;
+                        // under the selection, left leaves the one you are in:
+                        // the same two directions the finger has, so neither
+                        // input has to be learned separately.
+                        case Qt.Key_Right:
+                            root.enterFolder(root.rows[root.selected]?.folder ?? "");
+                            break;
+                        case Qt.Key_Left:
+                            root.leaveFolder();
+                            break;
+                        // THE HOLD, ON THE KEYBOARD. Both spellings, because
+                        // the dedicated key is missing from most of the
+                        // keyboards that have shipped this decade.
+                        case Qt.Key_Menu:
+                            root.openMenuForSelection();
+                            break;
+                        case Qt.Key_F10:
+                            if (!(event.modifiers & Qt.ShiftModifier))
+                                return;
+                            root.openMenuForSelection();
                             break;
                         case Qt.Key_Return:
                         case Qt.Key_Enter:
@@ -1148,7 +1466,21 @@ Item {
 
                         readonly property bool isSection: !!modelData.section
                         readonly property var entry: modelData.entry
-                        readonly property string glyph: root.keyIcon(modelData.section)
+                        readonly property string glyph: modelData.icon
+                        readonly property string folder: modelData.folder
+                        readonly property var folderData: row.folder ? Apps.folders[row.folder] : null
+                        readonly property var inside: row.folder ? Apps.folderApps(row.folder) : []
+
+                        // SOMETHING THE ROW CAN DO, which is what decides whether
+                        // it answers a press at all. An application launches, a
+                        // folder opens; a letter is a label and a press on it is
+                        // a press on nothing.
+                        readonly property bool actionable: !!row.entry || !!row.folder
+
+                        // THE WAY BACK OUT, which is the folder's own heading and
+                        // nothing else. A heading is not usually pressable; this
+                        // one is the only chrome the folder view has, so it is.
+                        readonly property bool isBack: row.isSection && modelData.section === root.opened
 
                         // THE THREE STATES, and they are three, not two. Chosen
                         // is what Return opens; under is where the pointer
@@ -1158,36 +1490,101 @@ Item {
                         readonly property bool away: !!entry && Apps.isHidden(entry)
                         readonly property color ring: Appearance.colour.accent
 
-                        // WHICH END of the row the pointer is on, from the row's
-                        // own coordinates rather than from a second MouseArea
-                        // over the button.
+                        // WHAT IS WAITING ON THIS ROW.
                         //
-                        // A nested hovering MouseArea TAKES the hover off the one
-                        // under it, so arriving at the button read as leaving the
-                        // row, which un-hovered the row, which took the button
-                        // away, which handed the hover back to the row, which
-                        // brought the button back. It flashed for as long as you
-                        // held still on it. One area cannot fight itself.
+                        // A folder carries its members' notifications, added up,
+                        // because a folder is closed by definition and a count
+                        // that only appeared once you had opened it would be a
+                        // count you could only find by looking for it. That is
+                        // also what makes the swipe honest on a folder: left
+                        // clears everything the folder is holding, which is
+                        // exactly what the number said it was holding.
+                        readonly property int unread: row.folder ? AppNotifs.countForAll(row.inside) : row.entry ? AppNotifs.countFor(row.entry) : 0
+                        readonly property var newest: row.entry ? AppNotifs.newestFor(row.entry) : null
+
+                        // rather than a table: RIGHT OPENS A FOLDER IF THERE IS
+                        // ONE, AND OTHERWISE CLEARS, LEFT ALWAYS CLEARS. Inside a
+                        // folder every row is an application, so nothing there
+                        // has a folder to open and both directions clear, which
+                        // is the behaviour asked for and falls out of the rule
+                        // rather than being a second case written next to it.
                         //
-                        // From a HOVER HANDLER rather than from the MouseArea's
-                        // own `containsMouse`, and that is a touch fix rather
-                        // than a tidy-up. QQuickMouseArea::mousePressEvent calls
-                        // setHovered(true) itself, so a press synthesised from a
-                        // touch made `containsMouse` true the instant a finger
-                        // landed: a tap on the rightmost few pixels of a row
-                        // satisfied this test and HID the application instead of
-                        // launching it, with the stow disc fading in mid-press as
-                        // the only warning that it was about to. A HoverHandler
-                        // is passive and is offered no touch events at all, so
-                        // with a finger `under` and `atStow` are both simply
-                        // false and a tap anywhere on a row launches, which is
-                        // what a tap on an application should always do.
+                        // A direction with nothing to do does not move. Rubber
+                        // banding an inert row is a promise the release then has
+                        // to break, and a row that simply does not budge says
+                        // "nothing that way" in the only language a finger reads.
+                        readonly property bool canOpen: !!row.folder
+                        readonly property bool canClear: row.unread > 0
+
+                        // HOW FAR THE ROW HAS BEEN DRAGGED ACROSS, in pixels,
+                        // signed the way the finger went.
                         //
-                        // It is the mirror of the lesson above, and of the one
-                        // NotificationTray records twice: hover belongs to
-                        // exactly ONE mechanism per item, and here it has to
-                        // belong to the mechanism that only a pointer can drive.
-                        readonly property bool atStow: hover.hovered && hover.point.position.x >= stow.x
+                        // The row's CONTENTS move and the row does not: the
+                        // marks the swipe uncovers have to stay where they are
+                        // while the thing over them slides off them, and a row
+                        // that moved as a whole would carry them along and
+                        // uncover nothing. So everything drawn sits on `sled`
+                        // below and this is its x.
+                        property real slide: 0
+                        property bool swiping: false
+
+                        // HOW FAR IS FAR ENOUGH, from the row's own width rather
+                        // than from a number in the config, so the gesture asks
+                        // for the same PROPORTION of the row on every panel
+                        // width and at every scale. `dragDismissFraction` is the
+                        // shell's existing answer to "how much of a thing counts
+                        // as throwing it away", which is the question being
+                        // asked here.
+                        readonly property real commitAt: Math.max(1, list.width * Appearance.sizes.dragDismissFraction)
+
+                        readonly property bool past: Math.abs(row.slide) >= row.commitAt
+
+                        // WHAT THE ROW WOULD DO IF YOU LET GO NOW. Read by the
+                        // marks under the sled, so the row is always showing the
+                        // answer to the question the hand is in the middle of
+                        // asking rather than announcing it afterwards.
+                        readonly property bool willOpen: row.slide > 0 && row.canOpen
+                        readonly property bool willClear: row.canClear && (row.slide < 0 || (row.slide > 0 && !row.canOpen))
+
+                        function armed(dx: real): bool {
+                            return dx > 0 ? row.canOpen || row.canClear : row.canClear;
+                        }
+
+                        // Freely as far as the commit point, and grudgingly past
+                        // it. The resistance is not decoration: it is where the
+                        // hand is told it has arrived, on a gesture with no
+                        // detent and no edge to hit.
+                        function resist(dx: real): real {
+                            if (!row.armed(dx))
+                                return 0;
+                            const far = Math.abs(dx);
+                            const over = far - row.commitAt;
+                            const travel = over <= 0 ? far : row.commitAt + over * Appearance.sizes.dragResistance;
+                            return dx < 0 ? -travel : travel;
+                        }
+
+                        function settleSwipe(): void {
+                            const acting = row.past;
+                            const open = row.willOpen;
+                            const clear = row.willClear;
+
+                            row.swiping = false;
+                            row.slide = 0;
+
+                            if (!acting)
+                                return;
+                            if (open)
+                                root.enterFolder(row.folder);
+                            else if (clear)
+                                row.clear();
+                        }
+
+                        function clear(): void {
+                            if (row.folder)
+                                AppNotifs.dismissForAll(row.inside);
+                            else
+                                AppNotifs.dismissFor(row.entry);
+                        }
 
                         width: list.width
                         height: isSection ? root.sectionPitch : root.rowPitch
@@ -1200,13 +1597,13 @@ Item {
                             id: pointer
 
                             anchors.fill: parent
-                            enabled: !row.isSection
+                            enabled: row.actionable || row.isBack
                             // NO hoverEnabled, deliberately, and it must stay
                             // that way: a MouseArea reports itself hovered from
                             // the moment a press lands on it, whatever produced
                             // the press, so a finger looked exactly like a
-                            // cursor. See row.atStow. The hover is the
-                            // HoverHandler's now, and only a pointer can move it.
+                            // cursor. See the HoverHandler below. The hover is
+                            // its now, and only a pointer can move it.
                             cursorShape: Qt.PointingHandCursor
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
@@ -1214,41 +1611,116 @@ Item {
                             // release does not do a second thing on top of it.
                             property bool held: false
 
-                            onPressed: pointer.held = false
+                            // WHERE THE PRESS LANDED, and whether this is still
+                            // anybody's gesture. `deciding` is true from the
+                            // press until the motion is big enough to be read as
+                            // horizontal, which is the whole of the arbitration
+                            // between this row and the list it is in.
+                            property real fromX: 0
+                            property real fromY: 0
+                            property bool deciding: false
 
-                            // A LONG PRESS IS THE TOUCH RIGHT-CLICK, and this is
-                            // the same action `onClicked` gives a right button
-                            // below rather than a new one: put the application
-                            // away, or take it back out. Touch has no second
-                            // button and no hover, so with the stow disc now
-                            // correctly invisible to a finger there would
-                            // otherwise be no way to reach this at all from a
-                            // touchscreen. A press and hold is the conventional
-                            // way to reach a context action without a second
-                            // button, which is to say it is the gesture the hand
-                            // already has for exactly this.
+                            onPressed: mouse => {
+                                pointer.held = false;
+                                pointer.fromX = mouse.x;
+                                pointer.fromY = mouse.y;
+                                pointer.deciding = true;
+                                row.swiping = false;
+                            }
+
+                            // A HORIZONTAL DRAG IS THIS ROW'S; A VERTICAL ONE IS
+                            // THE LIST'S, and nobody has to be told which.
+                            //
+                            // A ListView is a Flickable, and a Flickable filters
+                            // its children's presses and takes them the moment
+                            // the finger has travelled far enough ALONG ITS OWN
+                            // AXIS. That is the arbitration already, for free and
+                            // in the right direction: scroll the column and the
+                            // list takes the press off this row mid-gesture,
+                            // exactly as it should.
+                            //
+                            // What it cannot do is the other half. Once the
+                            // motion is decidedly sideways this row has to KEEP
+                            // the press, or a swipe with any slope in it is stolen
+                            // partway across by the list and the row snaps back
+                            // under a finger that was still moving. So the steal
+                            // is refused, but only from the moment there is
+                            // something to refuse it for: `preventStealing` set
+                            // from the press would make every drag on a row the
+                            // row's and the column would stop scrolling.
+                            preventStealing: row.swiping
+
+                            onPositionChanged: mouse => {
+                                if (!pointer.pressed)
+                                    return;
+
+                                if (pointer.deciding) {
+                                    const dx = mouse.x - pointer.fromX;
+                                    const dy = mouse.y - pointer.fromY;
+                                    if (Math.abs(dx) < Appearance.sizes.dragThreshold)
+                                        return;
+                                    // STRICTLY sideways: a tie goes to the list,
+                                    // because a diagonal that is genuinely
+                                    // ambiguous is far more often a scroll that
+                                    // wandered than a swipe that did.
+                                    if (Math.abs(dx) <= Math.abs(dy))
+                                        return;
+                                    pointer.deciding = false;
+                                    row.swiping = true;
+                                    // The hold was aimed at a stationary finger.
+                                    // Qt does not cancel it on movement, so a
+                                    // slow swipe would open the sheet halfway
+                                    // across; the same trap NotificationCard
+                                    // records for its own throw.
+                                    pointer.held = true;
+                                }
+
+                                row.slide = row.resist(mouse.x - pointer.fromX);
+                            }
+
+                            onReleased: row.settleSwipe()
+                            onCanceled: row.settleSwipe()
+
+                            // A LONG PRESS IS THE TOUCH RIGHT-CLICK, and both of
+                            // them now open the sheet rather than doing one fixed
+                            // thing. Touch has no second button and no hover, so
+                            // a press and hold is the only way a finger can ask a
+                            // row a question; it used to answer with the single
+                            // action the row happened to have, which was fine
+                            // while there was one and is exactly what stopped
+                            // there being two.
                             onPressAndHold: {
+                                if (row.swiping)
+                                    return;
                                 pointer.held = true;
-                                Apps.setHidden(row.entry, !row.away);
+                                root.openMenuAt(row.mapToItem(panel, 0, row.height / 2).y, row.entry, row.folder);
                             }
 
                             onClicked: mouse => {
-                                // The long press has already acted. Whether Qt
-                                // still delivers `clicked` after `pressAndHold`
-                                // is a detail of QQuickMouseArea's release path,
-                                // and this row should not depend on the answer
-                                // either way: on the build that does deliver it,
-                                // holding a row would hide the application and
-                                // then launch it, which is the worst of both.
+                                // The press already acted, or turned into a
+                                // swipe. Whether Qt still delivers `clicked`
+                                // after `pressAndHold` is a detail of
+                                // QQuickMouseArea's release path, and this row
+                                // should not depend on the answer either way: on
+                                // the build that does deliver it, holding a row
+                                // would open the sheet and then launch the
+                                // application underneath it.
                                 if (pointer.held)
                                     return;
 
-                                // Right anywhere on the row does what the button
-                                // does, without having to aim at it.
-                                if (mouse.button === Qt.RightButton || row.atStow) {
-                                    Apps.setHidden(row.entry, !row.away);
+                                // Right anywhere on the row asks the same
+                                // question the hold does, without the wait.
+                                if (mouse.button === Qt.RightButton) {
+                                    if (row.actionable)
+                                        root.openMenuAt(row.mapToItem(panel, 0, row.height / 2).y, row.entry, row.folder);
                                     return;
                                 }
+
+                                if (row.isBack) {
+                                    root.leaveFolder();
+                                    return;
+                                }
+
                                 root.selected = row.index;
                                 root.accept();
                             }
@@ -1259,13 +1731,26 @@ Item {
                         // Passive by construction: a HoverHandler is offered
                         // hover events and nothing else, so it cannot take a
                         // press off the MouseArea above it and, which is the
-                        // whole point, it cannot be fooled by one either. See
-                        // row.atStow for why the MouseArea is no longer allowed
-                        // to answer this question.
+                        // whole point, it cannot be fooled by one either.
+                        //
+                        // THAT IS A TOUCH FIX rather than a tidy-up, and it is
+                        // worth keeping the reason. QQuickMouseArea::mousePressEvent
+                        // calls setHovered(true) itself, so a press synthesised
+                        // from a touch made `containsMouse` true the instant a
+                        // finger landed, and every hover-gated affordance on the
+                        // row lit up mid-press and then acted on the release. The
+                        // rule it left behind: hover belongs to exactly ONE
+                        // mechanism per item, and here it has to belong to the
+                        // mechanism that only a pointer can drive.
                         HoverHandler {
                             id: hover
 
-                            enabled: !row.isSection
+                            // Whatever the press area answers to, including the
+                            // folder's heading: it is a control now, and a
+                            // control that does not light up under the pointer
+                            // reads as a label somebody made clickable by
+                            // accident.
+                            enabled: pointer.enabled
 
                             // A LOOK, and only a look. See root.hovered.
                             onHoveredChanged: {
@@ -1276,191 +1761,70 @@ Item {
                             }
                         }
 
-                        // The letter, in the MARGIN. Outside the icons rather than
-                        // above them, so every name in the list starts at one x and
-                        // the sections annotate a continuous column instead of
-                        // chopping it into blocks.
-                        StyledText {
-                            id: heading
-
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.verticalCenterOffset: heading.inkOffsetY
-                            width: root.gutter
-
-                            visible: row.isSection && !row.glyph
-                            text: row.modelData.section
-                            font.pixelSize: Appearance.font.size.large
-                            color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-                        }
-
-                        Icon {
-                            id: headingGlyph
-
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            anchors.verticalCenterOffset: headingGlyph.inkOffsetY
-                            width: root.gutter
-
-                            visible: row.isSection && !!row.glyph
-                            size: Appearance.font.size.large
-                            name: row.glyph
-                            color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-                        }
-
-                        G2Rect {
-                            id: badge
-
-                            anchors.left: parent.left
-                            anchors.leftMargin: root.gutter
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: root.iconSize
-                            height: width
-                            // Half the width: the squircle at its roundest, which is
-                            // a circle that was never cut from one.
-                            radius: width / 2
-
-                            visible: !row.isSection
-                            // The fill ladder is HOVER, and the ring is
-                            // SELECTION. They have to be told apart at a glance
-                            // now that they are no longer the same thing: one
-                            // step along a fill ladder is not a difference you
-                            // can see, and a boundary is the one way to mark a
-                            // control without painting a disc that shouts.
-                            color: row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
-                            // The ring is always THERE and only sometimes
-                            // visible: a stroke is drawn inside the bounds and
-                            // takes its width off the radius, so switching the
-                            // width on and off would resize the squircle every
-                            // time the selection moved. Held at one width and
-                            // faded by its alpha, the geometry never moves and
-                            // there is something for a colour animation to cross.
-                            stroke: row.chosen ? row.ring : Qt.rgba(row.ring.r, row.ring.g, row.ring.b, 0)
-                            strokeWidth: 2
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-
-                            Behavior on stroke {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-
-                            Image {
-                                id: art
-
-                                anchors.fill: parent
-                                anchors.margins: Appearance.padding.small
-                                source: row.entry?.icon ? Quickshell.iconPath(row.entry.icon, true) : ""
-                                fillMode: Image.PreserveAspectFit
-                                asynchronous: true
-                                visible: status === Image.Ready
-                                sourceSize.width: width * Screen.devicePixelRatio
-                                sourceSize.height: height * Screen.devicePixelRatio
-                            }
-
-                            Icon {
-                                id: fallbackGlyph
-
-                                anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: fallbackGlyph.inkOffsetX
-                                anchors.verticalCenterOffset: fallbackGlyph.inkOffsetY
-                                visible: !art.visible
-                                size: root.iconSize / 2
-                                name: "apps"
-                                color: Appearance.colour.textDim
-                            }
-                        }
-
-                        StyledText {
-                            anchors.left: badge.right
-                            anchors.leftMargin: Appearance.padding.large
-                            // Stops at the button, whether or not the button is
-                            // showing: a name that reflows the moment a cursor
-                            // crosses it is worse than one that is short.
-                            anchors.right: stow.left
-                            anchors.rightMargin: Appearance.padding.normal
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            visible: !row.isSection
-                            text: row.entry?.name ?? ""
-                            font.pixelSize: Appearance.font.size.normal
-                            color: row.chosen || row.under ? Appearance.colour.text : Appearance.colour.textDim
-                            elide: Text.ElideRight
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-                        }
-
-                        // PUT AWAY, or put back.
+                        // is while the row slides off it.
                         //
-                        // Under the pointer only. A launcher is a list you scan,
-                        // and a column of identical buttons down the right edge
-                        // is a column you have to read past every time; one that
-                        // is only ever on the row you are already looking at
-                        // costs nothing to have. Right-clicking the row is the
-                        // same action for anyone who has found it.
-                        G2Rect {
-                            id: stow
+                        // Under the sled rather than beside it, so the marks are
+                        // revealed rather than pushed in from the edge: a drawer
+                        // being opened, which is a thing the hand understands
+                        // without being told, instead of two more objects
+                        // arriving on a row that already has enough on it.
+                        //
+                        // Both are drawn from what the row WOULD DO, not from
+                        // which way the finger went, so the mark that appears is
+                        // always the promise the release will keep: a row with
+                        // no folder shows the same clear mark whichever way you
+                        // pull it, which is the rule saying itself.
+                        Item {
+                            id: marks
 
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: root.iconSize * 0.72
-                            height: width
-                            radius: width / 2
+                            anchors.fill: parent
 
-                            visible: !row.isSection
-                            opacity: row.under ? 1 : 0
-                            color: row.atStow ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+                            // How far through the gesture, 0 to 1, off the SLED's
+                            // own position rather than off `slide`. They differ
+                            // for the length of the snap back, and that is
+                            // precisely the moment the marks have to still be
+                            // there: taken from `slide` they would blink out on
+                            // release and leave the row sliding home over
+                            // nothing.
+                            readonly property real reach: Math.min(1, Math.abs(sled.x) / row.commitAt)
+                            readonly property bool ready: Math.abs(sled.x) >= row.commitAt
 
-                            // BOTH EASED. A control that arrives faded in and
-                            // then snaps its contents to a new colour reads as
-                            // two events, and the second one is a flash. It is
-                            // one thing lighting up, so it lights up at one
-                            // speed.
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
+                            visible: marks.reach > 0.001
 
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
+                            Icon {
+                                id: leadMark
+
+                                anchors.left: parent.left
+                                anchors.leftMargin: root.gutter
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: leadMark.inkOffsetY
+
+                                visible: sled.x > 0
+                                size: root.iconSize / 2
+                                name: row.canOpen ? "folder_open" : "clear_all"
+                                opacity: marks.reach
+                                color: marks.ready ? Appearance.colour.accent : Appearance.colour.textFaint
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
                                 }
                             }
 
                             Icon {
-                                id: stowGlyph
+                                id: trailMark
 
-                                anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: stowGlyph.inkOffsetX
-                                anchors.verticalCenterOffset: stowGlyph.inkOffsetY
-                                size: Appearance.font.size.small
-                                name: row.away ? "visibility" : root.vaultIcon
-                                // One step, not a jump to full strength: the
-                                // disc under it is already saying the pointer is
-                                // here, and both of them shouting is the flash.
-                                color: row.atStow ? Appearance.colour.text : Appearance.colour.textFaint
+                                anchors.right: parent.right
+                                anchors.rightMargin: root.gutter
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: trailMark.inkOffsetY
+
+                                visible: sled.x < 0
+                                size: root.iconSize / 2
+                                name: "clear_all"
+                                opacity: marks.reach
+                                color: marks.ready ? Appearance.colour.accent : Appearance.colour.textFaint
 
                                 Behavior on color {
                                     ColorAnimation {
@@ -1470,19 +1834,432 @@ Item {
                             }
                         }
 
-                        // Said once the pointer has clearly settled on the
-                        // button, which is what Tooltips is for; asking on the
-                        // way past would put a label on every row you cross.
-                        onAtStowChanged: {
-                            if (row.atStow)
-                                Tooltips.request(row, row.away ? "put back in the list" : "hide from the list");
-                            else
-                                Tooltips.release(row);
-                        }
+                        // EVERYTHING THE ROW DRAWS, on one sled, so the swipe is
+                        // one x rather than an offset threaded through six
+                        // anchors.
+                        //
+                        // Geometry rather than `anchors.fill`, because filling
+                        // sets x and this is the one property the gesture owns.
+                        Item {
+                            id: sled
 
-                        Component.onDestruction: Tooltips.release(row)
+                            x: row.slide
+                            width: row.width
+                            height: row.height
+
+                            // OFF DURING THE DRAG, on for the way home. While a
+                            // finger is on the row its position IS the row's
+                            // position and smoothing it would put the sled behind
+                            // the hand, which is the same argument the rail's bow
+                            // makes about its own depth. The snap back is a
+                            // one-shot A to B with nothing to track, so it takes
+                            // a duration rather than the shell's usual chase.
+                            //
+                            // `swiping` is cleared BEFORE `slide` in settleSwipe,
+                            // so by the time this binding fires on release the
+                            // Behavior is already armed.
+                            Behavior on x {
+                                enabled: !row.swiping
+
+                                NumberAnimation {
+                                    duration: Appearance.anim.fast
+                                    easing.type: Easing.OutCubic
+                                }
+                            }
+
+                            // The letter, in the MARGIN. Outside the icons rather
+                            // than above them, so every name in the list starts at
+                            // one x and the sections annotate a continuous column
+                            // instead of chopping it into blocks.
+                            StyledText {
+                                id: heading
+
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: heading.inkOffsetY
+                                width: root.gutter
+
+                                visible: row.isSection && !row.glyph
+                                text: row.modelData.title
+                                font.pixelSize: Appearance.font.size.large
+                                color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+                            }
+
+                            Icon {
+                                id: headingGlyph
+
+                                anchors.left: parent.left
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: headingGlyph.inkOffsetY
+                                width: root.gutter
+
+                                visible: row.isSection && !!row.glyph
+                                size: Appearance.font.size.large
+                                name: row.glyph
+                                color: row.isBack && row.under ? Appearance.colour.text : row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+                            }
+
+                            // A NAME BESIDE A HEADING GLYPH, which only the open
+                            // folder has. The star and the drawer are one mark
+                            // each and say everything they need to; a folder is
+                            // called something, and the arrow beside it would be
+                            // an unlabelled back button without this.
+                            StyledText {
+                                id: headingLabel
+
+                                anchors.left: parent.left
+                                anchors.leftMargin: root.gutter
+                                anchors.right: parent.right
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.verticalCenterOffset: headingLabel.inkOffsetY
+
+                                visible: row.isSection && !!row.glyph && !!row.modelData.title
+                                text: row.modelData.title
+                                font.pixelSize: Appearance.font.size.large
+                                color: row.under ? Appearance.colour.text : Appearance.colour.textDim
+                                elide: Text.ElideRight
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+                            }
+
+                            G2Rect {
+                                id: badge
+
+                                anchors.left: parent.left
+                                anchors.leftMargin: root.gutter
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: root.iconSize
+                                height: width
+                                // Half the width: the squircle at its roundest, which is
+                                // a circle that was never cut from one.
+                                radius: width / 2
+
+                                visible: !row.isSection
+                                // The fill ladder is HOVER, and the ring is
+                                // SELECTION. They have to be told apart at a
+                                // glance now that they are no longer the same
+                                // thing: one step along a fill ladder is not a
+                                // difference you can see, and a boundary is the
+                                // one way to mark a control without painting a
+                                // disc that shouts.
+                                color: row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
+                                // The ring is always THERE and only sometimes
+                                // visible: a stroke is drawn inside the bounds
+                                // and takes its width off the radius, so
+                                // switching the width on and off would resize the
+                                // squircle every time the selection moved. Held
+                                // at one width and faded by its alpha, the
+                                // geometry never moves and there is something for
+                                // a colour animation to cross.
+                                stroke: row.chosen ? row.ring : Qt.rgba(row.ring.r, row.ring.g, row.ring.b, 0)
+                                strokeWidth: 2
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+
+                                Behavior on stroke {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+
+                                Image {
+                                    id: art
+
+                                    anchors.fill: parent
+                                    anchors.margins: Appearance.padding.small
+                                    visible: !row.folder && status === Image.Ready
+                                    source: row.entry?.icon ? Quickshell.iconPath(row.entry.icon, true) : ""
+                                    fillMode: Image.PreserveAspectFit
+                                    asynchronous: true
+                                    sourceSize.width: width * Screen.devicePixelRatio
+                                    sourceSize.height: height * Screen.devicePixelRatio
+                                }
+
+                                // A FOLDER WEARS WHAT IS IN IT, which is the only
+                                // honest picture of a thing whose whole content
+                                // is a choice you made. A generic folder glyph
+                                // would make every folder identical in a column
+                                // whose entire premise is that you scan it by
+                                // icon.
+                                //
+                                // THE GRID IS COMPUTED, not enumerated. One app
+                                // fills the badge, two sit side by side, four
+                                // make a square, and nothing here mentions the
+                                // numbers one, two or four: the column count is
+                                // the square root of however many are being
+                                // drawn, the row count follows from it, and the
+                                // block is centred in whatever is left. Add a
+                                // fifth to the folder and the arrangement is
+                                // already right.
+                                Item {
+                                    id: stack
+
+                                    anchors.fill: parent
+                                    anchors.margins: Appearance.padding.small
+                                    visible: !!row.folder
+
+                                    // FOUR AT MOST. Beyond that every tile is
+                                    // smaller than the mark it is trying to be,
+                                    // and a folder of thirty would be a grey
+                                    // square either way.
+                                    readonly property var shown: row.inside.slice(0, 4)
+                                    readonly property int cols: Math.max(1, Math.ceil(Math.sqrt(stack.shown.length)))
+                                    readonly property int lines: Math.max(1, Math.ceil(stack.shown.length / stack.cols))
+                                    readonly property real cell: stack.width / stack.cols
+                                    readonly property real gridY: (stack.height - stack.cell * stack.lines) / 2
+
+                                    Repeater {
+                                        model: stack.shown
+
+                                        delegate: Image {
+                                            required property var modelData
+                                            required property int index
+
+                                            x: (index % stack.cols) * stack.cell
+                                            y: stack.gridY + Math.floor(index / stack.cols) * stack.cell
+                                            width: stack.cell
+                                            height: stack.cell
+
+                                            source: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
+                                            fillMode: Image.PreserveAspectFit
+                                            asynchronous: true
+                                            sourceSize.width: width * Screen.devicePixelRatio
+                                            sourceSize.height: height * Screen.devicePixelRatio
+                                        }
+                                    }
+                                }
+
+                                Icon {
+                                    id: fallbackGlyph
+
+                                    anchors.centerIn: parent
+                                    anchors.horizontalCenterOffset: fallbackGlyph.inkOffsetX
+                                    anchors.verticalCenterOffset: fallbackGlyph.inkOffsetY
+                                    // An empty folder is a folder you have just
+                                    // made, and it has to look like something
+                                    // between making it and filling it.
+                                    visible: row.folder ? stack.shown.length === 0 : !art.visible
+                                    size: root.iconSize / 2
+                                    name: row.folder ? "folder" : "apps"
+                                    color: Appearance.colour.textDim
+                                }
+
+                                // HOW MANY ARE WAITING, on the mark rather than
+                                // beside it.
+                                //
+                                // A count belongs ON the thing it counts, which
+                                // is the one convention every phone and every
+                                // dock already shares, and it is the reason this
+                                // is worth having at all: the launcher is where
+                                // you go to reach an application, so it is where
+                                // "there are three" is free to read and anywhere
+                                // else is a second place to look.
+                                //
+                                // Drawn over the badge's own corner, so it is
+                                // legible against the artwork rather than tinted
+                                // by it. The accent is spent here on purpose: the
+                                // shell reserves colour for state that earns it,
+                                // and something unread is exactly that.
+                                G2Rect {
+                                    id: unread
+
+                                    x: badge.width - width * 0.78
+                                    y: -height * 0.22
+                                    width: root.iconSize * 0.46
+                                    height: width
+                                    radius: width / 2
+
+                                    visible: row.unread > 0
+                                    color: Appearance.colour.accent
+
+                                    StyledText {
+                                        id: unreadCount
+
+                                        anchors.centerIn: parent
+                                        anchors.horizontalCenterOffset: unreadCount.inkOffsetX
+                                        anchors.verticalCenterOffset: unreadCount.inkOffsetY
+
+                                        // CAPPED, because the disc is a circle and
+                                        // three digits in it is a pill wearing a
+                                        // circle's radius. Past nine the exact
+                                        // number has stopped being the point.
+                                        text: row.unread > 9 ? "9+" : `${row.unread}`
+                                        font.pixelSize: Appearance.font.size.small
+                                        color: Appearance.colour.accentText
+                                    }
+                                }
+                            }
+
+                            StyledText {
+                                id: label
+
+                                anchors.left: badge.right
+                                anchors.leftMargin: Appearance.padding.large
+                                // Stops where the notice starts, and the notice
+                                // is nothing wide when there is nothing waiting,
+                                // so an ordinary row gives the name the whole
+                                // width it always had.
+                                anchors.right: notice.left
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                visible: !row.isSection
+                                text: row.folder ? (row.folderData?.name ?? "") : (row.entry?.name ?? "")
+                                font.pixelSize: Appearance.font.size.normal
+                                color: row.chosen || row.under ? Appearance.colour.text : Appearance.colour.textDim
+                                elide: Text.ElideRight
+
+                                Behavior on color {
+                                    ColorAnimation {
+                                        duration: Appearance.anim.fast
+                                    }
+                                }
+                            }
+
+                            // WHAT THE NEWEST ONE SAID, at the row's other end.
+                            //
+                            // A count says there is something; the summary says
+                            // whether it is worth stopping for, and it costs no
+                            // height because it sits beside the name rather than
+                            // under it. That is the same trade MenuRow makes for
+                            // its inline detail and for the same reason: a
+                            // launcher has width to spare and hundreds of rows,
+                            // and stacking a second line would double every one
+                            // of them to carry a line most rows do not have.
+                            //
+                            // NOT ON A FOLDER. The disc already says how many are
+                            // in there, and whose they are is the question
+                            // opening it answers.
+                            StyledText {
+                                id: notice
+
+                                anchors.right: parent.right
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                // A THIRD OF THE ROW at the outside, and nothing
+                                // at all when there is nothing to say, so the
+                                // name is never squeezed by a column that is not
+                                // there.
+                                //
+                                // MEASURED BESIDE ITSELF, not off its own
+                                // implicitWidth, and that is a loop rather than
+                                // a preference. An eliding Text works its
+                                // implicit width out from the width it was
+                                // given, so `width: f(implicitWidth)` is a
+                                // binding that reads what it is about to set:
+                                // Qt breaks the cycle by leaving the width at
+                                // zero, silently, and the row simply had no
+                                // second column at all. A TextMetrics is the
+                                // same string measured by something with no
+                                // width of its own to be confused by, which is
+                                // what StyledText and Icon already use it for.
+                                width: notice.visible ? Math.min(noticeInk.width, list.width * 0.34) : 0
+                                horizontalAlignment: Text.AlignRight
+
+                                visible: !row.isSection && !row.folder && !!row.newest
+                                text: row.newest?.summary ?? ""
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.textFaint
+                                elide: Text.ElideRight
+
+                                TextMetrics {
+                                    id: noticeInk
+
+                                    font: notice.font
+                                    text: notice.text
+                                }
+                            }
+                        }
                     }
                 }
+            }
+
+            // THE SHEET, AND WHAT PUTS IT AWAY.
+            //
+            // At the PANEL's level rather than inside the list, for two reasons
+            // that are both the list being the wrong owner. A delegate is torn
+            // down when the rows change and the rows change on the first thing
+            // the sheet does, so a sheet parented to its row would destroy
+            // itself mid-action; and the list clips, so a sheet opened on a row
+            // near either end would be cut off by the edge of the column it came
+            // out of.
+            //
+            // DECLARED AFTER the well, which is what puts it over the rows:
+            // there is no z anywhere in this shell, and declaration order is
+            // both paint order and input order.
+            MouseArea {
+                anchors.fill: parent
+                enabled: root.menuOpen
+                visible: root.menuOpen
+                acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                // A TAP ANYWHERE ELSE CLOSES THE SHEET AND DOES NOTHING ELSE,
+                // which is why this is a surface rather than a handler on the
+                // launcher's own catcher. Without it, the tap that dismissed the
+                // sheet would land on whatever row happened to be under it and
+                // launch an application, which is an expensive way to change
+                // your mind.
+                onClicked: root.closeMenu()
+
+                // And the same for the wheel, or scrolling to see the rest of a
+                // long list of folders would scroll the column behind the sheet
+                // instead, leaving it pointing at a row that has moved on.
+                onWheel: wheel => wheel.accepted = true
+            }
+
+            AppMenu {
+                id: sheet
+
+                // BESIDE THE ICONS, not at the pointer. The sheet is about a row
+                // and every row starts at the gutter, so lining the two up says
+                // which row it belongs to with no line drawn between them, and
+                // it lands in the same place whether it was opened by a finger,
+                // a right button, or a key.
+                x: well.x + root.gutter
+                width: Math.min(panel.width * 0.62, well.width - root.gutter)
+
+                // CENTRED ON THE ROW, then pushed back inside the panel. A sheet
+                // hanging off the top of the surface it belongs to is a sheet
+                // with lines nobody can reach, and the rows nearest both ends are
+                // exactly the ones a star gets used on.
+                y: Math.max(Appearance.padding.large, Math.min(root.menuAt - sheet.implicitHeight / 2, panel.height - sheet.implicitHeight - Appearance.padding.large))
+                height: sheet.implicitHeight
+
+                shown: root.menuOpen
+                entry: root.menuEntry
+                folder: root.menuFolder
+
+                onActed: root.closeMenu()
+                onOpenFolder: key => root.enterFolder(key)
+
+                // The name field has let go. The sheet may still be up (Escape
+                // out of naming goes back to the actions rather than out), so
+                // this is not closeMenu's job: somebody has to hold the keyboard
+                // and while the launcher is open it is always the search field.
+                onReleaseKeys: if (root.shown)
+                    Qt.callLater(query.forceActiveFocus)
             }
         }
     }

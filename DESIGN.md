@@ -377,6 +377,8 @@ banditshell/
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, and a poster frame per video
 │   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
+│   ├── AppNotifs.qml            the index over it: which application each one
+│   │                            came from, so a row can carry its own count
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
 │   ├── Settings.qml             the settings page's state, and its handover
@@ -398,7 +400,15 @@ banditshell/
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots
 │   │                            that cross-fade, motion only on an empty workspace
-│   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── launcher/
+│   │   ├── Launcher.qml         which concept is live; the one keyboard grab
+│   │   ├── LaunchEdge.qml       the bottom edge as the way in: press, drag or scroll
+│   │   ├── ListLauncher.qml     concept "list": search, then a dense column
+│   │   ├── NiagaraLauncher.qml  concept "niagara": one sectioned column, an alphabet
+│   │   │                        rail, a star you WRITE, folders, and a row that
+│   │   │                        carries its application's notifications
+│   │   └── AppMenu.qml          what a row can have done to it: star, file, hide.
+│   │                            Held down, or right-clicked
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
 │   ├── lock/                    the lock: one compositor surface per screen, one face
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open

@@ -66,6 +66,239 @@ Singleton {
     readonly property var visible: root.all.filter(e => !root.isHidden(e))
     readonly property var buried: root.all.filter(e => root.isHidden(e)).sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""))
 
+    // An id back to the thing it names.
+    //
+    // Everything stored about an application is stored by ID: what you put
+    // away, what you starred, which folder it is filed in. None of those can
+    // hold the entry itself, because a config file outlives a process and a
+    // DesktopEntry does not, so every one of them has to come back through
+    // here. Built once per change rather than searched per lookup: the star
+    // asks this for every row it draws.
+    readonly property var byId: {
+        const out = {};
+        for (const entry of root.all)
+            out[entry.id] = entry;
+        return out;
+    }
+
+    function entryById(id: string): var {
+        return root.byId[id] ?? null;
+    }
+
+    // ------------------------------------------------------------------
+    // THE STAR, WHICH IS YOURS.
+    //
+    // Keyed by desktop entry id, valued by when you starred it, so the order is
+    // the one you built rather than the one this week's usage makes. See
+    // `launcher.favourites` in config.json for the whole argument.
+    readonly property var favourites: Config.values.launcher.favourites
+
+    function isFavourite(entry: var): bool {
+        return root.favourites[entry?.id ?? ""] !== undefined;
+    }
+
+    // Starred, or unstarred. Taking a star off something also takes it OUT of
+    // whatever folder it was filed in, because a folder is a place in the star
+    // and there is no such thing as an unstarred thing sitting in one.
+    function setFavourite(entry: var, keep: bool): void {
+        const id = entry?.id;
+        if (!id)
+            return;
+
+        const next = Object.assign({}, root.favourites);
+        if (keep) {
+            if (next[id] === undefined)
+                next[id] = Date.now();
+        } else {
+            delete next[id];
+            root.fileAway(id, "");
+        }
+        Config.set("launcher.favourites", next);
+    }
+
+    // ------------------------------------------------------------------
+    // FOLDERS.
+    //
+    // Read straight off the config, which is also where they are edited from,
+    // so a folder made by hand in the file and one made by a long press are the
+    // same object with the same rules.
+    readonly property var folders: Config.values.launcher.folders
+
+    // A DEEP COPY, because a folder holds a map inside a map and
+    // Object.assign is one level: mutating `next[key].apps` on a shallow copy
+    // reaches straight through into the live config, which QML then cannot tell
+    // has changed. Everything in here is plain JSON by construction, so the
+    // round trip is exact and is the cheapest correct answer.
+    function foldersCopy(): var {
+        return JSON.parse(JSON.stringify(root.folders));
+    }
+
+    // Which folder holds an id, or "" for the ones sitting loose in the star.
+    function folderOf(id: string): string {
+        if (!id)
+            return "";
+        for (const key in root.folders)
+            if (root.folders[key].apps?.[id] !== undefined)
+                return key;
+        return "";
+    }
+
+    // An id given a new home, or taken out of the one it had. The private half
+    // of every folder operation: the invariant that an application is in AT
+    // MOST ONE folder is kept by always clearing before adding, in one write.
+    function fileAway(id: string, folder: string): void {
+        const next = root.foldersCopy();
+        let touched = false;
+
+        for (const key in next) {
+            if (next[key].apps?.[id] === undefined)
+                continue;
+            // KEPT, if it is only moving. A member's `since` is its place in
+            // the folder, and dragging something from one folder to another is
+            // not a reason to send it to the back of the new one; it is the
+            // same decision, relocated.
+            if (key === folder)
+                return;
+            delete next[key].apps[id];
+            touched = true;
+        }
+
+        if (folder && next[folder]) {
+            if (!next[folder].apps)
+                next[folder].apps = {};
+            next[folder].apps[id] = Date.now();
+            touched = true;
+        }
+
+        if (touched)
+            Config.set("launcher.folders", next);
+    }
+
+    // A readable key, because this is written into config.json and read back by
+    // a human as often as by the shell. Numbered rather than made unique with a
+    // timestamp for the same reason.
+    function folderKey(name: string): string {
+        const base = (name ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "folder";
+        let key = base;
+        for (let n = 2; root.folders[key] !== undefined; n++)
+            key = `${base}-${n}`;
+        return key;
+    }
+
+    // A new folder, and the key it got, so the caller can put something in it
+    // and open it without having to guess what the name turned into.
+    function createFolder(name: string): string {
+        const key = root.folderKey(name);
+        const next = root.foldersCopy();
+        next[key] = {
+            name: (name ?? "").trim() || "Folder",
+            since: Date.now(),
+            apps: ({})
+        };
+        Config.set("launcher.folders", next);
+        return key;
+    }
+
+    function renameFolder(key: string, name: string): void {
+        // The KEY does not follow the name, deliberately. It is what every
+        // member is filed under and what the open folder is remembered by, so
+        // renaming would mean rewriting the map and re-pointing whatever is on
+        // screen, all to change a string nobody reads except in this file.
+        if (!root.folders[key])
+            return;
+        const next = root.foldersCopy();
+        next[key].name = (name ?? "").trim() || next[key].name;
+        Config.set("launcher.folders", next);
+    }
+
+    // BROKEN UP, not deleted, and the difference is everything a member is.
+    // Emptying a folder onto the floor would unstar every application in it,
+    // which is a decision you did not make; they go back to sitting loose in
+    // the star with the star-times they already had.
+    function dissolveFolder(key: string): void {
+        if (!root.folders[key])
+            return;
+        const next = root.foldersCopy();
+        delete next[key];
+        Config.set("launcher.folders", next);
+    }
+
+    // FILED, which pins it if it was not pinned already: dropping something
+    // into a folder is putting it in the star, and asking for the star as a
+    // separate gesture first would be a rule with no reason behind it.
+    function fileInFolder(key: string, entry: var): void {
+        const id = entry?.id;
+        if (!id || !root.folders[key])
+            return;
+        root.setFavourite(entry, true);
+        root.fileAway(id, key);
+    }
+
+    function takeOutOfFolder(entry: var): void {
+        const id = entry?.id;
+        if (id)
+            root.fileAway(id, "");
+    }
+
+    // The applications inside a folder, in the order they were filed. Ids that
+    // no longer resolve are dropped rather than drawn as a hole: an application
+    // can be uninstalled while its name is still written in this file, and the
+    // folder should simply be one shorter.
+    function folderApps(key: string): var {
+        const apps = root.folders[key]?.apps ?? {};
+        return Object.keys(apps).sort((a, b) => apps[a] - apps[b]).map(id => root.entryById(id)).filter(e => e && !root.isHidden(e));
+    }
+
+    // ------------------------------------------------------------------
+    // WHAT IS IN THE STAR, folders and loose applications together, in the one
+    // order you built them in.
+    //
+    // Merged by `since` rather than listed folders-first, because a folder is
+    // not a heading, it is one of the things you pinned: made on Tuesday it
+    // belongs where Tuesday's other decisions are, not promoted above them.
+    //
+    // Each is `{ kind, key, since }` plus whichever of `entry` and `folder` it
+    // turned out to be, so the launcher can lay both out in one pass without
+    // asking twice what it is looking at.
+    readonly property var pinned: {
+        const out = [];
+
+        for (const key in root.folders) {
+            const folder = root.folders[key];
+            out.push({
+                kind: "folder",
+                key: key,
+                since: folder.since ?? 0,
+                entry: null,
+                folder: folder
+            });
+        }
+
+        for (const id in root.favourites) {
+            if (root.folderOf(id))
+                continue;
+            const entry = root.entryById(id);
+            // Uninstalled, or put away since it was starred. Either way it is
+            // not a row, and neither is a reason to forget the star: reinstall
+            // it and it comes back where you left it.
+            if (!entry || root.isHidden(entry))
+                continue;
+            out.push({
+                kind: "app",
+                key: id,
+                since: root.favourites[id] ?? 0,
+                entry: entry,
+                folder: null
+            });
+        }
+
+        return out.sort((a, b) => a.since - b.since);
+    }
+
+    // Whether the star is yours yet. Until it is, the launcher stands the
+    // most-used list in; see `launcher.niagara.favourites`.
+    readonly property bool starred: root.pinned.length > 0
+
     // Most-used first, alphabetical between equals.
     //
     // The same tiebreak `search` applies WITHIN a tier, offered on its own for
