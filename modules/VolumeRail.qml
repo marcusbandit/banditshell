@@ -58,41 +58,50 @@ import qs.services
 // cannot reach either one: the top-right stays the notification tray's summon
 // zone and the bottom-right stays empty, untouched rather than negotiated with.
 //
-// WHAT THE READOUT SAYS, and it is three things: roughly how loud, that it is
-// not muted, and that you are past what the hardware was asked for. The track
-// carries the first, the glyph the second, and the accent colour plus the stop
-// dot at 100% the third. There was a percentage above the meter and it has gone.
-// A number is an instrument's answer, and the paragraph at the top of this file
-// says this is a glance: it repeated what the meter had already said, at a
-// precision nobody reads off the edge of a screen, and it was three times wider
-// than everything else in the panel put together, which is the single reason the
-// readout measured 127 by 314 and looked like a box parked on the edge rather
-// than something that had come out of it. The exact figure still exists where an
+// WHAT THE READOUT SAYS, and it is three things: how loud, whether that is
+// muted, and how much trouble the level is. The fill's HEIGHT carries the
+// first, the glyph in the puck the second, and the fill's COLOUR the third.
+// There was a percentage above the meter and it has gone. A number is an
+// instrument's answer, and the paragraph at the top of this file says this is a
+// glance: it repeated what the meter had already said, at a precision nobody
+// reads off the edge of a screen, and it was three times wider than everything
+// else in the panel put together, which is the single reason the readout
+// measured 127 by 314 and looked like a box parked on the edge rather than
+// something that had come out of it. The exact figure still exists where an
 // exact figure belongs, on the sound menu's slider, which is the control you go
 // to on purpose.
 //
-// AND IT IS DRAWN AS MATERIAL DRAWS A SLIDER, which is a shape argument rather
-// than a borrowed style. A bar whose fill runs to the top of the value states
-// the value and nothing else; every part of it is the same object, so there is
-// no part of it that says "this end is the thing that moves". Material's slider
-// splits that into three marks and each one says one thing: a thick track that
-// is the range, a bar HANDLE at the value, and a GAP either side of the handle
-// so it reads as an object sitting on the track rather than as the seam between
-// two fills. The gap is the whole trick. It is why the handle can be four pixels
-// thick and still be the first thing the eye lands on, and it is why the hand
-// knows where to go before the cursor has arrived.
+// AND IT IS DRAWN AS CAELESTIA DRAWS ITS OSD SLIDERS, which is a shape argument
+// rather than a borrowed style. A bare fill states the value and nothing else:
+// every part of it is the same object, so no part of it says "this end is the
+// thing that moves", and a control whose moving part is invisible is one you
+// can only ever nudge. So the fill gets a PUCK on its end, a circle exactly as
+// wide as the track, with the level's own glyph inside it.
 //
-// The handle also NARROWS on the press, four pixels to two, which is Material's
-// own acknowledgement and worth keeping for a reason particular to this shell:
-// the panel is a blob and the blob cannot flash, tint or lift under a press
-// without disturbing the field it is melted into. The handle is the one mark
-// here that is free to move, so it is the one that answers.
+// Full width is the load-bearing part of that. It means the handle cannot be
+// lost against the track, it means there is no overhang to find room for in a
+// column on a screen edge, and it means the thing you can see and the thing you
+// can hit are ONE SHAPE rather than a thin mark with an invisible target grown
+// around it. Material's slider, which this replaced, is the opposite trade: a
+// four-pixel bar and a gap either side to stop it reading as a seam. That is a
+// beautiful drawing and the wrong one here, because the gap breaks the single
+// line the eye is actually reading (how far up the colour has come) and because
+// a four-pixel bar is a handle you aim at rather than one you grab.
 //
-// What is NOT borrowed is the colour. Material would put a tone role on each of
-// the three marks; this shell has one colour at weights (see Appearance's ramp),
-// so the track is `fillStronger`, the fill and the handle are both `lit`, and
-// the three states of `lit` (muted, normal, amplified) are the only colour
-// change anywhere in the control.
+// AND IT NEVER CHANGES SIZE. Material's handle narrows under the press and that
+// went with it. On a mark you only point at, a shape change is the cheapest
+// possible acknowledgement; on a thing you take hold of it is the thing under
+// your finger deforming at the exact moment you grab it, which reads as the
+// grab having gone wrong rather than as it having worked. What answers the
+// press is the value moving and the colour changing, both of which are on the
+// axis the gesture is actually about.
+//
+// THE COLOUR IS THE ONE PLACE IN THIS SHELL WHERE HUE MEANS SOMETHING. See
+// `lit` for the whole argument; the short version is that "amplified" is not
+// one state. Between 100% and the ceiling there is half again of gain, and one
+// accent colour says the same sentence at 101% and at 150% when those are not
+// the same situation. So the fill climbs a hazard ladder: the theme's accent
+// while the level is normal, amber past 100%, red past halfway up the headroom.
 //
 // AND IT IS ONE BODY, which cost a bug to learn. The segment used to bulge under
 // the cursor as a SECOND blob, the launch edge's gesture transplanted to this
@@ -175,13 +184,44 @@ Item {
     readonly property real ceiling: Audio.maxVolume
     readonly property real warnAbove: 1
 
+    // WHERE "LOUD" BECOMES "TOO LOUD", which is the second of two lines rather
+    // than a second opinion about the first. `warnAbove` is where the hardware
+    // stops being asked for what it has and starts being asked for more, and it
+    // is a fact about the sink. This one is a fact about the HEADROOM: halfway
+    // up whatever amplification the ceiling allows. Derived rather than named,
+    // so raising the ceiling moves it (~/.claude/rules/math-over-hardcoding.md);
+    // a hardcoded 125% would sit at the halfway mark today and a third of the
+    // way up a ceiling of 200, which is the wrong place for the same word.
+    readonly property real dangerAbove: root.warnAbove + (root.ceiling - root.warnAbove) / 2
+
     readonly property bool muted: Audio.muted
     readonly property real volume: Audio.volume
 
-    // ONE colour at three weights, the same ladder the sound menu's slider uses:
-    // muted says the value is not in effect, past 100% says it is more than the
-    // hardware was asked for, and everything else is simply the level.
-    readonly property color lit: root.muted ? Appearance.colour.textFaint : root.volume > root.warnAbove ? Appearance.colour.accent : Appearance.colour.text
+    // THE FILL SAYS HOW LOUD IT IS ABOUT TO BE, in four states, and this is the
+    // one place in the shell where colour carries meaning instead of weight.
+    //
+    // Everywhere else this material separates things by opacity and never by
+    // inventing a second hue (see Appearance's ramp), and the rail used to obey
+    // that: one colour at three weights, with the accent standing in for
+    // "amplified". What that could not do is say HOW amplified. Between 100%
+    // and the ceiling there is half again of gain that a sink will happily
+    // apply to a track already mastered loud, and "the accent" is the same
+    // sentence at 101% and at 150% when those are not the same situation. So
+    // the ladder here is a hazard ladder: normal, warning, danger.
+    //
+    // The first rung is the THEME's accent, so "normal and loud" is the same
+    // colour the rest of the shell is wearing. The other two are absolute, and
+    // that is deliberate rather than an oversight: a warning colour that
+    // changes with the palette is not a warning colour. Amber means amber on
+    // every theme, which is the entire content of the mark. They live in Config
+    // so they are tunable without a module knowing a hex value.
+    //
+    // Read off `shown` rather than off `volume`, so the colour turns under the
+    // hand at the instant the handle crosses the line rather than after
+    // PipeWire has agreed. Crossing a hazard line is exactly when a beat of lag
+    // is worst.
+    readonly property real shownVolume: root.shown * root.ceiling
+    readonly property color lit: root.muted ? Appearance.colour.textFaint : root.shownVolume > root.dangerAbove ? Appearance.colour.volumeDanger : root.shownVolume > root.warnAbove ? Appearance.colour.volumeWarn : Appearance.colour.accent
 
     // Out while the cursor is on it, while a hand is holding it, and for a
     // moment after the last change, so a volume key pressed from across the desk
@@ -277,51 +317,48 @@ Item {
     // length one wheel notch still moves the fill by more than the shell's own
     // hairline, which is the only thing the length actually has to buy: a step
     // you cannot see is a rail that looks broken while it is working.
-    readonly property real meterLength: glyph.implicitHeight * Appearance.sizes.volumeMeterGlyphs
-
-    // THE SLIDER'S FOUR MARKS, all four derived from the ONE token that sizes
-    // it, so the control keeps its shape at any thickness rather than coming
-    // apart the first time somebody tunes `railWidth`
-    // (~/.claude/rules/math-over-hardcoding.md).
+    // HOW LONG THE TRACK IS, in nominal icons.
     //
-    // The proportions are Material's, read off its 16dp slider and written as
-    // ratios of the track rather than as the pixel counts they happen to be at
-    // 16: a 4dp handle, a 6dp gap, a 4dp stop dot. `handleSpan` is the one that
-    // is NOT Material's, and deliberately: its handle stands 44dp proud of a
-    // 16dp track, which is most of a horizontal slider's height and reads as a
-    // grip. Ours crosses the SHORT axis of a panel on a screen edge, so 44 would
-    // be nearly the whole readout's width and the handle would stop being a mark
-    // on a track and become the panel's own crossbar. Seven fourths is enough to
-    // read as "wider than the track, therefore on top of it" at a glance, which
-    // is the only thing the overhang has to buy.
-    readonly property real trackWidth: Appearance.sizes.volumeRailWidth
-    readonly property real handleSpan: Math.round(root.trackWidth * 1.75)
-    readonly property real handleThick: Math.max(Appearance.font.stem, Math.round(root.trackWidth / 4))
-    readonly property real trackGap: Math.max(Appearance.font.stem, Math.round(root.trackWidth * 0.375))
-    readonly property real stopDot: Math.max(Appearance.font.stem, Math.round(root.trackWidth / 4))
+    // Measured against `Appearance.font.iconSize` rather than against the drawn
+    // glyph's own implicitHeight, and that is now load-bearing rather than
+    // merely tidy. The glyph moved INSIDE the handle, and the handle's position
+    // is computed from the travel, which is computed from this length: reading
+    // the live glyph's height here would make the track's length depend on the
+    // position of something the track's length decides, which is a binding loop
+    // and not a subtle one. The nominal size is a constant, so the loop cannot
+    // form. It is also the more correct measure for the same reason `panelWidth`
+    // already used it: an icon font is only usually monospaced, and a panel
+    // measured off what is currently drawn would resize as the level changed
+    // the glyph.
+    readonly property real meterLength: Appearance.font.iconSize * Appearance.sizes.volumeMeterGlyphs
 
-    // The corner where a track segment faces the handle. The outer ends of the
-    // track are fully round like every other pill in this shell; the inner ends
-    // are nearly square, because a fully round end inside a six-pixel gap makes
-    // the gap read as a lozenge-shaped hole rather than as a cut.
-    readonly property real trackInner: Math.max(1, Math.round(root.trackWidth / 8))
+    // THE TRACK AND THE PUCK THAT RIDES IT, both out of the one token.
+    //
+    // The handle is a CIRCLE EXACTLY AS WIDE AS THE TRACK, which is Caelestia's
+    // rule for its OSD sliders and is worth taking whole. It settles three
+    // things at once that were three decisions before: the handle can never be
+    // lost against the track because it is the full width of it, there is no
+    // overhang to find room for in the column, and it is big enough to be a
+    // touch target at its drawn size rather than needing an invisible one grown
+    // around it. A four-pixel bar with a hidden twenty-four-pixel target is a
+    // control that lies about where it is; a thirty-pixel puck does not have to.
+    //
+    // AND IT NEVER CHANGES SIZE. Not on hover, not under the press, not while
+    // dragging. The press used to narrow it, which is Material's own
+    // acknowledgement and is wrong on a handle you are meant to hold: the thing
+    // under your finger changing shape at the moment you take hold of it reads
+    // as the grab having gone wrong. What answers the press is the value moving
+    // and the fill's colour, which is plenty and is on the axis the gesture is
+    // actually about.
+    readonly property real trackWidth: Appearance.sizes.volumeRailWidth
+    readonly property real handleSize: root.trackWidth
+    readonly property real stopDot: Math.max(Appearance.font.stem, Math.round(root.trackWidth / 6))
 
     // THE PANEL, sized by what is in it rather than by a number picked here.
-    //
-    // The column is as wide as the widest mark it can ever hold, measured by
-    // the icon's NOMINAL size rather than by the glyph currently in it. The
-    // glyph changes with the level and with mute, and an icon font is only
-    // usually monospaced, so a panel measured off what is drawn could step
-    // wider crossing 50% and back again on the way down: the shape would be
-    // answering the wheel as well as the value. That was the percentage's
-    // argument for freezing its own width, and it outlives the percentage.
-    //
-    // The widest mark is the HANDLE now rather than the track, which is the
-    // whole point of a handle that overhangs: measured against the track this
-    // column would be a handle's overhang too narrow and the handle would hang
-    // over the panel's padding on both sides.
-    readonly property real contentWidth: Math.max(root.handleSpan, Appearance.font.iconSize)
-    readonly property real contentHeight: root.meterLength + Appearance.padding.normal + glyph.implicitHeight
+    // One column, one control: the glyph that used to stand under the meter is
+    // in the handle now, so the readout is the slider and nothing else.
+    readonly property real contentWidth: Math.max(root.trackWidth, Appearance.font.iconSize)
+    readonly property real contentHeight: root.meterLength
 
     readonly property real panelWidth: root.border + root.contentWidth + Appearance.padding.large * 2
     readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
@@ -457,7 +494,7 @@ Item {
     // stop dot is right there and the catch reads as landing on it, on the band
     // there is no mark, no scale and nothing to have landed on.
     function snap(v: real, perPixel: real): real {
-        const reach = root.handleThick * perPixel;
+        const reach = root.stopDot * 2 * perPixel;
         return Math.abs(v - root.warnAbove) < reach ? root.warnAbove : v;
     }
 
@@ -617,11 +654,18 @@ Item {
             height: root.contentHeight
             opacity: reveal.value
 
-            // THE SLIDER: a track in two pieces, a gap, and a handle in the gap.
+            // THE SLIDER: a track, a fill rising from the bottom, and a puck
+            // riding the top of the fill with the level's own glyph in it.
             //
-            // The item is the full content width rather than the track's, so the
-            // handle's overhang has somewhere to be and the grab below can be as
-            // wide as the column instead of as wide as the stick.
+            // Caelestia's OSD slider, which is where this shape comes from. The
+            // fill starts at the handle's TOP EDGE rather than stopping short of
+            // it, so the puck caps the fill instead of floating above a gap. The
+            // gap it replaced was Material's, and Material needs one because its
+            // handle is a four-pixel bar that would otherwise read as a seam in
+            // the fill rather than as an object on it. A puck the full width of
+            // the track has no such problem: it is already unmistakably a
+            // different thing, and a gap beneath it only breaks the one line the
+            // eye is actually reading, which is how far up the colour has come.
             Item {
                 id: meter
 
@@ -630,147 +674,133 @@ Item {
                 width: root.contentWidth
                 height: root.meterLength
 
-                // WHERE THE HANDLE IS, and the one mapping every other number
-                // here is read off. The handle stays wholly inside the track's
-                // ends rather than half hanging off them, so the full length of
-                // the track is reachable and looks it, exactly as the sound
-                // menu's bead does.
+                // WHERE THE HANDLE IS. It stays wholly inside the track's ends
+                // rather than half hanging off them, so the full length of the
+                // track is reachable and looks it.
                 //
-                // Measured against the handle's RESTING thickness, not its drawn
-                // one. The press narrows the handle, and a travel that narrowed
-                // with it would stretch the mapping under the hand that was
-                // already dragging: the value would shift by a pixel's worth at
-                // the moment of the press, which is the one moment you are
-                // watching it.
-                readonly property real travel: Math.max(1, height - root.handleThick)
-                readonly property real centre: root.handleThick / 2 + (1 - root.shown) * travel
+                // Nothing in this mapping moves when the handle is pressed,
+                // because nothing about the handle moves when it is pressed; see
+                // `handleSize`. The version before this had to be careful to
+                // measure against a resting size the drawing then departed from,
+                // and that entire class of care went away with the animation.
+                readonly property real travel: Math.max(1, height - root.handleSize)
+                readonly property real handleTop: (1 - root.shown) * travel
+                readonly property real centre: handleTop + root.handleSize / 2
 
-                // What is DRAWN, which is the Material acknowledgement: four
-                // pixels at rest, two under a finger.
-                readonly property real thick: grip.pressed ? Math.max(1, Math.round(root.handleThick / 2)) : root.handleThick
-
-                // Where each track segment has to stop. The gap is measured from
-                // the handle's drawn edge, so it stays a constant gap while the
-                // handle narrows rather than opening up by the pixel the handle
-                // gave back.
-                readonly property real clear: thick / 2 + root.trackGap
-
-                // Where the mark at 100% sits, on the same mapping as the handle
+                // Where the mark at 100% sits, on the same mapping as the handle,
                 // so the two coincide exactly when the value does.
-                readonly property real markY: travel * (1 - root.warnAbove / root.ceiling) + root.handleThick / 2
+                readonly property real markY: travel * (1 - root.warnAbove / root.ceiling) + root.handleSize / 2
 
-                // THE INACTIVE TRACK, above the handle. Round at the top, where
-                // it is the end of the range; nearly square at the bottom, where
-                // it is one lip of the gap.
+                // THE TRACK: the whole range, always, at full length. A slider
+                // that draws only the part you have used cannot say how much is
+                // left, and on this control the part you have NOT used is the
+                // part worth knowing about.
                 G2Rect {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    y: 0
-                    width: root.trackWidth
-                    height: Math.max(0, meter.centre - meter.clear)
-
-                    topLeftRadius: root.trackWidth / 2
-                    topRightRadius: root.trackWidth / 2
-                    bottomLeftRadius: root.trackInner
-                    bottomRightRadius: root.trackInner
-
+                    anchors.fill: parent
+                    radius: width / 2
                     color: Appearance.colour.fillStronger
                 }
 
-                // THE ACTIVE TRACK, below the handle: how far it has come. It
-                // fills from the BOTTOM, because that is the end the wheel moves
-                // away from and the direction the band's own drag means.
+                // HOW FAR IT HAS COME, and how alarming that is.
+                //
+                // Never shorter than the puck, so its own radius is always valid:
+                // at zero the handle is parked at the bottom of the travel and
+                // this is exactly the circle underneath it.
+                //
+                // The colour is the hazard ladder (see `lit`), and it CROSSFADES
+                // rather than switching. The lines it crosses are real but the
+                // crossing is not an event: a hard cut at 100% reads as the
+                // control changing mode, when what is happening is one quantity
+                // getting worse. Slow enough to see the change happen, short
+                // enough that the colour is settled before you have finished
+                // moving.
                 G2Rect {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    y: Math.min(meter.height, meter.centre + meter.clear)
-                    width: root.trackWidth
-                    height: Math.max(0, meter.height - y)
-
-                    topLeftRadius: root.trackInner
-                    topRightRadius: root.trackInner
-                    bottomLeftRadius: root.trackWidth / 2
-                    bottomRightRadius: root.trackWidth / 2
-
+                    y: meter.handleTop
+                    width: parent.width
+                    height: parent.height - y
+                    radius: width / 2
                     color: root.lit
+
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Appearance.anim.normal
+                            easing.type: Easing.OutQuad
+                        }
+                    }
                 }
 
-                // WHERE NORMAL ENDS, as Material's stop indicator: a dot on the
-                // track at 100%, because the range runs past it and without the
-                // mark the top third is indistinguishable from headroom. It is
-                // not headroom, it is amplification.
+                // WHERE NORMAL ENDS: a dot on the track at 100%, because the
+                // range runs past it and without the mark the top third is
+                // indistinguishable from headroom. It is not headroom, it is
+                // amplification, and it is the line the fill changes colour on.
                 //
-                // It was a hairline across the full width of the track and it is
-                // a dot now for one reason: the track is thick enough that a rule
-                // across it reads as the track being CUT IN TWO there, which is
-                // the same drawing the gap uses to mean something else entirely.
-                // A dot cannot be confused with a gap.
-                //
-                // Drawn over both segments, so it survives the fill arriving, and
-                // it SWAPS WEIGHT depending on which one it is standing on. One
-                // colour cannot do this job: the mark spends most of its life on
-                // the dim inactive track, where a dark dot is invisible, and the
-                // rest of it on the lit fill, where a bright one is. Material
-                // solves this with two tone roles; this shell has one colour at
-                // weights, so it is the same ladder read from either end.
-                //
-                // Asked of the DRAWING rather than of the value, which is a real
-                // difference and not pedantry. "Is the volume past 100" and "is
-                // the fill under the dot" part company for the whole width of the
-                // gap: from 100% to about 110% the value says covered while the
-                // fill is still a gap's width short of the mark, and a dot
-                // painted `surface` over the panel's own body is not a subtle
-                // dot, it is an absent one. Reading the fill's own top edge, the
-                // dot goes dark exactly when something dark is behind it.
-                //
-                // Which leaves it standing on the panel body only while the
-                // handle is within a gap of the mark, and there it stays LIGHT
-                // and simply floats: still a mark, still in the right place, and
-                // hidden outright for the few percent where the handle itself is
-                // parked on top of it. A handle on 100% says where 100% is far
-                // louder than the dot could.
+                // A dot rather than a rule across the track, because the track is
+                // wide enough now that a rule reads as the track being cut in two
+                // there. It takes its weight from whichever surface is actually
+                // behind it, asked of the FILL'S OWN TOP EDGE rather than of the
+                // value: "is the volume past 100" and "is the fill under the dot"
+                // are the same question only if the fill ends exactly at the
+                // value, and it ends at the top of a thirty-pixel puck.
                 G2Rect {
                     anchors.horizontalCenter: parent.horizontalCenter
                     y: meter.markY - height / 2
                     width: root.stopDot
                     height: root.stopDot
                     radius: width / 2
-                    color: meter.centre + meter.clear <= meter.markY ? Appearance.colour.surface : Appearance.colour.textDim
+                    color: meter.handleTop <= meter.markY ? Appearance.colour.surfaceSolid : Appearance.colour.textDim
                 }
 
-                // THE HANDLE. The one mark here that is an object rather than a
-                // measurement, and the only thing in the panel you are meant to
-                // take hold of.
+                // THE HANDLE: a puck the full width of the track, with the
+                // level's own glyph in it. The one thing here that is an object
+                // rather than a measurement, and the only thing you take hold of.
+                //
+                // It does NOT take the hazard colour, and that is deliberate. The
+                // fill is the quantity and the puck is the grip; if the grip went
+                // red too there would be nothing on the control that stayed put,
+                // and the one mark you are meant to aim at is the worst one to
+                // keep repainting. It also has to stay legible against green,
+                // amber and red in turn, and the top of the ramp is the only
+                // colour that manages all three.
                 G2Rect {
                     x: (meter.width - width) / 2
-                    y: meter.centre - height / 2
-                    width: root.handleSpan
-                    height: meter.thick
-                    radius: height / 2
-                    color: root.lit
+                    y: meter.handleTop
+                    width: root.handleSize
+                    height: root.handleSize
+                    radius: width / 2
+                    color: Appearance.colour.text
 
-                    // The narrowing is a movement rather than a state change, so
-                    // it is eased. Both ends of it: it has to give under the
-                    // press and come back on the release, and a height that
-                    // snapped back would read as the handle being dropped rather
-                    // than let go.
-                    Behavior on height {
-                        NumberAnimation {
-                            duration: Appearance.anim.fast
-                            easing.type: Easing.OutQuad
-                        }
+                    // THE GLYPH RIDES THE PUCK, which is the other half of what
+                    // Caelestia's slider does and the reason this readout is one
+                    // column rather than two things stacked. Standing under the
+                    // meter it said "muted or not" about a value drawn somewhere
+                    // else; in the puck it is ON the value, moves with it, and
+                    // the crossed-out speaker lands exactly where you are already
+                    // looking. Read off `shownVolume` so it changes under the
+                    // hand rather than after PipeWire has agreed.
+                    //
+                    // Dark on light, which is the one inversion in this shell,
+                    // and it is earned: the puck is the only surface in the panel
+                    // that is not the panel's own body.
+                    Icon {
+                        anchors.centerIn: parent
+                        name: Audio.icon(root.shownVolume, root.muted)
+                        color: Appearance.colour.surfaceSolid
                     }
                 }
 
                 // TAKE HOLD OF IT.
                 //
-                // Wider than the track it drives, up to this shell's own floor
-                // for anything you are meant to hit (WCAG 2.2 SC 2.5.8, and
-                // `minTarget` is where that number lives). The same split the
-                // band makes one screen edge over and the sound menu's slider
-                // makes two files over: the drawing stays thin, the thing you
-                // can hit does not.
+                // The whole track, so the bar itself is the control rather than
+                // a picture of one next to a control. Grown sideways only to this
+                // shell's floor for anything you are meant to hit (WCAG 2.2 SC
+                // 2.5.8, and `minTarget` is where that number lives), which at a
+                // thirty-pixel track is nothing at all: the drawing is already
+                // bigger than the minimum, which is the point of drawing it this
+                // size.
                 //
-                // Declared LAST, so it is topmost over the marks it drives and
-                // no part of the drawing can take a press off it.
+                // Declared LAST, so it is topmost over the marks it drives and no
+                // part of the drawing can take a press off it.
                 MouseArea {
                     id: grip
 
@@ -785,16 +815,16 @@ Item {
                     // The grab is this control's from the press and nothing may
                     // take it back. Nothing is currently in a position to try,
                     // and that is precisely why it is written down: the panel is
-                    // a lid over a screen edge and the areas around it are all
-                    // gesture surfaces.
+                    // a lid over a screen edge and everything around it is a
+                    // gesture surface.
                     preventStealing: true
 
-                    // HOW FAR THE HAND IS FROM THE HANDLE'S CENTRE, kept from the
-                    // press so the handle does not teleport under it. Grab a
-                    // handle by its lower lip and it must stay grabbed by its
-                    // lower lip; a slider that recentres on the finger throws the
-                    // value away at the instant you take hold of it, which on a
-                    // touchscreen is the instant your finger covers the answer.
+                    // HOW FAR THE HAND IS FROM THE PUCK'S CENTRE, kept from the
+                    // press so the puck does not teleport under it. Grab it by
+                    // its lower edge and it stays grabbed by its lower edge; a
+                    // slider that recentres on the finger throws the value away
+                    // at the instant you take hold of it, which on a touchscreen
+                    // is the instant your finger covers the answer.
                     property real offset: 0
 
                     // ABSOLUTE HERE, and relative on the band, which is the one
@@ -804,13 +834,13 @@ Item {
                     // absolute mapping would commit to a number you had no way to
                     // choose; a palm brushing it would slam the output to half
                     // again above full. This track shows its whole range, its
-                    // ends, its handle and the mark at 100%. Everything the
-                    // relative mapping was protecting you from not being able to
-                    // see, you can see. So a press on the track means the value
-                    // under the press, which is what a slider has trained
-                    // everyone to expect and what makes one movement enough.
+                    // ends, its puck and the mark at 100%. Everything the relative
+                    // mapping was protecting you from not being able to see, you
+                    // can see. So a press on the track means the value under the
+                    // press, which is what a slider has trained everyone to expect
+                    // and what makes one movement enough.
                     function report(y: real): void {
-                        const f = 1 - (y - root.handleThick / 2) / meter.travel;
+                        const f = 1 - (y - root.handleSize / 2) / meter.travel;
                         const v = Math.max(0, Math.min(1, f)) * root.ceiling;
                         root.put(root.snap(v, root.perTrackPixel));
                     }
@@ -822,15 +852,14 @@ Item {
                     onPressed: mouse => {
                         const y = grip.mapToItem(meter, mouse.x, mouse.y).y;
 
-                        // ON THE HANDLE, keep it where it is and follow the hand
-                        // from there. ANYWHERE ELSE on the track, come to the
-                        // hand first and follow it after, so one press-and-drag
-                        // both lands on a value and keeps adjusting it. The reach
-                        // is a whole minimum target rather than the handle's own
-                        // four pixels: what counts as "on the handle" is a
-                        // question about the finger, and a four-pixel bar has to
-                        // be grabbable by something eight millimetres wide.
-                        if (Math.abs(y - meter.centre) <= Appearance.sizes.minTarget / 2) {
+                        // ON THE PUCK, keep it where it is and follow the hand
+                        // from there. ANYWHERE ELSE on the track, come to the hand
+                        // first and follow it after, so one press-and-drag both
+                        // lands on a value and keeps adjusting it. "On the puck"
+                        // is the puck's own radius, which needs no padding now
+                        // that the puck is the full width of the track: the thing
+                        // you can hit and the thing you can see are one shape.
+                        if (Math.abs(y - meter.centre) <= root.handleSize / 2) {
                             grip.offset = y - meter.centre;
                         } else {
                             grip.offset = 0;
@@ -844,7 +873,7 @@ Item {
                     }
 
                     // A TOUCH HAS NO HOVER TO LEAVE BEHIND. The mouse can let go
-                    // of the handle and the panel stays out because the cursor is
+                    // of the puck and the panel stays out because the cursor is
                     // still on it; a finger lifting reports nothing at all, and
                     // without this the panel would leave at the same instant as
                     // the finger, taking the result of the adjustment with it.
@@ -852,21 +881,6 @@ Item {
 
                     onWheel: wheel => root.nudge(wheel)
                 }
-            }
-
-            // THE ONE THING THAT SAYS MUTED, which is why it survived the
-            // percentage. A level of zero and a level that is being held silent
-            // are the same picture on a meter, and a dimmed colour says "quiet"
-            // rather than "off"; the crossed-out speaker is the only mark here
-            // that draws the difference.
-            Icon {
-                id: glyph
-
-                anchors.horizontalCenter: parent.horizontalCenter
-                anchors.bottom: parent.bottom
-
-                name: Audio.icon(root.volume, root.muted)
-                color: root.muted ? Appearance.colour.textFaint : Appearance.colour.textDim
             }
         }
     }

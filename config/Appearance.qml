@@ -108,6 +108,21 @@ Singleton {
         // green show through whatever sits on it.
         readonly property color accentText: root.rampAt(1, 1)
 
+        // THE VOLUME RAIL'S HAZARD RUNGS, and the only colours here that do not
+        // come from the theme. See modules/VolumeRail.qml's `lit`: the whole
+        // content of these marks is that they are the colours danger is, so a
+        // palette that made them teal would leave the fill looking perfectly
+        // nice and saying nothing at 140%. The bottom rung of that ladder is
+        // `accent` above, which IS themed, because "normal" has no warning to
+        // carry.
+        //
+        // Not run through `veil()` like the ramp, on purpose: veiling pulls a
+        // colour toward the surface, and a warning talked toward the background
+        // is a warning talked out of. WHERE the rungs sit is derived from the
+        // ceiling in the rail rather than set here.
+        readonly property color volumeWarn: root.cfg.volume.warnColour
+        readonly property color volumeDanger: root.cfg.volume.dangerColour
+
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour

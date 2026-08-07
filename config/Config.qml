@@ -687,24 +687,25 @@ Singleton {
                 // opinion about one shape, which is exactly how a stale magic
                 // number goes on looking like a setting.
                 //
-                // SIXTEEN, and it went up from ten when the meter stopped being
-                // a meter and became a control you put a finger on.
+                // THIRTY, and it went up from ten when the meter stopped being a
+                // meter and became a control you put a finger on.
                 //
                 // Ten was chosen to read "as a stick rather than as a bar", and
-                // that was the right thickness for a thing you only look at. A
-                // stick is the wrong thickness for a thing you grab: it says
-                // "reading" rather than "handle", and a track a finger cannot
-                // see either side of gives the eye nothing to aim the finger at.
-                // Sixteen is Material's own track, and it is what makes the gap
-                // either side of the handle legible; below about twelve the gap
-                // closes up and the handle stops reading as a separate object.
+                // that was the right thickness for a thing you only look at. It
+                // is the wrong thickness for a thing you grab: a stick says
+                // "reading", and a track a finger cannot see either side of
+                // gives the eye nothing to aim the hand at.
                 //
-                // Everything else in the readout is derived from this in
-                // modules/VolumeRail.qml (the handle's span and thickness, the
-                // gap, the stop dot, the inner corner radius), so this is still
-                // the one number that sizes the control: raise it and the whole
-                // slider grows in proportion rather than losing its shape.
-                railWidth: 16,
+                // Thirty is Caelestia's OSD track, and this number now sets the
+                // HANDLE as well, because the handle is a circle exactly as wide
+                // as the track (modules/VolumeRail.qml). That is what makes the
+                // size worth spending: a thirty pixel puck clears the 24 that
+                // `control.minTarget` asks of anything hittable, so the drawn
+                // control and the touch target are the same shape and neither
+                // has to lie about where the other is. Under about twenty-four
+                // they part company again and the handle needs an invisible
+                // target grown around it, which is the arrangement this replaced.
+                railWidth: 30,
 
                 // HOW LONG THE METER IS, in glyphs of the icon standing under it.
                 //
@@ -721,22 +722,50 @@ Singleton {
                 // small blob, it is an absent one: the readout drew its glyph and
                 // its meter over the wallpaper with no body behind them at all.
                 //
-                // FIVE, and it went up from three for the same reason the width
+                // NINE, and it went up from three for the same reason the width
                 // did: three was the length of a reading, and this is now the
                 // length of a TRAVEL. What a track has to be long enough for
                 // stopped being "read as a length rather than as a mark" and
-                // became "put the handle where you meant to", and that is a
-                // question about the hand rather than about the eye. At three
-                // glyphs the whole 0-to-150 range was seventy-odd pixels, so one
-                // pixel of finger was worth two points of volume and the handle
-                // could not be placed to better than about five; at five it is a
-                // point and a bit, which is finer than the wheel's own step.
+                // became "put the handle where you meant to", which is a
+                // question about the hand rather than about the eye.
                 //
-                // It is expressed in glyphs rather than pixels so it follows the
-                // type scale: change the font base and the track keeps its
-                // proportion to the icon it belongs with, which is what the old
+                // The arithmetic is the argument. The handle is a full track
+                // width, so the travel is this length MINUS thirty; the range is
+                // 150 points. At three glyphs there was no travel left at all. At
+                // nine there are 180 pixels, so 150 of travel, so one pixel of
+                // finger is one point of volume: the finest the control can
+                // usefully be, since the sink quantises to whole percent anyway.
+                // Past here the panel grows without the control getting better.
+                //
+                // Counted in NOMINAL icons (`font.iconSize`) rather than in the
+                // drawn glyph's height, which matters more than it reads: the
+                // glyph now lives inside the handle, so measuring this against it
+                // would make the track's length depend on the handle's position,
+                // which the track's length decides. See modules/VolumeRail.qml.
+                // Either way it follows the type scale, which is what the old
                 // pixel `railLength` could not do.
-                meterGlyphs: 5,
+                meterGlyphs: 9,
+
+                // THE HAZARD LADDER'S TOP TWO RUNGS, and the only absolute
+                // colours in this shell.
+                //
+                // Everything else takes its colour from the theme, and these
+                // deliberately do not. A warning colour that changes with the
+                // palette is not a warning colour: the whole content of the mark
+                // is that it is the colour danger is, and a theme that made it
+                // teal would leave the fill saying nothing at 140% while looking
+                // perfectly nice. The bottom rung IS the theme's accent, because
+                // "normal" has no meaning to carry and may as well look like the
+                // rest of the shell.
+                //
+                // Desaturated a little from a pure signal amber and red, which is
+                // not softening the message: this shell's surfaces are dark and
+                // slightly cool, and a full-saturation red on them halates badly
+                // enough to be hard to look at, which is the opposite of legible.
+                // Where the rungs SIT is not here; it is derived from the ceiling
+                // in modules/VolumeRail.qml, so raising the ceiling moves them.
+                warnColour: "#e9b04a",
+                dangerColour: "#f0625c",
 
                 // How long the readout stays after the last change. Long enough
                 // to see where a keypress landed, short enough that it is gone
