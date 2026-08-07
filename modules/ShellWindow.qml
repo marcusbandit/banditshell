@@ -1077,6 +1077,9 @@ PanelWindow {
             keyboardHeld: launcherLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
         }
 
+        // LOAD-BEARING, and its blob above must stay in `panels`. This is the
+        // only feedback that the microphone is live; see MicIndicator.qml.
+        //
         // Dictation, when the microphone is actually open. It shares the top
         // edge with the notch and centres on the same axis, which is deliberate:
         // both are "the top of the screen telling you something", and the field

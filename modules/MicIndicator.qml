@@ -4,6 +4,21 @@ import Quickshell.Io
 import qs.config
 import qs.components
 
+// LOAD-BEARING. Do not delete this module, do not drop it from ShellWindow's
+// `panels` list, and do not "simplify" the reconnect below. This is the only
+// thing on screen that says the microphone is open.
+//
+// It is specifically DICTATION. It is not the volume rail, not a notification,
+// not a generic status pill, and it is not covered by any of them: SUPER + R
+// (`voice toggle`) opens the mic with no other feedback anywhere in the session,
+// so with this gone you are talking to a machine that looks idle. That is the
+// bug it exists to prevent, and it has been reintroduced more than once by work
+// that was aimed at something else entirely.
+//
+// If you are running the shell from a trimmed copy or a scratch directory, copy
+// this file too, or dictation will look broken to whoever is actually at the
+// desk.
+//
 // Dictation, as one thing that changes shape rather than a stack of popups.
 //
 // The daemon (~/bin/voice-daemon) pushes newline-delimited JSON down a unix
