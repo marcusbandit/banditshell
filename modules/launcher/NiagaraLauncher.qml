@@ -693,10 +693,27 @@ Item {
         // Whatever the pointer is over, it will say so on the next enter.
         root.hovered = -1;
 
-        if (root.marked && root.sectionSpan[root.marked])
+        if (root.marked && root.sectionSpan[root.marked]) {
             root.markSection(root.marked);
-        else
-            root.selected = root.firstPick(0, 1);
+            return;
+        }
+
+        // THE SECTION YOU WERE STANDING IN CAN STOP EXISTING, and taking the
+        // last application back out of the drawer is exactly how: the drawer
+        // only exists while something is in it, so showing the last one deletes
+        // the section you did it from.
+        //
+        // The rail has to LET GO of it. Left marked, it points at a key that is
+        // no longer on the rail, and the list stays parked at the bottom where
+        // the drawer used to be while the selection jumps to the top, so the
+        // column you are looking at and the row Return would open are two
+        // different places.
+        //
+        // selectRow rather than assigning `selected`, because that is the one
+        // that brings the list with it: the answer to "where you were is gone"
+        // is to travel to where you are now, not to leave the view behind.
+        root.marked = "";
+        root.selectRow(root.firstPick(0, 1));
     }
 
     onRowsChanged: root.reselect()
