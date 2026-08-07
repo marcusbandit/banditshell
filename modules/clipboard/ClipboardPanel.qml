@@ -34,12 +34,20 @@ Item {
     readonly property bool open: root.shown
     property bool shown: false
 
-    // WHICH LIST. The clipboard proper, and the transcription clipboard, which
-    // is deliberately a tab with nothing behind it yet: the shape of the thing
-    // has to exist before the thing can be dropped into it, and a tab added
-    // later would move every gesture that had learned where the first one was.
+    // WHICH LIST. The clipboard proper, and the transcription clipboard: what
+    // was copied, and what was said. Two histories of the same act, which is
+    // "something I want back", so they are one panel and one gesture rather
+    // than two.
+    //
+    // The tabs differ in what ACCEPTING a row means, and only in that. Tab 0
+    // puts the entry on the clipboard, ready for a paste. Tab 1 loads it into
+    // the slot SUPER+SHIFT+R types from, ready for that key. Both leave the
+    // thing you picked one keystroke from the window you were in, which is why
+    // neither of them types anything itself.
     property int tab: 0
     readonly property var tabs: ["Clipboard", "Transcription"]
+
+    readonly property bool speech: root.tab === 1
 
     property bool searching: false
     property int selected: 0
@@ -48,6 +56,20 @@ Item {
     // selection, because the pointer is not the only thing that moves. Type a
     // letter and the list under a perfectly still cursor is a different list.
     property int hovered: -1
+
+    // WHICH ENTRY THE FULL VIEW IS SHOWING, held separately from `selected`.
+    //
+    // Not derived from the selection, because the two stop agreeing the moment
+    // the list changes underneath: something copied while you are reading pushes
+    // a new row to the top and moves every index down one, and a view bound to
+    // an index would silently start showing its neighbour. An entry is a thing;
+    // an index is a position, and positions here are not stable.
+    //
+    // Null is the whole of "not reading anything", so there is no second flag to
+    // keep in step with it.
+    property var reading: null
+
+    readonly property bool expanded: !!root.reading
 
     // What had the keyboard before this took it, so it can have it back.
     //
@@ -75,10 +97,10 @@ Item {
     readonly property Item maskItem: catcher
 
     // WHAT THE LIST IS SHOWING. The tab decides which question is asked; the
-    // query narrows the answer. Tab 1 has no source yet and says so rather than
-    // showing an empty clipboard, because "nothing has been copied" and "this
-    // has not been built" are different facts and only one of them is a bug.
-    readonly property var results: root.tab === 0 ? Clipboard.search(query.text) : []
+    // query narrows the answer. Both sources are searched the same way, because
+    // Dictation.search defers to Clipboard's own matcher rather than scoring
+    // matches a second way.
+    readonly property var results: root.speech ? Dictation.search(query.text) : Clipboard.search(query.text)
 
     readonly property var entry: root.results[root.selected] ?? null
 
@@ -91,6 +113,10 @@ Item {
         root.shown = true;
         root.selected = 0;
         root.hovered = -1;
+        // ALWAYS ON THE LIST. The full view is a place you went, not a place you
+        // live: reopening onto whatever was last read would be the panel
+        // answering a question nobody asked this time.
+        root.reading = null;
         root.stopSearch();
         list.reset();
         // DEFERRED: the surface only asks the compositor for the keyboard once
@@ -103,6 +129,7 @@ Item {
         if (!root.shown)
             return;
         root.shown = false;
+        root.reading = null;
         root.stopSearch();
         keys.focus = false;
         // The window you were in gets the keyboard back, because pasting is what
@@ -119,9 +146,12 @@ Item {
             root.show();
     }
 
+    // ON BOTH TABS. It used to refuse on tab 1 because there was nothing behind
+    // it to search; now there is, and a dictation history is the list that needs
+    // it MOST. A paragraph you said an hour ago is not something you find by
+    // scrolling, and it is the one kind of entry you can reliably remember a
+    // word from.
     function startSearch(): void {
-        if (root.tab !== 0)
-            return;
         root.searching = true;
         Qt.callLater(query.forceActiveFocus);
     }
@@ -154,10 +184,49 @@ Item {
         list.reveal(root.selected);
     }
 
-    function accept(): void {
+    // INTO A THING. Reads the entry, not the index; see `reading`.
+    // Transcriptions expand too, and are the better argument for the full view
+    // than anything on the clipboard: a row shows one line and a dictated
+    // paragraph is twenty, so the list can only ever show you enough to guess
+    // with. The tab test that used to be here was guarding an empty tab.
+    function expand(): void {
         const e = root.entry;
-        if (e)
-            Clipboard.copy(e);
+        if (!e)
+            return;
+        root.reading = e;
+    }
+
+    function collapse(): void {
+        if (!root.expanded)
+            return;
+        root.reading = null;
+        // The keyboard comes back to the list rather than staying wherever the
+        // full view left it, so the arrows work immediately on return. Deferred
+        // for the reason every focus call in this file is: the item has to be
+        // there to take it.
+        if (root.shown && !root.searching)
+            Qt.callLater(keys.forceActiveFocus);
+    }
+
+    // TAKE IT, from either page, and always the thing being looked at. On the
+    // list that is the selected row; in the full view it is the entry on screen,
+    // which is not necessarily the same row any more.
+    //
+    // WHAT "TAKE" MEANS IS THE TAB'S ONE DIFFERENCE. A clipboard entry goes on
+    // the clipboard, ready for a paste. A transcription goes into the slot
+    // SUPER+SHIFT+R types from, ready for that key. Neither types anything here:
+    // this runs with the panel still up and the keyboard held by the shell, so
+    // anything typed now would land in the panel or in whatever catches focus on
+    // the way out. Both leave the thing you picked one keystroke away, in the
+    // window you were already in.
+    function accept(): void {
+        const e = root.expanded ? root.reading : root.entry;
+        if (e) {
+            if (root.speech)
+                Dictation.use(e);
+            else
+                Clipboard.copy(e);
+        }
         root.hide();
     }
 
@@ -171,7 +240,11 @@ Item {
     // selection lands wherever the thing you just kept ended up.
     function pinCurrent(): void {
         const e = root.entry;
-        if (!e)
+        // NOTHING PINS A TRANSCRIPTION. That list is time-ordered and the daemon
+        // caps it, so a pin would be a promise this shell cannot keep: the entry
+        // would still fall off the end. Silently doing nothing is right here,
+        // because `p` is a list key and the list is still a list.
+        if (!e || root.speech)
             return;
         Clipboard.setPinned(e, !e.pinned);
         root.follow(e.id);
@@ -189,7 +262,10 @@ Item {
         const e = root.entry;
         if (!e)
             return;
-        Clipboard.remove(e);
+        if (root.speech)
+            Dictation.drop(e);
+        else
+            Clipboard.remove(e);
         // Held where it was rather than reset, so throwing four things away in a
         // row is four presses in one place. Clamped, because the list is one
         // shorter than the index was chosen against.
@@ -200,6 +276,10 @@ Item {
         if (index === root.tab)
             return;
         root.tab = Math.max(0, Math.min(index, root.tabs.length - 1));
+        // The full view belongs to the list it was opened from, so changing
+        // which list is showing closes it rather than leaving it over a tab it
+        // has nothing to do with.
+        root.reading = null;
         root.stopSearch();
         root.selected = 0;
         list.reset();
@@ -216,10 +296,29 @@ Item {
         case Qt.Key_Enter:
             root.accept();
             return true;
+        // RIGHT GOES IN, LEFT COMES BACK, on every page and on both halves of
+        // the panel, which is the whole reason the tab strip lost the arrows: a
+        // direction that meant "next tab" here and "open this" there would be
+        // the same motion asking two questions depending on where you happened
+        // to be looking. Tab still changes the tab, and it is the key with the
+        // control's own name on it.
+        case Qt.Key_Right:
+            root.expand();
+            return true;
+        case Qt.Key_Left:
+            root.collapse();
+            return true;
+        // THE FULL VIEW SCROLLS ITSELF. Up and down belong to the list, and
+        // handing them to it while a document is open would walk the selection
+        // behind the page you are reading, so the reader keeps them.
         case Qt.Key_Down:
+            if (root.expanded)
+                return false;
             root.move(1);
             return true;
         case Qt.Key_Up:
+            if (root.expanded)
+                return false;
             root.move(-1);
             return true;
         case Qt.Key_PageDown:
@@ -276,8 +375,14 @@ Item {
             }
 
             switch (event.key) {
+            // ESCAPE COMES BACK BEFORE IT CLOSES, which is the same bargain the
+            // search field makes one layer along: two states, two presses, and
+            // no single key that can lose more than one of them at a time.
             case Qt.Key_Escape:
-                root.hide();
+                if (root.expanded)
+                    root.collapse();
+                else
+                    root.hide();
                 break;
             // THE WAY IN TO SEARCHING, and the reason the letters below are free
             // to mean anything at all.
@@ -285,16 +390,19 @@ Item {
                 root.startSearch();
                 break;
             case Qt.Key_J:
-                root.move(1);
+                if (!root.expanded)
+                    root.move(1);
                 break;
             case Qt.Key_K:
-                root.move(-1);
+                if (!root.expanded)
+                    root.move(-1);
                 break;
-            case Qt.Key_Left:
-                root.setTab(root.tab - 1);
+            // L and H, the other half of the vim pair the arrows already answer.
+            case Qt.Key_L:
+                root.expand();
                 break;
-            case Qt.Key_Right:
-                root.setTab(root.tab + 1);
+            case Qt.Key_H:
+                root.collapse();
                 break;
             case Qt.Key_Home:
                 root.moveTo(0);
@@ -378,6 +486,17 @@ Item {
             root.hide();
     }
 
+    // WHICH PAGE, as a fraction rather than as an index, so the strip can be
+    // anywhere between the two and a gesture can be halfway through changing its
+    // mind. 0 is the list, 1 is the full view.
+    Follow {
+        id: turn
+
+        speed: Appearance.anim.revealSpeed
+        target: root.expanded ? 1 : 0
+        epsilon: 0.005
+    }
+
     Follow {
         id: rise
 
@@ -408,8 +527,31 @@ Item {
         // Clipped, so the reveal is a wipe rather than the contents sliding
         // around inside a box that is the wrong size for them.
         Item {
+            id: viewport
+
             anchors.fill: parent
             clip: true
+
+            // TWO PAGES ON ONE STRIP, slid rather than swapped.
+            //
+            // A Loader that replaced one with the other would be a cut, and a
+            // cut cannot say which way you went: arriving and leaving would look
+            // identical, and the direction is the whole vocabulary here (right
+            // goes in, left comes back, on the arrows and on the fingers alike).
+            // On a strip the motion IS the answer, and a gesture can be halfway
+            // through it and change its mind, which a cut also cannot offer.
+            Item {
+                id: pages
+
+                width: viewport.width * 2
+                height: viewport.height
+                x: -turn.value * viewport.width
+
+                Item {
+                    id: listPage
+
+                    width: viewport.width
+                    height: viewport.height
 
             Item {
                 id: header
@@ -513,7 +655,7 @@ Item {
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
-                            text: "Search what you copied"
+                            text: root.speech ? "Search what you said" : "Search what you copied"
                             color: Appearance.colour.textGhost
                         }
                     }
@@ -525,7 +667,7 @@ Item {
                 StyledText {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    visible: !root.searching && root.tab === 0
+                    visible: !root.searching
                     text: "/  to search"
                     color: Appearance.colour.textGhost
                 }
@@ -589,8 +731,24 @@ Item {
                         root.selected = index;
                         root.accept();
                     }
-                    onPinned: Clipboard.setPinned(modelData, !modelData.pinned)
-                    onDiscarded: Clipboard.remove(modelData)
+                    // Routed by tab for the same reason accept() is: the row is
+                    // the same row, and what these mean to it is not.
+                    onPinned: if (!root.speech)
+                        Clipboard.setPinned(modelData, !modelData.pinned)
+                    onDiscarded: {
+                        if (root.speech)
+                            Dictation.drop(modelData);
+                        else
+                            Clipboard.remove(modelData);
+                    }
+                    // The selection follows the row that was thrown open, so
+                    // coming back leaves the keyboard on the thing you were just
+                    // reading rather than wherever it was before you reached for
+                    // the mouse.
+                    onExpanded: {
+                        root.selected = index;
+                        root.reading = modelData;
+                    }
                     onEntered: root.hovered = index
                     onExited: if (root.hovered === index)
                         root.hovered = -1
@@ -618,11 +776,34 @@ Item {
                     visible: !root.results.length
                     horizontalAlignment: Text.AlignHCenter
                     color: Appearance.colour.textFaint
-                    text: root.tab !== 0 ? "The transcription clipboard is not wired up yet." : query.text ? "Nothing matches." : "Nothing has been copied yet."
+                    // FOUR DIFFERENT EMPTIES, because they are four different
+                    // facts and only one of them is a bug. A search that matched
+                    // nothing, a history nothing has been put in yet, and a
+                    // dictation daemon that is not running at all: telling the
+                    // last one apart matters most, since it is the only one you
+                    // can do something about.
+                    text: {
+                        if (query.text)
+                            return "Nothing matches.";
+                        if (!root.speech)
+                            return "Nothing has been copied yet.";
+                        if (!Dictation.present)
+                            return "The dictation daemon is not running.\nStart it with  voice up";
+                        return "Nothing has been dictated yet.\nSUPER + R starts.";
+                    }
                 }
             }
 
-            // TWO FINGERS ACROSS CHANGES THE TAB.
+            // TWO FINGERS ACROSS GO IN AND COME BACK.
+            //
+            // This used to change the TAB, and the full view took the gesture off
+            // it: a horizontal swipe now means the same thing everywhere in this
+            // panel (right goes into a thing, left comes back out), on a row's
+            // drag, on the arrow keys and here. A tab strip is a control you can
+            // see and press, and it kept the key that names it; a hidden
+            // horizontal gesture that ALSO changed tabs would have made the same
+            // motion mean two different things depending on which page you were
+            // looking at.
             //
             // Declared AFTER the list, which is what puts it on top for a wheel:
             // a wheel goes to the topmost item under the pointer and stops at the
@@ -636,7 +817,7 @@ Item {
             WheelHandler {
                 id: pager
 
-                property real travelled: 0
+                property bool spent: false
 
                 onWheel: event => {
                     // A MOUSE WHEEL IS NEVER A SWIPE. It reports an angle and no
@@ -663,22 +844,50 @@ Item {
 
                 armed: root.open
 
-                onBegan: pager.travelled = 0
+                onBegan: pager.spent = false
 
                 onMoved: (dx, dy) => {
-                    // ONE TAB PER GESTURE. The total is what the primitive hands
-                    // out, so the test is against the total and the step is
-                    // banked by moving the origin: without that, a long swipe
-                    // would page through every tab there is on the way past.
-                    const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
-                    const past = dx - pager.travelled;
-                    if (Math.abs(past) < step)
+                    // ONE CROSSING PER GESTURE. The primitive hands out the TOTAL
+                    // travel, so without a latch a long swipe would keep clearing
+                    // the threshold and toggle the page on every event after the
+                    // first.
+                    if (pager.spent)
                         return;
-                    pager.travelled += Math.sign(past) * step;
+                    const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
+                    if (Math.abs(dx) < step)
+                        return;
+                    pager.spent = true;
                     // Natural scrolling is already resolved by the primitive, so
                     // this reads as the content following the fingers: push the
-                    // page left and the tab to its right arrives.
-                    root.setTab(root.tab - Math.sign(past));
+                    // page left and what was off the right edge arrives.
+                    if (dx < 0)
+                        root.expand();
+                    else
+                        root.collapse();
+                }
+            }
+                }
+
+                // THE FULL VIEW, parked off the right edge until it is asked for.
+                //
+                // Built rather than loaded on demand, and it costs nothing to do
+                // so: it holds one entry, the entry is null until something is
+                // opened, and every heavy thing inside it (the picture, the
+                // highlighted lines) is bound to that entry and so builds
+                // nothing while there is none. A Loader here would buy the same
+                // emptiness and pay for it with a rebuild on every open, which
+                // is the frame the slide is happening in.
+                ClipDetail {
+                    id: detail
+
+                    x: listPage.width
+                    width: viewport.width
+                    height: viewport.height
+
+                    entry: root.reading
+
+                    onBack: root.collapse()
+                    onAccepted: root.accept()
                 }
             }
         }

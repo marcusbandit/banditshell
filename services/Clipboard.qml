@@ -89,7 +89,7 @@ Singleton {
     // and resolved in that order, because the types overlap on purpose: a copied
     // song is a file AND a URI list AND text, and it is worth saying "audio".
 
-    readonly property var kinds: ["image", "audio", "video", "document", "files", "colour", "url", "text"]
+    readonly property var kinds: ["image", "audio", "video", "json", "code", "document", "files", "colour", "url", "text"]
 
     function markFor(kind: string): string {
         switch (kind) {
@@ -99,6 +99,10 @@ Singleton {
             return "graphic_eq";
         case "video":
             return "movie";
+        case "json":
+            return "data_object";
+        case "code":
+            return "code";
         case "document":
             return "description";
         case "files":
@@ -107,8 +111,53 @@ Singleton {
             return "palette";
         case "url":
             return "link";
+        // NOT A CLIPBOARD KIND. Nothing here ever classifies an entry as this;
+        // it is what services/Dictation.qml shapes a transcription as, so that
+        // the panel's other tab can be drawn by the same ClipRow. The mark lives
+        // here because markFor is the one place a kind becomes a glyph, and a
+        // second lookup beside the first is how the two would drift.
+        case "speech":
+            return "mic";
         }
         return "notes";
+    }
+
+    // IS THIS JSON, answered by parsing it rather than by looking at it.
+    //
+    // "Looks like JSON" has exactly one honest test, which is whether a JSON
+    // parser accepts it, and QML has one built in. A shape test (starts with a
+    // brace, ends with a brace) accepts every C function body ever copied and
+    // every CSS rule, and the point of naming this kind is that the row can then
+    // promise to pretty-print it. A promise that fails on a third of the rows is
+    // worse than not making it.
+    //
+    // The delimiters are still checked FIRST, and only as a cheap gate: JSON.parse
+    // accepts a bare `12` and a bare `"hello"`, and calling a copied number
+    // "json" would be true and useless. An object or an array is what anybody
+    // means by the word.
+    //
+    // SIZE-GATED, because this runs over every entry on every load. A megabyte of
+    // JSON parses in a few milliseconds and the cap is a megabyte, so the whole
+    // history costs a beat at startup; the guard is there so that raising
+    // `maxText` later cannot quietly turn startup into a parse of everything.
+    readonly property int jsonProbeLimit: 1048576
+
+    function looksJson(text: string): bool {
+        const s = (text ?? "").trim();
+        if (s.length < 2 || s.length > root.jsonProbeLimit)
+            return false;
+
+        const open = s.charAt(0);
+        const close = s.charAt(s.length - 1);
+        if (!((open === "{" && close === "}") || (open === "[" && close === "]")))
+            return false;
+
+        try {
+            JSON.parse(s);
+            return true;
+        } catch (err) {
+            return false;
+        }
     }
 
     // A COLOUR, which is the one kind that is purely a shape in the text and is
@@ -176,6 +225,31 @@ Singleton {
         if (root.url.test(text))
             return "url";
 
+        // JSON BEFORE CODE, because JSON is a subset of what the code test would
+        // otherwise claim and it is the one this shell can do something specific
+        // about: it can be reformatted, and a row that says "json" is promising
+        // exactly that.
+        if (root.looksJson(text))
+            return "json";
+
+        // CODE, which is a guess and is treated as one.
+        //
+        // The SERVICE answers "is this code", and components/highlight.js
+        // answers "which language" for the view that colours it. Those look like
+        // one question and are not: this one has to be cheap, conservative and
+        // stable, because it names a row in a list and a kind that flickered
+        // between "code" and "text" would be worse than never claiming either.
+        // The other is allowed to be a richer guess, and is allowed to answer
+        // "no idea" without that changing what the row says.
+        //
+        // Deliberately NOT a call into the highlighter, which was the first
+        // shape: a service reaching into a component for a classification would
+        // make the history's vocabulary depend on a lexer's confidence, so
+        // teaching the lexer a new language would silently reclassify entries
+        // already recorded.
+        if (root.looksCode(text))
+            return "code";
+
         // A PATH THAT IS ONLY A PATH. The import's entries reach here and
         // nothing else does, so this is allowed to be a shape test: one line,
         // starts at the root or at home, no spaces around it. It cannot say what
@@ -184,6 +258,59 @@ Singleton {
             return "files";
 
         return "text";
+    }
+
+    // IS THIS CODE, on the balance of several weak signals rather than on any
+    // one of them.
+    //
+    // No single test works. A line ending in a semicolon is C and is also an
+    // ordinary English sentence in a language that uses them; a curly brace is
+    // JavaScript and is also a citation. So nothing here votes alone: a strong
+    // marker (a shebang, an include, a tag) decides on its own because nothing
+    // else produces it, and everything weak has to agree with something else.
+    //
+    // Biased towards saying NO. A paste wrongly called code gets a mark and a
+    // monospaced view it does not want; a paste wrongly called text loses
+    // nothing except colour, and the full view still shows every character of
+    // it. Given one of those has to happen more often, it should be the second.
+    readonly property var strongCode: /^\s*(#!|#include\b|package\s+\w+;|<\?php|<!DOCTYPE|import\s+[\w.]+\s*$|from\s+[\w.]+\s+import\b|using\s+namespace\b)/m
+    readonly property var codeSignals: [
+        // A declaration of something, in the languages that declare.
+        /\b(function|def|class|struct|impl|fn|func|const|let|var|public|private|static|return)\b/,
+        // A line that ends the way a statement ends.
+        /[;{}]\s*$/m,
+        // An assignment or an arrow, rather than prose punctuation.
+        /(=>|->|:=|==|!=|\+=|\|\||&&)/,
+        // A call, or an index.
+        /\w+\s*\([^)]*\)/,
+        // A comment, in any of the three spellings that cover nearly everything.
+        /^\s*(\/\/|\/\*|#\s)/m,
+        // Indentation that is deliberate rather than a wrapped paragraph.
+        /^[ \t]{2,}\S/m
+    ]
+
+    function looksCode(text: string): bool {
+        const s = (text ?? "").trim();
+        // Too short to have a shape. A single word is not code however many
+        // brackets are in it.
+        if (s.length < 12)
+            return false;
+
+        if (root.strongCode.test(s))
+            return true;
+
+        // ONE LINE IS NOT A PROGRAM unless it is a very loud one, and the strong
+        // test above is where loud lives. This is what keeps a copied sentence
+        // containing "return" or a pair of brackets out of the list.
+        if (s.indexOf("\n") < 0)
+            return false;
+
+        let votes = 0;
+        for (const rule of root.codeSignals)
+            if (rule.test(s))
+                votes++;
+
+        return votes >= 3;
     }
 
     // WHAT THE ROW SAYS, when it is not showing the thing itself.
@@ -269,7 +396,13 @@ Singleton {
         if (e.file)
             return `file:${e.file}`;
         if ((e.paths ?? []).length)
-            return `paths:${e.paths.join(" ")}`;
+            // JOINED ON A NUL, written as an escape rather than as the byte
+        // itself: a literal NUL in the source makes this a binary file to every
+        // text tool that looks at it, grep included. It is the right separator
+        // and the wrong way to spell it. A space would be wrong outright, since
+        // a path may contain one and two different selections would then share
+        // an identity and silently deduplicate into each other.
+        return `paths:${e.paths.join("\u0000")}`;
         return `text:${e.text ?? ""}`;
     }
 
@@ -445,6 +578,88 @@ Singleton {
         // Qt.callLater, which collapses repeats of one function within an
         // event-loop pass into a single write.
         root.save();
+    }
+
+    // ---- FORMATTED, FOR THE FULL VIEW ------------------------------------
+    //
+    // JSON put through jq, on demand and never on capture.
+    //
+    // On demand because formatting is a thing you ask to look at: doing it when
+    // the clipboard changes would run a process on every copy, for a view nobody
+    // may open, and store a second copy of every JSON blob in a history that is
+    // already the largest file this shell writes. Opening the full view is a
+    // deliberate act and can afford a process.
+    //
+    // Through jq rather than through JSON.parse/stringify, which QML has and
+    // which would be synchronous and free. jq was asked for by name, and it
+    // earns it: it keeps big integers that a double cannot hold (an id like
+    // 9007199254740993 comes back changed through JavaScript and unchanged
+    // through jq), it keeps key order, and it is the same tool the recorder
+    // already depends on rather than a second opinion about what JSON is.
+    property var pretty: ({})
+
+    // Which entry the formatter is working on, so its output is filed against
+    // the right row when it arrives rather than against whatever is selected by
+    // then. A view left and re-entered quickly is enough to make those differ.
+    property string formattingId: ""
+
+    function formatted(entry: var): string {
+        return entry ? (root.pretty[entry.id] ?? "") : "";
+    }
+
+    function beautify(entry: var): void {
+        if (!entry || entry.kind !== "json")
+            return;
+        // Asked once. The answer cannot change: the text is immutable and jq is
+        // deterministic, so a second run would spend a process to reproduce a
+        // string already in hand.
+        if (root.pretty[entry.id] !== undefined || jq.running)
+            return;
+
+        root.formattingId = entry.id;
+        // THE TEXT IS AN ARGUMENT, never part of the script. Clipboard content
+        // is arbitrary bytes from arbitrary applications and is the least
+        // trustworthy input in this shell; `$1` ends that question rather than
+        // answering it with an escaping routine.
+        jq.command = ["sh", "-c", 'printf %s "$1" | jq --indent 2 .', "sh", entry.text ?? ""];
+        jq.running = true;
+    }
+
+    Process {
+        id: jq
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const id = root.formattingId;
+                if (!id)
+                    return;
+                // Reassigned rather than mutated, because QML notices an
+                // assignment and not a key appearing inside an object.
+                const next = Object.assign({}, root.pretty);
+                next[id] = text;
+                root.pretty = next;
+            }
+        }
+
+        stderr: StdioCollector {
+            onStreamFinished: if (text.trim())
+                console.warn("Clipboard: jq could not format that entry:", text.trim())
+        }
+
+        onExited: code => {
+            // A FAILURE IS AN ANSWER TOO, filed as one, so the view stops waiting
+            // and shows the text as it was copied. Without this an entry that jq
+            // refuses would spin forever on "formatting", and the whole reason a
+            // row is called json is that it parsed, so a refusal here means the
+            // shell is wrong about something and should say so by falling back
+            // rather than by hanging.
+            if (code !== 0 && root.formattingId && root.pretty[root.formattingId] === undefined) {
+                const next = Object.assign({}, root.pretty);
+                next[root.formattingId] = "";
+                root.pretty = next;
+            }
+            root.formattingId = "";
+        }
     }
 
     function setPinned(entry: var, pinned: bool): void {

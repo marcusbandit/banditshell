@@ -303,6 +303,7 @@ Singleton {
         // What was copied. See modules/clipboard/.
         readonly property int clipboardWidth: root.cfg.clipboard.width
         readonly property int clipboardPreview: root.cfg.clipboard.preview
+        readonly property real clipboardFocus: root.cfg.clipboard.focus
         readonly property int clipboardLines: root.cfg.clipboard.previewLines
         // A row's mark, sized like every other mark in the shell rather than in
         // pixels of its own, so the whole thing rescales from the one number.

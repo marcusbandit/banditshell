@@ -34,6 +34,8 @@ Item {
     signal activated
     signal pinned
     signal discarded
+    // Asked to be looked at properly: the full view, formatted.
+    signal expanded
     // What the pointer is doing, reported up so the list can hold one hovered
     // index rather than each row holding its own opinion.
     signal entered
@@ -50,7 +52,36 @@ Item {
     readonly property real throwFull: Math.max(1, root.width * Appearance.sizes.dragDismissFraction)
     readonly property real throwFraction: Math.min(1, Math.abs(root.thrown) / root.throwFull)
 
-    implicitHeight: (root.isImage ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
+    // THE ROW BEING CONSIDERED GETS MORE ROOM, and only a picture takes it.
+    //
+    // A thumbnail is sized to be SCANNED, which is a different job from being
+    // looked at, and the two cannot be served by one height: big enough to study
+    // and the list holds four rows, small enough to scan and the row you have
+    // actually stopped on is the one you still cannot see. So the row under the
+    // keyboard or the pointer grows and the rest stay scannable.
+    //
+    // Text does not grow, because nothing about it is clearer larger: there are
+    // three sizes in this shell and a paragraph is not the thing a view is about
+    // (~/.claude/rules/type-scale.md). What text has instead is the full view, a
+    // right-arrow away.
+    readonly property bool focused: root.selected || root.hovered
+
+    Follow {
+        id: grow
+
+        speed: Appearance.anim.resizeSpeed
+        target: root.focused && root.isImage ? 1 : 0
+        epsilon: 0.005
+    }
+
+    // Snapped on creation, so a row built while already selected (the list
+    // rebuilding under a standing selection, which a keystroke does) arrives at
+    // its size instead of growing into it as though it had just been reached.
+    Component.onCompleted: grow.snap()
+
+    readonly property real plateHeight: Appearance.sizes.clipboardPreview * (1 + (Appearance.sizes.clipboardFocus - 1) * grow.value)
+
+    implicitHeight: (root.isImage ? root.plateHeight : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
 
     // WHERE THE ROW IS, which is where the hand left it or where it is returning
     // from. A Follow rather than a Behavior: the throw ends at whatever distance
@@ -78,7 +109,12 @@ Item {
         // decides it. Never all the way to nothing while the hand is still on
         // it: an invisible row that could still be dragged back would be a
         // gesture with nothing to reverse.
-        opacity: 1 - root.throwFraction * 0.7
+        //
+        // ONLY GOING LEFT. Fading is how the row says it is about to be lost,
+        // and a rightward throw loses nothing: it opens the full view and the
+        // row stays exactly where it is. Fading both ways would promise a
+        // deletion in the one direction that does not delete.
+        opacity: root.thrown < 0 ? 1 - root.throwFraction * 0.7 : 1
 
         G2Rect {
             anchors.fill: parent
@@ -487,11 +523,31 @@ Item {
             const far = root.throwFraction >= 1 && Math.abs(press.velocity) < Appearance.sizes.pullReversal;
 
             if (away || far) {
-                // Sent the rest of the way rather than vanishing, so the row
-                // leaves in the direction it was thrown instead of blinking out
-                // from wherever the hand let go.
-                root.thrown = Math.sign(root.thrown) * root.width;
-                root.discarded();
+                // THE TWO DIRECTIONS MEAN DIFFERENT THINGS, and this is the one
+                // place in the row that reads the sign.
+                //
+                // LEFT throws it away, RIGHT opens it in full. Right used to be
+                // the discard as well, on the theory that either way was "off
+                // the list", and that had to go the moment the full view existed:
+                // a swipe right is now the natural gesture for going INTO
+                // something, it matches the right arrow that does the same, and
+                // it matches the direction the view itself arrives from. Leaving
+                // both directions on delete would have made the obvious gesture
+                // for "show me this" the gesture for "lose this".
+                if (root.thrown < 0) {
+                    // Sent the rest of the way rather than vanishing, so the row
+                    // leaves in the direction it was thrown instead of blinking
+                    // out from wherever the hand let go.
+                    root.thrown = -root.width;
+                    root.discarded();
+                    return;
+                }
+
+                // Nothing leaves on a rightward throw, so the row goes back where
+                // it was and the view opens over it.
+                root.throwing = false;
+                root.thrown = 0;
+                root.expanded();
                 return;
             }
 
