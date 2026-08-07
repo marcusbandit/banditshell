@@ -45,6 +45,15 @@ Singleton {
         return Math.round((n?.signalStrength ?? 0) * 100);
     }
 
+    // The same figure at the resolution it is actually SHOWN at, which is the
+    // one the list is sorted on. See `scan` for why the raw percentage is the
+    // wrong thing to order by, and Config's `signalBands` for why the meter's
+    // step count is the number both ends read.
+    function bars(n: var): int {
+        const steps = Appearance.sizes.signalBands;
+        return Math.ceil(root.percent(n) / (100 / steps));
+    }
+
     // Anything mid-connect, so the UI can say so rather than looking stuck.
     //
     // BY NAME, because the row that has to say "connecting" is a row from
@@ -116,7 +125,15 @@ Singleton {
     // config file lands after the defaults do.
     onWantCheckingChanged: root.applyChecking()
     onCanCheckChanged: root.applyChecking()
-    Component.onCompleted: root.applyChecking()
+
+    // The list is seeded here rather than left to `scan`'s own first change,
+    // because a binding that evaluates to the empty array it was already going
+    // to hold announces nothing, and an adapter that is up before this
+    // singleton is would then have no list until something moved.
+    Component.onCompleted: {
+        root.applyChecking();
+        root.networks = root.scan;
+    }
 
     function setChecking(on: bool): void {
         Config.set("network.checkForInternet", on);
@@ -214,7 +231,16 @@ Singleton {
     // pressing it called connect() on a network already connected rather than
     // disconnecting. A dual-band router is exactly the case this dedup exists
     // for, so it was wrong precisely where it mattered.
-    readonly property var networks: {
+    //
+    // SORTED ON THE METER, not on the number behind it. NetworkManager's
+    // strength wanders by a few percent between scans and there are usually two
+    // or three networks within that much of each other, so an ordering by the
+    // raw figure permuted itself several times a second while the four bars it
+    // is drawn as sat perfectly still. Every one of those permutations is a
+    // different list as far as `networks` below is concerned. Ties fall back to
+    // the name, so equal-looking networks have an order at all rather than
+    // whichever one the hash happened to yield first.
+    readonly property var scan: {
         const seen = {};
         for (const n of wifiDevice?.networks?.values ?? []) {
             if (!n.name)
@@ -228,8 +254,72 @@ Singleton {
                 return a.connected ? -1 : 1;
             if (a.known !== b.known)
                 return a.known ? -1 : 1;
-            return b.signalStrength - a.signalStrength;
+            const ba = root.bars(a);
+            const bb = root.bars(b);
+            if (ba !== bb)
+                return bb - ba;
+            return a.name.localeCompare(b.name);
         });
+    }
+
+    // THE LIST, which is the scan holding still.
+    //
+    // `scan` above is a fresh array on every signal-strength report, and a
+    // Repeater over a plain array rebuilds EVERY delegate whenever that array
+    // changes identity. A wifi row is not cheap: a squircle, a meter, a
+    // chevron, a password field and a folded-up layer of its own, times seven
+    // rows, times however many times a second NetworkManager felt like
+    // mentioning that something moved by one percent. That is the whole of why
+    // the menu was slow to arrive and stayed slow while it was up, and it is
+    // why the menu had to grow a freeze of its own to be usable at all.
+    //
+    // So the scan runs as often as it likes and this only changes when the list
+    // MEANS something different: a network arrived or left, they are in a
+    // different order, or one of them started or stopped carrying the
+    // connection. Otherwise the very same array goes back out, the Repeater is
+    // told nothing happened, and the rows that are already on screen update
+    // themselves through their own live bindings to the network objects, which
+    // is what those bindings were for.
+    //
+    // THE OBJECTS ARE KEPT, not just the names, and that needs the liveness
+    // test below. Dedup picks the strongest radio behind a name, so a dual-band
+    // router flips which object represents it constantly, and holding on to the
+    // incumbent is exactly right up until NetworkManager forgets the AP: a
+    // deleted QObject in a live binding is an error printed once per row per
+    // frame. `live` is the set the device still admits to hearing.
+    property var networks: []
+
+    function settled(next: var): var {
+        const now = root.networks;
+        if (now.length !== next.length)
+            return next;
+        const live = new Set(root.wifiDevice?.networks?.values ?? []);
+        for (let i = 0; i < now.length; i++) {
+            const a = now[i];
+            const b = next[i];
+            if (a === b)
+                continue;
+            if (a.name !== b.name || a.connected !== b.connected || !live.has(a))
+                return next;
+        }
+        return now;
+    }
+
+    // ASSIGNED ONLY WHEN IT IS DIFFERENT. A `var` property does not promise to
+    // compare what it is handed against what it holds, so writing the same array
+    // back would announce a change to every binding downstream and the whole
+    // point of `settled` would be lost one line after it was made.
+    onScanChanged: {
+        const next = root.settled(root.scan);
+        if (next !== root.networks)
+            root.networks = next;
+    }
+
+    // The one a name resolves to, off the SCAN rather than off the settled list
+    // above: a code pointed at a network that has only just come into range
+    // should join it, not be told to wait for the list to admit it exists.
+    function find(name: string): var {
+        return root.scan.find(n => n.name === name) ?? null;
     }
 
     function setEnabled(on: bool): void {
@@ -281,6 +371,111 @@ Singleton {
             root.clearFailure(n.name);
             n.forget();
         }
+    }
+
+    // A WI-FI CARD, which is what the square of dots on the back of a router is.
+    //
+    // The format is not a URL and not JSON: it is `WIFI:` and then `KEY:value;`
+    // repeated, ending in a second semicolon, with `\` escaping any of `\;,:"`
+    // that appear inside a value. A password with a semicolon in it is
+    // completely ordinary and a split on `;` mangles it, which is why this is a
+    // scanner rather than three regexes. Unknown keys are skipped rather than
+    // rejected: the format has grown fields (a transition-disable flag, an
+    // anonymous identity) and a card with one in it is still a card.
+    //
+    // Returns null for anything that is not one, which is most of what a camera
+    // pointed at the world will find.
+    function parseQr(text: string): var {
+        if (!text || text.slice(0, 5).toUpperCase() !== "WIFI:")
+            return null;
+
+        const body = text.slice(5);
+        const card = {
+            ssid: "",
+            security: "",
+            password: "",
+            hidden: false
+        };
+
+        let key = "";
+        let buf = "";
+        let onKey = true;
+
+        for (let i = 0; i < body.length; i++) {
+            const c = body[i];
+            if (c === "\\") {
+                buf += body[++i] ?? "";
+                continue;
+            }
+            if (onKey) {
+                // The terminating `;;` and any stray one: an empty key is not a
+                // field, it is the end of the last one.
+                if (c === ";")
+                    continue;
+                if (c === ":") {
+                    key = buf.toUpperCase();
+                    buf = "";
+                    onKey = false;
+                    continue;
+                }
+                buf += c;
+                continue;
+            }
+            if (c === ";") {
+                if (key === "S")
+                    card.ssid = buf;
+                else if (key === "T")
+                    card.security = buf.toUpperCase();
+                else if (key === "P")
+                    card.password = buf;
+                else if (key === "H")
+                    card.hidden = buf.toLowerCase() === "true";
+                key = "";
+                buf = "";
+                onKey = true;
+                continue;
+            }
+            buf += c;
+        }
+
+        return card.ssid ? card : null;
+    }
+
+    // JOIN WHAT THE CARD NAMES, and say why not when it cannot.
+    //
+    // Everything this refuses, it refuses for the reason in the header of
+    // NetworkMenu: joining a network the radio cannot currently hear means
+    // handing NetworkManager a settings profile, and Quickshell exposes no way
+    // to build one. A card for the cafe you are standing in works; a card for
+    // the cafe you are going to tomorrow, or for a hidden SSID, is a profile,
+    // and the honest thing is to say so rather than to appear to do nothing.
+    //
+    // Returns "" when it acted, and the sentence to show when it did not.
+    function joinQr(text: string): string {
+        const card = root.parseQr(text);
+        if (!card)
+            return "that code is not a Wi-Fi network";
+        if (card.hidden)
+            return `${card.ssid} is hidden, and a hidden network needs a profile`;
+
+        const n = root.find(card.ssid);
+        if (!n)
+            return `${card.ssid} is not in range`;
+        if (n.connected)
+            return `already on ${card.ssid}`;
+        if (root.enterprise(n))
+            return `${card.ssid} needs a profile`;
+
+        root.clearFailure(n.name);
+        // A card for an open network carries no password, and a card for a
+        // secured one that somehow carries none is still better spent asking
+        // NetworkManager to try than refused here: it already knows the secret
+        // if the network is saved.
+        if (root.secured(n) && card.password)
+            n.connectWithPsk(card.password);
+        else
+            n.connect();
+        return "";
     }
 
     // WHY IT DID NOT WORK. NetworkManager says so, over a signal per network,

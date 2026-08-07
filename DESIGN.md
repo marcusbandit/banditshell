@@ -363,7 +363,9 @@ banditshell/
 │   ├── MenuRow.qml              icon + label + detail + trailing slot
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
-│   └── PasswordField.qml        inline secret entry
+│   ├── PasswordField.qml        inline secret entry
+│   └── QrScanner.qml            the camera, and whatever code it finds; needs
+│                                zxing-cpp's `ZXingReader` on PATH to decode
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window

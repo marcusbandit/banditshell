@@ -24,6 +24,21 @@ import qs.services
 Column {
     id: root
 
+    // WHETHER ANYBODY IS LOOKING AT THIS, set by the panel it is loaded into.
+    //
+    // The question used to be answered by this menu not existing: it was built
+    // when the cursor arrived and destroyed when it left, which is exactly the
+    // arrangement that made pointing at the wifi gauge cost fifty vector shapes
+    // in one frame (MenuPanel.warm has the whole argument). It is built once now
+    // and kept, so everything that costs something while nobody is reading it
+    // has to hang off this instead: the radio, below, and any layer or prompt
+    // left open, because coming back to a menu should find it the way it starts
+    // rather than mid-sentence.
+    //
+    // DEFAULT FALSE, so a menu incubating at startup cannot switch the scanner
+    // on for the frames between being built and being told where it is.
+    property bool showing: false
+
     // A secured network you have never joined needs a password, and the place to
     // ask is the row you just pressed. Only one row can be asking at a time.
     property string asking: ""
@@ -33,6 +48,31 @@ Column {
 
     function toggleLayer(key: string): void {
         root.opened = root.opened === key ? "" : key;
+    }
+
+    // WHAT THE LAST CODE CAME TO, and "" while the camera is still looking. It
+    // is shown under the picture rather than on the row, because the row says
+    // what the row does and this is about a thing that just happened.
+    property string said: ""
+
+    // Cleared with the camera. A refusal is about the code you just held up, and
+    // holding up the next one starts again.
+    onOpenedChanged: if (root.opened !== "code")
+        root.said = ""
+
+    // A CODE, ACTED ON. Joining is an answer, so the camera goes away and takes
+    // the layer with it: the list underneath is where the result of a join is
+    // legible, and leaving a lens open over it would be the shell carrying on
+    // scanning for a network it had already joined. Anything else is a sentence
+    // and the camera stays up, because every reason this can fail is one you fix
+    // by pointing it at something else.
+    function tookCode(text: string): void {
+        const trouble = Network.joinQr(text);
+        if (trouble) {
+            root.said = trouble;
+            return;
+        }
+        root.opened = "";
     }
 
     spacing: Appearance.padding.small
@@ -84,9 +124,19 @@ Column {
         root.frozenCaptive = Network.captive;
     }
 
-    onWantScanChanged: Network.watch(root.wantScan)
-    Component.onCompleted: Network.watch(root.wantScan)
+    readonly property bool scanning: root.showing && root.wantScan
+
+    onScanningChanged: Network.watch(root.scanning)
     Component.onDestruction: Network.watch(false)
+
+    // Put away on the way out, so what comes back is the menu rather than the
+    // half-typed password and the unrolled layer you walked away from. It also
+    // gives the keyboard back: PasswordField's claim is released when the field
+    // stops being visible, and nothing else would make it stop.
+    onShowingChanged: if (!root.showing) {
+        root.asking = "";
+        root.opened = "";
+    }
 
     // One switch inside a layer, and one thing that happens. Same pair as the
     // bluetooth menu: a toggle on the right for a state, an arrow for an act, so
@@ -303,6 +353,67 @@ Column {
         detail: "joined, but nothing answers on the other side"
         action: "refresh"
         onActivated: Network.checkNow()
+    }
+
+    // THE OTHER WAY TO JOIN A NETWORK, which is the one printed on the back of
+    // the router and stuck to the wall of the cafe.
+    //
+    // A wifi password is the worst string anybody is ever asked to retype: it is
+    // long, it is deliberately unmemorable, it is usually on a label facing the
+    // wrong way, and it is entered into a field that shows dots. The square of
+    // dots beside it carries the same string exactly, and reading it is the one
+    // job a camera can do better than a person.
+    //
+    // ABOVE THE LIST rather than at the end of it. It is a way of joining, so it
+    // belongs with the header block that says what the radio is doing, not
+    // trailing a list that is capped and may have scrolled away from it.
+    //
+    // WHAT IT CANNOT DO is written down in Network.joinQr and shown in the line
+    // under the camera: a card names an SSID, and everything this shell can do
+    // with a network it cannot currently hear is nothing, for the reason at the
+    // top of this file.
+    MenuRow {
+        width: root.width
+        visible: Network.enabled
+        icon: "qr_code_scanner"
+        label: "Join from a code"
+        detail: "with the camera"
+        onActivated: root.toggleLayer("code")
+        tip: root.opened === "code" ? "close the camera" : "open the camera"
+
+        // Unanchored, like every other lone trailing control in this menu: the
+        // slot sizes itself from its children, so a child that centres itself on
+        // the slot is asking the slot how tall it is in order to answer how tall
+        // the slot is. See the Notice component above.
+        Expander {
+            open: root.opened === "code"
+            tip: "camera"
+            onToggled: root.toggleLayer("code")
+        }
+    }
+
+    MenuLayer {
+        width: root.width
+        open: root.opened === "code"
+
+        // BUILT WITH THE LAYER AND THROWN AWAY WITH IT, which is the opposite of
+        // what the menu around it now does (see `showing`) and is right for the
+        // same reason: what a warm menu buys is a hover that costs nothing, and
+        // nobody hovers a camera. Loading it opens the QtMultimedia plugin and
+        // enumerates the video devices, and the lens is a piece of hardware with
+        // a light next to it. None of that should exist because a menu does.
+        Loader {
+            width: parent.width
+
+            active: root.showing && root.opened === "code"
+
+            sourceComponent: QrScanner {
+                active: true
+                note: root.said
+
+                onDecoded: text => root.tookCode(text)
+            }
+        }
     }
 
     Separator {

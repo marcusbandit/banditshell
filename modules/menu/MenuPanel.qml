@@ -37,11 +37,71 @@ import qs.components
 // body becomes a viewport onto the rest. The panel's own sizing must therefore
 // keep reading the body's IMPLICIT height, never the viewport's actual one;
 // see the page delegate for how that chain is kept honest.
+//
+// AND SOME MENUS ARE ALREADY BUILT WHEN YOU POINT AT THEM. See `warm`.
 Item {
     id: root
 
     property string title: ""
     property Component body: null
+
+    // WHICH menu, which is not the same question as which Component (see
+    // Menus.show: every tray item shares one). It decides which page the menu
+    // is built into, so it must be set BEFORE `body`, which is what actually
+    // triggers the swap.
+    property string key: ""
+
+    // THE MENUS THAT ARE BUILT BEFORE THEY ARE ASKED FOR: `[{key, body}, ...]`.
+    //
+    // The panel used to hold exactly two pages and throw a menu away the moment
+    // it faded, so pointing at a gauge meant BUILDING its menu, in one frame,
+    // between the cursor arriving and the panel opening. A wifi menu is a
+    // squircle, a meter, a chevron, a password field and a folded-up layer per
+    // network, times seven networks, plus the adapter's own layer: something
+    // like fifty vector shapes, every one of them a new scene-graph node,
+    // assembled while the compositor was waiting for a frame. That is the lag.
+    // It was worst on the wifi menu because the wifi menu is the biggest, and it
+    // was paid again on every single crossing, because nothing was kept.
+    //
+    // So a menu named here gets a page OF ITS OWN, loaded asynchronously at
+    // startup, never destroyed, and never rebuilt. Pointing at its gauge shows
+    // an object that has existed for minutes; the frame that used to build the
+    // menu now only has to fade it in.
+    //
+    // NOT EVERY MENU, and the two that are excluded say why. A tray menu is one
+    // Component shared by however many items are in the tray, and it reads which
+    // one it is about as it is built (TrayIcons.trayMenu), so it MUST be rebuilt
+    // per open; it uses the spare pair below, exactly as before. The clock's two
+    // panels are simply not what anybody complained about, and each of them is
+    // a page of live state that would go on computing all day for a menu nobody
+    // has opened. What is warmed is what a hand sweeps across.
+    //
+    // WHAT IT COSTS is that a warm menu is alive while it is off screen, so
+    // anything expensive it does has to be gated: `showing` below is how it is
+    // told, and NetworkMenu's scanner and BluetoothMenu's discovery are what
+    // are gated on it.
+    property var warm: []
+
+    // How many pages are NOT owned by a menu: the pair every other menu is built
+    // into on the way in, alternating so the one arriving and the one leaving
+    // are never the same page. Two, because a cross-fade is between two things.
+    readonly property int spare: 2
+
+    readonly property var pageModel: {
+        const list = [];
+        for (let i = 0; i < root.spare; i++)
+            list.push({});
+        return list.concat(root.warm);
+    }
+
+    // Where a menu is built. Its own page if it has one, otherwise whichever of
+    // the spare pair is not currently showing.
+    function pageFor(key: string): int {
+        for (let i = 0; i < root.warm.length; i++)
+            if (root.warm[i].key === key)
+                return root.spare + i;
+        return root.slot < root.spare ? (root.slot + 1) % root.spare : 0;
+    }
 
     // 0 while closed, 1 while open. Everything geometric derives from this, so
     // the caller only has to animate one number.
@@ -55,9 +115,15 @@ Item {
     // rather than a long menu.
     property real available: Appearance.sizes.menuMaxHeight
 
-    // Which slot holds the menu on its way IN. The other holds whatever it
-    // replaced, for as long as the fade still needs it.
+    // Which page holds the menu on its way IN, and which one it replaced.
+    //
+    // THE OUTGOING PAGE IS NAMED, where it used to be "the other one". With two
+    // pages that was the same sentence; with a page per warm menu it is four
+    // different pages, and a fade written as "everything that is not current"
+    // would have brought all of them up out of nothing on every crossing. Only
+    // the page actually being left behind is on the fade's clock.
     property int slot: 0
+    property int prevSlot: -1
 
     // How tall the page in that slot wants to be, PUSHED by the page rather
     // than read back out of the Repeater: `itemAt` is a function call, so a
@@ -104,7 +170,7 @@ Item {
     // is set, which is the cut this exists to avoid: the outgoing page has to
     // keep being what it was while it fades.
     function swap(): void {
-        const next = 1 - root.slot;
+        const next = root.pageFor(root.key);
         const page = pages.itemAt(next);
         if (page) {
             page.pageTitle = root.title;
@@ -118,8 +184,15 @@ Item {
             // third one showing the first one's rows. Unloading is what makes the
             // page get built again, and being built again is when it reads which
             // application it is now about.
-            page.pageBody = null;
-            page.pageBody = root.body;
+            //
+            // A WARM PAGE IS EXEMPT, and for the same reason stated backwards:
+            // it holds one menu and only ever that menu, so there is nothing it
+            // could be showing the wrong contents of, and rebuilding it would
+            // throw away the very object this whole arrangement exists to keep.
+            if (!page.warm) {
+                page.pageBody = null;
+                page.pageBody = root.body;
+            }
         }
 
         // Nothing to cross with while the panel is shut, so the page being
@@ -134,6 +207,7 @@ Item {
         fade.value = closed ? 1 : 0;
         fade.target = 1;
         root.unsized = closed;
+        root.prevSlot = root.slot;
         root.slot = next;
     }
 
@@ -160,7 +234,7 @@ Item {
         Repeater {
             id: pages
 
-            model: 2
+            model: root.pageModel
 
             // NOT id: content. G2Rect's default property is called `content`, so
             // that id is shadowed inside any G2Rect below and every reference to
@@ -179,11 +253,32 @@ Item {
                 id: page
 
                 required property int index
+                required property var modelData
+
+                // A page that BELONGS to one menu rather than being lent out.
+                // See root.warm. The test is "was it given a body up front",
+                // because that is exactly what owning one means here.
+                readonly property bool warm: !!page.modelData.body
 
                 property string pageTitle: ""
-                property Component pageBody: null
+                // A binding for a warm page, which swap() never assigns to, and
+                // a plain value for a spare one, whose binding evaluates to
+                // null once and is then written over per open.
+                property Component pageBody: page.modelData.body ?? null
 
                 readonly property bool current: index === root.slot
+
+                // THE ONE BEING LEFT BEHIND, named rather than inferred; see
+                // root.prevSlot.
+                readonly property bool leaving: index === root.prevSlot && !fade.settled
+
+                // On screen at all, which is what a body is told through
+                // `showing` below and what its Loader stays alive for. The
+                // panel's own reveal is in it because a closed panel shows
+                // nothing however the pages feel about it: without that term a
+                // warm menu would go on scanning for the rest of the session,
+                // having been the last one open.
+                readonly property bool live: root.reveal > 0 && (page.current || page.leaving)
 
                 x: Appearance.padding.large
                 y: Appearance.padding.large
@@ -247,7 +342,17 @@ Item {
                 // only honest seed is one step of the fade's own decay: Follow
                 // does not publish its step, so that number would be this file's
                 // private copy of Follow's tick, wrong the moment either moves.
-                opacity: current ? 1 : (1 - fade.value) * (1 - fade.value)
+                //
+                // A PAGE THAT IS NEITHER is at nothing, rather than at the
+                // outgoing page's opacity. With two pages those were the same
+                // number; with a page per warm menu, "not current" is four
+                // pages, and the previous form would have faded all of them up
+                // together on every crossing.
+                opacity: current ? 1 : leaving ? (1 - fade.value) * (1 - fade.value) : 0
+                // And a page at nothing is not drawn at all. Opacity zero still
+                // walks the subtree; there are six of these now, five of them
+                // idle at any moment, and a menu is a hundred-odd items.
+                visible: opacity > 0
                 // The arriving page is always the one on top, so the crossing
                 // never depends on which slot happens to be first.
                 z: current ? 1 : 0
@@ -258,8 +363,22 @@ Item {
                 // later, under its own content.
                 onImplicitHeightChanged: if (current)
                     root.pageHeight = implicitHeight
-                onCurrentChanged: if (current)
-                    root.pageHeight = implicitHeight
+
+                onCurrentChanged: if (current) {
+                    // THE ONE CASE A WARM PAGE IS NOT ALREADY BUILT: somebody
+                    // reached the bar inside the second or two the incubator
+                    // takes at startup. Finishing it here costs exactly what
+                    // building it used to cost, and only then, which is the
+                    // worst this can ever be rather than what it always was.
+                    if (bodyLoader.status === Loader.Loading)
+                        bodyLoader.forceCompletion();
+                    root.pageHeight = implicitHeight;
+                    // A warm page's body never changes, so the scroll reset
+                    // below never fires for it. Coming back to a menu should
+                    // still put you at the top of it: that position is where
+                    // the menu starts, not where you left it.
+                    view.contentY = 0;
+                }
 
                 // A swap hands this slot a NEW menu, so the scroll goes home
                 // first. The slots are permanent and only the Loader's cargo
@@ -431,14 +550,34 @@ Item {
                     // that is not on screen should not be watching PipeWire.
                     // The outgoing page goes the moment the fade is done with
                     // it, for the same reason.
+                    //
+                    // A WARM PAGE INVERTS ALL OF THAT (see root.warm): it is
+                    // built at startup, off the frame clock, and kept. What
+                    // does not change is the sentence above, only who is
+                    // responsible for it: the menu is still not allowed to
+                    // watch anything while it is off screen, and `showing`
+                    // below is how it is told which it is. A body that declares
+                    // no such property is one with nothing to switch off.
                     Loader {
                         id: bodyLoader
 
                         width: page.width
-                        active: root.reveal > 0 && (page.current || !fade.settled)
+                        active: page.warm || page.live
+                        // Off the frame clock: the incubator builds these
+                        // between frames, so four menus' worth of shapes cost
+                        // the startup nothing visible. It only ever applies to
+                        // the warm ones; a spare page is being loaded because
+                        // somebody is looking at it, and MenuPanel's whole
+                        // opening rule is that the menu is legible on the frame
+                        // it is built.
+                        asynchronous: page.warm
                         sourceComponent: page.pageBody
 
-                        onLoaded: item.width = Qt.binding(() => page.width)
+                        onLoaded: {
+                            item.width = Qt.binding(() => page.width);
+                            if (item.showing !== undefined)
+                                item.showing = Qt.binding(() => page.live);
+                        }
                     }
                 }
             }

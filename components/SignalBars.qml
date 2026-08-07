@@ -15,7 +15,7 @@ Item {
 
     // 0..100, as NetworkManager reports it.
     property real strength: 0
-    property int steps: 4
+    property int steps: Appearance.sizes.signalBands
     property color activeColour: Appearance.colour.text
         // Much fainter than the faintest LABEL tier. An unlit bar has to lose
     // against a lit one at a glance and at 13px; one opacity step apart, every

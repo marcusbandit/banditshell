@@ -261,6 +261,10 @@ Singleton {
         readonly property real meltFeather: root.cfg.blob.feather
 
         readonly property int networkListMax: root.cfg.control.networkListMax
+        // The signal meter's steps, read by the meter that draws them and by
+        // the service that sorts on them; see Config's note on why it is one
+        // number rather than two that agree until they don't.
+        readonly property int signalBands: root.cfg.control.signalBands
         readonly property int streamListMax: root.cfg.control.streamListMax
         readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget

@@ -665,6 +665,17 @@ PanelWindow {
             // The whole surface, not this panel: see `body` above.
             shellHovered: onShell.hovered
 
+            // THE GAUGES' MENUS, BUILT BEFORE ANYBODY POINTS AT ONE. See
+            // MenuPanel.warm for what that buys and what it costs, and Menus.
+            // warmSource for why this list being rebuilt constantly is fine.
+            //
+            // The gauges and nothing else: they are the four things a hand
+            // sweeps across, they are a fixed set that cannot change at
+            // runtime, and the tray's menus could not be warmed anyway (one
+            // Component, many applications). The sidebar's whole `menuItems`
+            // would have swept up the tray and the clock's two pages with them.
+            warmSource: sidebar.status.items
+
             // The tray's note above, MINUS ONE TERM. A menu's own live prompt is
             // this layer's business rather than this file's, so Menus asks its
             // own `needsKeyboard` inside the grab and is handed only the three

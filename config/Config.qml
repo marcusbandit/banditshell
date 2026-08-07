@@ -1013,6 +1013,15 @@ Singleton {
                 // street is eighty wifi networks and a menu that scrolls forever
                 // is worse than one that admits what it left out.
                 networkListMax: 7,
+                // How many steps the signal meter has, and therefore how
+                // finely the wifi list is ORDERED. The two are one number on
+                // purpose: NetworkManager reports a strength that wanders a
+                // few percent every scan, so a list sorted on the raw figure
+                // reshuffles itself under the cursor several times a second
+                // while showing four bars that never move. Sorted on the step
+                // the meter actually draws, the order can only change when the
+                // picture does.
+                signalBands: 4,
                 // App rows the mixer shows before it stops counting. The panel
                 // clips where it runs out of screen rather than scrolling, so
                 // this is the difference between a long list and a list with its

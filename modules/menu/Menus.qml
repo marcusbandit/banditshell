@@ -56,6 +56,34 @@ Item {
 
     readonly property bool open: currentKey !== ""
 
+    // WHICH MENUS ARE BUILT BEFORE THEY ARE POINTED AT. Handed down rather than
+    // listed here, for the reason this layer is handed a Component per open:
+    // what a key MEANS is the bar's business, and a layer that went looking for
+    // gauge menus by name would be reaching into the file that declares them.
+    // MenuPanel.warm is where the whole argument for warming them is written.
+    //
+    // FILTERED THROUGH A COMPARISON, because the list handed down is rebuilt
+    // constantly. A gauge's row carries its live icon and its alert, so
+    // StatusIcons.items is a fresh array every time the volume moves or a
+    // battery percentage ticks, and passing that straight to a Repeater of
+    // PAGES would rebuild every warm menu several times a minute: precisely the
+    // cost the warming exists to stop paying, reintroduced by the plumbing for
+    // it. Only the key and the Component matter here, and while those are
+    // unchanged the same array goes back out and the pages hear nothing.
+    property var warmSource: []
+    property var warm: []
+
+    onWarmSourceChanged: {
+        const next = root.warmSource.filter(e => !!e.body).map(e => ({
+                    key: e.key,
+                    body: e.body
+                }));
+        const now = root.warm;
+        if (now.length === next.length && now.every((e, i) => e.key === next[i].key && e.body === next[i].body))
+            return;
+        root.warm = next;
+    }
+
     // THE GHOST, not the panel. See `held` below: the shell's input region is
     // allowed to lag the panel shrinking, so that collapsing a layer under the
     // cursor does not pull the floor out from under it.
@@ -631,7 +659,12 @@ Item {
         id: panel
 
         title: root.currentTitle
+        // BEFORE the body, and that is an ordering rather than a coincidence.
+        // show() assigns the key first and the body last, the panel swaps on the
+        // body arriving, and the swap has to know which menu it is placing.
+        key: root.currentKey
         body: root.currentBody
+        warm: root.warm
         available: root.height - root.inset * 2
         reveal: reveal.value
 

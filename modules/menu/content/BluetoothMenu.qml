@@ -42,7 +42,25 @@ Column {
     // reordering itself every few seconds under the cursor. Discovery now runs
     // only while the pairing layer is open, which also means the machine is only
     // broadcasting while you are actually pairing something.
-    onOpenedChanged: Bluetooth.setDiscovering(root.opened === "pair")
+    //
+    // AND ONLY WHILE SOMEBODY IS LOOKING AT IT, which used to be answered by
+    // this menu not existing. It is built once and kept now (MenuPanel.warm),
+    // so closing it destroys nothing and the panel has to say so instead.
+    //
+    // DEFAULT FALSE, so a menu being incubated at startup cannot broadcast for
+    // the frames between being built and being told where it is.
+    property bool showing: false
+
+    // ONE FACT, not a handler that has to remember to ask both halves. Rolling
+    // the layer up on the way out is then only about the UI, and the switch
+    // that actually stops the radio falls out of it either way.
+    readonly property bool discovering: root.showing && root.opened === "pair"
+
+    onDiscoveringChanged: Bluetooth.setDiscovering(root.discovering)
+
+    onShowingChanged: if (!root.showing)
+        root.opened = ""
+
     Component.onDestruction: Bluetooth.setDiscovering(false)
 
     // One switch inside a layer. The whole row is the target, not the switch:
