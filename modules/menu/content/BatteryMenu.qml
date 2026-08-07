@@ -13,54 +13,65 @@ Column {
 
     spacing: Appearance.padding.normal
 
-    Item {
+    // THE LEVEL, DRAWN. The tank says the percentage as a height and as a
+    // number, so the headline beside it does not have to: it says the two things
+    // a height cannot, which are which direction the level is going and how long
+    // it has left. The read-only Slider that used to sit under this went with
+    // the icon, being a third telling of the one fact the tank draws.
+    Row {
         width: parent.width
-        implicitHeight: Math.max(bigIcon.implicitHeight, headline.implicitHeight)
+        visible: Battery.available
+        spacing: Appearance.padding.large
 
-        Icon {
-            id: bigIcon
+        BatteryTank {
+            id: tank
 
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
-
-            name: Battery.icon()
-            color: Battery.low ? Appearance.colour.accent : Appearance.colour.text
+            level: Battery.percentage
+            charging: Battery.charging
         }
 
+        // WHATEVER THE TANK LEAVES, and stated rather than implied: this is a
+        // fixed-width panel with a fixed-width tank in it, so the column beside
+        // it has exactly one width it can be, and a line of text that works it
+        // out from its own length instead runs off the end of the menu. "plugged
+        // in" at the 18px tier is wider than what is left.
         Column {
-            id: headline
-
-            anchors.left: bigIcon.right
-            anchors.leftMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            spacing: 0
+            width: parent.width - tank.width - parent.spacing
+            spacing: Appearance.padding.small
 
             StyledText {
-                text: Battery.available ? `${Math.round(Battery.percentage * 100)}%` : "no battery"
-                font.pixelSize: Appearance.font.size.large
+                width: parent.width
+                text: Battery.state
                 color: Battery.low ? Appearance.colour.accent : Appearance.colour.text
+                elide: Text.ElideRight
             }
 
             StyledText {
-                text: Battery.available ? Battery.state : "this machine runs on mains"
-                font.pixelSize: Appearance.font.size.small
+                width: parent.width
+                text: Battery.timeLabel() || "fully charged"
                 color: Appearance.colour.textDim
+                elide: Text.ElideRight
             }
         }
     }
 
-    // The charge itself, at a glance. Same primitive as a volume slider, not
-    // interactive: you can look at a battery, you cannot drag it.
-    Slider {
-        width: parent.width
-        visible: Battery.available
-        value: Battery.percentage
-        warnAbove: 1
+    // A desktop, which UPower still hands a display device for; see the note on
+    // Battery.available.
+    Column {
+        visible: !Battery.available
+        spacing: 0
 
-        // A slider that ignores the pointer would still take the click away
-        // from whatever is under it.
-        enabled: false
-        dimmed: !Battery.charging && Battery.low
+        StyledText {
+            text: "no battery"
+            font.pixelSize: Appearance.font.size.large
+        }
+
+        StyledText {
+            text: "this machine runs on mains"
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.textDim
+        }
     }
 
     Separator {
@@ -69,12 +80,9 @@ Column {
     }
 
     Repeater {
+        // No `schedule` row: the estimate is the headline's second line now, and
+        // a menu that says the same thing twice reads as two facts.
         model: !Battery.available ? [] : [
-            {
-                icon: "schedule",
-                label: Battery.timeLabel() || "fully charged",
-                detail: "estimate"
-            },
             {
                 icon: "bolt",
                 label: Battery.rate > 0 ? `${Battery.rate.toFixed(1)} W` : "idle",
