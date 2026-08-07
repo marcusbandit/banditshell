@@ -117,6 +117,65 @@ Singleton {
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)
     }
 
+    // SYNTAX, IN THE ONE HUE THIS SHELL HAS.
+    //
+    // A theme here is a luminance ramp plus three saturations of a SINGLE hue
+    // (Themes.qml), so the usual eight-colour syntax scheme has nowhere to come
+    // from. Importing one would put a second palette in the shell and the code
+    // view would be the only surface not wearing the theme, which is the exact
+    // trade this shell does not make.
+    //
+    // So the distinction rides the two axes that do exist:
+    //
+    //   SATURATION, for the tokens that carry meaning. `keyword` and `key` get
+    //   `bright`, the specular end, because structure is what you scan code for
+    //   and it should be what the eye lands on. Values step down through `mid`
+    //   and `dim`, so a string reads as louder than a number without either of
+    //   them being a different colour.
+    //
+    //   THE RAMP, for the chrome around them. Operators, punctuation and
+    //   comments are the parts you read past, so they walk DOWN the ramp until a
+    //   comment is nearly the surface it sits on.
+    //
+    // Opaque on purpose, unlike the label tiers, which are the tint at an alpha.
+    // These are handed to Text.StyledText as `<font color="...">`, and a colour
+    // with alpha in it serialises to #AARRGGBB, which that parser is not
+    // required to accept.
+    //
+    // Keyed by the kinds components/highlight.js emits. Anything it does not
+    // know falls through to `plain`, so teaching the lexer a new kind can never
+    // break a view that has not heard of it.
+    function syntaxColour(kind: string): color {
+        switch (kind) {
+        // What a thing IS.
+        case "keyword":
+        case "key":
+        case "added":
+            return root.theme.bright;
+        // What its value is.
+        case "string":
+            return root.theme.mid;
+        case "number":
+        case "boolean":
+        case "null":
+            return root.theme.dim;
+        // Names, which are the document's own words rather than the language's.
+        case "type":
+            return root.rampAt(9, 1);
+        case "function":
+            return root.rampAt(10, 1);
+        // The chrome, walking down.
+        case "operator":
+            return root.rampAt(8, 1);
+        case "punct":
+            return root.rampAt(7, 1);
+        case "comment":
+        case "removed":
+            return root.rampAt(6, 1);
+        }
+        return root.rampAt(10, 1);
+    }
+
     readonly property QtObject font: QtObject {
         readonly property string family: root.cfg.font.family
         readonly property string icon: root.cfg.font.icon

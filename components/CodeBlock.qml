@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.config
+import "highlight.js" as Highlight
 
 // A BODY OF TEXT, READ RATHER THAN SKIMMED.
 //
@@ -14,11 +15,18 @@ import qs.config
 // horizontal scrolling is per-line, which is exactly how a code view should
 // behave anyway.
 //
-// It takes a `language` and currently does nothing with it. That is deliberate
-// rather than unfinished: the split between "show me this text" and "colour it"
-// is where the seam belongs, so the highlighting can arrive without this file's
-// callers changing. Until then a paste is legible, scrollable and correctly
-// monospaced, which is most of what the full view is for.
+// COLOURED, and the seam it arrived through is the one this file was built with:
+// callers still hand it a `language` and nothing else changed.
+// components/highlight.js turns text into spans and knows no colours,
+// config/Appearance.qml turns a span's kind into a colour and knows no
+// languages, and this file is the only one that knows both, which is the whole
+// of what a view is for.
+//
+// An EMPTY language is still legal and still means "do not colour". That is not
+// a fallback, it is the honest answer for the clipboard's common case: a
+// paragraph is not code and lexing it as some would put half its words in the
+// keyword colour. highlight.js's detect() is deliberately conservative for the
+// same reason, and this asks it only when the caller has no opinion.
 Item {
     id: root
 
@@ -41,7 +49,60 @@ Item {
 
     readonly property int lineCount: (root.text ?? "").split("\n").length
     readonly property bool truncated: root.lineCount > root.maxLines
-    readonly property string resolvedLanguage: root.language
+
+    // The caller's opinion wins. detect() is only asked when there is none, and
+    // it answers "" whenever it is not sure, which is most of the time and is
+    // the point of it.
+    readonly property string resolvedLanguage: root.language ? root.language : Highlight.detect(root.text ?? "")
+
+    // BEYOND THIS, DO NOT COLOUR. Separate from maxLines and for a different
+    // reason: the list only ever builds the lines it draws, but tokenizing is
+    // ONE PASS OVER THE WHOLE DOCUMENT (highlight.js says why it cannot be
+    // per-line), and that pass is not lazy. A twenty-thousand-line paste would
+    // spend it on the frame the panel opens, which is the one frame that must
+    // not stutter. Uncoloured text is a small loss; a panel that hitches on open
+    // is the thing people actually notice.
+    property int colourLimit: 4000
+
+    readonly property bool colouring: root.resolvedLanguage !== "" && root.lineCount <= root.colourLimit
+
+    // One line in, one line out, spans that concatenate back to the input
+    // exactly: highlight.js's round-trip contract, which is what lets the
+    // markup below be assembled without ever comparing it to the source.
+    readonly property var tokens: root.colouring ? Highlight.tokenize(root.text ?? "", root.resolvedLanguage) : null
+
+    // TEXT INTO MARKUP, which is the one genuinely dangerous step here.
+    //
+    // Every span is escaped before it is wrapped, so a clipboard holding
+    // `<b>` or `a && b` draws those characters instead of turning into markup
+    // the parser then eats. The lexer guarantees the spans reproduce the input;
+    // this guarantees the reproduction survives being put in a tag.
+    //
+    // SPACES BECOME &nbsp;. Text.StyledText collapses runs of whitespace the way
+    // HTML does, which would silently flatten every indent in the document. That
+    // is why `wrap` and colouring do not mix: non-breaking spaces cannot wrap.
+    // Nothing here sets both, because the callers that ask for colour are
+    // showing code and code is panned rather than wrapped.
+    function escapeSpan(s: string): string {
+        return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\t/g, "    ").replace(/ /g, "&nbsp;");
+    }
+
+    function markup(i: int): string {
+        const spans = root.tokens ? root.tokens[i] : null;
+        if (!spans)
+            return root.escapeSpan(root.lines[i] ?? "");
+
+        let out = "";
+        for (let j = 0; j < spans.length; j++) {
+            const span = spans[j];
+            // `plain` is the default the palette already returns for anything it
+            // does not know, so it is written as a tag like everything else
+            // rather than special-cased into a bare string. One path, and the
+            // colour of ordinary code stays the palette's decision.
+            out += `<font color="${Appearance.syntaxColour(span.k)}">${root.escapeSpan(span.s)}</font>`;
+        }
+        return out;
+    }
 
     // The gutter is as wide as the widest number it will ever hold, measured
     // rather than guessed, so the text does not shift left as the list scrolls
@@ -114,10 +175,12 @@ Item {
                 renderType: Text.NativeRendering
                 lineHeight: Math.round(font.pixelSize * 4 / 3)
                 lineHeightMode: Text.FixedHeight
+                // The colour of last resort, for the uncoloured case only: with
+                // markup every span carries its own and this is never seen.
                 color: Appearance.colour.text
-                textFormat: Text.PlainText
+                textFormat: root.colouring ? Text.StyledText : Text.PlainText
 
-                text: line.modelData
+                text: root.colouring ? root.markup(line.index) : line.modelData
             }
         }
 
