@@ -105,7 +105,7 @@ Item {
     //
     // `plain` is deliberately absent. It is the Text's own colour, so the
     // commonest span in any document costs no markup at all.
-    readonly property var palette: ({
+    readonly property var inks: ({
             keyword: root.hex(Appearance.colour.accent),
             type: root.hex(Appearance.colour.accent),
             function: root.hex(Appearance.colour.accent),
@@ -141,6 +141,12 @@ Item {
     // place the line is still allowed to wrap. Making every space hard would
     // have preserved the width and quietly disabled `wrap`.
     function markup(row: var): string {
+        // A delegate can be handed nothing for a frame while the model is being
+        // swapped underneath it, and a view that throws on the way to being
+        // replaced fills the log with errors about a row that no longer exists.
+        if (row === undefined || row === null)
+            return "";
+
         const spans = typeof row === "string" ? [{
                 k: "plain",
                 s: row
@@ -182,7 +188,7 @@ Item {
                 column++;
             }
 
-            const colour = root.palette[span.k];
+            const colour = root.inks[span.k];
             out += colour === undefined ? body : "<font color=\"" + colour + "\">" + body + "</font>";
         }
 
