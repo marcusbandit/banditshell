@@ -52,53 +52,26 @@ Item {
     readonly property real throwFull: Math.max(1, root.width * Appearance.sizes.dragDismissFraction)
     readonly property real throwFraction: Math.min(1, Math.abs(root.thrown) / root.throwFull)
 
-    // THE ROW BEING CONSIDERED GETS MORE ROOM, and only a picture takes it.
+    // A ROW NEVER CHANGES SIZE, and that is the whole of why it is steady.
     //
-    // A thumbnail is sized to be SCANNED, which is a different job from being
-    // looked at, and the two cannot be served by one height: big enough to study
-    // and the list holds four rows, small enough to scan and the row you have
-    // actually stopped on is the one you still cannot see. So the row under the
-    // keyboard or the pointer grows and the rest stay scannable.
+    // It used to grow when it was hovered or selected, and a growing row is a
+    // reflowing list: the rows below it move under a pointer that has not
+    // moved, the pointer lands somewhere else, the row shrinks, everything goes
+    // back, and the pointer is on it again. That is a loop with a frame of delay
+    // in it, so it does not settle, it strobes. It was patched once by latching
+    // the hover in the list so a row could not un-hover itself, which stopped
+    // the worst of it and left the row still resizing under the hand.
     //
-    // Text does not grow, because nothing about it is clearer larger: there are
-    // three sizes in this shell and a paragraph is not the thing a view is about
-    // (~/.claude/rules/type-scale.md). What text has instead is the full view, a
-    // right-arrow away.
-    // WHETHER THE POINTER IS ON THIS ROW, decided by the LIST and handed down,
-    // not read off this row's own HoverHandler.
-    //
-    // THE ROW MUST NOT BE ABLE TO UN-HOVER ITSELF. Growing changes
-    // implicitHeight, which reflows the list under a pointer that has not moved;
-    // the pointer then lands somewhere else, the row shrinks, the layout goes
-    // back, the pointer is on it again, and it grows. That is a loop with a
-    // frame of delay in it, so it does not settle, it strobes, and it is exactly
-    // what an image row did.
-    //
-    // The list latches which row is pointed at and only changes its mind when
-    // ANOTHER row claims the pointer or the pointer leaves the list entirely.
-    // Neither of those can be caused by this row resizing, so the loop has no
-    // way to close. `hovered` below is still the honest local answer and is what
-    // the controls use, because they do not resize anything.
-    property bool pointed: false
+    // The patch is gone with the cause. Hovering is a LOOK now, a fill and
+    // nothing else, and nothing about pointing at a row changes any geometry
+    // anywhere. Getting a bigger picture is a thing you ASK for, with a right
+    // arrow or a swipe, and what answers is the full view, where the picture is
+    // fitted whole to the panel rather than to a slightly taller row. That is a
+    // better answer to "let me see it" than any row-sized version could be, and
+    // it cannot flicker because a page does not reflow a list.
+    readonly property bool focused: root.selected || root.hovered
 
-    readonly property bool focused: root.selected || root.pointed
-
-    Follow {
-        id: grow
-
-        speed: Appearance.anim.resizeSpeed
-        target: root.focused && root.isImage ? 1 : 0
-        epsilon: 0.005
-    }
-
-    // Snapped on creation, so a row built while already selected (the list
-    // rebuilding under a standing selection, which a keystroke does) arrives at
-    // its size instead of growing into it as though it had just been reached.
-    Component.onCompleted: grow.snap()
-
-    readonly property real plateHeight: Appearance.sizes.clipboardPreview * (1 + (Appearance.sizes.clipboardFocus - 1) * grow.value)
-
-    implicitHeight: (root.isImage ? root.plateHeight : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
+    implicitHeight: (root.isImage ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
 
     // WHERE THE ROW IS, which is where the hand left it or where it is returning
     // from. A Follow rather than a Behavior: the throw ends at whatever distance
@@ -140,8 +113,6 @@ Item {
             // circular arc it exists to replace.
             radius: Appearance.rounding.normal
             color: root.selected ? Appearance.colour.fillStrong : Appearance.colour.fill
-            // The LATCHED answer, so the plate under a growing row does not
-            // blink off and on with it. See `pointed`.
             opacity: root.focused ? 1 : 0
 
             Behavior on opacity {

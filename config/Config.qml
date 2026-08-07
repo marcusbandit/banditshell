@@ -597,16 +597,6 @@ Singleton {
                 // telling two grey smudges apart is exactly the task.
                 preview: 132,
 
-                // HOW MUCH A PICTURE GROWS WHEN IT IS THE ONE YOU ARE ON.
-                //
-                // A thumbnail row is sized to be scannable, which is a different
-                // job from being looked at. The row under the keyboard or the
-                // pointer is the one being considered rather than skimmed, so it
-                // gets the room to answer the question it is being asked. A
-                // multiplier and not a second height, because it has to stay in
-                // proportion to `preview` when that is changed.
-                focus: 1.7,
-
                 // How many lines of a text entry are shown before it is cut.
                 // Enough to tell a paragraph from a command, not so many that
                 // one paste owns the screen.
