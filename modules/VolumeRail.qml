@@ -4,13 +4,33 @@ import qs.components
 import qs.services
 
 // The middle of the right edge is a volume rail: put the cursor on it and turn
-// the wheel, or put a finger on it and push.
+// the wheel, or put a finger on it and push. Once it has opened, the thing that
+// came out of the band is a SLIDER, with a handle you can take hold of.
 //
 // The gesture comes first and the readout second. Scrolling an edge is a thing
 // you do without looking, so the rail answers the wheel whether or not anything
-// is on screen; what comes out of the band is there to tell you where you landed,
-// not to be aimed at. That is the difference between this and the slider in the
-// sound menu, which is a control you go to on purpose.
+// is on screen; what comes out of the band is there to tell you where you landed.
+//
+// AND THEN IT IS ALSO SOMETHING TO AIM AT, which is the one sentence of this
+// header that changed. The line above used to end "not to be aimed at", and that
+// was a claim about the READOUT justified by a fact about the BAND: the band
+// shows no scale, so a press on it cannot be aimed, so the rail is relative, so
+// (the leap) the panel is a report rather than a control. The middle steps are
+// still true and the conclusion never followed from them. The panel does show a
+// scale, it is the only place in this shell that shows this one, and while it is
+// open it sits under the hand that opened it: a control you can see and cannot
+// touch is the worst of both, and on a touchscreen, where there is no hover to
+// hold it open and no wheel to turn, it was the whole interface. So the meter
+// grew a handle and the handle takes a press. What is unchanged is the BAND: no
+// scale, no aiming, still relative; see `onPressed` at the bottom of this file
+// for why that one must stay relative even now that its neighbour is not.
+//
+// The panel is therefore two controls in one body, which is not a contradiction
+// but a division of labour by what each one can be aimed at. The band is the
+// eyes-free half (a wheel notch, a shove with the thumb, no scale, no target).
+// The panel is the deliberate half (a track, a mark at 100%, a handle to grab
+// and a place to put it). The sound menu's slider remains the third way in and
+// the only one you have to go looking for.
 //
 // THE WHEEL IS THE MOUSE'S ANSWER AND NOBODY ELSE'S, which is what the second
 // gesture is here to fix. A touchscreen emits no wheel event at all, so for the
@@ -39,17 +59,40 @@ import qs.services
 // zone and the bottom-right stays empty, untouched rather than negotiated with.
 //
 // WHAT THE READOUT SAYS, and it is three things: roughly how loud, that it is
-// not muted, and that you are past what the hardware was asked for. The meter
-// carries the first, the glyph the second, and the accent colour plus the
-// hairline at 100% the third. There was a percentage above the meter and it has
-// gone. A number is an instrument's answer, and the paragraph at the top of this
-// file says this is a glance: it repeated what the meter had already said, at a
+// not muted, and that you are past what the hardware was asked for. The track
+// carries the first, the glyph the second, and the accent colour plus the stop
+// dot at 100% the third. There was a percentage above the meter and it has gone.
+// A number is an instrument's answer, and the paragraph at the top of this file
+// says this is a glance: it repeated what the meter had already said, at a
 // precision nobody reads off the edge of a screen, and it was three times wider
 // than everything else in the panel put together, which is the single reason the
 // readout measured 127 by 314 and looked like a box parked on the edge rather
 // than something that had come out of it. The exact figure still exists where an
 // exact figure belongs, on the sound menu's slider, which is the control you go
 // to on purpose.
+//
+// AND IT IS DRAWN AS MATERIAL DRAWS A SLIDER, which is a shape argument rather
+// than a borrowed style. A bar whose fill runs to the top of the value states
+// the value and nothing else; every part of it is the same object, so there is
+// no part of it that says "this end is the thing that moves". Material's slider
+// splits that into three marks and each one says one thing: a thick track that
+// is the range, a bar HANDLE at the value, and a GAP either side of the handle
+// so it reads as an object sitting on the track rather than as the seam between
+// two fills. The gap is the whole trick. It is why the handle can be four pixels
+// thick and still be the first thing the eye lands on, and it is why the hand
+// knows where to go before the cursor has arrived.
+//
+// The handle also NARROWS on the press, four pixels to two, which is Material's
+// own acknowledgement and worth keeping for a reason particular to this shell:
+// the panel is a blob and the blob cannot flash, tint or lift under a press
+// without disturbing the field it is melted into. The handle is the one mark
+// here that is free to move, so it is the one that answers.
+//
+// What is NOT borrowed is the colour. Material would put a tone role on each of
+// the three marks; this shell has one colour at weights (see Appearance's ramp),
+// so the track is `fillStronger`, the fill and the handle are both `lit`, and
+// the three states of `lit` (muted, normal, amplified) are the only colour
+// change anywhere in the control.
 //
 // AND IT IS ONE BODY, which cost a bug to learn. The segment used to bulge under
 // the cursor as a SECOND blob, the launch edge's gesture transplanted to this
@@ -151,7 +194,13 @@ Item {
     // NOTHING but the press would be dragging the volume about behind a readout
     // that never appeared. It also covers the mouse case where a drag carries
     // the pointer off the rail's own width, which it must be free to do.
-    readonly property bool active: rail.containsMouse || rail.pressed || panelZone.containsMouse || linger.running
+    //
+    // `grip.pressed` is the handle's half of the same argument. A hand holding
+    // the handle is not hovering the band, may have dragged the pointer clean
+    // off the panel, and on a touchscreen reports no hover at any point in the
+    // gesture; without it the control would retract out from under the finger
+    // that is working it.
+    readonly property bool active: rail.containsMouse || rail.pressed || panelZone.containsMouse || grip.containsMouse || grip.pressed || linger.running
 
     // What drives the swell, and it is `active` MINUS the linger: a hand
     // somewhere on this thing, on the segment or on the readout the segment
@@ -180,7 +229,7 @@ Item {
     // order bug. This is the plain union of the two areas, and the ordering
     // below is untouched. The order still decides which of them owns the hover
     // over their overlap; this simply no longer cares which one won.
-    readonly property bool held: rail.containsMouse || rail.pressed || panelZone.containsMouse
+    readonly property bool held: rail.containsMouse || rail.pressed || panelZone.containsMouse || grip.containsMouse || grip.pressed
 
     readonly property Item maskItem: panelZone
 
@@ -230,6 +279,33 @@ Item {
     // you cannot see is a rail that looks broken while it is working.
     readonly property real meterLength: glyph.implicitHeight * Appearance.sizes.volumeMeterGlyphs
 
+    // THE SLIDER'S FOUR MARKS, all four derived from the ONE token that sizes
+    // it, so the control keeps its shape at any thickness rather than coming
+    // apart the first time somebody tunes `railWidth`
+    // (~/.claude/rules/math-over-hardcoding.md).
+    //
+    // The proportions are Material's, read off its 16dp slider and written as
+    // ratios of the track rather than as the pixel counts they happen to be at
+    // 16: a 4dp handle, a 6dp gap, a 4dp stop dot. `handleSpan` is the one that
+    // is NOT Material's, and deliberately: its handle stands 44dp proud of a
+    // 16dp track, which is most of a horizontal slider's height and reads as a
+    // grip. Ours crosses the SHORT axis of a panel on a screen edge, so 44 would
+    // be nearly the whole readout's width and the handle would stop being a mark
+    // on a track and become the panel's own crossbar. Seven fourths is enough to
+    // read as "wider than the track, therefore on top of it" at a glance, which
+    // is the only thing the overhang has to buy.
+    readonly property real trackWidth: Appearance.sizes.volumeRailWidth
+    readonly property real handleSpan: Math.round(root.trackWidth * 1.75)
+    readonly property real handleThick: Math.max(Appearance.font.stem, Math.round(root.trackWidth / 4))
+    readonly property real trackGap: Math.max(Appearance.font.stem, Math.round(root.trackWidth * 0.375))
+    readonly property real stopDot: Math.max(Appearance.font.stem, Math.round(root.trackWidth / 4))
+
+    // The corner where a track segment faces the handle. The outer ends of the
+    // track are fully round like every other pill in this shell; the inner ends
+    // are nearly square, because a fully round end inside a six-pixel gap makes
+    // the gap read as a lozenge-shaped hole rather than as a cut.
+    readonly property real trackInner: Math.max(1, Math.round(root.trackWidth / 8))
+
     // THE PANEL, sized by what is in it rather than by a number picked here.
     //
     // The column is as wide as the widest mark it can ever hold, measured by
@@ -239,7 +315,12 @@ Item {
     // wider crossing 50% and back again on the way down: the shape would be
     // answering the wheel as well as the value. That was the percentage's
     // argument for freezing its own width, and it outlives the percentage.
-    readonly property real contentWidth: Math.max(Appearance.sizes.volumeRailWidth, Appearance.font.iconSize)
+    //
+    // The widest mark is the HANDLE now rather than the track, which is the
+    // whole point of a handle that overhangs: measured against the track this
+    // column would be a handle's overhang too narrow and the handle would hang
+    // over the panel's padding on both sides.
+    readonly property real contentWidth: Math.max(root.handleSpan, Appearance.font.iconSize)
     readonly property real contentHeight: root.meterLength + Appearance.padding.normal + glyph.implicitHeight
 
     readonly property real panelWidth: root.border + root.contentWidth + Appearance.padding.large * 2
@@ -332,6 +413,63 @@ Item {
     // sensitivity by five to buy a correspondence nobody could see: the meter
     // and the segment are not in the same place on the screen and never touch.
     readonly property real perPixel: root.ceiling / Math.max(1, rail.height)
+
+    // The same question asked of the PANEL's track, which is a different and
+    // much shorter ruler: the whole range across `meter.travel` instead of
+    // across the segment. Both gestures move the same value and neither can be
+    // expressed in the other's pixels, which is why the detent below has to be
+    // told which one it is arbitrating.
+    readonly property real perTrackPixel: root.ceiling / Math.max(1, meter.travel)
+
+    // EXACT UNDER A HAND, smoothed when the value moves on its own.
+    //
+    // components/Slider.qml's split, for its reason: a control that eases toward
+    // your finger feels broken, and one that cuts when a media key moves it
+    // looks broken. `dragged` is what the hand asked for, kept because the value
+    // only comes back once PipeWire has agreed to it and rounded it to whole
+    // percent on the way.
+    //
+    // The WHEEL is deliberately on the smoothed side of this line even though it
+    // is also a hand: a notch is a step, and a fill that jumps between steps
+    // reads as a series of states rather than as one thing being turned up. A
+    // drag is not a step and must not be smoothed.
+    property real dragged: 0
+    readonly property bool dragging: rail.pressed || grip.pressed
+    readonly property real shown: Math.max(0, Math.min(1, (root.dragging ? root.dragged : level.value) / root.ceiling))
+
+    // A MAGNET AT 100%, and only for the gesture that can SEE the mark.
+    //
+    // 100% is the value you land on far more often than any other and the one
+    // you cannot hit by hand, because on this track it is a single row of pixels
+    // two thirds of the way up; but going past it is exactly what the range
+    // above it is for, so the notch has to let go when you keep pulling. Within
+    // a handle's thickness of the mark the value takes the mark exactly, and
+    // past that the hand is obeyed: it catches, and you can pull through it.
+    //
+    // Measured in PIXELS OF HAND MOVEMENT converted through the ruler of
+    // whichever gesture is asking, because what makes a detent feel right is how
+    // far your hand has to move to escape it, and that is pixels rather than
+    // percent. The same rule stated in percent would swallow a fifth of the
+    // panel's short track and a twentieth of the band's long one.
+    //
+    // The BAND does not get one, and that is not an oversight. A magnet you
+    // cannot see is a control sticking for no stated reason: on the panel the
+    // stop dot is right there and the catch reads as landing on it, on the band
+    // there is no mark, no scale and nothing to have landed on.
+    function snap(v: real, perPixel: real): real {
+        const reach = root.handleThick * perPixel;
+        return Math.abs(v - root.warnAbove) < reach ? root.warnAbove : v;
+    }
+
+    // Ask for a value with a HAND: clamped, then SHOWN before it is sent. The
+    // handle has to be where the finger put it this frame, and PipeWire cannot
+    // answer before the next one.
+    function put(v: real): void {
+        const wanted = Math.max(0, Math.min(root.ceiling, v));
+        root.dragged = wanted;
+        level.value = wanted;
+        Audio.setVolume(wanted);
+    }
 
     Follow {
         id: reveal
@@ -479,40 +617,240 @@ Item {
             height: root.contentHeight
             opacity: reveal.value
 
-            G2Rect {
-                id: track
+            // THE SLIDER: a track in two pieces, a gap, and a handle in the gap.
+            //
+            // The item is the full content width rather than the track's, so the
+            // handle's overhang has somewhere to be and the grab below can be as
+            // wide as the column instead of as wide as the stick.
+            Item {
+                id: meter
 
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
-                width: Appearance.sizes.volumeRailWidth
+                width: root.contentWidth
                 height: root.meterLength
-                radius: width / 2
-                color: Appearance.colour.fillStronger
 
-                // Fills from the BOTTOM, because that is the end the wheel moves
-                // away from.
+                // WHERE THE HANDLE IS, and the one mapping every other number
+                // here is read off. The handle stays wholly inside the track's
+                // ends rather than half hanging off them, so the full length of
+                // the track is reachable and looks it, exactly as the sound
+                // menu's bead does.
+                //
+                // Measured against the handle's RESTING thickness, not its drawn
+                // one. The press narrows the handle, and a travel that narrowed
+                // with it would stretch the mapping under the hand that was
+                // already dragging: the value would shift by a pixel's worth at
+                // the moment of the press, which is the one moment you are
+                // watching it.
+                readonly property real travel: Math.max(1, height - root.handleThick)
+                readonly property real centre: root.handleThick / 2 + (1 - root.shown) * travel
+
+                // What is DRAWN, which is the Material acknowledgement: four
+                // pixels at rest, two under a finger.
+                readonly property real thick: grip.pressed ? Math.max(1, Math.round(root.handleThick / 2)) : root.handleThick
+
+                // Where each track segment has to stop. The gap is measured from
+                // the handle's drawn edge, so it stays a constant gap while the
+                // handle narrows rather than opening up by the pixel the handle
+                // gave back.
+                readonly property real clear: thick / 2 + root.trackGap
+
+                // Where the mark at 100% sits, on the same mapping as the handle
+                // so the two coincide exactly when the value does.
+                readonly property real markY: travel * (1 - root.warnAbove / root.ceiling) + root.handleThick / 2
+
+                // THE INACTIVE TRACK, above the handle. Round at the top, where
+                // it is the end of the range; nearly square at the bottom, where
+                // it is one lip of the gap.
                 G2Rect {
-                    anchors.bottom: parent.bottom
-                    width: parent.width
-                    height: Math.max(0, Math.min(1, level.value / root.ceiling)) * parent.height
-                    radius: width / 2
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: 0
+                    width: root.trackWidth
+                    height: Math.max(0, meter.centre - meter.clear)
+
+                    topLeftRadius: root.trackWidth / 2
+                    topRightRadius: root.trackWidth / 2
+                    bottomLeftRadius: root.trackInner
+                    bottomRightRadius: root.trackInner
+
+                    color: Appearance.colour.fillStronger
+                }
+
+                // THE ACTIVE TRACK, below the handle: how far it has come. It
+                // fills from the BOTTOM, because that is the end the wheel moves
+                // away from and the direction the band's own drag means.
+                G2Rect {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: Math.min(meter.height, meter.centre + meter.clear)
+                    width: root.trackWidth
+                    height: Math.max(0, meter.height - y)
+
+                    topLeftRadius: root.trackInner
+                    topRightRadius: root.trackInner
+                    bottomLeftRadius: root.trackWidth / 2
+                    bottomRightRadius: root.trackWidth / 2
+
                     color: root.lit
                 }
 
-                // WHERE NORMAL ENDS. One hairline, at 100%, because the rail runs
-                // past it: without the mark the top third is indistinguishable
-                // from headroom, and it is not headroom, it is amplification.
+                // WHERE NORMAL ENDS, as Material's stop indicator: a dot on the
+                // track at 100%, because the range runs past it and without the
+                // mark the top third is indistinguishable from headroom. It is
+                // not headroom, it is amplification.
                 //
-                // A stem thick, not one pixel. The pixel font's own device pixel
-                // is what every rule in this shell weighs, and a one-pixel gap
-                // in a fill this short reads as a rendering artefact rather than
-                // as a mark somebody put there.
-                Rectangle {
-                    x: 0
-                    y: parent.height * (1 - root.warnAbove / root.ceiling) - height / 2
-                    width: parent.width
-                    height: Appearance.font.stem
-                    color: Appearance.colour.surface
+                // It was a hairline across the full width of the track and it is
+                // a dot now for one reason: the track is thick enough that a rule
+                // across it reads as the track being CUT IN TWO there, which is
+                // the same drawing the gap uses to mean something else entirely.
+                // A dot cannot be confused with a gap.
+                //
+                // Drawn over both segments, so it survives the fill arriving, and
+                // it SWAPS WEIGHT depending on which one it is standing on. One
+                // colour cannot do this job: the mark spends most of its life on
+                // the dim inactive track, where a dark dot is invisible, and the
+                // rest of it on the lit fill, where a bright one is. Material
+                // solves this with two tone roles; this shell has one colour at
+                // weights, so it is the same ladder read from either end.
+                //
+                // Asked of the DRAWING rather than of the value, which is a real
+                // difference and not pedantry. "Is the volume past 100" and "is
+                // the fill under the dot" part company for the whole width of the
+                // gap: from 100% to about 110% the value says covered while the
+                // fill is still a gap's width short of the mark, and a dot
+                // painted `surface` over the panel's own body is not a subtle
+                // dot, it is an absent one. Reading the fill's own top edge, the
+                // dot goes dark exactly when something dark is behind it.
+                //
+                // Which leaves it standing on the panel body only while the
+                // handle is within a gap of the mark, and there it stays LIGHT
+                // and simply floats: still a mark, still in the right place, and
+                // hidden outright for the few percent where the handle itself is
+                // parked on top of it. A handle on 100% says where 100% is far
+                // louder than the dot could.
+                G2Rect {
+                    anchors.horizontalCenter: parent.horizontalCenter
+                    y: meter.markY - height / 2
+                    width: root.stopDot
+                    height: root.stopDot
+                    radius: width / 2
+                    color: meter.centre + meter.clear <= meter.markY ? Appearance.colour.surface : Appearance.colour.textDim
+                }
+
+                // THE HANDLE. The one mark here that is an object rather than a
+                // measurement, and the only thing in the panel you are meant to
+                // take hold of.
+                G2Rect {
+                    x: (meter.width - width) / 2
+                    y: meter.centre - height / 2
+                    width: root.handleSpan
+                    height: meter.thick
+                    radius: height / 2
+                    color: root.lit
+
+                    // The narrowing is a movement rather than a state change, so
+                    // it is eased. Both ends of it: it has to give under the
+                    // press and come back on the release, and a height that
+                    // snapped back would read as the handle being dropped rather
+                    // than let go.
+                    Behavior on height {
+                        NumberAnimation {
+                            duration: Appearance.anim.fast
+                            easing.type: Easing.OutQuad
+                        }
+                    }
+                }
+
+                // TAKE HOLD OF IT.
+                //
+                // Wider than the track it drives, up to this shell's own floor
+                // for anything you are meant to hit (WCAG 2.2 SC 2.5.8, and
+                // `minTarget` is where that number lives). The same split the
+                // band makes one screen edge over and the sound menu's slider
+                // makes two files over: the drawing stays thin, the thing you
+                // can hit does not.
+                //
+                // Declared LAST, so it is topmost over the marks it drives and
+                // no part of the drawing can take a press off it.
+                MouseArea {
+                    id: grip
+
+                    anchors.fill: parent
+                    anchors.leftMargin: -Math.max(0, (Appearance.sizes.minTarget - meter.width) / 2)
+                    anchors.rightMargin: anchors.leftMargin
+
+                    hoverEnabled: true
+                    acceptedButtons: Qt.LeftButton
+                    cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
+
+                    // The grab is this control's from the press and nothing may
+                    // take it back. Nothing is currently in a position to try,
+                    // and that is precisely why it is written down: the panel is
+                    // a lid over a screen edge and the areas around it are all
+                    // gesture surfaces.
+                    preventStealing: true
+
+                    // HOW FAR THE HAND IS FROM THE HANDLE'S CENTRE, kept from the
+                    // press so the handle does not teleport under it. Grab a
+                    // handle by its lower lip and it must stay grabbed by its
+                    // lower lip; a slider that recentres on the finger throws the
+                    // value away at the instant you take hold of it, which on a
+                    // touchscreen is the instant your finger covers the answer.
+                    property real offset: 0
+
+                    // ABSOLUTE HERE, and relative on the band, which is the one
+                    // real decision in this file restated for the half of the
+                    // control that reversed it. The band is a uniform strip with
+                    // no scale on it, so a press there cannot be aimed and an
+                    // absolute mapping would commit to a number you had no way to
+                    // choose; a palm brushing it would slam the output to half
+                    // again above full. This track shows its whole range, its
+                    // ends, its handle and the mark at 100%. Everything the
+                    // relative mapping was protecting you from not being able to
+                    // see, you can see. So a press on the track means the value
+                    // under the press, which is what a slider has trained
+                    // everyone to expect and what makes one movement enough.
+                    function report(y: real): void {
+                        const f = 1 - (y - root.handleThick / 2) / meter.travel;
+                        const v = Math.max(0, Math.min(1, f)) * root.ceiling;
+                        root.put(root.snap(v, root.perTrackPixel));
+                    }
+
+                    // Mapped into the meter rather than offset by the margins
+                    // above: undoing those by hand means writing the same number
+                    // twice with opposite signs, and components/Slider.qml
+                    // already wrote one of them with the wrong one.
+                    onPressed: mouse => {
+                        const y = grip.mapToItem(meter, mouse.x, mouse.y).y;
+
+                        // ON THE HANDLE, keep it where it is and follow the hand
+                        // from there. ANYWHERE ELSE on the track, come to the
+                        // hand first and follow it after, so one press-and-drag
+                        // both lands on a value and keeps adjusting it. The reach
+                        // is a whole minimum target rather than the handle's own
+                        // four pixels: what counts as "on the handle" is a
+                        // question about the finger, and a four-pixel bar has to
+                        // be grabbable by something eight millimetres wide.
+                        if (Math.abs(y - meter.centre) <= Appearance.sizes.minTarget / 2) {
+                            grip.offset = y - meter.centre;
+                        } else {
+                            grip.offset = 0;
+                            grip.report(y);
+                        }
+                    }
+
+                    onPositionChanged: mouse => {
+                        if (grip.pressed)
+                            grip.report(grip.mapToItem(meter, mouse.x, mouse.y).y - grip.offset);
+                    }
+
+                    // A TOUCH HAS NO HOVER TO LEAVE BEHIND. The mouse can let go
+                    // of the handle and the panel stays out because the cursor is
+                    // still on it; a finger lifting reports nothing at all, and
+                    // without this the panel would leave at the same instant as
+                    // the finger, taking the result of the adjustment with it.
+                    onReleased: linger.restart()
+
+                    onWheel: wheel => root.nudge(wheel)
                 }
             }
 
@@ -607,10 +945,21 @@ Item {
         // thing given up is landing on a value in one movement, which was never
         // on offer here anyway: you cannot aim at a scale you cannot see.
         //
+        // AND THE PANEL NOW HAS A HANDLE, which is an argument FOR this staying
+        // relative rather than against it. The obvious reading of the handle is
+        // that the band should become absolute to match, and it is the wrong way
+        // round: the two halves of this control are not two styles of the same
+        // gesture, they are the eyes-free one and the aimed one, and each takes
+        // the mapping its own surface can support. Making the band absolute
+        // would take the aimed gesture, which now has a proper home four
+        // centimetres to the left, and put it back on the one surface that
+        // cannot show you what you are aiming at, reintroducing the palm-brush
+        // hazard above in exchange for nothing.
+        //
         // UP IS LOUDER. Not a fourth convention: it is the direction the panel's
-        // own fill already runs (it fills from the bottom) and the direction the
-        // wheel already means. One fact stated three times rather than three
-        // conventions to keep straight.
+        // own track already fills (from the bottom), the direction its handle
+        // travels, and the direction the wheel already means. One fact stated
+        // several times rather than several conventions to keep straight.
         onPressed: mouse => {
             rail.fromY = mouse.y;
             rail.fromVolume = Audio.volume;
@@ -621,10 +970,28 @@ Item {
         // the gesture; this one is pinned to a fixed edge at a fixed height and
         // cannot move, so there is nothing to cancel and the offset would only
         // be a number written twice.
+        //
+        // Through `put` rather than straight to Audio, so the handle tracks the
+        // finger EXACTLY while it is down instead of easing after it. A drag
+        // from the band and a drag on the handle are the same hand moving the
+        // same value, and only one of them looking like it is catching up would
+        // read as the band being the sloppier of the two.
         onPositionChanged: mouse => {
             if (rail.pressed)
-                Audio.setVolume(rail.fromVolume + (rail.fromY - mouse.y) * root.perPixel);
+                root.put(rail.fromVolume + (rail.fromY - mouse.y) * root.perPixel);
         }
+
+        // THE TAP THAT MOVES NOTHING is the one that has to leave the panel out.
+        //
+        // On a touchscreen this band is the only way to open the panel at all:
+        // there is no hover, so `active` cannot become true until something
+        // presses, and the press is this one. A finger that lands, opens the
+        // panel and lifts without dragging has changed no volume, so `linger`
+        // was never restarted, so the panel leaves with the finger, and the
+        // handle it just revealed was on screen for as long as the touch lasted
+        // and never once available to be grabbed. Restarted here, a tap on the
+        // edge is exactly what it looks like: a way of asking for the control.
+        onReleased: linger.restart()
 
         onWheel: wheel => root.nudge(wheel)
     }

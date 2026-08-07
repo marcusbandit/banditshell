@@ -393,7 +393,7 @@ banditshell/
 │   ├── media/
 │   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
 │   │   └── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
-│   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
+│   ├── VolumeRail.qml           scroll or shove the right edge; a slider comes out to be grabbed
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots

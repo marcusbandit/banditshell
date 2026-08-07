@@ -304,7 +304,7 @@ Singleton {
 
         // The right edge, as a volume rail. See modules/VolumeRail.qml.
         readonly property real volumeStep: root.cfg.volume.step
-        // The meter's THICKNESS, and no length beside it: the readout is three
+        // The meter's THICKNESS, and no length beside it: the readout is a count
         // of its own glyphs tall and derives that from the icon it stands under,
         // so the length is arithmetic in the rail rather than a token here. See
         // the note over `railWidth` in Config for what used to be here.

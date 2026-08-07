@@ -679,26 +679,36 @@ Singleton {
                 //
                 // Its LENGTH used to sit here as `railLength: 180`, and that
                 // number was measured against a rail which ran nearly the whole
-                // screen edge. The readout is a pill beside the band now, three
-                // of its own glyphs tall, derived from the icon it stands under
+                // screen edge. The readout is a pill beside the band now, a
+                // count of its own glyphs tall, derived from the icon it stands under
                 // (modules/VolumeRail.qml): the meter follows the type scale
                 // instead of having to be re-chosen every time the font base
                 // moves. Left here it would have been a second and disagreeing
                 // opinion about one shape, which is exactly how a stale magic
                 // number goes on looking like a setting.
                 //
-                // Ten reads as a stick rather than as a bar, which is the point.
-                // The value is carried by how much of the stick is lit, and a
-                // meter wide enough to be a surface in its own right starts
-                // wanting a border and a label to go with it. Under about twenty
-                // this only changes the stick, because the panel takes the larger
-                // of this and the icon above it; past twenty the whole readout
-                // widens with it.
-                railWidth: 10,
+                // SIXTEEN, and it went up from ten when the meter stopped being
+                // a meter and became a control you put a finger on.
+                //
+                // Ten was chosen to read "as a stick rather than as a bar", and
+                // that was the right thickness for a thing you only look at. A
+                // stick is the wrong thickness for a thing you grab: it says
+                // "reading" rather than "handle", and a track a finger cannot
+                // see either side of gives the eye nothing to aim the finger at.
+                // Sixteen is Material's own track, and it is what makes the gap
+                // either side of the handle legible; below about twelve the gap
+                // closes up and the handle stops reading as a separate object.
+                //
+                // Everything else in the readout is derived from this in
+                // modules/VolumeRail.qml (the handle's span and thickness, the
+                // gap, the stop dot, the inner corner radius), so this is still
+                // the one number that sizes the control: raise it and the whole
+                // slider grows in proportion rather than losing its shape.
+                railWidth: 16,
 
                 // HOW LONG THE METER IS, in glyphs of the icon standing under it.
                 //
-                // The comment above says the meter is "three of its own glyphs
+                // The comment above says the meter is a count "of its own glyphs
                 // tall, derived from the icon it stands under", and that is the
                 // right shape for the setting, but the number itself was left in
                 // modules/VolumeRail.qml with nothing declaring it. A key that is
@@ -711,14 +721,22 @@ Singleton {
                 // small blob, it is an absent one: the readout drew its glyph and
                 // its meter over the wallpaper with no body behind them at all.
                 //
-                // THREE, because the meter is a stick and a stick has to be long
-                // enough to read as a length rather than as a mark, while the
-                // readout stays something you glance at. It is expressed in
-                // glyphs rather than pixels so it follows the type scale: change
-                // the font base and the meter keeps its proportion to the icon it
-                // belongs with, which is what the old pixel `railLength` could
-                // not do.
-                meterGlyphs: 3,
+                // FIVE, and it went up from three for the same reason the width
+                // did: three was the length of a reading, and this is now the
+                // length of a TRAVEL. What a track has to be long enough for
+                // stopped being "read as a length rather than as a mark" and
+                // became "put the handle where you meant to", and that is a
+                // question about the hand rather than about the eye. At three
+                // glyphs the whole 0-to-150 range was seventy-odd pixels, so one
+                // pixel of finger was worth two points of volume and the handle
+                // could not be placed to better than about five; at five it is a
+                // point and a bit, which is finer than the wheel's own step.
+                //
+                // It is expressed in glyphs rather than pixels so it follows the
+                // type scale: change the font base and the track keeps its
+                // proportion to the icon it belongs with, which is what the old
+                // pixel `railLength` could not do.
+                meterGlyphs: 5,
 
                 // How long the readout stays after the last change. Long enough
                 // to see where a keypress landed, short enough that it is gone
