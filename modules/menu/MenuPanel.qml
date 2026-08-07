@@ -272,13 +272,50 @@ Item {
                 // root.prevSlot.
                 readonly property bool leaving: index === root.prevSlot && !fade.settled
 
-                // On screen at all, which is what a body is told through
-                // `showing` below and what its Loader stays alive for. The
-                // panel's own reveal is in it because a closed panel shows
-                // nothing however the pages feel about it: without that term a
-                // warm menu would go on scanning for the rest of the session,
-                // having been the last one open.
+                // On screen at all, which is what the Loader below stays alive
+                // for. The panel's own reveal is in it because a closed panel
+                // shows nothing however the pages feel about it: without that
+                // term a warm menu would go on scanning for the rest of the
+                // session, having been the last one open.
                 readonly property bool live: root.reveal > 0 && (page.current || page.leaving)
+
+                // ON SCREEN, AND THERE LONG ENOUGH TO BE READ. This is what a
+                // body is told, through `showing` below, and the difference
+                // between the two is the whole of why sweeping the gauge column
+                // used to stutter.
+                //
+                // A menu APPEARS on the frame it is asked for; that is
+                // MenuPanel's oldest rule and nothing here delays it. What is
+                // delayed is the WORK behind it, and one of those is not cheap:
+                // asking NetworkManager to start or stop scanning blocks the GUI
+                // thread for ten milliseconds, measured, because the setter is a
+                // synchronous trip over the bus. A hand moving up and down the
+                // column crosses the wifi gauge twice a second, in and out, so
+                // that was forty milliseconds of frozen shell per sweep, spent
+                // starting a scan nobody waited for and stopping it before a
+                // single result came back. The stutter was worst at the wifi
+                // gauge because the wifi gauge is the only one that pays it.
+                //
+                // So the panel holds the question open for a beat. Crossed, a
+                // menu is never believed and costs exactly what drawing it
+                // costs; rested on, it is believed a quarter of a second later
+                // and does its work then, which is still sooner than the first
+                // scan result could possibly arrive.
+                //
+                // SYMMETRIC, so leaving is on the same clock as arriving.
+                // Glancing at the next gauge and coming straight back does not
+                // stop and restart the radio, which would be the same ten
+                // milliseconds twice over for a menu that never went away.
+                property bool believed: false
+
+                onLiveChanged: settle.restart()
+
+                Timer {
+                    id: settle
+
+                    interval: Appearance.anim.settle
+                    onTriggered: page.believed = page.live
+                }
 
                 x: Appearance.padding.large
                 y: Appearance.padding.large
@@ -558,6 +595,13 @@ Item {
                     // watch anything while it is off screen, and `showing`
                     // below is how it is told which it is. A body that declares
                     // no such property is one with nothing to switch off.
+                    //
+                    // `showing` IS `believed`, NOT `live`, and the two are a
+                    // quarter of a second apart on purpose; see above. Being
+                    // built is separate from being read: a page crossed at speed
+                    // is still drawn, still the right size, still legible on the
+                    // frame it arrives. It is simply not asked to go and do
+                    // anything about it.
                     Loader {
                         id: bodyLoader
 
@@ -576,7 +620,7 @@ Item {
                         onLoaded: {
                             item.width = Qt.binding(() => page.width);
                             if (item.showing !== undefined)
-                                item.showing = Qt.binding(() => page.live);
+                                item.showing = Qt.binding(() => page.believed);
                         }
                     }
                 }

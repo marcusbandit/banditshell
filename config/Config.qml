@@ -217,6 +217,18 @@ Singleton {
                 // of icons says nothing, short enough that stopping on one feels
                 // answered rather than waited for.
                 tooltip: 450,
+                // The same question asked of a MENU, and answered on its behalf
+                // rather than on a label's: how long it has to be on screen
+                // before the shell believes somebody is reading it and lets it
+                // start doing whatever it does. A menu APPEARS the instant it is
+                // asked for, always; this only decides when the work behind it
+                // begins. Sweeping the column is then free, because a menu
+                // crossed in a tenth of a second is never once believed.
+                //
+                // Shorter than the tooltip, because a tooltip interrupts and
+                // this does not: the cost of being wrong here is a scan that
+                // started for nothing, not a label in your way.
+                settle: 250,
                 // How long two surfaces both draw the settings page while it
                 // changes hands between the shell and a window. See
                 // modules/settings/. Two frames at 60Hz.

@@ -211,6 +211,9 @@ Singleton {
 
         readonly property int grace: root.cfg.anim.grace
         readonly property int tooltip: root.cfg.anim.tooltip
+        // How long a menu has to be on screen before what is inside it is
+        // believed to be worth doing; see MenuPanel's page delegate.
+        readonly property int settle: root.cfg.anim.settle
         readonly property int handover: root.cfg.anim.handover
     }
 
