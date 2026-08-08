@@ -15,6 +15,9 @@
 #                                which a history that has quietly stopped growing
 #                                cannot tell you any other way.
 #   banditshell session toggle|open|close
+#   banditshell calculator toggle|open|close|answer <expression>
+#                                the keypad panel; `answer` evaluates and prints
+#                                without a surface: `calculator answer "2+3*4"`
 #   banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status
 #                                pull = shell -> window, put = window -> shell
 #   banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]
@@ -155,6 +158,22 @@ session)
     ipc session "${1:-toggle}"
     ;;
 
+# Spelled out rather than passed through the way session's is, because one verb
+# takes an argument: `answer` is the only route to the arithmetic that involves
+# no panel at all, so it has to be able to say what it could not parse.
+calculator | calc)
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    toggle | open | close) ipc calculator "$sub" ;;
+    answer)
+        [ $# -ge 1 ] || { echo "usage: banditshell calculator answer <expression>" >&2; exit 2; }
+        ipc calculator answer "$*"
+        ;;
+    *) echo "usage: banditshell calculator toggle|open|close|answer <expression>" >&2; exit 2 ;;
+    esac
+    ;;
+
 # THE WAY OUT, and the reason it exists is worth writing down.
 #
 # Several surfaces take the keyboard EXCLUSIVELY while they are up (the
@@ -178,7 +197,8 @@ session)
 # that works when something else has not.
 close | panic)
     for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
-                  "settings close" "notifications close" "notch close" "picker close"; do
+                  "settings close" "notifications close" "notch close" "picker close" \
+                  "calculator close"; do
         # Unquoted on purpose: this is the one place a verb and its argument
         # travel as one string and have to come apart again.
         # shellcheck disable=SC2086

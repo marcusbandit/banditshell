@@ -419,7 +419,25 @@ Item {
             root.show();
     }
 
+    // WHAT THE QUERY COMES TO, when the query is a sum, and whose key Return
+    // currently is. The list concept carries the whole argument at its own pair;
+    // both concepts answer the same question the same way, because the launcher
+    // you happen to have configured should not change what typing a sum into it
+    // means. See modules/launcher/AnswerRow.qml.
+    readonly property var answer: Calc.answer(query.text)
+    property bool answerHolds: false
+
+    onAnswerChanged: root.answerHolds = !!root.answer
+
     function accept(): void {
+        if (root.answerHolds && root.answer) {
+            Clipboard.copy({
+                text: root.answer.text
+            });
+            root.hide();
+            return;
+        }
+
         const entry = root.rows[root.selected]?.entry;
         if (entry) {
             Apps.launch(entry);
@@ -442,6 +460,9 @@ Item {
     }
 
     function move(delta: int): void {
+        // Stepping into the list is the handover, and it happens even when there
+        // is nothing to step onto: see the list concept's `move`.
+        root.answerHolds = false;
         if (root.rows.length)
             root.selectRow(root.firstApp(root.selected + delta, delta >= 0 ? 1 : -1));
     }
@@ -988,6 +1009,34 @@ Item {
                 }
             }
 
+            // DIRECTLY OVER THE FIELD, because this concept puts its search at
+            // the BOTTOM and everything stacks upward off it: the answer belongs
+            // against the thing that produced it, wherever that thing happens to
+            // be. In the list concept the field is at the top and the row is
+            // under it for the same reason.
+            AnswerRow {
+                id: answerRow
+
+                anchors.left: parent.left
+                anchors.right: rail.left
+                anchors.bottom: field.top
+                anchors.leftMargin: Appearance.padding.large
+                anchors.rightMargin: Appearance.padding.normal
+
+                iconSize: root.gutter
+                rowHeight: root.rowPitch
+                labelSize: Appearance.font.size.normal
+
+                result: root.answer
+                expression: query.text
+                holds: root.answerHolds
+
+                onCopied: {
+                    root.answerHolds = true;
+                    root.accept();
+                }
+            }
+
             // THE ROOM the column has. The list is placed inside it rather than
             // stretched to it; see list.height for why.
             Item {
@@ -996,7 +1045,7 @@ Item {
                 anchors.left: parent.left
                 anchors.right: rail.left
                 anchors.top: parent.top
-                anchors.bottom: field.top
+                anchors.bottom: answerRow.visible ? answerRow.top : field.top
                 anchors.leftMargin: Appearance.padding.large
                 anchors.rightMargin: Appearance.padding.normal
                 anchors.topMargin: Appearance.padding.large
@@ -1004,7 +1053,8 @@ Item {
 
                 StyledText {
                     anchors.centerIn: parent
-                    visible: !root.rows.length
+                    // Never under an answer; the list concept says why.
+                    visible: !root.rows.length && !root.answer
                     text: query.text ? "nothing matches" : "no applications found"
                     font.pixelSize: Appearance.font.size.normal
                     color: Appearance.colour.textGhost
@@ -1249,6 +1299,7 @@ Item {
                                     Apps.setHidden(row.entry, !row.away);
                                     return;
                                 }
+                                root.answerHolds = false;
                                 root.selected = row.index;
                                 root.accept();
                             }

@@ -394,6 +394,10 @@ banditshell/
 │   │                            list is the only place "file" differs from "text"
 │   ├── Settings.qml             the settings page's state, and its handover
 │   ├── Power.qml                the ways a session can end, and how each is done
+│   ├── Calc.qml                 arithmetic, once: how a number is written, what an
+│   │                            operator does, and what a TYPED expression means.
+│   │                            Two inputs onto one question, so they cannot
+│   │                            disagree; the keypad's own state is not here
 │   ├── Lock.qml                 whether the screen is locked, and what decides it
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
@@ -411,7 +415,14 @@ banditshell/
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots
 │   │                            that cross-fade, motion only on an empty workspace
-│   ├── launcher/Launcher.qml    grows out of the sidebar; the one keyboard grab
+│   ├── launcher/                grows out of the sidebar; the one keyboard grab
+│   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
+│   │   ├── ListLauncher.qml     a search field over everything installed
+│   │   ├── NiagaraLauncher.qml  text before icons; the alphabet on a rail
+│   │   ├── AnswerRow.qml        the sum you typed, answered under the field.
+│   │   │                        Enter copies it; arrowing hands Return back to
+│   │   │                        the list. Both concepts draw the same row
+│   │   └── LaunchEdge.qml       the bottom band as the way to pull it out
 │   ├── clipboard/               what you copied; the launcher's twin
 │   │   ├── ClipboardPanel.qml   two tabs, a list, and `/` for the search that
 │   │   │                        is not there until it is asked for; the list and
@@ -421,6 +432,10 @@ banditshell/
 │   │   └── ClipDetail.qml       one thing properly: whole, formatted, coloured.
 │   │                            A right arrow or a swipe right away
 │   ├── session/SessionMenu.qml  power, on the right edge, summoned by name
+│   ├── calculator/              the keypad, out of the sidebar's flank: the power
+│   │   └── CalculatorPanel.qml  panel's twin, mirrored. Summoned by name, so it
+│   │                            takes the keyboard and the number row drives it.
+│   │                            NOT a fifth gauge; a gauge answers a glance
 │   ├── lock/                    the lock: one compositor surface per screen, one face
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
@@ -450,6 +465,8 @@ banditshell/
 │   │       ├── SoundMenu.qml    NetworkMenu.qml   in the bar: the four gauges
 │   │       ├── BluetoothMenu.qml BatteryMenu.qml
 │   │       ├── CalendarMenu.qml a month; the clock's date is its opener
+│       ├── CalculatorMenu.qml the keypad. A menu BODY, so the panel above and
+│       │                    a menu are one object; the answer stays on the line
 │   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"

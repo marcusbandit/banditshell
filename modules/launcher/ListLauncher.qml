@@ -62,6 +62,24 @@ Item {
     readonly property var results: Apps.search(query.text)
     property int selected: 0
 
+    // WHAT THE QUERY COMES TO, when the query is a sum. Null for everything
+    // else, which is nearly everything: Calc.answer refuses anything that did
+    // not actually ask for a calculation, so a search for "7" is a search and
+    // only an expression carrying an operator gets a row. See
+    // modules/launcher/AnswerRow.qml.
+    readonly property var answer: Calc.answer(query.text)
+
+    // WHOSE KEY RETURN IS. It starts as the answer's, because a query that
+    // parses as a sum is one somebody typed on purpose and the row is right
+    // under the caret; it becomes the list's the moment they step into the list,
+    // which is the only unambiguous signal that they meant an application after
+    // all. Re-armed on every change to the query, so correcting a typo in a sum
+    // gives the answer the key back rather than leaving it with a list nobody is
+    // looking at.
+    property bool answerHolds: false
+
+    onAnswerChanged: root.answerHolds = !!root.answer
+
     // One row's pitch, computed HERE and handed to the rows, rather than read
     // back off the list once it has laid itself out.
     //
@@ -190,6 +208,20 @@ Item {
     }
 
     function accept(): void {
+        // ONTO THE CLIPBOARD, which is the only thing an answer can usefully
+        // become: it was asked for in the middle of doing something else, and
+        // what you want is it in the thing you were doing. Through the same
+        // service the clipboard panel writes with, so the answer lands in the
+        // history like any other copy rather than as a special case nothing else
+        // knows about.
+        if (root.answerHolds && root.answer) {
+            Clipboard.copy({
+                text: root.answer.text
+            });
+            root.hide();
+            return;
+        }
+
         const entry = root.results[root.selected];
         if (entry) {
             Apps.launch(entry);
@@ -206,15 +238,32 @@ Item {
     // you feel every time. The view follows, so arrowing past the bottom scrolls
     // rather than moving a selection you can no longer see.
     function move(delta: int): void {
+        // ARROWING IS THE HANDOVER, and it happens even when there is nothing to
+        // arrow to: pressing Down with an answer up and no applications matching
+        // is still somebody saying they did not mean the answer, and leaving the
+        // key with it because the list happened to be empty would make the
+        // gesture depend on what else was on screen.
+        root.answerHolds = false;
         const n = root.results.length;
         if (n <= 0)
             return;
         root.moveTo((root.selected + delta + n) % n);
     }
 
+    // A ROW, CHOSEN OUTRIGHT. Clicking an application is as clear a handover as
+    // arrowing onto one, and without this the click would land on `accept` while
+    // the answer still held the key and copy a number instead of launching what
+    // was pressed.
+    function chooseRow(index: int): void {
+        root.answerHolds = false;
+        root.selected = index;
+        root.accept();
+    }
+
     // Absolute, and CLAMPED rather than wrapped: a page down near the end means
     // "the end", not "back to the top".
     function moveTo(index: int): void {
+        root.answerHolds = false;
         const n = root.results.length;
         if (n <= 0)
             return;
@@ -424,7 +473,7 @@ Item {
         // it made the two chase each other: the panel starts its rise down at
         // the band, where the room left below is zero, so the height it was
         // growing towards was zero and it could never leave.
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + list.needed)
+        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + list.needed)
 
         height: grow.value * root.revealed
 
@@ -547,6 +596,24 @@ Item {
                     width: parent.width
                 }
 
+                AnswerRow {
+                    id: answerRow
+
+                    width: parent.width
+                    iconSize: Appearance.sizes.launcherIcon
+                    rowHeight: root.rowPitch
+                    labelSize: Appearance.font.size.normal
+
+                    result: root.answer
+                    expression: query.text
+                    holds: root.answerHolds
+
+                    onCopied: {
+                        root.answerHolds = true;
+                        root.accept();
+                    }
+                }
+
                 // A LIST VIEW, not a Column. Nothing is truncated any more, so
                 // with an empty query this is every application installed; a
                 // Column would build a row for every one of them on every
@@ -600,18 +667,21 @@ Item {
                         icon: "apps"
                         label: modelData.name ?? ""
                         detail: modelData.genericName || modelData.comment || ""
-                        selected: index === root.selected
+                        // Never while the answer above still owns Return: two
+                        // rows drawn as the selection is two answers to what
+                        // Enter does, and only one of them is true.
+                        selected: index === root.selected && !root.answerHolds
 
-                        onActivated: {
-                            root.selected = index;
-                            root.accept();
-                        }
+                        onActivated: root.chooseRow(index)
                     }
 
                     StyledText {
                         id: empty
 
-                        visible: !root.results.length
+                        // Never under an answer. A sum that came out is a match,
+                        // and a panel showing 14 over the words "nothing
+                        // matches" is disagreeing with itself.
+                        visible: !root.results.length && !root.answer
                         text: query.text ? "nothing matches" : "no applications found"
                         color: Appearance.colour.textFaint
                         font.pixelSize: Appearance.font.size.small

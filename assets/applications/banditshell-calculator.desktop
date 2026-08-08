@@ -1,0 +1,22 @@
+[Desktop Entry]
+Type=Application
+Name=Calculator
+GenericName=Arithmetic
+Comment=The shell's keypad panel
+# The CLI, not a window: this shell draws no windows of its own, so there is
+# nothing here to exec directly. `banditshell calculator` asks the running shell
+# over IPC to put its panel out, which is the same route the keybind takes.
+#
+# TOGGLE rather than open, so the entry behaves the way the key does: launching
+# it twice puts the panel away, which is what everything else that summons a
+# surface in this shell already contracts to (docs/hyprland-binds.example.conf
+# says the same sentence about every bind in it).
+Exec=banditshell calculator toggle
+Icon=accessories-calculator
+Terminal=false
+# NoDisplay is deliberately off. The whole reason this file exists is that it
+# lands in the launcher's own list, so the panel is reachable by typing its name
+# as well as by the key, and by any other application menu on the machine.
+Categories=Utility;Calculator;
+Keywords=calculator;arithmetic;maths;math;
+StartupNotify=false

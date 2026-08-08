@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.config
+import qs.modules.calculator
 import qs.modules.cheatsheet
 import qs.modules.clipboard
 import qs.modules.menu
@@ -42,6 +43,10 @@ PanelWindow {
     readonly property ClipboardPanel clipboard: clipLayer
     readonly property WallpaperPicker wallpapers: wallpaperLayer
     readonly property SessionMenu session: sessionLayer
+    // Summoned by name exactly as the power panel is, and out of the opposite
+    // flank; see modules/calculator/CalculatorPanel.qml for why it is a panel
+    // rather than a fifth gauge.
+    readonly property CalculatorPanel calculator: calcLayer
     readonly property SettingsPanel settings: settingsLayer
     // NAMED FOR THE IPC TARGET, not for the type, like every line above it:
     // modules/Ipc.qml reaches this as `win.hotkeys` and `hotkeys status` reads
@@ -195,7 +200,7 @@ PanelWindow {
     // corner or the strip, one push back into the edge it came out of, or one
     // CLI call from being gone; and the surface holding the keyboard is on
     // screen the whole time it holds it.
-    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -266,6 +271,13 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: sessionLayer.open ? sessionLayer.maskItem : null
+        }
+
+        // The same entry for the same reason, on the other flank. A calculator
+        // you asked for by name has no edge to leave either.
+        Region {
+            intersection: Intersection.Combine
+            item: calcLayer.open ? calcLayer.maskItem : null
         }
 
         // The whole screen while the sheet is out, so a click anywhere off it
@@ -457,6 +469,8 @@ PanelWindow {
                 sessionLayer.hide();
             else if (cheatLayer.open)
                 cheatLayer.hide();
+            else if (calcLayer.open)
+                calcLayer.hide();
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
             else if (settingsLayer.docked)
@@ -483,7 +497,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -665,7 +679,7 @@ PanelWindow {
             // these layers: this file is the one place that can see all of them
             // at once, and a tray reaching up here by id would be the layer
             // reading the file that declares it.
-            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
+            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard
         }
 
         Menus {
@@ -695,7 +709,7 @@ PanelWindow {
             // panels it cannot see. Naming its own claim here as well would be
             // one fact in two places, and the copy out here would be the one to
             // go stale.
-            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open
+            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open
         }
 
         Launcher {
@@ -714,6 +728,7 @@ PanelWindow {
                 cheatLayer.hide();
                 wallpaperLayer.hide();
                 clipLayer.hide();
+                calcLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -740,6 +755,7 @@ PanelWindow {
                 wallpaperLayer.hide();
                 sessionLayer.hide();
                 cheatLayer.hide();
+                calcLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -803,6 +819,33 @@ PanelWindow {
                 launcherLayer.hide();
                 clipLayer.hide();
                 cheatLayer.hide();
+                calcLayer.hide();
+                if (menuLayer.needsKeyboard)
+                    menuLayer.hide();
+            }
+        }
+
+        // Arithmetic, out of the sidebar's flank: the power panel's twin,
+        // mirrored. Summoned by name, keyboard taken outright, whole screen in
+        // the mask so a click anywhere off it puts it away, and mutually
+        // exclusive with everything else that takes the keyboard for exactly the
+        // reason spelled out over the power panel above.
+        //
+        // GIVEN ONLY `originX`, where the panels around it are given an inset
+        // too: it is centred on the screen rather than hung from a band, so the
+        // only thing it has to know is where the chassis stops.
+        CalculatorPanel {
+            id: calcLayer
+
+            anchors.fill: parent
+            originX: chassis.barWidth
+
+            onOpenChanged: if (open) {
+                launcherLayer.hide();
+                clipLayer.hide();
+                wallpaperLayer.hide();
+                sessionLayer.hide();
+                cheatLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -863,6 +906,7 @@ PanelWindow {
                 launcherLayer.hide();
                 clipLayer.hide();
                 sessionLayer.hide();
+                calcLayer.hide();
                 if (settingsLayer.docked)
                     settingsLayer.hide();
                 if (menuLayer.needsKeyboard)
@@ -1118,7 +1162,7 @@ PanelWindow {
             // The tray's note above, verbatim and for the same reason: a pin must
             // not take the keyboard off whatever is being typed into, and `notch
             // open` is as much a keybind as `notifications open` is.
-            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || menuLayer.needsKeyboard
+            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard
         }
 
         // LOAD-BEARING, and its blob above must stay in `panels`. This is the

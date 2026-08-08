@@ -264,6 +264,50 @@ Scope {
         }
     }
 
+    // The calculator, driven exactly like the power panel above and for the same
+    // reason: it is summoned by name from wherever you were, so it belongs on ONE
+    // known screen rather than on whichever one holds the focused window, and
+    // `close` reaches every screen because "put it away" is not a question about
+    // a monitor.
+    //
+    // THIS IS ALSO WHAT THE .desktop ENTRY RUNS. A desktop file is a keybind
+    // somebody else's menu owns, so the route has to be the CLI rather than
+    // anything that assumes a shell already has the pointer: see
+    // assets/applications/banditshell-calculator.desktop, which is nothing but
+    // `banditshell calculator`.
+    IpcHandler {
+        target: "calculator"
+
+        function toggle(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.calculator.toggle();
+            return win.calculator.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Shell.forScreen("")?.calculator.show();
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.calculator.hide();
+            return "closed";
+        }
+
+        // WHAT IS ON THE LINE, so the panel is scriptable in the one way a
+        // calculator can be: `banditshell calculator answer "2+3*4"` prints 14
+        // without a surface being involved at all. Straight through the same
+        // service the panel and the launcher use, so a terminal cannot be told a
+        // different answer from a screen.
+        function answer(expression: string): string {
+            const result = Calc.evaluate(expression);
+            return result ? result.text : `not an expression: ${expression}`;
+        }
+    }
+
     // The hotkey sheet: every bind the compositor knows about, read off it
     // rather than out of a list in this repo. Driven exactly like the power
     // panel above, and for the same reason: it is summoned by name from

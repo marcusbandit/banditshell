@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 // Arithmetic, on a surface with no keyboard.
 //
@@ -85,13 +86,6 @@ Column {
 
     // ------------------------------------------------------------------
     // TOKENS AND UNITS.
-
-    // How much of a float to believe. Binary floating point cannot hold 0.1, so
-    // 0.1 + 0.2 is 0.30000000000000004 and a calculator that prints it is a
-    // calculator nobody trusts. Rounding to twelve significant figures throws
-    // that tail away and keeps every digit anybody typed, since a double carries
-    // between fifteen and seventeen and no hand enters twelve.
-    readonly property int precision: 12
 
     // The gap between keys, and the same gap between rows: a keypad is a grid,
     // and a grid whose two axes disagree reads as two grids.
@@ -208,28 +202,18 @@ Column {
     ]
 
     // ------------------------------------------------------------------
-    // ARITHMETIC.
-
-    // A NUMBER, WRITTEN THE WAY A PERSON WOULD. Trailing zeros go, because
-    // toPrecision keeps them and "4.00000000000" is not an answer; the round trip
-    // through parseFloat is what drops them without a regular expression that
-    // would also eat the zeros in 4000.
+    // ARITHMETIC, all of which is services/Calc.qml's.
     //
-    // The two non-numbers get a glyph each rather than the engine's own words:
-    // "Infinity" is eight characters wide on a line that holds fourteen, and
-    // "NaN" tells you which language the shell is written in rather than what
-    // went wrong.
-    function format(n: real): string {
-        if (isNaN(n))
-            return "?";
-        if (!isFinite(n))
-            return n > 0 ? "∞" : "-∞";
-        return parseFloat(n.toPrecision(root.precision)).toString();
-    }
+    // How a number is written and what an operator does are shared with the
+    // launcher's answer row, and the one thing two calculators in one shell must
+    // not do is disagree. What stays here is the STATE below: which operator is
+    // pending and whether the line holds something somebody typed are facts
+    // about this panel being operated, and they die with it.
 
-    // The line, back as a number. The two glyphs above are read back so a sum
-    // continued off an infinity stays honest rather than silently becoming zero;
-    // anything else unparseable is a "?" the user is about to type over anyway.
+    // The line, back as a number. Calc's two non-number glyphs are read back so
+    // a sum continued off an infinity stays honest rather than silently becoming
+    // zero; anything else unparseable is a "?" the user is about to type over
+    // anyway.
     function value(): real {
         if (root.entry === "∞")
             return Infinity;
@@ -237,23 +221,6 @@ Column {
             return -Infinity;
         const v = parseFloat(root.entry);
         return isNaN(v) ? 0 : v;
-    }
-
-    // The whole of what this calculator does. Switched on the glyph the key
-    // draws, so there is no operation the keypad can name that this cannot
-    // perform (see the header).
-    function compute(a: real, o: string, b: real): real {
-        switch (o) {
-        case "+":
-            return a + b;
-        case "−":
-            return a - b;
-        case "×":
-            return a * b;
-        case "÷":
-            return a / b;
-        }
-        return b;
     }
 
     // ------------------------------------------------------------------
@@ -345,10 +312,10 @@ Column {
         const a = root.acc;
         const o = root.op;
         const b = root.value();
-        const r = root.compute(a, o, b);
+        const r = Calc.apply(a, o, b);
 
-        root.history = `${root.format(a)} ${o} ${root.format(b)} = ${root.format(r)}`;
-        root.entry = root.format(r);
+        root.history = `${Calc.format(a)} ${o} ${Calc.format(b)} = ${Calc.format(r)}`;
+        root.entry = Calc.format(r);
         root.acc = r;
         root.op = "";
         root.typed = false;
@@ -395,6 +362,96 @@ Column {
         }
     }
 
+    // A KEY EVENT, ON THE SAME KEYPAD, and whether it was one this panel wanted.
+    //
+    // The file header says there is no keyboard on this surface, and that stays
+    // true of the MENU: a hovered menu that took every key would take it from
+    // whatever you were doing, which is the whole reason the input here is
+    // targets. A panel SUMMONED by name is the opposite case (see
+    // modules/calculator/CalculatorPanel.qml): it already holds the keyboard
+    // exclusively, so the number row is free, and refusing to answer it would be
+    // a calculator you are forbidden to type into for no reason you could name.
+    //
+    // Routed through the same `press` every target goes through rather than
+    // calling `digit` and `operate` directly, so a key and a click cannot come to
+    // mean different things. The return value is what lets the caller leave
+    // everything else to fall through: a panel that swallowed every key would
+    // eat the ones its own container needs.
+    function typeKey(key: int, text: string): bool {
+        if (key === Qt.Key_Backspace) {
+            root.press({
+                tag: "back"
+            });
+            return true;
+        }
+
+        if (key === Qt.Key_Delete) {
+            root.press({
+                tag: "clear"
+            });
+            return true;
+        }
+
+        // Enter is equals, which is the one place a keyboard has an opinion the
+        // keypad does not: every field in the shell commits on Return, and a
+        // calculator's commit is its answer.
+        if (key === Qt.Key_Return || key === Qt.Key_Enter) {
+            root.press({
+                tag: "equals"
+            });
+            return true;
+        }
+
+        const c = text ?? "";
+        if (c.length !== 1)
+            return false;
+
+        if (c >= "0" && c <= "9") {
+            root.press({
+                tag: "digit",
+                label: c
+            });
+            return true;
+        }
+
+        // Both separators, because a keypad's decimal key is a comma on half the
+        // layouts in Europe and this panel writes a point either way.
+        if (c === "." || c === ",") {
+            root.press({
+                tag: "dot"
+            });
+            return true;
+        }
+
+        if (c === "=") {
+            root.press({
+                tag: "equals"
+            });
+            return true;
+        }
+
+        if (c === "c" || c === "C") {
+            root.press({
+                tag: "clear"
+            });
+            return true;
+        }
+
+        // ASCII AND THE REAL GLYPHS ALIKE, through Calc's own table: `*` and `×`
+        // are one operation with two spellings, and the shell answers to
+        // whichever one a keyboard happens to produce.
+        const o = Calc.operators[c];
+        if (o !== undefined) {
+            root.press({
+                tag: "op",
+                label: o
+            });
+            return true;
+        }
+
+        return false;
+    }
+
     // ------------------------------------------------------------------
     // THE LINE UNDER THE ANSWER.
     //
@@ -411,7 +468,7 @@ Column {
     readonly property string working: {
         if (root.op === "")
             return root.history;
-        const left = `${root.format(root.acc)} ${root.op}`;
+        const left = `${Calc.format(root.acc)} ${root.op}`;
         return root.typed ? `${left} ${root.entry}` : left;
     }
 
