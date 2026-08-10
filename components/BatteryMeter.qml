@@ -32,6 +32,16 @@ Item {
     // the charge sits in, not something being said.
     property color trackColour: Appearance.colour.fillStronger
 
+    // THE BOLT IS THE ONE ACCENT IN THE BAR THAT IS NOT AN ALERT.
+    //
+    // modules/sidebar/StatusIcon.qml keeps accent for `alert` alone, so that a
+    // colour in the bar always means the same thing, and this is a deliberate
+    // exception to that rather than an oversight: charging is the one state the
+    // bar reports that is good news, and it is already saying so with a shape
+    // nothing else in the bar has. The rule holds where it matters, which is
+    // that accent never appears here on a state you would want to ignore.
+    property color boltColour: Appearance.colour.accent
+
     readonly property real unit: Appearance.font.iconSize
 
     // Every part is a fraction of the icon size rather than a pixel count, so
@@ -132,20 +142,27 @@ Item {
         // from discharging, because the only other difference was one label
         // tier, and hovering produces that same tier for a different reason.
         //
-        // Filled in the lit colour and stroked in the track's, so it reads at
+        // Stroked in the track's colour, which is what lets one shape read at
         // any level without knowing where the charge has got to: over the empty
-        // end the body carries it and the stroke vanishes into the track, and
-        // over the charge the two swap jobs and the stroke is the thing you
-        // see. One stroked shape rather than the two masked copies BatteryTank
-        // uses for the same problem, because that costs two layer textures and
-        // this is a 20px icon that is always on screen.
+        // end the green body carries it, and over the charge, where green sits
+        // on a near-white fill, the dark outline is what separates them.
+        //
+        // The stroke is also the backstop for the one case where the bolt and
+        // the fill are the SAME colour: a low battery on the charger, where
+        // `alert` turns the fill accent too. That stays legible mostly because
+        // `low` caps the fill at a fifth of the bar while the bolt is centred,
+        // so the two barely overlap, and the outline covers what is left.
+        //
+        // One stroked shape rather than the two masked copies BatteryTank uses
+        // for the same problem, because that costs two layer textures and this
+        // is a 20px icon that is always on screen.
         Shape {
             anchors.fill: parent
             visible: root.charging
             preferredRendererType: Shape.CurveRenderer
 
             ShapePath {
-                fillColor: root.colour
+                fillColor: root.boltColour
                 strokeColor: root.trackColour
                 strokeWidth: Math.max(1, Math.round(root.height * 0.1))
 
