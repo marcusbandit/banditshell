@@ -15,18 +15,36 @@ import Quickshell.Io
 // get wrong. Everything else is expected to ask first, and it is the caller that
 // asks, because what a confirmation looks like belongs to the thing being
 // clicked, not to this table.
+//
+// ORDERED MOST FINAL FIRST, because Shut down is the one you come here to press
+// and hunting for it at the bottom of a list of things you did not want is the
+// whole complaint. The rest follow it down the same gradient, so the list reads
+// as one scale rather than an arbitrary order with the popular entry lifted out
+// of it. Everything above Lock still asks twice; position is not permission.
 Singleton {
     id: root
 
     readonly property var actions: [
         {
-            key: "lock",
-            icon: "lock",
-            label: "Lock",
+            key: "poweroff",
+            icon: "power_settings_new",
+            label: "Shut down",
             detail: "",
-            // Locking is harmless and instant, so it is the one that does not ask.
-            safe: true,
-            command: ["loginctl", "lock-session"]
+            command: ["systemctl", "poweroff"]
+        },
+        {
+            key: "reboot",
+            icon: "restart_alt",
+            label: "Restart",
+            detail: "",
+            command: ["systemctl", "reboot"]
+        },
+        {
+            key: "logout",
+            icon: "logout",
+            label: "Log out",
+            detail: "ends this session",
+            command: ["loginctl", "terminate-user", ""]
         },
         {
             key: "suspend",
@@ -37,25 +55,13 @@ Singleton {
             command: ["systemctl", "suspend"]
         },
         {
-            key: "logout",
-            icon: "logout",
-            label: "Log out",
-            detail: "ends this session",
-            command: ["loginctl", "terminate-user", ""]
-        },
-        {
-            key: "reboot",
-            icon: "restart_alt",
-            label: "Restart",
+            key: "lock",
+            icon: "lock",
+            label: "Lock",
             detail: "",
-            command: ["systemctl", "reboot"]
-        },
-        {
-            key: "poweroff",
-            icon: "power_settings_new",
-            label: "Shut down",
-            detail: "",
-            command: ["systemctl", "poweroff"]
+            // Locking is harmless and instant, so it is the one that does not ask.
+            safe: true,
+            command: ["loginctl", "lock-session"]
         }
     ]
 

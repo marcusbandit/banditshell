@@ -38,7 +38,7 @@ Item {
     // one per input: hovering and arrowing are the same question, and a panel
     // that tracked them separately would show two chosen buttons the moment you
     // touched the mouse after using the keys.
-    property int selected: 0
+    property int selected: root.resting
 
     // The action that has been asked for once and is waiting to be asked again,
     // by key. "" is the resting state.
@@ -50,6 +50,13 @@ Item {
     property string restoreTo: ""
 
     readonly property var actions: Power.actions
+
+    // WHERE THE PANEL OPENS, which is not the top. Shut down is first in the
+    // list, and a panel that arrives with it already chosen puts the end of the
+    // session under whatever you press next. Found rather than written down: the
+    // first entry that costs nothing to get wrong, so reordering the table moves
+    // this with it and adding an entry above Lock cannot quietly arm anything.
+    readonly property int resting: Math.max(0, root.actions.findIndex(a => a.safe))
 
     // The WHOLE screen while it is open, so a click anywhere outside puts it
     // away. Same shape as the launcher's catcher.
@@ -110,7 +117,7 @@ Item {
         if (root.shown)
             return;
         root.restoreTo = Hypr.focusedAddress;
-        root.selected = 0;
+        root.selected = root.resting;
         root.arming = "";
         root.shown = true;
         // DEFERRED: the surface only asks the compositor for the keyboard once
@@ -145,8 +152,9 @@ Item {
     }
 
     // Clamped rather than wrapped. The list is short enough to see all of at
-    // once, and wrapping from Shut down back to Lock puts the most destructive
-    // entry one keypress from the least.
+    // once, and wrapping past Lock onto Shut down puts the most destructive entry
+    // one keypress off the least, which is exactly the press you make when you
+    // have run out of list and not noticed.
     function move(delta: int): void {
         root.choose(Math.max(0, Math.min(root.actions.length - 1, root.selected + delta)));
     }
