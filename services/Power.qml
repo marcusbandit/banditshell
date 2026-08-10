@@ -7,9 +7,12 @@ import Quickshell.Io
 // The ways a session can end, and how each one is actually done.
 //
 // Here rather than inside either thing that draws it. The panel on the right
-// edge and the power menu parked for the dashboard offer the same five choices,
+// edge and the power menu parked for the dashboard offer the same four choices,
 // and a list of ways to lose your work that exists in two files is a list that
 // will eventually disagree with itself about which one reboots.
+//
+// Suspend is not on it. Both surfaces are reached deliberately, and an entry
+// nobody presses is an entry the cursor still has to travel past.
 //
 // `safe` is the whole safety model: it marks the actions that cost nothing to
 // get wrong. Everything else is expected to ask first, and it is the caller that
@@ -45,14 +48,6 @@ Singleton {
             label: "Log out",
             detail: "ends this session",
             command: ["loginctl", "terminate-user", ""]
-        },
-        {
-            key: "suspend",
-            icon: "bedtime",
-            label: "Suspend",
-            detail: "sleep to RAM",
-            safe: true,
-            command: ["systemctl", "suspend"]
         },
         {
             key: "lock",

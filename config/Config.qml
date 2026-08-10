@@ -869,12 +869,18 @@ Singleton {
                 // at, and this is the one surface in the shell where a misplaced
                 // click ends the session. A target you have to arrive at
                 // deliberately is part of the safety, not decoration.
-                button: 59,
+                //
+                // The panel names every button now instead of captioning one at
+                // a time, so the squares no longer have to be small enough for
+                // five of them to fit under a caption. This is the size the
+                // safety argument wanted in the first place.
+                button: 72,
 
                 // The mark inside it, relative to the shell's icon size. The bar
-                // draws icons at 20 because they sit in a 52px band; in a 56px
-                // button that reads as a small glyph adrift in a large square.
-                iconScale: 1.4
+                // draws icons at 20 because they sit in a 52px band; in a button
+                // this size that reads as a small glyph adrift in a large square.
+                // Raised with the button so the glyph keeps its share of it.
+                iconScale: 1.7
             },
 
             // The settings page. See modules/settings/.

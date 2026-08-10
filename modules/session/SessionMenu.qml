@@ -16,14 +16,29 @@ import qs.services
 //
 // EVERY DESTRUCTIVE ENTRY ASKS FIRST, in place. Not a modal and not an "are you
 // sure" that trains you to click yes: the button itself becomes the question,
-// and anything else you do answers no. The two that cost nothing to get wrong
-// (lock, suspend) go on the first press; see services/Power.qml for which is
-// which.
+// and anything else you do answers no. The one that costs nothing to get wrong
+// (lock) goes on the first press; see services/Power.qml for which is which.
 //
-// It is icon-only, like the one it replaces, so ONE caption under the column
-// says what is currently chosen. One line serving five buttons rather than five
-// labels: the labels would be read once and then never again, and the caption is
-// the only thing on screen during the confirm, which is the moment it matters.
+// NO WORDS ON IT. Four marks in a column and nothing else.
+//
+// This had a caption naming whichever button was chosen, and then briefly a full
+// list of names beside them. Both were answering a question this panel does not
+// get asked: it is opened by a keybind, by someone who put the keybind there, to
+// press one of four things they already know. The names were furniture, and they
+// set the panel's width, so the whole shape was sized by text nobody was reading.
+// The confirm speaks in the mark instead, which is where you are already looking.
+//
+// The buttons are one GROUP rather than four loose squares. They are variants of
+// a single choice and they are always all four, which a shared shell says in a
+// way four gaps of background cannot.
+//
+// WHAT IS CHOSEN IS ONE SHAPE THAT MOVES, not a fill that turns on in a new
+// square. Four buttons in a fixed column is exactly the case where a snapping
+// highlight reads as a flicker: nothing travels, so the eye has to re-find the
+// mark after every step. A marker that slides carries your attention with it, and
+// it is the same exponential chase everything else in this shell tracks with, so
+// dragging the cursor down the column drags the shape rather than restarting an
+// animation four times. See components/Follow.qml.
 Item {
     id: root
 
@@ -63,38 +78,42 @@ Item {
     readonly property Item maskItem: catcher
 
     readonly property real button: Appearance.sizes.sessionButton
-    readonly property real gap: Appearance.padding.normal
 
-    // What a confirm says. Its own line under the label rather than appended to
-    // it, so the label stays the label: during a confirm you want to read WHAT
-    // is about to happen at least as much as what to do about it.
-    readonly property string hint: "press again"
+    // ONE step, used for the space between rows and for the group's own inset.
+    // The gap inside the group and the gap around it being the same is what
+    // makes it read as a group and not as a border: the buttons are spaced by
+    // the shell they sit in rather than by a rule of their own.
+    readonly property real gap: Appearance.padding.small
 
-    // Sized for the LONGEST caption it can ever show, not the one it is showing.
-    //
-    // The caption changes on the same press that arms a button, so a panel sized
-    // to fit would step wider at exactly the moment you are being asked to
-    // confirm, and the shape would be answering the click as well as the
-    // question. Measured off the action table rather than guessed, so adding an
-    // entry cannot outgrow it.
-    readonly property string widestCaption: {
-        let widest = root.hint;
-        for (const entry of root.actions)
-            if (entry.label.length > widest.length)
-                widest = entry.label;
-        return widest;
-    }
+    // The panel's own margin. Down a tier from the old one, which was set when
+    // the panel had a caption under it and needed the width to look deliberate.
+    // Around a group that is already inset by its own shell, the wider margin
+    // just read as unclaimed space.
+    readonly property real pad: Appearance.padding.normal
 
-    readonly property real contentWidth: Math.max(root.button, caption.width)
+    // ONE ROW TO THE NEXT, which is the only distance the marker knows. Every
+    // position in the column is this times an index; nothing here holds a list of
+    // where the four buttons are.
+    readonly property real step: root.button + root.gap
 
-    // Measured off what is actually in the panel rather than recomputed from the
-    // same numbers the layout used. StyledText fixes its line box at 4/3 of the
-    // type size, which TextMetrics does not know about, so adding the two up here
-    // lands a couple of pixels short and the caption sits in the padding.
-    readonly property real contentHeight: column.implicitHeight
+    // THE GROUP, from the count rather than from a measured child: a Column's
+    // implicitHeight is only right once its delegates exist, and this decides
+    // the shape the panel slides in as.
+    readonly property real groupWidth: root.button + root.gap * 2
+    readonly property real groupHeight: root.actions.length * root.step - root.gap + root.gap * 2
 
-    readonly property real panelWidth: root.border + root.contentWidth + Appearance.padding.large * 2
-    readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
+    // The corner a button gets, and the group's derived from it rather than
+    // picked. A shell inset by `gap` around a corner of radius r is concentric
+    // with it at r + gap; any other number and the two curves visibly diverge in
+    // the corners, which is the one place both are on screen at once.
+    readonly property real cellRadius: Appearance.rounding.normal
+    readonly property real groupRadius: root.cellRadius + root.gap
+
+    readonly property real contentWidth: root.groupWidth
+    readonly property real contentHeight: root.groupHeight
+
+    readonly property real panelWidth: root.border + root.contentWidth + root.pad * 2
+    readonly property real panelHeight: root.contentHeight + root.pad * 2
 
     // It arrives from OFF the screen and ends flush with the right edge, so the
     // approach is a real one: it reaches the band, merges with it, then swells
@@ -119,6 +138,11 @@ Item {
         root.restoreTo = Hypr.focusedAddress;
         root.selected = root.resting;
         root.arming = "";
+        // WHERE IT LEFT OFF IS NOT A "FROM". The marker chases whatever is
+        // chosen, and the panel opens on the resting entry however it closed, so
+        // without this it would slide up the column while the panel is still
+        // flying in from off the screen: two travels at once, neither readable.
+        marker.snap();
         root.shown = true;
         // DEFERRED: the surface only asks the compositor for the keyboard once
         // `open` has propagated, and forcing focus before that happens gets a
@@ -180,14 +204,15 @@ Item {
         epsilon: 0.005
     }
 
-    // What the widest caption measures, so the panel can be built around it
-    // without anyone having to know how wide a character is.
-    TextMetrics {
-        id: caption
+    // WHERE THE MARKER IS, in the group's own coordinates, chasing where it
+    // should be. The target is arithmetic off the chosen index rather than the
+    // position of a delegate, so it is right before the delegates exist and stays
+    // right if the table grows.
+    Follow {
+        id: marker
 
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
-        text: root.widestCaption
+        speed: Appearance.anim.trackSpeed
+        target: root.selected * root.step
     }
 
     // THE KEYBOARD, on an item of its own rather than on the panel.
@@ -244,24 +269,58 @@ Item {
         visible: reveal.value > 0.001
         enabled: root.open
 
-        // Hung from the panel's own left padding, which is the edge that faces
-        // the screen. The band is on the other side and belongs to the chassis.
-        Column {
-            id: column
-
-            x: Appearance.padding.large
+        // THE GROUP. One shell, four buttons in it, and the shell is what
+        // supplies the spacing between them. Hung from the panel's own left
+        // padding, which is the edge that faces the screen; the band is on the
+        // other side and belongs to the chassis.
+        G2Rect {
+            x: root.pad
             anchors.verticalCenter: parent.verticalCenter
-            width: root.contentWidth
-            spacing: Appearance.padding.normal
+            width: root.groupWidth
+            height: root.groupHeight
+            radius: root.groupRadius
+            color: Appearance.colour.fill
 
+            // THE MARKER, declared before the buttons so it sits behind their
+            // marks: it is the surface they are on, not a thing in front of them.
+            //
+            // ONE shape for four buttons. The alternative is a fill on whichever
+            // cell is chosen, which is what this was, and it cannot travel: the
+            // old fill has to end somewhere and the new one has to start
+            // somewhere, and no amount of fading between them is movement.
+            G2Rect {
+                x: root.gap
+                y: root.gap + marker.value
+                width: root.button
+                height: root.button
+                radius: root.cellRadius
+
+                // The accent is reserved for state that earns a colour, and
+                // "this will end your session if you press it again" earns one.
+                // Crossfaded rather than switched, because the marker may be
+                // travelling when it changes and a hard colour cut mid-slide
+                // reads as a second, different event.
+                color: root.arming ? Appearance.colour.accentFill : Appearance.colour.fillStronger
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
+            }
+
+            // Placed at the same inset the marker starts from rather than
+            // centred, so the two are laid out by one number and cannot drift
+            // apart by a rounding.
             Column {
+                x: root.gap
+                y: root.gap
                 spacing: root.gap
-                anchors.horizontalCenter: parent.horizontalCenter
 
                 Repeater {
                     model: root.actions
 
-                    delegate: G2Rect {
+                    delegate: Item {
                         id: cell
 
                         required property var modelData
@@ -272,20 +331,24 @@ Item {
 
                         width: root.button
                         height: root.button
-                        radius: Appearance.rounding.normal
-
-                        // ONE colour at three weights for the ordinary states,
-                        // and the accent only for armed. The accent is reserved
-                        // for state that earns a colour, and "this will end your
-                        // session if you press it again" earns one.
-                        color: cell.armed ? Appearance.colour.accentFill : cell.chosen ? Appearance.colour.fillStronger : Appearance.colour.fill
 
                         Icon {
                             anchors.centerIn: parent
 
                             name: cell.armed ? "check" : cell.modelData.icon
                             size: Appearance.sizes.sessionIcon
+
+                            // Faded between weights on the same clock the marker
+                            // moves on, so a mark brightens as the marker arrives
+                            // under it rather than the instant the cursor crosses
+                            // the edge of a square it has not reached yet.
                             color: cell.armed ? Appearance.colour.accent : cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+
+                            Behavior on color {
+                                ColorAnimation {
+                                    duration: Appearance.anim.normal
+                                }
+                            }
                         }
 
                         MouseArea {
@@ -299,33 +362,6 @@ Item {
                             }
                         }
                     }
-                }
-            }
-
-            // What is chosen, and under it the confirm. Centred on the column
-            // rather than on the panel, so it reads as belonging to the buttons
-            // above it.
-            Column {
-                anchors.horizontalCenter: parent.horizontalCenter
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    text: root.actions[root.selected]?.label ?? ""
-                    font.pixelSize: Appearance.font.size.small
-                    color: root.arming ? Appearance.colour.accent : Appearance.colour.textDim
-                }
-
-                // ALWAYS here, faded rather than hidden. A line that appears
-                // would grow the panel at the exact moment it is asking you to
-                // confirm, which moves the button you are about to press again.
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    text: root.hint
-                    font.pixelSize: Appearance.font.size.small
-                    color: Appearance.colour.textFaint
-                    opacity: root.arming ? 1 : 0
                 }
             }
         }
