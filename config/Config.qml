@@ -531,6 +531,19 @@ Singleton {
                 // LIST and splats it, so a list can never be set from the CLI.
                 hidden: ({}),
 
+                // Applications KEPT AT THE TOP, keyed by desktop entry id.
+                //
+                // The favourites section is otherwise the frecency ranking's
+                // first few, which is the right answer for what you already
+                // reach for and cannot hold the thing you want there BEFORE you
+                // have used it enough to earn the place. A star is you
+                // overruling the count, and the section grows to hold every one
+                // of them: a favourite that fell off the end because you starred
+                // an eighth would be a promise broken by arithmetic.
+                //
+                // A map for the same reason `hidden` is one.
+                starred: ({}),
+
                 niagara: {
                     width: 760,
                     // How big an application's mark is in the column.

@@ -61,6 +61,40 @@ Singleton {
         Config.set("launcher.hidden", next);
     }
 
+    // WHAT YOU KEEP AT THE TOP, keyed by desktop entry id.
+    //
+    // The mirror of `hidden`, and for the mirrored reason: frecency answers
+    // "what do you reach for" honestly and only in arrears, so the thing you
+    // have decided you want at the top cannot get there until you have already
+    // opened it enough times not to need the help. A star says it now.
+    readonly property var starred: Config.values.launcher.starred
+
+    function isStarred(entry: var): bool {
+        return !!root.starred[entry?.id ?? ""];
+    }
+
+    function setStarred(entry: var, keep: bool): void {
+        const id = entry?.id;
+        if (!id)
+            return;
+
+        const next = Object.assign({}, root.starred);
+        if (keep)
+            next[id] = true;
+        else
+            delete next[id];
+        Config.set("launcher.starred", next);
+    }
+
+    // Starred first, then whatever the ranking offers, and never the same entry
+    // twice. Long enough to hold every star: the count is a floor on the section
+    // rather than a ceiling on your choices.
+    function pinned(count: int): var {
+        const stars = root.byUse(root.visible.filter(e => root.isStarred(e)));
+        const rest = root.search("").filter(e => !root.isStarred(e));
+        return [...stars, ...rest].slice(0, Math.max(count, stars.length));
+    }
+
     // The two halves, derived rather than maintained, so hiding one thing
     // updates every list that shows applications at once.
     readonly property var visible: root.all.filter(e => !root.isHidden(e))

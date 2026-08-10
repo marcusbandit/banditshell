@@ -135,7 +135,9 @@ Item {
     }
 
     readonly property var letters: Object.keys(root.byLetter).sort()
-    readonly property var favourites: Apps.search("").slice(0, root.favouriteCount)
+    // Starred first, then the ranking's own answer. See Apps.pinned: the count
+    // is a floor, so starring an eighth thing does not push the seventh out.
+    readonly property var favourites: Apps.pinned(root.favouriteCount)
 
     // What the rail offers: the star, then whatever letters exist, then the
     // drawer if anything is in it.
@@ -301,6 +303,38 @@ Item {
     // rail, and for a click, all of which are things you did on purpose.
     property int hovered: -1
 
+    // WHERE THAT LOOK IS, in the list's own content coordinates, so the plate
+    // behind the rows can slide from one to the next rather than switching on in
+    // a new place. Reported BY the hovered row rather than computed from the
+    // index: the row knows where it actually is, including part way through the
+    // travel a keystroke put it on, and rowY() only knows where it will end up.
+    property real hoverY: 0
+
+    // Arriving from nowhere is a placement, not a journey: with nothing on
+    // screen there is nothing to travel FROM, and gliding in from whatever row
+    // the pointer last touched would be movement nobody made.
+    //
+    // ASKED OF THE PLATE ITSELF, never of `hovered`, and that is the whole of
+    // it. Moving between two rows is a LEAVE and an ENTER, and which of the two
+    // arrives first is not something this code gets to decide: hover goes to the
+    // topmost item first, and among a view's delegates topmost is whichever was
+    // built last. Going down the column the row being entered wins the toss and
+    // the handover is seamless; going UP, the row being left is on top, its
+    // leave lands first, `hovered` is -1 for that one instant, and a test on it
+    // called the next row a fresh arrival and snapped the plate to it. Hence a
+    // glide in one direction and a jump in the other, which is the shape of
+    // every bug that turns out to be an event order.
+    //
+    // The plate is fully on screen through both orderings, so asking what it is
+    // DOING cannot be fooled by which event landed first.
+    function hoverRow(index: int, y: real): void {
+        const nothingToLeave = plateShape.opacity <= 0.001;
+        root.hovered = index;
+        root.hoverY = y;
+        if (nothingToLeave)
+            plate.snap();
+    }
+
     // Being pulled out of the bottom edge by hand, and how far.
     //
     // While this is true the panel's height is the POINTER'S, not the reveal
@@ -408,6 +442,7 @@ Item {
         query.focus = false;
         root.scrubbing = false;
         root.grabbing = false;
+        sheet.close();
         Hypr.restoreFocus(root.restoreTo);
         root.restoreTo = "";
     }
@@ -445,6 +480,85 @@ Item {
             Hypr.claimNextWindow();
         }
         root.hide();
+    }
+
+    // START SOMETHING AND GET OUT OF THE WAY, which is the half of accept() that
+    // every entry in a row's menu that launches has to do too: the window about
+    // to appear takes the keyboard, and the one that had it before the launcher
+    // opened must not be handed it back on the way out.
+    function launch(what: var): void {
+        what();
+        root.restoreTo = "";
+        Hypr.claimNextWindow();
+        root.hide();
+    }
+
+    // WHAT ELSE A ROW DOES. Opening it is the click; this is everything the
+    // click had nowhere to put.
+    //
+    // The desktop entry's OWN actions in the middle, which is the whole reason
+    // this exists: "New Window", "New Private Window", "Open a New Tab" are
+    // written in the .desktop file by the application, and until now the only
+    // way to reach any of them was a terminal.
+    function actionsFor(entry: var): var {
+        if (!entry)
+            return [];
+
+        const away = Apps.isHidden(entry);
+        const kept = Apps.isStarred(entry);
+        const acts = [
+            {
+                // NOT "launch", which is the old Material Icons name for this
+                // mark and is not in Material Symbols: Icon draws its fallback
+                // and says so in the log, which is how this was caught.
+                icon: "rocket_launch",
+                label: "Open",
+                run: () => root.launch(() => Apps.launch(entry))
+            }
+        ];
+
+        for (const action of entry.actions ?? [])
+            acts.push({
+                icon: "open_in_new",
+                label: action.name,
+                // Recorded against the APPLICATION, not the action: a new
+                // private window is still you reaching for the browser, and
+                // frecency is a table of applications.
+                run: () => root.launch(() => {
+                        Apps.record(entry);
+                        action.execute();
+                    })
+            });
+
+        // THE TWO THINGS YOU DO TO THE LIST ITSELF, rather than to the
+        // application: keep it at the top, or take it out of the way. Both leave
+        // the launcher UP, because both are a tidying pass and a list that closed
+        // after each one would be one row per opening.
+        acts.push({
+            icon: root.starIcon,
+            label: kept ? "Take off favourites" : "Add to favourites",
+            run: () => Apps.setStarred(entry, !kept)
+        });
+
+        acts.push({
+            icon: away ? "visibility" : root.vaultIcon,
+            label: away ? "Put back in the list" : "Hide from the list",
+            run: () => Apps.setHidden(entry, !away)
+        });
+
+        return acts;
+    }
+
+    // Asked of a row, at the point on it where the question was put.
+    function askRow(row: Item, x: real, y: real): void {
+        if (!row.entry)
+            return;
+        // The selection follows, so the ring marks the row the menu is about
+        // once the hover plate has gone out from under it.
+        root.answerHolds = false;
+        root.selected = row.index;
+        const at = row.mapToItem(panel, x, y);
+        sheet.popup(at.x, at.y, root.actionsFor(row.entry));
     }
 
     // The next row that is an application, because a section is a label and
@@ -579,6 +693,17 @@ Item {
         target: root.needed
         speed: Appearance.anim.resizeSpeed
         epsilon: 0.5
+    }
+
+    // WHERE THE HOVER PLATE IS, chasing the row the pointer is on. The power
+    // menu's marker, in a list that scrolls: same exponential chase, same reason
+    // (modules/session/SessionMenu.qml), and the same rule that one shape
+    // travelling beats a fill switching on somewhere else.
+    Follow {
+        id: plate
+
+        target: root.hoverY
+        speed: Appearance.anim.trackSpeed
     }
 
     Follow {
@@ -979,6 +1104,32 @@ Item {
                     Keys.onPressed: event => {
                         const page = Math.max(1, Math.floor(list.height / root.rowPitch) - 1);
 
+                        // THE SHEET TAKES EVERYTHING WHILE IT IS UP, including
+                        // the keys it does not use and the letters that would
+                        // otherwise be typed into this field: it is a question
+                        // standing over the column, and a search that narrowed
+                        // the list underneath would move the row the answer is
+                        // about.
+                        if (sheet.open) {
+                            switch (event.key) {
+                            case Qt.Key_Down:
+                                sheet.move(1);
+                                break;
+                            case Qt.Key_Up:
+                                sheet.move(-1);
+                                break;
+                            case Qt.Key_Return:
+                            case Qt.Key_Enter:
+                                sheet.activate(sheet.selected);
+                                break;
+                            default:
+                                sheet.close();
+                                break;
+                            }
+                            event.accepted = true;
+                            return;
+                        }
+
                         switch (event.key) {
                         case Qt.Key_Escape:
                             root.hide();
@@ -1058,6 +1209,53 @@ Item {
                     text: query.text ? "nothing matches" : "no applications found"
                     font.pixelSize: Appearance.font.size.normal
                     color: Appearance.colour.textGhost
+                }
+
+                // THE HOVER, as ONE plate that slides down the column.
+                //
+                // Declared BEFORE the list so it sits behind the rows: it is the
+                // surface they are on, not a thing in front of them. It wears
+                // the list's own rectangle and clips the same way, so a plate on
+                // a row scrolled past the edge is cut off exactly where the row
+                // is.
+                //
+                // Sliding rather than switching on, which is the whole point and
+                // is the power menu's argument: a fill that appears in a new row
+                // has nothing to follow, so the eye has to re-find the highlight
+                // every time the pointer crosses a boundary. One shape that
+                // travels carries your attention with it, and running the pointer
+                // down the column drags the plate rather than restarting an
+                // animation on every row it passes.
+                Item {
+                    anchors.fill: list
+                    clip: true
+
+                    G2Rect {
+                        id: plateShape
+
+                        // From just outside the badge to the far edge, so the
+                        // plate holds the whole row and not the section letters
+                        // in the margin beside it.
+                        x: root.gutter - Appearance.padding.small
+                        y: plate.value - list.contentY
+                        width: parent.width - x
+                        height: root.rowPitch
+                        // The squircle at its roundest, concentric with the badge
+                        // it wraps.
+                        radius: height / 2
+                        color: Appearance.colour.fill
+
+                        // NOTHING UNDER THE POINTER, NO PLATE. Faded rather than
+                        // hidden, so leaving the column lets it go out where it
+                        // stood instead of teleporting home.
+                        opacity: root.hovered >= 0 ? 1 : 0
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+                    }
                 }
 
                 // EVERYTHING, in one column. The rail moves this; it never
@@ -1208,37 +1406,17 @@ Item {
                         readonly property bool away: !!entry && Apps.isHidden(entry)
                         readonly property color ring: Appearance.colour.accent
 
-                        // WHICH END of the row the pointer is on, from the row's
-                        // own coordinates rather than from a second MouseArea
-                        // over the button.
+                        // THE ROW IS ONE TARGET NOW, end to end.
                         //
-                        // A nested hovering MouseArea TAKES the hover off the one
-                        // under it, so arriving at the button read as leaving the
-                        // row, which un-hovered the row, which took the button
-                        // away, which handed the hover back to the row, which
-                        // brought the button back. It flashed for as long as you
-                        // held still on it. One area cannot fight itself.
-                        //
-                        // From a HOVER HANDLER rather than from the MouseArea's
-                        // own `containsMouse`, and that is a touch fix rather
-                        // than a tidy-up. QQuickMouseArea::mousePressEvent calls
-                        // setHovered(true) itself, so a press synthesised from a
-                        // touch made `containsMouse` true the instant a finger
-                        // landed: a tap on the rightmost few pixels of a row
-                        // satisfied this test and HID the application instead of
-                        // launching it, with the stow disc fading in mid-press as
-                        // the only warning that it was about to. A HoverHandler
-                        // is passive and is offered no touch events at all, so
-                        // with a finger `under` and `atStow` are both simply
-                        // false and a tap anywhere on a row launches, which is
-                        // what a tap on an application should always do.
-                        //
-                        // It is the mirror of the lesson above, and of the one
-                        // NotificationTray records twice: hover belongs to
-                        // exactly ONE mechanism per item, and here it has to
-                        // belong to the mechanism that only a pointer can drive.
-                        readonly property bool atStow: hover.hovered && hover.point.position.x >= stow.x
-
+                        // There was a disc on the right that hid the application,
+                        // and the whole of what it cost is written in the note on
+                        // the HoverHandler below: a control inside a row that
+                        // reports its own hover fights the row's, and one reached
+                        // by testing where in the row the pointer is turns a tap
+                        // on the last few pixels of a name into hiding the thing
+                        // you meant to launch. Hiding lives in the menu now,
+                        // beside the application's own actions, where it is a
+                        // labelled line rather than a glyph you have to know.
                         width: list.width
                         height: isSection ? root.sectionPitch : root.rowPitch
 
@@ -1254,9 +1432,9 @@ Item {
                             // NO hoverEnabled, deliberately, and it must stay
                             // that way: a MouseArea reports itself hovered from
                             // the moment a press lands on it, whatever produced
-                            // the press, so a finger looked exactly like a
-                            // cursor. See row.atStow. The hover is the
-                            // HoverHandler's now, and only a pointer can move it.
+                            // the press, so a finger looks exactly like a cursor
+                            // and a tap lights the row it landed on. The hover is
+                            // the HoverHandler's, and only a pointer moves it.
                             cursorShape: Qt.PointingHandCursor
                             acceptedButtons: Qt.LeftButton | Qt.RightButton
 
@@ -1266,20 +1444,16 @@ Item {
 
                             onPressed: pointer.held = false
 
-                            // A LONG PRESS IS THE TOUCH RIGHT-CLICK, and this is
-                            // the same action `onClicked` gives a right button
-                            // below rather than a new one: put the application
-                            // away, or take it back out. Touch has no second
-                            // button and no hover, so with the stow disc now
-                            // correctly invisible to a finger there would
-                            // otherwise be no way to reach this at all from a
-                            // touchscreen. A press and hold is the conventional
-                            // way to reach a context action without a second
-                            // button, which is to say it is the gesture the hand
-                            // already has for exactly this.
-                            onPressAndHold: {
+                            // A LONG PRESS IS THE TOUCH RIGHT-CLICK, and it is the
+                            // same action `onClicked` gives the right button
+                            // below rather than a new one: the row's menu. Touch
+                            // has no second button, so without this there is no
+                            // way to reach any of it from a touchscreen at all. A
+                            // press and hold is the gesture the hand already has
+                            // for exactly this.
+                            onPressAndHold: mouse => {
                                 pointer.held = true;
-                                Apps.setHidden(row.entry, !row.away);
+                                root.askRow(row, mouse.x, mouse.y);
                             }
 
                             onClicked: mouse => {
@@ -1288,15 +1462,20 @@ Item {
                                 // is a detail of QQuickMouseArea's release path,
                                 // and this row should not depend on the answer
                                 // either way: on the build that does deliver it,
-                                // holding a row would hide the application and
-                                // then launch it, which is the worst of both.
+                                // holding a row would open its menu and then
+                                // launch the application behind it, which is the
+                                // worst of both.
                                 if (pointer.held)
                                     return;
 
-                                // Right anywhere on the row does what the button
-                                // does, without having to aim at it.
-                                if (mouse.button === Qt.RightButton || row.atStow) {
-                                    Apps.setHidden(row.entry, !row.away);
+                                // The right button used to hide the application
+                                // outright, which was one answer to a question
+                                // with several: an application has its own
+                                // actions in its desktop entry (a new window, a
+                                // private one), and there was nowhere to put
+                                // them.
+                                if (mouse.button === Qt.RightButton) {
+                                    root.askRow(row, mouse.x, mouse.y);
                                     return;
                                 }
                                 root.answerHolds = false;
@@ -1310,22 +1489,39 @@ Item {
                         // Passive by construction: a HoverHandler is offered
                         // hover events and nothing else, so it cannot take a
                         // press off the MouseArea above it and, which is the
-                        // whole point, it cannot be fooled by one either. See
-                        // row.atStow for why the MouseArea is no longer allowed
-                        // to answer this question.
+                        // whole point, it cannot be fooled by one either. A
+                        // MouseArea calls itself hovered the moment a press lands
+                        // on it, so with one answering this a FINGER lit a row up
+                        // and left it lit.
                         HoverHandler {
                             id: hover
 
-                            enabled: !row.isSection
+                            // OFF WHILE THE MENU IS UP. The sheet floats over the
+                            // column, so without this the row underneath whatever
+                            // entry you are pointing at would light up as well,
+                            // and the plate would run down the list behind a menu
+                            // that is not about those rows at all. Disabling a
+                            // handler reports a leave, so the plate fades out and
+                            // the ring on the row the menu belongs to is what
+                            // says which one is being asked about.
+                            enabled: !row.isSection && !sheet.open
 
                             // A LOOK, and only a look. See root.hovered.
                             onHoveredChanged: {
                                 if (hover.hovered)
-                                    root.hovered = row.index;
+                                    root.hoverRow(row.index, row.y);
                                 else if (root.hovered === row.index)
                                     root.hovered = -1;
                             }
                         }
+
+                        // The row moving under a still pointer is still the row
+                        // the plate is on: a keystroke reorders the column and
+                        // every survivor travels to its new place, so the plate
+                        // has to travel with the one it is under rather than stay
+                        // where that row used to be.
+                        onYChanged: if (row.under)
+                            root.hoverY = row.y
 
                         // The letter, in the MARGIN. Outside the icons rather than
                         // above them, so every name in the list starts at one x and
@@ -1384,13 +1580,23 @@ Item {
                             radius: width / 2
 
                             visible: !row.isSection
-                            // The fill ladder is HOVER, and the ring is
-                            // SELECTION. They have to be told apart at a glance
-                            // now that they are no longer the same thing: one
-                            // step along a fill ladder is not a difference you
-                            // can see, and a boundary is the one way to mark a
-                            // control without painting a disc that shouts.
-                            color: row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
+                            // THE DISC IS THE PLACEHOLDER, so it is there only
+                            // when there is nothing to place.
+                            //
+                            // An application's icon is a shape somebody drew, and
+                            // most of them are not circles: a square mark on a
+                            // round plate reads as a crop that was applied to it,
+                            // and a column of them turns a list of things people
+                            // designed into a list of buttons this shell made. So
+                            // the moment the real icon resolves the plate gets
+                            // out of its way, and what is left in the slot is the
+                            // icon and nothing else. The glyph rows keep it,
+                            // because there a disc is exactly what it claims to
+                            // be: the stand-in for a picture that is missing.
+                            //
+                            // The fill ladder that is left is HOVER, and the ring
+                            // is SELECTION.
+                            color: art.visible ? "transparent" : row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
                             // The ring is always THERE and only sometimes
                             // visible: a stroke is drawn inside the bounds and
                             // takes its width off the radius, so switching the
@@ -1442,11 +1648,8 @@ Item {
                         StyledText {
                             anchors.left: badge.right
                             anchors.leftMargin: Appearance.padding.large
-                            // Stops at the button, whether or not the button is
-                            // showing: a name that reflows the moment a cursor
-                            // crosses it is worse than one that is short.
-                            anchors.right: stow.left
-                            anchors.rightMargin: Appearance.padding.normal
+                            anchors.right: parent.right
+                            anchors.rightMargin: Appearance.padding.large
                             anchors.verticalCenter: parent.verticalCenter
 
                             visible: !row.isSection
@@ -1462,79 +1665,33 @@ Item {
                             }
                         }
 
-                        // PUT AWAY, or put back.
-                        //
-                        // Under the pointer only. A launcher is a list you scan,
-                        // and a column of identical buttons down the right edge
-                        // is a column you have to read past every time; one that
-                        // is only ever on the row you are already looking at
-                        // costs nothing to have. Right-clicking the row is the
-                        // same action for anyone who has found it.
-                        G2Rect {
-                            id: stow
-
-                            anchors.right: parent.right
-                            anchors.verticalCenter: parent.verticalCenter
-                            width: root.iconSize * 0.72
-                            height: width
-                            radius: width / 2
-
-                            visible: !row.isSection
-                            opacity: row.under ? 1 : 0
-                            color: row.atStow ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
-
-                            // BOTH EASED. A control that arrives faded in and
-                            // then snaps its contents to a new colour reads as
-                            // two events, and the second one is a flash. It is
-                            // one thing lighting up, so it lights up at one
-                            // speed.
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-
-                            Behavior on color {
-                                ColorAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-
-                            Icon {
-                                id: stowGlyph
-
-                                anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: stowGlyph.inkOffsetX
-                                anchors.verticalCenterOffset: stowGlyph.inkOffsetY
-                                size: Appearance.font.size.small
-                                name: row.away ? "visibility" : root.vaultIcon
-                                // One step, not a jump to full strength: the
-                                // disc under it is already saying the pointer is
-                                // here, and both of them shouting is the flash.
-                                color: row.atStow ? Appearance.colour.text : Appearance.colour.textFaint
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-                        }
-
-                        // Said once the pointer has clearly settled on the
-                        // button, which is what Tooltips is for; asking on the
-                        // way past would put a label on every row you cross.
-                        onAtStowChanged: {
-                            if (row.atStow)
-                                Tooltips.request(row, row.away ? "put back in the list" : "hide from the list");
-                            else
-                                Tooltips.release(row);
-                        }
-
-                        Component.onDestruction: Tooltips.release(row)
                     }
                 }
             }
+        }
+
+        // WHAT ELSE A ROW DOES, over the column rather than in it.
+        //
+        // OUTSIDE the clipped item above, so the sheet is not cut off by the
+        // panel's own reveal or by the list's edge, and AFTER it, so it takes the
+        // press before the rows underneath do.
+        ActionSheet {
+            id: sheet
+
+            anchors.fill: parent
+
+            // A column that moves takes the row out from under the sheet, and a
+            // menu pointing at nothing is worse than no menu.
+            Connections {
+                target: list
+
+                function onContentYChanged(): void {
+                    sheet.close();
+                }
+            }
+
+            onClosed: if (root.open)
+                Qt.callLater(query.forceActiveFocus)
         }
     }
 }

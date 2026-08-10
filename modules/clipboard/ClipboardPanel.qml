@@ -1001,7 +1001,7 @@ Item {
         // OUTSIDE the viewport, so it is not clipped by the reveal and not
         // carried off by the page slide, and AFTER it, so it takes the click
         // before the rows underneath do.
-        ClipActions {
+        ActionSheet {
             id: sheet
 
             anchors.fill: parent

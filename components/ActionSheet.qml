@@ -6,8 +6,11 @@ import qs.components
 
 // A ROW'S OTHER ANSWERS, in a small sheet under the pointer.
 //
-// Opened by a right click or a long press on a row. Actions are handed in as
-// { icon, label, run }, so nothing here knows what a clipboard entry is.
+// Opened by a right click or a long press on a row, in any list that has more
+// to offer than the one thing a click does. Actions are handed in as
+// { icon, label, run }, so nothing here knows what a row IS: the clipboard
+// hands it copy/keep/delete and the launcher hands it the desktop entry's own
+// actions, and this file cannot tell them apart.
 //
 // THE POWER MENU'S LOOK AND ITS MOVEMENT, deliberately: one marker that SLIDES
 // between the entries rather than a fill that switches on in a new row, hover
