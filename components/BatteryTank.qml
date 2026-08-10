@@ -10,7 +10,7 @@ import qs.config
 //
 // What is in this file, top to bottom:
 //   1. inputs and colours
-//   2. size, bump, corners, margin
+//   2. size, corners, margin
 //   3. the wave knobs (amplitude, wavelength, speed) <- the fun ones
 //   4. crest() and surface(), which build the water outline
 //   5. where the percentage sits
@@ -42,23 +42,15 @@ Item {
     property color liquid: Appearance.colour.accent
     property color well: Appearance.colour.fillStronger
 
-    // Corner rounding, G2 (see G2Rect), not plain circular.
-    // Big radius on the body, small on the bump: a small corner spends its
-    // whole budget turning and has no room left to ramp the curvature, so the
-    // G2 shape collapses back into an ordinary arc.
+    // Corner rounding, G2 (see G2Rect), not plain circular. The full tier, not
+    // the small one: a small corner spends its whole budget turning and has no
+    // room left to ramp the curvature, so the G2 shape collapses back into the
+    // ordinary arc it exists to replace. This is the biggest shape in any menu
+    // and the one place the ramp has room to be seen.
     readonly property real radius: Appearance.rounding.normal
-    readonly property real nubRadius: Appearance.rounding.small
 
     // How far the percentage sits in from the corner it is docked into.
     readonly property real margin: Appearance.padding.large
-
-    // Battery bump on top. A proportion of the width, not a pixel count, so it
-    // survives a resize. This is most of what makes the shape read as a battery
-    // and not a beaker.
-    //   nubWidth  0.32 = about a third of the tank wide
-    //   nubHeight 0.075 = shallow
-    readonly property real nubWidth: Math.round(root.width * 0.32)
-    readonly property real nubHeight: Math.round(root.width * 0.075)
 
     // The widest thing this will ever have to hold. Sizing to the CURRENT
     // reading instead would make the tank flinch every time the percentage
@@ -82,11 +74,11 @@ Item {
     }
 
     // Size comes from the text: wide enough for "100%" plus a margin each side,
-    // then the height follows from a fixed 140:223 proportion, plus the bump.
+    // then the height follows from a fixed 140:223 proportion.
     readonly property real leastWidth: Math.ceil(widest.tightBoundingRect.width + root.margin * 2)
 
     implicitWidth: leastWidth
-    implicitHeight: Math.round(leastWidth * 223 / 140) + nubHeight
+    implicitHeight: Math.round(leastWidth * 223 / 140)
 
     // The water level eases towards the real one instead of cutting to it.
     // Matters at the two moments a battery actually moves: the jump when UPower
@@ -127,9 +119,7 @@ Item {
     // reads as the surface bending rather than an arc glued on.
     readonly property real contact: 3
 
-    // The water line, in pixels down from the top. Spans the WHOLE height, bump
-    // included, so a full battery is one solid green object instead of a green
-    // slab in a separate grey hat.
+    // The water line, in pixels down from the top.
     readonly property real line: root.height * (1 - charge.value)
 
     // Animation. phase walks the wave sideways forever; drift is how long one
@@ -159,7 +149,7 @@ Item {
 
     // Builds the liquid as a list of points: the surface across the top, then
     // straight down to the bottom corners. Corners of the BOUNDING BOX, not the
-    // tank: the rounded ends and the bump's shoulders are the mask's job below,
+    // tank: the rounded corners are the mask's job below,
     // so this never has to work out where a wave crosses a squircle.
     function surface(): var {
         const w = root.width;
@@ -221,9 +211,7 @@ Item {
     readonly property real markX: width - root.margin - (glyphs.tightBoundingRect.x + glyphs.tightBoundingRect.width)
     readonly property real markY: height - root.margin - mark.baselineOffset - glyphs.tightBoundingRect.y - glyphs.tightBoundingRect.height
 
-    // THE BATTERY SHAPE: bump on top, rounded body under it. Two overlapping
-    // opaque rects, which are their own union, so the shoulders where the bump
-    // meets the body come free from the corner primitive.
+    // THE TANK'S SHAPE: one rounded rect, the whole of the item.
     //
     // It is a component because the thing that gets PAINTED and the thing that
     // MASKS are the same geometry, and this way it is written once.
@@ -232,24 +220,8 @@ Item {
 
         anchors.fill: parent
 
-        // The bump. Reaches a full radius down into the body so the two never
-        // show a seam between them.
         G2Rect {
-            x: (root.width - root.nubWidth) / 2
-            width: root.nubWidth
-            height: root.nubHeight + root.radius
-            topLeftRadius: root.nubRadius
-            topRightRadius: root.nubRadius
-            bottomLeftRadius: 0
-            bottomRightRadius: 0
-            color: parent.shade
-        }
-
-        // The body.
-        G2Rect {
-            y: root.nubHeight
-            width: root.width
-            height: root.height - root.nubHeight
+            anchors.fill: parent
             radius: root.radius
             color: parent.shade
         }

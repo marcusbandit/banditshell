@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 import qs.config
 
 // A battery, drawn rather than named.
@@ -52,6 +53,25 @@ Item {
         epsilon: 0.001
     }
 
+    // A LIGHTNING BOLT, as one closed path in a unit square. Written as points
+    // and scaled at draw time rather than as a fixed pixel path, so it follows
+    // the icon tier wherever that goes.
+    readonly property var boltPoints: [[0.62, 0.00], [0.00, 0.58], [0.38, 0.58], [0.30, 1.00], [1.00, 0.40], [0.55, 0.40]]
+
+    // How much of the bar's height the bolt spans, and how wide it is for that
+    // height. A bolt is taller than it is wide; both are proportions so nothing
+    // here breaks when the size changes.
+    readonly property real boltHeight: 0.86
+    readonly property real boltAspect: 0.62
+
+    function bolt(w: real, h: real): string {
+        const bh = h * root.boltHeight;
+        const bw = bh * root.boltAspect;
+        const x = (w - bw) / 2;
+        const y = (h - bh) / 2;
+        return root.boltPoints.map((p, i) => `${i === 0 ? "M" : "L"} ${x + p[0] * bw} ${y + p[1] * bh}`).join(" ") + " Z";
+    }
+
     // The sweep's clock, 0 to 1 over and over, and only while there is something
     // to say: a battery that is full is not filling.
     property real sweep: 0
@@ -102,6 +122,37 @@ Item {
             radius: height / 3
             color: root.colour
             opacity: 0.7 * (1 - root.sweep * root.sweep * root.sweep)
+        }
+
+        // THE BOLT, which is what actually says "charging" here.
+        //
+        // The sweep above says it by MOVING, and motion is the better signal
+        // for the moment you happen to be looking at the bar. This is for every
+        // other moment: a still frame of the old meter could not tell charging
+        // from discharging, because the only other difference was one label
+        // tier, and hovering produces that same tier for a different reason.
+        //
+        // Filled in the lit colour and stroked in the track's, so it reads at
+        // any level without knowing where the charge has got to: over the empty
+        // end the body carries it and the stroke vanishes into the track, and
+        // over the charge the two swap jobs and the stroke is the thing you
+        // see. One stroked shape rather than the two masked copies BatteryTank
+        // uses for the same problem, because that costs two layer textures and
+        // this is a 20px icon that is always on screen.
+        Shape {
+            anchors.fill: parent
+            visible: root.charging
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: root.colour
+                strokeColor: root.trackColour
+                strokeWidth: Math.max(1, Math.round(root.height * 0.1))
+
+                PathSvg {
+                    path: root.bolt(track.width, track.height)
+                }
+            }
         }
     }
 
