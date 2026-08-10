@@ -34,6 +34,9 @@ Item {
     signal activated
     signal pinned
     signal discarded
+    // Asked what else can be done with it: a right click, or a press held down.
+    // Carries where it was asked, in this row's coordinates.
+    signal menu(real mx, real my)
     // Asked to be looked at properly: the full view, formatted.
     signal expanded
     // What the pointer is doing, reported up so the list can hold one hovered
@@ -490,14 +493,19 @@ Item {
             root.thrown = dx;
         }
 
-        onReleased: {
+        onReleased: mouse => {
             press.preventStealing = false;
 
             if (!press.moved) {
                 // A press that went the wrong way is not a tap. It was a gesture
                 // aimed at the list, and answering it by copying would paste
                 // something because somebody scrolled.
-                if (!press.held && !press.spent)
+                //
+                // THE LEFT BUTTON ONLY. `released` arrives before `clicked` and
+                // says nothing about which button it was, so without this test
+                // the right button copied the entry and put the panel away on
+                // the way to opening its menu.
+                if (!press.held && !press.spent && mouse.button === Qt.LeftButton)
                     root.activated();
                 press.spent = false;
                 root.throwing = false;
@@ -556,17 +564,22 @@ Item {
         }
 
         // A press held down is the touch equivalent of the right button, and
-        // both land on the same thing: keeping it. The latch stops the release
-        // above from also reading as a tap and copying the entry the hold was
-        // meant to pin.
-        onPressAndHold: {
+        // both land on the same thing: the menu of everything this row can do.
+        // The latch stops the release above from also reading as a tap and
+        // copying the entry the hold was meant to ask a question about.
+        //
+        // Both used to pin outright. Pinning is still one press away, in the
+        // menu, on the keep button in the row, and on `p`; what it was in the
+        // way of is every other answer, and "where is that picture" is the one
+        // this row could not give at all.
+        onPressAndHold: mouse => {
             press.held = true;
-            root.pinned();
+            root.menu(mouse.x, mouse.y);
         }
 
         onClicked: mouse => {
             if (mouse.button === Qt.RightButton)
-                root.pinned();
+                root.menu(mouse.x, mouse.y);
         }
     }
 }

@@ -545,6 +545,36 @@ Singleton {
         paste.running = true;
     }
 
+    // WHERE IT IS ON DISK, or nowhere.
+    //
+    // The copied files first and the recorded picture's blob second, because a
+    // picture copied FROM a file has both and the one worth handing out is the
+    // real file rather than this shell's cache of it.
+    function pathsOf(entry: var): var {
+        if (!entry)
+            return [];
+        if ((entry.paths ?? []).length)
+            return entry.paths;
+        return entry.file ? [entry.file] : [];
+    }
+
+    // THE PATH AS TEXT, which is not the same act as copy(): that puts the FILE
+    // on the clipboard, for a file manager; this puts its location there, for a
+    // terminal or a chat asking where the screenshot is.
+    //
+    // A recorded picture's path lives in the blob store and lasts exactly as
+    // long as the entry does, since sweep() takes the file when the row goes.
+    function copyPath(entry: var): void {
+        const paths = root.pathsOf(entry);
+        if (!paths.length)
+            return;
+        // One per line, so several files paste as a list rather than as a
+        // sentence. `--` for a path that begins with a dash, `-n` so nothing
+        // gains a trailing newline it did not have.
+        paste.command = ["wl-copy", "-n", "--", paths.join("\n")];
+        paste.running = true;
+    }
+
     // WHAT SHAPE A PICTURE IS, for the ones whose pixel count nobody recorded.
     //
     // Entries this shell captured carry `w` and `h` straight off the file

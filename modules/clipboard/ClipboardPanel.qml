@@ -130,6 +130,7 @@ Item {
             return;
         root.shown = false;
         root.reading = null;
+        sheet.close();
         root.stopSearch();
         keys.focus = false;
         // The window you were in gets the keyboard back, because pasting is what
@@ -193,6 +194,9 @@ Item {
         const e = root.entry;
         if (!e)
             return;
+        // The sheet belongs to a row in the list, so it does not travel to the
+        // page that slides over it.
+        sheet.close();
         root.reading = e;
     }
 
@@ -272,10 +276,72 @@ Item {
         root.selected = Math.max(0, Math.min(root.selected, root.results.length - 1));
     }
 
+    // EVERYTHING A ROW CAN DO, as the sheet's list. Assembled here rather than
+    // in the sheet because what a row means is the panel's business: the first
+    // action is the tab's own verb, and the path is only there when there is one.
+    function actionsFor(e: var): var {
+        if (!e)
+            return [];
+
+        const acts = [
+            {
+                icon: "content_copy",
+                label: root.speech ? "Use this" : "Copy",
+                run: () => {
+                    if (root.speech)
+                        Dictation.use(e);
+                    else
+                        Clipboard.copy(e);
+                    root.hide();
+                }
+            }
+        ];
+
+        // WHERE IT IS, for the pictures and the copied files. The thing a
+        // screenshot could never tell you: it is a picture on the clipboard and
+        // a path nowhere, and half of what you want it for is the path.
+        const paths = Clipboard.pathsOf(e);
+        if (paths.length)
+            acts.push({
+                icon: "file_copy",
+                label: paths.length === 1 ? "Copy path" : `Copy ${paths.length} paths`,
+                run: () => {
+                    Clipboard.copyPath(e);
+                    root.hide();
+                }
+            });
+
+        // Nothing pins a transcription; see pinCurrent.
+        if (!root.speech)
+            acts.push({
+                icon: "keep",
+                label: e.pinned ? "Let go of this" : "Keep this",
+                run: () => {
+                    Clipboard.setPinned(e, !e.pinned);
+                    root.follow(e.id);
+                }
+            });
+
+        acts.push({
+            icon: "delete",
+            label: "Delete",
+            run: () => {
+                if (root.speech)
+                    Dictation.drop(e);
+                else
+                    Clipboard.remove(e);
+                root.selected = Math.max(0, Math.min(root.selected, root.results.length - 1));
+            }
+        });
+
+        return acts;
+    }
+
     function setTab(index: int): void {
         if (index === root.tab)
             return;
         root.tab = Math.max(0, Math.min(index, root.tabs.length - 1));
+        sheet.close();
         // The full view belongs to the list it was opened from, so changing
         // which list is showing closes it rather than leaving it over a tab it
         // has nothing to do with.
@@ -369,6 +435,32 @@ Item {
         // separate files here, and testing the key is also the only form that
         // can accept the event.
         Keys.onPressed: event => {
+            // THE SHEET TAKES EVERYTHING WHILE IT IS UP, including the keys it
+            // does not use. It is a question standing over the list, and arrows
+            // that walked the selection behind it would move the row the answer
+            // is about.
+            if (sheet.open) {
+                switch (event.key) {
+                case Qt.Key_Down:
+                case Qt.Key_J:
+                    sheet.move(1);
+                    break;
+                case Qt.Key_Up:
+                case Qt.Key_K:
+                    sheet.move(-1);
+                    break;
+                case Qt.Key_Return:
+                case Qt.Key_Enter:
+                    sheet.activate(sheet.selected);
+                    break;
+                default:
+                    sheet.close();
+                    break;
+                }
+                event.accepted = true;
+                return;
+            }
+
             if (root.commonKey(event)) {
                 event.accepted = true;
                 return;
@@ -735,6 +827,13 @@ Item {
                     // the same row, and what these mean to it is not.
                     onPinned: if (!root.speech)
                         Clipboard.setPinned(modelData, !modelData.pinned)
+                    // The selection follows the row that was asked about, so the
+                    // keyboard is on the thing the menu is over.
+                    onMenu: (mx, my) => {
+                        root.selected = index;
+                        const at = mapToItem(panel, mx, my);
+                        sheet.popup(at.x, at.y, root.actionsFor(modelData));
+                    }
                     onDiscarded: {
                         if (root.speech)
                             Dictation.drop(modelData);
@@ -895,6 +994,30 @@ Item {
                     onAccepted: root.accept()
                 }
             }
+        }
+
+        // WHAT ELSE A ROW CAN DO, over the list rather than in it.
+        //
+        // OUTSIDE the viewport, so it is not clipped by the reveal and not
+        // carried off by the page slide, and AFTER it, so it takes the click
+        // before the rows underneath do.
+        ClipActions {
+            id: sheet
+
+            anchors.fill: parent
+
+            // A list that moves takes the row out from under the sheet, and a
+            // menu pointing at nothing is worse than no menu.
+            Connections {
+                target: list
+
+                function onContentYChanged(): void {
+                    sheet.close();
+                }
+            }
+
+            onClosed: if (root.shown && !root.searching)
+                Qt.callLater(keys.forceActiveFocus)
         }
     }
 }
