@@ -167,6 +167,25 @@ ListView {
         onWheel: event => {
             event.accepted = true;
 
+            // THE FINGERS LEFT THE PAD, which arrives as a wheel event with
+            // nothing in it: phase ScrollEnd, both deltas zero. Taken FIRST and
+            // answered at once, and that is the difference between a list that
+            // coasts and one that stops dead.
+            //
+            // Without it the end of a flick fell through to the notch branch
+            // below, which read it as a wheel that moved zero rows and set the
+            // target to where the content already was, and the throw then had to
+            // wait for the timer to notice the silence. So the list halted the
+            // instant contact broke, stood still for the whole interval, and set
+            // off again: a stop and a second, unrelated-looking movement, rather
+            // than one gesture running out of speed. The timer stays as the way
+            // out for fingers that rest ON the pad without moving, which sends
+            // no end at all.
+            if (event.phase === Qt.ScrollEnd || (event.pixelDelta.y === 0 && event.angleDelta.y === 0)) {
+                root.coastOn();
+                return;
+            }
+
             if (event.pixelDelta.y === 0) {
                 root.scrollTo(root.anchor - event.angleDelta.y / 120 * root.step);
                 return;
@@ -194,16 +213,25 @@ ListView {
         }
     }
 
-    // The fingers stopped sending. Either they lifted or they stopped moving,
-    // and the coast tells those apart by itself: no movement means no velocity
-    // means no throw.
+    // THE THROW. The speed the fingers left at, spent as distance, and the glide
+    // eases it down from there: `coastMs` is how long the list would keep that
+    // speed if it never slowed, so it sets how far a flick carries.
+    //
+    // It tells a lift from a pause by itself, with no state to keep: fingers
+    // that stopped moving before they left have no velocity left to hand over,
+    // so the same call is a throw in one case and a no-op in the other.
+    function coastOn(): void {
+        coast.stop();
+        root.scrollTo(root.contentY + root.velocity * Appearance.sizes.coastMs);
+        root.velocity = 0;
+    }
+
+    // The fingers stopped SENDING without ever lifting, which is a hand resting
+    // on the pad: no end event is coming, so the silence is the only signal.
     Timer {
         id: coast
 
         interval: Appearance.anim.fast
-        onTriggered: {
-            root.scrollTo(root.contentY + root.velocity * Appearance.sizes.coastMs);
-            root.velocity = 0;
-        }
+        onTriggered: root.coastOn()
     }
 }
