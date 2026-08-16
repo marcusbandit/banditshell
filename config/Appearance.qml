@@ -102,6 +102,12 @@ Singleton {
         // saturated block.
         readonly property color accentFill: Qt.rgba(accent.r, accent.g, accent.b, root.cfg.material.accentFill)
 
+        // One step above the accent. Accent means "attention", this means "you
+        // are about to lose something", and only a battery running out wears it
+        // today. No `alarmFill` beside `accentFill` on purpose: the one thing
+        // tinting a surface with it (BatteryMeter's well) breathes the alpha.
+        readonly property color alarm: root.theme.alarm
+
         // What goes ON the accent: a switch's knob, selected text behind it.
         // The accent is a bright saturated green, so this is the dark end of the
         // ramp rather than a label tier, which would be translucent and let the

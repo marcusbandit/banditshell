@@ -116,6 +116,9 @@ Column {
 
             level: Battery.percentage
             charging: Battery.charging
+            // The water wears the warning too, or the menu would contradict the
+            // mark that was just clicked.
+            liquid: Battery.low ? Appearance.colour.alarm : Appearance.colour.accent
         }
 
         // The text side. Takes whatever width the tank left over, stated rather
@@ -158,7 +161,7 @@ Column {
 
                         text: readout.modelData.value
                         font.pixelSize: readout.modelData.lead ? Appearance.font.size.normal : Appearance.font.size.small
-                        color: readout.modelData.lead && Battery.low ? Appearance.colour.accent : Appearance.colour.text
+                        color: readout.modelData.lead && Battery.low ? Appearance.colour.alarm : Appearance.colour.text
                         elide: Text.ElideRight
                     }
 

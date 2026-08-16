@@ -118,7 +118,9 @@ Item {
             // motion instead of as one more static picture.
             mark: Battery.available ? batteryMark : null,
             active: Battery.charging,
-            alert: Battery.low,
+            // Alarm, not alert, and the only one in the column: every other
+            // gauge reports something you can put right when you notice it.
+            alarm: Battery.low,
             available: Battery.available,
             body: batteryMenu
         }
@@ -221,6 +223,7 @@ Item {
                 mark: modelData.mark ?? null
                 active: modelData.active ?? false
                 alert: modelData.alert ?? false
+                alarm: modelData.alarm ?? false
                 available: modelData.available ?? true
 
                 // Hover IS the request. Clicking is the same intent, and matters
@@ -281,6 +284,9 @@ Item {
         BatteryMeter {
             level: Battery.percentage
             charging: Battery.charging
+            // The colour arrives through `colour` like every mark's does; this
+            // is the cue to wear it on the well and breathe. See BatteryMeter.
+            low: Battery.low
         }
     }
 

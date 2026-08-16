@@ -21,6 +21,10 @@ Item {
     property real level: 0
     property bool charging: false
 
+    // Running out. Decided by services/Battery.qml, not by comparing `level`
+    // here, so the meter cannot disagree with the notification that went out.
+    property bool low: false
+
     // The lit colour, handed down by whatever indicator this sits in, so the
     // meter brightens on hover and goes accent on alert without having to know
     // what either of those means.
@@ -31,6 +35,17 @@ Item {
     // size. A FILL tier rather than a label one, because the track is the thing
     // the charge sits in, not something being said.
     property color trackColour: Appearance.colour.fillStronger
+
+    // THE WARNING GOES ON THE WELL, NOT THE FILL: at 15% the lit part is three
+    // pixels, and three recoloured pixels are only visible to someone already
+    // looking. The empty part carries it, so the emptier the cell the louder.
+    //
+    // Two things here that look simpler than they are:
+    //   - a low ALPHA over the panel, not a mix towards trackColour. The track
+    //     is a pale veil and mixing into it turned the orange brown.
+    //   - the alpha ceiling stays under the fill's own weight, or the breath
+    //     swallows the reading at its peak.
+    readonly property color well: root.low ? Qt.rgba(root.colour.r, root.colour.g, root.colour.b, 0.18 + 0.34 * root.throb) : root.trackColour
 
     // THE BOLT IS THE ONE ACCENT IN THE BAR THAT IS NOT AN ALERT.
     //
@@ -94,13 +109,42 @@ Item {
         duration: Appearance.anim.slow * 6
     }
 
+    // The warning's clock, 0 to 1 and back. Colour is what a glance reads;
+    // motion is what gets the glance, and peripheral vision sees movement far
+    // better than hue.
+    //
+    // A BREATH, NOT A BLINK: sine-eased, ~2.5s a cycle (slow * 4 each way). A
+    // hard flash at this size is a fault light, and you would turn it off before
+    // the battery ran out. Fixed-duration like the sweep above, since it is a
+    // loop with a shape rather than something tracking a target.
+    property real throb: 0
+
+    SequentialAnimation on throb {
+        running: root.low
+        loops: Animation.Infinite
+
+        NumberAnimation {
+            from: 0
+            to: 1
+            duration: Appearance.anim.slow * 4
+            easing.type: Easing.InOutSine
+        }
+
+        NumberAnimation {
+            from: 1
+            to: 0
+            duration: Appearance.anim.slow * 4
+            easing.type: Easing.InOutSine
+        }
+    }
+
     G2Rect {
         id: track
 
         width: root.width - root.capWidth
         height: root.height
         radius: root.height / 3
-        color: root.trackColour
+        color: root.well
 
         readonly property real span: width - root.inset * 2
 
@@ -147,11 +191,9 @@ Item {
         // end the green body carries it, and over the charge, where green sits
         // on a near-white fill, the dark outline is what separates them.
         //
-        // The stroke is also the backstop for the one case where the bolt and
-        // the fill are the SAME colour: a low battery on the charger, where
-        // `alert` turns the fill accent too. That stays legible mostly because
-        // `low` caps the fill at a fifth of the bar while the bolt is centred,
-        // so the two barely overlap, and the outline covers what is left.
+        // Stroked in the WELL's colour rather than the plain track. They are the
+        // same today (`low` is false whenever the charger is in), and this stays
+        // right if that ever changes.
         //
         // One stroked shape rather than the two masked copies BatteryTank uses
         // for the same problem, because that costs two layer textures and this
@@ -163,7 +205,7 @@ Item {
 
             ShapePath {
                 fillColor: root.boltColour
-                strokeColor: root.trackColour
+                strokeColor: root.well
                 strokeWidth: Math.max(1, Math.round(root.height * 0.1))
 
                 PathSvg {
@@ -174,13 +216,14 @@ Item {
     }
 
     // The nub. At this size it is most of what makes the shape read as a
-    // battery rather than as a progress bar.
+    // battery rather than as a progress bar. Well colour, warning and all: a
+    // grey nub on a lit battery reads as a chip out of the shape.
     G2Rect {
         x: root.width - root.capWidth
         y: (root.height - height) / 2
         width: root.capWidth
         height: Math.round(root.height * 0.45)
         radius: width / 3
-        color: root.trackColour
+        color: root.well
     }
 }

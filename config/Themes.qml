@@ -5,9 +5,10 @@ import Quickshell
 
 // Every palette the shell can wear, keyed by name. `Config.theme` picks one.
 //
-// A theme is a luminance RAMP plus three saturated ACCENTS. It never names a
-// widget: "which colour is the panel" is a decision for Appearance.qml, so a new
-// theme only has to supply colours, not know what they are used for.
+// A theme is a luminance RAMP plus three saturated ACCENTS and one ALARM. It
+// never names a widget: "which colour is the panel" is a decision for
+// Appearance.qml, so a new theme only has to supply colours, not know what they
+// are used for.
 //
 // To add a theme: add a Theme block, add it to `all`. Nothing else changes.
 Singleton {
@@ -35,6 +36,11 @@ Singleton {
         required property color dim    // saturated, quietest
         required property color mid    // saturated, standard
         required property color bright // saturated, the specular spike
+
+        // The one colour OUTSIDE the theme's hue family, for something about to
+        // be taken away. A second green cannot say that; the accent is already
+        // spent on ordinary attention.
+        required property color alarm
     }
 
     // Cool anodised-green metal. Kept in step with
@@ -49,6 +55,9 @@ Singleton {
         dim: "#3fbf8f"      // verdigris
         mid: "#5fd99a"      // lush
         bright: "#8cffc0"   // phosphor
+        // Orange, not red: red and green are the pair a colour blindness
+        // flattens, and this must never read as the accent.
+        alarm: "#ff6b3d"    // flare
     }
 
     // The same metal with the green taken out, as a second option to prove the
@@ -60,5 +69,6 @@ Singleton {
         dim: "#5b8fb0"
         mid: "#7fb3d4"
         bright: "#b8dcf0"
+        alarm: "#ff7a4d"    // ember
     }
 }

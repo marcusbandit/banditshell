@@ -15,6 +15,7 @@ Item {
     property string icon
     property bool active: false     // the thing is on / connected
     property bool alert: false      // wants attention
+    property bool alarm: false      // is about to cost you something
     property bool available: true   // this machine has one at all
 
     // A DRAWN mark, instead of the glyph, for the indicators the icon font
@@ -32,9 +33,11 @@ Item {
 
     readonly property bool hovered: mouse.containsMouse
 
-    // Label tiers, not colours. Accent is kept for `alert` only, so a colour in
-    // this bar always means something is wrong.
-    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
+    // Label tiers, not colours. The two saturated colours are kept for `alarm`
+    // and `alert`, so a colour in this bar always means something is wrong and
+    // WHICH colour says how wrong. Alarm wins: a gauge raising both is telling
+    // you about the worse one.
+    readonly property color markColour: !root.available ? Appearance.colour.textFaint : root.alarm ? Appearance.colour.alarm : root.alert ? Appearance.colour.accent : root.hovered || root.active ? Appearance.colour.text : Appearance.colour.textDim
 
     // AS BIG AS THE PICTURE, and no bigger, which is now a statement about what
     // it wants rather than what it gets. The group hands it the width of the

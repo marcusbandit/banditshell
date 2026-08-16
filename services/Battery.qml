@@ -84,9 +84,69 @@ Singleton {
     readonly property int secondsLeft: charging ? (device?.timeToFull ?? 0) : (device?.timeToEmpty ?? 0)
     readonly property bool estimating: available && secondsLeft <= 0 && !full
 
-    // Below this, the shell is allowed to shout about it.
-    readonly property real lowThreshold: 0.2
+    // ---- THE LOW WARNING KNOBS ---------------------------------------------
+    //
+    // lowThreshold: where the bar goes orange and the notification fires. 15% is
+    //               roughly twenty minutes on this cell.
+    // rearmThreshold: where the next warning is armed again. MUST be above
+    //               lowThreshold: the percentage divides two firmware estimates
+    //               and wobbles across a line rather than stepping over it, so
+    //               re-arming on the same line fires over and over. Keyed on the
+    //               charge, not on the charger, or unplugging at 14% would
+    //               announce the same 14% again.
+    readonly property real lowThreshold: 0.15
+    readonly property real rearmThreshold: 0.2
+
     readonly property bool low: available && onBattery && percentage <= lowThreshold
+
+    // A reading worth believing. UPower answers 0% until D-Bus comes back, and a
+    // warning wired straight to the percentage cries wolf on every startup.
+    readonly property bool reading: available && capacity > 0 && energy > 0
+
+    // One warning per trip down the cell. The percentage moves in fiftieths of a
+    // point, so without the latch this is one notification per tick.
+    property bool warned: false
+
+    function considerWarning(): void {
+        if (!root.reading)
+            return;
+
+        if (root.percentage > root.rearmThreshold) {
+            root.warned = false;
+            return;
+        }
+
+        if (!root.low || root.warned)
+            return;
+
+        root.warned = true;
+
+        // CRITICAL is load-bearing: Notifs.timeoutFor gives a critical
+        // notification no timeout, so it stays until acted on. Five seconds of
+        // warning while you are looking elsewhere is no warning.
+        const left = root.timeLabel();
+        root.notify("critical", `Battery low, ${root.percent}%`, left && left !== "estimating" ? `${left}. Find a charger.` : "Find a charger.");
+    }
+
+    // Out through the bus and straight back in, since this shell is the
+    // notification server: the warning gets an ordinary lifecycle and an
+    // ordinary way to be dismissed. services/Clock.qml sends alarms the same
+    // way and carries the full argument, including why there is no `-i`.
+    function notify(urgency: string, summary: string, body: string): void {
+        warner.command = ["notify-send", "-a", "banditshell", "-u", urgency, summary, body ?? ""];
+        warner.running = true;
+    }
+
+    // One slot is enough, unlike Clock's process per errand: the latch above
+    // means there is never a second message to drop.
+    Process {
+        id: warner
+    }
+
+    // The charge moving, the charger going in or out, and UPower answering.
+    onPercentageChanged: root.considerWarning()
+    onOnBatteryChanged: root.considerWarning()
+    onReadingChanged: root.considerWarning()
 
     readonly property string state: !available ? "no battery" : full ? "full" : charging ? "charging" : onBattery ? "on battery" : "plugged in"
 
