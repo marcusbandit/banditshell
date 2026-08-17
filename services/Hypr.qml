@@ -503,6 +503,29 @@ Singleton {
         root.send(`(function() local w = hl.get_active_workspace() hl.dispatch(hl.dsp.window.move({ window = "address:${addr}", workspace = ${ws} })) return hl.dsp.focus({ workspace = w }) end)()`, `movetoworkspacesilent ${target},address:${addr}`);
     }
 
+    // TWO WINDOWS TRADE PLACES, which is the whole of what rearranging a tiled
+    // workspace is. There are no coordinates to hand a tiling layout, only
+    // another window to go and stand where, so "put this one there" and "swap
+    // these two" are the same sentence.
+    //
+    // LUA ONLY, and it is the one call in this file with no legacy spelling at
+    // all. The old parser's `swapwindow` takes a DIRECTION and nothing else, so
+    // there is no degraded version to fall back to: swapping by address did not
+    // exist before the Lua dispatch table. It says so rather than sending a
+    // sentence the old parser would refuse as a syntax error, which is the
+    // failure mode `send` exists to prevent.
+    function swapWith(addr: string, other: string): void {
+        if (!addr || !other || addr === other)
+            return;
+
+        if (!root.lua) {
+            console.warn("Hypr: swapping two windows by address needs Hyprland's Lua dispatcher; the old parser's swapwindow only takes a direction.");
+            return;
+        }
+
+        Hyprland.dispatch(`hl.dsp.window.swap({ window = "address:${addr}", with = "address:${other}" })`);
+    }
+
     // Waiting for the window an application is about to open.
     //
     // Hyprland focuses a new window by itself, and that is not the whole job

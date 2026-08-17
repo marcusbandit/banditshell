@@ -317,6 +317,7 @@ Singleton {
         // See modules/windows/.
         readonly property bool windowEdge: root.cfg.windows.edge
         readonly property int windowGrab: root.cfg.windows.grab
+        readonly property int windowSettle: root.cfg.windows.settle
         readonly property int windowHold: root.cfg.windows.hold
         readonly property int windowHoldSlop: root.cfg.windows.holdSlop
         readonly property real windowTravel: root.cfg.windows.travel

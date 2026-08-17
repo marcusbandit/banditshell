@@ -7,8 +7,7 @@ import qs.components
 import qs.services
 
 // THE BOTTOM EDGE OF A WINDOW, AS A HANDLE ON IT. Push up from there and the
-// window comes up with your finger: let go and it is gone, hold and the
-// workspaces come out to put it on.
+// window comes up with your finger, and where it goes is where you put it down.
 //
 // This is the phone gesture, and it is the phone gesture because a folded
 // convertible has no keyboard to close a window with and no titlebar to aim a
@@ -16,10 +15,26 @@ import qs.services
 // always reachable, and which of the three things it means is decided by what
 // the hand does next rather than by which control it found:
 //
-//   up and away          the window is closed
-//   up and held          the shelf comes out, and where you let go is where the
-//                        window goes
-//   up and back down     nothing happened
+//   thrown up            the window is closed
+//   dropped on another   the two windows trade places
+//   window
+//   held, then carried   the workspaces come out along the top, and dropping on
+//   to the top           one sends the window there
+//   put back down        nothing happened
+//
+// THE PLACES ARE THERE THE MOMENT THE WINDOW IS IN THE HAND. Rearranging is what
+// you do with a window you have just picked up, so it costs no second gesture:
+// every other window on the workspace becomes a target where it already stands
+// (LayoutSlots), and hovering one shows you the swap by moving it into the space
+// you are holding open. The hold is spent on the ONE answer that is not already
+// on the screen, which is the other workspaces (WorkspaceShelf), and they hang
+// from the top because leaving is a different kind of answer from rearranging:
+// down among the windows means "here, differently", up past them means "not
+// here at all".
+//
+// SPEED IS WHAT CLOSES, and it has to be, now that almost every release lands
+// over a target. A hand that flings something has stopped choosing where it
+// goes; a hand that carries it somewhere and lets go has not. See release().
 //
 // A FINGER ONLY, and that is not a preference. The press is refused outright
 // unless it was synthesised from a touch point, so a mouse falls straight
@@ -41,12 +56,14 @@ import qs.services
 // window loses a pixel of its own input to this. `windows.grab` will widen it if
 // the edge is hard to hit, and Config says plainly what that costs.
 //
-// THE CARD IS NOT THE WINDOW and never pretends to be. The compositor goes on
-// drawing the real window underneath, exactly where it was, so what this draws
-// is a proxy: it starts as a hairline exactly around the window (the one moment
-// the two agree), fills with the shell's own material as it comes up, and ends
-// as a small card wearing the application's mark and title. A screenshot would
-// be a better lie and this shell does not tell it.
+// THE CARD IS THE WINDOW'S OWN PICTURE. It used to be a proxy with the
+// application's mark and title on it, on the argument that a screenshot would be
+// a better lie; that was the wrong way round, because what is in the hand IS the
+// window and the one thing that says so without a caption is the window itself.
+// So the toplevel is captured and the card carries it: at zero travel the
+// picture lies exactly on the thing it is a picture of, and the first pixel of
+// the swipe peels it off. The mark and the title are still there for the moment
+// before the compositor hands over a frame, and for anything that never does.
 Item {
     id: root
 
@@ -82,6 +99,29 @@ Item {
 
     // Past the recognition distance: the card is drawn and the hold is armed.
     property bool lifted: false
+
+    // THE HAND HAS STOPPED THROWING, and the workspace map may come out.
+    //
+    // This is what keeps the closing swipe clean. The map costs a scrim over the
+    // screen and a capture per window, and a flick that is over in a tenth of a
+    // second wants none of it: it is one card leaving, and it looked right the
+    // day it was written. So the map waits for the gesture to slow below the
+    // speed that would have closed the window, which a flick never does before
+    // the finger is gone.
+    //
+    // LATCHING, so a drag that speeds up again mid-flight does not take the
+    // places away from under the hand. Nothing turns it off but the end of the
+    // gesture.
+    property bool mapped: false
+    // WHICH TARGET THE REAL LAYOUT IS ALREADY SWAPPED WITH, by address, or "".
+    //
+    // The swap is dispatched WHILE YOU HOVER rather than when you let go, so
+    // what you are looking at underneath is the arrangement you are asking for
+    // rather than a picture of it. Held as an ADDRESS and not as an index into
+    // the map, because the compositor reorders its own list when windows move
+    // and an index would quietly come to mean a different window.
+    property string committed: ""
+
     // A finger is on it right now, as opposed to an outro still playing.
     property bool grabbed: false
     // The shelf is out.
@@ -130,26 +170,41 @@ Item {
     readonly property real tileW: root.holeWidth * Appearance.sizes.windowCard
     readonly property real tileH: root.held ? root.tileW * root.held.h / root.held.w : root.tileW
 
-    // WHERE THE CARD IS WHILE A FINGER IS ON IT.
-    //
-    // Width and height interpolate from the window's own to the tile's by
-    // `tuck`; the horizontal position walks from the window's left edge to
-    // centred under the finger by the same number; and the BOTTOM EDGE simply
+    // THE CARD IS ONE SCALE AND ONE CENTRE, never a rectangle with two
+    // independently moving sides. This is the whole of what keeps the window's
+    // proportions: a size interpolated per side happens to hold the ratio only
+    // while both ends of the interpolation share it, and the moment a
+    // destination does not (a plate, which is the shape of the SCREEN, or
+    // another window's slot, which is the shape of that window) the card is
+    // squashed on its way there. A factor cannot squash anything.
+    readonly property real tileScale: root.held ? root.tileW / root.held.w : 1
+
+    // ...OR WHATEVER THE MAP COULD ACTUALLY MANAGE. The map takes the tile's
+    // scale unless the workspace is too wide to fit at it, and the card follows
+    // the map rather than the other way round, so the thing in the hand and the
+    // hole it came out of are always the same size.
+    readonly property real restScale: Math.min(root.tileScale, layout.mapScale)
+    readonly property real liveScale: 1 + (root.restScale - 1) * tuck.value
+
+    // WHERE IT IS WHILE A FINGER IS ON IT. The centre walks from the window's
+    // own to under the finger as the lift goes on, and the BOTTOM EDGE simply
     // travels with the hand. That last one is what makes the lift read as one
     // object rather than as a card appearing: the gesture starts at the bottom
     // edge of the window, so at zero travel the card is exactly the window, and
     // every pixel the finger rises the card rises with it.
-    readonly property real liveW: root.held ? root.held.w + (root.tileW - root.held.w) * tuck.value : 0
-    readonly property real liveH: root.held ? root.held.h + (root.tileH - root.held.h) * tuck.value : 0
-    readonly property real liveX: root.held ? root.held.x + (root.pointX - root.liveW / 2 - root.held.x) * tuck.value : 0
-    readonly property real liveY: root.held ? root.held.y + root.held.h - root.rise - root.liveH : 0
+    readonly property real liveCX: root.held ? root.held.x + root.held.w / 2 + (root.pointX - root.held.x - root.held.w / 2) * tuck.value : 0
+    readonly property real liveCY: root.held ? root.held.y + root.held.h - root.rise - root.held.h * root.liveScale / 2 : 0
 
-    // ...and where it is once nobody is holding it. One ternary per side rather
+    // ...and where it is once nobody is holding it. One ternary per term rather
     // than a second item, because it is the same card either way.
-    readonly property real cardX: root.outro ? root.blend(root.rest.x, root.dest.x, gone.value) : root.liveX
-    readonly property real cardY: root.outro ? root.blend(root.rest.y, root.dest.y, gone.value) : root.liveY
-    readonly property real cardW: root.outro ? root.blend(root.rest.w, root.dest.w, gone.value) : root.liveW
-    readonly property real cardH: root.outro ? root.blend(root.rest.h, root.dest.h, gone.value) : root.liveH
+    readonly property real cardScale: root.outro ? root.blend(root.rest.k, root.dest.k, gone.value) : root.liveScale
+    readonly property real cardCX: root.outro ? root.blend(root.rest.cx, root.dest.cx, gone.value) : root.liveCX
+    readonly property real cardCY: root.outro ? root.blend(root.rest.cy, root.dest.cy, gone.value) : root.liveCY
+
+    readonly property real cardW: root.held ? root.held.w * root.cardScale : 0
+    readonly property real cardH: root.held ? root.held.h * root.cardScale : 0
+    readonly property real cardX: root.cardCX - root.cardW / 2
+    readonly property real cardY: root.cardCY - root.cardH / 2
 
     // The material the card fills with, read once so the alpha below has
     // something to scale.
@@ -196,6 +251,10 @@ Item {
             const addr = o.address ?? "";
             best = {
                 addr: addr.startsWith("0x") ? addr : `0x${addr}`,
+                // The model's own object, kept alongside the numbers: the card
+                // shows the window's real content, and a capture needs the
+                // handle rather than the address.
+                client,
                 mark: AppIcons.markFor(Hypr.classOf(client)),
                 title: o.title ?? "",
                 x: cx,
@@ -212,7 +271,10 @@ Item {
     function begin(win: var, x: real, y: real): void {
         root.held = win;
         root.lifted = false;
+        root.mapped = false;
         root.racked = false;
+        root.committed = "";
+        layout.landed = false;
         root.grabbed = true;
         root.outro = "";
         root.originY = y;
@@ -270,6 +332,40 @@ Item {
         }
     }
 
+    // MAKE THE REAL LAYOUT MATCH THE AIM, whatever the aim has just become.
+    //
+    // One rule, applied on every change: the arrangement equals "held swapped
+    // with whatever is under the finger", and no aim at all means the
+    // arrangement you started with. Undo then redo rather than composing, since
+    // a swap is its own inverse and composing two of them is not the same as
+    // doing the second one on its own.
+    //
+    // The map is frozen while this runs (see LayoutSlots), so the targets do not
+    // move under the finger as the windows underneath do.
+    function commitAim(): void {
+        if (!root.held || !root.grabbed)
+            return;
+
+        const want = layout.over >= 0 ? layout.windows[layout.over].addr : "";
+        if (want === root.committed)
+            return;
+
+        if (root.committed)
+            Hypr.swapWith(root.held.addr, root.committed);
+        if (want)
+            Hypr.swapWith(root.held.addr, want);
+
+        root.committed = want;
+    }
+
+    Connections {
+        target: layout
+
+        function onOverChanged(): void {
+            root.commitAim();
+        }
+    }
+
     // The finger left.
     function release(): void {
         hold.stop();
@@ -280,73 +376,139 @@ Item {
             return;
         }
 
-        if (root.racked) {
-            const i = shelf.over;
-            const slot = i >= 0 ? shelf.slots[i] : null;
+        // A THROW IS NOT AN AIM, and it is asked first for exactly that reason.
+        //
+        // The places to put a window down are on screen from the moment it
+        // leaves the ground, so almost every release now happens OVER one of
+        // them, and a rule that let the thing underneath decide would have made
+        // the closing swipe unperformable on a full screen of windows. Speed is
+        // the one thing a drop cannot fake: a hand that flings something has
+        // stopped choosing where it lands.
+        if (root.velocity >= Appearance.sizes.windowFling) {
+            // A THROW TAKES BACK ANYTHING IT PASSED OVER. The aim can be sitting
+            // on a target at the instant of a flick, and the swap it committed
+            // was never asked for: closing is what the hand said.
+            if (root.committed) {
+                Hypr.swapWith(root.held.addr, root.committed);
+                root.committed = "";
+            }
+            Hypr.closeWindow(root.held.addr);
+            root.finish("close", -1);
+            return;
+        }
+
+        // THE TOP OF THE SCREEN NEXT, because it is the answer that takes the
+        // finger away from every other one: while the shelf is armed the layout
+        // underneath is not answering, so there is never a moment where both
+        // have a claim and an order has to be invented.
+        const plate = shelf.over;
+        if (plate >= 0) {
+            const slot = shelf.slots[plate];
 
             // Dropping a window back on the workspace it is already on is a
             // change of mind spelled as a drop, so it is answered as one.
-            if (slot && slot.target !== Hypr.activeId) {
-                Hypr.sendToWorkspace(root.held.addr, slot.target, Appearance.sizes.windowFollow);
-                root.finish("sent", i);
-            } else {
+            if (slot.target === Hypr.activeId)
                 root.finish("back", -1);
+            else {
+                Hypr.sendToWorkspace(root.held.addr, slot.target, Appearance.sizes.windowFollow);
+                root.finish("sent", plate);
             }
             return;
         }
 
-        // THE CLOSE ASKS FOR MORE THAN A PANEL'S PULL DOES, and deliberately.
-        // Everything else this shell decides on a release is reversible: a panel
-        // opened by mistake is one Escape from being gone. A window closed by
-        // mistake is somebody's unsaved work. So the commit clause is "took it
-        // the whole way, OR threw it", where a panel's is "a quarter of the way,
-        // or drifting upward at all" - and a swipe that merely ran out of
-        // conviction lands in neither and goes home.
-        if (root.progress >= 1 || root.velocity >= Appearance.sizes.windowFling) {
+        // ...then the workspace you are on, where dropping on a window is the
+        // two of them trading places. No hold is spent on this: it is the thing
+        // you do with a window you have just picked up.
+        // ...then the workspace you are on. NOTHING IS DISPATCHED HERE: the
+        // swap happened the moment you hovered, so letting go is only the shell
+        // agreeing with the compositor about a rearrangement they have both
+        // already made.
+        const other = layout.over;
+        if (other >= 0) {
+            root.finish("swapped", other);
+            return;
+        }
+
+        // A SLOW SWIPE THE WHOLE WAY UP, over nothing at all, still closes.
+        //
+        // "Nothing at all" is the gaps, the band, and the window's own slot,
+        // which is the case that matters: a full-screen window covers every
+        // pixel of its own workspace, so it has no neighbour to be dropped on
+        // and this is the only rule left that can close it without a flick.
+        //
+        // It asks for more than a panel's pull does, and deliberately. Everything
+        // else this shell decides on a release is reversible; a window closed by
+        // mistake is somebody's unsaved work.
+        if (root.progress >= 1) {
+            if (root.committed) {
+                Hypr.swapWith(root.held.addr, root.committed);
+                root.committed = "";
+            }
             Hypr.closeWindow(root.held.addr);
             root.finish("close", -1);
-        } else {
-            root.finish("back", -1);
+            return;
         }
+
+        // Let go over nothing, having gone nowhere in particular. The window's
+        // own slot is the way out, and it has to be somewhere the hand can find
+        // without aiming.
+        root.finish("back", -1);
     }
 
-    // HOW IT ENDS, wherever it is ending from. The card's current rectangle is
-    // frozen as the "from", because once the finger is gone there is nothing
-    // left to track, and the "to" is the whole of what the three endings differ
-    // by: off the top of the screen, onto the plate it was dropped on, or back
-    // onto the window it was lifted off.
-    function finish(how: string, plate: int): void {
+    // HOW IT ENDS, wherever it is ending from. The card's current centre and
+    // scale are frozen as the "from", because once the finger is gone there is
+    // nothing left to track, and the "to" is the whole of what the four endings
+    // differ by: off the top of the screen, onto the plate it was dropped on,
+    // into the slot of the window it is trading with, or back onto the window it
+    // was lifted off.
+    //
+    // A destination is a CENTRE AND A FACTOR, never a rectangle, so a card
+    // flying into a plate shaped like the screen or a slot shaped like somebody
+    // else's window arrives at the size that fits inside it rather than being
+    // stretched into its shape. `min` of the two ratios is what "fits inside"
+    // means for a shape that has to keep its own.
+    function finish(how: string, index: int): void {
         root.rest = {
-            x: root.cardX,
-            y: root.cardY,
-            w: root.cardW,
-            h: root.cardH
+            cx: root.cardCX,
+            cy: root.cardCY,
+            k: root.cardScale
         };
 
         if (how === "close")
             root.dest = {
-                x: root.rest.x,
-                y: -root.rest.h,
-                w: root.rest.w,
-                h: root.rest.h
+                cx: root.rest.cx,
+                cy: -root.held.h * root.rest.k / 2,
+                k: root.rest.k
             };
-        else if (how === "sent")
+        else if (how === "sent") {
+            const centre = shelf.plateCentre(index);
             root.dest = {
-                x: shelf.plateX(plate),
-                y: shelf.rowY,
-                w: shelf.plateW,
-                h: shelf.plateH
+                cx: centre.x,
+                cy: centre.y,
+                k: Math.min(shelf.scaledW / root.held.w, shelf.scaledH / root.held.h)
             };
-        else
+        } else if (how === "swapped") {
+            // THE TARGET'S REAL RECTANGLE, not its place on the map, because the
+            // map is about to grow into the real layout underneath it. Both
+            // arrive at the compositor's own coordinates and the two pictures
+            // meet there.
+            const slot = layout.windows[index];
             root.dest = {
-                x: root.held.x,
-                y: root.held.y,
-                w: root.held.w,
-                h: root.held.h
+                cx: slot.x + slot.w / 2,
+                cy: slot.y + slot.h / 2,
+                k: Math.min(slot.w / root.held.w, slot.h / root.held.h)
+            };
+        } else
+            root.dest = {
+                cx: root.held.x + root.held.w / 2,
+                cy: root.held.y + root.held.h / 2,
+                k: 1
             };
 
         root.grabbed = false;
         root.outro = how;
+        // ...and the map grows into the windows it was a picture of.
+        layout.landed = true;
     }
 
     // Back to nothing at all, instantly. Called when an outro lands, and by the
@@ -356,7 +518,10 @@ Item {
         root.outro = "";
         root.held = null;
         root.lifted = false;
+        root.mapped = false;
         root.racked = false;
+        root.committed = "";
+        layout.landed = false;
         root.grabbed = false;
         root.rest = null;
         root.dest = null;
@@ -403,16 +568,50 @@ Item {
         speed: Appearance.anim.revealSpeed
         epsilon: 0.005
 
-        onSettledChanged: if (gone.settled && root.outro && gone.value === 1)
-            root.clear()
+        // DEFERRED, and it has to be. `clear` puts `outro` back to "", which is
+        // this Follow's own target, so clearing straight out of the handler
+        // rewrites the value being evaluated and Qt calls it a binding loop on
+        // `settled`. Qt.callLater runs it once the current pass is over, and
+        // dedupes by function, so a handful of settle signals in one frame is
+        // still one clear.
+        onSettledChanged: if (gone.settled && root.outro)
+            Qt.callLater(root.clear)
+    }
+
+    // THE SCRIM ARRIVES WITH THE MAP AND DEEPENS WITH THE SHELF, and arrives
+    // with neither during a throw. Two steps because they are two statements:
+    // the first is "these are places", the second is "and now somewhere else
+    // entirely".
+    readonly property real dim: mapDim.value * 0.7 + rackDim.value * 0.3
+
+    Follow {
+        id: mapDim
+
+        target: root.mapped && !root.outro ? 1 : 0
+        speed: Appearance.anim.revealSpeed
+        epsilon: 0.005
     }
 
     Follow {
-        id: dim
+        id: rackDim
 
         target: root.racked ? 1 : 0
         speed: Appearance.anim.revealSpeed
         epsilon: 0.005
+    }
+
+    // HAS THE THROW ENDED. Beats from the lift until the hand is going slower
+    // than a close would need, then latches the map and stops. Repeating rather
+    // than one-shot, because "not yet" has to be asked again: a swipe can be
+    // fast at a tenth of a second and deliberate at a quarter.
+    Timer {
+        id: settle
+
+        interval: Appearance.sizes.windowSettle
+        repeat: true
+        running: root.grabbed && root.lifted && !root.mapped
+        onTriggered: if (root.velocity < Appearance.sizes.windowFling)
+            root.mapped = true
     }
 
     // HOW LONG STILL IS STILL. Armed at the lift and restarted by movement, so
@@ -425,16 +624,54 @@ Item {
             root.racked = true
     }
 
-    // The screen behind the shelf, dimmed. It has no mask entry and no handler:
+    // The screen behind it all, dimmed. It has no mask entry and no handler:
     // this shell gates input with the mask and visuals with opacity, and putting
     // a catcher here would swallow clicks for a mode that only a finger already
     // on the glass can be in.
     Rectangle {
         anchors.fill: parent
 
-        visible: dim.value > 0.01
+        visible: root.dim > 0.01
         color: Appearance.colour.scrim
-        opacity: dim.value
+        opacity: root.dim
+    }
+
+    // THE WORKSPACE YOU ARE ON, as places to put the window down. Declared
+    // before the shelf so the shelf hangs over it, which is also the order they
+    // are asked in.
+    LayoutSlots {
+        id: layout
+
+        anchors.fill: parent
+
+        screen: root.screen
+        heldAddr: root.held?.addr ?? ""
+
+        // THE CONTENT AREA, LESS THE SHELF'S OWN BAND at the top. Reserved
+        // whether or not the shelf is out, so the map does not jump down the
+        // screen the moment somebody holds still.
+        holeX: root.holeX
+        holeY: root.holeY + shelf.dockedHeight
+        holeWidth: root.holeWidth
+        holeHeight: root.holeHeight - shelf.dockedHeight
+
+        // What the card is heading for. The map answers with what it could
+        // actually manage, and the card reads that back.
+        preferred: root.tileScale
+
+        pointX: root.pointX
+        pointY: root.pointY
+
+        // LIVE FROM THE LIFT, not from the hold. Rearranging is the thing you do
+        // with a window you have just picked up, so it must not cost a second
+        // gesture: the places are simply there the moment there is something in
+        // the hand. The hold is spent on the ONE answer that is not already on
+        // the screen, which is the workspaces.
+        //
+        // NOT WHILE THE SHELF IS ARMED. Two sets of targets lighting up under
+        // one finger would be two answers to one drop, and the hand has already
+        // said which it meant by going up to the top of the screen.
+        active: root.mapped && !shelf.armed
     }
 
     WorkspaceShelf {
@@ -466,12 +703,18 @@ Item {
         y: root.cardY
         width: Math.max(0, root.cardW)
         height: Math.max(0, root.cardH)
-        opacity: root.outro ? 1 - gone.value : 1
+        // FADED ONLY WHEN IT IS LEAVING. A card flying home or into a swapped
+        // slot lands exactly on the real window it is a picture of, so fading it
+        // would be dissolving something into itself; one that is being thrown
+        // off the screen or into a workspace plate has nowhere real to land.
+        opacity: root.outro === "close" || root.outro === "sent" ? 1 - gone.value : 1
 
-        // The window's own corner, because at the start of the gesture this IS
-        // the window's outline and any other radius would show as a mismatch
-        // against the real one underneath.
-        radius: Appearance.sizes.windowRadius
+        // The window's own corner, SCALED WITH THE CARD. At full size this is
+        // the real window's radius, which it has to be while the two are lying
+        // on top of each other; shrinking it with everything else is what keeps
+        // the card the same object at the far end, and what makes it match the
+        // slots on the map, which are drawn at the same scale.
+        radius: Appearance.sizes.windowRadius * root.cardScale
 
         // The material FADES IN with the lift. At rest the card is a hairline
         // around a window you can still see; by the time it is a tile it is a
@@ -482,6 +725,30 @@ Item {
         stroke: Appearance.colour.fillStronger
         strokeWidth: Appearance.font.stem
 
+        // THE WINDOW'S OWN CONTENT, which is the whole reason the lift reads as
+        // picking something up rather than as a card appearing over it. At zero
+        // travel this sits exactly on the real window and is indistinguishable
+        // from it; the first pixel of the swipe peels the picture off the thing
+        // it is a picture of.
+        //
+        // ONE FRAME, like the targets on the map. A live capture is a stream
+        // negotiated in the middle of a gesture, and the gesture it lands in the
+        // middle of is a flick; a still is also what every phone shows in its
+        // own switcher, so nothing is lost but the cost.
+        WindowView {
+            id: shot
+
+            anchors.fill: parent
+
+            window: root.held?.client ?? null
+            radius: card.radius
+            live: false
+        }
+
+        // WHAT IT IS, for the moment before the compositor has handed over a
+        // frame and for anything that can never give one. Never drawn over the
+        // picture: once there is content, the window says which window it is
+        // better than a mark and a title can.
         Column {
             anchors.centerIn: parent
             spacing: Appearance.padding.small
@@ -490,7 +757,7 @@ Item {
             // is the window's own content, and a title floating in the middle of
             // it belongs to nothing.
             opacity: tuck.value
-            visible: opacity > 0.01
+            visible: opacity > 0.01 && !shot.ready
 
             AppMark {
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -582,3 +849,5 @@ Item {
         }
     }
 }
+
+

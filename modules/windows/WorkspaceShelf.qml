@@ -5,14 +5,23 @@ import qs.config
 import qs.components
 import qs.services
 
-// WHERE A LIFTED WINDOW CAN BE PUT DOWN: one plate per workspace, across the
-// middle of the screen, out only while a finger is holding a window over them.
+// WHERE A LIFTED WINDOW CAN BE SENT: one plate per workspace, across the TOP of
+// the screen, out while a finger is holding a window and reached by carrying it
+// up there.
 //
-// It is a DROP TARGET and not a menu, which is the whole of why it looks the way
-// it does. Nothing here is pressed: the finger is already down and already
-// carrying something when the shelf arrives, so there are no buttons, no hover
-// states and no way in or out except by letting go. What a plate owes you is an
-// answer to "is this the one I am over", and it says that by growing.
+// AT THE TOP, AND NOT IN THE MIDDLE, because the middle is spoken for. Lifting a
+// window turns the workspace you are on into a map of places to put it (see
+// LayoutSlots), and that map is centred in the content area. Leaving is a
+// different KIND of answer from rearranging, so it gets a different part of the
+// screen rather than another plate in the same row: down among the windows means
+// "here, differently", up past them means "not here at all".
+//
+// IT ARRIVES IN TWO STAGES. Docked, it is a small dim row that says the top of
+// the screen does something. Reached for, it grows to full size, brightens, and
+// starts answering: `armed` is the whole difference, and it is a band around the
+// row rather than a line, so the plates are alive slightly before the finger is
+// on them. Without the docked stage the workspaces would be invisible until
+// somebody guessed they were there.
 //
 // A plate is the SHAPE OF THE SCREEN, not a square and not a row: the thing
 // being aimed at is a place windows live, and drawn at the screen's own aspect a
@@ -26,9 +35,9 @@ import qs.services
 Item {
     id: root
 
-    // The content area, which is what this centres in. The shelf is a thing you
-    // aim at with the hand already holding a window, so it goes where the eye
-    // already is rather than hanging off an edge.
+    // The content area, which the row hangs from the top of. The shelf is aimed
+    // at with a hand already carrying a window, so it sits inside the space
+    // windows live in rather than over the band.
     required property real holeX
     required property real holeY
     required property real holeWidth
@@ -81,11 +90,41 @@ Item {
     readonly property real pitch: root.plateW + root.gap
     readonly property real rowW: root.count * root.pitch - root.gap
     readonly property real rowX: root.holeX + (root.holeWidth - root.rowW) / 2
-    readonly property real rowY: root.holeY + (root.holeHeight - root.plateH) / 2
+    readonly property real rowY: root.holeY + root.gap
 
-    function plateX(i: int): real {
-        return root.rowX + i * root.pitch;
+    // HOW MUCH OF THE TOP THE SHELF OWNS while it is merely docked, for
+    // whatever is drawn underneath to keep clear of. Published rather than
+    // recomputed out there, so the map does not have to know how a plate is
+    // built in order to stay out of its way.
+    readonly property real dockedHeight: root.gap * 2 + root.plateH * root.docked
+
+    // HOW BIG THE ROW ACTUALLY IS, which is not how big it was laid out. Docked
+    // it is drawn small; reached for it grows to full size about its own top
+    // edge, so it stays hung from the top of the screen while it opens.
+    //
+    // The hit test below reads THIS and not the layout, because a plate you can
+    // see and a plate you can hit have to be the same rectangle, including
+    // during the growth.
+    readonly property real docked: 0.72
+    readonly property real rowScale: root.docked + (1 - root.docked) * arm.value
+
+    readonly property real scaledPitch: root.pitch * root.rowScale
+    readonly property real scaledW: root.plateW * root.rowScale
+    readonly property real scaledH: root.plateH * root.rowScale
+    readonly property real scaledRowW: root.rowW * root.rowScale
+    readonly property real scaledRowX: root.rowX + (root.rowW - root.scaledRowW) / 2
+
+    function plateCentre(i: int): point {
+        return Qt.point(root.scaledRowX + i * root.scaledPitch + root.scaledW / 2, root.rowY + root.scaledH / 2);
     }
+
+    // HAS THE HAND COME UP HERE. A band rather than a line, and generous below
+    // the plates: a hand carrying something is aimed loosely, and the whole
+    // instruction is "go to the top", not "hit this row".
+    //
+    // This is also what takes the aim AWAY from the layout underneath, so the
+    // two answers can never both be live: whoever owns the finger owns it alone.
+    readonly property bool armed: root.active && root.pointY < root.rowY + root.scaledH * 2
 
     // WHICH PLATE THE FINGER IS OVER, or -1 for none.
     //
@@ -93,25 +132,19 @@ Item {
     // plates are not dead ground: a finger that lands in a gap is aiming at one
     // of the two plates beside it, not at the background, and a drop that does
     // nothing because it fell between two targets is the worst answer available.
-    // Outside the row entirely is still nothing, because releasing away from the
-    // shelf is how you change your mind.
-    //
-    // The vertical catch is a plate's height either side of the row, which makes
-    // the band three plates tall. A hand carrying something is aimed loosely,
-    // and there is nothing else on this screen to hit by accident.
+    // Past either end of the row by more than half a plate there is no aim at
+    // all, which is what leaves the top corners meaning "I have changed my mind".
     readonly property int over: {
-        if (!root.active)
+        if (!root.armed)
             return -1;
 
-        if (root.pointY < root.rowY - root.plateH || root.pointY > root.rowY + root.plateH * 2)
-            return -1;
-        if (root.pointX < root.rowX - root.gap || root.pointX > root.rowX + root.rowW + root.gap)
+        if (root.pointX < root.scaledRowX - root.scaledW / 2 || root.pointX > root.scaledRowX + root.scaledRowW + root.scaledW / 2)
             return -1;
 
-        return Math.max(0, Math.min(root.count - 1, Math.floor((root.pointX - root.rowX) / root.pitch)));
+        return Math.max(0, Math.min(root.count - 1, Math.floor((root.pointX - root.scaledRowX) / root.scaledPitch)));
     }
 
-    // The shelf RISES into place rather than appearing, and the same value fades
+    // The shelf DROPS into place rather than appearing, and the same value fades
     // it, so one number is the whole arrival.
     Follow {
         id: reveal
@@ -121,8 +154,20 @@ Item {
         epsilon: 0.005
     }
 
+    // ...and a second one for the reach, which is a different motion for a
+    // different reason and must not share the first's clock.
+    Follow {
+        id: arm
+
+        target: root.armed ? 1 : 0
+        speed: Appearance.anim.revealSpeed
+        epsilon: 0.005
+    }
+
     visible: reveal.value > 0.01
-    opacity: reveal.value
+    // Docked, it is present rather than proposed: enough to be seen and not
+    // enough to compete with the layout it is hanging over.
+    opacity: reveal.value * (0.55 + 0.45 * arm.value)
 
     Repeater {
         model: root.slots
@@ -144,12 +189,14 @@ Item {
             // been used yet.
             readonly property var windows: typeof plate.modelData.target === "number" ? Hypr.clientsIn(plate.modelData.target).slice(0, Appearance.sizes.wsMaxWindows) : []
 
-            x: root.plateX(plate.index)
-            // Up into place: a fifth of a plate of travel, which is enough to
-            // read as arriving and not enough to be a journey.
-            y: root.rowY + (1 - reveal.value) * root.plateH * 0.2
-            width: root.plateW
-            height: root.plateH
+            readonly property point centre: root.plateCentre(plate.index)
+
+            x: plate.centre.x - width / 2
+            // Up out of the top edge while it arrives, so the row is seen coming
+            // down from the edge it belongs to.
+            y: plate.centre.y - height / 2 - (1 - reveal.value) * root.plateH * 0.3
+            width: root.scaledW
+            height: root.scaledH
 
             // THE ONLY FEEDBACK A DROP TARGET OWES YOU. It grows under the
             // finger, which is the one signal that survives having a hand over

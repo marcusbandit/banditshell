@@ -1259,6 +1259,15 @@ Singleton {
                 // last few pixels of your windows.
                 grab: 0,
 
+                // HOW LONG BEFORE THE WORKSPACE MAP COMES OUT, and it is a
+                // "have you stopped throwing" rather than a hold: the check runs
+                // on this beat and only lands once the hand has dropped below
+                // `fling`. A closing flick is over before the first beat and
+                // never sees the map at all, which is the whole point of it
+                // existing. Short, because everything except a flick should get
+                // the map immediately.
+                settle: 120,
+
                 // How long the finger has to stand still, once the window is off
                 // the ground, before the shelf of workspaces comes out. Long
                 // enough that a slow swipe is still a swipe.
