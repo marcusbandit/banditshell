@@ -308,6 +308,111 @@ Scope {
         }
     }
 
+    // THE HINGE. This target is not really for a person: it is the door the
+    // COMPOSITOR knocks on.
+    //
+    // A convertible reports its fold as an evdev switch, and the shell cannot
+    // read that device (the nodes are root:input and this user is deliberately
+    // not in that group; scripts/tablet-state.py argues the case). Hyprland
+    // already has it open, so the fold arrives as a `switch:on:` bind that execs
+    // `banditshell tablet on`, which lands here. That is the whole mechanism,
+    // and it is why the verbs are `on`/`off` rather than something more
+    // conversational: they are named after the switch, not after a mood.
+    //
+    // NOT PER-SCREEN, unlike every panel target above. A hinge is a fact about
+    // the machine rather than about a monitor, so there is nothing to name and
+    // nothing to choose.
+    IpcHandler {
+        target: "tablet"
+
+        function on(): string {
+            return Tablet.apply("on", "cli");
+        }
+
+        function off(): string {
+            return Tablet.apply("off", "cli");
+        }
+
+        function toggle(): string {
+            return Tablet.apply("toggle", "cli");
+        }
+
+        // WHERE THE BELIEF CAME FROM, and not just what it is. `folded` is false
+        // both when the machine is flat and when nothing has managed to tell the
+        // shell anything, and those two are worth telling apart: a fold that
+        // never arrives is a switch bind that is not firing, and this line is
+        // how that gets diagnosed without attaching a debugger to a compositor.
+        function status(): string {
+            const state = Tablet.folded ? "folded" : "flat";
+            return `${state} (${Tablet.known ? "known" : "assumed"}, via ${Tablet.source})`;
+        }
+    }
+
+    // THE BOARD ITSELF, separately from the hinge, because the two are genuinely
+    // different questions and conflating them would remove the useful cases at
+    // both ends: a keyboard on an unfolded machine (a bind, when the real one is
+    // across the desk) and a folded machine with no keyboard (reading something,
+    // where the board is just in the way).
+    IpcHandler {
+        target: "keyboard"
+
+        function toggle(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return "no shell window";
+            win.keyboard.toggle();
+            return win.keyboard.open ? "open" : "closed";
+        }
+
+        function open(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return "no shell window";
+            win.keyboard.show();
+            return "open";
+        }
+
+        // EVERY SCREEN, like every other `close` here: "put it away" is not a
+        // question about a monitor.
+        function close(): string {
+            for (const win of Shell.windows)
+                win.keyboard.hide();
+            return "closed";
+        }
+
+        // WHICH PAGE IS UP, as well as whether the board is. The page is the
+        // only piece of the board's state that persists across a hide, so it is
+        // the only one worth reporting.
+        function status(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return "no shell window";
+            return `${win.keyboard.open ? "open" : "closed"} on "${win.keyboard.page}"`;
+        }
+
+        // DOES THE BOARD TAKE UP ROOM. Not per-screen for the same reason the
+        // hinge is not: it is one preference about how the keyboard behaves,
+        // and a board that reserved space on one monitor and floated on another
+        // would be two different keyboards.
+        function dock(): string {
+            Tablet.setDocked(true);
+            return "docked";
+        }
+
+        function float(): string {
+            Tablet.setDocked(false);
+            return "floating";
+        }
+
+        function page(name: string, screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return "no shell window";
+            win.keyboard.page = name;
+            return `page ${name}`;
+        }
+    }
+
     // The hotkey sheet: every bind the compositor knows about, read off it
     // rather than out of a list in this repo. Driven exactly like the power
     // panel above, and for the same reason: it is summoned by name from

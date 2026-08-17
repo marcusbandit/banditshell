@@ -401,6 +401,22 @@ banditshell/
 │   │                            Two inputs onto one question, so they cannot
 │   │                            disagree; the keypad's own state is not here
 │   ├── Lock.qml                 whether the screen is locked, and what decides it
+│   ├── Tablet.qml               whether the machine is FOLDED OVER. The changes
+│   │                            come from the compositor (a switch bind execs
+│   │                            the CLI); the state at startup comes from
+│   │                            scripts/tablet-state.py, and is allowed to fail.
+│   │                            Also owns `docked`, which FrameExclusions reads:
+│   │                            an exclusive zone belongs to a one-edge surface
+│   │                            and the board is drawn in the four-edge one, so
+│   │                            the two ends need one answer between them
+│   ├── Keystrokes.qml           the one service that types OUTWARD, and it needs
+│   │                            TWO transports: wtype for characters (the
+│   │                            compositor never acts on them, so no bind can
+│   │                            fire) and ydotool for chords (a real uinput
+│   │                            keyboard, so SUPER+1 works). Queued so two
+│   │                            cannot race. NOT named `Keys`, which is QML's
+│   │                            own attached type and would shadow every
+│   │                            Keys.onPressed in the repo
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -448,6 +464,18 @@ banditshell/
 │   │   ├── KeyBoard.qml         the same binds, on the keys your hands know
 │   │   ├── KeyCap.qml           one key: a width in units, a legend, a state
 │   │   └── Chord.qml            one chord, in whichever vocabulary is being spoken
+│   ├── keyboard/                the board for when the machine is folded over
+│   │   ├── OnScreenKeyboard.qml the panel, out of the bottom band. THE ONE
+│   │   │                        SURFACE THAT MUST NOT TAKE THE KEYBOARD: it
+│   │   │                        types through it, so its absence from
+│   │   │                        ShellWindow.keyboardFocus is load-bearing, and
+│   │   │                        it has no catcher because a tap off it belongs
+│   │   │                        to the window underneath
+│   │   ├── Layouts.qml          what is on the board, as data. A key carries a
+│   │   │                        width in UNITS and never a position
+│   │   └── TabletKey.qml        one key. Fires on PRESS, repeats when held, and
+│   │                            is a TapHandler rather than a MouseArea so that
+│   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
 │   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
 │   │                            is on the real desktop while you decide about it
@@ -490,6 +518,10 @@ banditshell/
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 ├── scripts/
 │   ├── palette.py               a wallpaper's dominant colours
+│   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
+│   │                            that needs an ioctl, so it needs a process.
+│   │                            Prints `unknown` without the `input` group, and
+│   │                            that is the correct failure
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
 ├── bin/

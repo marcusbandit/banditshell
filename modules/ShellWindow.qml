@@ -7,6 +7,7 @@ import qs.config
 import qs.modules.calculator
 import qs.modules.cheatsheet
 import qs.modules.clipboard
+import qs.modules.keyboard
 import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
@@ -48,6 +49,11 @@ PanelWindow {
     // flank; see modules/calculator/CalculatorPanel.qml for why it is a panel
     // rather than a fifth gauge.
     readonly property CalculatorPanel calculator: calcLayer
+    // The board for when the machine is folded over. Registered here like every
+    // other panel, and then deliberately left OUT of `keyboardFocus` below: it
+    // is the one surface that must not hold the keyboard, because it types
+    // through it. See modules/keyboard/OnScreenKeyboard.qml.
+    readonly property OnScreenKeyboard keyboard: keyboardLayer
     readonly property SettingsPanel settings: settingsLayer
     // NAMED FOR THE IPC TARGET, not for the type, like every line above it:
     // modules/Ipc.qml reaches this as `win.hotkeys` and `hotkeys status` reads
@@ -281,6 +287,19 @@ PanelWindow {
             item: calcLayer.open ? calcLayer.maskItem : null
         }
 
+        // THE BOARD, AND ONLY THE BOARD, which is the one place in this list
+        // where that matters. Every entry above it names either a panel or a
+        // screen-filling catcher, and the catchers are there so that a click off
+        // a summoned panel dismisses it. The tablet keyboard's mask is its own
+        // rectangle precisely so that a tap anywhere else does NOT come here: it
+        // is open in order to type into the window underneath, so every pixel
+        // that is not a keycap has to belong to that window. A catcher here
+        // would make the board impossible to use for its only purpose.
+        Region {
+            intersection: Intersection.Combine
+            item: keyboardLayer.open ? keyboardLayer.maskItem : null
+        }
+
         // The whole screen while the sheet is out, so a click anywhere off it
         // puts it away. Word for word the power panel's case above: summoned by
         // keybind rather than reached for, so there is no edge to leave and
@@ -509,7 +528,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -863,6 +882,25 @@ PanelWindow {
             }
         }
 
+        // THE TABLET BOARD, out of the bottom band, for when the machine is
+        // folded over and the real keyboard is face down on the table.
+        //
+        // IT CLOSES NOTHING AND NOTHING CLOSES IT, which is why it has no
+        // `onOpenChanged` block like the two panels above. Every other summoned
+        // surface here is exclusive with the rest, because they all want the
+        // keyboard and only one can have it. This one wants the opposite: it is
+        // open in order to type into something else, so a launcher opening over
+        // it is a perfectly sensible thing to want to type into. Making it
+        // dismiss its neighbours would mean the board could not be used on the
+        // one surface a folded machine most needs it for.
+        OnScreenKeyboard {
+            id: keyboardLayer
+
+            anchors.fill: parent
+            originX: chassis.barWidth
+            inset: win.border
+        }
+
         // EVERY BIND THE COMPOSITOR KNOWS ABOUT, summoned by name and drawn
         // from `hyprctl binds -j` on every open. It is the only panel here that
         // recites something the shell does not own, which is exactly why it
@@ -1191,13 +1229,15 @@ PanelWindow {
 
             // EVERYTHING THAT COMES OUT OVER THE BAND. A finger landing on the
             // bottom of the screen while one of these is up is aiming at the
-            // panel, not at the window behind it.
+            // panel, not at the window behind it, and the on-screen keyboard is
+            // the sharpest case: it IS the bottom of the screen, and its bottom
+            // row of caps sits exactly in this strip.
             //
             // A pinned menu counts even though it lives on the other side of the
             // screen, because its catcher covers everything and a tap anywhere
             // off it is how it is dismissed. The notification tray does not:
             // it hangs in the top corner and has never owned this edge.
-            blocked: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open || settingsLayer.docked
+            blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open || settingsLayer.docked
         }
 
         TopNotch {

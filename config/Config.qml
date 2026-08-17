@@ -985,6 +985,65 @@ Singleton {
                 symbols: false
             },
 
+            // TABLET MODE: the machine folded over, and the keyboard that
+            // replaces the one now facing the table. See modules/keyboard/ and
+            // services/Tablet.qml.
+            tablet: {
+                // WHETHER FOLDING THE MACHINE BRINGS THE BOARD UP BY ITSELF.
+                //
+                // On, because folding a convertible is about as unambiguous a
+                // statement as this shell ever gets that the physical keyboard
+                // is no longer reachable, and section 2.2 says the interaction
+                // IS the request. Off makes the fold merely a fact the shell
+                // knows, and leaves the board to the CLI and its keybind.
+                //
+                // Unfolding always puts it away regardless of this, because the
+                // real keyboard is back under the fingers.
+                autoKeyboard: true,
+
+                // WHETHER THE BOARD TAKES UP ROOM rather than sitting over the
+                // window. Docked, it reserves an exclusive zone and the windows
+                // are laid out above it; floating, it overlays.
+                //
+                // DOCKED BY DEFAULT. The first cut of this floated, on the
+                // theory that a fold is usually for reading and that reflowing
+                // every window is too big a thing to do unasked. That was wrong
+                // in practice for one blunt reason: a board covering the bottom
+                // third of the screen covers the line you are typing into, so
+                // the default hid the thing the keyboard exists to edit. A
+                // keyboard you cannot see the effect of is not a smaller
+                // inconvenience than a window that moved.
+                //
+                // The `splitscreen` key on the bottom row toggles it, so
+                // floating is one tap away for the cases that do want it.
+                docked: true,
+
+                // How much of the screen's height the board takes, as a
+                // fraction. Five rows, so this is a little over a third: enough
+                // that a cap is a comfortable target on a 1920x1200 panel, and
+                // not so much that the window being typed into is a letterbox.
+                height: 0.38,
+
+                // The gap between caps, as a fraction of the horizontal pitch.
+                // A fraction rather than a pixel count so the seam stays
+                // proportional when the board is rebuilt at another size, which
+                // is the same rule the rest of the shell's geometry follows.
+                seam: 0.08,
+
+                // HELD-KEY REPEAT, in milliseconds: how long before a held key
+                // starts repeating, and how fast it goes once it does. Only the
+                // keys Layouts marks `repeats` obey these; a letter never
+                // repeats, because a finger resting on the board while you
+                // think must not fill the line.
+                //
+                // The delay is longer than a physical keyboard's would be. A
+                // fingertip stays down measurably longer than a key does, so
+                // the compositor's own repeat_delay would make ordinary typing
+                // stutter into doubles.
+                repeatDelay: 500,
+                repeatInterval: 45
+            },
+
             // The lock screen. See modules/lock/.
             lock: {
                 // How wide the field you type into is. Wide enough that a long

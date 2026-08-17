@@ -18,6 +18,14 @@
 #   banditshell calculator toggle|open|close|answer <expression>
 #                                the keypad panel; `answer` evaluates and prints
 #                                without a surface: `calculator answer "2+3*4"`
+#   banditshell tablet on|off|toggle|status|probe
+#                                the hinge. `on`/`off` are what the compositor's
+#                                switch binds call when the machine is folded
+#                                over; `probe` asks the hardware directly
+#   banditshell keyboard toggle|open|close|status|dock|float|page <name>
+#                                the on-screen board, for when the real keyboard
+#                                is face down on the table. Comes up by itself
+#                                on a fold unless tablet.autoKeyboard is off
 #   banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status
 #                                pull = shell -> window, put = window -> shell
 #   banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]
@@ -174,6 +182,45 @@ calculator | calc)
     esac
     ;;
 
+# THE HINGE, and this is the verb the COMPOSITOR calls rather than you.
+#
+# The switch binds in ~/.config/hypr/lua/binds.lua exec `tablet on` and
+# `tablet off`, because the shell cannot read the switch device itself. `probe`
+# is here as the diagnostic for when a fold does not seem to be arriving: it
+# asks the hardware directly and will usually answer `unknown`, which is the
+# expected answer and is explained in the script it runs.
+tablet)
+    sub="${1:-status}"
+    case "$sub" in
+    on | off | toggle | status) ipc tablet "$sub" ;;
+    probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
+    *) echo "usage: banditshell tablet on|off|toggle|status|probe" >&2; exit 2 ;;
+    esac
+    ;;
+
+# The on-screen board, separately from the hinge above: a keyboard is worth
+# having on an unfolded machine and worth dismissing on a folded one.
+keyboard | osk)
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    # `close` is the odd one out and takes NO screen: it reaches every window,
+    # because "put it away" is not a question about a monitor. Passing it one
+    # anyway is not ignored, it is an arity error from the IPC layer, and the
+    # verb silently does nothing.
+    close) ipc keyboard close ;;
+    # Whether the board takes up room. Neither takes a screen: it is one
+    # preference about how the keyboard behaves, not a fact about a monitor.
+    dock | float) ipc keyboard "$sub" ;;
+    toggle | open | status) ipc keyboard "$sub" "${1:-}" ;;
+    page)
+        [ $# -ge 1 ] || { echo "usage: banditshell keyboard page <name>" >&2; exit 2; }
+        ipc keyboard page "$1" "${2:-}"
+        ;;
+    *) echo "usage: banditshell keyboard toggle|open|close|status|dock|float|page <name>" >&2; exit 2 ;;
+    esac
+    ;;
+
 # THE WAY OUT, and the reason it exists is worth writing down.
 #
 # Several surfaces take the keyboard EXCLUSIVELY while they are up (the
@@ -198,7 +245,7 @@ calculator | calc)
 close | panic)
     for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
                   "settings close" "notifications close" "notch close" "picker close" \
-                  "calculator close"; do
+                  "calculator close" "keyboard close"; do
         # Unquoted on purpose: this is the one place a verb and its argument
         # travel as one string and have to come apart again.
         # shellcheck disable=SC2086
