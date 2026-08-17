@@ -1160,6 +1160,63 @@ Singleton {
                 toggleHeight: 18
             },
 
+            // THE BOTTOM EDGE, AS A HANDLE ON THE WINDOW ABOVE IT. A finger
+            // only, never the mouse; see modules/windows/.
+            windows: {
+                // Whether a finger on the bottom edge picks up the window it
+                // started under at all. Off leaves that edge doing exactly what
+                // it did before, which is the launcher's pull.
+                edge: true,
+
+                // How far ABOVE THE BAND the touch strip reaches, in pixels.
+                //
+                // Zero, and the zero is the point: the band is already the
+                // shell's, so a strip exactly that tall claims nothing new. Every
+                // pixel added here is a pixel off the bottom of every window that
+                // stops answering the MOUSE as well, because an input region
+                // belongs to the surface and not to the device that reaches into
+                // it. Raise it if the edge is hard to hit and you can spare the
+                // last few pixels of your windows.
+                grab: 0,
+
+                // How long the finger has to stand still, once the window is off
+                // the ground, before the shelf of workspaces comes out. Long
+                // enough that a slow swipe is still a swipe.
+                hold: 260,
+                // How far it may wander in that time and still count as still.
+                holdSlop: 14,
+
+                // A FULL SWIPE, as a fraction of the screen's height: how far the
+                // window has to go up before letting go closes it. A fraction
+                // rather than a pixel count, for pullTravel's reason.
+                //
+                // Deliberately further than a panel's pull. Closing a window is
+                // the one gesture in this shell that destroys something, so it
+                // asks for the whole distance OR a real throw, where a panel asks
+                // for a quarter of it or any upward drift at all.
+                travel: 0.18,
+                // How fast a shorter swipe has to be moving when the finger
+                // leaves to count as that throw, in pixels per MILLISECOND. A
+                // deliberate flick runs well over 1; a hand that has stopped to
+                // think runs near 0.
+                fling: 0.9,
+
+                // The lifted card, as a fraction of the content area's width. It
+                // keeps the window's own aspect, so this is the only number it
+                // needs.
+                card: 0.2,
+                // A workspace plate on the shelf, in the same units and as a
+                // preference rather than a promise: the shelf caps itself to the
+                // content area, so a long persistent set shrinks the plates
+                // instead of running off the screen.
+                plate: 0.15,
+
+                // WHETHER DROPPING A WINDOW SOMEWHERE TAKES YOU WITH IT. Off: you
+                // sent it away, you did not ask to go. On is Hyprland's own
+                // movetoworkspace, which follows.
+                follow: false
+            },
+
             menu: {
                 // Sized from what a row has to hold, not picked. A row spends
                 // 12 of padding, 20 of icon, 12, then the label, then 12, the

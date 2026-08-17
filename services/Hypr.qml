@@ -456,6 +456,53 @@ Singleton {
         });
     }
 
+    // CLOSE ONE WINDOW, NAMED, rather than whichever one holds the keyboard.
+    //
+    // `killactive` is the dispatcher everybody binds and it is the wrong one for
+    // a gesture: what a finger swipes up is the window it landed on, and under
+    // follow-mouse that is not reliably the focused one. A close that asks for
+    // "the active one" would sometimes destroy a different window than the one
+    // in your hand, and this is the shell's only destructive gesture.
+    function closeWindow(addr: string): void {
+        if (addr)
+            root.send(`hl.dsp.window.close({ window = "address:${addr}" })`, `closewindow address:${addr}`);
+    }
+
+    // SEND A WINDOW SOMEWHERE ELSE AND STAY WHERE YOU ARE.
+    //
+    // `target` is a workspace id, or one of the compositor's own selectors as a
+    // string: "empty" is the first workspace with nothing on it, which is what
+    // "a new one" means to a compositor that numbers workspaces rather than
+    // creating them.
+    //
+    // THE LUA PARSER HAS NO SILENT MOVE, which is the whole reason this is not
+    // one line. `movetoworkspacesilent` exists in the old dialect and
+    // `hl.dsp.window.move` has no flag for it: measured against 0.56.2, a
+    // `silent = true` in the table is accepted, ignored, and the view follows
+    // the window anyway. So the silence is COMPOSED here, exactly as
+    // restoreFocus composes its cursor put-back: read where you are, move the
+    // window, go back. One dispatch, so there is no frame in between for the
+    // screen to be seen anywhere it was not sent.
+    //
+    // The workspace is handed back as the OBJECT that was read rather than as
+    // its id, because that is what `hl.dsp.focus` takes and it costs an
+    // arithmetic step to turn one into the other for no gain.
+    function sendToWorkspace(addr: string, target: var, follow: bool): void {
+        if (!addr)
+            return;
+
+        // A number goes in bare and a selector goes in quoted; the legacy
+        // spelling takes both the same way.
+        const ws = typeof target === "number" ? `${target}` : `"${target}"`;
+
+        if (follow) {
+            root.send(`hl.dsp.window.move({ window = "address:${addr}", workspace = ${ws} })`, `movetoworkspace ${target},address:${addr}`);
+            return;
+        }
+
+        root.send(`(function() local w = hl.get_active_workspace() hl.dispatch(hl.dsp.window.move({ window = "address:${addr}", workspace = ${ws} })) return hl.dsp.focus({ workspace = w }) end)()`, `movetoworkspacesilent ${target},address:${addr}`);
+    }
+
     // Waiting for the window an application is about to open.
     //
     // Hyprland focuses a new window by itself, and that is not the whole job

@@ -14,6 +14,7 @@ import qs.modules.session
 import qs.modules.settings
 import qs.modules.sidebar
 import qs.modules.wallpaper
+import qs.modules.windows
 import qs.services
 
 // The shell. One surface per screen, and everything the shell draws lives in it.
@@ -307,6 +308,17 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: launchEdge.maskItem
+        }
+
+        // The window edge's strip, ALWAYS, on the launch edge's argument above
+        // and with one difference worth stating: at its default height this
+        // entry adds NOTHING, because the strip is exactly the band and the
+        // chassis already claims that. It exists so that raising `windows.grab`
+        // widens the region along with the target, rather than widening a target
+        // the compositor still refuses to deliver into.
+        Region {
+            intersection: Intersection.Combine
+            item: windowEdge.maskItem
         }
 
         Region {
@@ -1151,6 +1163,41 @@ PanelWindow {
                 launchEdge.target = null;
                 launchEdge.leaving = null;
             }
+        }
+
+        // THE SAME EDGE, ANSWERING A FINGER, and answering it about the window
+        // rather than about the shell. Push up from the bottom of a window and
+        // it comes up with you: let go and it is closed, hold and the workspaces
+        // come out to put it on. See modules/windows/WindowEdge.qml, which
+        // carries the whole argument for why two gestures can share one edge.
+        //
+        // DECLARED AFTER THE LAUNCH EDGE, so it is offered the press first and
+        // can hand it back. Everything it does not want (a mouse, a finger with
+        // no window above it, a finger while a panel is up) is refused on the
+        // press and falls through to the pull below exactly as before.
+        WindowEdge {
+            id: windowEdge
+
+            anchors.fill: parent
+            screen: win.screen
+            border: win.border
+
+            // The chassis's hole, not the screen: the card is sized against the
+            // space windows actually live in, and the shelf centres in it.
+            holeX: chassis.holeX
+            holeY: chassis.holeY
+            holeWidth: chassis.holeWidth
+            holeHeight: chassis.holeHeight
+
+            // EVERYTHING THAT COMES OUT OVER THE BAND. A finger landing on the
+            // bottom of the screen while one of these is up is aiming at the
+            // panel, not at the window behind it.
+            //
+            // A pinned menu counts even though it lives on the other side of the
+            // screen, because its catcher covers everything and a tap anywhere
+            // off it is how it is dismissed. The notification tray does not:
+            // it hangs in the top corner and has never owned this edge.
+            blocked: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open || settingsLayer.docked
         }
 
         TopNotch {

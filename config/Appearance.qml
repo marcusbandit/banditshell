@@ -312,6 +312,18 @@ Singleton {
         // Whether the screen-edge gestures are sized for a finger or for a
         // cursor; see the note in Config.qml, it is a trade rather than a taste.
         readonly property bool touchEdges: root.cfg.control.touchEdges
+        // The bottom edge as a handle on the window above it: what a finger has
+        // to do to lift one, to throw it away, and to put it somewhere else.
+        // See modules/windows/.
+        readonly property bool windowEdge: root.cfg.windows.edge
+        readonly property int windowGrab: root.cfg.windows.grab
+        readonly property int windowHold: root.cfg.windows.hold
+        readonly property int windowHoldSlop: root.cfg.windows.holdSlop
+        readonly property real windowTravel: root.cfg.windows.travel
+        readonly property real windowFling: root.cfg.windows.fling
+        readonly property real windowCard: root.cfg.windows.card
+        readonly property real windowPlate: root.cfg.windows.plate
+        readonly property bool windowFollow: root.cfg.windows.follow
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property real wheelRows: root.cfg.control.wheelRows
         readonly property real coastMs: root.cfg.control.coastMs
