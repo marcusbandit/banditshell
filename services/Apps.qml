@@ -595,11 +595,26 @@ Singleton {
                 })).filter(r => r.tier > root.tierNone).sort((a, b) => b.tier - a.tier || b.used - a.used || a.length - b.length || (a.entry.name ?? "").localeCompare(b.entry.name ?? "")).map(r => r.entry);
     }
 
+    // THE ONE DOOR OUT. Everything that starts an application goes through here
+    // or through launchAction below, so the wait between the key and the window
+    // is registered once rather than at every call site.
     function launch(entry: var): void {
         root.record(entry);
+        Launching.start(entry);
         // execute() handles the desktop-entry Exec field's own escaping and
         // field codes, which is a small horror worth not reimplementing.
         entry?.execute();
+    }
+
+    // A desktop entry's OWN action ("New Window", "New Private Window").
+    //
+    // Recorded and waited for against the APPLICATION, not the action: a new
+    // private window is still you reaching for the browser, and both the
+    // frecency table and the start-up clock are tables of applications.
+    function launchAction(entry: var, action: var): void {
+        root.record(entry);
+        Launching.start(entry);
+        action?.execute();
     }
 
     // What you actually use.

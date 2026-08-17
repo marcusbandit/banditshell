@@ -128,6 +128,21 @@ Scope {
             return "closed";
         }
 
+        // START SOMETHING BY ID, without a panel and without typing.
+        //
+        // The same call the launcher's Return makes, so the whole path after the
+        // key (frecency, the window claim, the launch notice) can be exercised
+        // from a terminal. The panel and what it starts break separately, which
+        // is this file's whole reason for existing.
+        function run(id: string): string {
+            const entry = Apps.entryById(id) ?? Apps.search(id)[0];
+            if (!entry)
+                return `no application matches "${id}"`;
+            Apps.launch(entry);
+            Hypr.claimNextWindow();
+            return `launched ${entry.name}`;
+        }
+
         // Drive the niagara concept's rail from here, because hover cannot be
         // scripted: a warped pointer delivers no motion inside a surface it is
         // already in. 0 is the top of the rail, 1 the bottom, and anything

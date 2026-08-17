@@ -686,13 +686,7 @@ Item {
             acts.push({
                 icon: "open_in_new",
                 label: action.name,
-                // Recorded against the APPLICATION, not the action: a new
-                // private window is still you reaching for the browser, and
-                // frecency is a table of applications.
-                run: () => root.launch(() => {
-                        Apps.record(entry);
-                        action.execute();
-                    })
+                run: () => root.launch(() => Apps.launchAction(entry, action))
             });
 
         // THE TWO THINGS YOU DO TO THE LIST ITSELF, rather than to the

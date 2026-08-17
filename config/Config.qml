@@ -611,7 +611,36 @@ Singleton {
 
                 // How long to keep watching for the window a launch opens, so
                 // it can be given the pointer as well as the keyboard.
-                claimMs: 15000
+                claimMs: 15000,
+
+                // THE WAIT between pressing Return and a window appearing. See
+                // services/Launching.qml and modules/LaunchNotice.qml.
+                opening: {
+                    // How long an application gets to be instant. Nothing is
+                    // drawn inside this, so a terminal never flashes a notice
+                    // and a browser always does.
+                    graceMs: 220,
+
+                    // What an application is assumed to take the first time it
+                    // is ever launched, before there is a measurement for it.
+                    assumeMs: 2500,
+
+                    // How much of a new measurement replaces the old one, 0..1.
+                    // Low is a long memory, high is "whatever it did last time".
+                    learn: 0.4,
+
+                    // WHEN TO GIVE UP: the later of this and the app's own
+                    // expected time times the factor, so something that always
+                    // takes twelve seconds is not called dead at ten.
+                    giveUpMs: 20000,
+                    giveUpFactor: 4,
+
+                    // How long the notice stays after the window lands, and
+                    // after giving up on one. Losing is worth reading, so it
+                    // holds longer.
+                    landedMs: 700,
+                    lostMs: 5000
+                }
             },
 
             // What has been copied, and getting it back. See

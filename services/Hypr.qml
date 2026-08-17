@@ -671,7 +671,11 @@ Singleton {
     // hear about it here: a window has no address until it exists, so there is no
     // earlier moment to hold one. Emitted for every window, not only the claimed
     // one; who cares is the listener's business.
-    signal windowOpened(addr: string, title: string)
+    //
+    // The CLASS comes along because it is the only thing in the event that says
+    // WHAT opened: services/Launching.qml matches it against whatever the
+    // launcher is still waiting for.
+    signal windowOpened(addr: string, title: string, cls: string)
 
     // ...and it has gone. The counterpart, for anything holding an address that
     // has stopped meaning anything.
@@ -699,7 +703,7 @@ Singleton {
                 const addr = raw && !raw.startsWith("0x") ? `0x${raw}` : raw;
 
                 if (addr)
-                    root.windowOpened(addr, parts.slice(3).join(","));
+                    root.windowOpened(addr, parts.slice(3).join(","), parts[2] ?? "");
 
                 if (root.claiming) {
                     root.claiming = false;

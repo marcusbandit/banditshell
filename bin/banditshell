@@ -8,7 +8,7 @@
 #
 #   banditshell start|stop|restart|run|log
 #   banditshell menu list|open <key>|close|toggle <key>|current|hover
-#   banditshell launcher toggle|open|close|scrub <0..1>
+#   banditshell launcher toggle|open|close|run <id>|scrub <0..1>
 #   banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status
 #                                what you copied; <n> is the index `list` prints.
 #                                `status` says whether it is actually RECORDING,
@@ -139,11 +139,13 @@ menu)
     ;;
 
 launcher)
-    if [[ "${1:-}" == "scrub" ]]; then
-        ipc launcher scrub "${2:-0}"
-    else
-        ipc launcher "${1:-toggle}"
-    fi
+    case "${1:-toggle}" in
+    scrub) ipc launcher scrub "${2:-0}" ;;
+    # `run` takes a desktop entry id, or anything the launcher's own search
+    # would put at the top: `launcher run firefox`.
+    run) ipc launcher run "${2:-}" ;;
+    *) ipc launcher "${1:-toggle}" ;;
+    esac
     ;;
 
 # The verbs that take an index are spelled out; the rest pass through the way

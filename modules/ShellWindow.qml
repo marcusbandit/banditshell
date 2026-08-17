@@ -538,7 +538,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...settingsCorner.blobs]
+            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one
@@ -1283,6 +1283,19 @@ PanelWindow {
         // nothing about it is meant to be clicked.
         MicIndicator {
             id: micIndicator
+
+            anchors.fill: parent
+            border: win.border
+        }
+
+        // WHAT YOU JUST ASKED FOR, while it is still coming up. Out of the
+        // bottom band, which is the edge the launcher went back into: you
+        // pressed Return there, so that is where the answer belongs.
+        //
+        // A readout like the mic indicator, so no mask entry: a launch you are
+        // waiting for is not something to press.
+        LaunchNotice {
+            id: launchNotice
 
             anchors.fill: parent
             border: win.border
