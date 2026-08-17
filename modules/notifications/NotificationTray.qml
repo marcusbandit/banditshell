@@ -29,6 +29,10 @@ import qs.services
 // EXPANDS to everything unread, growing in place. Anything that merely timed out
 // is still in there. Anything thrown away is not: see Notifs.beginLeave.
 //
+// THE CORNER is what expands it. The tray's own hover keeps it out and cannot
+// open it, which is what stops reaching for a popup from unfolding the history
+// under your hand; see `summoned`.
+//
 // There is a second way in, for a hand rather than a cursor: press at the corner
 // itself and pull out of it, roughly along its diagonal, and the tray comes with
 // you. The gesture is components/Pull.qml; this file only says which way it
@@ -90,33 +94,63 @@ Item {
     // `shove` afterwards, and never by both at once; see the Follow.
     property real pushBack: 0
 
-    // The grace window after a hover leaves.
+    // THE CORNER SUMMONS; THE TRAY ITSELF ONLY HOLDS. Two sentences, and they
+    // were one for far too long.
     //
-    // Leaving starts a timer rather than closing, the same as the menus. Hover
-    // is a sloppy input and there is real dead space to cross: the corner arms
-    // are in the band and the tray starts a gap below it, so an immediate close
-    // makes the tray unreachable from the thing that opens it.
-    property bool lingering: false
+    // `trayHover` used to sit in the same disjunction as the corner arms, so
+    // putting the pointer on a POPUP said the same thing as putting it in the
+    // corner: the whole history unfolded under the hand that had come to throw
+    // one card away, and then folded back up again the moment the card left and
+    // the shrinking tray dropped the cursor. Every dismissal made with a pointer
+    // was a full expand and collapse of a list nobody had asked for, which is
+    // what "it blinks everything back and then hides the rest" was.
+    //
+    // The corner is the summons, and it always was: DESIGN's own description of
+    // this tray is that you put the cursor in the corner and it expands. What the
+    // tray's own hover is for is KEEPING it out once it is, which is a different
+    // claim, and the split below is that difference: `resting` is a term of
+    // `attended` and never of `opening`.
+    readonly property bool summoned: cornerTop.containsMouse || cornerSide.containsMouse
+    readonly property bool resting: trayHover.hovered
 
-    // Summoned by the corner, and held open while the cursor is anywhere in the
-    // tray.
-    readonly property bool hovering: cornerTop.containsMouse || cornerSide.containsMouse || trayHover.hovered
+    // WHAT CAN OPEN IT, and what can merely KEEP it. Two questions, and the
+    // whole shape of this file's presence rests on them being separate.
+    //
+    // NEITHER READS `expanded` OR `courted`, and that is a requirement rather
+    // than a happy accident. The obvious way to say "resting holds the tray only
+    // while the tray is out" is `resting && expanded`, and it works and it is a
+    // BINDING LOOP: `expanded` reads the latch, the latch is written from that
+    // expression's own change handler, and the running shell says "Binding loop
+    // detected for property expanded" out loud. Measured, not guessed. Split this
+    // way the latch is only ever WRITTEN from these two, never read by them.
+    readonly property bool opening: root.summoned || root.pulling || root.pinned
+    readonly property bool attended: root.opening || root.resting
+
+    // A POINTER'S CLAIM, plus the grace window after everything lets go.
+    //
+    // Latched, and set only by `opening`: resting on a tray that nothing has
+    // opened writes nothing, which is the whole of the fix above. It is the same
+    // latch `lingering` was before it, doing the same job. Hover is a sloppy
+    // input and there is real dead space to cross, since the corner arms are in
+    // the band and the tray starts a gap below it, so an immediate close makes
+    // the tray unreachable from the thing that opens it.
+    property bool courted: false
 
     // OPEN IF ANY OF THEM SAYS SO. Derived, and written by nothing.
     //
-    // Four separate things can hold this tray open and they overlap freely: a
-    // pinned tray is also hovered the whole time you are reading it, a pull ends
-    // with the pointer parked in the corner arms it started from, and the grace
-    // timer is running underneath both of those. While this was a plain bool
-    // that each of them assigned, whichever one finished LAST won the argument,
-    // so a hover leaving closed a tray that was pinned, and the grace timer
-    // firing closed a tray the pointer had never actually left. Every fix for
-    // that is the same fix: check the other three before writing, at which point
-    // the flag is no longer the answer, it is a cache of the answer.
+    // Three separate things can hold this tray open and they overlap freely: a
+    // pinned tray is also under the pointer the whole time you are reading it,
+    // and a pull ends with the pointer parked in the corner arms it started from.
+    // While this was a plain bool that each of them assigned, whichever one
+    // finished LAST won the argument, so a hover leaving closed a tray that was
+    // pinned, and the grace timer firing closed a tray the pointer had never
+    // actually left. Every fix for that is the same fix: check the others before
+    // writing, at which point the flag is no longer the answer, it is a cache of
+    // the answer.
     //
     // A union has no ordering to get wrong. The tray is open while any reason to
     // be open is still true, and it shuts when the last of them lets go.
-    readonly property bool expanded: root.hovering || root.pulling || root.pinned || root.lingering
+    readonly property bool expanded: root.courted || root.pulling || root.pinned
 
     // WHETHER ESCAPE HAS TO REACH THIS TRAY, for the window to read: a layer
     // surface is handed no key events at all unless its window asks the
@@ -188,24 +222,29 @@ Item {
             keys.focus = false;
     }
 
-    // Hover drives the grace window and NOTHING else. It is one of four inputs
-    // now, not the state itself, so it has no business deciding whether the tray
-    // is open: it only says how long its own claim outlives the cursor.
-    onHoveringChanged: {
-        if (root.hovering) {
+    // SETTING the latch, which only a summons, a pull or a pin may do.
+    onOpeningChanged: if (root.opening) {
+        grace.stop();
+        root.courted = true;
+    }
+
+    // HOLDING it, which the tray's own hover may do and nothing more. The tray
+    // stays out while anything is attending to it and starts the grace window
+    // when the last of them lets go; resting on a collapsed tray stops a timer
+    // that was not running and writes nothing, which is exactly the difference
+    // between keeping this tray out and asking for it.
+    onAttendedChanged: {
+        if (root.attended)
             grace.stop();
-            root.lingering = false;
-        } else {
-            root.lingering = true;
+        else
             grace.restart();
-        }
     }
 
     Timer {
         id: grace
 
         interval: Appearance.anim.grace
-        onTriggered: root.lingering = false
+        onTriggered: root.courted = false
     }
 
     readonly property var items: root.expanded ? Notifs.history : Notifs.popups
@@ -263,8 +302,14 @@ Item {
     // The same reason TopNotch's blob is anchored at y = 0 rather than parked
     // below the band. Melt where one thing emerges from another (DESIGN.md 14),
     // and emerging means touching.
+    //
+    // OFF THE HEIGHT ALONE, not off `any`. `any` is a step function and the tray
+    // is not: it went false the frame the last notification left the list, which
+    // took the chassis tongue away in one frame while the tray under it was still
+    // folding shut. What is left of the tray IS its height, so that is what the
+    // shell melts into the band.
     function sync(): void {
-        if (!root.any || tray.height <= 0) {
+        if (tray.height <= 0) {
             root.blobs = [];
             return;
         }
@@ -555,26 +600,40 @@ Item {
         onPulled: fraction => root.pushBack = fraction
 
         onFinished: open => {
-            // Hand the offset to the spring whichever way it ended. A reversed
-            // push has to walk back out to where it came from, and a committed
-            // one has to be home before the tray is next shown, or the next
-            // notification would arrive in a tray that was already halfway into
-            // the corner.
-            shove.value = root.pushBack;
-            shove.target = 0;
-
             // ONE claim dropped, not an order to close. `expanded` is a union of
-            // four things and this is one of them, so clearing it says "the pull
-            // no longer holds this open" and leaves the other three to answer for
+            // three things and this is one of them, so clearing it says "the pull
+            // no longer holds this open" and leaves the others to answer for
             // themselves. With a cursor still resting on the tray it stays up on
-            // `hovering` and then on the grace timer, which is right: the pointer
-            // is sitting in the middle of the thing it just pushed and has not
-            // left yet. With a finger there is no hover to hold anything, so it
-            // goes at once, which is also right: a hand that pushed it away has
-            // said everything it is going to say. Writing `expanded` here instead
-            // would be the argument that union exists to end.
+            // the pointer's claim and then on the grace timer, which is right:
+            // the pointer is sitting in the middle of the thing it just pushed
+            // and has not left yet. With a finger there is no hover to hold
+            // anything, so it goes at once, which is also right: a hand that
+            // pushed it away has said everything it is going to say. Writing
+            // `expanded` here instead would be the argument that union exists to
+            // end.
+            //
+            // FIRST, because the two lines below ask what is LEFT in the tray and
+            // this is what decides it.
             if (open)
                 root.pinned = false;
+
+            // Hand the offset to the spring, and which way depends on whether
+            // there is still a tray to come back to.
+            //
+            // Home is right when something is staying on screen: a reversed push
+            // has to walk back out to where it came from, and a committed one
+            // over a tray that still has popups in it is not a departure, it is
+            // the list collapsing to what is left, so the tray belongs at the
+            // edge it lives on.
+            //
+            // OUT is right when nothing is. A committed push on an empty tray
+            // used to slide it home too, fading UP from wherever the gesture had
+            // got to, and then have `visible` snatch it away a frame later: the
+            // tray came back, brightened, and vanished. Sent the rest of the way
+            // it simply leaves, which is what the gesture said. The offset is put
+            // back once it has landed; see the Follow.
+            shove.value = root.pushBack;
+            shove.target = open && !root.any ? 1 : 0;
         }
 
         // NO onTapped, deliberately. A tap on the tray's padding is the miss you
@@ -600,6 +659,16 @@ Item {
         target: 0
         onValueChanged: if (!push.pulling)
             root.pushBack = value
+
+        // LANDED ALL THE WAY OUT, which only a committed push over an empty tray
+        // ever asks for. The tray is a full width past the screen edge and at
+        // zero opacity by now, so the offset goes back instantly rather than
+        // sliding an invisible panel home: `visible` counts `pushBack` among its
+        // terms, so a tray parked out here would never actually go away.
+        onSettledChanged: if (shove.settled && shove.target === 1) {
+            shove.target = 0;
+            shove.snap();
+        }
     }
 
     Item {
@@ -631,8 +700,26 @@ Item {
         // band swelling rather than a box appearing and then filling up.
         readonly property real contentHeight: Math.min(list.height, root.height - root.inset * 2)
 
-        height: contentHeight > 0 ? contentHeight + Appearance.padding.normal * 2 : 0
-        visible: root.any
+        // AND THE PADDING FOLDS WITH IT. The tray carries only the TOP tier; the
+        // bottom one is the last row's own gap, which folds with the row (see the
+        // delegate). `contentHeight > 0 ? + two tiers : 0` is a step function, so
+        // the last row leaving dropped a whole padding ring in one frame and the
+        // tongue snapped shut instead of retracting into the band. Ramped over
+        // one tier's worth of content, this reaches zero exactly when the content
+        // does, and is the full tier for every height that is not the last few
+        // pixels of a close.
+        readonly property real pad: Appearance.padding.normal * Math.min(1, contentHeight / Appearance.padding.normal)
+
+        height: contentHeight + pad
+
+        // Present while there is anything to show, while the last of it is still
+        // FOLDING away, and while a committed push is still leaving.
+        //
+        // `root.any` alone is a step function, and taking `visible` off it killed
+        // every one of those animations on its first frame: an empty expanded
+        // tray closing had its header collapse in zero frames, which is the blink
+        // the tray answered a last dismissal with.
+        visible: root.any || tray.contentHeight > 0 || root.pushBack > 0
 
         // PUSHED, all three of them, and the x one is new with the push. The
         // chassis blob is built from this item's rectangle, so a tray that slides
@@ -664,9 +751,12 @@ Item {
             id: view
 
             x: Appearance.padding.normal
-            y: Appearance.padding.normal
+            y: tray.pad
             width: tray.width - Appearance.padding.normal * 2
-            height: Math.max(0, tray.height - Appearance.padding.normal * 2)
+            // Everything below the top tier, because the bottom tier is the last
+            // row's own gap and is therefore inside the list rather than around
+            // it. See tray.pad.
+            height: Math.max(0, tray.height - tray.pad)
 
             contentHeight: list.height
             interactive: contentHeight > height
@@ -677,7 +767,12 @@ Item {
                 id: list
 
                 width: view.width
-                spacing: Appearance.padding.normal
+
+                // NO SPACING. Every row carries its own gap below it, folded with
+                // the row, because a Column's spacing is a fixed number per
+                // VISIBLE child and therefore appears and disappears in one
+                // frame. See the delegate.
+                spacing: 0
 
                 // The header only exists while the tray is a list rather than a
                 // couple of arrivals, and it collapses the same way a row does
@@ -688,7 +783,8 @@ Item {
                     readonly property real open: reveal.value
 
                     width: parent.width
-                    height: header.implicitHeight * open
+                    // Its own gap below it, on the same rule as every other row.
+                    height: (header.implicitHeight + Appearance.padding.normal) * open
                     clip: true
                     visible: open > 0
 
@@ -750,16 +846,39 @@ Item {
                         values: root.items
                     }
 
-                    delegate: NotificationCard {
+                    // A ROW, not a card, and the wrapper is here for the gap.
+                    //
+                    // The gap below a row FOLDS WITH THE ROW, which is what the
+                    // Column's spacing could not do: spacing is a fixed number
+                    // per visible child, so a card that had just spent its whole
+                    // exit animation collapsing to nothing dropped another twelve
+                    // pixels the instant its delegate went, and every row below
+                    // it jumped that far in one frame. Folded, it leaves at the
+                    // rate the card leaves.
+                    //
+                    // The LAST row's gap is the tray's bottom padding, which is
+                    // why the tray only carries the top tier itself (tray.pad).
+                    // The arithmetic is identical to the spacing it replaces;
+                    // what changes is that it can move.
+                    delegate: Item {
+                        id: row
+
                         required property var modelData
 
-                        entry: modelData
-                        fullWidth: list.width
-                        // Asked for, and nothing in here expires while it is
-                        // open, so this is the half of the tray with time to
-                        // read in. See NotificationCard's `roomy`.
-                        roomy: root.expanded
-                        onDismissed: Notifs.dismiss(modelData)
+                        width: list.width
+                        height: card.height + Appearance.padding.normal * card.open
+
+                        NotificationCard {
+                            id: card
+
+                            entry: row.modelData
+                            fullWidth: row.width
+                            // Asked for, and nothing in here expires while it is
+                            // open, so this is the half of the tray with time to
+                            // read in. See NotificationCard's `roomy`.
+                            roomy: root.expanded
+                            onDismissed: Notifs.dismiss(row.modelData)
+                        }
                     }
                 }
             }
@@ -789,7 +908,7 @@ Item {
             // ONE claim dropped, not an order to close, which is the same thing
             // the corner's tap and the push-back's release both say (see both).
             // `expanded` is a union and this is one term of it: with a cursor
-            // still resting in the tray it stays up on `hovering`, and that is
+            // still resting in the tray it stays up on `courted`, and that is
             // right rather than a miss, because the pointer has not gone
             // anywhere and the tray will follow it out. Writing `expanded` here
             // would be the argument that union exists to end.
