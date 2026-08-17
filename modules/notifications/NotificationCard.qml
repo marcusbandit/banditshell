@@ -586,6 +586,88 @@ Item {
                 elide: Text.ElideRight
             }
 
+            // HOW FAR ALONG, when the sender bothered to say. Absent from nearly
+            // every notification, so it collapses to nothing rather than
+            // reserving a lane that is empty on all but one card in the tray.
+            //
+            // It exists because senders draw this themselves otherwise. Given
+            // nowhere to put a proportion, a script writes one into the body out
+            // of block characters, and that bar is at the mercy of the body's
+            // font, its wrap, and its elide: on a card this width the line
+            // arrives as a row of chunky glyphs with the figures truncated off
+            // the end, which is the one thing the notification came to say.
+            //
+            // Above the body, not below it, because the body is where the
+            // numbers that QUALIFY the proportion live ("1.6 / 3.5 GB, 8 MB/s").
+            // The bar answers the question and the body explains the answer, so
+            // the answer goes first.
+            Item {
+                id: meter
+
+                readonly property real pct: root.entry?.progress ?? -1
+
+                width: parent.width
+                visible: pct >= 0
+                // Padding carried here rather than as a gap on the Column, whose
+                // spacing is 0 precisely so each row owns the space above it.
+                height: visible ? row.implicitHeight + Appearance.padding.small : 0
+
+                // Follow, not a Behavior. A progress hint lands whenever the
+                // sender feels like it, so the target moves mid-flight, which is
+                // the case a fixed-duration animation gets wrong: it restarts
+                // from wherever it had got to and the bar visibly stutters. The
+                // chase runs on the 0..100 percent rather than the 0..1
+                // fraction, because Follow's epsilon is sized for pixel-scale
+                // numbers and against a fraction it would land instantly.
+                Follow {
+                    id: chase
+
+                    target: meter.pct
+                    speed: Appearance.anim.revealSpeed
+                }
+
+                // Snapped on arrival so a card that opens at 40% opens AT 40%.
+                // Sweeping up from zero every time the tray redraws would be an
+                // animation of the card appearing, not of the download moving,
+                // and the two read completely differently.
+                Component.onCompleted: chase.snap()
+
+                Item {
+                    id: row
+
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    implicitHeight: Math.max(gauge.implicitHeight, figure.implicitHeight)
+                    height: implicitHeight
+
+                    Gauge {
+                        id: gauge
+
+                        anchors.left: parent.left
+                        anchors.right: figure.left
+                        anchors.rightMargin: Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        value: chase.value / 100
+                    }
+
+                    // The exact figure, in the body's own tier and colour, so it
+                    // reads as part of what the sender said rather than as a
+                    // label the shell bolted onto the bar.
+                    StyledText {
+                        id: figure
+
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        text: `${Math.round(meter.pct)}%`
+                        font.pixelSize: Appearance.font.size.small
+                        color: Appearance.colour.textDim
+                    }
+                }
+            }
+
             StyledText {
                 width: parent.width
                 visible: !!root.entry?.body

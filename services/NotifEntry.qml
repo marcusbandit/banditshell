@@ -51,6 +51,15 @@ QtObject {
     property int urgency: NotificationUrgency.Normal
     property bool hasActions: false
 
+    // HOW FAR ALONG THE SENDER SAYS IT IS, 0..100, from the `value` hint. -1 is
+    // "no progress in this packet", which is nearly every notification.
+    //
+    // A sentinel rather than a companion `hasProgress` flag: two properties that
+    // together mean one thing are two properties that can disagree, and the one
+    // that would go stale is the flag, leaving a bar drawn at whatever number
+    // was last in the other.
+    property real progress: -1
+
     // WHICH DESKTOP ENTRY THE SENDER SAYS IT IS, snapshotted with the rest of
     // it. The spec's `desktop-entry` hint, and the only field in the packet that
     // names the APPLICATION rather than the notification: `appName` is a display
@@ -332,6 +341,15 @@ QtObject {
 
         root.urgency = n.urgency;
         root.hasActions = (n.actions?.length ?? 0) > 0;
+
+        // Hints are a map the SENDER fills in, so `value` is whatever arrived
+        // over the bus: usually absent, and not necessarily a number when it is
+        // there. Anything unusable reads as "no progress" rather than as 0,
+        // because 0 would draw an empty bar on a notification that never asked
+        // for one, and an empty bar is a claim that something is stuck.
+        const v = n.hints?.value;
+        root.progress = typeof v === "number" && isFinite(v) ? Math.max(0, Math.min(100, v)) : -1;
+
         root.live = true;
     }
 
@@ -377,6 +395,15 @@ QtObject {
             root.snapshot();
         }
         function onActionsChanged(): void {
+            root.snapshot();
+        }
+
+        // A progress sender may move ONLY the hint, leaving summary and body
+        // exactly as they were. Without this the bar would still creep along,
+        // but only on the ticks where some other field happened to change too,
+        // which is the sort of bug that looks like a stutter rather than a
+        // missing connection.
+        function onHintsChanged(): void {
             root.snapshot();
         }
 
