@@ -23,23 +23,25 @@ import qs.services
 // arrangement rather than a diagram of it: what is beside what, what is twice as
 // wide as what, and how far off the edge the thing you were looking for is.
 //
-// ONLY WHAT IS IN FRONT OF YOU, and that is the second thing the scrolling
-// layout forced. Showing every window on the workspace is right up to about half
-// a dozen and wrong after that: twenty columns squeezed into the content area
-// are twenty postage stamps, and the ones that shuffle when you aim are too
-// small to read as anything moving. So the map covers the windows the viewport
-// is currently showing, which is the neighbourhood the hand is working in, and
-// the ones scrolled away are simply not on it.
+// EVERYTHING ON THE WORKSPACE, AND IT SCROLLS. This is the phone's app switcher:
+// the cards sit side by side in the order they are actually in, at a size worth
+// looking at, and the ones that do not fit are reached by moving toward them
+// rather than by being shrunk until they do. Squeezing twenty columns into the
+// content area makes twenty postage stamps, and the ones that shuffle when you
+// aim are then too small to read as anything moving at all.
 //
-// The PLAN still counts every column, on screen or not, because a walk of three
-// places is three places whatever you can see: what is reduced is the drawing,
-// never the arithmetic.
+// THE STRIP IS SIZED BY HEIGHT, never by width. A workspace is one row however
+// long it is, so the height is what has to fit and the width is what is allowed
+// to overflow; `windows.scale` caps it so a workspace holding one window does
+// not draw it across the whole screen. The card in the hand takes the same
+// scale, so the thing you are carrying and the hole it came out of are the same
+// size and dropping reads as slotting in.
 //
-// AS BIG AS THE AREA ALLOWS, up to a cap. The map takes whatever scale fits its
-// own contents into the content area and stops at `windows.scale` so that one
-// window does not fill the screen. The card in the hand is drawn at exactly the
-// same scale, so the thing you are carrying and the hole it came out of are the
-// same size and dropping reads as slotting in.
+// IT FOLLOWS THE HAND. It opens centred on the window you picked up, and pushing
+// the finger toward either edge scrolls it, faster the further in you push. That
+// is the only way a target that starts off the strip can ever be reached, and it
+// is the same thing the compositor's own scrolling layout does when you walk off
+// the end of it.
 //
 // The held window is in the map but is not a target: its slot is drawn empty,
 // because that is the space the swap is going to fill and the one place on
@@ -109,19 +111,53 @@ Item {
         }
 
         root.all = out;
+        root.centre();
     }
 
-    // WHAT IS DRAWN: the windows the viewport is showing, held one included. A
-    // column is here if any part of it is on the screen, so the two at the edges
-    // come along half cut off, which is also how the scrolling layout draws them
-    // and therefore what the eye already expects.
-    readonly property var shown: root.all.filter(w => w.x + w.w > 0 && w.x < root.width)
+    // OPEN ON THE WINDOW IN THE HAND. The strip can be several screens long and
+    // the one thing certain about where you want to be looking is that it is
+    // near what you just picked up.
+    function centre(): void {
+        for (const w of root.all) {
+            if (!w.held)
+                continue;
+            const mid = (w.x + w.w / 2 - root.box.x) * root.fitted;
+            root.pan = Math.max(0, Math.min(mid - root.holeWidth / 2, root.maxPan));
+            return;
+        }
+        root.pan = 0;
+    }
 
-    // What the map has to cover: the union of the drawn rectangles. Computed
-    // rather than assumed to be the screen, because the edge columns hang off
-    // both sides of it.
+    // PUSHING AT AN EDGE SCROLLS IT, faster the further past the margin the
+    // finger goes. A rate rather than a position, because the finger has to be
+    // free to keep aiming while the strip moves under it: a strip that mapped
+    // the finger straight onto a scroll offset would slide every target away
+    // from the hand that was reaching for it.
+    Timer {
+        interval: 16
+        repeat: true
+        running: root.active && !root.landed && root.maxPan > 0
+
+        onTriggered: {
+            const margin = root.holeWidth * 0.18;
+            const left = root.holeX + margin - root.pointX;
+            const right = root.pointX - (root.holeX + root.holeWidth - margin);
+            const push = left > 0 ? -left : right > 0 ? right : 0;
+            if (push === 0)
+                return;
+
+            // A whole content area a second at the very edge, which is fast
+            // enough to cross a long workspace without being a flick.
+            const step = root.holeWidth * (interval / 1000) * Math.min(1, Math.abs(push) / margin) * Math.sign(push);
+            root.pan = Math.max(0, Math.min(root.pan + step, root.maxPan));
+        }
+    }
+
+    // What the strip has to cover: the union of every window's rectangle, which
+    // on a scrolling layout is routinely several screens wide and starts left of
+    // zero.
     readonly property rect box: {
-        if (root.shown.length === 0)
+        if (root.all.length === 0)
             return Qt.rect(0, 0, root.width, root.height);
 
         let x0 = Infinity;
@@ -129,7 +165,7 @@ Item {
         let x1 = -Infinity;
         let y1 = -Infinity;
 
-        for (const w of root.shown) {
+        for (const w of root.all) {
             x0 = Math.min(x0, w.x);
             y0 = Math.min(y0, w.y);
             x1 = Math.max(x1, w.x + w.w);
@@ -139,9 +175,16 @@ Item {
         return Qt.rect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
     }
 
-    // As big as the area allows, and never bigger than the cap.
-    readonly property real fit: Math.min(root.holeWidth / root.box.width, root.holeHeight / root.box.height)
-    readonly property real fitted: Math.min(root.fit, Appearance.sizes.windowScale)
+    // As tall as the area allows, and never bigger than the cap. The width is
+    // deliberately not consulted: it is what scrolls.
+    readonly property real fitted: Math.min(root.holeHeight / root.box.height, Appearance.sizes.windowScale)
+
+    // HOW FAR ALONG THE STRIP IS, in drawn pixels, and how far it may go. Zero
+    // when the whole thing fits, in which case it is centred instead.
+    property real pan: 0
+
+    readonly property real stripW: root.box.width * root.fitted
+    readonly property real maxPan: Math.max(0, root.stripW - root.holeWidth)
 
     // THE MAP LANDS ON THE REAL WINDOWS WHEN THE FINGER LEAVES.
     //
@@ -166,22 +209,28 @@ Item {
         epsilon: 0.002
     }
 
-    readonly property real mapScale: root.fitted + (1 - root.fitted) * land.value
+    // The strip's own scale, which is what the card in the hand matches.
+    readonly property real mapScale: root.fitted
+
+    // ...and the scale things are DRAWN at, which walks to 1 as the strip lands
+    // on the windows. Only corner radii read it: everything else lands by
+    // chasing its own window's real rectangle, one delegate at a time.
+    readonly property real drawScale: root.fitted + (1 - root.fitted) * land.value
 
     // Where the box's origin lands once the map is centred, so a window's place
     // is one multiply and one add away. It walks to zero with the landing,
     // because zero is where the compositor's own coordinates start.
-    readonly property real mapX: root.holeX + (root.holeWidth - root.box.width * root.fitted) / 2 - root.box.x * root.fitted
+    readonly property real mapX: root.holeX + Math.max(0, root.holeWidth - root.stripW) / 2 - root.pan - root.box.x * root.fitted
     readonly property real mapY: root.holeY + (root.holeHeight - root.box.height * root.fitted) / 2 - root.box.y * root.fitted
-    readonly property real originX: root.mapX * (1 - land.value)
-    readonly property real originY: root.mapY * (1 - land.value)
+    readonly property real originX: root.mapX
+    readonly property real originY: root.mapY
 
     function place(w: var): rect {
         return Qt.rect(root.originX + w.x * root.mapScale, root.originY + w.y * root.mapScale, w.w * root.mapScale, w.h * root.mapScale);
     }
 
     // The targets: everything drawn except the one in the hand.
-    readonly property var windows: root.shown.filter(w => !w.held)
+    readonly property var windows: root.all.filter(w => !w.held)
 
     // THE LAYOUT'S OWN UNIT IS THE COLUMN, not the window. The scrolling layout
     // can stack more than one window at the same x, and a move shuffles COLUMNS
@@ -275,6 +324,35 @@ Item {
         };
     }
 
+    // WHERE A WINDOW ACTUALLY IS, RIGHT NOW, read from the model rather than
+    // from the snapshot the map is frozen at.
+    //
+    // This is what the landing chases, and it has to be live. Everything the
+    // drop set in motion happens after it: the columns walk, and focusing the
+    // window you carried scrolls the whole viewport to bring it into view, which
+    // moves every other window on the workspace with it. A strip that landed on
+    // the geometry it was opened with would put its cards down where the windows
+    // USED to be, and on a scrolling layout that is frequently off the side of
+    // the screen entirely, which is exactly what it looked like.
+    //
+    // Falls back to the frozen rectangle for a window that has since died, so a
+    // card always has somewhere to go.
+    function liveRect(addr: string, fallback: var): rect {
+        for (const client of Hypr.clientsOn(root.screen)) {
+            const o = client.lastIpcObject;
+            if (!o?.at || !o?.size)
+                continue;
+
+            const raw = o.address ?? "";
+            if ((raw.startsWith("0x") ? raw : `0x${raw}`) !== addr)
+                continue;
+
+            return Qt.rect(o.at[0] - root.screen.x, o.at[1] - root.screen.y, o.size[0], o.size[1]);
+        }
+
+        return Qt.rect(fallback.x, fallback.y, fallback.w, fallback.h);
+    }
+
     // Where a target sits when nothing is being previewed, which is what the hit
     // test is made against.
     function slotRect(i: int): rect {
@@ -323,162 +401,191 @@ Item {
     // subscription per window, taken for a gesture nobody is making. The lists
     // themselves stay ungated, because the drop's outro reads them after the map
     // has already begun fading.
-    Repeater {
-        model: root.visible ? root.shown : []
+    // CLIPPED TO THE CONTENT AREA, because the strip is longer than the screen
+    // and its ends have to stop somewhere. The chassis is that somewhere: a card
+    // scrolled off the end must not be drawn over the sidebar or the band, which
+    // are the shell's own body and not part of the workspace.
+    //
+    // The inner item cancels the outer one's offset, so everything below goes on
+    // working in the surface's coordinates and no geometry in this file has to
+    // know the clip exists.
+    Item {
+        x: root.holeX
+        y: root.holeY
+        width: root.holeWidth
+        height: root.holeHeight
+        clip: true
 
-        delegate: Item {
-            id: slot
+        Item {
+            x: -root.holeX
+            y: -root.holeY
+            width: root.width
+            height: root.height
 
-            required property int index
-            required property var modelData
+            Repeater {
+                model: root.visible ? root.all : []
 
-            readonly property bool aimed: !slot.modelData.held && root.over >= 0 && root.windows[root.over].addr === slot.modelData.addr
+                delegate: Item {
+                    id: slot
 
-            // WHERE IT IS, AND WHERE IT WOULD GO. The plan is the whole answer:
-            // under a swap two windows exchange rectangles, under a move the
-            // held column walks to the aim and everything it passes shuffles up
-            // by one. Move the finger away and the plan is the identity again,
-            // so the preview is a question rather than a change.
-            readonly property rect spot: root.place(root.planned(slot.modelData))
+                    required property int index
+                    required property var modelData
 
-            x: slot.spot.x
-            y: slot.spot.y
-            width: slot.spot.width
-            height: slot.spot.height
+                    readonly property bool aimed: !slot.modelData.held && root.over >= 0 && root.windows[root.over].addr === slot.modelData.addr
 
-            Behavior on x {
-                // OFF WHILE LANDING. These smooth a target jumping from one
-                // place to another; the landing moves every one of them every
-                // frame, and a smoother over that is just lag.
-                enabled: !root.landed
+                    // WHERE IT IS, AND WHERE IT WOULD GO. The plan is the whole answer:
+                    // under a swap two windows exchange rectangles, under a move the
+                    // held column walks to the aim and everything it passes shuffles up
+                    // by one. Move the finger away and the plan is the identity again,
+                    // so the preview is a question rather than a change.
+                    readonly property rect spot: root.place(root.planned(slot.modelData))
 
-                NumberAnimation {
-                    duration: Appearance.anim.normal
-                    easing.type: Easing.OutCubic
-                }
-            }
+                    // ...AND WHERE IT ENDS UP, which is wherever the compositor has
+                    // actually put it by the time the finger is gone. Chased per card
+                    // rather than by scaling the whole strip, because the strip's own
+                    // arrangement is a frozen picture and the windows have moved since.
+                    readonly property rect home: root.liveRect(slot.modelData.addr, slot.modelData)
 
-            Behavior on y {
-                enabled: !root.landed
+                    x: slot.spot.x + (slot.home.x - slot.spot.x) * land.value
+                    y: slot.spot.y + (slot.home.y - slot.spot.y) * land.value
+                    width: slot.spot.width + (slot.home.width - slot.spot.width) * land.value
+                    height: slot.spot.height + (slot.home.height - slot.spot.height) * land.value
 
-                NumberAnimation {
-                    duration: Appearance.anim.normal
-                    easing.type: Easing.OutCubic
-                }
-            }
+                    Behavior on x {
+                        // OFF WHILE LANDING. These smooth a target jumping from one
+                        // place to another; the landing moves every one of them every
+                        // frame, and a smoother over that is just lag.
+                        enabled: !root.landed
 
-            Behavior on width {
-                enabled: !root.landed
-
-                NumberAnimation {
-                    duration: Appearance.anim.normal
-                    easing.type: Easing.OutCubic
-                }
-            }
-
-            Behavior on height {
-                enabled: !root.landed
-
-                NumberAnimation {
-                    duration: Appearance.anim.normal
-                    easing.type: Easing.OutCubic
-                }
-            }
-
-            // The hole. It is a statement about a gesture in progress, so it
-            // goes as soon as the gesture is over rather than landing with
-            // everything else.
-            G2Rect {
-                anchors.fill: parent
-                visible: slot.modelData.held
-
-                radius: Appearance.sizes.windowRadius * root.mapScale
-                color: "transparent"
-                stroke: Appearance.colour.separator
-                strokeWidth: Appearance.font.stem
-                opacity: 1 - land.value
-            }
-
-            G2Rect {
-                anchors.fill: parent
-                visible: !slot.modelData.held
-
-                radius: Appearance.sizes.windowRadius * root.mapScale
-                color: Appearance.colour.fill
-                stroke: slot.aimed ? Appearance.colour.accent : "transparent"
-                strokeWidth: Appearance.font.stem
-            }
-
-            // THE WINDOW ITSELF, which is what makes these places rather than
-            // labels: you are aiming at the thing you can see. A single frame,
-            // because a target standing still has nothing to say frame by frame.
-            WindowView {
-                id: shot
-
-                anchors.fill: parent
-                visible: !slot.modelData.held
-
-                window: slot.modelData.held ? null : slot.modelData.client
-                radius: Appearance.sizes.windowRadius * root.mapScale
-                live: false
-            }
-
-            // DIMMED UNTIL AIMED. The scrim behind everything says the shell has
-            // taken the screen over, and lifting it off one card is the whole of
-            // what "this one" looks like: the window's own picture brightens
-            // rather than a fill being added to it. It comes off entirely as the
-            // map lands, so what is left lying on the real windows is the
-            // windows.
-            G2Rect {
-                anchors.fill: parent
-                visible: !slot.modelData.held
-
-                radius: Appearance.sizes.windowRadius * root.mapScale
-                color: Appearance.colour.scrim
-                opacity: (slot.aimed ? 0 : 0.45) * (1 - land.value)
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
-            }
-
-            Column {
-                anchors.centerIn: parent
-                spacing: Appearance.padding.small
-                visible: !slot.modelData.held
-
-                // The mark stands in until there is a frame, and stays for a
-                // window that can never give one. It is not drawn over a live
-                // capture: the picture already says which window this is, and a
-                // glyph on top of it would be the caption arguing with it.
-                AppMark {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    visible: !shot.ready
-
-                    spec: slot.modelData.mark
-                    size: Appearance.sizes.launcherIcon
-                    color: slot.aimed ? Appearance.colour.text : Appearance.colour.textDim
-                }
-
-                // WHAT WILL HAPPEN, and only under the finger. The picture says
-                // which window this is; the mark says what dropping here does to
-                // it, which is the half a target cannot carry on its own, and it
-                // is the mode's own mark so the answer is never in doubt.
-                // Nothing is written on the others, because a screen full of the
-                // same glyph says nothing at all.
-                Icon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-
-                    name: root.mode === "swap" ? "swap_horiz" : "low_priority"
-                    size: Appearance.font.iconSize
-                    color: Appearance.colour.accent
-                    opacity: slot.aimed ? 1 - land.value : 0
-
-                    Behavior on opacity {
                         NumberAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.anim.normal
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Behavior on y {
+                        enabled: !root.landed
+
+                        NumberAnimation {
+                            duration: Appearance.anim.normal
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Behavior on width {
+                        enabled: !root.landed
+
+                        NumberAnimation {
+                            duration: Appearance.anim.normal
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Behavior on height {
+                        enabled: !root.landed
+
+                        NumberAnimation {
+                            duration: Appearance.anim.normal
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    // The hole. It is a statement about a gesture in progress, so it
+                    // goes as soon as the gesture is over rather than landing with
+                    // everything else.
+                    G2Rect {
+                        anchors.fill: parent
+                        visible: slot.modelData.held
+
+                        radius: Appearance.sizes.windowRadius * root.drawScale
+                        color: "transparent"
+                        stroke: Appearance.colour.separator
+                        strokeWidth: Appearance.font.stem
+                        opacity: 1 - land.value
+                    }
+
+                    G2Rect {
+                        anchors.fill: parent
+                        visible: !slot.modelData.held
+
+                        radius: Appearance.sizes.windowRadius * root.drawScale
+                        color: Appearance.colour.fill
+                        stroke: slot.aimed ? Appearance.colour.accent : "transparent"
+                        strokeWidth: Appearance.font.stem
+                    }
+
+                    // THE WINDOW ITSELF, which is what makes these places rather than
+                    // labels: you are aiming at the thing you can see. A single frame,
+                    // because a target standing still has nothing to say frame by frame.
+                    WindowView {
+                        id: shot
+
+                        anchors.fill: parent
+                        visible: !slot.modelData.held
+
+                        window: slot.modelData.held ? null : slot.modelData.client
+                        radius: Appearance.sizes.windowRadius * root.drawScale
+                        live: false
+                    }
+
+                    // DIMMED UNTIL AIMED. The scrim behind everything says the shell has
+                    // taken the screen over, and lifting it off one card is the whole of
+                    // what "this one" looks like: the window's own picture brightens
+                    // rather than a fill being added to it. It comes off entirely as the
+                    // map lands, so what is left lying on the real windows is the
+                    // windows.
+                    G2Rect {
+                        anchors.fill: parent
+                        visible: !slot.modelData.held
+
+                        radius: Appearance.sizes.windowRadius * root.drawScale
+                        color: Appearance.colour.scrim
+                        opacity: (slot.aimed ? 0 : 0.45) * (1 - land.value)
+
+                        Behavior on opacity {
+                            NumberAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
+                    }
+
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: Appearance.padding.small
+                        visible: !slot.modelData.held
+
+                        // The mark stands in until there is a frame, and stays for a
+                        // window that can never give one. It is not drawn over a live
+                        // capture: the picture already says which window this is, and a
+                        // glyph on top of it would be the caption arguing with it.
+                        AppMark {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            visible: !shot.ready
+
+                            spec: slot.modelData.mark
+                            size: Appearance.sizes.launcherIcon
+                            color: slot.aimed ? Appearance.colour.text : Appearance.colour.textDim
+                        }
+
+                        // WHAT WILL HAPPEN, and only under the finger. The picture says
+                        // which window this is; the mark says what dropping here does to
+                        // it, which is the half a target cannot carry on its own, and it
+                        // is the mode's own mark so the answer is never in doubt.
+                        // Nothing is written on the others, because a screen full of the
+                        // same glyph says nothing at all.
+                        Icon {
+                            anchors.horizontalCenter: parent.horizontalCenter
+
+                            name: root.mode === "swap" ? "swap_horiz" : "low_priority"
+                            size: Appearance.font.iconSize
+                            color: Appearance.colour.accent
+                            opacity: slot.aimed ? 1 - land.value : 0
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
                         }
                     }
                 }

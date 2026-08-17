@@ -212,11 +212,42 @@ Item {
     readonly property real liveCX: root.held ? root.held.x + root.held.w / 2 + (root.pointX - root.held.x - root.held.w / 2) * tuck.value : 0
     readonly property real liveCY: root.held ? root.held.y + root.held.h - root.rise - root.held.h * root.liveScale / 2 : 0
 
+    // WHERE IT IS GOING, and for the two endings that land on a real window it
+    // is read LIVE rather than taken from the snapshot.
+    //
+    // This is what was making the finish look wrong. A drop sets things moving
+    // that finish after it: the columns walk, and focusing the window you
+    // carried scrolls the whole viewport to bring it into view, which moves
+    // every window on the workspace. A card flown at the rectangle its target
+    // occupied when the map opened therefore lands where that window USED to be,
+    // which on a scrolling layout is regularly off the side of the screen.
+    //
+    // Chasing a live value also means the card keeps following while the
+    // compositor animates, so the two arrive together instead of the shell
+    // guessing where the compositor will stop.
+    //
+    // A throw and a send do not land on a window at all, so they keep the frozen
+    // destination they were given: off the top of the screen, or onto a plate.
+    readonly property var home: root.held ? root.liveRect(root.held.addr) : null
+
+    readonly property var landing: {
+        if (!root.outro)
+            return null;
+        if ((root.outro !== "back" && root.outro !== "swapped") || !root.home || !root.held)
+            return root.dest;
+
+        return {
+            cx: root.home.x + root.home.w / 2,
+            cy: root.home.y + root.home.h / 2,
+            k: Math.min(root.home.w / root.held.w, root.home.h / root.held.h)
+        };
+    }
+
     // ...and where it is once nobody is holding it. One ternary per term rather
     // than a second item, because it is the same card either way.
-    readonly property real cardScale: root.outro ? root.blend(root.rest.k, root.dest.k, gone.value) : root.liveScale
-    readonly property real cardCX: root.outro ? root.blend(root.rest.cx, root.dest.cx, gone.value) : root.liveCX
-    readonly property real cardCY: root.outro ? root.blend(root.rest.cy, root.dest.cy, gone.value) : root.liveCY
+    readonly property real cardScale: root.outro ? root.blend(root.rest.k, root.landing.k, gone.value) : root.liveScale
+    readonly property real cardCX: root.outro ? root.blend(root.rest.cx, root.landing.cx, gone.value) : root.liveCX
+    readonly property real cardCY: root.outro ? root.blend(root.rest.cy, root.landing.cy, gone.value) : root.liveCY
 
     readonly property real cardW: root.held ? root.held.w * root.cardScale : 0
     readonly property real cardH: root.held ? root.held.h * root.cardScale : 0
@@ -245,6 +276,29 @@ Item {
     // it, and picking that window up out of a gesture made a screen away from it
     // would be the shell guessing. Nothing found means the press is refused, and
     // a refused press is the launcher's.
+    // ONE WINDOW'S RECTANGLE AS IT STANDS, or null. The same walk `windowAt`
+    // makes, asked about a known address instead of a place.
+    function liveRect(addr: string): var {
+        for (const client of Hypr.clientsOn(root.screen)) {
+            const o = client.lastIpcObject;
+            if (!o?.at || !o?.size)
+                continue;
+
+            const raw = o.address ?? "";
+            if ((raw.startsWith("0x") ? raw : `0x${raw}`) !== addr)
+                continue;
+
+            return {
+                x: o.at[0] - root.screen.x,
+                y: o.at[1] - root.screen.y,
+                w: o.size[0],
+                h: o.size[1]
+            };
+        }
+
+        return null;
+    }
+
     function windowAt(x: real): var {
         const reach = root.border + Appearance.sizes.minTarget;
         let best = null;
@@ -1010,6 +1064,9 @@ Item {
         }
     }
 }
+
+
+
 
 
 
