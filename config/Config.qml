@@ -1300,6 +1300,22 @@ Singleton {
                 // instead of running off the screen.
                 plate: 0.15,
 
+                // WHAT DROPPING A WINDOW ON ANOTHER ONE MEANS, "move" or
+                // "swap", and which way the pill at the bottom of the screen
+                // starts each session.
+                //
+                //   move   the held column walks to where you dropped it and
+                //          everything it passes shuffles up by one, keeping its
+                //          own order. 1,2,3 with the third dropped on the first
+                //          is 3,1,2.
+                //   swap   the two exchange places and nothing else moves, so
+                //          the same drop is 3,2,1.
+                //
+                // Move is the default because it is the one that answers "put
+                // this over there" without disturbing anything else, which is
+                // what a hand carrying a window is usually asking.
+                mode: "move",
+
                 // WHETHER DROPPING A WINDOW SOMEWHERE TAKES YOU WITH IT. Off: you
                 // sent it away, you did not ask to go. On is Hyprland's own
                 // movetoworkspace, which follows.

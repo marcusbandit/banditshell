@@ -526,6 +526,45 @@ Singleton {
         Hyprland.dispatch(`hl.dsp.window.swap({ window = "address:${addr}", with = "address:${other}" })`);
     }
 
+    // WALK A WINDOW'S COLUMN THROUGH THE LAYOUT, one place at a time. Negative
+    // steps go left, positive right.
+    //
+    // This is the difference between MOVING a window and SWAPPING it: everything
+    // the column passes shuffles up by one and keeps its own order, so three
+    // windows and a move of the third onto the first leaves 3,1,2 where a swap
+    // would leave 3,2,1.
+    //
+    // `swapcol` AND NOT `movewindow <direction>`, which is the obvious
+    // dispatcher and the wrong one. In the scrolling layout a directional move
+    // puts the window INTO the neighbouring column, stacking two windows where
+    // there was one, and only moves it along on the next press; measured, one
+    // press merged a pair and the second broke them apart in the wrong order.
+    // `swapcol` is the layout's own column-level exchange and never stacks
+    // anything. It is what the user's own SUPER+SHIFT+CONTROL+arrow is bound to.
+    //
+    // LAYOUTMSG HAS NO WINDOW SELECTOR, so the window has to hold the focus for
+    // the message to be about it. The whole run is composed into ONE dispatch,
+    // the way restoreFocus composes its cursor put-back: read the pointer and the
+    // focus, take the focus, walk, hand it back, put the pointer where it was.
+    // There is no frame in between for any of that to be seen, and a gesture that
+    // rearranges a workspace must not also move somebody's keyboard or cursor.
+    function walkColumn(addr: string, steps: int): void {
+        if (!addr || steps === 0)
+            return;
+
+        if (!root.lua) {
+            console.warn("Hypr: walking a column needs Hyprland's Lua dispatcher; the old parser cannot compose the focus around it.");
+            return;
+        }
+
+        const dir = steps < 0 ? "l" : "r";
+        let walk = "";
+        for (let i = 0; i < Math.abs(steps); i++)
+            walk += `hl.dispatch(hl.dsp.layout("swapcol ${dir}")) `;
+
+        Hyprland.dispatch(`(function() local p = hl.get_cursor_pos() local w = hl.get_active_window() hl.dispatch(hl.dsp.focus({ window = "address:${addr}" })) ${walk}if w then hl.dispatch(hl.dsp.focus({ window = w })) end return hl.dsp.cursor.move({ x = p.x, y = p.y }) end)()`);
+    }
+
     // Waiting for the window an application is about to open.
     //
     // Hyprland focuses a new window by itself, and that is not the whole job

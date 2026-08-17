@@ -324,6 +324,7 @@ Singleton {
         readonly property real windowFling: root.cfg.windows.fling
         readonly property real windowCard: root.cfg.windows.card
         readonly property real windowPlate: root.cfg.windows.plate
+        readonly property string windowMode: root.cfg.windows.mode
         readonly property bool windowFollow: root.cfg.windows.follow
         readonly property int rowHeight: root.cfg.control.rowHeight
         readonly property real wheelRows: root.cfg.control.wheelRows

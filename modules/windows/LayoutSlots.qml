@@ -49,6 +49,9 @@ Item {
     // The scale the card is heading for, which the map takes when it can.
     property real preferred: 1
 
+    // WHAT DROPPING MEANS: "move" or "swap". See WindowEdge's mode pill.
+    property string mode: "move"
+
     property real pointX: 0
     property real pointY: 0
     property bool active: false
@@ -162,20 +165,104 @@ Item {
         return Qt.rect(root.originX + w.x * root.mapScale, root.originY + w.y * root.mapScale, w.w * root.mapScale, w.h * root.mapScale);
     }
 
-    // The targets, and the hole. Two lists off one, so the delegates below can
-    // be a repeater over everything while the aim only ever lands on a window
-    // that is not the one being carried.
+    // The targets: everything except the one in the hand. The delegates draw
+    // `all` and this is only ever what the aim may land on.
     readonly property var windows: root.all.filter(w => !w.held)
-    readonly property rect heldPlace: {
-        for (const w of root.all)
-            if (w.held)
-                return root.place(w);
-        return Qt.rect(0, 0, 0, 0);
+
+    // THE LAYOUT'S OWN UNIT IS THE COLUMN, not the window. The scrolling layout
+    // can stack more than one window at the same x, and a move shuffles COLUMNS
+    // along; grouping by x is how a plan about places stays a plan about places
+    // even when one of them holds two windows.
+    readonly property var columns: {
+        const by = {};
+        for (const w of root.all) {
+            const k = `${w.x}`;
+            if (!by[k])
+                by[k] = {
+                    x: w.x,
+                    items: []
+                };
+            by[k].items.push(w);
+        }
+        return Object.keys(by).map(k => by[k]).sort((a, b) => a.x - b.x);
     }
 
-    // Where a target sits when nothing is being previewed, which is also what
-    // the card flies into when the swap is made: the two windows trade
-    // rectangles, so the one the card is going to is the one the target left.
+    function columnOf(w: var): int {
+        for (let i = 0; i < root.columns.length; i++)
+            if (root.columns[i].x === w.x)
+                return i;
+        return -1;
+    }
+
+    readonly property int heldColumn: {
+        for (const w of root.all)
+            if (w.held)
+                return root.columnOf(w);
+        return -1;
+    }
+
+    readonly property int aimColumn: root.over >= 0 ? root.columnOf(root.windows[root.over]) : -1
+
+    // HOW FAR THE HELD COLUMN HAS TO WALK, signed. The whole of what a move is,
+    // handed to Hypr.walkColumn as one number.
+    readonly property int steps: root.aimColumn >= 0 && root.heldColumn >= 0 ? root.aimColumn - root.heldColumn : 0
+
+    // The address a swap would be made with, or "".
+    readonly property string aimAddr: root.over >= 0 ? root.windows[root.over].addr : ""
+
+    // WHERE EVERY COLUMN ENDS UP under the current aim, as an x per column.
+    //
+    // A move takes the held column out of the list and puts it back at the aim,
+    // and then the whole list is laid out at the x positions the columns already
+    // occupy: what shuffles is the OCCUPANTS, not the places, which is exactly
+    // what the layout does when it walks a column past its neighbours.
+    readonly property var planX: {
+        const xs = root.columns.map(c => c.x);
+        if (root.aimColumn < 0 || root.heldColumn < 0 || root.mode === "swap")
+            return xs;
+
+        const idx = root.columns.map((c, k) => k);
+        idx.splice(root.heldColumn, 1);
+        idx.splice(root.aimColumn, 0, root.heldColumn);
+
+        const out = new Array(xs.length);
+        for (let p = 0; p < idx.length; p++)
+            out[idx[p]] = xs[p];
+        return out;
+    }
+
+    // WHERE ONE WINDOW WOULD END UP, in the compositor's coordinates.
+    //
+    // A swap exchanges two whole rectangles, sizes and all, because that is what
+    // the compositor does with them; a move only ever changes an x, because the
+    // columns keep their own widths and only their order changes.
+    function planned(w: var): var {
+        if (root.aimColumn < 0 || root.heldColumn < 0)
+            return w;
+
+        if (root.mode === "swap") {
+            const aim = root.windows[root.over];
+            if (w.held)
+                return aim;
+            if (w.addr === aim.addr) {
+                for (const h of root.all)
+                    if (h.held)
+                        return h;
+            }
+            return w;
+        }
+
+        const col = root.columnOf(w);
+        return {
+            x: root.planX[col],
+            y: w.y,
+            w: w.w,
+            h: w.h
+        };
+    }
+
+    // Where a target sits when nothing is being previewed, which is what the hit
+    // test is made against.
     function slotRect(i: int): rect {
         return root.place(root.windows[i]);
     }
@@ -212,24 +299,10 @@ Item {
     visible: reveal.value > 0.01
     opacity: reveal.value
 
-    // THE HOLE THE WINDOW CAME OUT OF, drawn as an outline and nothing else. It
-    // is what the map would look like with a piece missing, which is what the
-    // workspace currently is.
-    G2Rect {
-        x: root.heldPlace.x
-        y: root.heldPlace.y
-        width: root.heldPlace.width
-        height: root.heldPlace.height
-
-        radius: Appearance.sizes.windowRadius * root.mapScale
-        color: "transparent"
-        stroke: Appearance.colour.separator
-        strokeWidth: Appearance.font.stem
-        // The hole is a statement about a gesture in progress, so it goes as
-        // soon as the gesture is over rather than landing with everything else.
-        opacity: 1 - land.value
-    }
-
+    // EVERY WINDOW ON THE MAP, the held one included: it is drawn as an empty
+    // outline, because it is the hole the swap is going to fill and the one
+    // place on screen that means "put it back".
+    //
     // BUILT ONLY WHILE THE MAP IS UP. Every delegate holds a capture, and a
     // capture is a live request to the compositor for somebody else's window
     // buffer: kept alive by an idle shell it would be a permanent screen-reading
@@ -237,7 +310,7 @@ Item {
     // themselves stay ungated, because the drop's outro reads them after the map
     // has already begun fading.
     Repeater {
-        model: root.visible ? root.windows : []
+        model: root.visible ? root.all : []
 
         delegate: Item {
             id: slot
@@ -245,24 +318,19 @@ Item {
             required property int index
             required property var modelData
 
-            readonly property bool aimed: root.over === slot.index
-            readonly property rect rest: root.place(slot.modelData)
+            readonly property bool aimed: !slot.modelData.held && root.over >= 0 && root.windows[root.over].addr === slot.modelData.addr
 
-            // WHERE IT IS, AND WHERE IT WOULD GO. Hovering a target moves it
-            // into the space the held window left, which is exactly what
-            // dropping would do to it: a swap is two windows trading places, and
-            // the half you can be shown before committing is the other one's
-            // half. Move away and it goes back, so the preview is a question
-            // rather than a change.
-            //
-            // It takes the held window's SHAPE as well as its place, aspect and
-            // all, because that is what the compositor will do to it. A preview
-            // that kept its own proportions would be a nicer picture of a
-            // different outcome.
-            x: slot.aimed ? root.heldPlace.x : slot.rest.x
-            y: slot.aimed ? root.heldPlace.y : slot.rest.y
-            width: slot.aimed ? root.heldPlace.width : slot.rest.width
-            height: slot.aimed ? root.heldPlace.height : slot.rest.height
+            // WHERE IT IS, AND WHERE IT WOULD GO. The plan is the whole answer:
+            // under a swap two windows exchange rectangles, under a move the
+            // held column walks to the aim and everything it passes shuffles up
+            // by one. Move the finger away and the plan is the identity again,
+            // so the preview is a question rather than a change.
+            readonly property rect spot: root.place(root.planned(slot.modelData))
+
+            x: slot.spot.x
+            y: slot.spot.y
+            width: slot.spot.width
+            height: slot.spot.height
 
             Behavior on x {
                 // OFF WHILE LANDING. These smooth a target jumping from one
@@ -303,8 +371,23 @@ Item {
                 }
             }
 
+            // The hole. It is a statement about a gesture in progress, so it
+            // goes as soon as the gesture is over rather than landing with
+            // everything else.
             G2Rect {
                 anchors.fill: parent
+                visible: slot.modelData.held
+
+                radius: Appearance.sizes.windowRadius * root.mapScale
+                color: "transparent"
+                stroke: Appearance.colour.separator
+                strokeWidth: Appearance.font.stem
+                opacity: 1 - land.value
+            }
+
+            G2Rect {
+                anchors.fill: parent
+                visible: !slot.modelData.held
 
                 radius: Appearance.sizes.windowRadius * root.mapScale
                 color: Appearance.colour.fill
@@ -319,8 +402,9 @@ Item {
                 id: shot
 
                 anchors.fill: parent
+                visible: !slot.modelData.held
 
-                window: slot.modelData.client
+                window: slot.modelData.held ? null : slot.modelData.client
                 radius: Appearance.sizes.windowRadius * root.mapScale
                 live: false
             }
@@ -328,9 +412,12 @@ Item {
             // DIMMED UNTIL AIMED. The scrim behind everything says the shell has
             // taken the screen over, and lifting it off one card is the whole of
             // what "this one" looks like: the window's own picture brightens
-            // rather than a fill being added to it.
+            // rather than a fill being added to it. It comes off entirely as the
+            // map lands, so what is left lying on the real windows is the
+            // windows.
             G2Rect {
                 anchors.fill: parent
+                visible: !slot.modelData.held
 
                 radius: Appearance.sizes.windowRadius * root.mapScale
                 color: Appearance.colour.scrim
@@ -346,6 +433,7 @@ Item {
             Column {
                 anchors.centerIn: parent
                 spacing: Appearance.padding.small
+                visible: !slot.modelData.held
 
                 // The mark stands in until there is a frame, and stays for a
                 // window that can never give one. It is not drawn over a live
@@ -361,17 +449,18 @@ Item {
                 }
 
                 // WHAT WILL HAPPEN, and only under the finger. The picture says
-                // which window this is; the arrows say what dropping here does
-                // to it, which is the half a target cannot carry on its own.
+                // which window this is; the mark says what dropping here does to
+                // it, which is the half a target cannot carry on its own, and it
+                // is the mode's own mark so the answer is never in doubt.
                 // Nothing is written on the others, because a screen full of the
                 // same glyph says nothing at all.
                 Icon {
                     anchors.horizontalCenter: parent.horizontalCenter
 
-                    name: "swap_horiz"
+                    name: root.mode === "swap" ? "swap_horiz" : "low_priority"
                     size: Appearance.font.iconSize
                     color: Appearance.colour.accent
-                    opacity: slot.aimed ? 1 : 0
+                    opacity: slot.aimed ? 1 - land.value : 0
 
                     Behavior on opacity {
                         NumberAnimation {

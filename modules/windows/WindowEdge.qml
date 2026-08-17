@@ -113,7 +113,22 @@ Item {
     // places away from under the hand. Nothing turns it off but the end of the
     // gesture.
     property bool mapped: false
-    // WHICH TARGET THE REAL LAYOUT IS ALREADY SWAPPED WITH, by address, or "".
+    // WHAT DROPPING ON A WINDOW MEANS, and the one piece of state here that
+    // outlives a gesture.
+    //
+    //   move   the held column walks to where you dropped it and everything it
+    //          passes shuffles up by one, keeping its own order: 1,2,3 with the
+    //          third dropped on the first is 3,1,2
+    //   swap   the two exchange places and nothing else moves: 3,2,1
+    //
+    // Seeded from config and then owned by the pill below, so it is a thing you
+    // set once and forget rather than a decision the gesture asks you to make
+    // every time. It is not written back: a mode is a mood, and a shell that
+    // remembered last Tuesday's would be answering a question nobody asked.
+    property string mode: Appearance.sizes.windowMode
+
+    // WHAT THE LAYOUT HAS ALREADY BEEN ASKED TO DO, so it can be taken back
+    // when the aim moves: { kind, addr, steps } or null.
     //
     // The swap is dispatched WHILE YOU HOVER rather than when you let go, so
     // what you are looking at underneath is the arrangement you are asking for
@@ -150,6 +165,16 @@ Item {
     // the hold measures its stillness against.
     property real stillX: 0
     property real stillY: 0
+
+    function flipMode(): void {
+        root.mode = root.mode === "swap" ? "move" : "swap";
+    }
+
+    // The layout is already standing in the arrangement the OLD mode asked for,
+    // so changing the mode has to re-ask. commitAim compares what is wanted with
+    // what was done and takes the difference, which for a mode change is "undo
+    // that, do this".
+    onModeChanged: root.commitAim()
 
     // How far up it has come. Never negative: dragging back below the start is a
     // gesture going home, not a window being pushed into the floor.
@@ -273,7 +298,7 @@ Item {
         root.lifted = false;
         root.mapped = false;
         root.racked = false;
-        root.committed = "";
+        root.committed = null;
         layout.landed = false;
         root.grabbed = true;
         root.outro = "";
@@ -346,16 +371,45 @@ Item {
         if (!root.held || !root.grabbed)
             return;
 
-        const want = layout.over >= 0 ? layout.windows[layout.over].addr : "";
-        if (want === root.committed)
+        // What the arrangement should be right now: nothing, a swap with one
+        // window, or a walk of so many places.
+        const want = layout.over < 0 ? null : root.mode === "swap" ? {
+            kind: "swap",
+            addr: layout.aimAddr,
+            steps: 0
+        } : layout.steps === 0 ? null : {
+            kind: "move",
+            addr: "",
+            steps: layout.steps
+        };
+
+        const now = root.committed;
+        if ((now?.kind ?? "") === (want?.kind ?? "") && (now?.addr ?? "") === (want?.addr ?? "") && (now?.steps ?? 0) === (want?.steps ?? 0))
             return;
 
-        if (root.committed)
-            Hypr.swapWith(root.held.addr, root.committed);
-        if (want)
-            Hypr.swapWith(root.held.addr, want);
+        root.undoAim();
+
+        if (want?.kind === "swap")
+            Hypr.swapWith(root.held.addr, want.addr);
+        else if (want?.kind === "move")
+            Hypr.walkColumn(root.held.addr, want.steps);
 
         root.committed = want;
+    }
+
+    // Put the layout back the way it was found. A swap is its own inverse and a
+    // walk is undone by walking back, so neither needs anything remembered
+    // beyond what was asked for.
+    function undoAim(): void {
+        if (!root.committed || !root.held)
+            return;
+
+        if (root.committed.kind === "swap")
+            Hypr.swapWith(root.held.addr, root.committed.addr);
+        else
+            Hypr.walkColumn(root.held.addr, -root.committed.steps);
+
+        root.committed = null;
     }
 
     Connections {
@@ -388,10 +442,7 @@ Item {
             // A THROW TAKES BACK ANYTHING IT PASSED OVER. The aim can be sitting
             // on a target at the instant of a flick, and the swap it committed
             // was never asked for: closing is what the hand said.
-            if (root.committed) {
-                Hypr.swapWith(root.held.addr, root.committed);
-                root.committed = "";
-            }
+            root.undoAim();
             Hypr.closeWindow(root.held.addr);
             root.finish("close", -1);
             return;
@@ -440,10 +491,7 @@ Item {
         // else this shell decides on a release is reversible; a window closed by
         // mistake is somebody's unsaved work.
         if (root.progress >= 1) {
-            if (root.committed) {
-                Hypr.swapWith(root.held.addr, root.committed);
-                root.committed = "";
-            }
+            root.undoAim();
             Hypr.closeWindow(root.held.addr);
             root.finish("close", -1);
             return;
@@ -520,7 +568,7 @@ Item {
         root.lifted = false;
         root.mapped = false;
         root.racked = false;
-        root.committed = "";
+        root.committed = null;
         layout.landed = false;
         root.grabbed = false;
         root.rest = null;
@@ -658,6 +706,7 @@ Item {
         // What the card is heading for. The map answers with what it could
         // actually manage, and the card reads that back.
         preferred: root.tileScale
+        mode: root.mode
 
         pointX: root.pointX
         pointY: root.pointY
@@ -690,6 +739,87 @@ Item {
         // Held out for the whole of a drop's outro, so the card is seen landing
         // on the plate rather than flying at a shelf that has already gone.
         active: root.racked
+    }
+
+    // WHAT DROPPING MEANS, at the bottom middle: one mark, on its own.
+    //
+    // NO PLATE, NO WORD, NO BUTTON. It is a readout and not a control: the thing
+    // that changes it is a second finger anywhere on the screen, so there is
+    // nothing here to aim at and a target drawn around it would be a lie about
+    // where to press. It sits at the bottom because that is the one part of the
+    // screen the gesture has left empty, the workspaces having gone to the top.
+    Icon {
+        id: modeMark
+
+        visible: markFade.value > 0.01
+        opacity: markFade.value
+
+        x: root.holeX + (root.holeWidth - width) / 2
+        y: root.holeY + root.holeHeight - height - Appearance.padding.large
+
+        // The same two marks the targets wear, so the readout and the thing it
+        // is about are never saying it with different pictures.
+        name: root.mode === "swap" ? "swap_horiz" : "low_priority"
+        size: Appearance.sizes.launcherIcon
+        color: Appearance.colour.text
+
+        // IT ANSWERS THE TAP BY MOVING, which is the whole of the feedback a
+        // mark with no button around it can give. A second finger lands
+        // somewhere else entirely, so the eye has to be told that the thing at
+        // the bottom of the screen is what just changed.
+        scale: root.flipped ? 1.35 : 1
+
+        Behavior on scale {
+            NumberAnimation {
+                duration: Appearance.anim.fast
+                easing.type: Easing.OutBack
+            }
+        }
+    }
+
+    Follow {
+        id: markFade
+
+        target: root.mapped && !root.outro ? 1 : 0
+        speed: Appearance.anim.revealSpeed
+        epsilon: 0.005
+    }
+
+    // A SECOND FINGER SWITCHES THE MODE, anywhere on the screen.
+    //
+    // The first finger is busy: it is holding a window, it is what every target
+    // on the screen is being aimed at, and it cannot be spared to go and press
+    // something without putting the window down. The other hand is free, and a
+    // tap is the one thing it can say that cannot be confused with the drag
+    // already in progress.
+    //
+    // A TapHandler and not a MouseArea, because this is the one place in the
+    // shell that has to see a REAL touch point rather than the mouse Qt
+    // synthesises from the first one: the synthesis only ever covers one finger,
+    // and this is about the second. Restricted to the touchscreen for the same
+    // reason the strip is, and live only while a window is actually in the air,
+    // so nothing about the desktop changes when nobody is holding anything.
+    TapHandler {
+        enabled: root.mapped
+        acceptedDevices: PointerDevice.TouchScreen
+        gesturePolicy: TapHandler.ReleaseWithinBounds
+
+        onTapped: {
+            root.flipMode();
+            root.flipped = true;
+            flip.restart();
+        }
+    }
+
+    // How long the mark stays swollen after a tap. Long enough to be seen at the
+    // far end of the screen from wherever the tap landed.
+    property bool flipped: false
+
+    Timer {
+        id: flip
+
+        interval: Appearance.anim.normal
+        onTriggered: root.flipped = false
     }
 
     // THE CARD. One shape for the whole gesture: the window's outline, the thing
@@ -849,5 +979,7 @@ Item {
         }
     }
 }
+
+
 
 
