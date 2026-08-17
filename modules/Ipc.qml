@@ -464,6 +464,34 @@ Scope {
                 return screen ? `no shell window on screen: ${screen}` : "no shell window";
             return `count=${Notifs.count} pinned=${win.notifications.pinned} expanded=${win.notifications.expanded}`;
         }
+
+        // WHETHER A PERSON IS CURRENTLY ENGAGED WITH THIS SENDER'S CARD, which
+        // the shell knows and the sender cannot possibly infer.
+        //
+        // It exists for senders that could update at any rate and have to pick
+        // one. A download that redraws every two seconds is thrift on a card
+        // nobody is reading, and reads as FROZEN under a cursor that came to
+        // read it; the sender wants to spend its updates exactly where they are
+        // being watched, and this is the only way to find out where that is.
+        //
+        // Answers for one app, because "is MY card held" is the only form of
+        // the question a sender can act on: it knows nothing about anyone
+        // else's cards and has no business being told about them.
+        //
+        // `held` rather than `hovered` because the card's own union is the
+        // right one. Hover, a drag in progress and a card deliberately kept
+        // open all mean the same thing to a sender, which is that the card is
+        // being attended to right now.
+        //
+        // Both lists, since a card can be held in the popup stack or in the
+        // hub, and to the sender those are the same event.
+        function held(app: string): string {
+            if (!app)
+                return "0";
+            const key = app.toLowerCase();
+            const attended = e => e?.held && (e.appName ?? "").toLowerCase() === key;
+            return Notifs.popups.some(attended) || Notifs.history.some(attended) ? "1" : "0";
+        }
     }
 
     // The top notch, the same shape as the tray above and for the same reason:
@@ -816,6 +844,613 @@ Scope {
         // exactly the failure this shell would otherwise be blind to.
         function status(): string {
             return Lock.active ? "locked" : "unlocked";
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // THE CLOCK: countdowns, alarms, and other people's afternoons. Three
+    // targets and not one window between them.
+    //
+    // Driven off the singleton the way `settings` is, and for a stronger
+    // version of the same reason. services/Clock.qml is a singleton precisely
+    // because a countdown that only exists while somebody is looking at it is
+    // not a countdown, and an alarm that only rings while its panel is open is
+    // not an alarm; so there is no window to guard for here, no screen to name,
+    // and every verb below works with every menu shut. The panel itself is an
+    // ordinary menu with the key "clock" and is opened like any other, through
+    // `menu open clock`, so it needs nothing of its own in this file.
+    //
+    // THE GUARD IS THE DISK INSTEAD. The service reads its state file once and,
+    // when it lands, REPLACES its whole set of timers and alarms with what was
+    // in it (Clock.adopt returns early ever after), so anything created in the
+    // moment before that arrives is thrown away without a word. The window is
+    // milliseconds wide and it is exactly the one an autostart bind or a login
+    // script turns up in, which is the worst place to lose a timer quietly.
+    readonly property string clockUnread: "the clock has not read its state file yet; ask again in a moment"
+
+    // A human duration in SECONDS, or 0 for anything that is not one.
+    //
+    // The forms are a run of number-and-unit parts (10m, 90s, 2h, 1h30m,
+    // 1h30m20s) and a bare number, WHICH IS MINUTES. A bare number has to mean
+    // something, and minutes is what it means everywhere a timer is set out
+    // loud: `timer start 5` off a keybind is five minutes, and five seconds is
+    // not a timer anybody sets. Decimals go through the same arithmetic, so
+    // 1.5h is ninety minutes and costs no extra code.
+    //
+    // A COLON FORM IS REFUSED rather than guessed at. "1:30" is an hour and a
+    // half to anyone who has used a stopwatch and ninety seconds to anyone who
+    // has used a microwave; there is nothing in the string to say which was
+    // meant, and the failure is a countdown wrong by a factor of sixty in a
+    // direction nobody checks until it goes off. "1h30" is refused for the same
+    // reason in miniature: the trailing number has no unit and inventing one
+    // for it is the same guess.
+    function duration(text: string): int {
+        const spec = String(text ?? "").trim().toLowerCase().replace(/\s+/g, "");
+        if (/^\d+(\.\d+)?$/.test(spec))
+            return Math.round(parseFloat(spec) * 60);
+        if (!/^(\d+(\.\d+)?[hms])+$/.test(spec))
+            return 0;
+        let total = 0;
+        for (const part of spec.match(/\d+(\.\d+)?[hms]/g))
+            total += parseFloat(part) * (part.endsWith("h") ? 3600 : part.endsWith("m") ? 60 : 1);
+        return Math.round(total);
+    }
+
+    // A wall-clock time as MINUTES SINCE MIDNIGHT, or -1 for anything that is
+    // not one.
+    //
+    // Twenty-four hours first ("07:00", "7:00", "0700", "7"), because that is
+    // what the alarm stores and what the panel draws, with an am/pm suffix
+    // accepted because somebody who thinks in twelves should not have to do the
+    // conversion in their head to write a keybind. A bare number is the hour
+    // exactly, unlike `duration` above where a bare number is minutes, and the
+    // asymmetry is the point: "start 7" is a length and "add 7" is a time on a
+    // clock face, and nobody sets an alarm for seven minutes past midnight by
+    // typing a single digit.
+    function timeOfDay(text: string): int {
+        const m = String(text ?? "").trim().toLowerCase().replace(/\s+/g, "").match(/^(\d{1,2}):?(\d{2})?(am|pm)?$/);
+        if (!m)
+            return -1;
+        let hour = Number(m[1]);
+        const minute = m[2] === undefined ? 0 : Number(m[2]);
+        if (m[3]) {
+            // A twelve-hour clock has no hour 0 and no hour 13, so those are a
+            // typo rather than something to reinterpret; and 12am is midnight
+            // while 12pm is noon, which is the one case the modulo exists for.
+            if (hour < 1 || hour > 12)
+                return -1;
+            hour = (hour % 12) + (m[3] === "pm" ? 12 : 0);
+        }
+        return hour > 23 || minute > 59 ? -1 : hour * 60 + minute;
+    }
+
+    // The two digits a clock face has. Not the service's own pad2, which is not
+    // part of what services/Clock.qml publishes: borrowing a helper across that
+    // line would make an internal detail of another file into something this
+    // one breaks when it moves.
+    function hhmm(hour: int, minute: int): string {
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+    }
+
+    // MONDAY IS ZERO, which is the service's convention and not JavaScript's;
+    // see the alarm block in services/Clock.qml for why (the panel's day pills
+    // are labelled Monday-first, and the index that labels a pill has to be the
+    // index that arms it). These names are ENGLISH AND FIXED rather than
+    // Qt.locale()'s, deliberately: the panel should speak the user's language
+    // and a script must not change meaning when LANG does.
+    readonly property var dayNames: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+
+    // A repeat spec as those day numbers: [] for a one-shot, null for anything
+    // unparseable, which the caller reports rather than quietly arming an alarm
+    // for a week the user did not ask for.
+    //
+    // The named sets are computed from the day list rather than written out as
+    // literals, so "weekdays" is defined by where Saturday sits and stays right
+    // if the naming ever moves. A RANGE WALKS FORWARD AND WRAPS, so "fri-mon"
+    // is the four days a person means by it instead of an error or an empty
+    // set, and a single day is a range whose ends meet, which is why both go
+    // through one loop with no branch that could disagree with itself.
+    function repeatDays(spec: string): var {
+        const want = String(spec ?? "").trim().toLowerCase().replace(/\s+/g, "");
+        const all = root.dayNames.map((name, i) => i);
+        if (!want || want === "once" || want === "never")
+            return [];
+        if (want === "daily" || want === "everyday" || want === "all")
+            return all;
+        if (want === "weekdays")
+            return all.slice(0, root.dayNames.indexOf("sat"));
+        if (want === "weekends" || want === "weekend")
+            return all.slice(root.dayNames.indexOf("sat"));
+        const out = [];
+        for (const part of want.split(",")) {
+            // Three letters, so "monday" and "mon" are the same word. A single
+            // letter is refused by the same slice, which is right: "t" is both
+            // Tuesday and Thursday and "s" is both weekend days.
+            const ends = part.split("-").map(word => root.dayNames.indexOf(word.slice(0, 3)));
+            if (ends.length > 2 || ends.some(i => i < 0))
+                return null;
+            for (let i = ends[0]; ; i = (i + 1) % all.length) {
+                if (!out.includes(i))
+                    out.push(i);
+                if (i === ends[ends.length - 1])
+                    break;
+            }
+        }
+        return out.sort((a, b) => a - b);
+    }
+
+    // The same spec written back out, so what `alarm list` prints is what
+    // `alarm add` would take. The named sets come first because they are what a
+    // person reads: "weekdays" says in one word what "mon,tue,wed,thu,fri" says
+    // in five, and both arm exactly the same days.
+    function dayWords(days: var): string {
+        const list = Array.isArray(days) ? days : [];
+        const sat = root.dayNames.indexOf("sat");
+        if (list.length === 0)
+            return "once";
+        if (list.length === root.dayNames.length)
+            return "daily";
+        if (list.length === sat && list.every(d => d < sat))
+            return "weekdays";
+        if (list.length === root.dayNames.length - sat && list.every(d => d >= sat))
+            return "weekends";
+        return list.map(d => root.dayNames[d]).join(",");
+    }
+
+    // A table, sized by what is actually in it. Fixed column widths were the
+    // alternative and they are wrong in both directions at once: too narrow for
+    // a label somebody really typed and too wide for the four short fields
+    // beside it. The LAST column is never padded, because trailing spaces on
+    // every line of a terminal are invisible until something copies them.
+    function columns(rows: var): string {
+        const width = [];
+        for (const row of rows)
+            row.forEach((cell, i) => width[i] = Math.max(width[i] ?? 0, String(cell).length));
+        return rows.map(row => row.map((cell, i) => i === row.length - 1 ? String(cell) : String(cell).padEnd(width[i])).join("  ")).join("\n");
+    }
+
+    // WHICH TIMER a verb means. A handle names one: either the id that `timer
+    // status` prints or the position it prints beside it, and the two cannot be
+    // confused because an id always carries a dash (Clock.newId builds it from
+    // two base-36 numbers with one between them) and a position never does.
+    //
+    // Without a handle the verb means the timer a PERSON means, which is the
+    // one about to go off: `matches` is the state that verb can act on, and the
+    // nearest deadline among those wins. That is what makes `timer pause` worth
+    // binding to a key, where there is nothing to type an id with.
+    //
+    // The filter is deliberately NOT applied to a named handle. "Pause timer 2"
+    // is about timer 2 whatever state it is in, and the verb says so; pausing
+    // timer 3 instead because 2 was already paused would be the CLI doing
+    // something nobody asked for, to a countdown somebody is relying on.
+    function pickTimer(handle: string, matches: var): var {
+        const want = String(handle ?? "").trim();
+        if (want)
+            return (/^\d+$/.test(want) ? Clock.timers[Number(want) - 1] : Clock.timers.find(t => t.id === want)) ?? null;
+        const at = Date.now();
+        return Clock.timers.filter(matches).sort((a, b) => Clock.remainingOf(a, at) - Clock.remainingOf(b, at))[0] ?? null;
+    }
+
+    // The same two handles for an alarm, and NO bare form: a timer has an
+    // obvious "the one that matters" and a list of alarms does not. Disarming
+    // whichever alarm happens to be next is a thing you would find out about at
+    // seven the following morning.
+    function pickAlarm(handle: string): var {
+        const want = String(handle ?? "").trim();
+        if (!want)
+            return null;
+        return (/^\d+$/.test(want) ? Clock.alarms[Number(want) - 1] : Clock.alarms.find(a => a.id === want)) ?? null;
+    }
+
+    // One row of `timer status`, and also the whole of what `timer start`
+    // answers with: what a verb prints after making something is the row the
+    // list would show it as, so there is one format to learn and the id needed
+    // by every other verb is in front of you the moment there is one.
+    function timerFields(timer: var, index: int, at: double): var {
+        return [`${index}`, Clock.spanLabel(Clock.remainingOf(timer, at)), timer.finished ? "done" : timer.paused ? "paused" : "running", timer.label || "-", `(${timer.id})`];
+    }
+
+    // One row of `alarm list`, on the same bargain. The state column is a union
+    // of four things that are each worth seeing and cannot happen at once, and
+    // `missed` earns its place in it: an alarm that rang unanswered or came due
+    // too late to ring looks exactly like an alarm that never worked, and this
+    // is the shell saying which.
+    function alarmFields(alarm: var, index: int, at: double): var {
+        const next = Clock.nextFor(alarm, at);
+        const state = Clock.ringing && Clock.ringing.id === alarm.id ? "ringing" : alarm.missed ? "missed" : alarm.armed ? "armed" : "off";
+        // Snoozed is not a state of its own here but a fact about WHEN: the
+        // alarm is still armed and still repeating, it is merely due nine
+        // minutes from now instead of at its own hour, and nextFor already
+        // returns that instant.
+        const when = alarm.snoozedUntil > at ? `snoozed, in ${Clock.spanLabel(next - at)}` : next > 0 ? `in ${Clock.spanLabel(next - at)}` : "-";
+        const action = alarm.mode === "command" ? `run: ${alarm.payload}` : alarm.mode === "cloud" ? `ask: ${alarm.payload}` : "-";
+        return [`${index}`, root.hhmm(alarm.hour, alarm.minute), root.dayWords(alarm.days), state, when, alarm.label || "-", action, `(${alarm.id})`];
+    }
+
+    // `enable` and `disable`, which are one function with a boolean and are two
+    // verbs on purpose: a script cannot see the screen, and a toggle is only a
+    // switch when you already know which way it was thrown. The row comes back
+    // rather than a word, because the question behind disarming an alarm is
+    // always what the NEXT one is now.
+    function armAlarm(handle: string, on: bool): string {
+        if (!Clock.loaded)
+            return root.clockUnread;
+        const alarm = root.pickAlarm(handle);
+        if (!alarm)
+            return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
+        Clock.setAlarmArmed(alarm.id, on);
+        return root.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
+    }
+
+    // The one spelling every place name in the zone verbs is compared in. The
+    // tz database writes a space as an underscore, a person writes it as a
+    // space, and the panel draws it as a space again (Clock.cityOf), so
+    // "new york", "New_York" and "America/New_York" all have to meet somewhere
+    // and this is where.
+    function zoneKey(text: string): string {
+        return String(text ?? "").trim().toLowerCase().replace(/[\s_]+/g, "_");
+    }
+
+    // Every place that could be meant by what was typed, exact spellings first.
+    // Shared by `zone find` and `zone add` so that what one prints is what the
+    // other resolves against, which is the difference between a suggestion and
+    // a promise.
+    function zoneMatches(text: string): var {
+        const want = root.zoneKey(text);
+        const exact = Clock.allZones.filter(id => root.zoneKey(id) === want);
+        return exact.length > 0 ? exact : Clock.allZones.filter(id => root.zoneKey(id).includes(want));
+    }
+
+    // COUNTDOWNS. `start` is the verb worth binding and the rest are what a
+    // person does to the thing they started.
+    IpcHandler {
+        target: "timer"
+
+        function start(spec: string, label: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const secs = root.duration(spec);
+            if (secs <= 0)
+                return `not a duration: "${spec}" (10m, 90s, 1h30m, 2h, or a bare number of minutes)`;
+            const id = Clock.startTimer(secs, label ?? "");
+            // The service gives up a FINISHED timer's slot before it refuses, so
+            // reaching this line means every one of them is genuinely counting.
+            if (!id)
+                return `no room: ${Clock.timerMax} timers at a time and all of them are running`;
+            const timer = Clock.timers.find(t => t.id === id);
+            return root.columns([root.timerFields(timer, Clock.timers.indexOf(timer) + 1, Date.now())]);
+        }
+
+        function pause(handle: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const timer = root.pickTimer(handle, t => !t.finished && !t.paused);
+            if (!timer)
+                return handle ? `no such timer: ${handle}` : "nothing is counting";
+            if (timer.finished)
+                return `that one has already gone off (${timer.id})`;
+            if (timer.paused)
+                return `already paused, ${Clock.spanLabel(timer.left)} left (${timer.id})`;
+            Clock.toggleTimer(timer.id);
+            return `paused, ${Clock.spanLabel(timer.left)} left (${timer.id})`;
+        }
+
+        function resume(handle: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const timer = root.pickTimer(handle, t => t.paused && !t.finished);
+            if (!timer)
+                return handle ? `no such timer: ${handle}` : "nothing is paused";
+            if (timer.finished)
+                return `that one has already gone off (${timer.id})`;
+            if (!timer.paused)
+                return `already running, ${Clock.spanLabel(Clock.remainingOf(timer, Date.now()))} left (${timer.id})`;
+            Clock.toggleTimer(timer.id);
+            return `running, ${Clock.spanLabel(Clock.remainingOf(timer, Date.now()))} left (${timer.id})`;
+        }
+
+        // The verb A KEY wants, and the same bargain `volume mute` makes: one
+        // press means the other thing, whichever thing it currently is, while
+        // `pause` and `resume` sit beside it for a script that must not have to
+        // guess the state it is starting from. It picks the timer FIRST and then
+        // hands that id to whichever of the two applies, so a bare toggle cannot
+        // pause one countdown and resume a different one on the next press.
+        function toggle(handle: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const timer = root.pickTimer(handle, t => !t.finished);
+            if (!timer)
+                return handle ? `no such timer: ${handle}` : "no timer to pause";
+            if (timer.finished)
+                return `that one has already gone off (${timer.id})`;
+            return timer.paused ? resume(timer.id) : pause(timer.id);
+        }
+
+        function cancel(handle: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            // A SPENT TIMER FIRST when nothing was named. A countdown that has
+            // already gone off is sitting in the panel waiting to be
+            // acknowledged, "cancel" is what acknowledging it is called, and the
+            // one still running beside it is the one you still want. Naming a
+            // handle makes both picks answer with the same row, so the
+            // preference costs nothing there.
+            const timer = root.pickTimer(handle, t => t.finished) ?? root.pickTimer(handle, t => true);
+            if (!timer)
+                return handle ? `no such timer: ${handle}` : "no timers";
+            Clock.removeTimer(timer.id);
+            return `cancelled ${timer.label || Clock.spanLabel(timer.total)} (${timer.id})`;
+        }
+
+        // The list IS the status here, unlike the alarm target below, which has
+        // both: three countdowns fit on three lines with nothing summarised
+        // away, and a summary of them would be the same lines with the numbers
+        // taken out.
+        function status(): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            if (Clock.timers.length === 0)
+                return `no timers (${Clock.timerMax} at a time)`;
+            const at = Date.now();
+            return root.columns(Clock.timers.map((timer, i) => root.timerFields(timer, i + 1, at)));
+        }
+    }
+
+    // ALARMS.
+    //
+    // THE ARGUMENT SHAPE, which is the part worth getting right, because this
+    // is the target with options and options in a keybind are the thing to get
+    // wrong once and never notice.
+    //
+    // `add` takes FIVE POSITIONAL STRINGS here and FLAGS in bin/banditshell,
+    // and that is a division of labour rather than a mismatch: an IpcHandler
+    // function has a fixed, named parameter list and no way to be variadic, so
+    // the options must arrive in a known order, while nobody writing a keybind
+    // should have to remember what that order is or count empty strings to
+    // reach the last one. The CLI parses --days, --label, --run and --ask and
+    // fills the five in; anything calling `qs ipc call alarm add` by hand
+    // passes them itself, empty for the ones it does not want.
+    //
+    // ONE FLAG SETS BOTH HALVES OF AN ACTION: `--run` is mode command with the
+    // payload it was given, `--ask` is mode cloud with the same. A --mode and a
+    // --payload that had to agree could be given as a mode with no payload,
+    // which is an alarm that announces it will do something and then does
+    // nothing; one flag cannot be spelled that way at all.
+    //
+    // THERE IS NO EDIT VERB, deliberately, and it is the one thing the service
+    // can do that is not here. Clock.setAlarm's fields are the panel's editor,
+    // and an editor is precisely what a keybind is not: you cannot scrub a time
+    // from a key. `remove` and `add` together say anything a `set` would, in one
+    // line, and `add` hands back the id to remove it with.
+    IpcHandler {
+        target: "alarm"
+
+        function add(time: string, days: string, label: string, mode: string, payload: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const minutes = root.timeOfDay(time);
+            if (minutes < 0)
+                return `not a time: "${time}" (07:00, 7:30pm, 0700, or a bare hour)`;
+            const repeat = root.repeatDays(days);
+            if (repeat === null)
+                return `not a repeat: "${days}" (mon,wed / mon-fri / weekdays / weekends / daily / once)`;
+            const action = mode || "none";
+            if (!["none", "command", "cloud"].includes(action))
+                return `not an action: "${mode}" (command or cloud)`;
+            // An action with nothing to do is refused HERE rather than stored,
+            // because the service would take it (mode without payload is a legal
+            // record) and Clock.run would then quietly return, which is an alarm
+            // that says it will do something and does not.
+            if (action !== "none" && !payload)
+                return `${action} needs something to ${action === "command" ? "run" : "say"}`;
+            const id = Clock.addAlarm();
+            if (!id)
+                return `no room: ${Clock.alarmMax} alarms is the lot`;
+            // Created and then patched, which is the service's own shape: every
+            // field an editor can touch goes through setAlarm so there is one
+            // place that re-derives the schedule afterwards.
+            Clock.setAlarm(id, {
+                hour: Math.floor(minutes / 60),
+                minute: minutes % 60,
+                days: repeat,
+                label: label ?? "",
+                mode: action,
+                payload: payload ?? ""
+            });
+            const alarm = Clock.alarms.find(a => a.id === id);
+            return root.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
+        }
+
+        function list(): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            if (Clock.alarms.length === 0)
+                return `no alarms (${Clock.alarmMax} is the lot)`;
+            const at = Date.now();
+            return root.columns(Clock.alarms.map((alarm, i) => root.alarmFields(alarm, i + 1, at)));
+        }
+
+        function remove(handle: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const alarm = root.pickAlarm(handle);
+            if (!alarm)
+                return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
+            Clock.removeAlarm(alarm.id);
+            return `removed ${root.hhmm(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} (${alarm.id})`;
+        }
+
+        function enable(handle: string): string {
+            return root.armAlarm(handle, true);
+        }
+
+        function disable(handle: string): string {
+            return root.armAlarm(handle, false);
+        }
+
+        // Nine more minutes, and done with it. Both take no argument because
+        // there is only ever one alarm ringing (the service fires them one at a
+        // time on purpose), and both are here for the moment the panel is not
+        // the easiest thing to reach.
+        function snooze(): string {
+            if (!Clock.ringing)
+                return "nothing is ringing";
+            const alarm = Clock.ringing;
+            Clock.snooze();
+            return `snoozed ${root.hhmm(alarm.hour, alarm.minute)} for ${Clock.snoozeMinutes}m (${alarm.id})`;
+        }
+
+        function stop(): string {
+            if (!Clock.ringing)
+                return "nothing is ringing";
+            const alarm = Clock.ringing;
+            Clock.stop();
+            // What it did next, because the two answers are different and
+            // silence between them is a question: a repeating alarm has rolled
+            // to its next day and a one-shot has disarmed itself.
+            return `stopped ${root.hhmm(alarm.hour, alarm.minute)}, ${alarm.days.length === 0 ? "disarmed" : `next ${root.dayWords(alarm.days)}`} (${alarm.id})`;
+        }
+
+        // The summary, where `list` is the rows: how many, what is next, what is
+        // ringing, and the three policy numbers underneath. Those last are what
+        // somebody asking "why did it not go off" actually needs, and they are
+        // config rather than code, so reading them back beats reading the source.
+        function status(): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const at = Date.now();
+            const armed = Clock.alarms.filter(a => a.armed);
+            let soonest = null;
+            for (const alarm of armed) {
+                const when = Clock.nextFor(alarm, at);
+                if (when > 0 && (!soonest || when < soonest.when))
+                    soonest = {
+                        alarm,
+                        when
+                    };
+            }
+            // HEADED BY THE ALARM'S OWN TIME, with "snoozed" said out loud when
+            // the instant the countdown is measuring is not that time. Heading
+            // it with the occurrence instead, the way the service titles a
+            // notification, was tried and reads as a lie: a 07:00 weekday alarm
+            // snoozed at 22:38 comes out as "22:47 weekdays", which describes an
+            // alarm nobody set. The rows in `alarm list` say it this way too,
+            // and the two agreeing matters more than either shape alone.
+            const ring = Clock.ringing;
+            const next = soonest ? `${root.hhmm(soonest.alarm.hour, soonest.alarm.minute)} ${root.dayWords(soonest.alarm.days)}, ${soonest.alarm.snoozedUntil > at ? "snoozed, " : ""}in ${Clock.spanLabel(soonest.when - at)}` : "-";
+            return [`alarms     ${Clock.alarms.length} of ${Clock.alarmMax}`, `armed      ${armed.length}`, `next       ${next}`, `ringing    ${ring ? `${root.hhmm(ring.hour, ring.minute)}${ring.label ? ` ${ring.label}` : ""}, ${Clock.spanLabel(at - Clock.ringingSince)} so far${Clock.ringingLate > 60000 ? `, late by ${Clock.spanLabel(Clock.ringingLate)}` : ""}` : "none"}`, `policy     snooze ${Clock.snoozeMinutes}m, gives up after ${Clock.ringMinutes}m, catches up within ${Clock.catchUpMinutes}m`].join("\n");
+        }
+    }
+
+    // OTHER PEOPLE'S AFTERNOONS.
+    //
+    // A place is named by its IANA id and has no label of its own: the city the
+    // panel draws is read off the id (Clock.cityOf turns "America/New_York" into
+    // "New York"), so there is nothing to pass a second argument for and this
+    // file invents no field to hold one.
+    IpcHandler {
+        target: "zone"
+
+        // The local zone first and always, because it is the block the panel
+        // draws above the list and it is real information even when the list is
+        // empty.
+        //
+        // THE TIMES ARE COMPUTED HERE rather than read off the rows. Clock.zones
+        // carries a snapshot that is only kept fresh while something is watching
+        // (see Clock.watch), and nothing is watching when a CLI asks, so those
+        // fields can be up to an hour stale; zoneTime is pure arithmetic on an
+        // epoch millisecond and is what the service itself tells a caller to
+        // drive off its own clock.
+        function list(): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const at = Date.now();
+            const rows = [[Clock.localCity || "-", Clock.zoneTime(Clock.localOffset, at).text, "here", `(${Clock.localZone || "unknown"})`]];
+            for (const zone of Clock.zones) {
+                const there = Clock.zoneTime(zone.offsetMinutes, at);
+                const day = there.dayDelta === 0 ? "" : there.dayDelta < 0 ? " yesterday" : " tomorrow";
+                rows.push([zone.city, there.text, `${Clock.offsetLabel(zone.deltaMinutes)}${day}`, `(${zone.id})`]);
+            }
+            // A place whose offset has not come back from the system yet is not
+            // in `zones` at all, and saying so is the difference between a
+            // measurement in flight and an id that went nowhere.
+            const pending = Clock.places.filter(id => !Clock.zones.some(z => z.id === id));
+            const table = rows.length > 1 ? root.columns(rows) : `${root.columns(rows)}\nno places yet (banditshell zone add <place>)`;
+            return pending.length > 0 ? `${table}\nmeasuring ${pending.join(", ")}` : table;
+        }
+
+        // Everything this machine's tz database has that matches, one per line,
+        // uncapped: a terminal scrolls, and a cap would be this file deciding
+        // that the twelfth Europe/ entry is the one you did not want.
+        function find(text: string): string {
+            const want = String(text ?? "").trim();
+            if (!want)
+                return "which place? (banditshell zone find <text>)";
+            if (Clock.allZones.length === 0) {
+                Clock.loadZoneList();
+                return "reading this machine's zone list; ask again in a moment";
+            }
+            const near = root.zoneMatches(want);
+            return near.length > 0 ? near.join("\n") : `nothing here is called that: ${want}`;
+        }
+
+        // THE LIST IS CONSULTED FIRST and the add is refused until it is here,
+        // which is a whole extra command once per session and buys a guarantee
+        // worth having: Clock.validZone only checks the SHAPE of an id, so
+        // "Europe/Tokoy" passes it, is stored, comes back +0000 from `TZ=... date`
+        // and draws a city that does not exist at a time that is not its own,
+        // with nothing anywhere saying anything is wrong. The list is one
+        // process and is kept for the life of the shell.
+        //
+        // A UNIQUE SUBSTRING IS ACCEPTED as well as an exact id, so "tokyo" is
+        // Asia/Tokyo: a CLI you have to look things up for before using is a CLI
+        // with a manual. Two matches are refused rather than guessed between,
+        // because two places are equally meant, and the answer names what was
+        // actually added so a wrong guess is visible in the same breath.
+        function add(place: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const want = String(place ?? "").trim();
+            if (!want)
+                return "which place? (banditshell zone find <text>)";
+            if (Clock.allZones.length === 0) {
+                Clock.loadZoneList();
+                return "reading this machine's zone list; ask again in a moment";
+            }
+            const near = root.zoneMatches(want);
+            if (near.length === 0)
+                return `no such place: ${want} (banditshell zone find ${want})`;
+            if (near.length > 1)
+                return `${want} could be any of ${near.length} (banditshell zone find ${want})`;
+            const id = near[0];
+            // Both of these are things Clock.addZone declines in silence, which
+            // is right for a panel and useless to a terminal.
+            if (id === Clock.localZone)
+                return `${Clock.cityOf(id)} is this machine's own zone, which the panel draws already`;
+            if (Clock.places.includes(id))
+                return `already on the list: ${id}`;
+            Clock.addZone(id);
+            return `added ${Clock.cityOf(id)} (${id})`;
+        }
+
+        // BY ID OR BY CITY, and by nothing else: no position, unlike the timers
+        // and alarms above. Their lists are stored orders, while `zone list` is
+        // sorted by offset and silently drops any place whose measurement has
+        // not landed, so a number printed by one command could address a
+        // different row by the time it was typed into the next.
+        function remove(place: string): string {
+            if (!Clock.loaded)
+                return root.clockUnread;
+            const want = root.zoneKey(place);
+            if (!want)
+                return "which place? (banditshell zone list)";
+            const hits = Clock.places.filter(id => root.zoneKey(id) === want || root.zoneKey(Clock.cityOf(id)) === want);
+            if (hits.length === 0)
+                return `not on the list: ${place} (banditshell zone list)`;
+            if (hits.length > 1)
+                return `${place} is ${hits.length} of them; name the id (banditshell zone list)`;
+            Clock.removeZone(hits[0]);
+            return `removed ${Clock.cityOf(hits[0])} (${hits[0]})`;
         }
     }
 
