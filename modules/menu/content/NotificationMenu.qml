@@ -96,7 +96,10 @@ Column {
             detail: [modelData?.appName, modelData?.body].filter(s => s).join(" - ")
             selected: row.urgent
 
-            onActivated: Notifs.dismiss(modelData)
+            // FORGET, not dismiss. This list IS the hub, so there is nowhere
+            // further back for a pinned notification to be kept; see
+            // Notifs.forget, which is the door for exactly this.
+            onActivated: Notifs.forget(modelData)
         }
     }
 }

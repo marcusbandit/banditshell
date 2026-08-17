@@ -82,8 +82,33 @@ Singleton {
         root.leaving = [...root.leaving, entry];
     }
 
-    // Thrown away, or acted on. A decision, so it does not come back.
+    // Thrown off the SCREEN, or acted on there. A decision, so it does not come
+    // back.
+    //
+    // UNLESS IT WAS PINNED, which is worth exactly one of these: the row leaves
+    // the screen and stays in the hub, with the words it arrived with, which is
+    // the whole of what a pin is for. The pin is SPENT doing it, so nothing is
+    // left holding the notification anywhere.
     function dismiss(entry: var): void {
+        if (!entry || entry.leaving)
+            return;
+        const spare = entry.pinned;
+        entry.pinned = false;
+        root.beginLeave(entry, !spare);
+    }
+
+    // Thrown out of the HUB, which is a different sentence and needs its own
+    // door.
+    //
+    // A pin means "keep this after it leaves the screen", and in the hub it has
+    // already arrived there: there is nowhere further back to go, so honouring a
+    // pin here would answer a deliberate swipe by taking the row off a list it is
+    // still on, which drop() reads as "put it back" and the card visibly bounces.
+    // The hub is the last stop, so this forgets whatever it is given.
+    function forget(entry: var): void {
+        if (!entry || entry.leaving)
+            return;
+        entry.pinned = false;
         root.beginLeave(entry, true);
     }
 

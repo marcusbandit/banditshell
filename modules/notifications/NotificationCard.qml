@@ -123,13 +123,17 @@ Item {
     property real dragX: 0
     property real pulled: 0
 
-    // Which way it was THROWN, if it was: -1, 0 or +1.
+    // Whether it was THROWN AWAY: 0 or +1, and never -1 any more.
     //
     // A card let go past the commit point should keep going. Without this it
     // stopped dead wherever the pointer stopped and then collapsed in place,
     // which reads as the throw being ignored and the card dying of something
     // else. The fling rides `leave`, so it is the same one motion as the
     // collapse rather than a second animation racing it.
+    //
+    // ONE DIRECTION, because only one direction throws anything away now: right,
+    // out through the edge the tray hangs off. Left is a pin and a pin springs
+    // home. See conclude().
     property int flung: 0
 
     readonly property real throwDistance: fullWidth * Appearance.sizes.dragDismissFraction
@@ -174,11 +178,12 @@ Item {
     // UNDER THE BUTTON someone was already aiming at: the exact bug this pause
     // exists to prevent, reintroduced by how it was measured. A HoverHandler is
     // passive and stays hovered while its own descendants are.
-    readonly property bool held: hover.hovered || drag.pressed || root.kept
+    readonly property bool held: hover.hovered || drag.pressed || root.pinned
+
     onHeldChanged: if (entry)
         entry.held = held
 
-    // KEPT: the touch answer to hover, and the pin a mouse never had.
+    // PINNED: the touch answer to hover, and the pin a mouse never had.
     //
     // Everything above is an argument about a cursor. A HoverHandler receives no
     // touch events at all, so on a touchscreen `hovered` is false for the whole
@@ -189,20 +194,21 @@ Item {
     // is a click, and a click dismisses (DESIGN.md 15), so the one touch gesture
     // that paused a notification was also the one that deleted it.
     //
-    // A finger cannot rest on something to say it is looking at it, so it HOLDS
-    // to say it. Past the press-and-hold interval the card latches this, the
-    // countdown stops, and the release that follows is no longer a click (see
-    // onReleased). The lift the card already does under a pointer is what says it
-    // happened, because `held` is what colours the background and this is now one
-    // of the three things that sets it.
+    // TWO WAYS TO SET IT, and they mean the same thing. A swipe LEFT is the
+    // deliberate one (see conclude: right throws away, left pins), and a
+    // press-and-hold is the one a finger falls into while reading, which is the
+    // same sentence said more slowly.
     //
-    // It is a LATCH and not a second kind of hover: nothing lets go of it, so a
-    // kept popup stays on the screen until it is thrown away, acted on, or the
-    // tray is cleared. That is the point of it. A mouse user gets the same pin,
-    // which they did not have before either: hovering suspends a countdown only
-    // while the pointer is parked on the card, so the moment you look away to
-    // read the thing the notification was about, it resumes and goes.
-    property bool kept: false
+    // ON THE ENTRY, never here. It has to outlive this card: the tray rebuilds
+    // its delegates when it expands, and a pin that lived in a card would be lost
+    // by the row beside it being dismissed. See NotifEntry.pinned, which also
+    // says what a pin costs a dismissal.
+    readonly property bool pinned: entry?.pinned ?? false
+
+    function pin(on: bool): void {
+        if (root.entry)
+            root.entry.pinned = on;
+    }
 
     width: fullWidth
     implicitHeight: body.implicitHeight + Appearance.padding.normal * 2
@@ -217,7 +223,12 @@ Item {
     // unfolding rather than by sliding, so an arrival and a drag can never
     // fight over the same axis.
     x: throwX
-    opacity: open * Math.max(0.1, 1 - Math.max(0, Math.abs(throwX) - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
+    // FADES ON THE DISMISS SIDE ONLY. `Math.abs` used to be around `throwX`, from
+    // when both directions threw the card away; a leftward pull is a pin now, and
+    // something on its way to being KEPT must not look like it is leaving. The
+    // unsigned term below is zero for a leftward offset, so the pin tracks at full
+    // opacity and the only thing that fades is a departure.
+    opacity: open * Math.max(0.1, 1 - Math.max(0, throwX - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
 
     HoverHandler {
         id: hover
@@ -536,6 +547,10 @@ Item {
             anchors.left: badge.right
             anchors.leftMargin: Appearance.padding.normal
             anchors.right: parent.right
+            // Out of the pin's way, and only once the pin is actually there. See
+            // pinMark: the two are flush against the same edge, so the mark's own
+            // width plus a gap is exactly the room it needs.
+            anchors.rightMargin: root.pinned ? pinMark.width + Appearance.padding.small : 0
             anchors.top: parent.top
             spacing: 0
 
@@ -776,6 +791,35 @@ Item {
                 }
             }
         }
+    }
+
+    // THE PIN, and the leftward pull's only feedback.
+    //
+    // It has to be both, because the two gestures differ by DIRECTION alone and
+    // nothing else on the card would say which one is happening: a rightward pull
+    // fades, and a leftward one deliberately does not (see `opacity`), so without
+    // this a pin in progress would look like a dismissal that had changed its
+    // mind. It rides the pull straight, so the mark is fully there exactly when
+    // the gesture reaches its commit line.
+    //
+    // AFTER the body rather than beside the spine it sits opposite, because
+    // declaration order is stacking order and the text column is what it shares
+    // its corner with. Room is reserved for it only in the SETTLED state (see the
+    // column's rightMargin): a text column that reflowed on every frame of a drag
+    // would be the card rewriting itself under the hand.
+    Icon {
+        id: pinMark
+
+        anchors.right: parent.right
+        anchors.top: parent.top
+        anchors.margins: Appearance.padding.normal
+
+        name: "push_pin"
+        size: Appearance.font.size.small
+        fill: 1
+        color: Appearance.colour.accent
+        opacity: root.pinned ? 1 : Math.min(1, Math.max(0, -root.pulled / root.throwDistance))
+        visible: opacity > 0.01
     }
 
     // ------------------------------------------------------------------
@@ -1070,7 +1114,7 @@ Item {
         // real time needs real time.
         property real lastEvent: 0
 
-        // Whether THIS press turned into a hold. `root.kept` is the lasting
+        // Whether THIS press turned into a hold. `root.pinned` is the lasting
         // answer and outlives the gesture on purpose; this one is per press,
         // because the release has to know what it is the end of and not what some
         // earlier press decided.
@@ -1290,7 +1334,7 @@ Item {
             drag.advance(dx, dy);
         }
 
-        // Long enough to be a decision rather than a press. See `kept`: this is
+        // Long enough to be a decision rather than a press. See `pinned`: this is
         // the finger's way of saying what a cursor says by resting on the card,
         // and it is the only one it has.
         //
@@ -1302,7 +1346,7 @@ Item {
             if (throwing)
                 return;
             holding = true;
-            root.kept = true;
+            root.pin(true);
         }
 
         onReleased: {
@@ -1317,11 +1361,13 @@ Item {
             // told apart by a stopwatch nobody can see. The keep survives; the
             // click that would have followed it does not happen.
             //
-            // `holding` and not `root.kept`, and the difference matters. The keep
-            // is permanent by design, so guarding on it would mean a kept card
-            // could never be clicked away again, which takes back the one thing
-            // DESIGN.md 15 promises a mouse user. This flag is about this press
-            // only: hold once to pin, and a plain click afterwards still dismisses.
+            // `holding` and not `root.pinned`, and the difference matters. A pin
+            // outlives the press that made it, so guarding on it would mean a
+            // pinned card could never be clicked away again, which takes back the
+            // one thing DESIGN.md 15 promises a mouse user. This flag is about
+            // this press only: hold once to pin, and a plain click afterwards
+            // still dismisses (and a pinned card dismissed merely goes to the
+            // hub, which is the whole point of the pin).
             //
             // ...and unless the finger wandered up or down the screen. See
             // `wandered`: a list too short to scroll never takes the gesture off
@@ -1353,25 +1399,32 @@ Item {
             if (!drag.throwing)
                 return;
 
-            if (root.committed) {
-                // Which way it flies: the drag offset's own sign, in both
-                // arms. A speed commit used to take the VELOCITY's sign
-                // instead, guarding against a press that drifted one way
-                // before flicking the other and left a wrong-signed offset
-                // behind; the sign agreement inside `committed` now refuses
-                // any speed commit whose velocity opposes the offset (that
-                // shape is the cancel gesture, not a throw), so a speed
-                // commit that reaches this line agrees with the offset by
-                // construction and the branch would pick the same sign twice.
-                // A distance commit never wanted the velocity anyway: the
-                // card is out past the commit line on the offset's side, and
-                // flying it any other way would cross back over home.
-                root.flung = root.pulled < 0 ? -1 : 1;
+            // RIGHT THROWS IT AWAY, LEFT PINS IT.
+            //
+            // The side is read off the drag OFFSET and never off the velocity,
+            // which is what this branch used to pick a fling direction with. A
+            // speed commit that reaches this line agrees with the offset by
+            // construction, because `committed` refuses any whose velocity
+            // opposes it (that shape is the cancel gesture, not a throw), and a
+            // distance commit is out past the commit line on the offset's side
+            // already. With two different OUTCOMES hanging off the sign rather
+            // than two directions of the same one, reading it off the wrong
+            // number would not merely fly the card oddly, it would keep the
+            // notification you meant to throw away.
+            if (root.committed && root.pulled > 0) {
+                root.flung = 1;
                 return root.dismissed();
             }
 
-            // Abandoned short of the commit point: hand the offset to the spring
-            // and let it walk home rather than snapping.
+            // A PIN, and then home. It TOGGLES, so the gesture undoes itself:
+            // there is no other way to take a pin off, and a swipe that could
+            // only ever add one would be a decision with no way back.
+            if (root.committed)
+                root.pin(!root.pinned);
+
+            // Abandoned short of the commit point, or pinned: hand the offset to
+            // the spring and let it walk home rather than snapping. A pinned card
+            // is one that STAYS, so it has to come back to where it was.
             settle.value = root.dragX;
             settle.target = 0;
             root.pulled = 0;

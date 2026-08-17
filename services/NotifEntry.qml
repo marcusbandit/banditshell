@@ -430,6 +430,15 @@ QtObject {
     // under the pointer while you are reaching for its button.
     property bool held: false
 
+    // PINNED: swiped left, or press-and-held. Two things at once. The countdown
+    // stops, and the next dismissal HIDES this notification instead of forgetting
+    // it, so it is still in the hub afterwards.
+    //
+    // On the ENTRY rather than on the card, for the reason this whole file
+    // exists: the tray swaps its delegates when it expands, and a pin living in a
+    // card would be lost by the row next to it being dismissed.
+    property bool pinned: false
+
     // On its way out, and how long it has been going. Removal is two-phase so
     // the card can animate before its row actually disappears; see Notifs.
     property bool leaving: false
@@ -442,7 +451,10 @@ QtObject {
     // threw away is a decision, and it does not come back.
     property bool forget: false
 
-    readonly property bool running: timeout > 0 && remaining > 0 && !held && !leaving
+    // `pinned` as well as `held`, though the card folds the pin into `held`
+    // anyway: an entry with no card on any screen still has to stop counting, and
+    // `held` is only ever written by a card.
+    readonly property bool running: timeout > 0 && remaining > 0 && !held && !pinned && !leaving
 
     function tick(ms: int): bool {
         if (!root.running)

@@ -1175,6 +1175,24 @@ before it is finished. Dragging back cancels.
 Clicking still dismisses. A mouse user who expects that should not be told they
 are holding it wrong.
 
+**And the other direction is the opposite decision, not a second dismissal.** A
+notification card is dragged *right*, out through the edge the tray hangs off, to
+throw it away, and *left* to **pin** it. Pinning stops the countdown and buys the
+notification one dismissal's worth of protection: thrown away afterwards it only
+leaves the *screen*, and it is still in the hub when you go looking. A press and
+hold pins it too, because a finger has no other way of saying "I am reading this",
+and a swipe left again takes the pin back off.
+
+The two gestures differ by direction alone, so the card has to say which one is
+happening before you let go: a rightward pull fades the card out, a leftward one
+deliberately does *not*, and the pin's own mark rides in with the pull so it is
+fully drawn exactly at the commit line. A dismissal that looked identical to a
+keep until the instant it committed would be a coin toss with a hand on it.
+
+In the hub the pin means nothing, and a swipe there forgets. The hub is where a
+pin was keeping the notification in the first place; honouring one there would
+answer a deliberate swipe by putting the row straight back.
+
 The touch-friendliness that follows is mostly free, and the rest is arithmetic:
 targets meet WCAG 2.2 SC 2.5.8's 24px floor, and the drag threshold is 6px rather
 than Qt's mouse-tuned 10, because a touchpad flick covers less distance than a

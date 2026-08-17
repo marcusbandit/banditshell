@@ -27,7 +27,8 @@ import qs.services
 // It has two states and they are the same object, not two panels that hand over.
 // Collapsed it shows what just arrived; put the cursor in the corner and it
 // EXPANDS to everything unread, growing in place. Anything that merely timed out
-// is still in there. Anything thrown away is not: see Notifs.beginLeave.
+// is still in there, and so is anything that was PINNED before it was thrown
+// away. Anything else thrown away is not: see Notifs.dismiss.
 //
 // THE CORNER is what expands it. The tray's own hover keeps it out and cannot
 // open it, which is what stops reaching for a popup from unfolding the history
@@ -877,7 +878,12 @@ Item {
                             // open, so this is the half of the tray with time to
                             // read in. See NotificationCard's `roomy`.
                             roomy: root.expanded
-                            onDismissed: Notifs.dismiss(row.modelData)
+                            // WHICH LIST THIS ROW IS IN is which dismissal it
+                            // gets: expanded, the tray IS the hub, and a swipe
+                            // there is the last word on a notification. Collapsed
+                            // it is the screen, where a pin buys the row a place
+                            // in the hub instead. See Notifs.dismiss and forget.
+                            onDismissed: root.expanded ? Notifs.forget(row.modelData) : Notifs.dismiss(row.modelData)
                         }
                     }
                 }

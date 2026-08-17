@@ -479,7 +479,7 @@ Scope {
         // else's cards and has no business being told about them.
         //
         // `held` rather than `hovered` because the card's own union is the
-        // right one. Hover, a drag in progress and a card deliberately kept
+        // right one. Hover, a drag in progress and a card deliberately pinned
         // open all mean the same thing to a sender, which is that the card is
         // being attended to right now.
         //
