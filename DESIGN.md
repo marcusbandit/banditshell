@@ -387,6 +387,8 @@ banditshell/
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, and a poster frame per video
 │   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
+│   ├── AppNotifs.qml            the index over it: which application each one
+│   │                            came from, so a launcher row can carry its own
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
 │   ├── Clipboard.qml            what has been copied, and what each of them IS;
@@ -418,7 +420,10 @@ banditshell/
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field over everything installed
-│   │   ├── NiagaraLauncher.qml  text before icons; the alphabet on a rail
+│   │   ├── NiagaraLauncher.qml  text before icons; the alphabet on a rail.
+│   │   │                        Folders live in the favourites, a row carries
+│   │   │                        its application's notifications, and a swipe
+│   │   │                        across one clears them or opens the folder
 │   │   ├── AnswerRow.qml        the sum you typed, answered under the field.
 │   │   │                        Enter copies it; arrowing hands Return back to
 │   │   │                        the list. Both concepts draw the same row

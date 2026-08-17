@@ -544,6 +544,27 @@ Singleton {
                 // A map for the same reason `hidden` is one.
                 starred: ({}),
 
+                // FOLDERS, keyed by a name-shaped id you can read in this file.
+                //
+                //   "media": { "name": "Media", "since": 1723..., "apps": { "mpv": 1723... } }
+                //
+                // A folder is a place in the FAVOURITES section, not a second
+                // filing system: the alphabet below it still holds every
+                // application installed, exactly once, whatever you have grouped
+                // up here. So the only list a folder changes is the short one at
+                // the top, and everything else in the launcher is unaware of it.
+                //
+                // Being in one is a stronger statement than a star, so it
+                // implies one: services/Apps.qml keeps `starred` and this
+                // agreeing rather than trusting whoever edits the file. An
+                // application is in at most one folder, for the same reason it
+                // is in one place in a drawer.
+                //
+                // `since` is when you made it, which is the folder's place among
+                // the loose favourites, and each member's is the order it sits
+                // in inside the folder.
+                folders: ({}),
+
                 niagara: {
                     width: 760,
                     // How big an application's mark is in the column.
