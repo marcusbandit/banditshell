@@ -23,11 +23,23 @@ import qs.services
 // arrangement rather than a diagram of it: what is beside what, what is twice as
 // wide as what, and how far off the edge the thing you were looking for is.
 //
-// AT THE SCALE OF THE CARD IN THE HAND. `preferred` is the size the lift is
-// heading for, and the map takes it unless the workspace is too wide to fit, in
-// which case everything shrinks together and the card follows the map rather
-// than the other way round. The point is that the thing you are carrying and the
-// hole it came out of are the same size, so dropping reads as slotting in.
+// ONLY WHAT IS IN FRONT OF YOU, and that is the second thing the scrolling
+// layout forced. Showing every window on the workspace is right up to about half
+// a dozen and wrong after that: twenty columns squeezed into the content area
+// are twenty postage stamps, and the ones that shuffle when you aim are too
+// small to read as anything moving. So the map covers the windows the viewport
+// is currently showing, which is the neighbourhood the hand is working in, and
+// the ones scrolled away are simply not on it.
+//
+// The PLAN still counts every column, on screen or not, because a walk of three
+// places is three places whatever you can see: what is reduced is the drawing,
+// never the arithmetic.
+//
+// AS BIG AS THE AREA ALLOWS, up to a cap. The map takes whatever scale fits its
+// own contents into the content area and stops at `windows.scale` so that one
+// window does not fill the screen. The card in the hand is drawn at exactly the
+// same scale, so the thing you are carrying and the hole it came out of are the
+// same size and dropping reads as slotting in.
 //
 // The held window is in the map but is not a target: its slot is drawn empty,
 // because that is the space the swap is going to fill and the one place on
@@ -46,8 +58,6 @@ Item {
     // The window in the hand.
     property string heldAddr: ""
 
-    // The scale the card is heading for, which the map takes when it can.
-    property real preferred: 1
 
     // WHAT DROPPING MEANS: "move" or "swap". See WindowEdge's mode pill.
     property string mode: "move"
@@ -101,11 +111,17 @@ Item {
         root.all = out;
     }
 
-    // What the map has to cover: the union of every window's rectangle. Computed
-    // rather than assumed to be the screen, because on a scrolling layout it is
-    // routinely several screens wide and starts left of zero.
+    // WHAT IS DRAWN: the windows the viewport is showing, held one included. A
+    // column is here if any part of it is on the screen, so the two at the edges
+    // come along half cut off, which is also how the scrolling layout draws them
+    // and therefore what the eye already expects.
+    readonly property var shown: root.all.filter(w => w.x + w.w > 0 && w.x < root.width)
+
+    // What the map has to cover: the union of the drawn rectangles. Computed
+    // rather than assumed to be the screen, because the edge columns hang off
+    // both sides of it.
     readonly property rect box: {
-        if (root.all.length === 0)
+        if (root.shown.length === 0)
             return Qt.rect(0, 0, root.width, root.height);
 
         let x0 = Infinity;
@@ -113,7 +129,7 @@ Item {
         let x1 = -Infinity;
         let y1 = -Infinity;
 
-        for (const w of root.all) {
+        for (const w of root.shown) {
             x0 = Math.min(x0, w.x);
             y0 = Math.min(y0, w.y);
             x1 = Math.max(x1, w.x + w.w);
@@ -123,10 +139,9 @@ Item {
         return Qt.rect(x0, y0, Math.max(1, x1 - x0), Math.max(1, y1 - y0));
     }
 
-    // The biggest the map may be drawn, and then the size it actually is: the
-    // card's own scale, unless the workspace will not fit at it.
+    // As big as the area allows, and never bigger than the cap.
     readonly property real fit: Math.min(root.holeWidth / root.box.width, root.holeHeight / root.box.height)
-    readonly property real fitted: Math.min(root.preferred, root.fit)
+    readonly property real fitted: Math.min(root.fit, Appearance.sizes.windowScale)
 
     // THE MAP LANDS ON THE REAL WINDOWS WHEN THE FINGER LEAVES.
     //
@@ -165,9 +180,8 @@ Item {
         return Qt.rect(root.originX + w.x * root.mapScale, root.originY + w.y * root.mapScale, w.w * root.mapScale, w.h * root.mapScale);
     }
 
-    // The targets: everything except the one in the hand. The delegates draw
-    // `all` and this is only ever what the aim may land on.
-    readonly property var windows: root.all.filter(w => !w.held)
+    // The targets: everything drawn except the one in the hand.
+    readonly property var windows: root.shown.filter(w => !w.held)
 
     // THE LAYOUT'S OWN UNIT IS THE COLUMN, not the window. The scrolling layout
     // can stack more than one window at the same x, and a move shuffles COLUMNS
@@ -310,7 +324,7 @@ Item {
     // themselves stay ungated, because the drop's outro reads them after the map
     // has already begun fading.
     Repeater {
-        model: root.visible ? root.all : []
+        model: root.visible ? root.shown : []
 
         delegate: Item {
             id: slot

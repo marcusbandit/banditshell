@@ -189,11 +189,6 @@ Item {
 
     readonly property bool showing: !!root.held && (root.lifted || root.outro !== "")
 
-    // THE TILE the card is heading toward: a fraction of the content area wide,
-    // and the window's own proportions tall, so what you are carrying stays
-    // recognisably the shape of what you picked up.
-    readonly property real tileW: root.holeWidth * Appearance.sizes.windowCard
-    readonly property real tileH: root.held ? root.tileW * root.held.h / root.held.w : root.tileW
 
     // THE CARD IS ONE SCALE AND ONE CENTRE, never a rectangle with two
     // independently moving sides. This is the whole of what keeps the window's
@@ -202,13 +197,10 @@ Item {
     // destination does not (a plate, which is the shape of the SCREEN, or
     // another window's slot, which is the shape of that window) the card is
     // squashed on its way there. A factor cannot squash anything.
-    readonly property real tileScale: root.held ? root.tileW / root.held.w : 1
-
-    // ...OR WHATEVER THE MAP COULD ACTUALLY MANAGE. The map takes the tile's
-    // scale unless the workspace is too wide to fit at it, and the card follows
-    // the map rather than the other way round, so the thing in the hand and the
-    // hole it came out of are always the same size.
-    readonly property real restScale: Math.min(root.tileScale, layout.mapScale)
+    // WHAT THE CARD SHRINKS TO: the map's own scale, so the thing in the hand and
+    // the hole it came out of are the same size by construction rather than by
+    // two numbers agreeing.
+    readonly property real restScale: layout.mapScale
     readonly property real liveScale: 1 + (root.restScale - 1) * tuck.value
 
     // WHERE IT IS WHILE A FINGER IS ON IT. The centre walks from the window's
@@ -470,12 +462,24 @@ Item {
         // ...then the workspace you are on, where dropping on a window is the
         // two of them trading places. No hold is spent on this: it is the thing
         // you do with a window you have just picked up.
-        // ...then the workspace you are on. NOTHING IS DISPATCHED HERE: the
-        // swap happened the moment you hovered, so letting go is only the shell
-        // agreeing with the compositor about a rearrangement they have both
-        // already made.
+        // ...then the workspace you are on. NO REARRANGEMENT IS DISPATCHED
+        // HERE: it happened the moment you hovered, so letting go is only the
+        // shell agreeing with the compositor about a move they have both already
+        // made.
+        //
+        // THE KEYBOARD GOES TO THE WINDOW YOU WERE CARRYING, which is the one
+        // thing the hover could not settle. Every walk of a column hands the
+        // focus back to whoever had it, because a hover is not a request to go
+        // anywhere; a DROP is. You picked that window up, you put it somewhere,
+        // and it is what you are looking at.
+        //
+        // Through restoreFocus rather than focusAddress, for the pointer's sake:
+        // this is a finger's gesture and the cursor is wherever it was left, so
+        // being warped across the screen by a drop would be a second thing
+        // happening that nobody asked for.
         const other = layout.over;
         if (other >= 0) {
+            Hypr.restoreFocus(root.held.addr);
             root.finish("swapped", other);
             return;
         }
@@ -705,7 +709,6 @@ Item {
 
         // What the card is heading for. The map answers with what it could
         // actually manage, and the card reads that back.
-        preferred: root.tileScale
         mode: root.mode
 
         pointX: root.pointX
@@ -787,24 +790,52 @@ Item {
 
     // A SECOND FINGER SWITCHES THE MODE, anywhere on the screen.
     //
-    // The first finger is busy: it is holding a window, it is what every target
-    // on the screen is being aimed at, and it cannot be spared to go and press
+    // The first one is busy: it is holding a window, every target on the screen
+    // is being aimed at with it, and it cannot be spared to go and press
     // something without putting the window down. The other hand is free, and a
     // tap is the one thing it can say that cannot be confused with the drag
     // already in progress.
     //
-    // A TapHandler and not a MouseArea, because this is the one place in the
-    // shell that has to see a REAL touch point rather than the mouse Qt
-    // synthesises from the first one: the synthesis only ever covers one finger,
-    // and this is about the second. Restricted to the touchscreen for the same
-    // reason the strip is, and live only while a window is actually in the air,
-    // so nothing about the desktop changes when nobody is holding anything.
-    TapHandler {
-        enabled: root.mapped
-        acceptedDevices: PointerDevice.TouchScreen
-        gesturePolicy: TapHandler.ReleaseWithinBounds
+    // A POINT HANDLER, AND NOT A TAP HANDLER, and that is the whole of the fix
+    // for the gesture freezing. A TapHandler wants the EXCLUSIVE grab in order
+    // to decide whether a press became a tap, and its default permissions let it
+    // take that grab off an item: the item it took it from was the strip holding
+    // the first finger, which then stopped receiving moves and never received a
+    // release, so the card hung in the air. A PointHandler only ever takes a
+    // PASSIVE grab. It cannot steal anything, and the permissions below say so
+    // twice: it may not take over from anything, and anything may take over from
+    // it.
+    //
+    // ONE FLIP PER PRESS. `active` follows the point being down, so the handler
+    // says so once when the finger lands and once when it leaves; only the
+    // landing is answered. A hand resting on the glass therefore flips once, not
+    // once a frame, and a second tap flips it back.
+    //
+    // AND IT MUST NOT ANSWER THE FIRST FINGER. This handler is switched on in
+    // the middle of a gesture, at the moment the map appears, with a finger
+    // already pressed: nothing stops it noticing that point on the very next
+    // move and calling it a tap, which would flip the mode once per lift for
+    // free. The point it activated on is compared against the one the strip is
+    // tracking, and a point in the same place is the same finger. A whole target
+    // of slack, because two fingers of one hand are never that close and a
+    // fingertip's reported centre wanders a few pixels while it drags.
+    //
+    // Live only while a window is actually in the air, so nothing about the
+    // desktop changes when nobody is holding anything.
+    PointHandler {
+        id: second
 
-        onTapped: {
+        enabled: root.mapped && root.grabbed
+        acceptedDevices: PointerDevice.TouchScreen
+        grabPermissions: PointerHandler.ApprovesTakeOverByAnything
+
+        onActiveChanged: {
+            if (!second.active)
+                return;
+
+            if (Math.hypot(second.point.position.x - root.pointX, second.point.position.y - root.pointY) < Appearance.sizes.minTarget * 2)
+                return;
+
             root.flipMode();
             root.flipped = true;
             flip.restart();
@@ -979,6 +1010,8 @@ Item {
         }
     }
 }
+
+
 
 
 

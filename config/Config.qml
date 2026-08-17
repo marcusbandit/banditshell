@@ -1290,10 +1290,14 @@ Singleton {
                 // think runs near 0.
                 fling: 0.9,
 
-                // The lifted card, as a fraction of the content area's width. It
-                // keeps the window's own aspect, so this is the only number it
-                // needs.
-                card: 0.2,
+                // HOW BIG A LIFTED WINDOW IS DRAWN, as a fraction of its own
+                // size, and the cap rather than the value: the map takes
+                // whatever scale fits the windows the viewport is showing into
+                // the content area and stops here, so one window on a workspace
+                // does not end up filling the screen. The card in the hand is
+                // drawn at the same scale as the map it is being dropped onto,
+                // so this is the one number that sizes both.
+                scale: 0.4,
                 // A workspace plate on the shelf, in the same units and as a
                 // preference rather than a promise: the shelf caps itself to the
                 // content area, so a long persistent set shrinks the plates

@@ -322,7 +322,7 @@ Singleton {
         readonly property int windowHoldSlop: root.cfg.windows.holdSlop
         readonly property real windowTravel: root.cfg.windows.travel
         readonly property real windowFling: root.cfg.windows.fling
-        readonly property real windowCard: root.cfg.windows.card
+        readonly property real windowScale: root.cfg.windows.scale
         readonly property real windowPlate: root.cfg.windows.plate
         readonly property string windowMode: root.cfg.windows.mode
         readonly property bool windowFollow: root.cfg.windows.follow
