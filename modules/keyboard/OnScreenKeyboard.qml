@@ -168,18 +168,39 @@ Item {
     // Unfolding puts it away unconditionally, even if it was summoned by hand,
     // because the real keyboard is back under the fingers and two keyboards
     // competing for the same line is nobody's intent.
+    function follow(): void {
+        if (Tablet.folded) {
+            if (Config.values.tablet.autoKeyboard)
+                root.show();
+        } else {
+            root.hide();
+        }
+    }
+
     Connections {
         target: Tablet
 
         function onFoldedChanged(): void {
-            if (Tablet.folded) {
-                if (Config.values.tablet.autoKeyboard)
-                    root.show();
-            } else {
-                root.hide();
-            }
+            root.follow();
         }
     }
+
+    // AND ONCE ON THE WAY UP, because a signal only fires on a CHANGE and the
+    // shell booting on an already-folded machine is not one.
+    //
+    // The usual order is that this panel is built first and the hinge is read a
+    // moment later, so the Connections above catches it and this call finds
+    // nothing to do. The order is not guaranteed, though: services/Tablet.qml
+    // probes on its own Component.onCompleted, a singleton is created the first
+    // instant anything reads it, and if that happened to be something built
+    // before this panel then the one transition there was is already spent by
+    // the time the panel exists. Asking outright costs one call and does not
+    // depend on which of the two won.
+    //
+    // It is also what makes a RELOAD behave: Quickshell rebuilds this tree
+    // whenever a file changes, and a board that only listened for transitions
+    // would come back closed on a machine that is still folded.
+    Component.onCompleted: root.follow()
 
     // WHAT A CAP SAYS, which depends on the modifier state and so cannot live in
     // the data. An `icon` key says nothing in words; a `cap` says the same thing

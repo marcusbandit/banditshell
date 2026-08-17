@@ -192,7 +192,11 @@ calculator | calc)
 tablet)
     sub="${1:-status}"
     case "$sub" in
-    on | off | toggle | status) ipc tablet "$sub" ;;
+    # The second argument says WHO is calling, and only the switch binds pass
+    # one (`compositor`). It is what makes `status` able to tell a hinge that
+    # moved from a command somebody typed.
+    on | off | toggle) ipc tablet "$sub" "${2:-}" ;;
+    status) ipc tablet status ;;
     probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
     *) echo "usage: banditshell tablet on|off|toggle|status|probe" >&2; exit 2 ;;
     esac

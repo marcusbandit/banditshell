@@ -325,16 +325,23 @@ Scope {
     IpcHandler {
         target: "tablet"
 
-        function on(): string {
-            return Tablet.apply("on", "cli");
+        // WHO IS CALLING, as an argument, because "the hinge moved" and
+        // "somebody typed a command" are different facts and `status` is the
+        // only place either one can be seen. The switch binds pass
+        // `compositor`; a person passes nothing and gets `cli`. Reporting both
+        // as `cli` (which is what this did at first) makes the one diagnostic
+        // this service has useless for the one failure it is meant to catch,
+        // which is a switch bind that has silently stopped firing.
+        function on(from: string): string {
+            return Tablet.apply("on", from || "cli");
         }
 
-        function off(): string {
-            return Tablet.apply("off", "cli");
+        function off(from: string): string {
+            return Tablet.apply("off", from || "cli");
         }
 
-        function toggle(): string {
-            return Tablet.apply("toggle", "cli");
+        function toggle(from: string): string {
+            return Tablet.apply("toggle", from || "cli");
         }
 
         // WHERE THE BELIEF CAME FROM, and not just what it is. `folded` is false
