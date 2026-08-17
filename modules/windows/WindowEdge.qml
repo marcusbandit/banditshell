@@ -345,7 +345,6 @@ Item {
         root.mapped = false;
         root.racked = false;
         root.committed = null;
-        layout.landed = false;
         root.grabbed = true;
         root.outro = "";
         root.originY = y;
@@ -475,6 +474,7 @@ Item {
             root.clear();
             return;
         }
+
 
         // A THROW IS NOT AN AIM, and it is asked first for exactly that reason.
         //
@@ -617,17 +617,37 @@ Item {
         layout.landed = true;
     }
 
+    // The card has landed: take the picture away and leave the windows.
+    function dissolve(): void {
+        root.mapped = false;
+        linger.restart();
+    }
+
+    // Long enough for the fade above to finish. It is a teardown and not an
+    // animation, so it can afford to be generous: nothing is drawn by then.
+    Timer {
+        id: linger
+
+        interval: Appearance.anim.slow * 2
+        onTriggered: root.clear()
+    }
+
     // Back to nothing at all, instantly. Called when an outro lands, and by the
     // next press, so a gesture started while the last one is still flying home
     // is not two cards.
     function clear(): void {
+        // THE TEARDOWN CLOCK IS STOPPED FIRST. A gesture started inside the
+        // fade of the last one would otherwise be cleared out from under itself
+        // when the old timer came round, which is a card vanishing mid-drag for
+        // no reason anybody could see.
+        linger.stop();
+
         root.outro = "";
         root.held = null;
         root.lifted = false;
         root.mapped = false;
         root.racked = false;
         root.committed = null;
-        layout.landed = false;
         root.grabbed = false;
         root.rest = null;
         root.dest = null;
@@ -674,14 +694,23 @@ Item {
         speed: Appearance.anim.revealSpeed
         epsilon: 0.005
 
-        // DEFERRED, and it has to be. `clear` puts `outro` back to "", which is
-        // this Follow's own target, so clearing straight out of the handler
-        // rewrites the value being evaluated and Qt calls it a binding loop on
-        // `settled`. Qt.callLater runs it once the current pass is over, and
-        // dedupes by function, so a handful of settle signals in one frame is
-        // still one clear.
+        // ARRIVING IS NOT THE SAME AS BEING DONE. The card has reached the
+        // rectangle of the window it is a picture of; what is left is to stop
+        // being a picture of it, and that is a fade rather than a disappearance.
+        // A still lying on a live window is only identical to it until the
+        // window redraws, so a hard cut can flicker where a dissolve cannot.
+        //
+        // Dropping `mapped` is the whole of the instruction: the map fades, the
+        // card fades with it on the same number, and `linger` clears the state
+        // once there is nothing left on screen to clear.
+        //
+        // DEFERRED, and it has to be. This runs inside the evaluation of
+        // `settled`, and everything it touches feeds back into this Follow's own
+        // target; Qt calls that a binding loop. Qt.callLater runs it once the
+        // current pass is over, and dedupes by function, so a handful of settle
+        // signals in one frame is still one call.
         onSettledChanged: if (gone.settled && root.outro)
-            Qt.callLater(root.clear)
+            Qt.callLater(root.mapped ? root.dissolve : root.clear)
     }
 
     // THE SCRIM ARRIVES WITH THE MAP AND DEEPENS WITH THE SHELF, and arrives
@@ -918,11 +947,12 @@ Item {
         y: root.cardY
         width: Math.max(0, root.cardW)
         height: Math.max(0, root.cardH)
-        // FADED ONLY WHEN IT IS LEAVING. A card flying home or into a swapped
-        // slot lands exactly on the real window it is a picture of, so fading it
-        // would be dissolving something into itself; one that is being thrown
-        // off the screen or into a workspace plate has nowhere real to land.
-        opacity: root.outro === "close" || root.outro === "sent" ? 1 - gone.value : 1
+        // IT LEAVES BY GOING TRANSPARENT WHERE IT IS, never by shrinking back
+        // to wherever it came from. A throw and a send fade as they fly, because
+        // neither has a real window to land on; the other two land first and
+        // then dissolve on the map's own number, so the picture and the map it
+        // was picked out of leave together.
+        opacity: !root.outro ? 1 : root.outro === "close" || root.outro === "sent" ? 1 - gone.value : root.mapped ? 1 : layout.fade
 
         // The window's own corner, SCALED WITH THE CARD. At full size this is
         // the real window's radius, which it has to be while the two are lying
@@ -1064,6 +1094,10 @@ Item {
         }
     }
 }
+
+
+
+
 
 
 

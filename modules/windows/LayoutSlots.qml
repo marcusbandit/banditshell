@@ -86,6 +86,14 @@ Item {
         root.snapshot()
 
     function snapshot(): void {
+        // THE LANDING IS RESET HERE AND NOWHERE ELSE. It has to outlive the
+        // gesture that caused it: see `landed`. The one moment it can safely go
+        // back to zero is the moment a new map is being built, which is this
+        // one, and it goes back instantly rather than by animating, because
+        // there is nothing on screen yet to animate.
+        root.landed = false;
+        land.snap();
+
         const out = [];
 
         for (const client of Hypr.clientsOn(root.screen)) {
@@ -199,6 +207,16 @@ Item {
     // finger was still hovering, so there is nothing to wait for and nothing to
     // catch up with: the compositor and the map arrive at the same picture from
     // opposite directions.
+    //
+    // AND IT IS NEVER TAKEN BACK WHILE THE MAP IS ON SCREEN, which is the whole
+    // of why the finish used to look wrong. Clearing the gesture used to release
+    // this at the same moment it started the fade, so every card turned round
+    // and flew back to the small arrangement it had come from while going
+    // transparent: the cards had arrived, and then visibly zoomed away from the
+    // windows they had just landed on. A landing is a place, not a phase of a
+    // gesture. It is reset when the next map is built, so what the fade does is
+    // exactly nothing except take the opacity off things that are already lying
+    // where they belong.
     property bool landed: false
 
     Follow {
@@ -387,6 +405,10 @@ Item {
         speed: Appearance.anim.revealSpeed
         epsilon: 0.005
     }
+
+    // How present the map is, for anything drawn outside it that has to leave at
+    // the same time. The card in the hand is the only such thing.
+    readonly property real fade: reveal.value
 
     visible: reveal.value > 0.01
     opacity: reveal.value
