@@ -455,6 +455,45 @@ Item {
 
                     readonly property bool aimed: !slot.modelData.held && root.over >= 0 && root.windows[root.over].addr === slot.modelData.addr
 
+                    // QUIET UNTIL AIMED, and quiet by standing further back rather
+                    // than by having something laid over it. Each card used to
+                    // carry its own wash on top of its picture, on top of the wash
+                    // over the whole screen: two dimmings of one thing, which is
+                    // what haze is. One opacity says the same and leaves the
+                    // picture as the only thing in the card.
+                    //
+                    // Full strength as it lands, whatever it was, because what
+                    // ends up lying on the real windows has to BE the windows.
+                    readonly property real quiet: slot.aimed ? 1 : 0.62
+
+                    opacity: slot.quiet + (1 - slot.quiet) * land.value
+
+                    Behavior on opacity {
+                        enabled: !root.landed
+
+                        NumberAnimation {
+                            duration: Appearance.anim.fast
+                        }
+                    }
+
+            // QUIET UNTIL AIMED, and quiet by being further back rather than by
+            // having something laid over it. A card used to carry its own wash
+            // on top of the picture, on top of the wash over the whole screen,
+            // which is two dimmings of one thing and reads as haze. One opacity
+            // says the same and leaves the picture the only thing in the card.
+            //
+            // Full strength as it lands, whatever it was: what is left lying on
+            // the real windows has to BE the windows.
+            opacity: (slot.aimed ? 1 : 0.62) + (1 - (slot.aimed ? 1 : 0.62)) * land.value
+
+            Behavior on opacity {
+                enabled: !root.landed
+
+                NumberAnimation {
+                    duration: Appearance.anim.fast
+                }
+            }
+
                     // WHERE IT IS, AND WHERE IT WOULD GO. The plan is the whole answer:
                     // under a swap two windows exchange rectangles, under a move the
                     // held column walks to the aim and everything it passes shuffles up
@@ -530,10 +569,20 @@ Item {
                         anchors.fill: parent
                         visible: !slot.modelData.held
 
+                        // The plate under the picture, seen only through a window
+                        // that is itself translucent and before the first frame
+                        // arrives. `fill` to `fillStrong` under the finger, which
+                        // is what every card in this shell answers with; no ring,
+                        // because the accent is spent on state worth a colour and
+                        // "the one I am over" is said by everything else here.
                         radius: Appearance.sizes.windowRadius * root.drawScale
-                        color: Appearance.colour.fill
-                        stroke: slot.aimed ? Appearance.colour.accent : "transparent"
-                        strokeWidth: Appearance.font.stem
+                        color: slot.aimed ? Appearance.colour.fillStrong : Appearance.colour.fill
+
+                        Behavior on color {
+                            ColorAnimation {
+                                duration: Appearance.anim.fast
+                            }
+                        }
                     }
 
                     // THE WINDOW ITSELF, which is what makes these places rather than
@@ -548,27 +597,6 @@ Item {
                         window: slot.modelData.held ? null : slot.modelData.client
                         radius: Appearance.sizes.windowRadius * root.drawScale
                         live: false
-                    }
-
-                    // DIMMED UNTIL AIMED. The scrim behind everything says the shell has
-                    // taken the screen over, and lifting it off one card is the whole of
-                    // what "this one" looks like: the window's own picture brightens
-                    // rather than a fill being added to it. It comes off entirely as the
-                    // map lands, so what is left lying on the real windows is the
-                    // windows.
-                    G2Rect {
-                        anchors.fill: parent
-                        visible: !slot.modelData.held
-
-                        radius: Appearance.sizes.windowRadius * root.drawScale
-                        color: Appearance.colour.scrim
-                        opacity: (slot.aimed ? 0 : 0.45) * (1 - land.value)
-
-                        Behavior on opacity {
-                            NumberAnimation {
-                                duration: Appearance.anim.fast
-                            }
-                        }
                     }
 
                     Column {
@@ -600,7 +628,7 @@ Item {
 
                             name: root.mode === "swap" ? "swap_horiz" : "low_priority"
                             size: Appearance.font.iconSize
-                            color: Appearance.colour.accent
+                            color: Appearance.colour.text
                             opacity: slot.aimed ? 1 - land.value : 0
 
                             Behavior on opacity {

@@ -797,15 +797,24 @@ Item {
             root.racked = true
     }
 
-    // The screen behind it all, dimmed. It has no mask entry and no handler:
-    // this shell gates input with the mask and visuals with opacity, and putting
-    // a catcher here would swallow clicks for a mode that only a finger already
-    // on the glass can be in.
+    // THE SHELL TAKING THE SCREEN, in the shell's own material.
+    //
+    // It was a black wash, and a black wash is not something this shell owns: it
+    // belongs to the picker, where it dims arbitrary content that has to stay
+    // recognisable through it. Here the shell is not dimming the desktop, it is
+    // STANDING IN FRONT OF IT, and the thing it stands in front of things with is
+    // the same translucent surface every panel is made of. The compositor blurs
+    // this namespace, so what appears behind the cards is the desktop as
+    // material rather than the desktop turned down, which is the whole of
+    // section 6: depth from transparency and layering, never from a scrim.
+    //
+    // No mask entry and no handler of its own: input is gated by the region and
+    // answered by the areas at the bottom of this file.
     Rectangle {
         anchors.fill: parent
 
         visible: root.dim > 0.01
-        color: Appearance.colour.scrim
+        color: Appearance.colour.surface
         opacity: root.dim
     }
 
@@ -1169,5 +1178,7 @@ Item {
         }
     }
 }
+
+
 
 
