@@ -340,6 +340,16 @@ PanelWindow {
             item: windowEdge.maskItem
         }
 
+        // THE WHOLE SCREEN WHILE A WINDOW IS IN THE AIR, which is the one thing
+        // that lets a SECOND finger reach the shell: a layer surface hears
+        // nothing outside its own region, and this one's region is the chassis.
+        // See WindowEdge.grabItem. Conditional, unlike the strip above, because
+        // it is the whole screen and must not outlive the gesture by a frame.
+        Region {
+            intersection: Intersection.Combine
+            item: windowEdge.lifted ? windowEdge.grabItem : null
+        }
+
         Region {
             intersection: Intersection.Combine
             item: topNotch.active ? topNotch.maskItem : null
@@ -1219,6 +1229,14 @@ PanelWindow {
             anchors.fill: parent
             screen: win.screen
             border: win.border
+
+            // WHERE A SWIPE WITH NO WINDOW ABOVE IT GOES. The window edge takes
+            // the touch points itself now, so it can no longer refuse a press
+            // and let it fall through to the pull below: it hands the gesture
+            // over instead. That is what keeps the launcher reachable by finger
+            // from a bare workspace, which is the whole of what the bottom edge
+            // used to mean.
+            fallback: launchEdge
 
             // The chassis's hole, not the screen: the card is sized against the
             // space windows actually live in, and the shelf centres in it.

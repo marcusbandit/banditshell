@@ -86,7 +86,32 @@ Item {
     // all at once.
     property bool blocked: false
 
+    // Where a swipe with no window above it goes instead. Handed down by
+    // ShellWindow, which is the one file that can see both edges at once.
+    property var fallback: null
+
     readonly property Item maskItem: strip
+
+    // THE WHOLE SCREEN, FOR AS LONG AS A WINDOW IS IN THE AIR.
+    //
+    // This is what makes a second finger possible at all, and no amount of care
+    // on the Qt side could have substituted for it. A layer surface only
+    // receives input where its region says it does, and this shell's region is
+    // the chassis: the band and the sidebar, with the content area subtracted.
+    // A second finger put down in the middle of the screen therefore never
+    // reached the shell at all. The compositor gave it to whatever window was
+    // under it, which is also why it sometimes did something and sometimes did
+    // nothing, depending on whether it happened to land on the band.
+    //
+    // While the gesture runs the shell is already DRAWING over the whole screen,
+    // a scrim and a map and a card; claiming the input that goes with it is the
+    // honest version of the same statement. It also stops a stray touch reaching
+    // a window that is currently being dragged around on a map.
+    //
+    // Granted on `lifted` rather than on the press, because a press that goes
+    // nowhere must leave the screen exactly as it found it, and taken back the
+    // moment the gesture is over.
+    readonly property Item grabItem: catcher
 
     // WHAT IS IN THE HAND: { addr, mark, title, x, y, w, h }, or null.
     //
@@ -139,6 +164,12 @@ Item {
 
     // A finger is on it right now, as opposed to an outro still playing.
     property bool grabbed: false
+
+    // THIS SWIPE BELONGS TO THE LAUNCHER, not to any window. Latched at the
+    // press and held for the whole gesture: what a swipe is for is decided once,
+    // at the moment it starts, or a window opening under the hand could move it
+    // from one thing to another halfway through.
+    property bool forwarding: false
     // The shelf is out.
     property bool racked: false
 
@@ -245,9 +276,16 @@ Item {
 
     // ...and where it is once nobody is holding it. One ternary per term rather
     // than a second item, because it is the same card either way.
-    readonly property real cardScale: root.outro ? root.blend(root.rest.k, root.landing.k, gone.value) : root.liveScale
-    readonly property real cardCX: root.outro ? root.blend(root.rest.cx, root.landing.cx, gone.value) : root.liveCX
-    readonly property real cardCY: root.outro ? root.blend(root.rest.cy, root.landing.cy, gone.value) : root.liveCY
+    // GUARDED ON BOTH ENDS BEING THERE, not only on the outro being set. The two
+    // are written a line apart and every consumer of a `var` property in QML is
+    // one binding re-evaluation away from seeing the state between them; a
+    // TypeError in a binding leaves the whole card wherever it last was, which
+    // is a frozen picture over somebody's screen.
+    readonly property bool flying: !!root.outro && !!root.rest && !!root.landing
+
+    readonly property real cardScale: root.flying ? root.blend(root.rest.k, root.landing.k, gone.value) : root.liveScale
+    readonly property real cardCX: root.flying ? root.blend(root.rest.cx, root.landing.cx, gone.value) : root.liveCX
+    readonly property real cardCY: root.flying ? root.blend(root.rest.cy, root.landing.cy, gone.value) : root.liveCY
 
     readonly property real cardW: root.held ? root.held.w * root.cardScale : 0
     readonly property real cardH: root.held ? root.held.h * root.cardScale : 0
@@ -871,60 +909,6 @@ Item {
         epsilon: 0.005
     }
 
-    // A SECOND FINGER SWITCHES THE MODE, anywhere on the screen.
-    //
-    // The first one is busy: it is holding a window, every target on the screen
-    // is being aimed at with it, and it cannot be spared to go and press
-    // something without putting the window down. The other hand is free, and a
-    // tap is the one thing it can say that cannot be confused with the drag
-    // already in progress.
-    //
-    // A POINT HANDLER, AND NOT A TAP HANDLER, and that is the whole of the fix
-    // for the gesture freezing. A TapHandler wants the EXCLUSIVE grab in order
-    // to decide whether a press became a tap, and its default permissions let it
-    // take that grab off an item: the item it took it from was the strip holding
-    // the first finger, which then stopped receiving moves and never received a
-    // release, so the card hung in the air. A PointHandler only ever takes a
-    // PASSIVE grab. It cannot steal anything, and the permissions below say so
-    // twice: it may not take over from anything, and anything may take over from
-    // it.
-    //
-    // ONE FLIP PER PRESS. `active` follows the point being down, so the handler
-    // says so once when the finger lands and once when it leaves; only the
-    // landing is answered. A hand resting on the glass therefore flips once, not
-    // once a frame, and a second tap flips it back.
-    //
-    // AND IT MUST NOT ANSWER THE FIRST FINGER. This handler is switched on in
-    // the middle of a gesture, at the moment the map appears, with a finger
-    // already pressed: nothing stops it noticing that point on the very next
-    // move and calling it a tap, which would flip the mode once per lift for
-    // free. The point it activated on is compared against the one the strip is
-    // tracking, and a point in the same place is the same finger. A whole target
-    // of slack, because two fingers of one hand are never that close and a
-    // fingertip's reported centre wanders a few pixels while it drags.
-    //
-    // Live only while a window is actually in the air, so nothing about the
-    // desktop changes when nobody is holding anything.
-    PointHandler {
-        id: second
-
-        enabled: root.mapped && root.grabbed
-        acceptedDevices: PointerDevice.TouchScreen
-        grabPermissions: PointerHandler.ApprovesTakeOverByAnything
-
-        onActiveChanged: {
-            if (!second.active)
-                return;
-
-            if (Math.hypot(second.point.position.x - root.pointX, second.point.position.y - root.pointY) < Appearance.sizes.minTarget * 2)
-                return;
-
-            root.flipMode();
-            root.flipped = true;
-            flip.restart();
-        }
-    }
-
     // How long the mark stays swollen after a tap. Long enough to be seen at the
     // far end of the screen from wherever the tap landed.
     property bool flipped: false
@@ -1027,12 +1011,37 @@ Item {
         }
     }
 
-    // THE STRIP ITSELF, and every refusal it makes.
+    // The rectangle the region above is made of. It has no handlers and never
+    // will: input is gated by the mask and answered by the strip, and a catcher
+    // with an opinion here would be a second thing deciding what a touch means.
+    Item {
+        id: catcher
+
+        anchors.fill: parent
+    }
+
+    // THE STRIP ITSELF: the bottom band, taking TOUCH POINTS rather than the
+    // mouse Qt makes out of one of them.
     //
-    // DECLARED LAST so it is above the launcher's own zone: declaration order is
-    // input order in QML, and this has to be offered the press first in order to
-    // be able to hand it back.
-    MouseArea {
+    // THIS IS WHY MULTI-TOUCH WORKS AT ALL. Qt synthesises a mouse from the
+    // first touch point only, and only for as long as nothing else claims the
+    // touch; anything that so much as looks at a second point can end that
+    // synthesis, and when it ends mid-drag the strip stops hearing moves and
+    // never hears the release, which is a card frozen in the air over a shell
+    // that thinks a gesture is still running. Two tries at handling the second
+    // finger without disturbing the first both ended there. A touch area holds
+    // real points: the second finger is simply another point, and the first one
+    // is not built out of anything the second can take away.
+    //
+    // `mouseEnabled: false` is what leaves the mouse alone. It is not merely
+    // "ignore the mouse": a mouse press is never accepted here, so it falls
+    // through to modules/launcher/LaunchEdge.qml underneath and the bottom edge
+    // goes on being the launcher's pull exactly as it was for a cursor and a
+    // touchpad.
+    //
+    // ONE POINT. A second finger on the band is not a second window being
+    // lifted, and the mode tap is caught by the catcher below rather than here.
+    MultiPointTouchArea {
         id: strip
 
         anchors.left: parent.left
@@ -1040,52 +1049,82 @@ Item {
         anchors.bottom: parent.bottom
         height: root.border + Appearance.sizes.windowGrab
 
-        preventStealing: true
+        mouseEnabled: false
+        minimumTouchPoints: 1
+        maximumTouchPoints: 1
 
-        // NOT `enabled: false` while blocked, and not disabled mid-gesture
-        // either: tearing a MouseArea's grab down while a finger is on it means
-        // the release never arrives, and the panel this shell would be leaving
-        // half-open is a window left floating in the air. Every refusal below is
-        // made on the PRESS, which is the one moment nothing is being held.
-        onPressed: mouse => {
-            // A MOUSE IS NOT A FINGER. Qt synthesises mouse events from touch
-            // points nothing else claimed, so a real pointer says
-            // NotSynthesized and a finger does not; refusing the press outright
-            // is what leaves the mouse's bottom edge exactly as it was.
-            if (!Appearance.sizes.windowEdge || mouse.source === Qt.MouseEventNotSynthesized || root.blocked) {
-                mouse.accepted = false;
+        // A TOUCH AREA CANNOT REFUSE A PRESS the way a MouseArea can, so every
+        // refusal that used to happen inside the handler has to happen out here
+        // instead: disabled, the press is never accepted and reaches whatever is
+        // underneath, which is what a panel covering this band needs.
+        //
+        // NOT disabled mid-gesture. `held` keeps it alive until the finger
+        // leaves, because tearing down a touch area's grab while a finger is on
+        // it means the release never arrives, which is the exact failure this
+        // whole rewrite is about.
+        enabled: Appearance.sizes.windowEdge && (!root.blocked || !!root.held)
+
+        onPressed: points => {
+            const p = points[0];
+            if (!p)
                 return;
-            }
 
             // A gesture still flying home does not own the next one.
             root.clear();
 
-            const at = strip.mapToItem(root, mouse.x, mouse.y);
+            const at = strip.mapToItem(root, p.x, p.y);
             const win = root.windowAt(at.x);
 
-            // No window above this finger, so no handle: the press goes back to
-            // the edge underneath, which is the launcher's.
+            // NO WINDOW ABOVE THIS FINGER, so no handle. The swipe is handed to
+            // the launcher's own pull, which is what this edge does when there
+            // is nothing to pick up. It has to be handed rather than dropped:
+            // having taken the touch point, nothing else will be offered it.
             if (!win) {
-                mouse.accepted = false;
+                root.forwarding = true;
+                root.originY = at.y;
+                root.fallback?.begin();
                 return;
             }
 
             root.begin(win, at.x, at.y);
         }
 
-        onPositionChanged: mouse => {
-            if (!strip.pressed || !root.held)
+        onUpdated: points => {
+            const p = points[0];
+            if (!p)
                 return;
-            const at = strip.mapToItem(root, mouse.x, mouse.y);
-            root.track(at.x, at.y);
+
+            const at = strip.mapToItem(root, p.x, p.y);
+
+            if (root.forwarding) {
+                root.fallback?.advance(root.originY - at.y);
+                return;
+            }
+
+            if (root.held)
+                root.track(at.x, at.y);
         }
 
-        onReleased: root.release()
+        onReleased: {
+            if (root.forwarding) {
+                root.fallback?.settle();
+                root.forwarding = false;
+                return;
+            }
 
-        // A grab taken away (by the compositor, by a screen lock, by the finger
-        // being counted as a second touch point) is not a decision, so it puts
-        // the window back rather than closing it.
+            root.release();
+        }
+
+        // A grab taken away (by the compositor, by a screen lock, by a panel
+        // opening under the hand) is not a decision, so it puts the window back
+        // rather than closing it.
         onCanceled: {
+            if (root.forwarding) {
+                root.fallback?.settle();
+                root.forwarding = false;
+                return;
+            }
+
             hold.stop();
             if (root.held && root.lifted)
                 root.finish("back", -1);
@@ -1093,17 +1132,42 @@ Item {
                 root.clear();
         }
     }
+
+    // THE SECOND FINGER, anywhere on the screen, switching the mode.
+    //
+    // Its own area rather than a bigger strip, because the two are answering
+    // different questions and only one of them may hold the window: this one
+    // never sees the first point at all, since the strip grabbed it and a
+    // grabbed point is not offered anywhere else. So there is no need to work
+    // out which finger is which, and no way for this to interfere with the drag.
+    //
+    // It needs the whole screen to be in the shell's input region to be reached
+    // at all; see `grabItem` above for the half of this that is not QML.
+    MultiPointTouchArea {
+        id: second
+
+        anchors.fill: parent
+
+        // ONLY WHILE A FINGER IS ACTUALLY HOLDING SOMETHING, and `grabbed` and
+        // not `mapped` is the whole of the difference. This area covers the
+        // screen, the strip included, and it is declared after the strip so it
+        // is on top: left live through the outro it would catch the press that
+        // starts the NEXT gesture and answer it by flipping the mode.
+        enabled: root.mapped && root.grabbed
+        mouseEnabled: false
+        minimumTouchPoints: 1
+        maximumTouchPoints: 1
+
+        // ONE FLIP PER LANDING. The press is the whole of the gesture: a tap
+        // that has to be released before it counts would have to be told apart
+        // from a finger resting on the glass, and there is nothing here for a
+        // resting finger to mean.
+        onPressed: {
+            root.flipMode();
+            root.flipped = true;
+            flip.restart();
+        }
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 

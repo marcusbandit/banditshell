@@ -137,6 +137,33 @@ Item {
         }
     ]
 
+    // THE SAME GESTURE, DRIVEN FROM SOMEWHERE ELSE. Three functions, forwarding
+    // to the machinery the two inputs below already share.
+    //
+    // The bottom edge answers a finger through modules/windows/WindowEdge.qml
+    // now, and that file takes the touch points itself rather than letting Qt
+    // synthesise a mouse out of them: with more than one finger on the glass the
+    // synthesis is not a thing that can be relied on. Having taken them, it can
+    // no longer refuse a press and let it fall through to here, which is how a
+    // swipe with no window above it used to reach the launcher. So it hands the
+    // gesture over by hand instead, and this is the door.
+    //
+    // Deliberately the zone's OWN three functions and not a second copy of them:
+    // a forwarded swipe is the same swipe, with the same slack, the same
+    // fraction and the same commit rule, or it is a different gesture wearing
+    // this one's clothes.
+    function begin(): void {
+        zone.begin();
+    }
+
+    function advance(up: real): void {
+        zone.advance(up);
+    }
+
+    function settle(): void {
+        zone.settle();
+    }
+
     Follow {
         id: swell
 
