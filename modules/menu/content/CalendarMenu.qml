@@ -51,13 +51,31 @@ import qs.services
 // says so out loud, and only while the shown month is not today's: a control
 // with nothing left to do is furniture, so at home it is not drawn at all.
 //
-// THE GRID IS ALSO A QUIET LOG. services/Usage.qml keeps a record of when
-// this machine was awake, and each day cell wears it low along its floor: a
-// dot per time the machine was woken that day, a thin bar as long as the day
-// was. No numbers, no tooltips, no legend, on purpose: the user asked for
-// "the feeling of it", and a figure would turn a texture you absorb into a
-// statistic you audit. The marks stay in the quiet fill and label tones; the
-// accent stays today's alone.
+// THE GRID IS ALSO A QUIET LOG, and it is drawn as a MOSAIC. services/Usage.qml
+// keeps a record of when this machine was awake, and each day wears it as its
+// own tile, sitting BEHIND the numeral and filled one step lighter the longer
+// the machine was up. No numbers, no tooltips, no legend, on purpose: the user
+// asked for "the feeling of it", and a figure would turn a texture you absorb
+// into a statistic you audit. How MANY times the machine was woken is
+// deliberately not drawn at all, though the service still records it: at a
+// month's scale the count mostly repeats what the duration already said, and
+// the one place it could be stated honestly is a day detail that does not exist
+// yet. Today's tile is the accent one, so today alone does not state its level.
+//
+// THE MARKS THIS REPLACED were a dot per waking and a thin bar for how long,
+// laid along each cell's floor, and they failed in three separate ways of which
+// only one was taste. They were a second FIGURE inside a fifty-pixel cell,
+// competing with the numeral they were supposed to stay behind, where DESIGN.md
+// 2.4 asks for something ambient. A row of dots has to be COUNTED to be read,
+// and a mark that must be resolved has already left the periphery it was for.
+// And they could not be drawn cleanly at all: `cell` is width/7, about 50.28px,
+// so a two-pixel mark inside it lands on a different fraction of a pixel in
+// every one of the seven columns and renders as two half-covered columns, a
+// grey smear rather than a mark. A tile is immune to all three. It is a ground,
+// not a figure; it carries its magnitude as one continuous area with nothing in
+// it to count; and a large, soft-edged, low-alpha shape does not care about
+// half a pixel, which is why today's plate has always been drawn at exactly
+// these fractional coordinates and has always read perfectly well.
 Column {
     id: root
 
@@ -79,7 +97,7 @@ Column {
     readonly property real cell: Math.max(Appearance.sizes.minTarget, root.width / root.columns)
 
     // Today, from the system clock, so a calendar left open across midnight
-    // moves its plate without being reopened. Minute precision: a calendar
+    // moves its accent tile without being reopened. Minute precision: a calendar
     // needs the date, and a minute is the coarsest clock Quickshell offers.
     readonly property date today: clock.date
 
@@ -119,26 +137,50 @@ Column {
     // fails the same silent way. A name QML does not already mean is the fix.
     readonly property bool showingToday: root.shownYear === root.today.getFullYear() && root.shownMonth === root.today.getMonth()
 
-    // The plate has just been asked for again: home() announces its arrival
-    // and the pane holding today re-lights the accent (see the plate), so the
-    // eye is taken to the day the whole errand was about rather than left to
-    // find it in a grid that merely changed.
+    // Today has just been asked for again: home() announces its arrival and the
+    // pane holding today re-lights the accent (see the tile), so the eye is
+    // taken to the day the whole errand was about rather than left to find it
+    // in a grid that merely changed.
     signal relit
 
-    // The indicator's grain: the pixel font's own device pixel
-    // (Appearance.font.stem), so a dot is one design pixel square, the bar
-    // one design pixel thin and the gaps one design pixel wide, and the
-    // marks read as the same material as the numerals they sit under rather
-    // than as hairlines imported from some finer instrument.
-    readonly property int mark: Appearance.font.stem
-
-    // How many session dots a day may DRAW. A count, not a size, which is why
-    // it lives here rather than in Appearance: four is about the last count
-    // the eye takes in without counting (SignalBars stops at four steps for
-    // the same reason), and past it the row stops meaning "several times" any
-    // harder while starting to crowd the cell. Days woken more often than
-    // this simply show the full row; the bar still carries how long.
-    readonly property int dotCap: 4
+    // THE LADDER THE MOSAIC CLIMBS: this shell's own fill vocabulary, read in
+    // order. A lightly used day wears a container, an ordinary day a hover, a
+    // long one a selection, so the rungs are three materials the menus already
+    // ship side by side rather than three alphas invented here for a calendar.
+    // A private list of numbers was the alternative and it loses badly: it
+    // would be a second opacity vocabulary sitting next to material.fill and
+    // free to drift out of step with it, and if a rung is ever wrong the honest
+    // fix is that the shell's fills are wrong, where every other surface reads
+    // them. Being bindings on Appearance, a theme change re-tints the mosaic.
+    //
+    // Legibility of a numeral over the top rung needs no new argument:
+    // fillStronger is what a selected menu row wears, and the shell already
+    // puts a text-tier label on that fill.
+    //
+    // THE NUMBER OF RUNGS IS THIS ARRAY'S LENGTH and is written as a digit
+    // nowhere: the level below divides by it, so a fourth rung is one more
+    // entry (~/.claude/rules/math-over-hardcoding.md). Three rather than the
+    // four GitHub's contribution graph uses, and that is measured rather than
+    // taste: a white veil on a TRANSLUCENT panel over an arbitrary blurred
+    // wallpaper has far less contrast to spend than a swatch on an opaque page,
+    // and Config's own fill note already records a 1.18:1 step here as barely
+    // reading. Four rungs across the same range put two neighbours at about
+    // that ratio. Three is also the whole sentence this grid has to say: a bit,
+    // a day, a long day.
+    //
+    // AND THE TOP TWO RUNGS ARE ALREADY THE CLOSE PAIR, measured off a capture
+    // of this grid rather than argued: over the panel at RGB 27/40/40 the
+    // rungs land at 42/55/55, 57/70/69 and 65/78/77, which is 1.23:1 from
+    // nothing to the first, 1.26:1 to the second and only 1.13:1 to the third.
+    // The first two steps are clear at a glance and the last is separable when
+    // two tiles touch and no better than that, because material.fill's own
+    // third stop is 0.035 above its second where the second is 0.075 above the
+    // first: the ladder this reads is not evenly spaced. NOT FIXED HERE. A list
+    // of alphas private to the calendar would be a second opacity vocabulary
+    // free to drift out of step with the fills every other surface wears, so if
+    // a rung is wrong the fill is wrong, and it gets fixed where a selected
+    // menu row will feel it too.
+    readonly property var usageTones: [Appearance.colour.fill, Appearance.colour.fillStrong, Appearance.colour.fillStronger]
 
     // How far the strip of months is displaced, in pixels, positive when the
     // strip has been pushed RIGHT, which is what brings the PREVIOUS month
@@ -161,19 +203,23 @@ Column {
     // becomes: the multiplier that turns the gesture's own horizontal travel
     // into the strip's.
     //
-    // -1 by default, because the default is that a swipe to the RIGHT lands on
-    // the NEXT month, and the next month is pane +1, which is off to the right
-    // and can only be walked on screen by pushing the strip LEFT. So the hand
-    // and the content travel opposite ways, which is precisely what the paper
-    // reading refuses to do and what nearly every other carousel therefore
-    // refuses too. +1 is that paper reading, the strip going exactly where the
-    // hand puts it; Config's `calendar.rightGoesForward` is where the two are
-    // argued against each other, because the argument is a taste and not a
-    // fact about this file.
+    // +1 IS FORWARD, and that was established by swiping rather than by
+    // reasoning: the polarity here was written the other way round, from an
+    // argument about which way the strip has to move to bring pane +1 on
+    // screen, and shipped a setting whose name said the opposite of what it
+    // did. Turning `rightGoesForward` ON sent a rightward swipe to the PREVIOUS
+    // month. There is a second negation somewhere between the hand and this
+    // line for that to be true, and the honest thing was to calibrate against
+    // the hand rather than to keep the derivation and a name that lies about
+    // it: this is the multiplier the gesture actually needs, measured.
+    //
+    // Config's `calendar.rightGoesForward` is where the taste is argued, and
+    // the taste is real: the other value is the paper reading, the strip going
+    // where the hand puts it, which is what nearly every carousel ships.
     //
     // A binding rather than a value read at creation, so flipping the setting
     // takes effect on the calendar already open rather than on the next one.
-    readonly property int gestureSign: Appearance.sizes.calendarRightGoesForward ? -1 : 1
+    readonly property int gestureSign: Appearance.sizes.calendarRightGoesForward ? 1 : -1
 
     spacing: Appearance.padding.normal
 
@@ -783,11 +829,11 @@ Column {
                     // Where today falls in THIS pane, -1 when it does not. Asked
                     // of the pane's own month, so the dim copy of today's date
                     // that a neighbouring month's lead-in shows does not wear the
-                    // plate: today belongs to its month, not to every rectangle
+                    // accent: today belongs to its month, not to every rectangle
                     // that mentions the number.
                     readonly property int todayIndex: pane.first.getFullYear() === root.today.getFullYear() && pane.first.getMonth() === root.today.getMonth() ? pane.lead + root.today.getDate() - 1 : -1
 
-                    // How lit the plate is, 1 at rest; the re-light below
+                    // How lit today's tile is, 1 at rest; the re-light below
                     // walks it up from nothing when home() lands.
                     property real glow: 1
 
@@ -795,39 +841,19 @@ Column {
                     width: months.width
                     height: months.height
 
-                    // TODAY'S PLATE, and the ONLY accent in the panel: "which day
-                    // is today" is the one piece of state here worth a colour
-                    // (Appearance's rule for the accent). ONE per pane, placed by
-                    // arithmetic off the index, rather than a plate inside every
-                    // cell: a G2Rect is a vector Shape, and instantiating
-                    // forty-two of them per pane to light one would be the wrong
-                    // trade.
-                    G2Rect {
-                        id: plate
-
-                        visible: pane.todayIndex >= 0
-                        x: (pane.todayIndex % root.columns) * root.cell + (root.cell - plate.width) / 2
-                        y: Math.floor(pane.todayIndex / root.columns) * root.cell + (root.cell - plate.height) / 2
-                        width: root.cell - Appearance.padding.small
-                        height: plate.width
-                        radius: Appearance.rounding.normal
-                        color: Appearance.colour.accent
-                        opacity: pane.glow
-                    }
-
                     // THE RE-LIGHT. Getting home is only half of home()'s
                     // errand; the other half is showing WHICH day the trip
-                    // was for, so on arrival the plate fades up from nothing
-                    // instead of merely being there when the month lands. A
-                    // fade rather than a swell or a flash: nothing else on
-                    // this grid moves for attention, and a plate that jumped
-                    // in scale would be the loudest thing the calendar ever
-                    // did for its quietest fact. One-shot, so it is an
+                    // was for, so on arrival today's tile fades up from
+                    // nothing instead of merely being there when the month
+                    // lands. A fade rather than a swell or a flash: nothing
+                    // else on this grid moves for attention, and a tile that
+                    // jumped in scale would be the loudest thing the calendar
+                    // ever did for its quietest fact. One-shot, so it is an
                     // animation and not a Follow: nothing is being tracked,
                     // there is no target that can move mid-flight, which is
                     // the same line the heading plate's hover fade takes. It
-                    // drives the pane's own `glow` and the plate WEARS that,
-                    // rather than gripping plate.opacity from outside: an
+                    // drives the pane's own `glow` and the tile WEARS that,
+                    // rather than gripping the tile's opacity from outside: an
                     // animation writes its target imperatively, which is the
                     // binding-destroying grab DESIGN.md 15 records against
                     // DragHandler, so the imperative writes are kept on a
@@ -861,11 +887,11 @@ Column {
                         // Bare positioned texts, not an Item per cell: the cells
                         // take no input of their own (the pager owns every press,
                         // see `poke`), so a wrapper each would be forty-two items
-                        // per pane carrying nothing. The usage marks below live
-                        // as CHILDREN of each text rather than earning that
+                        // per pane carrying nothing. The day's tile below lives
+                        // as a CHILD of each text rather than earning that
                         // wrapper back: a Text is an Item, the day it draws is
                         // already computed here, and a second repeater walking
-                        // the same forty-two dates to place the same marks would
+                        // the same forty-two dates to place the same tiles would
                         // be the grid saying everything twice. Plain centring
                         // rather than StyledText's ink offsets, deliberately:
                         // the offsets are per-string, so "8" and "31" would land
@@ -895,17 +921,31 @@ Column {
                             // mentioning.
                             readonly property var usage: cellText.inMonth ? Usage.forDay(cellText.day) : null
 
-                            // The DRAWN dots: the session count, capped. An
-                            // empty or unasked day is zero and instantiates
-                            // nothing, which is how empty days draw nothing.
-                            readonly property int dots: cellText.usage ? Math.min(root.dotCap, cellText.usage.sessions) : 0
-
                             // How much of a full day the machine was awake, 0
                             // to 1 against the configured cap. Capped rather
-                            // than scaled for the config's reason: a bar that
-                            // kept growing would make every ordinary day look
-                            // small.
+                            // than scaled for the config's reason: a scale that
+                            // kept stretching would put every ordinary day on
+                            // the bottom rung.
                             readonly property real awake: cellText.usage ? Math.min(1, cellText.usage.minutes / (Appearance.sizes.usageCapHours * 60)) : 0
+
+                            // WHICH RUNG THIS DAY STANDS ON, 0 for a day with
+                            // nothing to say. Even quantiles OF THE CAP, taken
+                            // from the ladder's own length rather than from a
+                            // list of thresholds, so the rung count lives in
+                            // exactly one place (~/.claude/rules/math-over-
+                            // hardcoding.md). Quantised before it is drawn and
+                            // never as a continuous shade, which is the same
+                            // decision GitHub's graph publishes as its contract:
+                            // the picture is of a BUCKET, not of a number, and a
+                            // ramp with no steps in it would invite reading a
+                            // value back out of a colour.
+                            //
+                            // Ceil rather than round or floor, so any nonzero
+                            // day reaches rung one: the same intent the deleted
+                            // bar had when it floored itself at a single grain
+                            // so a short real session was a visible tick rather
+                            // than a rounding to nothing.
+                            readonly property int level: cellText.awake > 0 ? Math.min(root.usageTones.length, Math.ceil(cellText.awake * root.usageTones.length)) : 0
 
                             x: (cellText.index % root.columns) * root.cell
                             y: Math.floor(cellText.index / root.columns) * root.cell
@@ -925,62 +965,87 @@ Column {
                             // very numeral it is highlighting.
                             color: cellText.onAccent ? Appearance.colour.accentText : cellText.inMonth ? Appearance.colour.text : Appearance.colour.textFaint
 
-                            // THE USAGE MARKS, low along the cell's floor so
-                            // the day number keeps the cell's voice: a dot per
-                            // waking, a thin bar for how long, and that is the
-                            // whole vocabulary. Plain Rectangles, not G2Rects,
-                            // and not by oversight: at one design pixel there
-                            // is no corner to smooth, a square mark sits on
-                            // the same grid the pixel font does (Separator
-                            // draws its hairline the same way), and a vector
-                            // Shape per mark across a hundred and twenty-six
-                            // cells is exactly the trade the plate's comment
-                            // already refuses. Quiet tones only; the accent is
-                            // today's, and on today's own plate the marks wear
-                            // accentText instead, because a translucent veil
-                            // over saturated green is a mark that vanishes.
+                            // THE DAY'S TILE: the indicator, and on today also
+                            // the plate. It is a GROUND, drawn behind the
+                            // numeral rather than beside it, which is the whole
+                            // difference from the marks it replaced: the day
+                            // number keeps the cell's voice and the log becomes
+                            // the material it is written on.
                             //
-                            // A row of n dots at a two-grain pitch (one grain
-                            // of ink, one of air) is (2n - 1) grains wide;
-                            // centring that is the whole layout, computed from
-                            // the count, never slotted
-                            // (~/.claude/rules/math-over-hardcoding.md).
-                            Repeater {
-                                model: cellText.dots
+                            // TODAY'S TILE AND EVERY OTHER TILE ARE ONE OBJECT,
+                            // which is why the pane no longer draws a plate of
+                            // its own: same size, same corner, same place, and
+                            // today's differs only in wearing the accent. The
+                            // grid reads as a mosaic with exactly one coloured
+                            // tile in it, which states "today" more firmly than
+                            // a plate alone in an empty grid ever did, and it
+                            // deletes the entire class of bug where a mark has
+                            // to know which ground it is standing on, because
+                            // nothing is drawn on the accent at all now.
+                            //
+                            // SO TODAY NEVER SHOWS ITS OWN LEVEL. A decision,
+                            // not an omission, and it is not to be worked
+                            // around with an inset, an outline or a darker
+                            // accent. It could not be read if it were drawn:
+                            // one accent tile on screen has no second accent
+                            // tile to be compared against, so a modulated
+                            // accent carries no information and only doubt
+                            // about whether the accent itself has changed. It
+                            // must not be drawn: modulating the accent by data
+                            // is precisely what Appearance's rule forbids, the
+                            // accent means today and must not also mean seven
+                            // hours. And it is not worth drawing: today's
+                            // figure is the one still being written, changing
+                            // every minute you look at it, and it is the one
+                            // day you were there for.
+                            //
+                            // The plate's own comment argued that instantiating
+                            // forty-two G2Rects per pane to light one would be
+                            // the wrong trade. That was right, and it did not
+                            // survive the data arriving: every instance now
+                            // carries a day's information, and the item count
+                            // actually FALLS, because up to four dot Rectangles
+                            // plus a bar in every one of the forty-two cells is
+                            // more items than one tile per USED day. `active`
+                            // rather than `visible` is what keeps that true: a
+                            // day with nothing to say instantiates no Shape at
+                            // all, and a day outside the month never asks the
+                            // log, so the dim lead-in stays exactly as quiet as
+                            // it has always been.
+                            //
+                            // The geometry is the deleted plate's, expression
+                            // for expression, fractional coordinates included:
+                            // a mosaic does not survive one tile being a
+                            // rounding different from its neighbours, and a
+                            // large soft shape is the one thing that does not
+                            // care about half a pixel. z: -1 puts it behind
+                            // this Text's own glyphs (Qt paints negative-z
+                            // children, then the item's content, then the
+                            // rest), which is what lets one tile live inside
+                            // the delegate instead of a second Repeater walking
+                            // the same forty-two dates to say it again.
+                            Loader {
+                                id: tile
 
-                                delegate: Rectangle {
-                                    id: dot
+                                z: -1
+                                active: cellText.onAccent || cellText.level > 0
+                                x: (root.cell - tile.width) / 2
+                                y: (root.cell - tile.height) / 2
+                                width: root.cell - Appearance.padding.small
+                                height: tile.width
 
-                                    required property int index
-
-                                    x: (root.cell - (2 * cellText.dots - 1) * root.mark) / 2 + dot.index * 2 * root.mark
-                                    // One grain of air above the bar, whose own
-                                    // top is one grain above the floor inset.
-                                    y: root.cell - Appearance.padding.small - 3 * root.mark
-                                    width: root.mark
-                                    height: root.mark
-                                    color: cellText.onAccent ? Appearance.colour.accentText : Appearance.colour.textFaint
+                                sourceComponent: G2Rect {
+                                    radius: Appearance.rounding.normal
+                                    color: cellText.onAccent ? Appearance.colour.accent : root.usageTones[cellText.level - 1]
+                                    // Today's tile is the one that fades up
+                                    // when home() lands; every other tile is a
+                                    // plain binding that never animates,
+                                    // because a level changes once a minute at
+                                    // most and a grid that dissolved every time
+                                    // the log ticked would be moving for no
+                                    // reason anyone could name.
+                                    opacity: cellText.onAccent ? pane.glow : 1
                                 }
-                            }
-
-                            // The duration bar, standing on the same floor
-                            // inset the plate keeps from the cell's edge, and
-                            // capped at the plate's own width so "a full day"
-                            // underlines exactly what today's plate covers:
-                            // one meaning of full per cell. Floored at a
-                            // single grain so a short real session is a
-                            // visible tick rather than a rounding to nothing;
-                            // a day with sessions but no whole minute yet
-                            // (this one, just woken) shows dots alone.
-                            Rectangle {
-                                id: bar
-
-                                visible: cellText.awake > 0
-                                x: (root.cell - bar.width) / 2
-                                y: root.cell - Appearance.padding.small - root.mark
-                                width: cellText.awake > 0 ? Math.max(root.mark, Math.round(cellText.awake * (root.cell - Appearance.padding.small))) : 0
-                                height: root.mark
-                                color: cellText.onAccent ? Appearance.colour.accentText : Appearance.colour.fillStrong
                             }
                         }
                     }
