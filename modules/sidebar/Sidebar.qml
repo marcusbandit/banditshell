@@ -42,11 +42,23 @@ Item {
     signal calendarPulled
     signal calendarPullEnded(bool open)
 
+    // AND THE CLOCK PANEL'S, from the other half of the same control. Three
+    // more signals rather than a key threaded through the calendar's: the
+    // window names the thing that happened in each handler (that is why it
+    // repeats the two-line toggle per opener instead of sharing it), so a key
+    // parameter would only move the switch statement up a level.
+    signal clockRequested(bool deliberate)
+    signal clockPulled
+    signal clockPullEnded(bool open)
+
     // Every key that opens a menu, in the order they are down the bar: the
-    // tray, then the clock's calendar, then the gauges. The CLI lists these
-    // and opens by name, so the calendar is drivable from a terminal exactly
-    // as a tray item or a gauge is.
-    readonly property var menuItems: [...tray.items, root.calendarEntry, ...status.items]
+    // tray, then the clock's own two panels, then the gauges. The CLI lists
+    // these and opens by name, so both are drivable from a terminal exactly as
+    // a tray item or a gauge is.
+    //
+    // The clock comes before the calendar because the TIME is drawn above the
+    // DATE, and this list is the bar read top to bottom.
+    readonly property var menuItems: [...tray.items, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
 
     // The calendar's row, in the exact shape the tray and the gauges declare
@@ -61,17 +73,30 @@ Item {
             body: calendarMenu
         })
 
+    // The clock panel's row, in the same shape. Its title is WHERE YOU ARE,
+    // because the panel's first block is the local time and every other block
+    // is measured against it: "Copenhagen" says which clock the big numerals
+    // belong to, which is the one thing the numerals themselves cannot. Falls
+    // back to the panel's own name for the moment before the service has asked
+    // the system for its zone, since a menu arrives before its services answer
+    // (MenuPanel's rule) and a blank heading is not an answer.
+    readonly property var clockEntry: ({
+            key: "clock",
+            title: clock.localCity || "clock",
+            body: clockMenu
+        })
+
     // WHICH GROUP OWNS A KEY, answered here so nothing above the sidebar has to
     // know there is more than one. Asked in the same order the bar is read in;
-    // the calendar answers between the two groups because that is where the
-    // clock sits, and it is a straight comparison rather than a search because
-    // the clock is one control, not a list of them.
+    // the clock's two keys answer between the two groups because that is where
+    // the clock sits, and they are straight comparisons rather than a search
+    // because the clock is one control, not a list of them.
     function entryFor(key: string): var {
-        return tray.entryFor(key) ?? (key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
+        return tray.entryFor(key) ?? (key === "clock" ? root.clockEntry : key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
     }
 
     function iconFor(key: string): Item {
-        return tray.iconFor(key) ?? (key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
+        return tray.iconFor(key) ?? (key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
     // FULL WIDTH, like the workspaces below and for a related reason: a group in
@@ -130,6 +155,10 @@ Item {
             onCalendarRequested: deliberate => root.calendarRequested(deliberate)
             onCalendarPulled: root.calendarPulled()
             onCalendarPullEnded: open => root.calendarPullEnded(open)
+
+            onClockRequested: deliberate => root.clockRequested(deliberate)
+            onClockPulled: root.clockPulled()
+            onClockPullEnded: open => root.clockPullEnded(open)
         }
 
         StatusIcons {
@@ -152,5 +181,13 @@ Item {
         id: calendarMenu
 
         CalendarMenu {}
+    }
+
+    // The clock panel's body, declared beside the calendar's and for the same
+    // reason: the entry that names it is this file's own.
+    Component {
+        id: clockMenu
+
+        ClockMenu {}
     }
 }
