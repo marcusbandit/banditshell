@@ -20,8 +20,8 @@ Singleton {
     readonly property string path: `${dir}/config.json`
 
     readonly property var defaults: ({
-            // Name from Themes.qml. Try "slate".
-            theme: "greensteel",
+            // Name from Themes.qml. Try "greensteel".
+            theme: "slate",
 
             // DRESS THE SHELL IN THE WALLPAPER'S OWN COLOURS instead of the
             // named palette above.
