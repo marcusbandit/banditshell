@@ -41,6 +41,28 @@ Singleton {
         return mix(r[lo], r[hi], c - lo, alpha);
     }
 
+    // TWO COLOURS, MIXED. `mix` below takes the ramp's hex STRINGS, which is
+    // what a theme's ramp is made of; this takes colours, which is what
+    // everything downstream of `colour` holds. Same operation, different end of
+    // the pipe, and neither can be written in terms of the other without one of
+    // them lying about its argument type.
+    function blend(a: color, b: color, t: real): color {
+        const k = Math.max(0, Math.min(1, t));
+        return Qt.rgba(a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k, a.a + (b.a - a.a) * k);
+    }
+
+    // ANY COLOUR AT A LABEL TIER'S WEIGHT.
+    //
+    // The tiers in `colour` are the shell's own light veiled over a panel, which
+    // is right for everything drawn ON the material and useless for anything
+    // that is its own object with its own ink. A card's second line still has to
+    // be quieter than its first by the same amount the shell's is, so it takes
+    // the same weights applied to a different colour.
+    function shade(c: color, tier: int): color {
+        const w = root.cfg.material.label;
+        return Qt.rgba(c.r, c.g, c.b, w[Math.max(0, Math.min(tier, w.length - 1))]);
+    }
+
     function mix(a: string, b: string, t: real, alpha: real): color {
         const pa = parseInt(a.slice(1), 16);
         const pb = parseInt(b.slice(1), 16);
@@ -130,6 +152,15 @@ Singleton {
         // different number of stops still lands on its own extremes.
         readonly property color ink: root.rampAt(0, 1)
         readonly property color paper: root.rampAt(root.theme.ramp.length - 1, 1)
+
+        // THE SATURATED END, all three of it, quietest to brightest.
+        //
+        // `accent` above is whichever ONE of these config picked, and it is
+        // rationed: state worth a colour, never decoration. This is the ramp
+        // itself, and it exists for the one object in the shell that spends
+        // colour AS colour rather than as a mark. Read it as a ramp, by
+        // position, so a theme is free to have more or fewer stops.
+        readonly property var spectrum: [root.theme.dim, root.theme.mid, root.theme.bright]
 
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
