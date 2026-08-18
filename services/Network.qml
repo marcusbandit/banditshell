@@ -361,6 +361,18 @@ Singleton {
     }
 
     // What a row says about itself, in the order it becomes true.
+    //
+    // THE SECURITY WORD IS NOT IN HERE ANY MORE. Every row that was not doing
+    // something read "wpa2", or "wpa2, saved", so the column under eight names
+    // was the same acronym eight times: nobody picks a network by its cipher,
+    // and the only question the word was answering, "will this ask me for a
+    // password", is answered better by the lock the row now wears. The word
+    // itself is still one hover away on that mark, and still written out in full
+    // in the row's own layer.
+    //
+    // What is left is only ever the states that differ from each other, and an
+    // ordinary network in range says nothing at all, which is correct: there is
+    // nothing to say about it that its name and its meter have not said.
     function stateLabel(n: var): string {
         if (!n)
             return "";
@@ -371,8 +383,8 @@ Singleton {
         if (root.failedName === n.name)
             return root.failureLabel();
         if (root.enterprise(n))
-            return `${root.securityLabel(n)}, needs a profile`;
-        return n.known ? `${root.securityLabel(n)}, saved` : root.securityLabel(n);
+            return "needs a profile";
+        return "";
     }
 
     function forget(n: var): void {

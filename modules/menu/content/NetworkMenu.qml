@@ -50,6 +50,27 @@ Column {
         root.opened = root.opened === key ? "" : key;
     }
 
+    // TWO OF THEM TAKE THE MENU OVER rather than unrolling inside it.
+    //
+    // A layer is the right shape for a page of switches: it belongs to the row
+    // above it, so it pushes the rows below it down and the menu grows. A camera
+    // and a card are not that. They are one object each, as wide as the menu and
+    // as tall as a third of it, and letting either push a list of networks
+    // downward moved every row on screen and shunted the whole panel upward,
+    // because a menu is centred on the icon that opened it and half of any
+    // growth comes off the top.
+    //
+    // So the list does not move: it is dimmed out and the object is drawn over
+    // the space it was using. Nothing above shifts, nothing below survives, and
+    // the panel's height does not change at all. See `body` at the bottom.
+    readonly property bool takeover: root.opened === "code" || root.opened === "share"
+
+    // WHICH FACE THE CARD IS SHOWING, kept on the menu rather than on the card,
+    // so it survives the card being built and thrown away with its layer. A
+    // preference you set by pressing the thing is a preference you should only
+    // have to set once.
+    property bool colourful: true
+
     // WHAT THE LAST CODE CAME TO, and "" while the camera is still looking. It
     // is shown under the picture rather than on the row, because the row says
     // what the row does and this is about a thing that just happened.
@@ -179,6 +200,78 @@ Column {
     // the pointer cursor say it is pressable; the verb says what it does.
     component Act: MenuRow {}
 
+    // A BUTTON THAT IS ONLY A GLYPH, and says what it is on hover.
+    //
+    // Built like Expander, for Expander's reason: a round target of its own,
+    // which takes the hover away from whatever it sits in, so the boundary
+    // between two controls is visible before either one is pressed. What it does
+    // NOT have is a label, and that is the point. "Join from a code, with the
+    // camera" was two lines and a full row of a four-hundred-pixel menu spent
+    // saying something you read once and then recognise by its mark forever.
+    //
+    // ON IS FILLED, which is the icon set's own way of saying so: Material
+    // Symbols treats FILL as a state axis, so the same mark solid is the same
+    // mark switched on, and the menu does not need a second colour for it.
+    component Tool: Item {
+        id: tool
+
+        property string icon: ""
+        property bool on: false
+        property string tip: ""
+
+        signal activated
+
+        readonly property bool hovered: press.containsMouse
+
+        implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
+        implicitHeight: implicitWidth
+
+        G2Rect {
+            anchors.fill: parent
+            radius: height / 2
+            color: tool.on ? Appearance.colour.accentFill : Appearance.colour.fill
+            opacity: tool.on || tool.hovered ? 1 : 0
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.fast
+                }
+            }
+        }
+
+        Icon {
+            anchors.centerIn: parent
+
+            name: tool.icon
+            fill: tool.on ? 1 : 0
+            color: tool.on ? Appearance.colour.accent : tool.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+
+            Behavior on fill {
+                NumberAnimation {
+                    duration: Appearance.anim.fast
+                }
+            }
+        }
+
+        MouseArea {
+            id: press
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: tool.activated()
+        }
+
+        // ASKED THROUGH THE MOUSEAREA above, not through the handler's own
+        // hover. See HoverTip: a MouseArea filling its own item takes the hover
+        // event before the item's handlers are reached, so on a control like
+        // this one the handler is deaf in both directions.
+        HoverTip {
+            text: tool.tip
+            asked: tool.hovered
+        }
+    }
+
     component Fact: StyledText {
         leftPadding: Appearance.padding.normal
         topPadding: Appearance.padding.small
@@ -253,6 +346,48 @@ Column {
         }
     }
 
+    // THE TWO WAYS A NETWORK IS HANDED OVER, as marks, in the top right.
+    //
+    // They are the same object pointed in opposite directions: the camera reads
+    // a card, the card is one to read, and neither is a setting or a network.
+    // Sitting in the list as full rows they read as two more things to join, and
+    // they were the two widest sentences in a menu whose actual job is names.
+    //
+    // Right-aligned and above everything, because a toolbar is where you look
+    // for a verb and the rest of this menu is nouns.
+    // Wrapped, because a Column owns its children's vertical placement and an
+    // anchor is how a child argues with that. The wrapper takes the row's
+    // height and the anchor stays inside it, where it is only about x.
+    Item {
+        width: root.width
+        implicitHeight: tools.implicitHeight
+
+        Row {
+            id: tools
+
+            anchors.right: parent.right
+            anchors.rightMargin: Appearance.padding.small
+
+            spacing: Appearance.padding.small
+
+            Tool {
+                visible: Network.enabled
+                icon: "qr_code_scanner"
+                on: root.opened === "code"
+                tip: root.opened === "code" ? "close the camera" : "scan a code"
+                onActivated: root.toggleLayer("code")
+            }
+
+            Tool {
+                visible: Network.enabled && Network.connected
+                icon: "qr_code_2"
+                on: root.opened === "share"
+                tip: root.opened === "share" ? "put it away" : "share"
+                onActivated: root.toggleLayer("share")
+            }
+        }
+    }
+
     MenuRow {
         width: root.width
         icon: Network.icon()
@@ -297,6 +432,7 @@ Column {
         // that hangs for a second without warning reads as broken, and one that
         // empties a list you were reading reads as a bug.
         Choice {
+            icon: "radar"
             label: "Keep the list fresh"
             detail: Network.wantScanning ? "" : "only the network you are on"
             on: Network.scanning
@@ -305,6 +441,7 @@ Column {
         }
 
         Choice {
+            icon: "autorenew"
             label: "Join on its own"
             detail: Network.autoconnect ? "" : "waits to be told"
             on: Network.autoconnect
@@ -316,6 +453,7 @@ Column {
         // every minute and can tell a captive portal from the real internet.
         Choice {
             visible: Network.canCheck
+            icon: "public"
             label: "Check for internet"
             detail: Network.checking ? "" : "otherwise it guesses"
             on: Network.checking
@@ -324,6 +462,7 @@ Column {
 
         Act {
             visible: Network.canCheck && Network.checking
+            icon: "refresh"
             label: "Check now"
             tip: "test internet"
             onActivated: Network.checkNow()
@@ -333,6 +472,7 @@ Column {
         // Last, and named for what it does rather than for `nmManaged`, because
         // turning it off drops the connection and hands the radio to nobody.
         Choice {
+            icon: "cable"
             label: "Managed by the system"
             detail: Network.managed ? "" : "nothing is driving it"
             on: Network.managed
@@ -373,269 +513,308 @@ Column {
         onActivated: Network.checkNow()
     }
 
-    // THE OTHER WAY TO JOIN A NETWORK, which is the one printed on the back of
-    // the router and stuck to the wall of the cafe.
-    //
-    // A wifi password is the worst string anybody is ever asked to retype: it is
-    // long, it is deliberately unmemorable, it is usually on a label facing the
-    // wrong way, and it is entered into a field that shows dots. The square of
-    // dots beside it carries the same string exactly, and reading it is the one
-    // job a camera can do better than a person.
-    //
-    // ABOVE THE LIST rather than at the end of it. It is a way of joining, so it
-    // belongs with the header block that says what the radio is doing, not
-    // trailing a list that is capped and may have scrolled away from it.
-    //
-    // WHAT IT CANNOT DO is written down in Network.joinQr and shown in the line
-    // under the camera: a card names an SSID, and everything this shell can do
-    // with a network it cannot currently hear is nothing, for the reason at the
-    // top of this file.
-    MenuRow {
-        width: root.width
-        visible: Network.enabled
-        icon: "qr_code_scanner"
-        label: "Join from a code"
-        detail: "with the camera"
-        onActivated: root.toggleLayer("code")
-        tip: root.opened === "code" ? "close the camera" : "open the camera"
-
-        // Unanchored, like every other lone trailing control in this menu: the
-        // slot sizes itself from its children, so a child that centres itself on
-        // the slot is asking the slot how tall it is in order to answer how tall
-        // the slot is. See the Notice component above.
-        Expander {
-            open: root.opened === "code"
-            tip: "camera"
-            onToggled: root.toggleLayer("code")
-        }
-    }
-
-    MenuLayer {
-        width: root.width
-        open: root.opened === "code"
-
-        // BUILT WITH THE LAYER AND THROWN AWAY WITH IT, which is the opposite of
-        // what the menu around it now does (see `showing`) and is right for the
-        // same reason: what a warm menu buys is a hover that costs nothing, and
-        // nobody hovers a camera. Loading it opens the QtMultimedia plugin and
-        // enumerates the video devices, and the lens is a piece of hardware with
-        // a light next to it. None of that should exist because a menu does.
-        Loader {
-            width: parent.width
-
-            active: root.showing && root.opened === "code"
-
-            sourceComponent: QrScanner {
-                active: true
-                note: root.said
-
-                onDecoded: text => root.tookCode(text)
-            }
-        }
-    }
-
-    // THE SAME SQUARE, THE OTHER WAY ROUND.
-    //
-    // Directly under the camera, because the two are one pair and the pair is
-    // the point: a code is how a network is handed over, and a shell that can
-    // only read one is half a conversation. This is the answer to being asked
-    // "what's the wifi" in your own kitchen, which is a question nobody has ever
-    // enjoyed answering out loud.
-    //
-    // ONLY WHILE YOU ARE ON SOMETHING. There is no card for a network you have
-    // not joined: the shell would have to know a passphrase it has never been
-    // told. The row is absent rather than dead, because "share the network you
-    // are not on" is not a thing that can be explained by greying it out.
-    MenuRow {
-        width: root.width
-        visible: Network.enabled && Network.connected
-        icon: "qr_code_2"
-        label: "Show the code"
-        detail: "for their camera"
-        onActivated: root.toggleLayer("share")
-        tip: root.opened === "share" ? "put it away" : "show the code"
-
-        Expander {
-            open: root.opened === "share"
-            tip: "the code"
-            onToggled: root.toggleLayer("share")
-        }
-    }
-
-    MenuLayer {
-        width: root.width
-        open: root.opened === "share"
-
-        // BUILT WITH THE LAYER AND THROWN AWAY WITH IT, like the camera above
-        // and for a sharper reason: what this holds is the passphrase. See
-        // Network's note on `sharing`; the secret is fetched when the card goes
-        // up and dropped the moment it comes down, and `showingCard` above is
-        // the one place that is decided.
-        Loader {
-            width: parent.width
-
-            active: root.showingCard
-
-            sourceComponent: Column {
-                width: parent.width
-                spacing: Appearance.padding.small
-
-                QrCode {
-                    id: card
-
-                    width: parent.width
-                    text: Network.card
-                    // The network's own name on the card, because a phone that
-                    // has scanned it says nothing back and the person holding
-                    // the laptop should be able to see they offered the right
-                    // one.
-                    caption: Network.activeName
-                }
-
-                // THE SAME LINE THE SCANNER HAS, in the same place, saying the
-                // same three kinds of thing: what is wrong with the writer, what
-                // is wrong with the network, or what to do next.
-                StyledText {
-                    width: parent.width
-                    leftPadding: Appearance.padding.normal
-                    text: card.trouble || Network.cardTrouble || (Network.card ? "hold it up to a phone" : "reading the passphrase")
-                    color: card.trouble || Network.cardTrouble ? Appearance.colour.accent : Appearance.colour.textFaint
-                    font.pixelSize: Appearance.font.size.small
-                    wrapMode: Text.WordWrap
-                }
-            }
-        }
-    }
-
     Separator {
         width: parent.width
         visible: Network.enabled
     }
 
-    // The list. Capped, because a flat is a dozen networks and a street is
-    // eighty, and a menu that scrolls forever is worse than one that says how
-    // many it left out.
-    Repeater {
-        model: root.rows
+    // WHERE THE MENU IS TAKEN OVER.
+    //
+    // Everything from here down is the list, and everything from here down is
+    // what a camera or a card covers. The height is the LIST'S height whether
+    // one is open or not, and that single line is the whole of "it stays put":
+    // the panel is centred on the icon that opened it, so any growth here would
+    // have come half off the top and shunted every row on screen upward, on the
+    // way IN and again on the way out.
+    //
+    // The list is dimmed rather than hidden, and that is not a shortcut: a
+    // hidden child leaves a Column and takes its height with it, which is
+    // exactly the movement being avoided. It keeps its place, loses its ink and
+    // its input, and the object is drawn over the space it was using.
+    //
+    // The one case that still grows is a card taller than the list it is
+    // covering, which means a street with two networks in it. The card is given
+    // the list's height as a ceiling and shrinks into it first; past the point
+    // where shrinking would make the code too small to scan, growing the menu is
+    // the honest answer.
+    Item {
+        id: body
 
-        delegate: Column {
-            id: entry
+        width: root.width
+        implicitHeight: root.takeover ? Math.max(list.implicitHeight, media.implicitHeight) : list.implicitHeight
 
-            required property var modelData
+        Column {
+            id: list
 
-            readonly property bool showing: root.opened === entry.modelData.name
+            width: parent.width
 
-            width: root.width
-            spacing: 0
+            opacity: root.takeover ? 0 : 1
+            // `enabled` is inherited, so this is the whole of "and it cannot be
+            // clicked through either". A dimmed row is still a row to a cursor.
+            enabled: !root.takeover
 
-            MenuRow {
-                width: parent.width
-                // No icon: the meter on the right says everything an icon would,
-                // and says it comparably down the column.
-                label: entry.modelData.name
-                detail: Network.stateLabel(entry.modelData)
-                selected: entry.modelData.connected
-
-                onActivated: {
-                    const n = entry.modelData;
-                    if (n.connected)
-                        return n.disconnect();
-                    // Known networks already have the secret, and an open one
-                    // never needed one. Only a stranger with a lock has to be
-                    // asked, and an enterprise network cannot be joined with an
-                    // answer to that question at all.
-                    if (n.known || !Network.secured(n) || Network.enterprise(n))
-                        return n.connect();
-                    root.asking = root.asking === n.name ? "" : n.name;
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.normal
                 }
+            }
 
-                // What pressing the ROW does, which is not what the row says.
-                // The label is the network's name and the detail is its state;
-                // neither of them is "and this is the button that joins it".
-                tip: entry.modelData.connected ? "disconnect" : entry.modelData.known || !Network.secured(entry.modelData) ? "join" : Network.enterprise(entry.modelData) ? "needs profile" : "needs password"
+            // The list. Capped, because a flat is a dozen networks and a street
+            // is eighty, and a menu that scrolls forever is worse than one that
+            // says how many it left out.
+            Repeater {
+                model: root.rows
 
-                Row {
-                    spacing: Appearance.padding.normal
+                delegate: Column {
+                    id: entry
 
-                    SignalBars {
-                        anchors.verticalCenter: parent.verticalCenter
-                        strength: Network.percent(entry.modelData)
-                        activeColour: entry.modelData.connected ? Appearance.colour.text : Appearance.colour.textDim
+                    required property var modelData
 
-                        // The meter is four bars and a percentage is a number.
-                        // Reading one off the other is the guess this saves.
-                        HoverTip {
-                            text: `${Network.percent(entry.modelData)}%`
+                    readonly property bool showing: root.opened === entry.modelData.name
+
+                    width: list.width
+                    spacing: 0
+
+                    MenuRow {
+                        width: parent.width
+                        // No icon: the meter on the right says everything an
+                        // icon would, and says it comparably down the column.
+                        label: entry.modelData.name
+                        detail: Network.stateLabel(entry.modelData)
+                        selected: entry.modelData.connected
+
+                        onActivated: {
+                            const n = entry.modelData;
+                            if (n.connected)
+                                return n.disconnect();
+                            // Known networks already have the secret, and an
+                            // open one never needed one. Only a stranger with a
+                            // lock has to be asked, and an enterprise network
+                            // cannot be joined with an answer to that question
+                            // at all.
+                            if (n.known || !Network.secured(n) || Network.enterprise(n))
+                                return n.connect();
+                            root.asking = root.asking === n.name ? "" : n.name;
+                        }
+
+                        // What pressing the ROW does, which is not what the row
+                        // says. The label is the network's name and the detail
+                        // is its state; neither of them is "and this is the
+                        // button that joins it".
+                        tip: entry.modelData.connected ? "disconnect" : entry.modelData.known || !Network.secured(entry.modelData) ? "join" : Network.enterprise(entry.modelData) ? "needs profile" : "needs password"
+
+                        Row {
+                            spacing: Appearance.padding.normal
+
+                            // A LOCK, WHERE THE WORD "WPA2" WAS.
+                            //
+                            // The state line under a name used to read "wpa2",
+                            // or "wpa2, saved", down eight rows: a column of the
+                            // same acronym, which nobody chooses a network by
+                            // and which is only ever asking one question, "will
+                            // this want a password". A mark answers that at a
+                            // glance and gives the line back to the states that
+                            // are actually different from each other.
+                            Icon {
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                visible: Network.secured(entry.modelData)
+                                // A key for one we already hold, a lock for one
+                                // that is going to ask.
+                                name: entry.modelData.known ? "key" : "lock"
+                                color: Appearance.colour.textFaint
+
+                                HoverTip {
+                                    text: entry.modelData.known ? `${Network.securityLabel(entry.modelData)}, saved` : Network.securityLabel(entry.modelData)
+                                }
+                            }
+
+                            SignalBars {
+                                anchors.verticalCenter: parent.verticalCenter
+                                strength: Network.percent(entry.modelData)
+                                activeColour: entry.modelData.connected ? Appearance.colour.text : Appearance.colour.textDim
+
+                                // The meter is four bars and a percentage is a
+                                // number. Reading one off the other is the guess
+                                // this saves.
+                                HoverTip {
+                                    text: `${Network.percent(entry.modelData)}%`
+                                }
+                            }
+
+                            Expander {
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                open: entry.showing
+                                tip: "more"
+                                onToggled: root.toggleLayer(entry.modelData.name)
+                            }
                         }
                     }
 
-                    Expander {
-                        anchors.verticalCenter: parent.verticalCenter
+                    PasswordField {
+                        width: parent.width
+                        visible: root.asking === entry.modelData.name
+                        placeholder: `password for ${entry.modelData.name}`
 
+                        onAccepted: secret => {
+                            Network.clearFailure(entry.modelData.name);
+                            entry.modelData.connectWithPsk(secret);
+                            root.asking = "";
+                        }
+                        onCancelled: root.asking = ""
+                    }
+
+                    MenuLayer {
+                        width: parent.width
                         open: entry.showing
-                        tip: "more"
-                        onToggled: root.toggleLayer(entry.modelData.name)
+
+                        Act {
+                            visible: entry.modelData.connected
+                            icon: "link_off"
+                            label: "Disconnect"
+                            tip: "keeps password"
+                            onActivated: entry.modelData.disconnect()
+                        }
+
+                        // Forgetting is the only cure for a saved network whose
+                        // password has changed: it will keep failing with the
+                        // secret it has, and nothing else in this menu can take
+                        // that secret away.
+                        Act {
+                            visible: entry.modelData.known
+                            icon: "delete"
+                            label: "Forget it"
+                            tip: "drops password"
+                            onActivated: {
+                                root.opened = "";
+                                Network.forget(entry.modelData);
+                            }
+                        }
+
+                        Fact {
+                            text: `${Network.securityLabel(entry.modelData)} · ${Network.percent(entry.modelData)}%${entry.modelData.known ? " · saved" : ""}`
+                        }
                     }
                 }
             }
 
-            PasswordField {
-                width: parent.width
-                visible: root.asking === entry.modelData.name
-                placeholder: `password for ${entry.modelData.name}`
-
-                onAccepted: secret => {
-                    Network.clearFailure(entry.modelData.name);
-                    entry.modelData.connectWithPsk(secret);
-                    root.asking = "";
-                }
-                onCancelled: root.asking = ""
+            StyledText {
+                visible: Network.enabled && Network.networks.length > Appearance.sizes.networkListMax
+                leftPadding: Appearance.padding.normal
+                text: `+${Network.networks.length - Appearance.sizes.networkListMax} more`
+                color: Appearance.colour.textFaint
+                font.pixelSize: Appearance.font.size.small
             }
 
-            MenuLayer {
+            StyledText {
+                visible: Network.enabled && !Network.networks.length
+                leftPadding: Appearance.padding.normal
+                text: Network.scanning ? "scanning" : "nothing found"
+                color: Appearance.colour.textFaint
+                font.pixelSize: Appearance.font.size.small
+            }
+        }
+
+        // WHAT COVERS IT. One of these at a time, both built with their opening
+        // and thrown away with it, which is the opposite of what the menu around
+        // them does (see `showing`) and right for the same reason: what a warm
+        // menu buys is a hover that costs nothing, and nobody hovers a camera.
+        //
+        // Loading the scanner opens the QtMultimedia plugin and enumerates the
+        // video devices, and the lens is a piece of hardware with a light next
+        // to it. Loading the card fetches a passphrase. Neither should happen
+        // because a menu exists.
+        // A LOADER THAT IS NOT LOADING IS NOT ZERO HIGH, which is the whole of
+        // "scan, then share, and the menu comes apart".
+        //
+        // Qt sizes a Loader from its item and then, on the way out, leaves that
+        // size exactly where it was: the size update returns early when there
+        // is no item to measure, so an inactive Loader goes on claiming the
+        // height of the thing it just destroyed. Going from the camera straight
+        // to the card left the camera's three hundred pixels standing in this
+        // Column with nothing in them, the card sat underneath the hole, and
+        // the menu was that much taller than anything it contained.
+        //
+        // `visible` is the fix rather than a height override, because a
+        // positioner skips a child that is not visible ENTIRELY, spacing and
+        // all, and a stale height cannot be believed if nothing is asking.
+        Column {
+            id: media
+
+            width: parent.width
+            spacing: Appearance.padding.small
+
+            Loader {
+                id: lens
+
                 width: parent.width
-                open: entry.showing
 
-                Act {
-                    visible: entry.modelData.connected
-                    label: "Disconnect"
-                    tip: "keeps password"
-                    onActivated: entry.modelData.disconnect()
+                active: root.showing && root.opened === "code"
+                visible: lens.active
+
+                sourceComponent: QrScanner {
+                    active: true
+                    note: root.said
+
+                    onDecoded: text => root.tookCode(text)
                 }
+            }
 
-                // Forgetting is the only cure for a saved network whose password
-                // has changed: it will keep failing with the secret it has, and
-                // nothing else in this menu can take that secret away.
-                Act {
-                    visible: entry.modelData.known
-                    label: "Forget it"
-                    tip: "drops password"
-                    onActivated: {
-                        root.opened = "";
-                        Network.forget(entry.modelData);
+            Loader {
+                id: sheet
+
+                width: parent.width
+
+                active: root.showingCard
+                visible: sheet.active
+
+                sourceComponent: Column {
+                    width: sheet.width
+                    spacing: Appearance.padding.small
+
+                    QrCode {
+                        id: card
+
+                        width: parent.width
+                        // The list's height, less whatever the line below is
+                        // using. Reading the LIST rather than the space left in
+                        // `body` is what keeps this out of a loop: body's height
+                        // is partly this card's.
+                        maxHeight: Math.max(0, list.implicitHeight - (note.visible ? note.implicitHeight + parent.spacing : 0))
+
+                        text: Network.card
+                        // The network's name, and the passphrase under it. The
+                        // code carries both already; this is the same card read
+                        // by a person instead of a camera, for the laptop across
+                        // the table with no lens pointed this way.
+                        caption: Network.activeName
+                        detail: Network.secret
+
+                        colourful: root.colourful
+                        flippable: true
+                        tip: root.colourful ? "ink on paper" : "in colour"
+                        onFlipped: root.colourful = !root.colourful
                     }
-                }
 
-                Fact {
-                    text: `${Network.securityLabel(entry.modelData)} · ${Network.percent(entry.modelData)}%${entry.modelData.known ? " · saved" : ""}`
+                    // ONLY WHEN THERE IS SOMETHING TO SAY. What is wrong with
+                    // the writer, what is wrong with the network, or that the
+                    // passphrase has not arrived yet. A working card explains
+                    // itself by being one.
+                    StyledText {
+                        id: note
+
+                        width: parent.width
+                        leftPadding: Appearance.padding.normal
+
+                        visible: !!text
+                        text: card.trouble || Network.cardTrouble || (Network.card ? "" : "reading the passphrase")
+                        color: card.trouble || Network.cardTrouble ? Appearance.colour.accent : Appearance.colour.textFaint
+                        font.pixelSize: Appearance.font.size.small
+                        wrapMode: Text.WordWrap
+                    }
                 }
             }
         }
-    }
-
-    StyledText {
-        visible: Network.enabled && Network.networks.length > Appearance.sizes.networkListMax
-        leftPadding: Appearance.padding.normal
-        text: `+${Network.networks.length - Appearance.sizes.networkListMax} more`
-        color: Appearance.colour.textFaint
-        font.pixelSize: Appearance.font.size.small
-    }
-
-    StyledText {
-        visible: Network.enabled && !Network.networks.length
-        leftPadding: Appearance.padding.normal
-        text: Network.scanning ? "scanning" : "nothing found"
-        color: Appearance.colour.textFaint
-        font.pixelSize: Appearance.font.size.small
     }
 }
