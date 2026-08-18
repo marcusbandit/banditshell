@@ -312,6 +312,49 @@ Scope {
             return "closed";
         }
 
+        // THE SAME CALCULATOR WITH THE WHOLE SCREEN, which is what the .desktop
+        // entry runs: launched by name from an application menu it should behave
+        // like an application, standing over the desktop rather than clinging to
+        // the sidebar the way the key's panel does.
+        //
+        // A TOGGLE, unlike `open` above, because a desktop entry launched twice
+        // has to put its window away: that is the contract every other summoner
+        // in this shell keeps and the one an application menu most obviously
+        // assumes. Toggling on the SHAPE and not just on open-ness, so `app`
+        // while the flank panel is out promotes it instead of closing it; the
+        // entry says "Calculator", and answering a request for the big one by
+        // putting the small one away would be the entry doing the opposite of
+        // what it says.
+        function app(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            if (win.calculator.open && win.calculator.full)
+                return close();
+            win.calculator.app();
+            return "open";
+        }
+
+        // Its twin, for symmetry and for a keybind that wants the small one
+        // whatever you were last in. Same toggle rule, read the same way.
+        function panel(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            if (win.calculator.open && !win.calculator.full)
+                return close();
+            win.calculator.panel();
+            return "open";
+        }
+
+        // Which shape it is in, and whether it is out at all. The one question a
+        // script cannot otherwise ask, and the one the two verbs above are
+        // deciding on.
+        function status(): string {
+            const win = Shell.forScreen("");
+            return `open=${win?.calculator.open ?? false} shape=${win?.calculator.full ? "app" : "panel"}`;
+        }
+
         // WHAT IS ON THE LINE, so the panel is scriptable in the one way a
         // calculator can be: `banditshell calculator answer "2+3*4"` prints 14
         // without a surface being involved at all. Straight through the same

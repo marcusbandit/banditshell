@@ -85,6 +85,27 @@ Column {
     property string history: ""
 
     // ------------------------------------------------------------------
+    // THE WAY OUT OF THE PANEL IT IS IN.
+    //
+    // A keypad has no opinion about how big its container is, so this is a
+    // REQUEST and not an action: the body says somebody pressed the control, and
+    // the container, which is the only thing that knows what shapes it can stand
+    // in, decides what that means. Same contract as `press` returning nothing and
+    // the panel owning Escape.
+    //
+    // OFF BY DEFAULT, because the control is a lie on a surface that cannot
+    // honour it: calcpreview.qml draws this body at a fixed size with nothing
+    // around it, and a button there would be a button that does nothing. The one
+    // container that can grow turns it on.
+    property bool expandable: false
+
+    // Which way the control points, which is a fact about the CONTAINER rather
+    // than about the keypad: the body cannot see how large it has been made.
+    property bool expanded: false
+
+    signal expandToggled
+
+    // ------------------------------------------------------------------
     // TOKENS AND UNITS.
 
     // The gap between keys, and the same gap between rows: a keypad is a grid,
@@ -101,11 +122,38 @@ Column {
     // times a span.
     readonly property real unit: (root.width - root.gap * (root.columns - 1)) / root.columns
 
-    // A key's height: one line of the label tier in its own box, floored at the
-    // minimum target so a key is never smaller than anything else you are asked
-    // to hit. Derived rather than set, so the keypad rescales with the type the
-    // way every other control in the shell does.
-    readonly property real keyHeight: Math.max(Appearance.sizes.minTarget, Math.round(Appearance.font.size.normal * 4 / 3) + Appearance.padding.normal * 2)
+    // A key's height AT REST: one line of the label tier in its own box, floored
+    // at the minimum target so a key is never smaller than anything else you are
+    // asked to hit. Derived rather than set, so the keypad rescales with the type
+    // the way every other control in the shell does.
+    readonly property real restKeyHeight: Math.max(Appearance.sizes.minTarget, Math.round(Appearance.font.size.normal * 4 / 3) + Appearance.padding.normal * 2)
+
+    // A key's height WHEN THE CONTAINER HAS A BIGGER BOX THAN THE TYPE DOES, and
+    // 0 for "take it from the type", which is what a menu-width keypad does.
+    //
+    // It exists for the one container that is not menu-width: the panel standing
+    // fullscreen has a whole screen of room and no more type sizes to spend on it
+    // (~/.claude/rules/type-scale.md is three sizes for the whole shell, and this
+    // keypad already uses all three). So the keypad GROWS instead, which is the
+    // one dimension a fixed type scale leaves free, and the container works out
+    // by how much because the container is the thing that knows the room. See
+    // modules/calculator/CalculatorPanel.qml's fullKeyHeight.
+    property real rowHeight: 0
+
+    readonly property real keyHeight: root.rowHeight > 0 ? root.rowHeight : root.restKeyHeight
+
+    // WHAT THE KEYPAD IS NOT, in height: the readout, the rule under it, and the
+    // two gaps the Column puts around that rule. Published because a container
+    // sizing the keys to a box has to subtract everything that is not keys first,
+    // and it must be able to do that WITHOUT asking how tall the keys came out:
+    // reading this file's own implicitHeight to decide rowHeight would be a
+    // binding loop. Nothing here depends on the key size or on the width, which
+    // is exactly what makes it safe to ask.
+    readonly property real chromeHeight: readout.height + root.spacing * 2 + rule.height
+
+    // How many rows of keys there are, from the data like everything else about
+    // the grid (~/.claude/rules/math-over-hardcoding.md).
+    readonly property int rows: root.keys.length
 
     // ------------------------------------------------------------------
     // THE KEYPAD, AS DATA.
@@ -619,65 +667,158 @@ Column {
         id: readout
 
         width: parent.width
-        height: answer.height + Appearance.padding.small + working.height
+        height: Math.max(answer.height + Appearance.padding.small + working.height, expander.height)
 
-        // MEASURED AT THE LARGE TIER before it is drawn at one, because a number
-        // is the one string in the shell that must not elide: the digits at the
-        // end are the ones nobody can infer. Monocraft's advance is 2/3 of the
-        // size, so fourteen characters fit here and the fifteenth would hang off
-        // the panel.
-        //
-        // The answer to that is the tier below, which is a token rather than a
-        // size invented here (~/.claude/rules/type-scale.md): the line stays
-        // whole and simply gets quieter, and the row keeps the large tier's
-        // height either way so the panel does not change size around a digit.
-        TextMetrics {
-            id: probe
+        // THE WAY OUT, and it is a ROW rather than a mark floating over the
+        // digits. The obvious build is to anchor the control to the readout's
+        // left and let the right-aligned number pass under it, which is invisible
+        // right up until the number is long: fourteen digits reach the left edge
+        // of this box (see `probe`), and they would then be printed through the
+        // button. A column for the control and a column for the number cannot
+        // collide by construction, which is worth the two extra items.
+        Item {
+            id: expander
 
-            font.family: Appearance.font.family
-            font.pixelSize: Appearance.font.size.large
-            text: root.entry
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+
+            // Zero-width when it is not there, so the number gets the whole row
+            // back on a surface that cannot grow rather than keeping a hole where
+            // a button would have been.
+            visible: root.expandable
+            width: root.expandable ? Appearance.sizes.minTarget : 0
+            height: root.expandable ? Appearance.sizes.minTarget : 0
+
+            scale: grab.pressed ? 0.96 : 1
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: Appearance.anim.fast
+                    easing.type: Easing.OutCubic
+                }
+            }
+
+            // NO FILL AT REST. Every key below is a filled target because the
+            // keypad is the thing you are here to hit; this is the door out of
+            // the room, and a fifth filled shape on the readout row would read as
+            // another key and be pressed as one. It takes a fill on hover, which
+            // is the shell's usual way of saying a quiet mark is pressable
+            // (components/MenuRow.qml does the same).
+            G2Rect {
+                anchors.fill: parent
+                radius: Appearance.rounding.normal
+                color: grab.containsMouse || grab.pressed ? Appearance.colour.fillStrong : "transparent"
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
+            }
+
+            // ONE MARK WITH TWO STATES rather than two controls, because it is
+            // one question: how much room does this get. Material Symbols draws
+            // the pair as each other's reverse, so the arrows fly apart to open
+            // and together to put it back, and the mark says which way it is
+            // about to go rather than which way it currently is.
+            Icon {
+                anchors.centerIn: parent
+                anchors.horizontalCenterOffset: inkOffsetX
+                anchors.verticalCenterOffset: inkOffsetY
+
+                name: root.expanded ? "close_fullscreen" : "open_in_full"
+                size: Appearance.font.size.normal
+                color: grab.containsMouse || grab.pressed ? Appearance.colour.text : Appearance.colour.textDim
+
+                Behavior on color {
+                    ColorAnimation {
+                        duration: Appearance.anim.fast
+                    }
+                }
+            }
+
+            MouseArea {
+                id: grab
+
+                anchors.fill: parent
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.expandToggled()
+            }
         }
 
-        StyledText {
-            id: answer
+        // The number and its working, in what is left of the row.
+        Item {
+            id: lines
 
-            width: parent.width
-            height: Math.round(Appearance.font.size.large * 4 / 3)
+            anchors.left: expander.right
+            anchors.leftMargin: root.expandable ? Appearance.padding.normal : 0
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
 
-            text: root.entry
-            font.pixelSize: probe.width <= readout.width ? Appearance.font.size.large : Appearance.font.size.normal
-            // Right, because that is the end a number is read from and the end
-            // the next digit arrives at: a left-aligned line would walk the digit
-            // you just pressed further from the keypad every time you pressed
-            // one.
-            horizontalAlignment: Text.AlignRight
-            verticalAlignment: Text.AlignVCenter
-        }
+            height: answer.height + Appearance.padding.small + working.height
 
-        StyledText {
-            id: working
+            // MEASURED AT THE LARGE TIER before it is drawn at one, because a
+            // number is the one string in the shell that must not elide: the
+            // digits at the end are the ones nobody can infer. Monocraft's
+            // advance is 2/3 of the size, so fourteen characters fit here and the
+            // fifteenth would hang off the panel.
+            //
+            // The answer to that is the tier below, which is a token rather than
+            // a size invented here (~/.claude/rules/type-scale.md): the line
+            // stays whole and simply gets quieter, and the row keeps the large
+            // tier's height either way so the panel does not change size around a
+            // digit.
+            TextMetrics {
+                id: probe
 
-            anchors.top: answer.bottom
-            anchors.topMargin: Appearance.padding.small
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.large
+                text: root.entry
+            }
 
-            width: parent.width
-            height: Math.round(Appearance.font.size.small * 4 / 3)
+            StyledText {
+                id: answer
 
-            text: root.working
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            horizontalAlignment: Text.AlignRight
-            verticalAlignment: Text.AlignVCenter
-            // From the LEFT, uniquely in this shell. Everything else elides its
-            // tail because a name is recognised from its start; a sum is read
-            // towards its answer, so what has to survive here is the right-hand
-            // end.
-            elide: Text.ElideLeft
+                width: parent.width
+                height: Math.round(Appearance.font.size.large * 4 / 3)
+
+                text: root.entry
+                font.pixelSize: probe.width <= lines.width ? Appearance.font.size.large : Appearance.font.size.normal
+                // Right, because that is the end a number is read from and the
+                // end the next digit arrives at: a left-aligned line would walk
+                // the digit you just pressed further from the keypad every time
+                // you pressed one.
+                horizontalAlignment: Text.AlignRight
+                verticalAlignment: Text.AlignVCenter
+            }
+
+            StyledText {
+                id: working
+
+                anchors.top: answer.bottom
+                anchors.topMargin: Appearance.padding.small
+
+                width: parent.width
+                height: Math.round(Appearance.font.size.small * 4 / 3)
+
+                text: root.working
+                color: Appearance.colour.textFaint
+                font.pixelSize: Appearance.font.size.small
+                horizontalAlignment: Text.AlignRight
+                verticalAlignment: Text.AlignVCenter
+                // From the LEFT, uniquely in this shell. Everything else elides
+                // its tail because a name is recognised from its start; a sum is
+                // read towards its answer, so what has to survive here is the
+                // right-hand end.
+                elide: Text.ElideLeft
+            }
         }
     }
 
     Separator {
+        id: rule
+
         width: parent.width
     }
 

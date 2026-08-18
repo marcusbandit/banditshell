@@ -15,9 +15,14 @@
 #                                which a history that has quietly stopped growing
 #                                cannot tell you any other way.
 #   banditshell session toggle|open|close
-#   banditshell calculator toggle|open|close|answer <expression>
+#   banditshell calculator toggle|open|close|app|panel|status|answer <expression>
 #                                the keypad panel; `answer` evaluates and prints
-#                                without a surface: `calculator answer "2+3*4"`
+#                                without a surface: `calculator answer "2+3*4"`.
+#                                `app` is the same calculator standing over the
+#                                whole screen, which is what the .desktop entry
+#                                runs; `panel` is the strip on the sidebar's
+#                                flank. Both toggle. The shape is sticky, so
+#                                `toggle` reopens whichever you last used
 #   banditshell tablet on|off|toggle|status|probe
 #                                the hinge. `on`/`off` are what the compositor's
 #                                switch binds call when the machine is folded
@@ -175,12 +180,12 @@ calculator | calc)
     sub="${1:-toggle}"
     shift || true
     case "$sub" in
-    toggle | open | close) ipc calculator "$sub" ;;
+    toggle | open | close | app | panel | status) ipc calculator "$sub" ;;
     answer)
         [ $# -ge 1 ] || { echo "usage: banditshell calculator answer <expression>" >&2; exit 2; }
         ipc calculator answer "$*"
         ;;
-    *) echo "usage: banditshell calculator toggle|open|close|answer <expression>" >&2; exit 2 ;;
+    *) echo "usage: banditshell calculator toggle|open|close|app|panel|status|answer <expression>" >&2; exit 2 ;;
     esac
     ;;
 

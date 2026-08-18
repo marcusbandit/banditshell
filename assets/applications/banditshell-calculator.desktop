@@ -2,16 +2,26 @@
 Type=Application
 Name=Calculator
 GenericName=Arithmetic
-Comment=The shell's keypad panel
+Comment=The shell's keypad, over the whole screen
 # The CLI, not a window: this shell draws no windows of its own, so there is
 # nothing here to exec directly. `banditshell calculator` asks the running shell
 # over IPC to put its panel out, which is the same route the keybind takes.
 #
-# TOGGLE rather than open, so the entry behaves the way the key does: launching
-# it twice puts the panel away, which is what everything else that summons a
-# surface in this shell already contracts to (docs/hyprland-binds.example.conf
-# says the same sentence about every bind in it).
-Exec=banditshell calculator toggle
+# `app` AND NOT `toggle`, which is the difference between the two ways in.
+# The key ($mod+K) opens the strip on the sidebar's flank, for the sum you do
+# while something else has your attention. This is the entry somebody picked out
+# of an application menu by NAME, which is a request for the application: the
+# same calculator standing over the whole screen, with the keypad grown to suit
+# it. modules/calculator/CalculatorPanel.qml is one object in two shapes, so
+# whatever was on the line is still on it whichever route you came by.
+#
+# It is still a TOGGLE, so the entry behaves the way the key does: launching it
+# twice puts the panel away, which is what everything else that summons a surface
+# in this shell already contracts to (docs/hyprland-binds.example.conf says the
+# same sentence about every bind in it). Launched while the flank panel is out it
+# promotes that panel rather than closing it, because an entry reading
+# "Calculator" must not answer a request for the calculator by hiding one.
+Exec=banditshell calculator app
 Icon=accessories-calculator
 Terminal=false
 # NoDisplay is deliberately off. The whole reason this file exists is that it
