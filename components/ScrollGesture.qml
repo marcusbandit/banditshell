@@ -99,36 +99,44 @@ import qs.config
 // enough. The device kind is not in question by the time the test runs, so this
 // asks about the touchpad alone where the rail has to choose between two.
 //
-// THE END OF A GESTURE HAS TO BE INFERRED, and that is the genuinely hard part.
+// THE END OF A GESTURE IS ASKED FOR, NOT INFERRED, and getting that the wrong
+// way round was this file's worst bug.
 //
-// A press has a release; a scroll stream has nothing of the kind. Fingers that
-// lift send no farewell, and fingers that merely stop moving send nothing
-// either, so the only evidence either way is silence. So this does what
-// GlideList already does with its coast: a timer restarted by every event, and
-// when it lapses the gesture is over.
+// A press has a release, and a scroll stream looks at first as though it has
+// nothing of the kind: fingers that lift send no farewell, fingers that merely
+// stop moving send nothing either, and the only evidence in either case is
+// silence. So this file began the way GlideList does, with a coast timer
+// restarted by every event, ending the gesture when it lapsed.
 //
-// IT CANNOT TELL THE TWO SILENCES APART, and that has to be said outright,
-// because the arrangement reads as though it can. This file used to claim that
-// fingers which stopped moving before they left had spent their velocity down to
-// nothing, so a pause ended a slow gesture and a lift ended a fast one. That is
-// true of a hand which decelerates while it is still sending, and false of the
-// case it was written for: libinput sends NOTHING AT ALL for fingers resting
-// still on the pad, so neither the speed below nor the smoothed velocity a
-// consumer keeps decays through silence. Both stand at whatever the last moving
-// sample made them. A hand that pushes a panel halfway up and then rests to
-// reconsider is therefore answered, one lapse later, with the momentum it had
-// BEFORE it stopped, and the remainder of that one physical motion arrives as a
-// second gesture with its own `began`, which a consumer that latches something
-// there (the bottom edge decides which panel it is driving on `began`) latches a
-// second time against whatever the first half has just opened.
+// A SILENCE CANNOT TELL A PAUSE FROM A LIFT, and that is fatal rather than
+// merely imprecise. libinput sends NOTHING AT ALL for fingers resting still on
+// the pad, so a hand that pushed a panel halfway and then held to reconsider was
+// answered, one lapse later, by the gesture committing on the momentum it had
+// before it stopped. What the hand had actually done was ask for more time. No
+// interval fixes that: a longer one delays every real commit, a shorter one ends
+// more gestures mid-swipe, and the two silences are the same silence.
 //
-// Nothing in here can fix that, which is why it is written down rather than
-// worked around. The only evidence in the stream is silence, and no interval
-// separates a pause from a lift: a longer one delays every commit, including the
-// ones that followed a real lift, and a shorter one ends gestures mid-swipe. It
-// is the one place the shell's promise of "the same reversibility" is not kept,
-// a held press staying alive indefinitely where a held stream does not. The
-// crisp answer is the scroll PHASE, below.
+// SO THE DEVICE IS ASKED. Qt hands the scroll PHASE straight through on the
+// event (Qt::ScrollPhase; see the named constants below), and a libinput
+// touchpad stages the whole stream: Begin when the fingers land, Update while
+// they move, END WHEN THEY LEAVE. The end of the gesture is not a thing to be
+// deduced from silence at all; it is delivered, exactly on time, and it was
+// being thrown away.
+//
+// It was thrown away because of how a touchpad was recognised. The test was
+// pixelDelta, which every event carries except the one that matters: END
+// reports (0, 0), because nothing moved. So END failed the "is this a touchpad"
+// test at the top of feed(), was handed back as though it were a mouse wheel,
+// and the primitive went on inferring from a timer the very fact it had just
+// been told. Measured on this machine: every event of a real two-finger swipe
+// arrives as phase 2, and the lift arrives as phase 3 with a zero delta.
+//
+// The timer is still here and is now the fallback it should always have been,
+// armed only for a device that reports no phases at all, where a lapse really is
+// the only end available. For everything that stages its stream, a held gesture
+// stays held for as long as the fingers stay down, which is the shell's promise
+// of "the same reversibility" finally kept for the scroll path as well as the
+// press.
 //
 // The interval is `anim.fast`, GlideList's own, under a floor that keeps it a
 // gesture timer rather than a setting (see `lapseFloor`), and deliberately NOT
@@ -185,6 +193,23 @@ Item {
     // gesture it is running, so a hard gate would strand a stream halfway with
     // its `ended` never fired and whatever it is driving left mid-travel.
     property bool armed: true
+
+    // Qt::ScrollPhase, named. The event carries the raw enum and QML hands it
+    // over as an int, so the numbers are written down once here rather than
+    // appearing as bare literals in the middle of the arithmetic they gate.
+    //
+    // NoScrollPhase is what a mouse wheel reports, and it is the only value
+    // that means "this device does not stage its stream". Begin, Update and
+    // End are a touchpad describing a gesture from the fingers landing to the
+    // fingers leaving; Momentum is kinetic scrolling continuing after the lift,
+    // which libinput does not send and which is treated as an ordinary update
+    // if it ever arrives, because a consumer that wanted the throw already has
+    // the velocity to do it with.
+    readonly property int phaseNone: 0
+    readonly property int phaseBegin: 1
+    readonly property int phaseUpdate: 2
+    readonly property int phaseEnd: 3
+    readonly property int phaseMomentum: 4
 
     // The stream has started. Consumers that keep their own gesture state reset
     // it here, which is the scroll path's equivalent of a press.
@@ -267,15 +292,60 @@ Item {
     // shortest spelling, because that is the spelling it will be adopted in.
     // Consumers wanting anything else assign after the call and win.
     function feed(wheel: var): bool {
-        // A mouse wheel reports an angle and no pixels; a touchpad reports
-        // both. See the header for why the wheel is left alone.
-        const touchpad = wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0;
+        // WHICH PART OF A GESTURE THIS IS, when the device bothers to say.
+        //
+        // Qt::ScrollPhase, straight off the event: 0 NoScrollPhase, 1 Begin,
+        // 2 Update, 3 End, 4 Momentum. A mouse wheel has no phases and reports
+        // 0; a libinput touchpad stages the whole stream, and the one that
+        // matters is END, because END IS THE FINGERS LEAVING THE PAD. That is
+        // the fact this file was written without and the timer at the bottom
+        // was invented to replace.
+        //
+        // Measured on this machine before it was used: every event of a real
+        // two-finger swipe arrives as phase 2, and the lift arrives as phase 3
+        // carrying a pixelDelta of (0, 0).
+        const phase = wheel.phase;
+
+        // A TOUCHPAD SAYS SO IN ONE OF TWO WAYS, and it has to be asked both,
+        // because the lift says it in only one of them.
+        //
+        // The test used to be pixelDelta alone, and that is right for every
+        // event except the one that ends the gesture: END carries no pixels,
+        // because nothing moved, so END was classified as "not a touchpad",
+        // refused at this line, and never seen. The primitive was told when the
+        // fingers left and threw it away, and then inferred the same fact from
+        // a silence that also happens when a hand simply stops. Resting a still
+        // finger on the pad mid-swipe was therefore indistinguishable from
+        // letting go, and the gesture committed under a hand that had not
+        // decided yet, which is the whole of what "it snaps while my finger is
+        // still down" was.
+        const staged = phase !== root.phaseNone;
+        const moving = wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0;
 
         // Unarmed refuses to START one, never to continue one.
-        if (!touchpad || (!root.active && !root.armed)) {
+        if ((!staged && !moving) || (!root.active && !root.armed)) {
             wheel.accepted = false;
             return false;
         }
+
+        // THE FINGERS LEFT. End it here, on the event that says so, rather than
+        // a lapse later on a timer's guess. Nothing accumulates from an END: it
+        // carries no travel, and the totals it would add zero to are the ones
+        // `finish()` is about to hand to the consumer.
+        if (phase === root.phaseEnd) {
+            const running = root.active;
+            if (running)
+                root.finish();
+            wheel.accepted = running;
+            return running;
+        }
+
+        // A NEW STREAM SAYS SO TOO, and saying so is worth more than inferring
+        // it from `active`: two swipes in quick succession are one silence
+        // apart, and without this the second would be read as a continuation of
+        // the first and start from its total rather than from zero.
+        if (phase === root.phaseBegin && root.active)
+            root.finish();
 
         const natural = wheel.inverted || Compositor.naturalScrollTouchpad;
 
@@ -328,11 +398,27 @@ Item {
         }
         root.lastEvent = now;
 
+        // THE TIMER IS THE FALLBACK NOW, not the mechanism.
+        //
+        // A device that stages its stream tells us when the fingers go, so the
+        // lapse must not also get an opinion: armed on a staged stream it would
+        // fire during any pause long enough to out-wait it, ending a gesture the
+        // hand is still holding, which is exactly the bug END was found to fix.
+        // Stopped rather than merely not restarted, because a stream can begin
+        // life unstaged and be staged by the time it ends.
+        //
+        // Unstaged devices keep the old behaviour, silence and all: see the
+        // timer's own comment for what that costs and why there is nothing
+        // better available when the device will not say.
+        //
         // Before the signal rather than after it, so a consumer that ends the
         // stream from inside its own `moved` handler (by calling finish(),
         // which is a thing a consumer is allowed to do) leaves no timer behind
         // to fire `ended` a second time into a gesture nobody is holding.
-        coast.restart();
+        if (staged)
+            coast.stop();
+        else
+            coast.restart();
 
         wheel.accepted = true;
 
@@ -439,11 +525,16 @@ Item {
     // own goes to zero should not be waiting on that.
     readonly property int lapseFloor: 50
 
+    // THE LAST RESORT, for a device that will not stage its stream.
+    //
     // The fingers stopped sending: they lifted, or they stopped moving and are
-    // still resting there, and this cannot tell those apart. GlideList's timer
-    // and GlideList's interval, under the floor above; see the header both for
-    // why a lapse is the only end available and for what the second silence
-    // costs the gesture it ends.
+    // still resting there, and a silence cannot tell those apart. That is why
+    // this is no longer armed when the device reports phases (see feed): a
+    // libinput touchpad says outright when the fingers leave, and a guess
+    // running alongside a fact can only ever contradict it. What is left here
+    // is the honest fallback for a device that reports nothing, where a lapse
+    // is the only end available at all. GlideList's timer and GlideList's
+    // interval, under the floor above.
     Timer {
         id: coast
 
