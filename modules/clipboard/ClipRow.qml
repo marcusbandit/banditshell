@@ -341,6 +341,7 @@ Item {
 
                 HoverTip {
                     text: root.entry.pinned ? "Let go of this" : "Keep this"
+                    asked: pinPress.containsMouse
                 }
             }
         }

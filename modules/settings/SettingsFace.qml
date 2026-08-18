@@ -194,6 +194,7 @@ Item {
                     // nothing.
                     HoverTip {
                         text: stop.modelData.title
+                        asked: tap.containsMouse
                     }
                 }
             }

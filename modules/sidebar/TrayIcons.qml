@@ -190,6 +190,7 @@ Item {
                 HoverTip {
                     text: Tray.nameOf(icon.modelData)
                     host: icon.drawn
+                    asked: icon.hovered
                 }
             }
         }

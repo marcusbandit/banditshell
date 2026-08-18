@@ -76,7 +76,10 @@ Item {
         onClicked: root.toggled()
     }
 
+    // Asked through the MouseArea above: it fills this item, so it takes the
+    // hover before a handler under it can see any of it. See HoverTip.
     HoverTip {
         text: root.tip
+        asked: pointer.containsMouse
     }
 }

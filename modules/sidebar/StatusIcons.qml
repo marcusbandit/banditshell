@@ -260,6 +260,7 @@ Item {
                 // mark, and a bare mark has to say its own name somehow.
                 HoverTip {
                     text: hasMenu ? "" : modelData.title
+                    asked: hovered
                 }
             }
         }

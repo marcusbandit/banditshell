@@ -116,6 +116,7 @@ Item {
 
             HoverTip {
                 text: "Back to the list"
+                asked: backPress.containsMouse
             }
         }
 

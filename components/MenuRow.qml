@@ -124,6 +124,7 @@ Item {
     // chevron would show the chevron's tip and the row's, whichever landed last.
     HoverTip {
         host: root
+        asked: pointer.containsMouse
         text: pointer.containsMouse ? root.tip || (title.truncated || detail.truncated ? (root.detail ? `${root.label} · ${root.detail}` : root.label) : "") : ""
     }
 
