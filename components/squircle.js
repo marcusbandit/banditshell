@@ -80,12 +80,37 @@ function budgets(tl, tr, br, bl, w, h) {
 }
 
 
-// Fit a corner into its budget. The radius is preserved where possible and the
-// smoothing is what degrades, because a slightly less smooth corner reads better
-// than a visibly wrong radius. A negative radius means a CONCAVE corner.
+// THE RADIUS IS HOW FAR THE CORNER REACHES, which is the whole of what was
+// wrong with this file.
+//
+// The Figma construction takes the ARC's radius and spends (1 + s) times it
+// along each side, so `radius: 24` at the shell's 0.6 smoothing drew a corner
+// reaching 38.4px. Every shape in the shell was 60% rounder than the number it
+// asked for, and a corner that big does not read as a squircle: it reads as an
+// oversized plain radius, which is exactly what it was reported as.
+//
+// The second half of the same mistake was the budget. A corner may only spend
+// half its side, so with the reach at 1.6r anything asking for radius >= h/3.2
+// ran out of room, and what gave way was the SMOOTHING: a pill (radius = h/2)
+// came out at smoothing 0, which is a plain circular arc. The one shape in the
+// shell that most obviously wants a continuous corner was the one shape
+// guaranteed not to get one.
+//
+// So `radius` means the reach, the arc is r = radius / (1 + s), and the budget
+// is checked against the reach directly. A radius of 24 now covers exactly the
+// 24px a plain rounded rect would, with the curvature ramped across it instead
+// of jumping; smoothing never degrades, because nothing is being asked for that
+// does not fit. s = 0 still collapses to a plain rounded rect of that radius,
+// which is the property that makes the two comparable at all.
+//
+// It also puts this in step with the chassis, whose corners are drawn by an SDF
+// (components/blob/blob.frag) that has always treated the radius as the reach.
+// The two subsystems disagreed by 60% on every panel they share an edge with.
+//
+// A negative radius means a CONCAVE corner.
 function fit(radius, smoothing, budget) {
-    const r = Math.min(Math.abs(radius), budget);
-    const k = r <= 0 ? corner(0, 0) : corner(r, Math.max(0, Math.min(smoothing, budget / r - 1)));
+    const reach = Math.min(Math.abs(radius), budget);
+    const k = reach <= 0 ? corner(0, 0) : corner(reach / (1 + smoothing), smoothing);
     k.concave = radius < 0;
     return k;
 }
@@ -103,8 +128,12 @@ function seq() {
 
 // How far a corner reaches along each of its two sides. Anything sizing itself
 // around a concave corner needs this: the flare is exactly this wide.
+//
+// It is the radius, and it is kept as a function because that is the question
+// callers are asking and because it stopped being a different number only when
+// `fit` above started reading the radius as the reach.
 function extent(radius, smoothing) {
-    return (1 + Math.max(0, Math.min(1, smoothing))) * Math.abs(radius);
+    return Math.abs(radius);
 }
 
 // CONVEX (positive radius) cuts the corner off the bounding box: the shape pulls
@@ -207,7 +236,9 @@ function path(w, h, tl, tr, br, bl, smoothing, ox, oy) {
 // Drawn in a `p` x `p` box, where p is extent(radius, smoothing).
 function cornerPatch(radius, smoothing, which) {
     const s = Math.max(0, Math.min(1, smoothing));
-    const k = corner(Math.abs(radius), s);
+    // The reach, exactly as `fit` reads it, so the patch is the same size as the
+    // curve it is patching and as the `extent` its caller sized the box with.
+    const k = corner(Math.abs(radius) / (1 + s), s);
     if (k.r <= 0)
         return "";
 
