@@ -51,6 +51,24 @@ QtObject {
     property int urgency: NotificationUrgency.Normal
     property bool hasActions: false
 
+    // ACTIONS SOMEBODY COULD AIM AT, which is not every action in the packet.
+    //
+    // `default` is the spec's name for what CLICKING THE NOTIFICATION means, and
+    // it is explicitly not a button: senders give it an empty label precisely
+    // because they expect nobody to draw it. qBittorrent sends exactly one
+    // action and it is that one, so every completed download arrived wearing a
+    // blank pill that did nothing and said nothing.
+    //
+    // A label-less action is dropped whatever it is called, for the same reason
+    // said the other way round: a button with no words on it cannot be aimed at.
+    //
+    // Here rather than in the card, so the flag above and the card's Repeater
+    // cannot disagree about how many there are: a visible row with no pills in
+    // it spends its padding and leaves a band of dead air under the body.
+    function pressable(actions: var): var {
+        return (actions ?? []).filter(a => a.identifier !== "default" && a.text);
+    }
+
     // HOW FAR ALONG THE SENDER SAYS IT IS, 0..100, from the `value` hint. -1 is
     // "no progress in this packet", which is nearly every notification.
     //
@@ -317,6 +335,25 @@ QtObject {
         return Apps.iconSourceFor(names);
     }
 
+    // ------------------------------------------------------------------
+    // WHAT THIS SAYS AT A GLANCE, when a parser knows how to say it shorter.
+    //
+    // "" means nobody has written a rule for this sender and the card should
+    // fall back to the length (see components/FoldedText.qml). Resolved here for
+    // the same reason `mark` is: it is a lookup rather than a drawing decision,
+    // every input is a snapshot, so it keeps answering after the sender is gone,
+    // and the hub's own list wants the same short form the card wants.
+    readonly property string brief: NotifBrief.briefFor(root)
+
+    // OPENED, meaning show all of it rather than the short form.
+    //
+    // On the ENTRY and not on the card, exactly as `pinned` is: the tray swaps
+    // its delegates between the popup stack and the hub, and every screen draws
+    // its own card for the same entry, so a fold that lived in a card would come
+    // back folded the moment the tray changed shape. Opening one is a decision
+    // about the notification, so it belongs with the notification.
+    property bool unfolded: false
+
     function snapshot(): void {
         const n = root.notification;
         if (!n)
@@ -340,7 +377,7 @@ QtObject {
         }
 
         root.urgency = n.urgency;
-        root.hasActions = (n.actions?.length ?? 0) > 0;
+        root.hasActions = root.pressable(n.actions).length > 0;
 
         // Hints are a map the SENDER fills in, so `value` is whatever arrived
         // over the bus: usually absent, and not necessarily a number when it is

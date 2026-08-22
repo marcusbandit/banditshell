@@ -93,7 +93,12 @@ Column {
             label: modelData?.summary ?? ""
             // App and body on one line: the hub is a list, and a list whose rows
             // are three lines tall stops being scannable at about four entries.
-            detail: [modelData?.appName, modelData?.body].filter(s => s).join(" - ")
+            //
+            // THE SHORT BODY when a parser knows one, because one line is the
+            // hardest budget in the shell and this is the row that has always
+            // been an ellipsis: a qBittorrent line spent its whole width on the
+            // fansub group. See services/NotifBrief.qml.
+            detail: [modelData?.appName, modelData?.brief || modelData?.body].filter(s => s).join(" - ")
             selected: row.urgent
 
             // FORGET, not dismiss. This list IS the hub, so there is nowhere

@@ -46,6 +46,23 @@ ShellRoot {
             name: "expand the tray",
             run: () => tray.pinned = true
         },
+        // THE FOLD, which is the one part of a card that cannot be driven from
+        // the service side: it is a control on the card and its whole point is
+        // that the row changes height when it is used. Driven here through the
+        // entry, which is where the state lives (see NotifEntry.unfolded), so
+        // the height in the report below is the card answering it.
+        {
+            name: "a qBittorrent release name arrives",
+            run: () => preview.seedQbit()
+        },
+        {
+            name: "unfold it: all of it, brackets and all",
+            run: () => Notifs.history[0].unfolded = true
+        },
+        {
+            name: "fold it back",
+            run: () => Notifs.history[0].unfolded = false
+        },
         {
             name: "forget everything left in the hub",
             run: () => {
@@ -77,9 +94,25 @@ ShellRoot {
         Notifs.history = made;
     }
 
+    // One notification with a real release name in it, which is the shape the
+    // fold was written for: four bracketed groups around the one phrase anybody
+    // wants to read.
+    function seedQbit(): void {
+        const entry = entryComponent.createObject(preview, {
+            appName: "qBittorrent",
+            desktopEntry: "org.qbittorrent.qBittorrent",
+            summary: "Download completed",
+            body: "'[Erai-raws] Yomi no Tsugai - 20 [1080p CR WEB-DL AVC AAC][MultiSub].mkv' has finished downloading.",
+            timeout: 0,
+            live: true
+        });
+        Notifs.history = [entry, ...Notifs.history];
+    }
+
     function report(label: string): void {
         const t = tray.maskItem;
-        console.log(`${label} | popups=${Notifs.popups.length} history=${Notifs.history.length} pinned=${Notifs.history.filter(e => e.pinned).length} | expanded=${tray.expanded} rows=${tray.items.length} trayVisible=${t.visible} trayHeight=${Math.round(t.height)}`);
+        const top = Notifs.history[0];
+        console.log(`${label} | popups=${Notifs.popups.length} history=${Notifs.history.length} pinned=${Notifs.history.filter(e => e.pinned).length} | expanded=${tray.expanded} rows=${tray.items.length} trayVisible=${t.visible} trayHeight=${Math.round(t.height)} | unfolded=${top?.unfolded ?? "-"} brief="${top?.brief ?? ""}"`);
     }
 
     Component {

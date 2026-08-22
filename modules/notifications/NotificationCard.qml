@@ -210,6 +210,19 @@ Item {
             root.entry.pinned = on;
     }
 
+    // UNFOLDED: showing everything the sender said rather than the short form of
+    // it. The chevron in the gutter is the only way in or out; see `fold` below
+    // for why it is a control of its own and not the card's own click.
+    //
+    // On the entry for the reason the pin is, one line up: it has to outlive
+    // this card. See NotifEntry.unfolded.
+    readonly property bool unfolded: entry?.unfolded ?? false
+
+    function unfold(on: bool): void {
+        if (root.entry)
+            root.entry.unfolded = on;
+    }
+
     width: fullWidth
     implicitHeight: body.implicitHeight + Appearance.padding.normal * 2
     height: implicitHeight * open
@@ -365,7 +378,11 @@ Item {
         x: Appearance.padding.normal + root.spineRoom
         y: Appearance.padding.normal
         width: root.fullWidth - Appearance.padding.normal * 2 - root.spineRoom
-        implicitHeight: Math.max(badge.height, text.implicitHeight)
+        // The mark's column and the text's, whichever is taller. The fold is
+        // part of the mark's column and usually costs nothing, because the text
+        // beside it is what made the card foldable in the first place; a card
+        // whose long field is its summary alone can be an inch taller for it.
+        implicitHeight: Math.max(badge.height + (fold.visible ? Appearance.padding.small + fold.height : 0), text.implicitHeight)
 
         // The sender's own icon when it gave one, our bell when it did not. An
         // app that bothered to identify itself should be recognised by its mark
@@ -541,6 +558,44 @@ Item {
             }
         }
 
+        // THE FOLD, in the gutter under the mark.
+        //
+        // A CONTROL OF ITS OWN, because every other way of asking was already
+        // taken and means something else: a click on the card dismisses it, a
+        // press-and-hold pins it, and both directions of a drag are spoken for.
+        // A chevron is the one thing on a card that can be pressed without
+        // meaning any of that (see components/Expander.qml, which is a target
+        // rather than a decoration for exactly this reason).
+        //
+        // UNDER THE BADGE, which is the only room on a card that is already
+        // empty: the mark is one square at the top of a column as tall as the
+        // text beside it, so a foldable card has the space by construction and
+        // nothing has to grow to hold this. It is anchored to the badge and not
+        // to the bottom of the card so that it STAYS WHERE IT WAS PRESSED when
+        // the card unfolds; a toggle that slides out from under the cursor it
+        // was just clicked with is a toggle you cannot click twice.
+        Expander {
+            id: fold
+
+            anchors.horizontalCenter: badge.horizontalCenter
+            anchors.top: badge.bottom
+            anchors.topMargin: Appearance.padding.small
+
+            // Only when there is something behind the fold. Both slots are
+            // asked, because either of them can be the one that was cut.
+            visible: message.foldable || headline.foldable
+            open: root.unfolded
+
+            // NO TOOLTIP, which is the one thing an Expander normally insists
+            // on. The tip is drawn beside its host, and its host here is in the
+            // gutter with the message immediately to the right of it, so the
+            // label landed ON TOP of the very text it was offering to show.
+            // A chevron next to a line that is visibly cut short does not need
+            // the sentence anyway.
+
+            onToggled: root.unfold(!root.unfolded)
+        }
+
         Column {
             id: text
 
@@ -584,7 +639,9 @@ Item {
             // step with the first. The quiet colour is what marks it as the
             // shell talking; the bright tier is reserved for what the sender
             // actually wrote.
-            StyledText {
+            FoldedText {
+                id: headline
+
                 width: parent.width
                 // Hidden when it is genuinely empty, which is a card that has
                 // an app name or a body but no summary. An empty Text is not a
@@ -592,13 +649,16 @@ Item {
                 // without this the column carried a blank line where the
                 // headline would have been and the card read as having lost
                 // something. It can never hide the wordless case away, because
-                // that case is exactly when `text` is the placeholder.
-                visible: !!text
-                text: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
+                // that case is exactly when `full` is the placeholder.
+                visible: !!full
+                full: root.wordless ? "(no message)" : (root.entry?.summary ?? "")
                 color: root.wordless ? Appearance.colour.textFaint : Appearance.colour.text
-                wrapMode: Text.Wrap
-                maximumLineCount: root.roomy ? 4 : 2
-                elide: Text.ElideRight
+                unfolded: root.unfolded
+                // A summary is a headline and is short in nearly every packet,
+                // so its cap is the one it always had; the fold is what a
+                // sender that writes a paragraph into it now runs into instead
+                // of the elide.
+                lines: root.roomy ? 4 : 2
             }
 
             // HOW FAR ALONG, when the sender bothered to say. Absent from nearly
@@ -683,29 +743,38 @@ Item {
                 }
             }
 
-            StyledText {
+            FoldedText {
+                id: message
+
                 width: parent.width
                 visible: !!root.entry?.body
-                text: root.entry?.body ?? ""
+
+                // BOTH FORMS, and the short one is the parser's when there is a
+                // parser for this sender. See services/NotifBrief.qml: a
+                // qBittorrent body is a release name, which is a filename
+                // wearing four bracketed groups, and cutting the tail off it
+                // cuts away the only part anybody wanted.
+                full: root.entry?.body ?? ""
+                brief: root.entry?.brief ?? ""
+                unfolded: root.unfolded
+
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textDim
-                wrapMode: Text.Wrap
-                // A notification is not a document, but three lines is where the
-                // cap has to be. Two was tried, to keep the cards short, and it
-                // elided the 2FA code out of "Your verification code for The
-                // Movie Database (TMDB) is: 4098" - which is the whole reason
-                // that notification exists. A card is allowed to be one line box
-                // taller than its neighbour; it is not allowed to hide the thing
-                // it came to say.
-                //
-                // In the hub it is barely a cap at all. The tray is a Flickable
-                // that scrolls once it outgrows the screen, so a long message
-                // costs a scroll rather than the screen, and the cap is only
-                // still here to stop one deranged sender from making the list
-                // unnavigable.
-                maximumLineCount: root.roomy ? 12 : 3
-                elide: Text.ElideRight
                 topPadding: Appearance.padding.small
+
+                // A notification is not a document, but three lines is where the
+                // fold has to be. Two was tried, to keep the cards short, and it
+                // cut the 2FA code out of "Your verification code for The Movie
+                // Database (TMDB) is: 4098" - which is the whole reason that
+                // notification exists. A card is allowed to be one line box
+                // taller than its neighbour; it is not allowed to hide the thing
+                // it came to say behind a control.
+                //
+                // In the hub it is barely a fold at all. The tray is a Flickable
+                // that scrolls once it outgrows the screen, so a long message
+                // costs a scroll rather than the screen, and there is time to
+                // read in there (see `roomy`).
+                lines: root.roomy ? 12 : 3
             }
 
             // A FLOW, not a Row. The count is the sender's to choose and the
@@ -758,7 +827,13 @@ Item {
                     // does throw, once per pill, every time the row is rebuilt.
                     // `live` changes when the object dies and takes the model to
                     // [] with it, which is the only thing here that can.
-                    model: root.live ? (root.notification?.actions ?? []) : []
+                    //
+                    // FILTERED THROUGH THE ENTRY, which is where the same test
+                    // decides `hasActions` above: the spec's `default` action is
+                    // what clicking the notification means and carries no label,
+                    // so drawn as a pill it is a blank button that does nothing.
+                    // See NotifEntry.pressable.
+                    model: root.live ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
 
                     delegate: Pill {
                         required property var modelData
