@@ -121,6 +121,39 @@ Item {
         return tray.iconFor(key) ?? (key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
+    // HOW MUCH THE FLOOR HAS RISEN by the time it is `inset` in from the side of
+    // the screen, because at the ends of this bar the floor is not the screen's
+    // straight edge but the curve rounding its corner off.
+    //
+    // A group standing `inset` from the sides and the same `inset` from the
+    // bottom is NOT evenly spaced, and the arithmetic that says it is measures
+    // the one direction where the shell's edge is straight. Down at the corner
+    // the edge is coming in diagonally: at 10.5 in from the side the curve has
+    // already climbed 6.4px, so a box with its bottom 10.5 from the display had
+    // 7.8px of material at its bottom-left corner against 10.5 everywhere else,
+    // and read as pinched into the corner - which is what it was.
+    //
+    // The curve is the superellipse the whole shell is drawn with, at the reach
+    // the display's own corners are rounded at (see toScreen in blob.frag), so
+    // this is that curve solved for y rather than a fitted number: at x = inset,
+    // |reach - inset|^n + |reach - rise|^n = reach^n.
+    function cornerRise(inset: real): real {
+        const reach = Appearance.sizes.windowRadius + Appearance.sizes.gap + Appearance.sizes.band;
+        const n = Math.max(2, Appearance.rounding.power);
+        if (inset >= reach)
+            return 0;
+        return reach - Math.pow(Math.pow(reach, n) - Math.pow(reach - inset, n), 1 / n);
+    }
+
+    // WHERE A GROUP'S END GOES, given how far its drawn box sits in from the
+    // bar's sides. The same air on every side of the box: the side gap, plus
+    // whatever the corner has taken out from under it, less the band this whole
+    // item is already held off the screen by, plus the overhang the fill has
+    // past the column it is pinned to.
+    function endMargin(group: Item): real {
+        return group.sideGap + root.cornerRise(group.sideGap) + group.overhang - Appearance.sizes.band;
+    }
+
     // FULL WIDTH, like the workspaces below and for a related reason: a group in
     // here draws a 28px column but is aimed at across the whole 62px band, and a
     // target can only be as wide as the thing that was given the width. Centred,
@@ -131,9 +164,9 @@ Item {
         id: tray
 
         anchors.top: parent.top
-        // The gap over the tray is the gap beside it, by the same three terms
-        // the gauges' bottom margin is written from; see the Column below.
-        anchors.topMargin: tray.sideGap + tray.overhang - Appearance.sizes.border
+        // The air over the tray is the air beside it, corner included; see
+        // endMargin above.
+        anchors.topMargin: root.endMargin(tray)
         anchors.left: parent.left
         anchors.right: parent.right
 
@@ -160,23 +193,18 @@ Item {
     Column {
         anchors.bottom: parent.bottom
 
-        // THE GAP UNDER THE GAUGES IS THE GAP BESIDE THEM, and it is derived
-        // rather than chosen. The group is a box floating in the bar, and a box
-        // standing off two edges by different amounts reads as having slipped
-        // down rather than as having been placed: it was 16px clear of the
-        // screen's bottom while sitting 10.5px in from either side.
+        // THE AIR UNDER THE GAUGES IS THE AIR BESIDE THEM, and neither number
+        // is chosen: see endMargin and cornerRise above. The group is a box
+        // floating in the bar, and a box with different clearances on two sides
+        // reads as having slipped rather than as having been placed.
         //
-        // Three terms, none of them a number: the box's own inset from the bar's
-        // sides, which is what the bottom is being matched TO; the overhang,
-        // because the fill hangs past the column it is pinned to and it is the
-        // FILL's edge the eye measures, not the column's; and the band, because
-        // this Column is anchored inside a sidebar already held that far off the
-        // screen's edge, so only the remainder is this margin's to spend.
-        //
-        // A padding tier is deliberately not in it. Which tier happens to equal
-        // the leftover is a coincidence of today's numbers, and naming one here
-        // is what let the two gaps drift apart in the first place.
-        anchors.bottomMargin: status.sideGap + status.overhang - Appearance.sizes.border
+        // The corner term is the whole of what is easy to get wrong here. Equal
+        // MARGINS at a rounded corner are not equal AIR: the shell's edge stops
+        // being the screen's straight edge somewhere in the last 52px and comes
+        // in diagonally, so a box set the side gap off the display's bottom got
+        // three quarters of that gap at its own bottom-left corner and looked
+        // wedged into it.
+        anchors.bottomMargin: root.endMargin(status)
         anchors.left: parent.left
         anchors.right: parent.right
 
