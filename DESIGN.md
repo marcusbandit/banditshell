@@ -140,11 +140,32 @@ The feel to chase: **as if the intent of using the computer makes the computer c
 Alive, responsive, compliant to intent. Nothing is static. Nothing is dead. The computer
 answers the *intent* of use, and only when asked.
 
-Animation implementation for all this motion/summon/tracking: **exponential smoothing** by
-default (see `~/.claude/rules/animation-smoothing.md`) -
+Animation implementation for all this motion/summon/tracking: **exponential smoothing, always**
+(see `~/.claude/rules/animation-smoothing.md`) -
 `position += (target - position) * (1 - Math.exp(-speed * dt))`. Moves fast when far, settles
-gently when close, safe at any dt. Use spring/bounce or fixed-duration only where a specific
-effect calls for it.
+gently when close, safe at any dt.
+
+**This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
+or follows goes through `components/Follow.qml`. A `NumberAnimation` or a `Behavior` on a
+position is a bug, with exactly one exception: a **looping clock** with no target being chased
+at all (the mic indicator's processing ripple and typing caret are the whole list). Spring and
+bounce are not in this shell.
+
+Three corollaries, each of them learned by shipping the mistake:
+
+- **A snap is not smoothing.** `Follow.snap()` is for the first layout, and for placing
+  something while it cannot be seen. Snapping something the eye is already on is how you get a
+  jump back after having written the smoothing correctly.
+- **If it flicks, look for a snap to a stale target, not for a missing animation.** The mic
+  pill "flew in from the corner" on a monitor change while smoothing perfectly the whole time:
+  it was snapping at the instant it appeared, to a position derived from an `activewindow` that
+  had not refreshed yet, and then smoothly correcting. The animation was never the problem. So:
+  while a thing is invisible, a target change is a PLACEMENT; once it is visible, the same
+  change is a JOURNEY. Gate the snap on the reveal, not on the event.
+- **Speed is per-journey, not per-shell.** Exponential smoothing takes the same time whatever
+  the distance, which means velocity scales with distance. `trackSpeed` reads as tracking when
+  a plate follows a workspace 200px and as a smear when the mic pill crosses 3000px of desk to
+  another monitor. Widget-scale and desk-scale motion want different speeds; same curve.
 
 ### 2.4 Contextual prominence - same info, different formats, different places
 

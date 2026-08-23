@@ -65,56 +65,74 @@ Item {
     // preview harnesses build this module on windows that are in none of the
     // shell's wiring and could not be told a name.
     readonly property var host: QsWindow.window?.screen ?? null
-    readonly property string screenName: root.host?.name ?? ""
 
-    // ONE MICROPHONE, ONE INDICATOR. The shell draws this module on every screen
-    // and it used to light up on all of them at once: the same pill, three
-    // times, for a single microphone that can only be open in one place. What is
-    // dictated goes into the window holding the keyboard, so the screen that
-    // window is on is the only screen where this readout is about anything.
-    //
-    // EITHER NAME MISSING MEANS EVERY SCREEN. That is the old behaviour and the
-    // only safe way to be wrong here: a compositor that has not yet said where
-    // the keyboard is would otherwise gate off every screen at once, and an
-    // indicator nowhere is exactly the failure the note at the top of this file
-    // is about. Showing it twice is a blemish; showing it never is a machine
-    // that looks idle while it listens to you.
-    readonly property bool mine: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
+    // THE SCREEN THE KEYBOARD IS ON, as an object and not as a name, because
+    // what is wanted from it is an origin and a width rather than an identity.
+    // Its own geometry is what the pill is kept inside of, so the pill comes to
+    // rest within the screen it is resting on and not within the one drawing it.
+    readonly property var stage: Quickshell.screens.find(s => s.name === Hypr.focusedScreen) ?? root.host
 
-    readonly property bool out: root.phase !== "idle" && root.mine
-
-    // WHERE THE WORDS ARE ACTUALLY GOING, in this window's own coordinates.
+    // WHERE THE WORDS ARE GOING, IN THE LAYOUT'S COORDINATES - one number for
+    // the whole desk, not a position on this screen.
     //
-    // This hung in the middle of the screen because that is where the notch is
-    // and the two share an axis. But the notch is about the SCREEN and this is
-    // about a WINDOW: the text lands in whatever holds the keyboard, and on a
-    // wide monitor the centre of the screen can be nowhere near it. Over the
-    // window, it reads as belonging to the thing being dictated into rather than
-    // to the desk, and on a tiled screen it also says WHICH pane is about to
-    // receive the sentence, which the centre could never say.
+    // This is the difference between a pill that CHANGES MONITOR and one that
+    // TRAVELS to another monitor, and it is the whole of why the coordinate is
+    // global. Per-screen, each copy could only ever say "not mine" or "mine,
+    // here", so a move across the desk was one screen dropping the pill and
+    // another catching it, at a position each worked out on its own: it flicked
+    // in from whichever edge the old window's coordinates clamped to on the new
+    // screen. Measured against the desk instead, there is ONE position, every
+    // screen computes the same one, and each simply draws whatever part of it
+    // falls inside its own bounds. The pill then walks off the edge of one
+    // monitor and onto the next because that is literally what the number does.
     //
-    // Hyprland's `at` is absolute across the whole layout, so the monitor's own
-    // origin comes back off it; modules/picker/Picker.qml does the same
-    // conversion for the same reason. No window at all (a bare workspace, the
-    // compositor still starting) falls back to the centre, which is where this
-    // came from.
+    // No window at all (a bare workspace, the compositor still starting) falls
+    // back to the middle of the focused screen, which is where this came from.
     readonly property real centre: {
         const box = Hypr.activeClient?.lastIpcObject;
-        if (!box?.at || !box?.size || !root.host)
-            return root.width / 2;
-        return box.at[0] + box.size[0] / 2 - root.host.x;
+        if (box?.at && box?.size)
+            return box.at[0] + box.size[0] / 2;
+        return root.stage ? root.stage.x + root.stage.width / 2 : 0;
     }
 
-    // KEPT ON THE SCREEN, by its own width rather than by a margin someone
-    // measured once. A window can hang off the edge of the layout, and for the
-    // moment between the keyboard moving to another monitor and this screen
-    // giving the pill up, the focused window is not even on this screen: half a
-    // pill sliding past the corner would tear the band open where the chassis
-    // rounds. A screen too narrow to hold the pill inside its own margins gets
-    // the centre, because there is no honest answer and the centre is at least
-    // symmetrical.
+    // KEPT ON THE SCREEN IT IS RESTING ON, by its own width rather than by a
+    // margin someone measured once. A window can hang off the edge of the
+    // layout, and half a pill past the corner would tear the band open where the
+    // chassis rounds. A screen too narrow to hold the pill inside its own
+    // margins gets the middle, because there is no honest answer there and the
+    // middle is at least symmetrical.
+    //
+    // Clamped against `stage` and not against this screen, so the clamp is the
+    // same answer on every screen: a limit each copy applied locally would bend
+    // the journey differently in each one and the hand-over would not line up.
     readonly property real margin: root.pillWidth / 2 + root.border + Appearance.padding.large
-    readonly property real anchor: root.width < root.margin * 2 ? root.width / 2 : Math.max(root.margin, Math.min(root.width - root.margin, root.centre))
+    readonly property real anchor: {
+        if (!root.stage)
+            return root.centre;
+        const lo = root.stage.x + root.margin;
+        const hi = root.stage.x + root.stage.width - root.margin;
+        return hi < lo ? root.stage.x + root.stage.width / 2 : Math.max(lo, Math.min(hi, root.centre));
+    }
+
+    // The travelling position, brought back to this screen's own coordinates.
+    readonly property real axis: slide.value - (root.host?.x ?? 0)
+
+    // IS ANY OF IT HERE? This is what replaced asking whether the focused screen
+    // was this one. That question could only be answered yes or no, and the
+    // answer changed in one frame, which is exactly the pop that made a monitor
+    // change look like a glitch. Overlap is the same question asked of a
+    // position, so it answers "half of it" during the crossing.
+    //
+    // A melt of slack on each side, because the pill is a blob in the chassis
+    // field rather than a sprite: one just past the corner still pulls on the
+    // band, and that pull IS the hand-over, seen from the screen it is leaving.
+    readonly property bool here: root.axis + root.pillWidth / 2 > -Appearance.sizes.melt && root.axis - root.pillWidth / 2 < root.width + Appearance.sizes.melt
+
+    // The vertical reveal is the DICTATION's, not this screen's: every copy
+    // descends together and the ones the pill is not over simply have nothing to
+    // draw. Gating this per screen is what made an arrival at a new monitor a
+    // drop out of the band rather than a pill sliding in from the side.
+    readonly property bool out: root.phase !== "idle"
 
     // The waveform's memory: one slot per bar, oldest at the left. A new level
     // shifts the row along, which is what makes it scroll rather than flicker.
@@ -149,9 +167,9 @@ Item {
     // has twelve slots and several are permanently spoken for, so something idle
     // most of the day should not hold one. It takes a slot when the reveal
     // starts and gives it back once fully retracted.
-    readonly property var blobs: drop.value > 0.001 ? [
+    readonly property var blobs: drop.value > 0.001 && root.here ? [
         {
-            x: slide.value - root.pillWidth / 2,
+            x: root.axis - root.pillWidth / 2,
             y: -(root.pillHeight + Appearance.sizes.melt) * (1 - drop.value),
             w: root.pillWidth,
             h: root.pillHeight,
@@ -240,12 +258,27 @@ Item {
             Hypr.resync();
     }
 
-    // ARRIVING IS NOT A MOVE. The slide below tracks the focused window, but a
-    // pill coming out of the band belongs over the window it is coming out for,
-    // not skating across from wherever the last dictation happened - that draws
-    // the eye along the path instead of to the words.
+    // ARRIVING IS NOT A MOVE, and nothing behind the band is moving.
+    //
+    // The slide tracks the focused window, but a pill coming out belongs over
+    // the window it is coming out FOR, not skating across from wherever the last
+    // dictation happened, which draws the eye along the path instead of to the
+    // words. So while it is still up behind the band, a change of target is a
+    // PLACEMENT and is taken instantly; once it is down where it can be seen,
+    // the same change is a JOURNEY and is smoothed like everything else.
+    //
+    // The second rule is not tidiness. `activewindow` and the geometry behind it
+    // arrive on separate IPC round trips, so the correct position routinely
+    // lands a frame or two after the phase does; without this the pill descends
+    // onto a stale position and then slides off to the real one, which is the
+    // flick this pair exists to remove.
     onOutChanged: {
         if (root.out)
+            slide.snap();
+    }
+
+    onAnchorChanged: {
+        if (drop.value < 0.05)
             slide.snap();
     }
 
@@ -254,14 +287,24 @@ Item {
         slide.snap();
     }
 
-    // Between windows it TRACKS rather than jumps, on the shell's own tracking
-    // speed. This is a blob in the chassis distance field, so a teleport would
-    // pop the band open in one place and shut in another in a single frame,
-    // which reads as a glitch rather than as a move.
+    // Between windows it TRACKS rather than jumps. This is a blob in the chassis
+    // distance field, so a teleport would pop the band open in one place and
+    // shut in another within a single frame, which reads as a glitch rather than
+    // as a move.
+    //
+    // HALF THE SHELL'S TRACKING SPEED, and the only place in the shell that
+    // slows it down. Exponential smoothing takes the same TIME whatever the
+    // distance - that is the point of it - so the speed that reads as tracking
+    // when a plate follows a workspace across 200px reads as a smear when this
+    // crosses 3000px of desk to another monitor, because the velocity is what
+    // scales with the distance. This is the one indicator whose journeys are
+    // desk-scale rather than widget-scale, so it is the one that wants longer to
+    // make them. Still exponential, still the same curve: fast away, gentle in.
     Follow {
         id: slide
 
         target: root.anchor
+        speed: Appearance.anim.trackSpeed / 2
     }
 
     // The daemon's event stream.
@@ -414,8 +457,9 @@ Item {
     Item {
         id: content
 
-        // On the pill's axis, not the screen's; see `anchor` above.
-        x: slide.value - width / 2
+        // On the pill's axis, not the screen's; see `centre` above.
+        x: root.axis - width / 2
+        visible: root.here
         width: root.contentWidth
         height: root.contentHeight
         y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - Appearance.padding.large
