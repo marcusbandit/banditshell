@@ -57,11 +57,39 @@ Singleton {
         return [item?.tooltipTitle ?? "", item?.tooltipDescription ?? ""].filter(p => p && p !== name).join(" · ");
     }
 
+    // THE TRAY ID IS NOT THE WINDOW CLASS, and the table is keyed by the class.
+    // An application names itself once for the bus and once for the compositor
+    // and the two agree only by luck: qBittorrent registers as `qBittorrent`
+    // here and as `org.qbittorrent.qBittorrent` over there. The settings menu
+    // lists classes, because the window list is what records that an
+    // application exists at all, so an icon picked in it could never reach the
+    // same application's tray item: you would pick a mark, watch the workspace
+    // column take it, and watch the tray go on drawing something else.
+    //
+    // Matched on the last segment of a reverse-DNS class, which is the half an
+    // application actually calls itself. AppIcons.needleFor takes the same view
+    // from the other end when it goes looking for icon FILES, and for the same
+    // reason: `org.qbittorrent.qBittorrent` is wrapping, `qbittorrent` is the
+    // name. Only classes already in the table are considered, so this has
+    // nothing to say about an application the shell has never seen a window
+    // from: a tray-only daemon still falls through to its own artwork below.
+    function classFor(id: string): string {
+        if (!id)
+            return "";
+        const want = id.toLowerCase();
+        for (const cls of AppIcons.classes) {
+            const low = cls.toLowerCase();
+            if (low === want || low.split(".").pop() === want)
+                return cls;
+        }
+        return "";
+    }
+
     // THE MARK, as an AppMark spec, through the same table every window in the
     // sidebar goes through: an application you have picked an icon for looks the
     // same whether you are looking at its window or at the fact that it has
-    // none. Looked up under the tray id, which is what the application calls
-    // itself here and is usually, but not always, its window class.
+    // none. Looked up under the tray id first, then under the window class that
+    // id turns out to belong to, for the reason written out over classFor.
     //
     // What it falls back to is the icon the item is ADVERTISING, which Quickshell
     // has already resolved out of the theme or out of the pixmap the application
@@ -70,7 +98,12 @@ Singleton {
     // ones that are a solid shape and would flatten into a featureless disc.
     function markFor(item: var): string {
         const id = item?.id ?? "";
-        const picked = id ? AppIcons.markFor(id) || AppIcons.markFor(id.toLowerCase()) : "";
+        if (!id) {
+            const bare = item?.icon ?? "";
+            return bare ? `mono:${bare}` : "";
+        }
+        const cls = root.classFor(id);
+        const picked = AppIcons.markFor(id) || AppIcons.markFor(id.toLowerCase()) || (cls ? AppIcons.markFor(cls) : "");
         if (picked)
             return picked;
         const art = item?.icon ?? "";

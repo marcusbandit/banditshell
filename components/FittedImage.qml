@@ -53,7 +53,19 @@ Item {
     // an icon of anything. When the measurement says the file is nearly solid,
     // the tint is dropped and it keeps its own colours, because that is the only
     // version of it that says which application it is.
-    readonly property bool solid: box.length > 4 && box[4] > 0.82
+    //
+    // THE THRESHOLD IS A CIRCLE, not a round number. box[4] is how much of its
+    // own BOUNDING BOX a drawing fills, and a filled disc fills pi/4 of one:
+    // 0.785, or about 0.771 once the probe has counted the antialiased rim as
+    // edge rather than as fill. A flat 0.82 was tuned on the rounded squares,
+    // which sit above 0.9, and so every CIRCULAR logo slipped underneath it and
+    // flattened to a dot: qBittorrent's mark is painted white ON a blue disc
+    // rather than cut out of it, so its silhouette is the disc and nothing else.
+    // Derived from the shape it has to catch, with the rim allowed for, so it
+    // stays right if the probe's size or its alpha cutoffs ever change.
+    readonly property real discFill: Math.PI / 4
+    readonly property real solidAt: root.discFill * 0.95
+    readonly property bool solid: box.length > 4 && box[4] > root.solidAt
     readonly property bool tinted: tint && !solid
 
     implicitWidth: Appearance.font.iconSize
