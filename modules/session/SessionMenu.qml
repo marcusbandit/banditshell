@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -62,7 +63,16 @@ Item {
     // The window that had the keyboard before this took it, so it can have it
     // back. A power menu that leaves focus on the desktop after Escape is a power
     // menu you have to click out of.
+    //
+    // The window on THIS screen, asked of `Hypr.focusedOn`. A power menu you
+    // dismissed should leave the machine exactly as it found it, and a shell-
+    // wide answer left it with the keyboard on a different monitor than the one
+    // it started on: see services/Hypr.qml's `focusedByMonitor`.
     property string restoreTo: ""
+
+    // WHICH SCREEN THIS PANEL IS DRAWN ON, for the line above. Asked of the
+    // window, per modules/SettingsCorner.qml and modules/sidebar/Sidebar.qml.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     readonly property var actions: Power.actions
 
@@ -135,7 +145,7 @@ Item {
     function show(): void {
         if (root.shown)
             return;
-        root.restoreTo = Hypr.focusedAddress;
+        root.restoreTo = Hypr.focusedOn(root.screenName);
         root.selected = root.resting;
         root.arming = "";
         // WHERE IT LEFT OFF IS NOT A "FROM". The marker chases whatever is

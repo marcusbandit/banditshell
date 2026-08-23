@@ -22,6 +22,11 @@ import qs.services
 Item {
     id: root
 
+    // WHICH SCREEN THIS COLUMN IS ON, by output name, handed straight to the
+    // model: a style draws what the model says, and which workspaces those are
+    // is the model's question. See WorkspaceModel.screen.
+    required property string screen
+
     readonly property int bar: Appearance.sizes.wsMapBar
     readonly property int pitch: bar + Appearance.sizes.wsMapGap
     readonly property real span: width - Appearance.sizes.band
@@ -44,6 +49,7 @@ Item {
     WorkspaceModel {
         id: layout
 
+        screen: root.screen
         base: root.bar
         pitch: root.pitch
     }
@@ -56,12 +62,14 @@ Item {
 
             required property int index
             readonly property var info: layout.slots[index] ?? ({
-                    id: index + 1,
+                    id: layout.idAt(index),
                     windows: [],
                     rest: 0
                 })
             readonly property var geom: layout.at(index)
-            readonly property bool isActive: Hypr.activeId === slotItem.info.id
+            // The MODEL'S active workspace, which is this screen's own rather
+            // than the focused one's.
+            readonly property bool isActive: layout.active === slotItem.info.id
             readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
 
             y: slotItem.geom.y

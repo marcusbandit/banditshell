@@ -27,7 +27,42 @@ Item {
 
     readonly property int count: Hypr.count
 
-    // THE SPECIAL LYING OVER THE SCREEN, carried by the MODEL rather than read
+    // WHICH SCREEN'S COLUMN THIS IS, by output name.
+    //
+    // The sidebar is drawn on every monitor and always has been, but until
+    // bands existed every one of those columns asked shell-wide questions and
+    // got the FOCUSED screen's answers, so two monitors drew the same
+    // workspaces and lit the same plate: the second screen's sidebar was a
+    // copy of the first one's rather than a picture of itself. This property
+    // is the whole fix, and everything below it is that one string spent.
+    //
+    // A NAME rather than a ShellScreen, because that is what every question in
+    // Hypr is keyed by (`specialByMonitor`, `occupancy`, `activeByMonitor`):
+    // the compositor talks about outputs by name, and carrying the object here
+    // would only mean unwrapping it three times. Empty is survivable and means
+    // the first band, which is what every column drew before this existed.
+    required property string screen
+
+    // THE RUN OF WORKSPACES THIS COLUMN OWNS, resolved once here and spent
+    // everywhere: slot i is `band + i`, and the ids it produces are real
+    // workspace ids, so `Hypr.switchTo` and `Hypr.clientsIn` mean exactly what
+    // they always meant. Nothing in this file or in a style knows the number
+    // one any more (see ~/.claude/rules/math-over-hardcoding.md); they know an
+    // index into a run whose start is a fact about the screen.
+    readonly property int band: Hypr.bandFor(root.screen)
+
+    function idAt(i: int): int {
+        return root.band + i;
+    }
+
+    // WHERE THIS SCREEN IS, which is not where the KEYBOARD is. A monitor has
+    // its own active workspace whether or not it is focused, so the column on
+    // the screen you are not looking at still lights the plate you left it on,
+    // and moving the keyboard between monitors changes which column is beside
+    // the accent rather than what any of them say.
+    readonly property int active: Hypr.activeOn(root.screen)
+
+    // THE SPECIAL LYING OVER THIS SCREEN, carried by the MODEL rather than read
     // from Hypr by each style. Every style already shares this object for its
     // geometry, and "you are on a workspace you cannot currently see" is a
     // fact about the column, not about any one drawing of it: a style derives
@@ -37,10 +72,16 @@ Item {
     // until someone noticed, which is exactly the per-style branching the
     // model exists to prevent.
     //
+    // PER SCREEN, through the map Hypr has kept all along rather than through
+    // `specialShown`: a scratchpad is pulled over ONE monitor, so a card
+    // opened on the laptop must not grey out the plate you are standing on
+    // over on the desk. That was the same mistake as the active workspace,
+    // wearing the other costume.
+    //
     // `special` is the wire name ("special:magic", "" when none), for the one
     // style question `eclipsed` cannot answer: WHICH card is out, so the rack
     // can light the right bar and the card can know it is the one travelling.
-    readonly property string special: Hypr.specialShown
+    readonly property string special: Hypr.specialOn(root.screen)
     readonly property bool eclipsed: special !== ""
 
     // THE LAYOUT: { id, y, h, windows, rest } per slot, in one pass. Where slot i
@@ -51,7 +92,7 @@ Item {
         const out = [];
         let y = 0;
         for (let i = 0; i < root.count; i++) {
-            const id = i + 1;
+            const id = root.idAt(i);
             const clients = Hypr.clientsIn(id);
             // The overflow mark is a ROW like any other, so a workspace with
             // twenty windows on it is exactly as tall as one at the cap and the
@@ -270,6 +311,12 @@ Item {
     // bottom of the column would spend its first pitches paying off a debt
     // before the desktop moved at all. Clamped, the first pitch of reversal
     // reverses.
+    //
+    // CLAMPED TO THIS SCREEN'S BAND, which is the same clamp said in the only
+    // terms that mean anything now: the ends of the column are `band` and
+    // `band + count - 1`, and running off the bottom of the second monitor's
+    // column must not scrub into the first monitor's workspaces. A scrub is a
+    // gesture on a screen, and it can only reach as far as that screen's run.
     property int scrubBase: 0
     property int scrubStep: 0
     property bool scrubFired: false
@@ -324,7 +371,7 @@ Item {
         root.scrubSpent = false;
         root.scrubFromX = x;
         root.scrubFromY = y;
-        root.scrubBase = Hypr.activeId;
+        root.scrubBase = root.active;
         root.scrubStep = 0;
         root.scrubFired = false;
         root.scrubLastY = y;
@@ -375,10 +422,10 @@ Item {
             return;
         root.scrubFromY += inc * root.scrubPitch;
 
-        // `count` is read at fire time, not saved at the press: window events
-        // land whenever they land, and the clamp should hold the scrub to the
-        // column as it is, not as it was.
-        const next = Math.max(1 - root.scrubBase, Math.min(root.count - root.scrubBase, root.scrubStep + inc));
+        // `band` and `count` are read at fire time, not saved at the press:
+        // window events land whenever they land, and the clamp should hold the
+        // scrub to the column as it is, not as it was.
+        const next = Math.max(root.band - root.scrubBase, Math.min(root.band + root.count - 1 - root.scrubBase, root.scrubStep + inc));
         if (next === root.scrubStep)
             return;
         root.scrubStep = next;
@@ -406,7 +453,7 @@ Item {
         // and so do the ids, so the velocity's sign is the direction.
         if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Appearance.sizes.flickVelocity) {
             const to = root.scrubBase + (root.scrubVelocity > 0 ? 1 : -1);
-            if (to >= 1 && to <= root.count)
+            if (to >= root.band && to < root.band + root.count)
                 Hypr.switchTo(to);
         }
 

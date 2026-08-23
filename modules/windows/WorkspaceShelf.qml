@@ -46,6 +46,29 @@ Item {
     // The screen's own proportions, so a plate is a small screen.
     required property real aspect
 
+    // WHICH SCREEN THIS SHELF IS HUNG ON, by output name, because the places a
+    // window can go are that screen's own band and not the desktop's whole
+    // supply of numbers. Carrying a window up on the second monitor offers 6-10
+    // and not 1-5, which is the same rule the sidebar's column follows and for
+    // the same reason: a workspace belongs to a screen (services/Hypr.qml,
+    // bandFor).
+    //
+    // DEFAULTED rather than required, and to the focused screen, which is the
+    // answer this file gave implicitly before bands existed. The shelf is also
+    // stood up outside a shell window by the dev harness, where there is no
+    // surface to ask and the focused screen is exactly what it means.
+    property string screen: Hypr.focusedScreen
+
+    // The first workspace of that screen's run, and where the screen currently
+    // is within it. Read from Hypr once each rather than in the delegate, so
+    // the row and anything asking the row about itself (WindowEdge's drop)
+    // agree by construction.
+    readonly property int band: Hypr.bandFor(root.screen)
+    // activeId, not `active`: the bool below already owns that name and means
+    // something else entirely (whether the shelf is out at all). This is the
+    // per-screen spelling of Hypr.activeId, so it wears that name.
+    readonly property int activeId: Hypr.activeOn(root.screen)
+
     // Where the finger is, in the surface's coordinates, and whether the shelf
     // is out at all.
     property real pointX: 0
@@ -58,12 +81,19 @@ Item {
     // compositor's own selector for the first workspace with nothing on it,
     // which is the honest spelling of "a new one": Hyprland does not create
     // workspaces, it numbers them, so a new workspace is an unused number.
+    //
+    // THE SET THE SIDEBAR ON THIS SCREEN DRAWS, which is `count` places
+    // starting at the band rather than `count` places starting at one. The
+    // plates are labelled with the id they send to, because that id is what the
+    // rest of the desktop calls the place, and a shelf that numbered its own
+    // slots 1..5 on every monitor would be offering two different workspaces
+    // under the same label.
     readonly property var slots: {
         const out = [];
-        for (let i = 1; i <= Hypr.count; i++)
+        for (let i = 0; i < Hypr.count; i++)
             out.push({
-                target: i,
-                label: `${i}`,
+                target: root.band + i,
+                label: `${root.band + i}`,
                 glyph: ""
             });
         out.push({
@@ -181,7 +211,7 @@ Item {
             // Whether this is where you already are. A plate is a place, and the
             // one you are standing on is worth saying so that dropping a window
             // back where it came from reads as the no-op it is.
-            readonly property bool here: plate.modelData.target === Hypr.activeId
+            readonly property bool here: plate.modelData.target === root.activeId
             readonly property bool aimed: root.over === plate.index
 
             // What is on that workspace already, as marks. Empty for the "new

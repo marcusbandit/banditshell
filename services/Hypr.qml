@@ -50,6 +50,327 @@ Singleton {
     // and could be answered rather than accepted is the boot, below.
     readonly property int count: Appearance.sizes.wsPersistent
 
+    // ...AND EVERY MONITOR GETS ITS OWN SET OF THEM, which is what turns the
+    // number above from "how many workspaces there are" into "how long one
+    // screen's run is".
+    //
+    // A monitor owns a CONTIGUOUS BAND: the k-th name in
+    // `sidebar.workspaces.order` owns [k*count + 1 .. k*count + count], so with
+    // a five-slot column the first screen owns 1-5 and the second 6-10. One
+    // number, k, is the whole of a monitor's claim, and both ends of the band
+    // fall out of it and `count` rather than being written down anywhere (see
+    // ~/.claude/rules/math-over-hardcoding.md): lengthen the column and every
+    // band lengthens with it, on every screen, with nothing to keep in step.
+    //
+    // CONTIGUOUS, and not interleaved. Odds on one screen and evens on the
+    // other would also partition the numbers, and it would be unusable: the
+    // workspace numbers are what you type into a keybind, and a run you can
+    // say out loud ("one to five is the laptop") is the only arrangement a hand
+    // can learn. It is also the arrangement `rules.conf` is already written in
+    // on any machine that has thought about this at all, which is what makes
+    // the seed below possible.
+    //
+    // AN ORDER OF NAMES, never anything the compositor numbers. Hyprland hands
+    // out monitor ids in plug order, so pulling one cable renumbers the screens
+    // that are left, and a band keyed to an id would change which workspaces a
+    // screen draws while you were looking at it. Nor anything spatial: where a
+    // monitor sits is something the shell can only guess at from layout
+    // coordinates, and guessing would make the answer move when the desk did.
+    // A name is the one handle on a screen that holds still.
+    readonly property var order: Config.values.sidebar.workspaces.order
+
+    // THE FIRST WORKSPACE OF A SCREEN'S RUN, which is the only number a
+    // per-screen consumer needs: everything else in its column is this plus an
+    // index, and every id it produces is a real workspace, so `switchTo` and
+    // `clientsIn` go on meaning exactly what they meant.
+    //
+    // A NAME THE ORDER HAS NOT HEARD OF GETS THE FIRST BAND rather than
+    // nothing. That is a monitor in the moment before the seed below catches up
+    // with it, or the whole of a session where the config could not be read,
+    // and a column with no workspaces in it is a column that draws nothing at
+    // all. The first band is at least a set of places, and it is what every
+    // screen drew before bands existed.
+    function bandFor(screen: string): int {
+        return Math.max(0, root.order.indexOf(screen)) * root.count + 1;
+    }
+
+    // WHERE EACH MONITOR IS, by monitor name, as a NUMBERED workspace.
+    //
+    // The per-screen `activeId`, and it applies that property's rule for the
+    // same reason: a scratchpad pulled over a screen is focused and its id is
+    // negative, but the workspace underneath has not changed and neither has
+    // the answer to "where am I", so a negative id means ask the monitor's own
+    // `activeWorkspace` instead of believing it.
+    //
+    // A MAP rather than a function that finds one monitor, for `occupancy`'s
+    // reason further down this file: this is read by per-screen bindings that
+    // have to re-run whenever anything anywhere moves, and a search that
+    // returns the moment it finds its own monitor leaves the caller subscribed
+    // to only as much as it happened to touch on the way. Computing every
+    // monitor at once touches all of them every time and cannot go stale.
+    readonly property var activeByMonitor: {
+        const out = {};
+        for (const mon of Hyprland.monitors.values) {
+            const live = mon.activeWorkspace?.id ?? 0;
+            out[mon.name] = live > 0 ? live : (mon.lastIpcObject?.activeWorkspace?.id ?? 0);
+        }
+        return out;
+    }
+
+    // One screen's answer, falling back to the head of that screen's own band.
+    // A monitor the compositor has not spoken about yet still has a column to
+    // draw, and the first plate of its own run is the only defensible guess;
+    // this is `activeId`'s fallback of 1, said in bands.
+    function activeOn(screen: string): int {
+        return root.activeByMonitor[screen] || root.bandFor(screen);
+    }
+
+    // WHAT THE COMPOSITOR'S RULES ALREADY SAY, as { "6": "DP-1" }: which output
+    // each numbered workspace is bound to in the config Hyprland has read.
+    //
+    // Asked of `hyprctl workspacerules` rather than read off `rules.conf`,
+    // because the file is the user's to organise however they like and this is
+    // only ever a question about what is in force. Two things are built on it:
+    // the seed, which recovers the band order from it, and the apply, which
+    // diffs against it so that nothing is pushed at a compositor that already
+    // agrees.
+    property var ruleMonitor: ({})
+
+    // Whether that answer has arrived, which is NOT the same as it being empty.
+    // A machine with no workspace rules at all is a real machine, and both the
+    // seed and `home` below have to be able to tell "there are none" from "we
+    // have not asked yet".
+    property bool banded: false
+
+    // BOTH ANSWERS THE SEED NEEDS, because it writes and a writer cannot go
+    // early. The compositor's rules are one; the config file it would otherwise
+    // be about to overwrite is the other. See Config.loaded for why an unread
+    // file and an unset key are the same emptiness until that flips.
+    readonly property bool settled: root.banded && Config.loaded
+
+    // The outputs Quickshell knows about, by name, as a plain list so that a
+    // monitor arriving or leaving is a value change this file can hear. Reading
+    // `Quickshell.screens` inside `reband` alone would tie the seed to whenever
+    // something else happened to run it.
+    readonly property var outputs: {
+        const out = [];
+        for (const s of Quickshell.screens)
+            out.push(s.name);
+        return out;
+    }
+
+    onSettledChanged: {
+        root.reband();
+        root.home();
+    }
+    onOutputsChanged: root.reband()
+
+    // AND WRITING THE KEY IS THE WHOLE OF REORDERING, which is what makes the
+    // settings page a settings page rather than a second implementation of
+    // this file. Move a name, `Config.set` the list, and the compositor is told
+    // by the handler below; no caller has to remember to also call
+    // `applyBands`, and no caller can forget and leave the shell drawing bands
+    // the desktop does not have.
+    //
+    // It fires more often than it strictly needs to, because `Config.set` deep
+    // copies the whole settings object and hands back a new array every time
+    // ANY setting changes. That costs one comparison per workspace against a
+    // map that already agrees, which is nothing, and the alternative is a
+    // notification this file would have to be told about by hand.
+    onOrderChanged: root.applyBands()
+
+    // Seed, then tell the compositor if the two disagree.
+    //
+    // The apply is skipped when the seed WROTE, because writing the order fires
+    // the handler above and that has already pushed it: asking again a line
+    // later would be the same keywords a second time, at a compositor that
+    // heard them the first time. The other path is the one that needs this
+    // call, and it is the reload: the rules moved under an order that did not.
+    function reband(): void {
+        if (!root.settled)
+            return;
+        if (!root.adopt())
+            root.applyBands();
+    }
+
+    // THE ORDER, SEEDED FROM THE COMPOSITOR AND THEN LEFT ALONE.
+    //
+    // The band model needs a list of names and there is no honest way to invent
+    // one: which screen is "first" is a question about where you sit, and the
+    // shell cannot see the desk. But the compositor has already been told the
+    // answer. `rules.conf` binds workspaces to outputs, so grouping those rules
+    // by monitor and sorting each monitor by the LOWEST workspace it was given
+    // recovers the order the user has already written down. 1-5 on one output
+    // and 6-10 on another IS "this one, then that one", spelled in the one
+    // place a desktop ever spells it.
+    //
+    // Which means the first run reproduces exactly what the machine was already
+    // doing, and nothing moves. That is the whole reason for seeding rather
+    // than defaulting: a shell that picked an order of its own would reshuffle
+    // a working desktop on the day it was installed, and would be right about
+    // it roughly half the time.
+    //
+    // ONCE. After the seed the list belongs to the user, so a rule changed in
+    // `rules.conf` afterwards does not quietly rewrite it: by then the list is
+    // what the settings page reorders and the compositor is what gets told.
+    //
+    // A MONITOR NO RULE MENTIONS IS APPENDED, in the order Quickshell hands the
+    // screens over, and that part is not once: a monitor plugged in next week
+    // needs a band of its own rather than sharing the first one. Appended and
+    // never removed, which is why unplugging a screen leaves its place in the
+    // list and plugging it back in puts it on the same workspaces it had.
+    //
+    // ONLY EVER APPENDS, which is what makes the length a complete test for
+    // "did anything change". Nothing here reorders and nothing drops, so a list
+    // that is the same length is the same list, and the config file is left
+    // alone on every run after the first. That test is also the return value,
+    // for the one caller that has to know whether a write happened.
+    function adopt(): bool {
+        const next = root.order.slice();
+
+        if (!next.length) {
+            const lowest = {};
+            for (const id in root.ruleMonitor) {
+                const mon = root.ruleMonitor[id];
+                const n = parseInt(id, 10);
+                if (!(mon in lowest) || n < lowest[mon])
+                    lowest[mon] = n;
+            }
+            for (const mon of Object.keys(lowest).sort((a, b) => lowest[a] - lowest[b]))
+                next.push(mon);
+        }
+
+        for (const name of root.outputs)
+            if (next.indexOf(name) < 0)
+                next.push(name);
+
+        if (next.length === root.order.length)
+            return false;
+
+        Config.set("sidebar.workspaces.order", next);
+        return true;
+    }
+
+    // WHAT THE ORDER WANTS, in the same { workspace: monitor } shape the rules
+    // come back in, so the two can simply be compared. Every band, every slot
+    // in it, from the count.
+    function wants(): var {
+        const out = {};
+        for (let k = 0; k < root.order.length; k++)
+            for (let i = 0; i < root.count; i++)
+                out[`${k * root.count + i + 1}`] = root.order[k];
+        return out;
+    }
+
+    // TELL THE COMPOSITOR WHERE THE BANDS ARE, for the workspaces whose answer
+    // has actually changed and for no others.
+    //
+    // A BINDING, AND NOTHING ELSE. `rules.conf` is never rewritten, and the
+    // reason is load-bearing rather than tidy: `workspacerules -j` reports
+    // `workspaceString`, `enabled` and `monitor`, and that is ALL it reports.
+    // A rule carrying `layout:scrolling, layoutopt:direction:down` comes back
+    // looking exactly like one that carries nothing, so a shell that read the
+    // rules and wrote them out again would silently delete every option it
+    // could not see. It can only ever add a binding on top of what is there,
+    // which is precisely what `hyprctl keyword` does.
+    //
+    // AND A KEYWORD IS RUNTIME STATE. It lives until the next `hyprctl reload`,
+    // which puts the file's own rules back over it, so this is re-run on
+    // `configReloaded` and the diff is taken against the FILE's answer rather
+    // than against whatever was pushed last time. That is also why the rules
+    // are re-read there before this runs: a reload is the one moment the file
+    // can have said something new.
+    //
+    // ONE BATCH rather than one process per workspace. Two screens of five is
+    // ten keywords, and ten hyprctl processes to say one thing is nine more
+    // than the compositor needs to hear it.
+    //
+    // NOTHING TO SAY IS SAID BY SAYING NOTHING, which is what keeps this off
+    // the startup path. On any machine whose order was seeded from its own
+    // rules the diff is empty, so the cost at boot is one comparison and no
+    // process at all; it only speaks once somebody has actually moved a band.
+    function applyBands(): void {
+        // Nothing to diff against yet. Pushing here would compare every
+        // workspace against an answer nobody has given and conclude that all of
+        // them have moved, which is the one way this could shove a desktop
+        // around at startup for no reason at all.
+        if (!root.banded)
+            return;
+
+        // ONE PUSH AT A TIME, and the next answer is REMEMBERED rather than
+        // dropped. A Process cannot be re-commanded while it is running, and
+        // two clicks of a reorder button are milliseconds apart where an
+        // hyprctl round trip is several: the second answer would be the true
+        // one and the compositor would be left holding the first. Queued, it
+        // goes out the moment the process is done.
+        if (pusher.running) {
+            root.pushAgain = true;
+            return;
+        }
+
+        const want = root.wants();
+        const cmds = [];
+        for (const id in want)
+            if (root.ruleMonitor[id] !== want[id])
+                cmds.push(`keyword workspace ${id}, monitor:${want[id]}`);
+
+        if (!cmds.length)
+            return;
+
+        pusher.command = ["hyprctl", "--batch", cmds.join(" ; ")];
+        pusher.running = true;
+    }
+
+    property bool pushAgain: false
+
+    Process {
+        id: pusher
+
+        onExited: if (root.pushAgain) {
+            root.pushAgain = false;
+            root.applyBands();
+        }
+    }
+
+    Process {
+        id: ruleScan
+
+        running: true
+        command: ["hyprctl", "-j", "workspacerules"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // Same tolerance the monitor seed below takes: hyprctl can come
+                // back empty or half-written while the compositor is starting,
+                // and a bad read is not worth an exception.
+                let rules = [];
+                try {
+                    rules = JSON.parse(text);
+                } catch (e) {}
+
+                const bound = {};
+                for (const r of rules) {
+                    // NUMBERED WORKSPACES ONLY. A rule can be written against
+                    // `special:music` or `name:build`, and neither is a place
+                    // in a band: a scratchpad is pulled over wherever you
+                    // already are, and a named workspace has no position in a
+                    // run. All digits or it is not a number, because parseInt
+                    // would happily read "10things" as ten and file a rule
+                    // under a workspace nobody wrote.
+                    if (r.monitor && /^\d+$/.test(r.workspaceString ?? ""))
+                        bound[r.workspaceString] = r.monitor;
+                }
+
+                root.ruleMonitor = bound;
+                root.banded = true;
+                // Called rather than left to `settled`, because after the first
+                // time `banded` is already true and a reload's re-read would
+                // change nothing anybody was listening to.
+                root.reband();
+            }
+        }
+    }
+
     // HOME AT BOOT, and only when the shell would otherwise come up looking at
     // a workspace it has nowhere to draw. Where you are is the compositor's
     // business every other minute of the day; a session that starts on
@@ -57,13 +378,23 @@ Singleton {
     // because the accent then sits on no plate at all and the sidebar is
     // quietly wrong about where you are before you have touched it.
     //
-    // ONCE, and conditionally. A reload is a fresh `Component.onCompleted` as
-    // far as this file is concerned, and being yanked back to workspace one
-    // every time a QML file is saved would be unusable; anywhere inside the
-    // column, which is nearly always, this does nothing whatsoever.
+    // MEASURED AGAINST THE FOCUSED SCREEN'S OWN BAND, which is the correction
+    // bands forced and the one place they could have gone badly wrong. "Past
+    // the end of the column" used to be `activeId > count`, and on a two-screen
+    // machine the second screen's every workspace is past the end of five: a
+    // session left on workspace 6, which is exactly where the second monitor
+    // lives, would have been dragged back to workspace 1 on the other screen
+    // every time the shell started. The question is whether you are on a
+    // workspace YOUR screen draws, so it is asked of your screen's band, and
+    // the way back is the head of that band rather than the number one.
     //
-    // WAITED FOR, TWICE, rather than read at startup, because two separate
-    // answers have to be in before the question means anything.
+    // ONCE, and conditionally. A reload is a fresh `Component.onCompleted` as
+    // far as this file is concerned, and being yanked back to the top of the
+    // column every time a QML file is saved would be unusable; anywhere inside
+    // your own band, which is nearly always, this does nothing whatsoever.
+    //
+    // WAITED FOR, THREE TIMES, rather than read at startup, because three
+    // separate answers have to be in before the question means anything.
     //
     // The first is Hyprland's own. Quickshell talks to it over a socket, so
     // `activeId` is its own fallback of 1 until the first reply lands, and
@@ -77,8 +408,16 @@ Singleton {
     // flight. This is the exact caller that comment warns about: it fires once,
     // at startup, in the one moment nobody is watching the log, and a switch
     // spelled in the wrong dialect is refused as a syntax error rather than
-    // failing loudly. So it waits, and both handlers below call in because
-    // either answer can be the one that arrives last.
+    // failing loudly.
+    //
+    // The third is `settled`, and it is the band's. Until the order has been
+    // seeded, `bandFor` answers 1 for every screen, so the second monitor looks
+    // like it is standing outside a band it in fact owns, and this would fire
+    // the very switch the paragraph above says it must not.
+    //
+    // So it waits for all three, and every handler that watches one of them
+    // calls in: the two below, and `onSettledChanged` up in the band section,
+    // because any of the three can be the one that arrives last.
     readonly property int known: Hyprland.workspaces.values.length
     property bool homed: false
 
@@ -87,11 +426,12 @@ Singleton {
     Component.onCompleted: root.home()
 
     function home(): void {
-        if (root.homed || root.known === 0 || !root.parserKnown)
+        if (root.homed || root.known === 0 || !root.parserKnown || !root.settled)
             return;
         root.homed = true;
-        if (root.activeId > root.count)
-            root.switchTo(1);
+        const band = root.bandFor(root.focusedScreen);
+        if (root.activeId < band || root.activeId >= band + root.count)
+            root.switchTo(band);
     }
 
     // { id: [toplevel, ...] } for every workspace that has any. The indicators
@@ -183,6 +523,13 @@ Singleton {
     // in DP-1's slot instead of in everybody's, and moving the keyboard between
     // monitors re-reads the map rather than waiting for the next toggle to
     // correct a value that was never about this screen.
+    //
+    // AND THE SIDEBAR NO LONGER ASKS IT, which is the last step of that same
+    // argument: a column is drawn per screen, so it wants `specialOn` and its
+    // own name rather than whichever monitor happens to have the keyboard. This
+    // stays because "the special over the screen you are looking at" is a real
+    // question with real askers to come, and it is the right shape for anything
+    // summoned by a keybind rather than reached for with the cursor.
     readonly property string specialShown: root.specialByMonitor[root.focusedScreen] ?? ""
 
     // WHICH SPECIAL IS OVER WHICH MONITOR, keyed by the monitor's own name,
@@ -195,13 +542,21 @@ Singleton {
     // is an event a user caused, a handful a minute at the very most, so a
     // fresh object per event costs nothing worth counting.
     //
-    // A map is also what lets a per-screen consumer eventually ask about ITS
-    // screen rather than about the focused one; nothing does yet (see
-    // modules/sidebar/WorkspaceModel.qml, which is instantiated per screen and
-    // still reads the focused answer), and that is a smaller wrongness than the
-    // one this replaces because it at least tracks the screen you are looking
-    // at.
+    // A map is also what lets a per-screen consumer ask about ITS screen rather
+    // than about the focused one, and `specialOn` below is the caller this note
+    // used to say did not exist yet. It does now:
+    // modules/sidebar/WorkspaceModel.qml takes a screen, and every column reads
+    // the special lying over its own monitor, so pulling a scratchpad over the
+    // laptop no longer greys out the plate you are on over on the desk.
     property var specialByMonitor: ({})
+
+    // ONE SCREEN'S ANSWER, which is what `specialShown` is for the focused one.
+    // "" for a monitor whose special has been dismissed and for one nothing has
+    // been said about, and those two are the same fact as far as a column is
+    // concerned: nothing is lying over it.
+    function specialOn(screen: string): string {
+        return root.specialByMonitor[screen] ?? "";
+    }
 
     // One monitor's answer, replacing whatever it said before.
     function noteSpecial(monitor: string, name: string): void {
@@ -420,14 +775,15 @@ Singleton {
             root.send(`(function() local p = hl.get_cursor_pos() hl.dispatch(hl.dsp.focus({ window = "address:${addr}" })) return hl.dsp.cursor.move({ x = p.x, y = p.y }) end)()`, `focuswindow address:${addr}`);
     }
 
-    // IS THERE A WINDOW AT THIS ADDRESS AND IS IT IN FRONT OF YOU, asked of the
-    // model rather than of the compositor.
+    // WHICH MONITOR IS SHOWING THE WINDOW AT THIS ADDRESS, by name, and "" for
+    // one no monitor is showing at all. Asked of the model rather than of the
+    // compositor.
     //
     // `Hyprland.toplevels` is kept in step with the same event stream this file
     // reads, so the answer is already in the process and costs a walk of a list
     // that is never longer than the windows on the machine. `hyprctl clients`
     // would be the authority, and it was rejected for being an ASYNCHRONOUS
-    // one: the caller above has to decide whether to dispatch in the turn it is
+    // one: the caller below has to decide whether to dispatch in the turn it is
     // asked, and an answer that lands two frames later is no use to it.
     //
     // The two spellings are both here to be reconciled. Quickshell's model
@@ -436,24 +792,42 @@ Singleton {
     // is this shell's to change, and comparing them as they come would answer
     // "no window" for every window there is.
     //
-    // VISIBLE means the window's workspace is the one a monitor is showing, or
-    // is a special pulled over one, which is the same pair `occupancy` below
-    // counts and for the same reason: a scratchpad hidden again is off screen,
-    // and a window on it is as unreachable as one two workspaces away. Asked of
-    // every monitor rather than of the focused one, per the paragraph above.
+    // SHOWING means the window's workspace is the one a monitor is on, or is a
+    // special pulled over one, which is the same pair `occupancy` below counts
+    // and for the same reason: a scratchpad hidden again is off screen, and a
+    // window on it is as unreachable as one two workspaces away. Every monitor
+    // is asked rather than only the focused one.
+    //
+    // AND THE MONITOR THAT ANSWERS IS KEPT, which is the whole difference
+    // between this and the bool it used to be. The walk always knew which
+    // screen the window was on and threw the name away on the way to a yes; the
+    // per-monitor focus map below is the caller that needs the name, and
+    // `specialByMonitor` further up carries the same lesson learned from the
+    // other end. A fact this file has already computed and discarded is a fact
+    // somebody else will go and compute worse.
     //
     // Workspace id zero is a window the model has not placed yet, and an unplaced
     // window is not one anybody is looking at.
-    function onScreen(addr: string): bool {
+    function monitorOf(addr: string): string {
         const bare = (addr.startsWith("0x") ? addr.slice(2) : addr).toLowerCase();
         const client = Hyprland.toplevels.values.find(t => (t.address ?? "").toLowerCase() === bare);
         const id = client?.workspace?.id ?? 0;
         if (id === 0)
-            return false;
-        return Hyprland.monitors.values.some(mon => {
+            return "";
+        const shown = Hyprland.monitors.values.find(mon => {
             const special = mon.lastIpcObject?.specialWorkspace;
             return mon.activeWorkspace?.id === id || (!!special?.name && special.id === id);
         });
+        return shown?.name ?? "";
+    }
+
+    // IS THERE A WINDOW AT THIS ADDRESS AND IS IT IN FRONT OF YOU: the question
+    // above with the name dropped, for `restoreFocus`, which only ever wanted
+    // the yes or no. Any monitor at all, because a window in plain sight on the
+    // other screen is still in plain sight; see that function's own note for why
+    // crossing monitors is the good half of its behaviour.
+    function onScreen(addr: string): bool {
+        return root.monitorOf(addr) !== "";
     }
 
     // CLOSE ONE WINDOW, NAMED, rather than whichever one holds the keyboard.
@@ -573,21 +947,74 @@ Singleton {
     // over the one you launched it from loses focus the moment you twitch.
     // Dispatching focus explicitly warps the pointer with it, which makes the
     // keyboard and the mouse agree about what you just asked for.
-    property bool claiming: false
+    //
+    // ONE RECORD PER LAUNCH, and not one flag for the whole shell. It was a
+    // bool, and a bool is a claim that can only be spent once however many
+    // launches are in flight: two Returns inside the same second, which is one
+    // launcher on each monitor or simply a fast hand on one, meant the first
+    // window to map cleared the flag and the second launch was never focused at
+    // all. Nothing said so. The notice still drew its pill and the window still
+    // opened; the keyboard just stayed where it was, which from the outside is
+    // indistinguishable from the compositor having decided that for itself.
+    //
+    // A LIST OF DEADLINES, which is all a claim has ever been. Every claim does
+    // the same thing to the window it retires (focus it, pointer and all), so
+    // which claim a given window spends cannot be observed from outside and
+    // there is nothing here worth matching by class or by monitor: only the
+    // COUNT was ever wrong. The oldest is spent first, which is what
+    // services/Launching.qml does with the same question one layer up.
+    //
+    // AND EACH ONE KEEPS ITS OWN CLOCK. The single timer was RESTARTED by every
+    // claim, so a second launch quietly extended the first claim's life and two
+    // launches a second apart were both alive for claimMs after the LAST of
+    // them; a deadline per claim is the same promise made to each launch
+    // separately, which is what it was always described as.
+    //
+    // NOT MATCHED AGAINST WHAT WAS LAUNCHED, deliberately. Launching.qml holds
+    // the marks a window's class can be tested against and does that matching
+    // properly; this file is the layer underneath it and must not reach up into
+    // it. The call sites settle it anyway: NiagaraLauncher's `launch(what)`
+    // runs an arbitrary closure out of a row's menu and has no desktop entry to
+    // name.
+    property var claims: []
 
     function claimNextWindow(): void {
-        root.claiming = true;
+        root.claims = [...root.claims, Date.now() + Config.values.launcher.claimMs];
         claim.restart();
+    }
+
+    // SPEND THE OLDEST LIVE CLAIM, and say whether there was one.
+    //
+    // Expiry is decided HERE rather than trusted to the sweep below, because the
+    // sweep only runs after the last claim has run out and the list can hold a
+    // dead claim for a good while before that. A window mapping in between must
+    // not be able to spend it.
+    function takeClaim(): bool {
+        const live = root.claims.filter(until => until > Date.now());
+        if (!live.length) {
+            if (root.claims.length)
+                root.claims = live;
+            return false;
+        }
+        root.claims = live.slice(1);
+        return true;
     }
 
     // Applications are not quick, and some are very slow. Long enough for a
     // browser to get itself up, short enough that an unrelated window opening
     // later is never mistaken for the one that was asked for.
+    //
+    // EMPTIED WHOLE, and one timer for the lot of them. Restarted by every
+    // claim, so it fires a full claimMs after the LAST one was made, by which
+    // time every earlier claim has outlived its own deadline too. That is only
+    // housekeeping: the deadlines are what `takeClaim` reads, so a claim is
+    // dead to a window the instant it runs out whether or not this has been
+    // round to sweep it up.
     Timer {
         id: claim
 
         interval: Config.values.launcher.claimMs
-        onTriggered: root.claiming = false
+        onTriggered: root.claims = []
     }
 
     // The window that has the keyboard, as an address, straight off the event
@@ -602,7 +1029,109 @@ Singleton {
     // Empty payloads are IGNORED rather than stored. Hyprland reports focus
     // moving to a layer surface as an empty activewindowv2, and that is exactly
     // the transition a panel needs to remember ACROSS.
+    //
+    // THE LIVE ANSWER, AND SHELL-WIDE, which is exactly right for the two
+    // things that still read it. `isFocused` asks whether a delegate is THE
+    // focused window, and services/Launching.qml watches this change to notice
+    // a single-instance application raising the window it already had instead
+    // of mapping a new one. Neither of those is a question about a screen.
+    //
+    // A PANEL'S QUESTION IS, and panels ask `focusedOn` below instead. See the
+    // map for what reading this one on the way up cost them.
     property string focusedAddress: ""
+
+    // WHERE THE KEYBOARD LAST WAS ON EACH MONITOR, by monitor name:
+    // { "DP-1": "0x55a1...", "eDP-1": "0x64bc..." }.
+    //
+    // THE HISTORY THE LIVE ANSWER CANNOT KEEP. `focusedAddress` is one slot, so
+    // the moment the keyboard moves to the other screen the only record that
+    // the first screen had a window in it at all is gone, overwritten by a
+    // window nobody over there is looking at. Seven panels in this shell take a
+    // snapshot when they open and hand the keyboard back to it when they close,
+    // and every one of them read that slot; on one monitor the two answers are
+    // the same fact said twice. On two they are not: a panel opened on DP-1
+    // while the keyboard is on eDP-1 remembered eDP-1's window, and closing it
+    // threw the keyboard across to the other screen.
+    //
+    // WHICH IS REACHABLE RATHER THAN THEORETICAL. Panels are per screen and are
+    // summoned BY NAME: `Settings.toggle(win.screen.name)` in
+    // modules/ShellWindow.qml and `Settings.show(root.screen.name)` in
+    // modules/settings/SettingsPanel.qml both open the panel on the monitor the
+    // gesture happened on, which is precisely the monitor that need not be the
+    // focused one. An edge zone is under a hand, not under the keyboard.
+    //
+    // AND WORSE THAN MERELY WRONG, because `restoreFocus` deliberately leaves
+    // the POINTER where it is. Under follow_mouse the handback to the other
+    // screen is undone by the very next twitch of the mouse, so the keyboard
+    // arrives somewhere nobody asked for it and then leaves again on its own,
+    // and what the user sees is a panel that sometimes loses their cursor.
+    //
+    // A MAP, for `occupancy`'s and `specialByMonitor`'s reason: the question is
+    // asked per screen, so the answer is kept per screen and nothing has to
+    // guess afterwards which monitor an event was about. REASSIGNED rather than
+    // mutated in place, because a `var` property notifies on the object changing
+    // identity and not on a key being written into the one it already holds.
+    //
+    // THE SOURCE OF THE SNAPSHOT, AND ONLY THAT. `restoreFocus`'s `onScreen`
+    // guard still lets a handback cross monitors and must: a window you were
+    // last in that is sitting in plain sight on the other screen is still where
+    // you were, and going back to it moves nothing and switches nothing. What
+    // changes here is which window a panel decides it came from, not how far
+    // the keyboard is allowed to travel to reach it.
+    property var focusedByMonitor: ({})
+
+    // ONE SCREEN'S ANSWER, which is what every panel wanted and what
+    // `focusedAddress` only accidentally was.
+    //
+    // "" for a monitor nothing has been focused on this session, and that is a
+    // real answer rather than a missing one: there is no window over there to
+    // hand the keyboard back to, and `restoreFocus` says nothing at all when it
+    // is given nothing. Handing back a window on some other screen instead is
+    // the bug this whole map exists to end.
+    //
+    // A CALLER THAT CANNOT SAY WHERE IT IS gets the focused screen's answer,
+    // which is exactly what reading `focusedAddress` used to give it. An item is
+    // in no window for the frame before it is in one, and a preview harness has
+    // no screen name to offer at all; neither is a reason to answer worse than
+    // the shell answered before there were screens in this at all.
+    function focusedOn(screen: string): string {
+        return root.focusedByMonitor[screen || root.focusedScreen] ?? "";
+    }
+
+    // One monitor's answer, replacing whatever it said before. A monitor with no
+    // name is no monitor, and filing an address under "" would be an answer
+    // handed to every caller that could not say where it was.
+    function noteFocus(monitor: string, addr: string): void {
+        if (!monitor)
+            return;
+        const next = Object.assign({}, root.focusedByMonitor);
+        next[monitor] = addr;
+        root.focusedByMonitor = next;
+    }
+
+    // A DEAD WINDOW IS FORGOTTEN BY EVERY SCREEN THAT WAS HOLDING IT, which is
+    // this map's share of the argument written over the closewindow handler
+    // below: the address of a window that has gone must not be handed to the
+    // NEXT panel that opens, or the one after that. `focusedAddress` clears
+    // itself there for exactly this reason and clearing one slot no longer
+    // covers it, because the screen holding the dead address is generally not
+    // the screen the keyboard is on.
+    //
+    // Only a screen that was actually holding it is touched, and the map is
+    // reassigned only if one was, so a window dying somewhere nothing was
+    // remembering costs a walk of a map with one key per monitor and no
+    // notification at all.
+    function forgetFocus(addr: string): void {
+        const next = {};
+        let held = false;
+        for (const mon in root.focusedByMonitor) {
+            const was = root.focusedByMonitor[mon];
+            held = held || was === addr;
+            next[mon] = was === addr ? "" : was;
+        }
+        if (held)
+            root.focusedByMonitor = next;
+    }
 
     // Windows on the screen's active workspace, front-most first, which is the
     // order a picker has to test them in: the one on top is the one you meant.
@@ -705,11 +1234,20 @@ Singleton {
                 if (addr)
                     root.windowOpened(addr, parts.slice(3).join(","), parts[2] ?? "");
 
-                if (root.claiming) {
-                    root.claiming = false;
-                    claim.stop();
+                // THE ADDRESS IS CHECKED FIRST, so that a payload this file
+                // could not read does not spend somebody's claim on a window it
+                // cannot name. `focusAddress` guards itself, so the old spelling
+                // dispatched nothing either; it just retired the claim on the way
+                // to doing nothing, and the launch that made it waited out the
+                // rest of its deadline for a window that had already been and
+                // gone.
+                //
+                // The sweep is left running when a claim is spent, because the
+                // claims behind it in the list are still waiting for windows of
+                // their own, and there is nothing left for it to sweep once they
+                // have gone.
+                if (addr && root.takeClaim())
                     root.focusAddress(addr);
-                }
             }
 
             if (n === "closewindow") {
@@ -726,8 +1264,16 @@ Singleton {
                     // duplicate of it. That guard saves the panel already up,
                     // holding a snapshot nothing can reach; this one stops the
                     // dead address being handed to the NEXT panel, and the one
-                    // after that, because `focusedAddress` is what every panel
-                    // snapshots on the way in.
+                    // after that, out of whichever slot was holding it.
+                    //
+                    // BOTH SLOTS, which is why the map is swept alongside. The
+                    // live answer and the screen the window was on are two
+                    // different memories of the same window, panels read the
+                    // second one, and a window generally dies on a screen that
+                    // is not the one the keyboard ends up on: clearing only
+                    // `focusedAddress` would leave the dead address sitting in
+                    // its monitor's slot for the rest of the session, waiting
+                    // for a panel to open over there and be handed it.
                     //
                     // It is needed precisely because of the rule three
                     // paragraphs down: an empty activewindowv2 is ignored, so
@@ -742,18 +1288,60 @@ Singleton {
                     // somewhere nobody would have thought to look.
                     if (root.focusedAddress === gone)
                         root.focusedAddress = "";
+                    root.forgetFocus(gone);
 
                     root.windowClosed(gone);
                 }
             }
 
-            if (n === "configreloaded")
+            if (n === "configreloaded") {
                 root.configReloaded();
+
+                // AND THE BANDS ARE PUSHED AGAIN, which is this file taking its
+                // own signal's advice: a reload drops every `hyprctl keyword`
+                // and puts `rules.conf` back over it, so a band the user moved
+                // has just been un-moved underneath them. Re-READ before
+                // re-pushed, because a reload is the one moment the file can
+                // have said something new, and `ruleMonitor` is what the push
+                // diffs against; the scan calls `reband` when it lands.
+                ruleScan.running = true;
+            }
 
             if (n === "activewindowv2") {
                 const addr = (event.data ?? "").trim();
-                if (addr && addr !== ",")
-                    root.focusedAddress = addr.startsWith("0x") ? addr : `0x${addr}`;
+                if (addr && addr !== ",") {
+                    const now = addr.startsWith("0x") ? addr : `0x${addr}`;
+                    root.focusedAddress = now;
+
+                    // AND FILED UNDER THE SCREEN IT IS ON, which the event does
+                    // not say: activewindowv2 carries an address and nothing
+                    // else at all.
+                    //
+                    // ASKED OF THE WINDOW rather than of the focus. Where a
+                    // window is, is a fact about the window, and it does not
+                    // depend on the order two events happened to arrive in.
+                    // `focusedmon` does come with a monitor's name on it and was
+                    // the obvious source; it is only sent when focus CROSSES
+                    // screens, so every focus change within one monitor, which
+                    // is nearly all of them, would have had nothing to read and
+                    // would have had to fall back to whatever the last crossing
+                    // said. A lookup that is right every time beats a payload
+                    // that is right occasionally.
+                    //
+                    // A WINDOW THE MODEL CANNOT PLACE IS ATTRIBUTED TO THE
+                    // FOCUSED SCREEN, and that is the newly mapped window
+                    // rather than a mystery: `Hyprland.toplevels` is refreshed
+                    // by an IPC round trip that has not landed in the turn this
+                    // event is handled in, so the newest window on the machine
+                    // is exactly the one `monitorOf` cannot find. Dropping it
+                    // would leave the screen you just launched something on
+                    // remembering the window from before the launch, which is
+                    // the staleness this map was built to remove, arrived at
+                    // from the other end. The keyboard has just moved to that
+                    // window, so the screen the keyboard is on is the
+                    // compositor's own answer to where it went.
+                    root.noteFocus(root.monitorOf(now) || root.focusedScreen, now);
+                }
             }
 
             // A SCRATCHPAD CAME OVER THE SCREEN, OR LEFT IT. The payload is

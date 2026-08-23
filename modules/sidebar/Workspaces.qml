@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import qs.config
 
@@ -25,6 +27,15 @@ import qs.config
 Item {
     id: root
 
+    // WHICH SCREEN'S WORKSPACES, by output name, passed to whichever style is
+    // loaded and no further business of this file.
+    //
+    // Every style needs it and none of them can find it for themselves without
+    // each asking the surface the same question three files deep, so the
+    // sidebar asks once and it comes down from there. This file spends it in
+    // one place: whichever style the Loader ends up holding.
+    required property string screen
+
     readonly property string style: Appearance.sizes.wsStyle
 
     implicitHeight: content.item?.implicitHeight ?? 0
@@ -42,18 +53,24 @@ Item {
     Component {
         id: plates
 
-        WorkspacePlates {}
+        WorkspacePlates {
+            screen: root.screen
+        }
     }
 
     Component {
         id: map
 
-        WorkspaceMap {}
+        WorkspaceMap {
+            screen: root.screen
+        }
     }
 
     Component {
         id: blocks
 
-        WorkspaceBlocks {}
+        WorkspaceBlocks {
+            screen: root.screen
+        }
     }
 }

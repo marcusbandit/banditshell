@@ -325,8 +325,52 @@ Singleton {
                     // means all of them in name order and nothing reserved.
                     specials: [],
 
-                    // Slots always shown, even when empty.
+                    // Slots always shown, even when empty. This is the length
+                    // of ONE MONITOR'S run, not of the desktop: see `order`.
                     persistent: 5,
+
+                    // WHICH MONITOR OWNS WHICH RUN OF WORKSPACES, by output
+                    // name, in band order.
+                    //
+                    // Every screen's sidebar draws its own workspaces, and
+                    // which ones those are is a contiguous BAND per monitor:
+                    // the first name here owns 1..persistent, the second the
+                    // `persistent` numbers after that, and so on. Position in
+                    // this list is the whole of the rule, so moving a name
+                    // moves a band and there is nothing else to keep in step.
+                    //
+                    // BY NAME, never by Hyprland's monitor id and never by
+                    // where the screen physically sits. Ids are handed out in
+                    // plug order and shuffle the moment a cable is pulled, so a
+                    // band keyed to one would change which workspaces a screen
+                    // draws while you were looking at it. A name survives a
+                    // cable, which is also why nothing ever REMOVES one: unplug
+                    // a monitor and its place is kept, plug it back in and it
+                    // is on the same workspaces it was.
+                    //
+                    // EMPTY MEANS ASK THE COMPOSITOR, once. `hyprctl
+                    // workspacerules` already says which output each workspace
+                    // is bound to, so the first run groups those rules by
+                    // monitor, sorts each monitor by the lowest workspace it
+                    // was given, and writes the result back here. A machine
+                    // whose rules bind 1-5 to one output and 6-10 to another
+                    // therefore comes up drawing exactly what it was already
+                    // doing, with nothing moved and nothing invented; a shell
+                    // that picked an order of its own would reshuffle a working
+                    // desktop on the day it was installed. Monitors no rule
+                    // mentions are appended as the shell is told about them.
+                    //
+                    // Empty is also the only honest DEFAULT here: merge() reads
+                    // an empty array as a list whose contents are data and keeps
+                    // whatever length it finds, where a non-empty one is a
+                    // fixed set of slots that reverts the day the length moves,
+                    // which for a list of monitors is the day one is plugged in.
+                    // Not settable from the CLI either way, because Quickshell's
+                    // IPC splats a bracketed argument into an argument list (see
+                    // `apps.icons` above); the screens settings page is the way
+                    // in.
+                    order: [],
+
                     slot: 32,
                     // Wider than the gap INSIDE a slot, which is what makes a
                     // workspace holding three windows read as one group rather
@@ -1392,6 +1436,24 @@ Singleton {
 
     property var values: defaults
 
+    // WHETHER THE USER'S FILE HAS ACTUALLY BEEN READ, which is not the same
+    // question as whether `values` is usable.
+    //
+    // `values` starts as the defaults so the shell can boot before the disk
+    // answers, and everything that only READS a setting is right to take that
+    // early answer and re-bind when the real one lands. That is the whole
+    // reason it is seeded rather than left null.
+    //
+    // Anything that WRITES one cannot. FileView loads asynchronously, so a
+    // service that computes something at startup and calls `set` before the
+    // file is in has just merged its answer into the DEFAULTS and written the
+    // result over whatever the user had. services/Hypr.qml's band order is
+    // exactly that shape: it seeds itself from the compositor when the list is
+    // empty, and a file that has not arrived yet is empty in precisely the same
+    // way a genuinely unset one is. This is the only thing that tells the two
+    // apart, so a writer waits for it and a reader never needs to.
+    property bool loaded: false
+
     // Read one setting by dotted path, e.g. get("sidebar.width").
     function get(key: string): var {
         return key.split(".").reduce((node, k) => node?.[k], root.values);
@@ -1471,6 +1533,12 @@ Singleton {
 
             root.values = root.merge(root.defaults, parsed);
 
+            // AND THE FILE IS IN, which is the answer a writer has been waiting
+            // for. After `values`, never before it: a listener that writes back
+            // runs the instant this flips, and it must find the merged settings
+            // rather than the defaults it is about to overwrite them with.
+            root.loaded = true;
+
             // If the SHAPE changed, write the file back.
             //
             // merge() already makes an outdated file work, and that is exactly
@@ -1497,9 +1565,17 @@ Singleton {
 
     // First run: make the directory, then write the defaults out so there is
     // something to edit.
+    //
+    // AND THIS COUNTS AS LOADED. There was no file, so the defaults are not a
+    // placeholder for one that is still coming: they are the whole truth about
+    // this machine's settings, and a writer that kept waiting for a read that
+    // will never happen would sit out the entire first session.
     Process {
         id: mkdir
         command: ["mkdir", "-p", root.dir]
-        onExited: root.save()
+        onExited: {
+            root.save();
+            root.loaded = true;
+        }
     }
 }

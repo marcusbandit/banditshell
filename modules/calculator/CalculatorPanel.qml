@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -189,12 +190,30 @@ Item {
     // it back: you would get the calculator, dismiss it, and be left typing into
     // nothing. The launcher and the power panel both keep this for the same
     // reason.
+    //
+    // ON THIS SCREEN, which is the whole of what `Hypr.focusedOn` adds over the
+    // shell-wide answer this used to read. There is one calculator per monitor
+    // and the one you summoned is the one on the screen you are at; the window
+    // it must hand the keyboard back to is the one that was in front of you
+    // there, not whichever window happened to hold the keyboard on the other
+    // screen. See services/Hypr.qml's `focusedByMonitor` for what that cost.
     property string restoreTo: ""
+
+    // WHICH SCREEN THIS PANEL IS DRAWN ON, for the line above.
+    //
+    // ASKED OF THE WINDOW rather than handed down from ShellWindow, which is the
+    // idiom modules/SettingsCorner.qml established and both
+    // modules/sidebar/Sidebar.qml and modules/notifications/NotificationTray.qml
+    // use: the screen is not a fact about the calculator the way its keypad is,
+    // it is a fact about the surface the calculator happens to be drawn on. It
+    // is also free to anything that builds this panel outside the shell's own
+    // wiring, which a property threaded down through ShellWindow would not be.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     function show(): void {
         if (root.shown)
             return;
-        root.restoreTo = Hypr.focusedAddress;
+        root.restoreTo = Hypr.focusedOn(root.screenName);
         root.shown = true;
         // DEFERRED: the surface only asks the compositor for the keyboard once
         // `open` has propagated, and focus forced before that lands is focus in a

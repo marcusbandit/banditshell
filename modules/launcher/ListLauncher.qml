@@ -115,10 +115,63 @@ Item {
     // refreshed by an IPC round trip and so is one window behind at the moment
     // this needs it. Captured on the way up, because by the time the grab is
     // live there is nothing left to capture.
+    //
+    // AND THIS SCREEN'S ADDRESS, not the shell's. There is one launcher per
+    // monitor and the bottom edge that opens it is under a hand rather than
+    // under the keyboard, so the window this panel came out in front of is the
+    // one that was in front of you HERE. `Hypr.focusedAddress` is a single slot
+    // holding whichever window last took the keyboard anywhere, and reading it
+    // meant a launcher opened on the quiet screen handing the keyboard back
+    // across the desk on Escape, with the pointer deliberately left behind to
+    // undo it a twitch later. `Hypr.focusedOn` is the same question asked of one
+    // screen; services/Hypr.qml's `focusedByMonitor` carries the argument.
     property string restoreTo: ""
 
+    // WHICH SCREEN THIS LAUNCHER IS DRAWN ON, for the line above.
+    //
+    // ASKED OF THE WINDOW rather than handed down. modules/SettingsCorner.qml
+    // established the idiom and modules/sidebar/Sidebar.qml and
+    // modules/notifications/NotificationTray.qml both follow it: the screen is
+    // not a fact about the launcher the way `originX` is, it is a fact about the
+    // surface the launcher happens to be drawn on, and this one is built by a
+    // Loader inside modules/launcher/Launcher.qml that would otherwise have to
+    // forward a property it has no other use for, twice, once per concept.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+
     function show(): void {
-        root.restoreTo = Hypr.focusedAddress;
+        // TAKEN ONLY WHEN IT IS ACTUALLY OPENING, which is the one thing this
+        // function does that must not happen twice. `banditshell launcher open`
+        // never asks whether the panel is already up, and neither does a drag
+        // that ends open on one it never closed; both of those mean "start the
+        // query again", and neither of them means "forget where I came from".
+        // Every other panel in the shell refuses the whole call when it is
+        // already showing (the clipboard, the calculator, the power panel, the
+        // hotkey sheet, the settings page) and so has never had to say this.
+        // This one cannot: reopening onto a stale query is the bug those
+        // guards would reintroduce here, so the reset stays unconditional and
+        // the memory is what gets guarded instead.
+        //
+        // ON ONE SCREEN THE SECOND READ IS HARMLESS, which is why it stood.
+        // The panel holds the keyboard by then, and Hyprland announces focus
+        // moving to a layer surface as an empty activewindowv2 that
+        // services/Hypr.qml drops on purpose, so the remembered address still
+        // names the window it named on the way up and reading it again gets the
+        // same answer. On two screens it did not. Push the pointer onto the
+        // other monitor while this is open and the window under it takes focus
+        // for real, with a real address, and a second show() swapped the window
+        // you were working in for one you merely passed over. Escape then handed
+        // the keyboard to the wrong monitor, which is the failure this whole
+        // property exists to prevent, arrived at from the other end.
+        //
+        // AND THE SOURCE HAS BEEN FIXED UNDERNEATH IT SINCE. That stray focus
+        // now lands in the OTHER monitor's slot, so this screen's answer does
+        // not change when the pointer wanders off it and a second read gets what
+        // the first one got. The guard stays anyway, because it says something
+        // the map does not: reopening a panel that is already up means start the
+        // query again, and never means forget where you came from. Being right
+        // about that twice costs one comparison.
+        if (!root.shown)
+            root.restoreTo = Hypr.focusedOn(root.screenName);
         // Always out of the bottom edge, whatever the last close did.
         root.collapseToCentre = false;
         root.unsized = true;

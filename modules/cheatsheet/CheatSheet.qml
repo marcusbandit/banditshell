@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.components
@@ -88,7 +89,20 @@ Item {
     // The window that had the keyboard before this took it, so it can have it
     // back. A sheet you opened to look something up and then had to click back
     // into your editor from would cost more than it told you.
+    //
+    // THE EDITOR ON THIS SCREEN, which is what `Hypr.focusedOn` is for. The
+    // shell-wide answer sent the keyboard to whichever monitor happened to hold
+    // it when the sheet went up, and a sheet is the panel you are most likely to
+    // open on the screen you are NOT working in: you look a bind up on one
+    // monitor in order to press it in the other. See services/Hypr.qml's
+    // `focusedByMonitor`.
     property string restoreTo: ""
+
+    // WHICH SCREEN THIS SHEET IS DRAWN ON, for the line above. Asked of the
+    // window, per modules/SettingsCorner.qml and modules/sidebar/Sidebar.qml,
+    // rather than threaded down through ShellWindow: the screen is a fact about
+    // the surface, not about the document on it.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     // WHAT THE COMPOSITOR SAID, parsed into the only things a row needs: which
     // modifiers, which submap, which key, and what it does. Kept between opens,
@@ -776,7 +790,7 @@ Item {
     function show(): void {
         if (root.open)
             return;
-        root.restoreTo = Hypr.focusedAddress;
+        root.restoreTo = Hypr.focusedOn(root.screenName);
         // RE-READ EVERY TIME. The sheet is what you open after changing your
         // binds, so a cached list is wrong at exactly the moment it is consulted.
         root.reload();

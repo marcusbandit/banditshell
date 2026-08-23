@@ -542,7 +542,14 @@ Item {
 
             // Dropping a window back on the workspace it is already on is a
             // change of mind spelled as a drop, so it is answered as one.
-            if (slot.target === Hypr.activeId)
+            //
+            // THE SHELF'S OWN ANSWER, not the shell-wide one: the shelf offers
+            // this screen's band and knows where this screen is, so asking it
+            // is asking the same object that drew the plate. Carrying a window
+            // on the monitor that does not have the keyboard used to compare
+            // its workspace against the OTHER screen's, which made every drop
+            // there look like a move.
+            if (slot.target === shelf.activeId)
                 root.finish("back", -1);
             else {
                 Hypr.sendToWorkspace(root.held.addr, slot.target, Appearance.sizes.windowFollow);
@@ -861,6 +868,7 @@ Item {
 
         anchors.fill: parent
 
+        screen: root.screen.name
         holeX: root.holeX
         holeY: root.holeY
         holeWidth: root.holeWidth

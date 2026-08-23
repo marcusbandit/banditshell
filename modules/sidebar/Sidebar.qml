@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import qs.config
 import qs.modules.menu.content
 
@@ -24,10 +25,31 @@ Item {
     property alias tray: tray
 
     // What a full summoning pull measures against, bound by whoever owns the
-    // surface (the window can see the screen; this file cannot) and passed
+    // surface (the window knows its own size; this file cannot) and passed
     // straight down to the clock's date. Zero until wired, which is safe: the
     // Pull at the far end guards its own travel.
     property real pullSpan: 0
+
+    // WHICH DISPLAY THIS SIDEBAR IS ON, by output name.
+    //
+    // There is one of these per screen and always has been, so this is not new
+    // information, only newly asked for: the workspace column underneath needs
+    // it to know which run of workspaces it is drawing (see
+    // modules/sidebar/WorkspaceModel.qml), and every other question in here
+    // happens to be one whose answer is the same on every monitor.
+    //
+    // ASKED OF THE SURFACE ITSELF rather than handed down like `pullSpan`
+    // above, and the difference is what kind of fact it is. The diagonal is a
+    // measurement, and only the window has the numbers; the screen is the
+    // window's IDENTITY, and Quickshell attaches that to every item inside it
+    // (modules/SettingsCorner.qml asks the same question the same way, for the
+    // same reason). Nothing above has to remember to pass it, and it cannot be
+    // passed wrong.
+    //
+    // Empty for the frame before the item is in a window, which the column
+    // survives: an unknown screen draws the first band, which is what every
+    // sidebar drew before there were bands.
+    readonly property string screen: QsWindow.window?.screen?.name ?? ""
 
     signal requested(string key)
     signal released
@@ -124,6 +146,8 @@ Item {
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
+
+        screen: root.screen
     }
 
     // FULL WIDTH for the same reason the tray is, and the width is passed

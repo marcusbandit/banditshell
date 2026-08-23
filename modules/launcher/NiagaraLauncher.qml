@@ -497,11 +497,25 @@ Item {
     // cannot be read off a scroll offset alone.
     readonly property string scrollInfo: `${query.text ? `search "${query.text}"` : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}`
 
-    // What had the keyboard before this took it; see ListLauncher, same reason.
+    // What had the keyboard before this took it, and on THIS screen; see
+    // ListLauncher, same reason and the same correction, and services/Hypr.qml's
+    // `focusedByMonitor` for why one slot for the whole shell was the wrong
+    // place to read it from.
     property string restoreTo: ""
 
+    // Which screen this launcher is drawn on, asked of the window rather than
+    // handed down through the Loader that builds it; ListLauncher's pair carries
+    // the argument, and both concepts answer the same call from the same two
+    // places, so both ask the same way.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+
     function show(): void {
-        root.restoreTo = Hypr.focusedAddress;
+        // Only when it is actually opening, and only the memory is guarded
+        // while the reset below stays unconditional; ListLauncher's show()
+        // carries the whole argument, and it applies here word for word
+        // because both concepts answer the same call from the same two places.
+        if (!root.shown)
+            root.restoreTo = Hypr.focusedOn(root.screenName);
         root.shown = true;
         query.text = "";
         root.marked = "";

@@ -58,6 +58,11 @@ import qs.services
 Item {
     id: root
 
+    // WHICH SCREEN THIS COLUMN IS ON, by output name, handed straight to the
+    // model and never read here: a style draws what the model says, and which
+    // workspaces those are is the model's question. See WorkspaceModel.screen.
+    required property string screen
+
     // WHAT A WINDOW IS DRAWN AS: the Nerd Fonts mark for the application itself
     // (`brand`), the icon theme's artwork as shipped (`colour`), or the Material
     // Symbol for what kind of thing it is (`glyph`). See config.json.
@@ -131,7 +136,11 @@ Item {
 
     // Where the plate you are on currently IS, smoothed like everything else, so
     // a card lying on it travels with it rather than after it.
-    readonly property var activeGeom: layout.at(Hypr.activeId - 1)
+    //
+    // Indexed off the model's own band rather than off workspace one: the
+    // active id is an absolute workspace number and the column is a run of
+    // them, so the slot it lands on is how far into THIS screen's run it sits.
+    readonly property var activeGeom: layout.at(layout.active - layout.band)
 
     property int hovered: -1
     property int racked: -1
@@ -213,6 +222,7 @@ Item {
     WorkspaceModel {
         id: layout
 
+        screen: root.screen
         base: root.slot
         pitch: root.pitch
     }
@@ -499,12 +509,15 @@ Item {
 
             required property int index
             readonly property var info: layout.slots[index] ?? ({
-                    id: index + 1,
+                    id: layout.idAt(index),
                     windows: [],
                     rest: 0
                 })
             readonly property var geom: layout.at(index)
-            readonly property bool isActive: Hypr.activeId === slotItem.info.id
+            // The MODEL'S active workspace, which is this screen's own and not
+            // the focused one: the sidebar on the monitor you are not looking
+            // at still marks the plate you left it standing on.
+            readonly property bool isActive: layout.active === slotItem.info.id
             readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
             // A scratchpad is lying on this plate, so its windows are behind
             // one: you cannot see them, and neither should their marks, which

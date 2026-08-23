@@ -82,6 +82,19 @@ Item {
     // nothing else may claim it.
     property string restoreTo: ""
 
+    // WHICH SCREEN THIS PANEL IS DRAWN ON, so the line above is a question about
+    // the right one: the window you are going to paste into is the window that
+    // was in front of you HERE, and there is one clipboard panel per monitor.
+    // Reading the shell-wide focus instead meant a panel opened on the screen
+    // without the keyboard remembered a window on the other one and pasted
+    // nowhere useful at all; services/Hypr.qml's `focusedByMonitor` carries the
+    // argument in full.
+    //
+    // Asked of the window rather than handed down, per
+    // modules/SettingsCorner.qml and modules/sidebar/Sidebar.qml: which surface
+    // a panel is drawn on is the window's fact, not the panel's.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+
     readonly property real panelWidth: Math.min(Appearance.sizes.clipboardWidth, root.width - root.originX - root.inset * 2)
 
     readonly property var blobs: panel.height <= 0 ? [] : [
@@ -109,7 +122,7 @@ Item {
     function show(): void {
         if (root.shown)
             return;
-        root.restoreTo = Hypr.focusedAddress;
+        root.restoreTo = Hypr.focusedOn(root.screenName);
         root.shown = true;
         root.selected = 0;
         root.hovered = -1;
