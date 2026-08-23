@@ -117,6 +117,24 @@ Item {
     // clamp does the rest.
     readonly property real radius: Appearance.rounding.normal
 
+    // HOW FAR A SLOT'S TARGET REACHES PAST THE SLOT, above and below, and the
+    // two halves add up to exactly the gap between slots.
+    //
+    // The column is a run of things to press with air between them, and the air
+    // belonged to nobody: run the cursor slowly down the sidebar and it turned
+    // from a hand to an arrow and back at every gap, four times on the way past
+    // five workspaces. Nothing was wrong except that the pointer kept saying so.
+    //
+    // Split rather than overlapped, and floor above with the remainder below, so
+    // that slot i's target ends on the exact pixel slot i+1's begins whatever the
+    // gap is set to. An odd gap leaves no seam and no double-claimed row; the
+    // boundary lands nearer the slot whose air it was.
+    //
+    // It also does what a bigger target always does: the empty workspaces are
+    // 9px dots, and this is another twelve pixels of column that hits one.
+    readonly property int bleedUp: Math.floor(Appearance.sizes.wsGap / 2)
+    readonly property int bleedDown: Appearance.sizes.wsGap - root.bleedUp
+
     // THE RACK'S OWN RHYTHM: a bar is ONE ORDINARY ICON tall, where a cell is a
     // whole workspace slot.
     //
@@ -810,7 +828,11 @@ Item {
             MouseArea {
                 id: slotMouse
 
+                // PAST THE SLOT, into the air either side of it: see root.bleedUp.
+                // The drawn cell is untouched, this is only what answers.
                 anchors.fill: parent
+                anchors.topMargin: -root.bleedUp
+                anchors.bottomMargin: -root.bleedDown
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 preventStealing: layout.scrubbing
