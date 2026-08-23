@@ -23,7 +23,7 @@
 #                                runs; `panel` is the strip on the sidebar's
 #                                flank. Both toggle. The shape is sticky, so
 #                                `toggle` reopens whichever you last used
-#   banditshell tablet on|off|toggle|status|probe
+#   banditshell tablet on|off|toggle|lid closed|open|status|probe|probe-lid
 #                                the hinge. `on`/`off` are what the compositor's
 #                                switch binds call when the machine is folded
 #                                over; `probe` asks the hardware directly
@@ -203,9 +203,20 @@ tablet)
     # one (`compositor`). It is what makes `status` able to tell a hinge that
     # moved from a command somebody typed.
     on | off | toggle) ipc tablet "$sub" "${2:-}" ;;
+    # THE LID, which vetoes the hinge: this machine's fold switch trips when the
+    # lid is SHUT as well as when it is folded back, so the shell needs the lid
+    # to tell 0 degrees from 360. Called by the lid bind, next to the fold ones.
+    lid)
+        case "${2:-}" in
+        closed | open | toggle) ipc tablet lid "$2" "${3:-}" ;;
+        *) echo "usage: banditshell tablet lid closed|open|toggle" >&2; exit 2 ;;
+        esac
+        ;;
     status) ipc tablet status ;;
     probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
-    *) echo "usage: banditshell tablet on|off|toggle|status|probe" >&2; exit 2 ;;
+    # The lid's own probe, same script and same diagnostic purpose.
+    probe-lid) python3 "$SHELL_DIR/scripts/tablet-state.py" --lid --verbose ;;
+    *) echo "usage: banditshell tablet on|off|toggle|lid closed|open|status|probe|probe-lid" >&2; exit 2 ;;
     esac
     ;;
 

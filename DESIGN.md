@@ -426,6 +426,10 @@ banditshell/
 │   │                            come from the compositor (a switch bind execs
 │   │                            the CLI); the state at startup comes from
 │   │                            scripts/tablet-state.py, and is allowed to fail.
+│   │                            TWO switches, not one: the hinge switch trips at
+│   │                            0 degrees as well as 360, so the LID vetoes it
+│   │                            and a shut laptop is not a tablet. They fire
+│   │                            unordered, so the fold settles before it counts.
 │   │                            Also owns `docked`, which FrameExclusions reads:
 │   │                            an exclusive zone belongs to a one-edge surface
 │   │                            and the board is drawn in the four-edge one, so

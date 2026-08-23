@@ -32,6 +32,17 @@ and the next fold corrects it, which costs one gesture.
     flat     it is not
     unknown  no such device, or no permission to ask
 
+WITH --lid IT ASKS A DIFFERENT SWITCH, SW_LID, on a different device, and the
+reason the two live in one script is that on this chassis they are one question.
+The Yoga's tablet switch reports the hinge as "not in the laptop range", and
+CLOSED is not in the laptop range either: shutting the lid trips SW_TABLET_MODE
+exactly as folding it all the way back does. The firmware cannot tell 0 degrees
+from 360, so the shell has to, and the lid is the thing that tells them apart.
+
+    closed   the lid is shut
+    open     it is not
+    unknown  no such device, or no permission to ask
+
 Exit status is 0 for a real answer and 1 for `unknown`, so a caller can branch
 on the status rather than parsing the word.
 """
@@ -43,6 +54,7 @@ import sys
 
 # linux/input-event-codes.h
 EV_SW = 0x05
+SW_LID = 0x00
 SW_TABLET_MODE = 0x01
 
 # asm-generic/ioctl.h. _IOC(dir, type, nr, size), with _IOC_READ == 2. The
@@ -77,8 +89,13 @@ def _has_bit(buf: "bytes | bytearray", bit: int) -> bool:
     return bool(buf[bit // 8] & (1 << (bit % 8)))
 
 
-def probe(path: str):
-    """(supported, folded, name) for one device node, or None if it cannot be read."""
+def probe(path: str, switch: int):
+    """(supported, set, name) for one device node, or None if it cannot be read.
+
+    `switch` is the SW_* bit being asked about. It is a parameter rather than a
+    constant because the lid and the hinge are two bits on two different
+    devices, and the ioctl dance for reading either one is identical.
+    """
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
     except OSError:
@@ -87,7 +104,7 @@ def probe(path: str):
     try:
         caps = bytearray(BITMAP_BYTES)
         fcntl.ioctl(fd, _eviocgbit(EV_SW, BITMAP_BYTES), caps)
-        if not _has_bit(caps, SW_TABLET_MODE):
+        if not _has_bit(caps, switch):
             return None
 
         state = bytearray(BITMAP_BYTES)
@@ -100,7 +117,7 @@ def probe(path: str):
         except OSError:
             label = os.path.basename(path)
 
-        return (True, _has_bit(state, SW_TABLET_MODE), label)
+        return (True, _has_bit(state, switch), label)
     except OSError:
         return None
     finally:
@@ -108,6 +125,15 @@ def probe(path: str):
 
 
 def main() -> int:
+    # WHICH SWITCH, and what its two states are CALLED. The words are carried
+    # alongside the bit because "flat" and "open" are not interchangeable: a
+    # caller reading `flat` off the lid would be reading the wrong device's
+    # vocabulary, and the one thing this script owes its caller is an
+    # unambiguous word.
+    lid = "--lid" in sys.argv
+    switch = SW_LID if lid else SW_TABLET_MODE
+    on, off = ("closed", "open") if lid else ("folded", "flat")
+
     # SORTED, and by the number rather than by the string, because event9 must
     # not come after event14: the answer is meant to be stable across boots and
     # a machine with two switch devices would otherwise pick a different one
@@ -122,18 +148,19 @@ def main() -> int:
         if not os.access(path, os.R_OK):
             denied = True
             continue
-        found = probe(path)
+        found = probe(path, switch)
         if found is None:
             continue
-        _, folded, label = found
+        _, is_on, label = found
         if "--verbose" in sys.argv:
             print(f"{path}: {label}", file=sys.stderr)
-        print("folded" if folded else "flat")
+        print(on if is_on else off)
         return 0
 
     if denied and "--verbose" in sys.argv:
         print(
-            "no readable device reports SW_TABLET_MODE. The nodes are "
+            f"no readable device reports {'SW_LID' if lid else 'SW_TABLET_MODE'}. "
+            "The nodes are "
             "root:input; this user is in `input`, but group membership only "
             "applies at LOGIN, so log out and back in.",
             file=sys.stderr,

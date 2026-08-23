@@ -457,14 +457,29 @@ Scope {
             return Tablet.apply("toggle", from || "cli");
         }
 
+        // THE LID, which on this chassis is half of the hinge's answer: the
+        // Yoga switch trips at 0 degrees as well as at 360, so a closed lid is
+        // what tells the shell that a "fold" was somebody shutting the laptop.
+        // See services/Tablet.qml. The lid bind passes `compositor` for the
+        // same reason the fold binds do.
+        function lid(state: string, from: string): string {
+            return Tablet.applyLid(state, from || "cli");
+        }
+
         // WHERE THE BELIEF CAME FROM, and not just what it is. `folded` is false
         // both when the machine is flat and when nothing has managed to tell the
         // shell anything, and those two are worth telling apart: a fold that
         // never arrives is a switch bind that is not firing, and this line is
         // how that gets diagnosed without attaching a debugger to a compositor.
         function status(): string {
-            const state = Tablet.folded ? "folded" : "flat";
-            return `${state} (${Tablet.known ? "known" : "assumed"}, via ${Tablet.source})`;
+            const state = Tablet.folding ? "folded" : "flat";
+            const hinge = `${Tablet.known ? "known" : "assumed"}, via ${Tablet.source}`;
+            const lid = `${Tablet.lidClosed ? "closed" : "open"}, ${Tablet.lidKnown ? "known" : "assumed"}, via ${Tablet.lidSource}`;
+            // BOTH DEVICES, because `folded` is now the AND of them and a line
+            // reporting only the hinge could no longer explain its own answer:
+            // a switch that says folded and a shell that says flat is the lid
+            // doing its job, and this is where that is visible.
+            return `${state} (hinge ${Tablet.hinge ? "on" : "off"}, ${hinge}; lid ${lid})`;
         }
     }
 
