@@ -29,8 +29,32 @@ import qs.components
 Item {
     id: root
 
-    readonly property Item anchor: Tooltips.anchor
-    readonly property bool shown: Tooltips.shown
+    // WHOSE TOOLTIP THIS IS, because there is one of these per screen and one
+    // Tooltips singleton behind all of them.
+    //
+    // Every surface in the shell was drawing every tooltip: hover a tray icon on
+    // one monitor and the same label appeared on the other, beside nothing, at a
+    // position that meant nothing either. `mapFromItem` does not refuse two items
+    // in different windows, it maps them as though the two scenes were one, so
+    // the copy on the wrong screen was not even wrong in an obvious way - it was
+    // a plausible-looking label pointing at whatever happened to be there.
+    //
+    // The singleton stays ignorant of screens on purpose (it holds an item and a
+    // line of text and nothing about this shell), so the SURFACE decides, and it
+    // decides by ancestry rather than by asking anyone: a tip belongs to the
+    // surface whose root the asking item hangs from, which is exactly what "on
+    // this screen" means for an item in a per-screen window.
+    function rootOf(item: Item): Item {
+        let top = item;
+        while (top?.parent)
+            top = top.parent;
+        return top;
+    }
+
+    readonly property bool mine: !!Tooltips.anchor && root.rootOf(Tooltips.anchor) === root.rootOf(root)
+
+    readonly property Item anchor: root.mine ? Tooltips.anchor : null
+    readonly property bool shown: Tooltips.shown && root.mine
 
     // Where the anchor IS, in this item's coordinates, HELD once taken.
     //
