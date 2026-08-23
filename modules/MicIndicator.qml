@@ -164,8 +164,17 @@ Item {
     // a pill that grew and shrank between listening, processing and typing would
     // be three animations of the chassis reflowing, on top of the one thing that
     // is actually meant to be moving.
-    readonly property real pillWidth: root.contentWidth + Appearance.padding.large * 2
-    readonly property real pillHeight: root.border + root.contentHeight + Appearance.padding.large * 2
+    // THE PILL'S RIM, and deliberately the smallest padding there is.
+    //
+    // It was padding.large on every side, which was the right number when the
+    // pill held a glyph AND a row of bars and had to keep the two apart. With
+    // one thing inside it that number is just a wide dark border: 24px of frame
+    // around a well 54 tall, so most of what hung below the band was rim rather
+    // than readout. The well is the shape now and the pill is the edge it sits
+    // in, so the edge is an edge.
+    readonly property real rim: Appearance.padding.small
+    readonly property real pillWidth: root.contentWidth + root.rim * 2
+    readonly property real pillHeight: root.border + root.contentHeight + root.rim * 2
 
     // Empty at rest rather than a zero-width slot parked off-screen: the field
     // has twelve slots and several are permanently spoken for, so something idle
@@ -177,7 +186,16 @@ Item {
             y: -(root.pillHeight + Appearance.sizes.melt) * (1 - drop.value),
             w: root.pillWidth,
             h: root.pillHeight,
-            radius: Appearance.rounding.large
+            radius: Appearance.rounding.large,
+            // THE JOIN, SIZED BY WHAT IT IS JOINING. The shell's 34px fillet was
+            // set by panels that come out of the band a long way; measured
+            // against this one it was half of everything below the band, so the
+            // pill read as a bulge in the band with a well in it rather than as
+            // a thing hanging off it. Derived from the free height rather than
+            // picked, so it stays right if the bars or the rim ever change; the
+            // volume rail caps its own melt the same way and for the same
+            // reason.
+            smooth: Math.min(Appearance.sizes.melt, (root.pillHeight - root.border) / 3)
         }
     ] : []
 
@@ -466,7 +484,7 @@ Item {
         visible: root.here
         width: root.contentWidth
         height: root.contentHeight
-        y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - Appearance.padding.large
+        y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - root.rim
         opacity: drop.value
 
         // THE BARS' OWN WELL, and now the only thing in the pill.
