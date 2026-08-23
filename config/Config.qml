@@ -279,8 +279,9 @@ Singleton {
                     // WHICH INDICATOR. Whole alternatives, not combinable
                     // settings; see modules/sidebar/Workspaces.qml.
                     //
-                    //   plates   index tabs on the screen's edge, length as
-                    //            state, a mark per window
+                    //   plates   floating cells in the bar's lane, a mark per
+                    //            window, and one marker that travels to the
+                    //            workspace you are on
                     //   map      no glyphs: each window is a bar as long as the
                     //            window is wide, so the column shows the shape
                     //            of the layout instead of its contents
@@ -390,25 +391,22 @@ Singleton {
                     // should be visibly tighter than between slots.
                     windowPitch: 1.0,
 
-                    // THE RULER. Every workspace keeps a tick hard against the
-                    // screen's edge, as long as the workspace is tall, and the
-                    // one you are on grows a tab out of that edge.
+                    // HOW BIG A WORKSPACE IS FOR HAVING NOTHING ON IT, as a
+                    // fraction of the slot: `plates` draws an empty workspace as
+                    // a dot this wide instead of a full cell, and `map` uses the
+                    // same number as the shortest a window's bar may get.
                     //
-                    // Width of the bright mark on the edge of the active plate.
-                    tick: 3,
-                    // How far a plate reaches, as a fraction of the room it
-                    // has: one with nothing on it, and one with windows. The
-                    // active plate is always the whole span, which is what
-                    // "pulled all the way out" means, so it has no setting.
-                    //
-                    // Fractions rather than pixels, so the lengths keep their
-                    // proportions if the bar changes width.
+                    // A fraction rather than a pixel count, so the sizes keep
+                    // their proportions if the bar changes width.
                     emptyReach: 0.28,
+                    // The same idea for a scratchpad's bar in the rack: how much
+                    // of the lane it takes when it is carrying something, before
+                    // its own marks ask for more.
                     busyReach: 0.62,
-                    // How much more of everything a workspace gets while the
-                    // cursor is on it: longer and taller by the same fraction,
-                    // so the plate answers the cursor by moving rather than by
-                    // changing colour at it.
+                    // `map`: how much longer a window's bar gets while the cursor
+                    // is on it, so the row answers by moving rather than by
+                    // changing colour. `plates` answers with the marker that
+                    // travels down the column instead, and spends nothing here.
                     hover: 0.09,
 
                     // `map`: how thick one window's bar is, and the gap under

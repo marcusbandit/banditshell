@@ -7,43 +7,66 @@ import qs.config
 import qs.components
 import qs.services
 
-// STYLE: plates. A stack of index tabs, and the one you are on is pulled out.
+// STYLE: plates. A column of floating cells, and ONE marker that travels to the
+// one you are on.
 //
-// A workspace is not a number, it is the windows you left there, so each plate
+// A workspace is not a number, it is the windows you left there, so each cell
 // carries one mark per window. Nothing here is labelled 1..N: the column IS the
 // order.
 //
-// LENGTH IS THE STATE, and it is the only thing that says it: a short mark for a
-// workspace with nothing on it, further in when it holds windows, all the way out
-// for the one you are on. Index tabs, and a bar chart of how busy the machine is,
-// which turn out to be the same drawing. There is no separate indicator sliding
-// around on top: the plate you go to IS the indicator, and it grows.
+// THEY FLOAT, and that is the whole of what changed. This used to be a rack of
+// index tabs hinged on the screen's edge: every plate started at x = 0, ended
+// flat there, and said its state by how far it reached in. It drew well and it
+// belonged to nothing, because the rest of this shell is made of sheets that sit
+// CLEAR of the edges they are near - the gauges, the tray, the menus, the power
+// panel, all of them a rounded box with the band's own air on every side. One
+// group hinged on the display while everything above and below it floated read
+// as a different shell's idea that had been left in.
 //
-// THE PLATES BORDER THE SCREEN'S EDGE. They start at x = 0 and end flat there:
-// this item spans the chassis's whole left band, and the band is shell material
-// all the way out to the display, so a plate hinged at zero is hinged on the edge
-// of the screen itself. They stop one band short of the bar's inner edge, so the
-// free end has somewhere to be.
+// So a workspace is a G2 cell in the same lane the gauges stand in, held off the
+// screen by the same band it is drawn on, rounded on all four corners by the one
+// primitive (components/G2Rect.qml, ~/.claude/rules/g2-corners.md). Nothing here
+// picks a radius: everything drawn in this file asks for the shell's own, and at
+// these sizes the corner budget clamps it to half the short side, so each shape
+// is as round as its size allows and the whole column is one family with the
+// status icons below it.
 //
-// Depth is thickness and layering, never a shadow or a bevel: an inactive plate
-// is one sheet of material, the active one is two with the accent in the upper
-// sheet, and it is longer than the rest. Where you are is literally more glass,
-// pulled further out.
+// WHERE YOU ARE IS ONE SHAPE THAT MOVES. It used to be a property of each plate:
+// the one you were on grew to full reach and lit an accent sheet, the one under
+// the cursor swelled, and every other plate answered by not doing that. Nothing
+// travelled, so switching workspace was one plate ending and another beginning
+// somewhere else and the eye had to re-find the mark each time. The power menu
+// and both sidebar groups are built on the other answer, and this is that answer
+// applied to the column they sit around: ONE accent marker that chases the
+// active cell, and ONE neutral marker that chases whatever the cursor is on,
+// both on the exponential smoothing everything in this shell tracks with (fast
+// when far, gentle when close, correct at any frame time: components/Follow.qml
+// and ~/.claude/rules/animation-smoothing.md).
 //
-// SCRATCHPADS GET A RACK OF THEIR OWN, under the column and clear of it. They
-// used to hide behind the plate you were on and peek out below it, which is a
-// fine drawing of ONE card and stops being one at two: each further sheet had to
-// peek further, the second already reached the next plate's edge, and a third
-// would have lain across it. Worse, every sliver looked like every other sliver,
-// so the answer to "which of these is Spotify" was to click one and find out.
+// The markers chase the layout's TARGET geometry rather than its live smoothed
+// geometry, and that is not a detail. The model is already chasing the same
+// target at the same rate, so a marker aimed at the target decays along exactly
+// the trajectory the cell under it is decaying along: the two stay in lockstep
+// through a reflow, and a workspace switch is the only thing that ever puts
+// daylight between them. Aimed at the live value instead, the marker would be
+// smoothing an already smoothed number and would trail its own cell every time a
+// window opened.
 //
-// So they come out from under the plate and lie in a row at the end of the
-// column: one bar each, half the column's rhythm and a whole slot's width of
-// room, carrying their own marks. Three fit without crowding and a fourth costs
-// one bar's height, not a redesign. They keep the plates' grammar, because it is
-// the same grammar: length is state, a bar with nothing on it is a stub, a bar
-// with windows is as long as its marks need, and the one you have pulled open is
-// gone from the rack because it is out on the plate you are on.
+// LENGTH IS STILL THE STATE, measured on the axis that survived the move. A cell
+// is as tall as the windows on it, an empty workspace is a dot rather than a full
+// cell, and the marker takes the size of the cell it lands on. What is gone is
+// the tick: three saturated pixels hard against the display made sense as a ruler
+// down the edge, and there is no edge in this drawing to rule. The accent lives
+// in the marker's own sheet now, which is the thing that moves.
+//
+// SCRATCHPADS GET A RACK OF THEIR OWN, under the column and clear of it, in the
+// same lane and floating by the same rule. One bar each, an icon tall where a
+// workspace is a whole slot, carrying their own marks. They keep the plates' grammar because it is
+// the same grammar: a bar with nothing on it is a stub, a bar with windows is as
+// long as its marks need, and the one you have pulled open is gone from the rack
+// because it is out on the cell you are on. The hover marker runs down here too,
+// so the cursor is answered by one shape from the top of the column to the bottom
+// of the rack rather than by two different mechanisms that happen to look alike.
 //
 // THE COLUMN IS ALSO A SURFACE YOU SCRUB. A vertical drag anywhere on the
 // numbered part of it steps the active workspace along with the hand, one
@@ -71,76 +94,58 @@ Item {
     readonly property int slot: Appearance.sizes.wsSlot
     readonly property int iconSize: Appearance.sizes.wsIcon
     readonly property int pitch: Appearance.sizes.wsWindowPitch
-    readonly property int tick: Appearance.sizes.wsTick
     readonly property int maxWindows: Appearance.sizes.wsMaxWindows
 
-    // WHERE A PLATE STARTS AND HOW FAR IT CAN GO. It starts ON the screen's edge,
-    // and the room it has is everything up to one band short of the bar's inner
-    // edge: the shell's own lattice at the far end, nothing at the near one,
-    // because there is nothing between a plate and the edge it is hinged on.
-    readonly property real hinge: 0
-    readonly property real span: width - Appearance.sizes.band
+    // THE LANE: where a full-width cell stands, centred in the whole band.
+    //
+    // This item is given the band's entire width because its targets are (a cell
+    // is aimed at across the bar, not at the 32px it draws), so the drawing has
+    // to place itself. Centred, the cell ends up standing the band's own
+    // thickness off the display, which is the distance every other sheet in this
+    // shell is held off the edge it is near: the workspaces float on the same
+    // rule as the gauges below them rather than on a number of their own.
+    readonly property real lane: Math.round((root.width - root.slot) / 2)
 
-    // The other two states, as fractions of that span. The active one is the
-    // whole span by definition: it is what "pulled all the way out" means.
-    readonly property real emptyReach: Appearance.sizes.wsEmptyReach
-    readonly property real busyReach: Appearance.sizes.wsBusyReach
+    // AN EMPTY WORKSPACE IS A DOT. Same fraction the old style spent on how far
+    // an empty plate reached, spent on the cell's own size instead: a place you
+    // can go, said as quietly as this drawing can say it, and unmistakably not a
+    // workspace with something on it. It is round because the corner budget
+    // rounds it (see the header), not because a circle was picked.
+    readonly property int dot: Math.round(root.slot * Appearance.sizes.wsEmptyReach)
 
-    // THE RACK'S OWN RHYTHM. A bar is one window row tall, which is half a slot
-    // and change: thin enough that the rack can never be mistaken for more
-    // workspaces, thick enough to carry a mark. The stand-off from the end of the
-    // column is a whole tier above the gap inside it, because the same ratio that
-    // groups a workspace's windows has to separate the rack from all of them.
-    readonly property int barH: root.pitch
+    // The one corner in this file. Everything drawn here is a G2Rect at this
+    // radius, so the marker and the cell it is under are the same shape and the
+    // clamp does the rest.
+    readonly property real radius: Appearance.rounding.normal
+
+    // THE RACK'S OWN RHYTHM: a bar is ONE ORDINARY ICON tall, where a cell is a
+    // whole workspace slot.
+    //
+    // That difference is the only thing keeping the rack from reading as more
+    // workspaces, and it has to be a real one. Floating put the bars in the
+    // cells' own lane, so they lost the thing that used to separate them (a
+    // hinged row against a hinged column, at different lengths) and gained the
+    // cells' shape; a bar within a few pixels of a cell's height is then simply a
+    // sixth workspace with a smaller icon in it. Held to the size an icon is
+    // everywhere else in this shell, a bar is visibly furniture of a different
+    // order, and the stand-off above the rack is a break rather than one more
+    // step down the column.
+    readonly property int barH: Appearance.font.iconSize
     readonly property int barGap: Math.round(Appearance.padding.small / 2)
     readonly property int rackGap: Appearance.padding.large
 
     // Marks on a bar run ACROSS it: the bar is a horizontal thing, so its
-    // contents lie along it, the same way a plate is vertical and stacks its own
-    // down. Smaller than a plate's, because a scratchpad is answering "which one
-    // is this" and not "what is on this workspace".
-    readonly property int barMark: Math.round(root.iconSize * 0.7)
+    // contents lie along it, the same way a cell is vertical and stacks its own
+    // down. Smaller than a cell's, and sized off the bar rather than off the
+    // cell's mark, because a scratchpad is answering "which one is this" and not
+    // "what is on this workspace".
+    readonly property int barMark: Math.round(root.barH * 0.7)
     readonly property int barPitch: root.barMark + root.barGap
 
-    // How much of the plate underneath stays visible past the end of an open
-    // card. Small: this is still a card on a card.
-    readonly property real overhang: Appearance.padding.normal
-
-    // THE GHOST: what the plate you are on wears while a scratchpad lies over
-    // it. "Active but not seen", and each half of that is said by a different
-    // piece of the plate:
-    //
-    // - It KEEPS its full reach and its lit sheet. Length is the state in this
-    //   style, so "held open behind what you are looking at" is said the
-    //   loudest way the grammar has: the plate does not retract, it stays
-    //   pulled all the way out under the card, holding the place you come back
-    //   to. Dropping it to the busy fill was rejected because the lip peeking
-    //   past the card's end would then read as just another inactive plate
-    //   that a card happens to be lying on.
-    // - The accent SHEET leaves entirely, because the sheet means "the thing
-    //   you are looking at" and the card is now wearing it: two tinted sheets
-    //   in one stack is the focus claimed twice, which is exactly the argument
-    //   the ghost exists not to have.
-    // - The accent HAIRLINE stays, dimmed to this fraction. The ruler down the
-    //   screen's edge must not break, so the card carries the bright segment
-    //   and the plate keeps a quiet one above and below it that says which
-    //   workspace is behind the card, and moves the moment the workspace
-    //   underneath changes.
-    //
-    // An OUTLINE around the plate (G2Rect can stroke) was the other candidate
-    // and was rejected: G2Rect's own note says a ring is for a control that
-    // joins nothing, a plate is body hinged on the screen's edge, and the
-    // stroke would have run down the hinge too, a hairline seam on the one
-    // join this shell spent a whole chassis learning never to draw.
-    readonly property real ceded: 0.35
-
-    // Where the plate you are on currently IS, smoothed like everything else, so
-    // a card lying on it travels with it rather than after it.
-    //
-    // Indexed off the model's own band rather than off workspace one: the
-    // active id is an absolute workspace number and the column is a run of
-    // them, so the slot it lands on is how far into THIS screen's run it sits.
-    readonly property var activeGeom: layout.at(layout.active - layout.band)
+    // How much narrower an open card is than the cell it lies on, so the thing it
+    // is covering stays visible past its sides and the stack reads as a stack.
+    // Small: this is still a card on a card.
+    readonly property real overhang: Math.round(Appearance.padding.small / 2)
 
     property int hovered: -1
     property int racked: -1
@@ -178,11 +183,11 @@ Item {
         return root.rackTop + i * (root.barH + root.barGap);
     }
 
-    // HOW MANY MARKS FIT ON A BAR, which is not a setting: the rack is as wide as
-    // the sidebar and no wider, so the cap is the arithmetic of the room. A plate
-    // caps at `maxWindows` because it can always grow another row downwards; a
-    // bar cannot grow sideways past the edge of the shell.
-    readonly property int barFits: Math.max(1, Math.floor((root.span - root.barGap) / root.barPitch))
+    // HOW MANY MARKS FIT ON A BAR, which is not a setting: the rack stands in the
+    // same lane the cells do and is no wider, so the cap is the arithmetic of the
+    // room. A cell caps at `maxWindows` because it can always grow another row
+    // downwards; a bar cannot grow sideways out of the lane.
+    readonly property int barFits: Math.max(1, Math.floor((root.slot - root.barGap) / root.barPitch))
 
     function barMarks(entry: var): int {
         const n = entry.windows.length;
@@ -199,20 +204,28 @@ Item {
         return root.barMarks(entry) + (root.barRest(entry) > 0 ? 1 : 0);
     }
 
+    // How wide the marks on a bar are, all told. Written once because the bar's
+    // length is worked out from it and the marks are then centred in the length
+    // it produced, and the two disagreeing by a gap is a row that sits off centre
+    // on every bar in the rack.
+    function barContent(cells: int): real {
+        return cells ? cells * root.barMark + (cells - 1) * root.barGap : 0;
+    }
+
     // HOW LONG A BAR IS, in the plates' own language: a stub when there is
     // nothing on it, a full reach when it is carrying something, and longer than
-    // that only when what it carries needs the room. Length is the state here
-    // too, it is just measured along the other axis.
+    // that only when what it carries needs the room, up to the lane's width.
+    // Length is the state here too, it is just measured along the other axis.
     function barWidth(entry: var): real {
         const cells = root.barCells(entry);
         if (!cells)
-            return root.span * root.emptyReach;
-        const content = root.barGap * 2 + cells * root.barMark + (cells - 1) * root.barGap;
-        return Math.min(root.span, Math.max(root.span * root.busyReach, content));
+            return root.dot;
+        const content = root.barContent(cells) + root.barGap * 2;
+        return Math.min(root.slot, Math.max(root.slot * Appearance.sizes.wsBusyReach, content));
     }
 
-    function barMarkX(i: int): real {
-        return root.barGap + i * root.barPitch;
+    function barMarkX(i: int, w: real, cells: int): real {
+        return Math.round((w - root.barContent(cells)) / 2) + i * root.barPitch;
     }
 
     readonly property real barMarkY: Math.round((root.barH - root.barMark) / 2)
@@ -227,12 +240,188 @@ Item {
         pitch: root.pitch
     }
 
+    // WHICH SLOT THE ACCENT MARKER IS AIMED AT, and whether it is on this column
+    // at all.
+    //
+    // The active id is an absolute workspace number and this column is a run of
+    // them, so the slot it lands on is how far into THIS screen's run it sits.
+    // It can be outside the run: the compositor will happily put you on a
+    // workspace this monitor's band does not contain, and the honest drawing of
+    // that is no marker, not a marker parked on the nearest end. `held` keeps the
+    // last slot it was legitimately on, so leaving the band fades the marker out
+    // where it stands rather than sliding it home first.
+    readonly property int activeIndex: layout.active - layout.band
+    readonly property bool onColumn: root.activeIndex >= 0 && root.activeIndex < layout.slots.length
+
+    property int held: 0
+
+    // THE TARGET GEOMETRY, not the live one: see the header. A binding rather
+    // than a value copied in the handler below, so a reflow under the marker
+    // moves it with the cell instead of leaving it where the cell used to be.
+    readonly property var heldGeom: layout.slots[root.held] ?? ({
+            y: 0,
+            h: root.slot
+        })
+
+    // Where the cell you are on currently IS, smoothed by the model, so a card
+    // lying on it travels with it rather than after it. The card is pinned to
+    // what is drawn, which is the live value; the marker chases the target. They
+    // are the same number at rest and that is the only time either is read.
+    readonly property var activeGeom: layout.at(root.held)
+
+    onActiveIndexChanged: {
+        if (!root.onColumn)
+            return;
+
+        // ARRIVING COLD, LAND ON IT. A marker faded out has nothing to travel
+        // from: flying in from wherever the column left it a minute ago is
+        // motion across workspaces nobody went to. Sampled off the reveal's live
+        // value rather than off the index, so a workspace that leaves the band
+        // and comes straight back is still travelling.
+        const cold = markShown.value < 0.01;
+        root.held = root.activeIndex;
+        if (cold) {
+            markY.snap();
+            markH.snap();
+        }
+    }
+
+    // WHAT THE CURSOR IS ON, as one held answer for the whole column.
+    //
+    // Exactly one of these is set: a slot index, or a bar index, or neither,
+    // which is the cursor having left. Leaving HOLDS the marker where it is and
+    // fades it; only arriving somewhere real moves it. That is why this is driven
+    // from the two change handlers rather than from a binding: "nothing" is not a
+    // position, and a binding written to express "hold" reads its own value back
+    // and loops.
+    property int heldSlot: 0
+    property int heldBar: -1
+
+    readonly property bool hovering: root.hovered >= 0 || root.racked >= 0
+
+    readonly property var hoverGeom: {
+        if (root.heldBar >= 0) {
+            const e = root.deck[root.heldBar];
+            return {
+                y: root.barY(root.heldBar),
+                h: root.barH,
+                w: e ? root.barWidth(e) : root.dot
+            };
+        }
+        const s = layout.slots[root.heldSlot] ?? ({
+                y: 0,
+                h: root.slot
+            });
+        // THE FULL CELL, whatever the cell itself is drawing. An empty workspace
+        // is a dot, and a highlight the size of a dot is not a highlight: it
+        // would land entirely behind the thing it is meant to be lighting. The
+        // marker is the slot, and it is also the answer to "what does pressing
+        // here get me", which is a workspace at full height.
+        return {
+            y: s.y,
+            h: s.h,
+            w: root.slot
+        };
+    }
+
+    onHoveredChanged: if (root.hovered >= 0)
+        root.mark(root.hovered, -1)
+
+    onRackedChanged: if (root.racked >= 0)
+        root.mark(-1, root.racked)
+
+    function mark(slotIndex: int, barIndex: int): void {
+        const cold = lit.value < 0.01;
+        root.heldSlot = slotIndex;
+        root.heldBar = barIndex;
+        if (cold) {
+            hoverY.snap();
+            hoverH.snap();
+            hoverW.snap();
+        }
+    }
+
+    // THE FOUR CHASES. Position and size run at the same rate on purpose: a
+    // marker that slides and resizes at once is ONE object changing shape, and
+    // its edges only read that way while both motions decay together. The two
+    // reveals are the other kind of question (is there a marker at all) and run
+    // at the reveal rate, which is faster, because a fade is a state changing
+    // rather than a movement you follow.
+    Follow {
+        id: markY
+
+        speed: Appearance.anim.trackSpeed
+        target: root.heldGeom.y
+    }
+
+    Follow {
+        id: markH
+
+        speed: Appearance.anim.trackSpeed
+        target: root.heldGeom.h
+    }
+
+    Follow {
+        id: markShown
+
+        speed: Appearance.anim.revealSpeed
+        target: root.onColumn ? 1 : 0
+        epsilon: 0.005
+    }
+
+    Follow {
+        id: hoverY
+
+        speed: Appearance.anim.trackSpeed
+        target: root.hoverGeom.y
+    }
+
+    Follow {
+        id: hoverH
+
+        speed: Appearance.anim.trackSpeed
+        target: root.hoverGeom.h
+    }
+
+    Follow {
+        id: hoverW
+
+        speed: Appearance.anim.trackSpeed
+        target: root.hoverGeom.w
+    }
+
+    Follow {
+        id: lit
+
+        speed: Appearance.anim.revealSpeed
+        // Held flat while the scrub is latched, with the cells' own hover answer
+        // and for its reason: a hand mid-drag is not choosing the cell it happens
+        // to be over, and a second marker lighting under the press argues with
+        // the accent one stepping down the column.
+        target: root.hovering && !layout.scrubbing ? 1 : 0
+        epsilon: 0.005
+    }
+
+    // The column exists before it is looked at, so the first frame is a state
+    // rather than a transition: the marker is ON the workspace you are on, it did
+    // not arrive there.
+    Component.onCompleted: {
+        root.held = root.onColumn ? root.activeIndex : 0;
+        root.heldSlot = root.held;
+        markY.snap();
+        markH.snap();
+        markShown.snap();
+        hoverY.snap();
+        hoverH.snap();
+        hoverW.snap();
+    }
+
     // THE BACKSTOP: the gap pixels, made part of the scrub. The drag is a
     // gesture on the COLUMN, and the column is not one surface: each slot
     // answers its own presses and the gaps between them answered nobody, so a
     // drag that happened to start on one would simply not exist. Declared
-    // BEFORE both Repeaters, because declaration order is input order (see
-    // components/Pull.qml): the plates and the rack keep winning every press
+    // BEFORE everything drawn, because declaration order is input order (see
+    // components/Pull.qml): the cells and the rack keep winning every press
     // they already won, and this catches only what fell between.
     //
     // It ends at the column's end, ON PURPOSE, and that line is the boundary
@@ -240,7 +429,7 @@ Item {
     // scratchpad is not a place along the column, it is a card pulled over
     // wherever you already are, so a drag on its bars has no workspace to
     // scrub to. The bars keep their tap and their hold, the stand-off above
-    // them stays dead, and the open card (drawn last, over the active plate)
+    // them stays dead, and the open card (drawn last, over the active cell)
     // keeps its own tap for the same reason.
     //
     // THE BOUNDARY IS THE SAME ONE FOR TWO FINGERS, and for the rack it costs
@@ -248,7 +437,7 @@ Item {
     // a whole stand-off below it, and nothing of the scrub lies underneath
     // them, so a scroll over a bar reaches the same nothing a drag on one
     // does. The open card is the single exception and answers it itself, down
-    // where it is drawn: it lies ON the active plate, so it is the one
+    // where it is drawn: it lies ON the active cell, so it is the one
     // surface with a doorway underneath to fall through to.
     MouseArea {
         id: backstop
@@ -294,20 +483,83 @@ Item {
         onWheel: wheel => layout.scrubWheel(wheel)
     }
 
+    // THE HOVER MARKER, and under it the accent one. Both are declared before
+    // anything else that draws, so they sit UNDER the cells and the bars: a
+    // marker is the surface a workspace is standing on while it is answered, not
+    // a pane over it. The cells are translucent by a few percent, so a marker
+    // beneath one reads exactly as the second sheet the active plate used to wear
+    // on top of itself, with the difference that this one can move.
+    //
+    // THE ACCENT FIRST, so a cell that is both active and under the cursor gets
+    // the hover marker over the accent rather than instead of it. Two markers on
+    // one cell is not two answers: the accent says where you are, the hover says
+    // what you are pointing at, and those really are the same cell often enough
+    // that the stack has to read.
+    G2Rect {
+        x: root.lane
+        y: markY.value
+        width: root.slot
+        height: markH.value
+        radius: root.radius
+        color: Appearance.colour.fillStrong
+        opacity: markShown.value
+
+        // THE ACCENT SHEET, over the neutral one rather than instead of it, so
+        // the workspace you are on reads as thicker glass with colour in it and
+        // not as a stain on the bar.
+        //
+        // GONE ENTIRELY while a scratchpad card lies on the cell, which is the
+        // whole of the ghost this style used to spell out at length. The sheet
+        // means "the thing you are looking at" and the card is now wearing it;
+        // two tinted shapes in one stack is the focus claimed twice. The neutral
+        // sheet stays and keeps its full size, because the workspace is still the
+        // one you are on and it is still holding the place you come back to.
+        G2Rect {
+            anchors.fill: parent
+            radius: root.radius
+            color: Appearance.colour.accentFill
+            opacity: layout.eclipsed ? 0 : 1
+
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.fast
+                }
+            }
+        }
+    }
+
+    // THE HOVER MARKER: one shape for the whole column, cells and rack alike.
+    //
+    // It used to be a fill per cell, each brightening on its own hover, and a
+    // fixed column of those reads as a flicker rather than as a highlight:
+    // nothing travels, so dragging the cursor down the bar is a run of unrelated
+    // appearances and the eye has to re-find the mark after every one. One shape
+    // carries your attention with it, which is the argument the power menu's
+    // marker and both sidebar groups are built on.
+    G2Rect {
+        x: Math.round((root.width - width) / 2)
+        y: hoverY.value
+        width: hoverW.value
+        height: hoverH.value
+        radius: root.radius
+        color: Appearance.colour.fillStrong
+        opacity: lit.value
+    }
+
     // THE RACK: one bar per scratchpad, at the end of the column.
     //
     // A special workspace is not a sixth workspace, and this is not a sixth slot:
-    // it is thinner than any plate, it is the other side of a gap wide enough to
+    // it is thinner than any cell, it is the other side of a gap wide enough to
     // be a break rather than a step, and it is a ROW where the column is a
-    // column. What it shares with a plate is the only thing worth sharing, which
+    // column. What it shares with a cell is the only thing worth sharing, which
     // is that the length of the thing tells you the state of the thing.
     //
     // A bar is where the card sleeps. Pulling one open lifts it out of the rack
-    // and onto the plate you are on, which is drawn further down this file
-    // because a card on top of a plate cannot also be under it; the bar it left
+    // and onto the cell you are on, which is drawn further down this file
+    // because a card on top of a cell cannot also be under it; the bar it left
     // stays empty until it comes back, because that is where it is not.
     Repeater {
-        // Modelled by a COUNT, for the same reason the plates are: `deck` is
+        // Modelled by a COUNT, for the same reason the cells are: `deck` is
         // rebuilt whenever anything happens to a window, and a Repeater over the
         // array itself would throw away every bar and build it again each time,
         // taking the animation it was in the middle of and the hover it was under
@@ -328,47 +580,30 @@ Item {
             // on the same frame the compositor says so, not an IPC round trip
             // later.
             readonly property bool open: !!bar.entry.name && layout.special === bar.entry.name
-            readonly property bool lit: root.racked === bar.index
+            readonly property int cells: root.barCells(bar.entry)
             readonly property int marks: root.barMarks(bar.entry)
 
-            x: root.hinge
-            y: root.barY(bar.index)
-            // Hover swells it the same fraction a plate swells by, so the rack
-            // answers the cursor in the language the column already speaks.
-            // The OPEN bar wears that swell all the time, and the strong fill
-            // with it: that pair is what "the active plate" translates to down
-            // here, where a plate says "you are here" with its full reach and
-            // its second sheet and a bar has neither to spend. Not the accent,
-            // which the rack never wears: the card out on the plate is
-            // carrying it, and a second accented shape would be the focus
-            // claimed twice (see `ceded`).
-            //
             // A bar whose card is OUT falls back to the empty stub rather than
             // disappearing: the rack is a set of slots and one of them is empty
             // right now, which is a different thing from the rack being shorter.
-            // Where the card itself is, is answered by the card; the lit stub
-            // answers WHICH slot it is out of, because this stub is also the
-            // summoner that puts it back (the reversed gesture, DESIGN.md 15),
-            // and the way home must not be dressed as just another empty slot.
-            width: Math.round((bar.open ? root.span * root.emptyReach : root.barWidth(bar.entry)) * (1 + (bar.open || bar.lit ? Appearance.sizes.wsHover : 0)))
+            // Where the card itself is, is answered by the card.
+            x: Math.round((root.width - width) / 2)
+            y: root.barY(bar.index)
+            width: bar.open ? root.dot : root.barWidth(bar.entry)
             height: root.barH
 
-            // Square on the screen's edge, like everything else hinged there.
-            // The free end takes the plates' radius, which the corner budget
-            // clamps to half a bar, so a bar this thin ends in a full round.
-            topLeftRadius: 0
-            bottomLeftRadius: 0
-            topRightRadius: Appearance.rounding.normal
-            bottomRightRadius: Appearance.rounding.normal
+            // Floating, like everything else in this column, so all four corners
+            // take the shell's radius and the budget clamps a bar this thin into
+            // a full round.
+            radius: root.radius
 
-            // The same one sheet a plate is, and the same answer to the cursor.
-            // A scratchpad is not more important than the workspace it will lie
-            // on, so it cannot be brighter than one: what separates a full bar
-            // from an empty one here is length and a mark, exactly as it is up
-            // the column. The open bar holds the strong fill for as long as its
-            // card is out, which is hover's colour meant permanently: the same
-            // word the plates use, said at the rack's own volume.
-            color: bar.open || bar.lit ? Appearance.colour.fillStrong : Appearance.colour.fill
+            // The same one sheet a cell is. A scratchpad is not more important
+            // than the workspace it will lie on, so it cannot be brighter than
+            // one: what separates a full bar from an empty one here is length and
+            // a mark, exactly as it is up the column. Where the cursor is, and
+            // which bar is open, are both said by the markers behind it, which is
+            // the whole point of there being markers.
+            color: Appearance.colour.fill
 
             Behavior on width {
                 NumberAnimation {
@@ -377,9 +612,21 @@ Item {
                 }
             }
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.anim.fast
+            // WHICH SLOT THE CARD IS OUT OF, said by the one piece of the rack
+            // that is allowed to be saturated: the bar the open card belongs to
+            // keeps a quiet accent while it is empty, so the way home is not
+            // dressed as just another empty stub. This stub is also the summoner
+            // that puts the card back (the reversed gesture, DESIGN.md 15).
+            G2Rect {
+                anchors.fill: parent
+                radius: root.radius
+                color: Appearance.colour.accentFill
+                opacity: bar.open ? 1 : 0
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Appearance.anim.fast
+                    }
                 }
             }
 
@@ -404,7 +651,7 @@ Item {
                         required property var modelData
                         required property int index
 
-                        x: root.barMarkX(index)
+                        x: root.barMarkX(index, bar.width, bar.cells)
                         y: root.barMarkY
                         size: root.barMark
                         spec: AppIcons.markFor(Hypr.classOf(modelData))
@@ -419,11 +666,11 @@ Item {
                     }
                 }
 
-                // "and more", in the cell after the last mark, exactly as a plate
+                // "and more", in the cell after the last mark, exactly as a cell
                 // does it: a bar that ran out of room says so.
                 Icon {
                     visible: root.barRest(bar.entry) > 0
-                    x: root.barMarkX(bar.marks)
+                    x: root.barMarkX(bar.marks, bar.width, bar.cells)
                     y: root.barMarkY
                     width: root.barMark
                     height: root.barMark
@@ -434,13 +681,13 @@ Item {
             }
 
             // The whole row, band-wide and half the gap either side, for the same
-            // reason a plate's target is: a 20px lozenge is a mark, not a button,
+            // reason a cell's target is: a 20px lozenge is a mark, not a button,
             // and a stub has to be as easy to hit as a full bar. Nothing else in
             // the rack's rows is reachable, so there is nothing to hit by mistake.
             MouseArea {
                 id: barMouse
 
-                x: 0
+                x: -bar.x
                 y: -root.barGap
                 width: root.width
                 height: parent.height + root.barGap * 2
@@ -516,25 +763,22 @@ Item {
             readonly property var geom: layout.at(index)
             // The MODEL'S active workspace, which is this screen's own and not
             // the focused one: the sidebar on the monitor you are not looking
-            // at still marks the plate you left it standing on.
+            // at still marks the cell you left it standing on.
             readonly property bool isActive: layout.active === slotItem.info.id
             readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
-            // A scratchpad is lying on this plate, so its windows are behind
+            // A scratchpad is lying on this cell, so its windows are behind
             // one: you cannot see them, and neither should their marks, which
             // would otherwise show through the card and read as two icons in the
-            // same place. This is also the plate that wears the GHOST (see
-            // `ceded`), and it follows `isActive`: switch the workspace under
-            // an open card and the ghost walks to the new plate with the card
-            // on top of it. Derived from the model's `eclipsed` rather than
-            // asked of Hypr here, so every style reads the same fact from the
-            // object they already share instead of rediscovering it apiece.
+            // same place. Derived from the model's `eclipsed` rather than asked
+            // of Hypr here, so every style reads the same fact from the object
+            // they already share instead of rediscovering it apiece.
             readonly property bool covered: slotItem.isActive && layout.eclipsed
 
             y: slotItem.geom.y
             width: root.width
             height: slotItem.geom.h
 
-            // The click target is the whole width, plate or no plate: a 12px mark
+            // The click target is the whole width, cell or no cell: a 12px mark
             // is a mark, not a button, and reaching for a workspace should not
             // mean hitting it.
             //
@@ -587,7 +831,7 @@ Item {
                 // The fingers' doorway, exactly as on the backstop. Each
                 // surface takes its own because wheel events go to whichever
                 // item is topmost under the pointer and stop at the first one
-                // that accepts, so a scroll started over a plate never
+                // that accepts, so a scroll started over a cell never
                 // reaches the backstop underneath it: a single handler down
                 // there would answer only the gaps, which is the one part of
                 // the column a hand almost never lands on.
@@ -598,8 +842,8 @@ Item {
                 // covers the collapse this file can cause itself; this is the
                 // net under any teardown that arrives anyway, because a grab
                 // that dies undelivered leaves `scrubbing` latched and every
-                // gate reading it (the swell, the hover colour, the marks'
-                // glow, both preventStealings) frozen until the next press.
+                // gate reading it (the hover marker, the marks' glow, both
+                // preventStealings) frozen until the next press.
                 // `onCanceled` cannot be trusted for this: Qt does not
                 // promise the signal to an item mid-teardown, and the
                 // destruction hook is the one that always runs while the
@@ -611,132 +855,54 @@ Item {
             }
 
             G2Rect {
-                id: plate
+                id: cell
 
-                // An EMPTY workspace gets a mark, not a plate: half as tall,
-                // centred on the slot it stands for. Length alone did not carry
-                // it, a short plate at full height is just a fat nub. Going there
-                // makes it a plate like any other.
+                // AN EMPTY WORKSPACE IS A DOT, and everything else is the full
+                // cell. Going there makes it a cell like any other, which is why
+                // the active one is solid whether or not it has anything on it:
+                // the workspace you are standing on is not an empty slot even
+                // when it is empty.
                 readonly property bool solid: slotItem.isOccupied || slotItem.isActive
 
-                // THE STATE IS ANIMATED, NOT THE PIXELS. Both of these resolve
+                // THE STATE IS ANIMATED, NOT THE PIXELS. The height resolves
                 // through the slot's live height, which is already being smoothed
-                // frame by frame; a Behavior on the resulting height would restart
-                // a 220ms animation on every one of those frames and the plate
-                // would rubber-band behind its own column. Animating the fractions
-                // instead keeps the two motions independent: the reflow stays
+                // frame by frame; a Behavior on the result would restart a 220ms
+                // animation on every one of those frames and the cell would
+                // rubber-band behind its own column. Animating the 0-to-1 instead
+                // keeps the two motions independent: the reflow stays
                 // exponential, the state change eases, neither fights the other.
-                // Hover pulls the plate a little further out and swells it a
-                // little taller: the tab answers the cursor before it is clicked,
-                // and it answers by moving, which is the only thing in this shell
-                // that ever means "yes, this one".
-                //
-                // Held flat while the scrub is latched. The swell means "this
-                // one, if you press", and a hand mid-scrub is not choosing
-                // the plate it happens to be over: the active plate stepping
-                // down the column is the whole answer, and a second plate
-                // swelling under the press argues with it. It is also
-                // GEOMETRY, and geometry answering the cursor during a drag
-                // is the drag being fought by its own furniture.
-                readonly property real swell: root.hovered === slotItem.index && !layout.scrubbing ? Appearance.sizes.wsHover : 0
-                readonly property real reachTarget: (slotItem.isActive ? 1 : slotItem.isOccupied ? root.busyReach : root.emptyReach) + swell
-                readonly property real tallTarget: (solid ? 1 : 0.5) + swell
+                readonly property real fullTarget: cell.solid ? 1 : 0
 
-                property real reach: reachTarget
-                property real tall: tallTarget
+                property real full: cell.fullTarget
 
-                x: root.hinge
-                width: Math.round(root.span * reach)
-                height: Math.round(parent.height * tall)
-                y: (parent.height - height) / 2
+                width: Math.round(root.dot + (root.slot - root.dot) * cell.full)
+                height: Math.round(root.dot + (parent.height - root.dot) * cell.full)
+                x: Math.round((parent.width - width) / 2)
+                y: Math.round((parent.height - height) / 2)
 
-                // SQUARE at the hinge, convex on the free end. A rounded corner at
-                // the hinge would curl the plate off the screen's edge and leave a
-                // notch of dead space behind it; the chassis's concave flare,
-                // which is the right answer where a whole panel meets that edge,
-                // needs more room than a 28px slot has and pinches the plate's own
-                // end off. Attached means flat against.
-                topLeftRadius: 0
-                bottomLeftRadius: 0
-                topRightRadius: Appearance.rounding.normal
-                bottomRightRadius: Appearance.rounding.normal
+                // All four corners, at the one radius. The budget clamps it to
+                // half the short side, so a tall cell is a pill and a dot is a
+                // circle without either of them asking for a number of its own.
+                radius: root.radius
 
-                // Hover's half of this goes quiet during the scrub too, with
-                // the swell and for its reason; the active half is the thing
-                // the scrub is moving, so it stays.
-                color: (root.hovered === slotItem.index && !layout.scrubbing) || slotItem.isActive ? Appearance.colour.fillStrong : Appearance.colour.fill
+                // ONE COLOUR FOR EVERY CELL, and this is the half of the rethink
+                // that is easy to miss. State is not painted on the thing any
+                // more: where you are and what you are pointing at are the two
+                // markers behind this, and a cell that also brightened would be
+                // the same answer given twice, out of step, by a shape that
+                // cannot travel.
+                color: Appearance.colour.fill
 
-                Behavior on reach {
+                Behavior on full {
                     NumberAnimation {
                         duration: Appearance.anim.normal
                         easing.type: Easing.OutCubic
                     }
                 }
 
-                Behavior on tall {
-                    NumberAnimation {
-                        duration: Appearance.anim.normal
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
-
-                // The second sheet: the accent, over the neutral one rather than
-                // instead of it, so the active plate reads as thicker glass with
-                // colour in it and not as a stain on the bar. Gone ENTIRELY
-                // while a card lies on the plate, not merely dimmed as it once
-                // was: the sheet is the mark of the thing you are looking at,
-                // the card took that job with it, and a second tint bleeding
-                // past the card's edge argued quietly with the card about which
-                // of them is the focus (see `ceded` for the whole ghost).
-                G2Rect {
-                    anchors.fill: parent
-                    topLeftRadius: plate.topLeftRadius
-                    bottomLeftRadius: plate.bottomLeftRadius
-                    topRightRadius: plate.topRightRadius
-                    bottomRightRadius: plate.bottomRightRadius
-                    color: Appearance.colour.accentFill
-                    opacity: slotItem.isActive && !slotItem.covered ? 1 : 0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.anim.fast
-                        }
-                    }
-                }
-
-                // The one saturated thing in the sidebar, and it is three pixels
-                // wide, on the plate's hinge. It dims to `ceded` while a card is
-                // over it, and it is the one piece of accent the ghost keeps
-                // where the sheet keeps none: the card carries the bright
-                // segment, so the ruler runs unbroken down the edge and is
-                // brightest where the thing you are actually looking at is,
-                // with the quiet remainder saying which workspace is behind it.
-                G2Rect {
-                    x: 0
-                    width: root.tick
-                    height: parent.height
-                    radius: 0
-                    color: Appearance.colour.accent
-                    opacity: slotItem.isActive ? (slotItem.covered ? root.ceded : 1) : 0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.anim.fast
-                        }
-                    }
-                }
-
-                // One row per window, CENTRED IN THE PLATE, which is why they are
-                // children of it: the icons ride the plate out as it grows rather
-                // than sitting at a fixed place it happens to cover. A plate long
-                // enough to hold them is then not a constraint on how short the
-                // others can be.
+                // One row per window, CENTRED IN THE CELL, which is why they are
+                // children of it: the icons ride the cell as it grows rather than
+                // sitting at a fixed place it happens to cover.
                 Repeater {
                     // A ScriptModel, NOT the array: the array is rebuilt on every
                     // Hyprland event, and a plain-array Repeater would tear down
@@ -753,12 +919,12 @@ Item {
                         required property int index
                         readonly property bool focused: Hypr.isFocused(modelData)
                         // Hover is cosmetic here and goes dark during the
-                        // scrub, like the plates' own: a mark glowing under a
+                        // scrub, like the marker's own: a mark glowing under a
                         // drag promises a click the release will not make.
                         readonly property bool lit: focused || (winMouse.containsMouse && !layout.scrubbing)
                         readonly property string appClass: Hypr.classOf(modelData)
 
-                        x: (plate.width - root.slot) / 2
+                        x: Math.round((cell.width - root.slot) / 2)
                         y: (root.slot - root.pitch) / 2 + index * root.pitch
                         width: root.slot
                         height: root.pitch
@@ -783,8 +949,8 @@ Item {
 
                             // The focused window is the only thing in the column
                             // at full label weight. That is the whole hierarchy:
-                            // the plate says which workspace you are on, this says
-                            // which window you are in.
+                            // the marker says which workspace you are on, this
+                            // says which window you are in.
                             color: row.lit ? Appearance.colour.text : Appearance.colour.textDim
 
                             Behavior on color {
@@ -796,12 +962,12 @@ Item {
 
                         // Clicking a window goes to THAT window, not merely to its
                         // workspace. Hyprland's focuswindow brings the workspace
-                        // along with it, so this is strictly more than the plate's
+                        // along with it, so this is strictly more than the cell's
                         // own click does.
                         //
                         // Also the third doorway into the scrub, fed through
                         // the same model functions as the slot target and the
-                        // gap backstop: a busy plate is mostly window rows,
+                        // gap backstop: a busy cell is mostly window rows,
                         // and a drag that died wherever a mark happened to be
                         // would make the busiest workspaces the hardest ones
                         // to leave.
@@ -839,7 +1005,7 @@ Item {
 
                             // The third fingers' doorway, and the one that
                             // makes the rule true rather than nearly true: a
-                            // busy plate is mostly window rows, so a column
+                            // busy cell is mostly window rows, so a column
                             // that answered scrolls everywhere except on its
                             // marks would be a column you could not swipe
                             // wherever it had anything on it.
@@ -871,7 +1037,7 @@ Item {
                 // overflowing workspace is capped rather than truncated silently.
                 Icon {
                     visible: slotItem.info.rest > 0
-                    x: (plate.width - root.slot) / 2
+                    x: Math.round((cell.width - root.slot) / 2)
                     y: (root.slot - root.pitch) / 2 + slotItem.info.windows.length * root.pitch
                     width: root.slot
                     height: root.pitch
@@ -886,14 +1052,13 @@ Item {
     // THE OPEN SCRATCHPAD, over everything, because that is where it is.
     //
     // It takes the height ITS OWN windows need rather than the height of the
-    // plate it covers: a scratchpad is not in the column and does not have to
+    // cell it covers: a scratchpad is not in the column and does not have to
     // fit the column's rhythm, and a terminal and a notes window in there should
-    // look like two things. Slightly shorter than the plate underneath, so the
-    // end of what it is covering stays visible past it and the stack reads as a
-    // stack.
+    // look like two things. Slightly narrower than the cell underneath, so what
+    // it is covering stays visible past its sides and the stack reads as a stack.
     //
     // IT IS THE BAR, MOVED. Every number here is one end of a line between where
-    // this scratchpad lies in the rack and where it lies on the plate you are on,
+    // this scratchpad lies in the rack and where it lies on the cell you are on,
     // and `shown` is how far along that line it is, so opening and closing is one
     // card travelling rather than one appearing where another vanished. Its marks
     // travel too, and they swing as they go: a row along a bar is a column down a
@@ -916,11 +1081,12 @@ Item {
 
             readonly property var windows: pad.entry.windows.slice(0, root.maxWindows)
             readonly property int rows: Math.max(1, pad.windows.length)
+            readonly property int cells: root.barCells(pad.entry)
 
             // The two ends of the journey: the bar in the rack, and the card on
-            // the plate.
+            // the cell.
             readonly property real full: root.slot + (pad.rows - 1) * root.pitch
-            readonly property real cardW: Math.round(root.span) - root.overhang
+            readonly property real cardW: root.slot - root.overhang * 2
             readonly property real cardY: root.activeGeom.y + (root.activeGeom.h - pad.full) / 2
             readonly property real barW: root.barWidth(pad.entry)
 
@@ -930,7 +1096,10 @@ Item {
                 return from + (to - from) * pad.shown;
             }
 
-            x: root.hinge
+            // Both ends of the travel are centred in the lane, so the card comes
+            // straight up the column rather than sliding sideways out of a hinge
+            // that no longer exists.
+            x: Math.round((root.width - width) / 2)
             width: pad.reach(pad.barW, pad.cardW)
             height: pad.reach(root.barH, pad.full)
             y: pad.reach(root.barY(pad.index), pad.cardY)
@@ -955,7 +1124,7 @@ Item {
                 // answer is nothing. It has to be said out loud here and
                 // nowhere else in the rack, because this is the one piece of
                 // it that lies OVER the column. A wheel event this area did
-                // not accept falls past it to the plate's own doorway
+                // not accept falls past it to the cell's own doorway
                 // underneath, so the single surface that refuses the drag
                 // would be the single surface a swipe went straight through
                 // and scrubbed the workspace behind it.
@@ -970,7 +1139,7 @@ Item {
             // THE SHADOW, which is the only one in this shell and is here because
             // everything else in the sidebar is a sheet lying flat ON the bar. A
             // scratchpad is the one thing that is off it, and a card resting on a
-            // plate with nothing under its edge reads as a hole cut in the plate
+            // cell with nothing under its edge reads as a hole cut in the cell
             // instead of a card on it.
             //
             // Cast from the card's own silhouette rather than drawn as a darker
@@ -988,7 +1157,7 @@ Item {
                 shadowEnabled: true
                 shadowColor: "black"
                 shadowOpacity: 0.35
-                // Soft and barely offset: this is a card lifted off a plate by
+                // Soft and barely offset: this is a card lifted off a cell by
                 // its own thickness, not a dialog floating over a page. A tight
                 // blur at this size comes out as a dark outline around the card,
                 // which is a border, and a border is the one thing the chassis
@@ -1010,49 +1179,31 @@ Item {
                 layer.samples: 4
                 visible: false
 
-                topLeftRadius: 0
-                bottomLeftRadius: 0
-                topRightRadius: Appearance.rounding.normal
-                bottomRightRadius: Appearance.rounding.normal
+                radius: root.radius
 
                 // A SURFACE, not more glass. Two veils at 14 and 18 percent over
-                // a plate is a card you can see the plate through, and the whole
+                // a cell is a card you can see the cell through, and the whole
                 // claim being made here is that this is in front of it: the marks
                 // underneath showed through their own cover, and a shadow cast on
-                // a plate would have shown through it too. So the card is the
+                // a cell would have shown through it too. So the card is the
                 // shell's panel material, which is what everything else that
-                // floats is made of, and the plate genuinely disappears behind it.
+                // floats is made of, and the cell genuinely disappears behind it.
                 color: Appearance.colour.surface
 
                 G2Rect {
                     anchors.fill: parent
-                    topLeftRadius: card.topLeftRadius
-                    bottomLeftRadius: card.bottomLeftRadius
-                    topRightRadius: card.topRightRadius
-                    bottomRightRadius: card.bottomRightRadius
+                    radius: root.radius
                     color: Appearance.colour.fillStronger
                 }
 
-                // THE ACCENT, WHICH CAME WITH IT. Same two pieces the active
-                // plate is wearing, the sheet and the three bright pixels on the
-                // hinge, because this is now the thing they mean: the plate is a
-                // workspace you are on, this is the one you are looking at.
+                // THE ACCENT, WHICH CAME WITH IT. The same sheet the marker wears
+                // up the column, because this is now the thing it means: the
+                // marker is the workspace you are on, this is the one you are
+                // looking at.
                 G2Rect {
                     anchors.fill: parent
-                    topLeftRadius: card.topLeftRadius
-                    bottomLeftRadius: card.bottomLeftRadius
-                    topRightRadius: card.topRightRadius
-                    bottomRightRadius: card.bottomRightRadius
+                    radius: root.radius
                     color: Appearance.colour.accentFill
-                    opacity: pad.shown
-                }
-
-                G2Rect {
-                    x: 0
-                    width: root.tick
-                    height: parent.height
-                    radius: 0
-                    color: Appearance.colour.accent
                     opacity: pad.shown
                 }
 
@@ -1069,7 +1220,7 @@ Item {
 
                         readonly property real markSize: pad.reach(root.barMark, root.iconSize)
 
-                        x: pad.reach(root.barMarkX(mark.index), (card.width - mark.markSize) / 2)
+                        x: pad.reach(root.barMarkX(mark.index, pad.barW, pad.cells), (card.width - mark.markSize) / 2)
                         y: pad.reach(root.barMarkY, root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
                         size: Math.round(mark.markSize)
                         spec: AppIcons.markFor(Hypr.classOf(mark.modelData))

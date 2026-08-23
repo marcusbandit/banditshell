@@ -16,10 +16,12 @@ import qs.config
 // commit rather than an opinion of its own about what a swipe is. Today only
 // `plates` does that, so the other two styles still switch by tap alone.
 //
-//   plates   index tabs hinged on the screen's edge, length as state, one mark
-//            per window. The one that works. What the mark IS (the app's own
-//            icon in our colour, the app's icon as shipped, or a category
-//            glyph) is `sidebar.workspaces.iconMode`, not a style of its own.
+//   plates   floating G2 cells in the bar's own lane, one mark per window,
+//            with ONE marker that travels to the workspace you are on and
+//            another that travels to whatever the cursor is on. The one that
+//            works. What the mark IS (the app's own icon in our colour, the
+//            app's icon as shipped, or a category glyph) is
+//            `sidebar.workspaces.iconMode`, not a style of its own.
 //   map      no glyphs. Each window is a bar as long as the window is wide, so
 //            the column shows the shape of the layout rather than its contents.
 //   blocks   one square per window, one row per workspace, on the pixel grid.

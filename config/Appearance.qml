@@ -295,7 +295,6 @@ Singleton {
         readonly property string wsIconMode: root.cfg.sidebar.workspaces.iconMode
         // The ruler down the screen's edge. See modules/sidebar/Workspaces.qml.
         readonly property string wsStyle: root.cfg.sidebar.workspaces.style
-        readonly property int wsTick: root.cfg.sidebar.workspaces.tick
         readonly property int wsMapBar: root.cfg.sidebar.workspaces.mapBar
         readonly property int wsMapGap: root.cfg.sidebar.workspaces.mapGap
         readonly property int wsBlock: root.cfg.sidebar.workspaces.block
