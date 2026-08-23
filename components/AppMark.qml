@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.components.marks
 
 // One window's mark, from a SPEC, which is a string with a scheme on the front.
 //
@@ -20,7 +21,8 @@ import qs.components
 //   image:/path/x.svg     a file drawn as it is. The application's real icon,
 //                         brand palette and all.
 //   draw:Kitty            a mark this shell draws ITSELF, as vectors, in the
-//                         theme's colours: components/marks/Kitty.qml. For the
+//                         theme's colours: components/marks/Kitty.qml, named in
+//                         the table below. For the
 //                         handful of applications whose own artwork is a
 //                         photograph next to a bar made of one grey and one
 //                         accent, and whose silhouette is a blob. It takes
@@ -45,20 +47,37 @@ Item {
     implicitWidth: size
     implicitHeight: size
 
-    // A MARK THE SHELL DRAWS. Loaded by name from components/marks, so adding one
-    // is a file rather than a branch here, and its ink is handed down the same
-    // way every other kind's is.
+    // A MARK THE SHELL DRAWS ITSELF, from components/marks, by the name the spec
+    // carries. Its ink is handed down the same way every other kind's is.
+    //
+    // A COMPONENT PER MARK rather than a URL built from the name, which is what
+    // this was and which cost an hour: a file reached only through a string at
+    // runtime is not part of the module graph, so Quickshell does not watch it,
+    // and editing one changes nothing until the shell is restarted while every
+    // other file in the project hot-reloads. Named as a type, it reloads like
+    // everything else. The price is a line in the table below per drawn mark,
+    // which is the price of the file being real.
+    readonly property var drawnMarks: ({
+            Kitty: kittyMark
+        })
+
     Loader {
         id: drawn
 
         anchors.centerIn: parent
         active: root.kind === "draw" && !!root.value
-        source: drawn.active ? `marks/${root.value}.qml` : ""
+        sourceComponent: drawn.active ? root.drawnMarks[root.value] ?? null : null
 
         onLoaded: {
             drawn.item.colour = Qt.binding(() => root.color);
             drawn.item.size = Qt.binding(() => root.size);
         }
+    }
+
+    Component {
+        id: kittyMark
+
+        Kitty {}
     }
 
     Icon {
