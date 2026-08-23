@@ -1287,11 +1287,13 @@ PanelWindow {
         // LOAD-BEARING, and its blob above must stay in `panels`. This is the
         // only feedback that the microphone is live; see MicIndicator.qml.
         //
-        // Dictation, when the microphone is actually open. It shares the top
-        // edge with the notch and centres on the same axis, which is deliberate:
-        // both are "the top of the screen telling you something", and the field
-        // melts them together on the rare occasion the cursor is up here while
-        // dictating, rather than showing two pills fighting for the same space.
+        // Dictation, when the microphone is actually open. It comes out of the
+        // same top edge as the notch and the field melts the two together when
+        // they meet, rather than showing two pills fighting for the same space.
+        //
+        // It does NOT share the notch's axis any more. The notch is about the
+        // screen and this is about a window: it rides over whatever holds the
+        // keyboard, on that monitor alone. See MicIndicator's `anchor`.
         //
         // No mask entry, like the tooltip: it is a readout, not a control, and
         // nothing about it is meant to be clicked.

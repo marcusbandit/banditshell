@@ -468,6 +468,19 @@ Singleton {
         return root.clients[id] ?? [];
     }
 
+    // ASK THE COMPOSITOR AGAIN, for anything that reads geometry at a moment of
+    // its own choosing.
+    //
+    // `lastIpcObject` is filled by an IPC round trip, and this shell only makes
+    // that trip when Hyprland announces something (see the event handler at the
+    // bottom of this file). Most of what moves a window announces itself; a
+    // window RESIZED by hand does not. So a reader that picks its own moment -
+    // the mic indicator, when the microphone opens - asks here first rather than
+    // drawing itself against a position from the last focus change.
+    function resync(): void {
+        Hyprland.refreshToplevels();
+    }
+
     // SPECIAL WORKSPACES, which are a different kind of thing and not a numbered
     // slot with a minus sign on it. A scratchpad is not somewhere you go and
     // stay, it is something you pull over whatever you are already doing, and it

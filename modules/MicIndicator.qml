@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.components
+import qs.services
 
 // LOAD-BEARING. Do not delete this module, do not drop it from ShellWindow's
 // `panels` list, and do not "simplify" the reconnect below. This is the only
@@ -59,7 +60,61 @@ Item {
     property string phase: "idle"
     property real level: 0
 
-    readonly property bool out: root.phase !== "idle"
+    // WHICH SCREEN THIS COPY IS ON, asked of the window rather than handed in,
+    // the same way the notification tray asks it and for the same reason: the
+    // preview harnesses build this module on windows that are in none of the
+    // shell's wiring and could not be told a name.
+    readonly property var host: QsWindow.window?.screen ?? null
+    readonly property string screenName: root.host?.name ?? ""
+
+    // ONE MICROPHONE, ONE INDICATOR. The shell draws this module on every screen
+    // and it used to light up on all of them at once: the same pill, three
+    // times, for a single microphone that can only be open in one place. What is
+    // dictated goes into the window holding the keyboard, so the screen that
+    // window is on is the only screen where this readout is about anything.
+    //
+    // EITHER NAME MISSING MEANS EVERY SCREEN. That is the old behaviour and the
+    // only safe way to be wrong here: a compositor that has not yet said where
+    // the keyboard is would otherwise gate off every screen at once, and an
+    // indicator nowhere is exactly the failure the note at the top of this file
+    // is about. Showing it twice is a blemish; showing it never is a machine
+    // that looks idle while it listens to you.
+    readonly property bool mine: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
+
+    readonly property bool out: root.phase !== "idle" && root.mine
+
+    // WHERE THE WORDS ARE ACTUALLY GOING, in this window's own coordinates.
+    //
+    // This hung in the middle of the screen because that is where the notch is
+    // and the two share an axis. But the notch is about the SCREEN and this is
+    // about a WINDOW: the text lands in whatever holds the keyboard, and on a
+    // wide monitor the centre of the screen can be nowhere near it. Over the
+    // window, it reads as belonging to the thing being dictated into rather than
+    // to the desk, and on a tiled screen it also says WHICH pane is about to
+    // receive the sentence, which the centre could never say.
+    //
+    // Hyprland's `at` is absolute across the whole layout, so the monitor's own
+    // origin comes back off it; modules/picker/Picker.qml does the same
+    // conversion for the same reason. No window at all (a bare workspace, the
+    // compositor still starting) falls back to the centre, which is where this
+    // came from.
+    readonly property real centre: {
+        const box = Hypr.activeClient?.lastIpcObject;
+        if (!box?.at || !box?.size || !root.host)
+            return root.width / 2;
+        return box.at[0] + box.size[0] / 2 - root.host.x;
+    }
+
+    // KEPT ON THE SCREEN, by its own width rather than by a margin someone
+    // measured once. A window can hang off the edge of the layout, and for the
+    // moment between the keyboard moving to another monitor and this screen
+    // giving the pill up, the focused window is not even on this screen: half a
+    // pill sliding past the corner would tear the band open where the chassis
+    // rounds. A screen too narrow to hold the pill inside its own margins gets
+    // the centre, because there is no honest answer and the centre is at least
+    // symmetrical.
+    readonly property real margin: root.pillWidth / 2 + root.border + Appearance.padding.large
+    readonly property real anchor: root.width < root.margin * 2 ? root.width / 2 : Math.max(root.margin, Math.min(root.width - root.margin, root.centre))
 
     // The waveform's memory: one slot per bar, oldest at the left. A new level
     // shifts the row along, which is what makes it scroll rather than flicker.
@@ -96,7 +151,7 @@ Item {
     // starts and gives it back once fully retracted.
     readonly property var blobs: drop.value > 0.001 ? [
         {
-            x: (width - root.pillWidth) / 2,
+            x: slide.value - root.pillWidth / 2,
             y: -(root.pillHeight + Appearance.sizes.melt) * (1 - drop.value),
             w: root.pillWidth,
             h: root.pillHeight,
@@ -173,11 +228,41 @@ Item {
     }
 
     onPhaseChanged: {
-        if (root.phase === "listening")
-            root.resetHistory();
+        if (root.phase !== "listening")
+            return;
+        root.resetHistory();
+        // The window's position comes off an IPC round trip that this shell only
+        // makes when Hyprland says something happened, and a window RESIZED by
+        // hand says nothing at all. So the one moment this module reads geometry
+        // of its own accord, it asks first, rather than descending onto where
+        // the window was at the last focus change.
+        if (root.mine)
+            Hypr.resync();
     }
 
-    Component.onCompleted: root.resetHistory()
+    // ARRIVING IS NOT A MOVE. The slide below tracks the focused window, but a
+    // pill coming out of the band belongs over the window it is coming out for,
+    // not skating across from wherever the last dictation happened - that draws
+    // the eye along the path instead of to the words.
+    onOutChanged: {
+        if (root.out)
+            slide.snap();
+    }
+
+    Component.onCompleted: {
+        root.resetHistory();
+        slide.snap();
+    }
+
+    // Between windows it TRACKS rather than jumps, on the shell's own tracking
+    // speed. This is a blob in the chassis distance field, so a teleport would
+    // pop the band open in one place and shut in another in a single frame,
+    // which reads as a glitch rather than as a move.
+    Follow {
+        id: slide
+
+        target: root.anchor
+    }
 
     // The daemon's event stream.
     //
@@ -329,7 +414,8 @@ Item {
     Item {
         id: content
 
-        anchors.horizontalCenter: parent.horizontalCenter
+        // On the pill's axis, not the screen's; see `anchor` above.
+        x: slide.value - width / 2
         width: root.contentWidth
         height: root.contentHeight
         y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - Appearance.padding.large
