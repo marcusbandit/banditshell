@@ -153,14 +153,18 @@ Item {
     readonly property real barMin: root.barWidth
     readonly property real barsWidth: root.barCount * root.barWidth + (root.barCount - 1) * root.barGap
 
-    readonly property real contentWidth: glyph.implicitWidth + Appearance.padding.large + root.barsWidth
-    readonly property real contentHeight: Math.max(glyph.implicitHeight, root.barMax)
+    // The waveform's well, and how much room the bars get inside it. Uniform, so
+    // the inset reads as one frame around one thing rather than as a margin that
+    // was tuned per edge.
+    readonly property real wellPad: Appearance.padding.normal
+    readonly property real contentWidth: root.barsWidth + root.wellPad * 2
+    readonly property real contentHeight: root.barMax + root.wellPad * 2
 
     // Fixed across every phase. The shape must not resize as the phase changes:
     // a pill that grew and shrank between listening, processing and typing would
     // be three animations of the chassis reflowing, on top of the one thing that
     // is actually meant to be moving.
-    readonly property real pillWidth: root.contentWidth + Appearance.padding.huge * 2
+    readonly property real pillWidth: root.contentWidth + Appearance.padding.large * 2
     readonly property real pillHeight: root.border + root.contentHeight + Appearance.padding.large * 2
 
     // Empty at rest rather than a zero-width slot parked off-screen: the field
@@ -465,61 +469,69 @@ Item {
         y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - Appearance.padding.large
         opacity: drop.value
 
-        Icon {
-            id: glyph
+        // THE BARS' OWN WELL, and now the only thing in the pill.
+        //
+        // The glyph that used to sit on the left is GONE. It named the phase
+        // ("mic", "autorenew", "keyboard") which is the same fact the bars are
+        // already spelling out in the one way that can be read from across the
+        // desk: two readouts of one state, and the small one was the slower of
+        // the two to take in. Removing it also stops the pill saying the phase
+        // twice and disagreeing with itself for the frame between the icon
+        // swapping and the bars re-anchoring.
+        //
+        // A G2Rect and never a Rectangle, per ~/.claude/rules/g2-corners.md.
+        // This is a shape inside another shape, which is exactly where the
+        // difference shows: nested G2 corners stay visually concentric, and
+        // nested circular arcs visibly do not.
+        G2Rect {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal
+            color: Appearance.colour.fillStronger
 
-            anchors.left: parent.left
-            anchors.verticalCenter: parent.verticalCenter
+            Row {
+                anchors.centerIn: parent
+                // Explicit, not implicit from the tallest bar. A Row that sizes
+                // to its children changes height as the bars move, and
+                // bottom-anchored bars would then be measuring against a floor
+                // shifting under them every frame.
+                height: root.barMax
+                spacing: root.barGap
 
-            name: root.phase === "processing" ? "autorenew" : root.phase === "typing" ? "keyboard" : "mic"
-            color: Appearance.colour.accent
-            font.pixelSize: Appearance.font.size.normal
-        }
+                Repeater {
+                    model: root.barCount
 
-        Row {
-            anchors.right: parent.right
-            anchors.verticalCenter: parent.verticalCenter
-            // Explicit, not implicit from the tallest bar. A Row that sizes to
-            // its children changes height as the bars move, and bottom-anchored
-            // bars would then be measuring against a floor shifting under them
-            // every frame.
-            height: root.contentHeight
-            spacing: root.barGap
+                    Rectangle {
+                        required property int index
 
-            Repeater {
-                model: root.barCount
+                        // Bound to `history` as well as the phase so a new level
+                        // actually repaints this bar; barFraction() reading the
+                        // array is not enough on its own to register a dependency
+                        // when the array is replaced wholesale.
+                        readonly property real fraction: (root.history, root.phase, flow.t, fill.value, writer.position, root.barFraction(index))
 
-                Rectangle {
-                    required property int index
+                        readonly property bool liquid: root.phase === "processing"
 
-                    // Bound to `history` as well as the phase so a new level
-                    // actually repaints this bar; barFraction() reading the
-                    // array is not enough on its own to register a dependency
-                    // when the array is replaced wholesale.
-                    readonly property real fraction: (root.history, root.phase, flow.t, fill.value, writer.position, root.barFraction(index))
+                        width: root.barWidth
+                        height: root.barMin + (root.barMax - root.barMin) * fraction
+                        radius: width / 2
+                        color: Appearance.colour.accent
 
-                    readonly property bool liquid: root.phase === "processing"
-
-                    width: root.barWidth
-                    height: root.barMin + (root.barMax - root.barMin) * fraction
-                    radius: width / 2
-                    color: Appearance.colour.accent
-
-                    // THE BASELINE IS THE PHASE. Centre-hung bars read as an
-                    // audio waveform whatever drives them, because a shape
-                    // mirrored about its own axis is what a waveform IS. Sitting
-                    // them on a floor instead turns the very same bars into a
-                    // volume of liquid with a surface, which is why this phase
-                    // finally looks like something other than more listening.
-                    //
-                    // Plain `y`, NOT a pair of conditional anchors. Swapping
-                    // between anchors.verticalCenter and anchors.bottom left both
-                    // bound at once, and an item anchored top-and-bottom is
-                    // stretched between them with its height binding discarded:
-                    // every bar came out identical, full height and frozen. A Row
-                    // positions its children in x only, so y is ours to set and
-                    // there is no anchor to conflict with.
-                    y: liquid ? parent.height - height : (parent.height - height) / 2
+                        // THE BASELINE IS THE PHASE. Centre-hung bars read as an
+                        // audio waveform whatever drives them, because a shape
+                        // mirrored about its own axis is what a waveform IS. Sitting
+                        // them on a floor instead turns the very same bars into a
+                        // volume of liquid with a surface, which is why this phase
+                        // finally looks like something other than more listening.
+                        //
+                        // Plain `y`, NOT a pair of conditional anchors. Swapping
+                        // between anchors.verticalCenter and anchors.bottom left both
+                        // bound at once, and an item anchored top-and-bottom is
+                        // stretched between them with its height binding discarded:
+                        // every bar came out identical, full height and frozen. A Row
+                        // positions its children in x only, so y is ours to set and
+                        // there is no anchor to conflict with.
+                        y: liquid ? parent.height - height : (parent.height - height) / 2
+                    }
                 }
             }
         }
