@@ -1,63 +1,161 @@
 .pragma library
 
-// G2-continuous ("squircle") corner geometry.
+// G2-continuous corner geometry: the SUPERELLIPSE the compositor draws.
 //
-// A normal rounded rectangle is G1: the straight edge meets the circular arc with
-// an instant jump in curvature from 0 to 1/r, which the eye reads as a pinch. A G2
-// corner shrinks the arc to less than 90 degrees and spends the leftover corner
-// budget on a cubic Bezier either side, ramping curvature 0 -> 1/r -> 0.
+// A corner here is |x|^n + |y|^n = r^n, the same curve Hyprland rounds a window
+// with (`decoration:rounding` and `decoration:rounding_power`) and the same one
+// components/blob/blob.frag melts the chassis with. n = 2 is a plain circular
+// arc; higher is fuller, hugging the corner vertex more closely, and the
+// curvature ramps into the straight edge instead of jumping, which is what
+// makes it read as one continuous form. See ~/.claude/rules/g2-corners.md.
 //
-// This is the Figma corner-smoothing construction. See ~/.claude/rules/g2-corners.md.
+// WHY NOT FIGMA'S CONSTRUCTION, which this file used to draw. Figma's corner
+// smoothing shrinks the arc and spends the leftover corner budget on a cubic
+// either side. It is a fine squircle and it is NOT this curve: it moves the
+// transition further along the EDGE while leaving the distance from the curve to
+// the corner vertex fixed at whatever the arc radius gives. So a Figma corner
+// and a superellipse of the same size can be made to agree along the sides or at
+// the vertex, never both, and the shell had one of each: every panel it draws
+// sat beside a window the compositor had rounded, at a visibly different shape.
+// blob.frag went superellipse for exactly this reason and said so in its header;
+// this is the vector half finally catching up.
+//
+// THE RADIUS IS THE REACH. It is how far the corner runs along each side, which
+// is what `decoration:rounding` means and what a plain `border-radius` means. The
+// old file took it as the ARC's radius and then spent (1 + s) times it, so every
+// shape was 60% rounder than the number it asked for, and anything asking past
+// a third of its side had its smoothing quietly degraded to nothing to fit.
+//
+// The curve is emitted as cubic Beziers: three per corner, knotted at equal
+// TURNING rather than at equal parameter, because a superellipse does nearly all
+// of its turning near the diagonal and equal parameter steps put two nearly
+// parallel tangents in the first segment. Max deviation from the true curve is
+// under a thousandth of the radius across the whole useful range of n.
 
-function toRad(deg) {
-    return deg * Math.PI / 180;
+// THE EXPONENT, taken as itself. It is `decoration:rounding_power` and the same
+// number components/blob/blob.frag melts the chassis with, so the shell has ONE
+// corner curve rather than a shader parameter and a vector parameter that have
+// to be kept in agreement by hand. 2 is circular; below it the corner would turn
+// inside out, so that is the floor.
+function exponent(power) {
+    return Math.max(2, Math.min(12, power));
 }
 
-// Geometry of one corner, given its radius and a smoothing factor in [0, 1].
-//   p    - how far down each adjacent side the corner reaches
-//   arc  - chord length of the (shortened) circular arc
-//   a b c d - the Bezier control offsets that ease curvature in and out
-function corner(radius, smoothing) {
-    if (radius <= 0)
-        return {
-            r: 0,
-            a: 0,
-            b: 0,
-            c: 0,
-            d: 0,
-            p: 0,
-            arc: 0
-        };
-
-    const p = (1 + smoothing) * radius;
-    const arcMeasure = 90 * (1 - smoothing);           // degrees left for the true arc
-    const arc = Math.sin(toRad(arcMeasure / 2)) * radius * Math.SQRT2;
-
-    const alpha = (90 - arcMeasure) / 2;
-    const p3p4 = radius * Math.tan(toRad(alpha / 2));
-
-    const beta = 45 * smoothing;
-    const c = p3p4 * Math.cos(toRad(beta));
-    const d = c * Math.tan(toRad(beta));
-
-    const b = (p - arc - c - d) / 3;
-    const a = 2 * b;
-
-    return {
-        r: radius,
-        a: a,
-        b: b,
-        c: c,
-        d: d,
-        p: p,
-        arc: arc
-    };
+// A point on the unit corner, in the corner's own frame: 1 at the entry, 1 at
+// the exit, and the superellipse between them.
+function unitPoint(phi, n) {
+    return [Math.pow(Math.cos(phi), 2 / n), Math.pow(Math.sin(phi), 2 / n)];
 }
 
-// Two corners share a side. Each gets a slice of it in proportion to how much
-// it asked for, so the bigger radius keeps the bigger allowance when they
-// collide. This is an allowance along the SIDE, not a radius: a corner may spend
-// it on radius and on smoothing both.
+// The tangent there, as a direction. The raw derivative has a pole at both ends
+// (the parameter stalls while the curve keeps moving); multiplying through by
+// (cos phi sin phi)^(1 - 2/n) clears it and leaves this, which is finite and
+// correct everywhere including the two endpoints.
+function unitTangent(phi, n) {
+    const k = 2 - 2 / n;
+    return [-Math.pow(Math.sin(phi), k), Math.pow(Math.cos(phi), k)];
+}
+
+// The parameter at which the tangent has turned by `frac` of the corner's 90
+// degrees. Knotting on this is what keeps the three segments comparable: with a
+// high exponent the curve is nearly straight for most of the parameter range and
+// then turns almost all at once.
+function atTurn(frac, n) {
+    if (frac <= 0)
+        return 0;
+    if (frac >= 1)
+        return Math.PI / 2;
+    const k = 2 - 2 / n;
+    if (k <= 0)
+        return frac * Math.PI / 2;
+    return Math.atan(Math.pow(Math.tan(frac * Math.PI / 2), 1 / k));
+}
+
+// WHERE EACH CORNER SITS, as a centre and two unit axes. `u` points at the entry
+// and `v` at the exit, so one formula draws all eight cases and the four corners
+// differ only by this table.
+//
+// CONVEX (positive radius) cuts the corner off the bounding box: the centre is
+// inset by the reach on both sides and the curve pulls away from the vertex.
+//
+// CONCAVE (negative radius) does the reverse: the side pulls IN by the reach and
+// the corner flares back OUT to touch the vertex, arriving tangent to the
+// perpendicular edge. That is what a panel meeting a screen edge wants, so it
+// sweeps into the edge rather than curling away and leaving a notch.
+function frame(which, p, w, h, concave) {
+    switch (which) {
+    case "tr":
+        return concave ? [[w, p], [0, -1], [-1, 0]] : [[w - p, p], [0, -1], [1, 0]];
+    case "br":
+        return concave ? [[w - p, h], [0, -1], [1, 0]] : [[w - p, h - p], [1, 0], [0, 1]];
+    case "bl":
+        return concave ? [[0, h - p], [0, 1], [1, 0]] : [[p, h - p], [0, 1], [-1, 0]];
+    case "tl":
+        return concave ? [[p, 0], [0, 1], [-1, 0]] : [[p, p], [-1, 0], [0, -1]];
+    }
+    return [[0, 0], [0, 0], [0, 0]];
+}
+
+function at(f, phi, p, n) {
+    const c = f[0];
+    const u = f[1];
+    const v = f[2];
+    const q = unitPoint(phi, n);
+    return [c[0] + p * (q[0] * u[0] + q[1] * v[0]), c[1] + p * (q[0] * u[1] + q[1] * v[1])];
+}
+
+function dir(f, phi, n) {
+    const u = f[1];
+    const v = f[2];
+    const t = unitTangent(phi, n);
+    const x = t[0] * u[0] + t[1] * v[0];
+    const y = t[0] * u[1] + t[1] * v[1];
+    const m = Math.hypot(x, y) || 1;
+    return [x / m, y / m];
+}
+
+function n3(x) {
+    return Math.round(x * 1000) / 1000;
+}
+
+// One cubic through a piece of the curve. The endpoints and their tangent
+// DIRECTIONS are exact; the two magnitudes are whatever makes the Bezier pass
+// through the curve's own midpoint, which is a 2x2 solve and is what keeps the
+// error at four decimal places instead of eyeballing a control-point constant.
+function piece(f, phiA, phiB, p, n) {
+    const p0 = at(f, phiA, p, n);
+    const p1 = at(f, phiB, p, n);
+    const mid = at(f, (phiA + phiB) / 2, p, n);
+    const t0 = dir(f, phiA, n);
+    const t1 = dir(f, phiB, n);
+
+    const dx = (mid[0] - (p0[0] + p1[0]) / 2) * 8 / 3;
+    const dy = (mid[1] - (p0[1] + p1[1]) / 2) * 8 / 3;
+
+    const det = t1[0] * t0[1] - t0[0] * t1[1];
+    // Parallel tangents mean this piece is already a straight line, and the
+    // solve below would divide by nothing to find that out.
+    const a = Math.abs(det) < 1e-9 ? 0 : (t1[0] * dy - dx * t1[1]) / det;
+    const b = Math.abs(det) < 1e-9 ? 0 : (t0[0] * dy - t0[1] * dx) / det;
+
+    return ` C ${n3(p0[0] + a * t0[0])} ${n3(p0[1] + a * t0[1])} ${n3(p1[0] - b * t1[0])} ${n3(p1[1] - b * t1[1])} ${n3(p1[0])} ${n3(p1[1])}`;
+}
+
+// How many cubics a corner is worth. Three carries the whole exponent range;
+// the cost of a fourth is one more curve in a path string rebuilt on resize.
+var PIECES = 3;
+
+function corner(f, p, n) {
+    if (p <= 0)
+        return "";
+    let out = "";
+    for (let i = 0; i < PIECES; i++)
+        out += piece(f, atTurn(i / PIECES, n), atTurn((i + 1) / PIECES, n), p, n);
+    return out;
+}
+
+// Two corners share a side. Each gets a slice of it in proportion to how much it
+// asked for, so the bigger reach keeps the bigger allowance when they collide.
 function share(r1, r2, len) {
     const total = r1 + r2;
     if (total <= 0)
@@ -65,7 +163,9 @@ function share(r1, r2, len) {
     return [len * r1 / total, len * r2 / total];
 }
 
-// How much room each corner actually gets: the smaller of its two sides' allowances.
+// How much room each corner actually gets: the smaller of its two sides'
+// allowances. In reach units, which is the same unit a side is measured in, so
+// nothing has to be scaled to compare them.
 function budgets(tl, tr, br, bl, w, h) {
     const top = share(tl, tr, w);
     const bottom = share(bl, br, w);
@@ -79,182 +179,72 @@ function budgets(tl, tr, br, bl, w, h) {
     };
 }
 
-
-// THE RADIUS IS HOW FAR THE CORNER REACHES, which is the whole of what was
-// wrong with this file.
-//
-// The Figma construction takes the ARC's radius and spends (1 + s) times it
-// along each side, so `radius: 24` at the shell's 0.6 smoothing drew a corner
-// reaching 38.4px. Every shape in the shell was 60% rounder than the number it
-// asked for, and a corner that big does not read as a squircle: it reads as an
-// oversized plain radius, which is exactly what it was reported as.
-//
-// The second half of the same mistake was the budget. A corner may only spend
-// half its side, so with the reach at 1.6r anything asking for radius >= h/3.2
-// ran out of room, and what gave way was the SMOOTHING: a pill (radius = h/2)
-// came out at smoothing 0, which is a plain circular arc. The one shape in the
-// shell that most obviously wants a continuous corner was the one shape
-// guaranteed not to get one.
-//
-// So `radius` means the reach, the arc is r = radius / (1 + s), and the budget
-// is checked against the reach directly. A radius of 24 now covers exactly the
-// 24px a plain rounded rect would, with the curvature ramped across it instead
-// of jumping; smoothing never degrades, because nothing is being asked for that
-// does not fit. s = 0 still collapses to a plain rounded rect of that radius,
-// which is the property that makes the two comparable at all.
-//
-// It also puts this in step with the chassis, whose corners are drawn by an SDF
-// (components/blob/blob.frag) that has always treated the radius as the reach.
-// The two subsystems disagreed by 60% on every panel they share an edge with.
-//
-// A negative radius means a CONCAVE corner.
-function fit(radius, smoothing, budget) {
-    const reach = Math.min(Math.abs(radius), budget);
-    const k = reach <= 0 ? corner(0, 0) : corner(reach / (1 + smoothing), smoothing);
-    k.concave = radius < 0;
-    return k;
-}
-
-function n(x) {
-    return Math.round(x * 1000) / 1000;
-}
-
-function seq() {
-    const parts = [];
-    for (let i = 0; i < arguments.length; i++)
-        parts.push(n(arguments[i]));
-    return parts.join(" ");
-}
-
 // How far a corner reaches along each of its two sides. Anything sizing itself
-// around a concave corner needs this: the flare is exactly this wide.
-//
-// It is the radius, and it is kept as a function because that is the question
-// callers are asking and because it stopped being a different number only when
-// `fit` above started reading the radius as the reach.
-function extent(radius, smoothing) {
+// around a concave corner needs it: the flare is exactly this wide. It IS the
+// radius now, and stays a function because that is the question being asked.
+function extent(radius, power) {
     return Math.abs(radius);
-}
-
-// CONVEX (positive radius) cuts the corner off the bounding box: the shape pulls
-// away from its own corner. Right for a floating card.
-//
-// CONCAVE (negative radius) does the reverse: the side pulls IN by p, and the
-// corner flares back OUT to touch the bounding-box corner, arriving tangent to
-// the perpendicular edge. That is what you want where a panel meets a screen
-// edge, because the panel then sweeps into the edge instead of curling away from
-// it and leaving a notch of dead space at the very corner.
-//
-// A concave corner is the convex path mirrored in x, which also flips the arc's
-// sweep flag. Both are written out per corner rather than generated, because the
-// four corners enter and leave on different axes and a clever generator here is
-// harder to check than twelve literal numbers.
-function segment(k, which) {
-    if (k.r <= 0)
-        return "";
-
-    const abc = k.a + k.b + k.c;
-    const ab = k.a + k.b;
-    const bc = k.b + k.c;
-    const arcTo = (sx, sy, sweep) => " a " + seq(k.r, k.r) + " 0 0 " + sweep + " " + seq(sx * k.arc, sy * k.arc);
-
-    switch (which) {
-    // enters travelling +x along the top edge, leaves travelling +y
-    case "tr":
-        return k.concave ? " c " + seq(-k.a, 0, -ab, 0, -abc, k.d) + arcTo(-1, 1, 0) + " c " + seq(-k.d, k.c, -k.d, bc, -k.d, abc) : " c " + seq(k.a, 0, ab, 0, abc, k.d) + arcTo(1, 1, 1) + " c " + seq(k.d, k.c, k.d, bc, k.d, abc);
-
-    // enters travelling +y down the right edge, leaves travelling -x
-    case "br":
-        return k.concave ? " c " + seq(0, k.a, 0, ab, k.d, abc) + arcTo(1, 1, 0) + " c " + seq(k.c, k.d, bc, k.d, abc, k.d) : " c " + seq(0, k.a, 0, ab, -k.d, abc) + arcTo(-1, 1, 1) + " c " + seq(-k.c, k.d, -bc, k.d, -abc, k.d);
-
-    // enters travelling -x along the bottom edge, leaves travelling -y
-    case "bl":
-        return k.concave ? " c " + seq(k.a, 0, ab, 0, abc, -k.d) + arcTo(1, -1, 0) + " c " + seq(k.d, -k.c, k.d, -bc, k.d, -abc) : " c " + seq(-k.a, 0, -ab, 0, -abc, -k.d) + arcTo(-1, -1, 1) + " c " + seq(-k.d, -k.c, -k.d, -bc, -k.d, -abc);
-
-    // enters travelling -y up the left edge, leaves travelling +x
-    case "tl":
-        return k.concave ? " c " + seq(0, -k.a, 0, -ab, -k.d, -abc) + arcTo(-1, -1, 0) + " c " + seq(-k.c, -k.d, -bc, -k.d, -abc, -k.d) : " c " + seq(0, -k.a, 0, -ab, k.d, -abc) + arcTo(1, -1, 1) + " c " + seq(k.c, -k.d, bc, -k.d, abc, -k.d);
-    }
-    return "";
-}
-
-// Where each corner starts and finishes, in absolute coordinates. The straight
-// sides are just the lines between one corner's exit and the next one's entry,
-// so a concave corner automatically pulls its side inwards.
-function ends(k, which, w, h) {
-    const p = k.p;
-    switch (which) {
-    case "tr":
-        return k.concave ? [[w, 0], [w - p, p]] : [[w - p, 0], [w, p]];
-    case "br":
-        return k.concave ? [[w - p, h - p], [w, h]] : [[w, h - p], [w - p, h]];
-    case "bl":
-        return k.concave ? [[0, h], [p, h - p]] : [[p, h], [0, h - p]];
-    case "tl":
-        return k.concave ? [[p, p], [0, 0]] : [[0, p], [p, 0]];
-    }
 }
 
 // Full closed path, drawn clockwise starting on the top edge.
 // ox/oy translate it, which is what lets a shape be a hole inside a bigger one.
-function path(w, h, tl, tr, br, bl, smoothing, ox, oy) {
+function path(w, h, tl, tr, br, bl, power, ox, oy) {
     ox = ox || 0;
     oy = oy || 0;
 
     if (w <= 0 || h <= 0)
         return "";
 
-    const s = Math.max(0, Math.min(1, smoothing));
+    const n = exponent(power);
     const bud = budgets(Math.abs(tl), Math.abs(tr), Math.abs(br), Math.abs(bl), w, h);
+    const order = [["tr", tr, bud.tr], ["br", br, bud.br], ["bl", bl, bud.bl], ["tl", tl, bud.tl]];
 
-    const order = [["tr", fit(tr, s, bud.tr)], ["br", fit(br, s, bud.br)], ["bl", fit(bl, s, bud.bl)], ["tl", fit(tl, s, bud.tl)]];
-
-    const geom = order.map(([which, k]) => {
-        const e = ends(k, which, w, h);
+    const geom = order.map(([which, radius, budget]) => {
+        const p = Math.min(Math.abs(radius), budget);
+        const f = frame(which, p, w, h, radius < 0);
+        // The translation rides on the centre, which every point and every
+        // control point is measured from, so the whole corner arrives already
+        // in place rather than being shifted afterwards.
+        f[0] = [f[0][0] + ox, f[0][1] + oy];
         return {
-            entry: e[0],
-            exit: e[1],
-            seg: segment(k, which)
+            entry: at(f, 0, p, n),
+            exit: at(f, Math.PI / 2, p, n),
+            seg: corner(f, p, n)
         };
     });
 
     // Start where the top-left corner finishes, i.e. on the top edge.
-    let out = "M " + seq(geom[3].exit[0] + ox, geom[3].exit[1] + oy);
+    let out = `M ${n3(geom[3].exit[0])} ${n3(geom[3].exit[1])}`;
     for (const g of geom)
-        out += " L " + seq(g.entry[0] + ox, g.entry[1] + oy) + g.seg;
+        // A corner with no reach contributes no curve, and the next line simply
+        // runs to the following entry.
+        out += ` L ${n3(g.entry[0])} ${n3(g.entry[1])}${g.seg}`;
 
     return out + " Z";
 }
 
-// The sliver of a screen corner that a rounded desktop leaves uncovered.
+// The sliver of a square corner that a rounded shape leaves over: the corner
+// curve plus two straight runs back through the vertex.
 //
-// Filled black, these four pieces frame the desktop: the display appears to have
-// rounded corners. The shape is the corner curve itself plus two straight runs
-// back through the physical corner, so it matches the window rounding exactly
-// rather than approximating it.
-//
-// Drawn in a `p` x `p` box, where p is extent(radius, smoothing).
-function cornerPatch(radius, smoothing, which) {
-    const s = Math.max(0, Math.min(1, smoothing));
-    // The reach, exactly as `fit` reads it, so the patch is the same size as the
-    // curve it is patching and as the `extent` its caller sized the box with.
-    const k = corner(Math.abs(radius) / (1 + s), s);
-    if (k.r <= 0)
+// Filled black at the screen's corners it rounds off the display; in the panel
+// material where two panels meet at a right angle it fillets the join. Drawn in
+// a `p` x `p` box, where p is extent(radius, power).
+function cornerPatch(radius, power, which) {
+    const p = Math.abs(radius);
+    if (p <= 0)
         return "";
 
-    k.concave = false;
-    const p = n(k.p);
-    const seg = segment(k, which);
+    const n = exponent(power);
+    const f = frame(which, p, p, p, false);
+    const entry = at(f, 0, p, n);
+    const vertex = {
+        tl: [0, 0],
+        tr: [p, 0],
+        br: [p, p],
+        bl: [0, p]
+    }[which];
+    if (!vertex)
+        return "";
 
-    switch (which) {
-    case "tl":
-        return `M 0 ${p}${seg} L 0 0 Z`;
-    case "tr":
-        return `M 0 0${seg} L ${p} 0 Z`;
-    case "br":
-        return `M ${p} 0${seg} L ${p} ${p} Z`;
-    case "bl":
-        return `M ${p} ${p}${seg} L 0 ${p} Z`;
-    }
-    return "";
+    return `M ${n3(entry[0])} ${n3(entry[1])}${corner(f, p, n)} L ${n3(vertex[0])} ${n3(vertex[1])} Z`;
 }

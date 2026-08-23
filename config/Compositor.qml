@@ -46,13 +46,6 @@ Singleton {
     property bool naturalScrollMouse: false
     property bool naturalScrollTouchpad: false
 
-    // Superellipse exponent -> our G2 smoothing factor.
-    //
-    // They describe the same idea in different parameters: p = 2 is a circular
-    // corner (no smoothing), and an iOS-style squircle sits near p = 5, which is
-    // also where our 0.6 smoothing sits. So the map is linear through those two.
-    readonly property real smoothing: Math.max(0, Math.min(1, (roundingPower - 2) / 5))
-
     function refresh(): void {
         if (isHyprland)
             hyprctl.running = true;

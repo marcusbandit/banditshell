@@ -23,10 +23,10 @@ Item {
     required property string corner
 
     property real radius: Appearance.rounding.normal
-    property real cornerSmoothing: Appearance.rounding.smoothing
+    property real cornerPower: Appearance.rounding.power
     property color color: "black"
 
-    readonly property real extent: Squircle.extent(radius, cornerSmoothing)
+    readonly property real extent: Squircle.extent(radius, cornerPower)
 
     implicitWidth: extent
     implicitHeight: extent
@@ -41,7 +41,7 @@ Item {
             strokeColor: "transparent"
 
             PathSvg {
-                path: Squircle.cornerPatch(root.radius, root.cornerSmoothing, root.corner)
+                path: Squircle.cornerPatch(root.radius, root.cornerPower, root.corner)
             }
         }
     }

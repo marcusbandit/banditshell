@@ -219,25 +219,25 @@ Singleton {
         readonly property real normal: at(1)
         readonly property real large: at(2)
 
-        // The corner exponent for the chassis field. 2 is a circular corner.
+        // THE CORNER, for the whole shell: |x|^n + |y|^n = r^n. 2 is a plain
+        // circular arc, and every step up hugs the vertex more closely while
+        // ramping the curvature into the straight edge instead of jumping.
         //
-        // NOT taken from the compositor, on purpose. Hyprland reports
-        // `rounding_power = 4`, but the corner it actually DRAWS measures
-        // circular: on rays from the corner centre its edge sits at a constant
-        // radius, while a 4-exponent corner would reach 19% further along the
-        // diagonal. Following the reported number gave the chassis a squarer
-        // corner than the window it was cupping, so the gap opened out at the
-        // diagonal exactly as if the radius were wrong.
+        // ONE NUMBER, and it used to be two. The chassis field took this and the
+        // vector primitive took a separate Figma "smoothing", which is a
+        // different construction that cannot draw this curve at all, so a panel
+        // and the melt around it were never the same shape. components/squircle.js
+        // draws the superellipse now, so both ends read the same setting.
         //
-        // Measure the render, not the setting.
-        readonly property real power: root.cfg.rounding.power
-
-        // G2 corner smoothing, for the VECTOR primitive, which cannot draw a
-        // superellipse. This is the Figma construction: it eases curvature in
-        // and out along the edge rather than changing how boxy the corner is, so
-        // it is not the same knob as `power` and does not substitute for it.
-        // Menus and rows do not nest with window corners, so it is enough there.
-        readonly property real smoothing: root.follows ? Compositor.smoothing : root.cfg.rounding.smoothing
+        // FOLLOWED, where it used to be pinned to 2 with a comment saying
+        // Hyprland renders circular whatever it reports. It does not: measured
+        // off the render, on rays from the corner centre, this window's edge sits
+        // 17.9% further out along the diagonal than along the axes, which is
+        // n = 3.8 against a reported `rounding_power` of 4. The earlier
+        // measurement had found the SHADOW, which is blurred and does measure
+        // round. Pinning it at 2 gave every panel a squarer corner than the
+        // window beside it.
+        readonly property real power: root.follows ? Compositor.roundingPower : root.cfg.rounding.power
 
         // Any tier by index, for things that take the tier as a setting.
         function at(i: int): real {

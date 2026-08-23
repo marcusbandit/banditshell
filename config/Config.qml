@@ -167,14 +167,12 @@ Singleton {
                 base: 15,
                 // 9 / 15 / 24, all on the 3px lattice. 0.55 gave 8.
                 scale: [0.6, 1.0, 1.6],
-                // Corner smoothing for VECTOR shapes: 0 = plain circular arc,
-                // 0.6 = iOS squircle, 1 = maximum. Anything above 0 is G2.
-                smoothing: 0.6,
-                // Corner exponent for the chassis field. 2 = circular, which is
-                // what Hyprland actually renders here regardless of what its
-                // `rounding_power` says. Raise it only if the windows visibly
-                // become squarer.
-                power: 2.0
+                // THE CORNER EXPONENT, for every rounded thing the shell draws:
+                // |x|^n + |y|^n = r^n. 2 is a plain circular arc, 4 is what
+                // Hyprland rounds windows with by default, 5 is Apple's
+                // squircle. Ignored while compositor.follow finds a compositor,
+                // which reads `decoration:rounding_power` instead.
+                power: 5.0
             },
             padding: {
                 // 6 / 12 / 24 / 36. The inner two are deliberately unchanged:

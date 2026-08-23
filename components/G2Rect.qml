@@ -22,8 +22,11 @@ Item {
     property real bottomRightRadius: radius
     property real bottomLeftRadius: radius
 
-    // 0 = plain rounded rect, 0.6 = iOS squircle, 1 = maximum smoothing.
-    property real cornerSmoothing: Appearance.rounding.smoothing
+    // The corner's superellipse exponent, |x|^n + |y|^n = r^n. 2 is a plain
+    // circular arc, 4 is what the compositor rounds windows with here, 5 is
+    // Apple's. It is the SAME number the chassis field uses, because they are the
+    // same curve: see components/squircle.js.
+    property real cornerPower: Appearance.rounding.power
 
     property color color: "transparent"
 
@@ -70,7 +73,7 @@ Item {
             strokeWidth: root.strokeWidth
 
             PathSvg {
-                path: Squircle.path(shape.width, shape.height, root.offset(root.topLeftRadius), root.offset(root.topRightRadius), root.offset(root.bottomRightRadius), root.offset(root.bottomLeftRadius), root.cornerSmoothing)
+                path: Squircle.path(shape.width, shape.height, root.offset(root.topLeftRadius), root.offset(root.topRightRadius), root.offset(root.bottomRightRadius), root.offset(root.bottomLeftRadius), root.cornerPower)
             }
         }
     }

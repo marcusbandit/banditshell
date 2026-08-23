@@ -230,7 +230,7 @@ Item {
             return [];
 
         const r = m / 2;
-        const smoothing = Appearance.rounding.smoothing;
+        const power = Appearance.rounding.power;
         const grid = root.matrix;
         const edge = root.quiet * m;
 
@@ -273,7 +273,7 @@ Item {
                 const w = m + (left ? bleed : 0) + (right ? bleed : 0);
                 const h = m + (up ? bleed : 0) + (down ? bleed : 0);
 
-                out[row + col] += Squircle.path(w, h, up || left ? 0 : r, up || right ? 0 : r, down || right ? 0 : r, down || left ? 0 : r, smoothing, x, y);
+                out[row + col] += Squircle.path(w, h, up || left ? 0 : r, up || right ? 0 : r, down || right ? 0 : r, down || left ? 0 : r, power, x, y);
             }
         }
         return out;
