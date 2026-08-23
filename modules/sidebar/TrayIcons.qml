@@ -248,20 +248,16 @@ Item {
                 onHoveredChanged: if (!icon.hovered && root.hoveredKey === icon.key)
                     root.hoveredKey = ""
 
-                // The one thing up here that says a name out loud, for the beat
-                // before the menu arrives and for the icons whose artwork is a
-                // coloured square that could be anything.
+                // NO TOOLTIP HERE, deliberately, and StatusIcon says the same
+                // thing beside its own gauges. Hovering one of these OPENS a
+                // menu, and that menu's first line is the item's name: a label
+                // floating over a panel that is already saying the same word,
+                // in the same beat, is the clutter a tooltip exists to cure.
                 //
-                // IT POINTS AT THE PICTURE, not at the item, and those parted
-                // company when the item grew to the width of the band. A tooltip
-                // is placed beside the far edge of whatever it names, so aimed
-                // at the item it would sit a finger's width out into the desktop
-                // with a gap between it and the icon it is about.
-                HoverTip {
-                    text: Tray.nameOf(icon.modelData)
-                    host: icon.drawn
-                    asked: icon.hovered
-                }
+                // It was here for the beat before the menu arrived and for the
+                // icons whose artwork is a coloured square that could be
+                // anything, and the menu answers both: it is what arrives, and
+                // its heading is the name.
             }
         }
     }
