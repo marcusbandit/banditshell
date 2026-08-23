@@ -176,15 +176,56 @@ set is what keeps it correct while focus moves.
 
 ## 6. Focus restore stops being one slot
 
-`services/Hypr.qml:605` `focusedAddress` is a single string that seven panels snapshot on open
-and hand back on close: `services/Settings.qml:147`,
-`modules/calculator/CalculatorPanel.qml:197`, `modules/clipboard/ClipboardPanel.qml:112`,
-`modules/cheatsheet/CheatSheet.qml:779`, `modules/launcher/ListLauncher.qml:121`,
-`modules/launcher/NiagaraLauncher.qml:504`, `modules/session/SessionMenu.qml:138`.
+**This section's premise was wrong, and building it is what proved that.** It is left here
+corrected rather than deleted, because the wrong version is the reason the right one was found.
 
-Two panels open on two monitors overwrite each other's idea of what to focus on close. Each
-panel keeps its own snapshot in its own instance. `Hypr.focusedAddress` stays what it is, the
-live answer; it simply stops being used as storage.
+The claim was that seven panels use `services/Hypr.qml`'s `focusedAddress` as storage. They do
+not. Every one of them already keeps its snapshot in its own `restoreTo` on its own root, and
+six of the seven are per-`ShellWindow` instances, so that storage was already per screen. The
+seventh, `services/Settings.qml`, is a singleton whose panel is also singular, so one slot is
+the correct count there rather than a shared one.
+
+Two real bugs were underneath it.
+
+**The SOURCE was shell-wide, not the storage.** A panel opening on a monitor that is not the
+focused one read the focused monitor's window and, on close, handed the keyboard to the other
+screen. Worse than merely wrong: `restoreFocus` deliberately leaves the pointer where it is, so
+under follow_mouse the restore is undone by the next twitch. `Hypr` now keeps a last-focused
+address per monitor, alongside `occupancy` and `activeByMonitor`, and panels ask for their own
+screen's answer through `focusedOn(screen)`. The cross-monitor guard in `restoreFocus` is
+untouched: `services/Hypr.qml` argues that restoring to another monitor is right when that is
+genuinely where you were, and it still is.
+
+**Neither launcher guarded re-entry.** `show()` on an already-open launcher re-read the focused
+address and overwrote the one captured on the way up, which on one screen is the same value and
+on two is the window you merely passed over. Guarded at the snapshot only, since `show()` on an
+open launcher is still meant to reset the query and the selection.
+
+`Hypr.claiming` turned out to be the same single-slot shape, confirmed rather than assumed: four
+writers set a one-shot flag, so two simultaneous launches meant the first window to map ate the
+claim. It is a list of deadlines now.
+
+## 8. Consequences found while building
+
+**A toggle is not a summon.** Section 1 makes `forScreen("")` follow the focused screen, which
+is right for opening and wrong for toggling: focus moves when you glance away, so a toggle that
+follows it opens a second panel instead of closing the first. Verbs that act on a thing which
+may already exist look for it first (`Shell.showing`); verbs that summon keep meaning "here".
+The notification tray and the notch are deliberate exceptions, being per-screen furniture rather
+than a single instance to hunt for.
+
+**`home()` was band-blind.** It asked whether the active workspace exceeded the column length,
+so a session left on the second monitor's workspace 6 would have been yanked to workspace 1 on
+the other screen at every shell start. It asks about the focused screen's own band now.
+
+**A `Behavior` inside a `G2Rect` is not routed from an inline component.** `G2Rect` aliases its
+default property to `inner.data`, and from inside a `component X: Item` every instance warned
+`Cannot find member data` against `<Unknown File>`. `components/Expander.qml` does the identical
+thing from its own file and is silent. The reorder button is therefore a file.
+
+**`qmllint` says nothing about this tree.** It exits 255 on every file importing `Quickshell`,
+including untouched ones, so it cannot gate anything. Parsing each file through a
+`QQmlComponent` does work, and catches duplicate property names as well as syntax errors.
 
 ## Not in scope
 
