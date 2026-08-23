@@ -177,13 +177,28 @@ MouseArea {
         root.state.close();
     }
 
-    // The frozen frame, when the picker was opened in freeze mode. Underneath
-    // everything, so the dim and the selection sit on top of it exactly as they
-    // would over the live screen.
+    // The frozen frame, when the picker was opened in freeze mode: THIS
+    // screen's, asked for by name. Underneath everything, so the dim and the
+    // selection sit on top of it exactly as they would over the live screen.
+    //
+    // Every surface used to read one shared path, which held the whole layout
+    // as a single image, so filling this surface with it drew both monitors
+    // squeezed across one of them. The state keeps a frame per output now (see
+    // PickerState), and the only one this surface has any business drawing is
+    // the one taken from the output it is on.
+    //
+    // Which is also what makes Stretch honest rather than a squash: the source
+    // is this screen and nothing else, so the two differ only by the output's
+    // scale, the same factor on both axes, and filling the surface puts every
+    // pixel back where it came from.
     Image {
+        id: frozen
+
+        readonly property string path: root.state.frozenByScreen[root.screen.name] ?? ""
+
         anchors.fill: parent
-        visible: root.state.frozenPath !== ""
-        source: root.state.frozenPath ? `file://${root.state.frozenPath}` : ""
+        visible: frozen.path !== ""
+        source: frozen.path ? `file://${frozen.path}` : ""
         fillMode: Image.Stretch
         cache: false
     }
