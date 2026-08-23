@@ -25,7 +25,11 @@ Scope {
     IpcHandler {
         target: "menu"
 
-        // Every menu key, one per line.
+        // Every menu key, one per line. Off the window you are on, and any other
+        // would answer the same: the keys are the tray's items plus the
+        // sidebar's fixed entries, which is one list for the session however
+        // many screens draw it. Nothing here asks what is OPEN, so there is
+        // nothing for Shell.showing to go and find.
         function list(): string {
             const win = Shell.forScreen("");
             return win ? win.statusKeys.join("\n") : "";
@@ -44,16 +48,26 @@ Scope {
             return "closed";
         }
 
+        // A NAMED screen is a question about that screen; an unnamed one is a
+        // question about the menu, which may be standing on a monitor the focus
+        // has since left. Shell.showing says why at length: asking "here"
+        // whether this key is up answers no as soon as you glance elsewhere, and
+        // the toggle then opens a second copy of the menu you were trying to put
+        // away. `open` below it still means here, because a key that matched
+        // nothing anywhere is a summon.
         function toggle(key: string, screen: string): string {
-            const win = Shell.forScreen(screen);
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.menus.currentKey === key);
             if (win?.menus.currentKey === key)
                 return close();
             return open(key, screen);
         }
 
-        // What is open, or nothing.
+        // What is open, or nothing. Asked of the window that HAS one open rather
+        // than of the one the keyboard is on: a menu does not close because you
+        // looked away, and answering "" for a menu that is visibly up would be
+        // this handler reporting a state the shell is not in.
         function current(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.menus.currentKey);
             return win?.menus.currentKey ?? "";
         }
 
@@ -65,8 +79,13 @@ Scope {
         // The keyboard for the same reason: a field with a prompt open and a
         // field the surface has actually asked the compositor for the keyboard
         // for look identical from a screenshot, right up until you type.
+        //
+        // Read off the window HOLDING a menu, not off the focused one. The whole
+        // question is why a particular menu did or did not stay up, and on two
+        // monitors the answer from the screen it is not on is four fields of
+        // nothing, which is indistinguishable from the menu having closed.
         function hover(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.menus.currentKey);
             if (!win)
                 return "no shell window";
             return `shell=${win.cursorOnShell} panel=${win.menus.hovered} open=[${win.menus.currentKey}] keyboard=${win.menus.needsKeyboard}`;
@@ -109,8 +128,16 @@ Scope {
     IpcHandler {
         target: "launcher"
 
+        // THE ONE THAT IS OUT, not the one you are standing in front of. The
+        // difference only exists on two monitors and there it is the whole
+        // behaviour: pull the launcher up, look at the other screen (which under
+        // follow_mouse is enough to move the focus), press the bind again, and a
+        // toggle that resolved to the focused window would open a second
+        // launcher rather than close the first. Shell.showing carries the
+        // argument; `open` just below stays on the focused window because a
+        // summon means here.
         function toggle(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.launcher.open);
             if (!win)
                 return "no shell window";
             win.launcher.toggle();
@@ -147,8 +174,13 @@ Scope {
         // scripted: a warped pointer delivers no motion inside a surface it is
         // already in. 0 is the top of the rail, 1 the bottom, and anything
         // negative lets go of it.
+        //
+        // Aimed at the launcher that is OPEN, since a rail inside a closed panel
+        // is nothing to scrub: this reports a fraction either way, and pointing
+        // it at the focused window would have it report success into a launcher
+        // nobody can see while the visible one stands still.
         function scrub(fraction: string): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.launcher.open);
             if (!win)
                 return "no shell window";
             win.launcher.scrub(parseFloat(fraction));
@@ -169,8 +201,11 @@ Scope {
     IpcHandler {
         target: "clipboard"
 
+        // The launcher's toggle, down to the reason: the panel that is already
+        // out is the one a second press is about, and the focused screen is not
+        // where it necessarily is by then.
         function toggle(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.clipboard.open);
             if (!win)
                 return "no shell window";
             win.clipboard.toggle();
@@ -242,8 +277,13 @@ Scope {
         // clipboard that has quietly stopped cannot answer any other way: a
         // history that is not growing looks exactly like an afternoon in which
         // nothing was copied.
+        //
+        // Everything here but `open` is the service's and is one answer for the
+        // session. `open` is a window's, so it is read off whichever window has
+        // the panel out: a line saying open=false with the panel sitting on the
+        // other monitor would be the one field in it that lies.
         function status(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.clipboard.open);
             const kinds = {};
             for (const e of Clipboard.entries)
                 kinds[e.kind] = (kinds[e.kind] ?? 0) + 1;
@@ -252,15 +292,20 @@ Scope {
         }
     }
 
-    // The power panel. Opened on the FIRST screen rather than the focused one,
-    // the same way every other handler here works: a keybind that ends the
-    // session should put the question in one known place, not wherever the
-    // cursor happened to be resting.
+    // The power panel. Opened on the screen the keyboard is on, the same way
+    // every other handler here works: a question about ending the session is
+    // asked of the person, and the person is at the monitor they are looking at,
+    // not at whichever one the compositor enumerated first. It used to land on
+    // window zero, which is a fact about the order the outputs came up in and
+    // reads as correct right up until there are two of them.
+    //
+    // Putting it away is the other half and is not the same question: see the
+    // toggle, and Shell.showing for the whole of the argument.
     IpcHandler {
         target: "session"
 
         function toggle(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.session.open);
             if (!win)
                 return "no shell window";
             win.session.toggle();
@@ -280,10 +325,11 @@ Scope {
     }
 
     // The calculator, driven exactly like the power panel above and for the same
-    // reason: it is summoned by name from wherever you were, so it belongs on ONE
-    // known screen rather than on whichever one holds the focused window, and
-    // `close` reaches every screen because "put it away" is not a question about
-    // a monitor.
+    // reason: it is summoned by name from wherever you were, so it arrives on the
+    // screen you were at when you asked, while `close` reaches every screen
+    // because "put it away" is not a question about a monitor. The verbs that
+    // toggle go through Shell.showing instead, since a panel that already exists
+    // is a thing rather than a place.
     //
     // THIS IS ALSO WHAT THE .desktop ENTRY RUNS. A desktop file is a keybind
     // somebody else's menu owns, so the route has to be the CLI rather than
@@ -294,7 +340,7 @@ Scope {
         target: "calculator"
 
         function toggle(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.calculator.open);
             if (!win)
                 return "no shell window";
             win.calculator.toggle();
@@ -325,8 +371,14 @@ Scope {
         // entry says "Calculator", and answering a request for the big one by
         // putting the small one away would be the entry doing the opposite of
         // what it says.
+        //
+        // Which means it is asking about a calculator that may already exist, so
+        // it goes through Shell.showing like the plain toggle: launched a second
+        // time from a menu on the other monitor, this has to find the window it
+        // put up the first time. With nothing out anywhere the fallback is the
+        // focused screen, and the launch behaves like a summon, which it is.
         function app(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.calculator.open);
             if (!win)
                 return "no shell window";
             if (win.calculator.open && win.calculator.full)
@@ -336,9 +388,10 @@ Scope {
         }
 
         // Its twin, for symmetry and for a keybind that wants the small one
-        // whatever you were last in. Same toggle rule, read the same way.
+        // whatever you were last in. Same toggle rule, read the same way, and
+        // aimed at the same window for the same reason.
         function panel(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.calculator.open);
             if (!win)
                 return "no shell window";
             if (win.calculator.open && !win.calculator.full)
@@ -349,9 +402,11 @@ Scope {
 
         // Which shape it is in, and whether it is out at all. The one question a
         // script cannot otherwise ask, and the one the two verbs above are
-        // deciding on.
+        // deciding on, so it has to be asked of the same window they act on:
+        // a status that disagreed with `app` about where the calculator is would
+        // be worse than no status at all.
         function status(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.calculator.open);
             return `open=${win?.calculator.open ?? false} shape=${win?.calculator.full ? "app" : "panel"}`;
         }
 
@@ -421,8 +476,13 @@ Scope {
     IpcHandler {
         target: "keyboard"
 
+        // Named, that screen; unnamed, the screen the BOARD is on, the way every
+        // toggle in this file resolves (Shell.showing says why). There is one
+        // pair of hands and there should be one board: asking the focused window
+        // instead would answer a second press from the other monitor by putting
+        // up a second keyboard while the first one stayed where it was.
         function toggle(screen: string): string {
-            const win = Shell.forScreen(screen);
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.keyboard.open);
             if (!win)
                 return "no shell window";
             win.keyboard.toggle();
@@ -447,9 +507,11 @@ Scope {
 
         // WHICH PAGE IS UP, as well as whether the board is. The page is the
         // only piece of the board's state that persists across a hide, so it is
-        // the only one worth reporting.
+        // the only one worth reporting. Unnamed, it answers for the board that
+        // is out rather than for the focused screen's, so that it and the toggle
+        // above can never be talking about different keyboards.
         function status(screen: string): string {
-            const win = Shell.forScreen(screen);
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.keyboard.open);
             if (!win)
                 return "no shell window";
             return `${win.keyboard.open ? "open" : "closed"} on "${win.keyboard.page}"`;
@@ -469,8 +531,12 @@ Scope {
             return "floating";
         }
 
+        // The board that is out, when none is named, for `launcher scrub`'s
+        // reason: this drives a control on a surface someone is looking at, and
+        // aiming it at the focused screen would quietly repage a hidden board
+        // while the visible one carried on showing the letters.
         function page(name: string, screen: string): string {
-            const win = Shell.forScreen(screen);
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.keyboard.open);
             if (!win)
                 return "no shell window";
             win.keyboard.page = name;
@@ -481,9 +547,9 @@ Scope {
     // The hotkey sheet: every bind the compositor knows about, read off it
     // rather than out of a list in this repo. Driven exactly like the power
     // panel above, and for the same reason: it is summoned by name from
-    // wherever you were, so it belongs on ONE known screen rather than on
-    // whichever one happens to hold the focused window, and `close` reaches
-    // every screen because "put it away" is not a question about a monitor.
+    // wherever you were, so it arrives on the screen you asked from, and
+    // `close` reaches every screen because "put it away" is not a question
+    // about a monitor.
     //
     // This is also the target that the keybind actually goes through. The sheet
     // is the one panel here whose whole content is the user's own config, so it
@@ -491,12 +557,13 @@ Scope {
     // being restarted or knowing anything about which key was pressed.
     //
     // AN OPTIONAL SCREEN, exactly as `menu open` takes one, and the empty string
-    // still means the first window, so every keybind and every line of
+    // means the screen you are on, so every keybind and every line of
     // docs/hyprland-binds.example.conf goes on meaning what it meant. The
-    // paragraph above is about the DEFAULT and it stands: a sheet you summoned by
-    // name belongs in one known place rather than under whichever window has the
-    // focus. What it was never an argument for is the sheet being the one panel
-    // in this file that CANNOT be named a screen, which is what it had become:
+    // paragraph above is about the DEFAULT and it stands, with the default now
+    // reading the focus instead of the order the outputs came up in: a sheet you
+    // summoned by name belongs under the eyes that asked for it. What it was
+    // never an argument for is the sheet being the one panel in this file that
+    // CANNOT be named a screen, which is what it had become:
     // `menu` and `settings` both take one, so a sweep can put them on a headless
     // output and photograph them there, and this panel alone had to be opened on
     // the user's own display, over the user's own work, to be looked at at all.
@@ -504,8 +571,14 @@ Scope {
     IpcHandler {
         target: "hotkeys"
 
+        // NAMED, that screen; unnamed, the screen the sheet is ON. A sheet is a
+        // summoned panel like the launcher and the power panel, so a second
+        // press means the one already up: without that, reading the sheet on one
+        // monitor and pressing the bind while looking at the other would put a
+        // second sheet up rather than take the first one down. `open` below
+        // keeps meaning here, because it has nothing to find.
         function toggle(screen: string): string {
-            const win = Shell.forScreen(screen);
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.hotkeys.open);
             if (!win)
                 return screen ? `no shell window on screen: ${screen}` : "no shell window";
             win.hotkeys.toggle();
@@ -545,8 +618,13 @@ Scope {
         // dispatcher this side can read. On this machine that second number is
         // 1 out of 82, and knowing it is the compositor's answer rather than the
         // sheet's parsing is the whole point of printing it.
+        //
+        // Unnamed, it reads the sheet that is UP: the counts are the same on
+        // every screen because every sheet asks the same compositor, but `open`
+        // is not, and a status reporting open=false about a sheet filling the
+        // next monitor is the one line here that could mislead.
         function status(screen: string): string {
-            const win = Shell.forScreen(screen);
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.hotkeys.open);
             if (!win)
                 return screen ? `no shell window on screen: ${screen}` : "no shell window";
             return `open=${win.hotkeys.open} binds=${win.hotkeys.rows.length} described=${win.hotkeys.rows.length - win.hotkeys.unnamed} groups=${win.hotkeys.sections.length}`;
@@ -563,11 +641,22 @@ Scope {
     // pull land in the same state and leave by the same doors.
     //
     // AN OPTIONAL SCREEN on every verb that pins one, exactly as `hotkeys` and
-    // `menu` take one, with the empty string still meaning the first window so
+    // `menu` take one, with the empty string meaning the screen you are on so
     // every existing keybind goes on meaning what it meant. The paragraph above
     // is about WHICH INPUT the CLI stands in for and it is untouched; what the
     // tray had additionally become was the panel that could only be pinned on
     // Shell.windows[0], and that is a restriction nobody argued for.
+    //
+    // AND THE TOGGLE STAYS ON THE SCREEN YOU ARE ON, which is the one place in
+    // this file where a toggle does not go hunting for the thing it toggles (see
+    // Shell.showing). Every panel above is summoned and therefore singular: one
+    // launcher, one sheet, one power menu, and a second press is about the one
+    // that exists. A tray is not summoned, it is FURNITURE, standing in the
+    // corner of every screen at once, and its pin is a per-screen fact about a
+    // per-screen object. "Hold this monitor's tray out" is a sentence with an
+    // answer on each monitor, so the pin belongs where the keyboard is and a
+    // tray held out elsewhere is none of this press's business. The notch below
+    // is the same shape for the same reason.
     //
     // It was found by a sweep that could not photograph the expanded tray at
     // all. A screenshot goes to a throwaway headless output and never to the
@@ -960,8 +1049,12 @@ Scope {
     IpcHandler {
         target: "wallpapers"
 
+        // The launcher's toggle and the launcher's reasoning: the strip that is
+        // already out is what a second press is about, wherever the focus has
+        // wandered to since the first one. `open` stays on the focused screen,
+        // because a summon means here.
         function toggle(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.wallpapers.open);
             if (!win)
                 return "no shell window";
             win.wallpapers.toggle();
@@ -982,8 +1075,13 @@ Scope {
         // What the strip is centred on, which is what the desktop is showing
         // while this is up, which is not yet what the setting says. All three
         // of those being different at once is exactly the state a preview is.
+        //
+        // Read off the window with the strip out, since a preview is only a
+        // state while something is previewing it: the two names come from the
+        // Wallpaper service and are the session's, and open-ness is the one part
+        // of this line that belongs to a particular screen.
         function status(): string {
-            const win = Shell.forScreen("");
+            const win = Shell.showing(w => w.wallpapers.open);
             if (!win)
                 return "no shell window";
             return `${win.wallpapers.open ? "open" : "closed"} showing=${Wallpaper.shownName || "-"} set=${Wallpaper.name || "-"} of ${Wallpaper.available.length}`;
@@ -1629,8 +1727,17 @@ Scope {
 
         // Enough to see whether the shell agrees with the compositor, which is
         // the thing most likely to be quietly wrong and hardest to see.
+        //
+        // Everything above the launcher lines is the session's and has one
+        // answer. The launcher is a window's, so it is read off the window that
+        // HAS one open (Shell.showing), and read once into a name rather than
+        // four times into one string: four lookups can be four different windows
+        // the moment a screen appears mid-line, and a report whose height and
+        // scroll came from a different launcher than its open-ness would be
+        // wrong in the way that is hardest to notice.
         function status(): string {
-            return [`compositor  ${Compositor.name}`, `following   ${Appearance.follows}`, `theme       ${Config.values.theme}`, `rounding    ${Appearance.rounding.base}`, `corner      power ${Appearance.rounding.power} (compositor says ${Compositor.roundingPower})`, `tiers       ${Appearance.rounding.small} / ${Appearance.rounding.normal} / ${Appearance.rounding.large} from base ${Appearance.rounding.base}, available=${Compositor.available}`, `gap         ${Appearance.sizes.gap} outer, ${Compositor.gapsIn} inner`, `wm border   ${Compositor.borderSize}`, `window edge ${Appearance.sizes.windowRadius} (the one radius)`, `band        ${Appearance.sizes.band}`, `bar         ${Appearance.sizes.sidebarWidth}`, `apps        ${Apps.all.length} listed, ${DesktopEntries.applications.values.length} on disk`, `launcher    ${Shell.forScreen("")?.launcher.open ? "open" : "closed"}, ${Shell.forScreen("")?.launcher.resultCount ?? 0} results, ${Math.round(Shell.forScreen("")?.launcher.drawnHeight ?? 0)}px tall`, `scroll      ${Shell.forScreen("")?.launcher.scrollInfo ?? "-"}`, `screens     ${Shell.screenNames().join(", ")}`].join("\n");
+            const win = Shell.showing(w => w.launcher.open);
+            return [`compositor  ${Compositor.name}`, `following   ${Appearance.follows}`, `theme       ${Config.values.theme}`, `rounding    ${Appearance.rounding.base}`, `corner      power ${Appearance.rounding.power} (compositor says ${Compositor.roundingPower})`, `tiers       ${Appearance.rounding.small} / ${Appearance.rounding.normal} / ${Appearance.rounding.large} from base ${Appearance.rounding.base}, available=${Compositor.available}`, `gap         ${Appearance.sizes.gap} outer, ${Compositor.gapsIn} inner`, `wm border   ${Compositor.borderSize}`, `window edge ${Appearance.sizes.windowRadius} (the one radius)`, `band        ${Appearance.sizes.band}`, `bar         ${Appearance.sizes.sidebarWidth}`, `apps        ${Apps.all.length} listed, ${DesktopEntries.applications.values.length} on disk`, `launcher    ${win?.launcher.open ? "open" : "closed"}, ${win?.launcher.resultCount ?? 0} results, ${Math.round(win?.launcher.drawnHeight ?? 0)}px tall`, `scroll      ${win?.launcher.scrollInfo ?? "-"}`, `screens     ${Shell.screenNames().join(", ")}`].join("\n");
         }
 
         function themes(): string {
