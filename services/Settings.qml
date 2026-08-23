@@ -69,6 +69,16 @@ Singleton {
             key: "appearance",
             title: "Appearance",
             icon: "palette"
+        },
+        // The one page that is not a nicety. Every other setting on this rail
+        // has `banditshell set` in front of it as well as a row, and the band
+        // order does not: it is an array, and Quickshell's IPC splats a
+        // bracketed argument into an argument list (see config/Config.qml), so
+        // there is no CLI spelling of it to fall back on.
+        {
+            key: "screens",
+            title: "Screens",
+            icon: "monitor"
         }
     ]
 
@@ -144,9 +154,16 @@ Singleton {
             root.setPage(which);
         if (root.open)
             return;
-        root.restoreTo = Hypr.focusedAddress;
         root.handoff = null;
         root.screenName = (typeof on === "string" && on) || Hypr.focusedScreen || Quickshell.screens[0]?.name || "";
+        // AFTER the line above, because that line is what decides which screen
+        // this page is opening on, and the window to hand the keyboard back to
+        // is the one that was in front of you THERE. `on` names a screen
+        // precisely for the callers that are not on the focused one, so reading
+        // the shell-wide focusedAddress here contradicted the argument written
+        // over this function's own argument list. See focusedByMonitor in
+        // services/Hypr.qml.
+        root.restoreTo = Hypr.focusedOn(root.screenName);
         root.floating = false;
         root.open = true;
     }
