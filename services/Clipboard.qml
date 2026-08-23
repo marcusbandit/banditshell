@@ -431,6 +431,14 @@ Singleton {
             return;
         }
 
+        // A TRANSCRIPTION PASSING THROUGH, not something anybody copied. See
+        // Dictation.said: dictation borrows the clipboard for one Ctrl+V and
+        // gives it back, and this watcher sees the borrowing. Speech belongs in
+        // the speech tab and nowhere else, which is the whole reason that tab
+        // exists.
+        if (ev.text && Dictation.said(ev.text))
+            return;
+
         // The bytes were past a ceiling, or the type was one nothing here can
         // hold. Both are real events with nothing to show, and a row that says
         // "8 GB of video" and cannot produce it would be a row that lies when

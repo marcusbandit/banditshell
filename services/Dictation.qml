@@ -71,6 +71,37 @@ Singleton {
         };
     }
 
+    // WAS THIS SAID, RATHER THAN COPIED?
+    //
+    // Asked by services/Clipboard.qml, and the paste is the reason. A
+    // transcription reaches the focused window by going onto the clipboard for
+    // the length of one Ctrl+V and being taken off again (~/bin/voice-daemon,
+    // paste_text). The clipboard recorder watches the selection, so it sees
+    // that, and without this the same sentence lands in BOTH tabs of the panel:
+    // once as a thing that was said and once as a thing that was copied, and a
+    // clipboard history nobody filled deliberately fills up with speech.
+    //
+    // A WINDOW rather than "is it the newest", because the two events are
+    // watched over different channels and neither promises to arrive first. The
+    // daemon does give this side a head start on purpose: it writes the history
+    // file BEFORE it waits for the key to come up, and only touches the
+    // clipboard after that, which is tens of milliseconds at the very least.
+    // The window is what covers a head start not being a guarantee.
+    //
+    // Known limit: `voice retype` pastes a transcription that may be hours old,
+    // and that one will be recorded as a copy. It is the rarer path and the
+    // alternative, matching the whole list with no window at all, would silently
+    // swallow a deliberate copy of anything ever dictated.
+    readonly property int echoWindow: 15000
+
+    function said(text: string): bool {
+        const needle = (text ?? "").trim();
+        if (!needle)
+            return false;
+        const cut = Date.now() - root.echoWindow;
+        return root.entries.some(e => e.recorded >= cut && (e.text ?? "").trim() === needle);
+    }
+
     // Narrowed the same way the clipboard narrows, by asking Clipboard's own
     // matcher rather than writing a second one. Two search boxes in one panel
     // that scored matches differently would be a worse bug than the coupling.
