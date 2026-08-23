@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 
@@ -174,7 +175,22 @@ Item {
     // the keyboard says so directly. Still gated on `open`: a menu that is not
     // on screen cannot be the reason the shell is keeping the keyboard from the
     // desktop, whatever a stale claim says.
-    readonly property bool needsKeyboard: root.open && Prompts.active
+    //
+    // AND ASKED ABOUT THIS WINDOW, not about the shell, which is the whole of
+    // what a second monitor changes here. There is one of these layers per
+    // screen and one Prompts for all of them, so the shell-wide answer was yes
+    // on every monitor the instant a field opened on any of them: a menu merely
+    // left up over here would ask for the keyboard on behalf of a field over
+    // there, both surfaces would hold it exclusively, and the typing would land
+    // in neither. The claim belongs to one surface, and `shellWindow` is how
+    // this one says which surface it is.
+    readonly property bool needsKeyboard: root.open && Prompts.activeIn(root.shellWindow)
+
+    // The surface this layer is drawn on, and on a second monitor it is one of
+    // several. `QsWindow.window` is how an item names the window it is in;
+    // modules/SettingsCorner.qml reads the same line for the same reason, that
+    // being in a window and knowing which one are not the same thing.
+    readonly property var shellWindow: QsWindow.window
 
     // WHETHER ESCAPE HAS TO REACH THIS LAYER, which is a different request from
     // `needsKeyboard` above and is deliberately not folded into it.

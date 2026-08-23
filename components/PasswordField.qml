@@ -13,6 +13,12 @@ import qs.config
 // window asks the compositor for them, and the field is the only thing that
 // knows one is wanted. Saying it here rather than in whatever menu holds the
 // field means no menu has to remember to. See Prompts.
+//
+// It says only THAT it wants one, and never which surface it is on. There is a
+// shell surface per screen and exactly one of them may take the keyboard, so the
+// claim has to be answerable per window; Prompts asks the item where it is drawn
+// rather than being told, precisely so that a field can go on knowing nothing
+// about any of this. See Prompts.activeIn.
 Item {
     id: root
 

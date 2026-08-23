@@ -137,6 +137,20 @@ PanelWindow {
     // open. Menus follow the cursor down the sidebar and stay up while it is
     // anywhere on the shell, so grabbing for an open one would take typing away
     // from the window the cursor is passing over.
+    //
+    // AND ONLY FOR A PROMPT ON THIS SURFACE, which is what a second monitor
+    // changes about the line at the bottom of all this. There is one of these
+    // windows per screen and one Prompts list behind every one of them, so "a
+    // field is waiting" was true on every monitor at once: a password field in a
+    // menu over here, any menu at all still up over there, and both surfaces
+    // asked outright. Two layer surfaces holding the keyboard exclusively is the
+    // one arrangement in this entire comment where the keys reach NOBODY, which
+    // is worse than every misrouting described above it, and it needs no
+    // unusual gesture to reach, only a second screen. So the menu layer asks
+    // Prompts about its own window rather than about the shell
+    // (Menus.needsKeyboard, components/Prompts.qml). Every other term below is
+    // already a fact about this window's own panels.
+    //
     // THE SETTINGS PAGE ASKS ON DEMAND, not exclusively, which is the one thing
     // here that does.
     //
