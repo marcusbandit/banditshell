@@ -111,17 +111,25 @@ Item {
     implicitHeight: root.shown.length ? column.implicitHeight : 0
     visible: root.shown.length > 0
 
+    // Where the drawn box is, since it is not this item's rectangle. Read by the
+    // bar to stand the group off the screen's edge by the distance it stands off
+    // the bar's; the gauges answer the same pair for the same reason.
+    readonly property real sideGap: (width - fill.width) / 2
+    readonly property real overhang: Appearance.padding.small
+
     // The same quiet container the gauges get, so the two groups read as two
     // groups of the same kind of thing, and pinned to the column for the same
     // reason: the item is the width of the band now, and a container filling it
     // would be a stripe across the top of the bar rather than a pill around the
     // icons.
     G2Rect {
+        id: fill
+
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: column.top
         anchors.bottom: column.bottom
-        anchors.topMargin: -Appearance.padding.small
-        anchors.bottomMargin: -Appearance.padding.small
+        anchors.topMargin: -root.overhang
+        anchors.bottomMargin: -root.overhang
         width: Appearance.sizes.traySlot + Appearance.padding.small * 2
         radius: Appearance.rounding.normal
         color: Appearance.colour.fill

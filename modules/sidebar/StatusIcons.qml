@@ -185,6 +185,15 @@ Item {
     implicitWidth: Appearance.sizes.statusSlot
     implicitHeight: column.implicitHeight
 
+    // WHERE THE DRAWN BOX ACTUALLY IS, since it is not this item's rectangle:
+    // how far inside the item's sides it sits, and how far past its ends it
+    // hangs. The bar reads both to stand the group off the screen's edge by the
+    // same distance it stands off the bar's, which is a thing only the box's own
+    // geometry knows and the sidebar would otherwise have to restate in numbers
+    // that drift the moment a slot or a padding tier moves.
+    readonly property real sideGap: (width - fill.width) / 2
+    readonly property real overhang: Appearance.padding.small
+
     // A quiet container, so the indicators read as one control rather than a
     // column of loose glyphs.
     //
@@ -194,11 +203,13 @@ Item {
     // pill around a column of icons. Pinned to the column, it is exactly the
     // shape it always was: the drawn slot plus a small padding on every side.
     G2Rect {
+        id: fill
+
         anchors.horizontalCenter: parent.horizontalCenter
         anchors.top: column.top
         anchors.bottom: column.bottom
-        anchors.topMargin: -Appearance.padding.small
-        anchors.bottomMargin: -Appearance.padding.small
+        anchors.topMargin: -root.overhang
+        anchors.bottomMargin: -root.overhang
         width: Appearance.sizes.statusSlot + Appearance.padding.small * 2
         radius: Appearance.rounding.normal
         color: Appearance.colour.fill

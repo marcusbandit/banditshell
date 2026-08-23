@@ -131,7 +131,9 @@ Item {
         id: tray
 
         anchors.top: parent.top
-        anchors.topMargin: Appearance.padding.normal
+        // The gap over the tray is the gap beside it, by the same three terms
+        // the gauges' bottom margin is written from; see the Column below.
+        anchors.topMargin: tray.sideGap + tray.overhang - Appearance.sizes.border
         anchors.left: parent.left
         anchors.right: parent.right
 
@@ -157,7 +159,24 @@ Item {
     // whichever it happened to be would decide how far a gauge answered.
     Column {
         anchors.bottom: parent.bottom
-        anchors.bottomMargin: Appearance.padding.normal
+
+        // THE GAP UNDER THE GAUGES IS THE GAP BESIDE THEM, and it is derived
+        // rather than chosen. The group is a box floating in the bar, and a box
+        // standing off two edges by different amounts reads as having slipped
+        // down rather than as having been placed: it was 16px clear of the
+        // screen's bottom while sitting 10.5px in from either side.
+        //
+        // Three terms, none of them a number: the box's own inset from the bar's
+        // sides, which is what the bottom is being matched TO; the overhang,
+        // because the fill hangs past the column it is pinned to and it is the
+        // FILL's edge the eye measures, not the column's; and the band, because
+        // this Column is anchored inside a sidebar already held that far off the
+        // screen's edge, so only the remainder is this margin's to spend.
+        //
+        // A padding tier is deliberately not in it. Which tier happens to equal
+        // the leftover is a coincidence of today's numbers, and naming one here
+        // is what let the two gaps drift apart in the first place.
+        anchors.bottomMargin: status.sideGap + status.overhang - Appearance.sizes.border
         anchors.left: parent.left
         anchors.right: parent.right
 
