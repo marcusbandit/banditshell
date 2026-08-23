@@ -178,12 +178,31 @@ Item {
     // ON the screen's edge and reaches in from it, so it needs the whole band to
     // measure from rather than a centred column.
     Workspaces {
+        id: workspaces
+
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
 
         screen: root.screen
     }
+
+    // WHAT THE BAR WANTS THE SHELL TO GROW, in this item's coordinates, for the
+    // window to hand to the chassis. Today it is the workspace column's count
+    // tags, which hang past the band's inner edge and need the body to come with
+    // them; anything else in here that leaves the bar joins this list.
+    //
+    // Offset here rather than at either end, because this is the only file that
+    // knows where the column ended up: it is centred in the bar, so its y is a
+    // number nothing above or below it can work out.
+    readonly property var blobs: workspaces.blobs.map(b => ({
+                x: b.x + workspaces.x,
+                y: b.y + workspaces.y,
+                w: b.w,
+                h: b.h,
+                radius: b.radius,
+                smooth: b.smooth
+            }))
 
     // FULL WIDTH for the same reason the tray is, and the width is passed
     // straight through to the gauges rather than stopping here: a Column is as

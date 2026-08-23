@@ -556,6 +556,23 @@ PanelWindow {
             id: onShell
         }
 
+        // THE BAR'S OWN BLOBS, moved into the chassis's frame.
+        //
+        // Everything else in the list below is laid out against this same frame
+        // and hands its shapes over ready to use; the sidebar is the one source
+        // that lives INSIDE something, so what it publishes is in its own
+        // coordinates and this is where that becomes the window's. Read off the
+        // item rather than restated as `win.border`, so it stays right the day
+        // the bar is anchored somewhere else.
+        readonly property var barBlobs: sidebar.blobs.map(b => ({
+                    x: b.x + sidebar.x,
+                    y: b.y + sidebar.y,
+                    w: b.w,
+                    h: b.h,
+                    radius: b.radius,
+                    smooth: b.smooth
+                }))
+
         Chassis {
             id: chassis
 
@@ -564,7 +581,7 @@ PanelWindow {
             // on top of it, which is what lets them melt into the body.
             // Everything that joins the shell's body. Each melts into the CHASSIS
             // and none of them melt into each other; see blob.frag's meltPanel.
-            panels: [...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs]
+            panels: [...body.barBlobs, ...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs]
         }
 
         // Sidebar contents, laid out in the chassis's left band. The band is one

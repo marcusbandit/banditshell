@@ -40,6 +40,17 @@ Item {
 
     readonly property string style: Appearance.sizes.wsStyle
 
+    // WHAT THE STYLE WANTS THE SHELL TO GROW, in this item's coordinates, passed
+    // straight up (Sidebar.blobs). A blob is a shape handed to the chassis's
+    // distance field rather than drawn: where one pokes out past the band the two
+    // melt together instead of one being parked against the other, which is how
+    // everything in this shell that leaves the body leaves it.
+    //
+    // Empty for a style that has nothing to add, which is two of the three. Asked
+    // of the Loader's item rather than declared on each style, so a style that
+    // never grows anything does not have to say so.
+    readonly property var blobs: content.item?.blobs ?? []
+
     implicitHeight: content.item?.implicitHeight ?? 0
 
     Loader {

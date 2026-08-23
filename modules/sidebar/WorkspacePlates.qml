@@ -387,6 +387,111 @@ Item {
         }
     }
 
+    // THE COUNT TAGS: how many windows each stacked mark on the hovered workspace
+    // stands for, as data rather than as something a delegate owns.
+    //
+    // Computed here because two different things need the same numbers and they
+    // are not in the same place: the drawing, which is a Repeater below, and the
+    // BLOB, which has to travel all the way up to the chassis so the shell grows
+    // material under a tag that hangs past the band (see `blobs`). A tag built
+    // inside a slot's delegate can draw itself and cannot tell anyone where it
+    // is, and a second copy of this arithmetic up there would be a second copy to
+    // keep in step.
+    //
+    // Only the hovered workspace has any, which is the whole point of a tag: the
+    // column at rest is a column of marks, and "three of them" is a question you
+    // ask about the one you are already pointing at.
+    readonly property var tags: {
+        if (root.heldBar >= 0)
+            return [];
+        const s = layout.slots[root.heldSlot];
+        if (!s)
+            return [];
+        return s.marks.filter(m => m.count > 1).map(m => ({
+                    row: m.row,
+                    count: m.count
+                }));
+    }
+
+    // WIDTH FROM THE DIGITS, measured once rather than per tag.
+    //
+    // The shell's face is MONOSPACED, so every numeral takes the same advance and
+    // the ink of a number is the advance times one less than its length, plus a
+    // single digit's ink. One TextMetrics answers for every count there will ever
+    // be, where a tag that measured its own string would need one apiece and
+    // could not be arithmetic at all.
+    TextMetrics {
+        id: digit
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+        text: "0"
+    }
+
+    readonly property real tagAir: Math.round(Appearance.padding.small / 2)
+
+    function tagWidth(count: int): real {
+        const digits = `${count}`.length;
+        return Math.round((digits - 1) * digit.advanceWidth + digit.tightBoundingRect.width) + root.tagAir * 2;
+    }
+
+    readonly property real tagHeight: Math.round(digit.tightBoundingRect.height) + root.tagAir * 2
+
+    // WHERE A TAG STANDS: just clear of the mark, and hanging off the band's
+    // inner edge on purpose.
+    //
+    // It used to be right-aligned INSIDE the band, which put it hard against the
+    // screen's edge with no shell either side of it, and a tag two digits long
+    // grew back over the mark it belongs to. Out here it is the same size
+    // whatever the count, it never covers the mark, and the part past the band is
+    // carried by the shell itself: the blob below grows the body around it, so it
+    // reads as a tab pulled out of the bar rather than a pill floating on the
+    // desktop.
+    readonly property real tagX: root.lane + (root.slot + root.iconSize) / 2 + root.tagAir
+
+    // How much shell there is around a tag, which is what makes it look SET IN
+    // the body rather than stamped on it. The blob is the tag's box grown by this
+    // on every side.
+    readonly property real tagBed: Appearance.padding.small
+
+    function tagY(row: int, h: real): real {
+        return hoverY.value + (root.slot - root.pitch) / 2 + row * root.pitch + (root.pitch - h) / 2;
+    }
+
+    // WHAT THE CHASSIS HAS TO GROW, in this item's coordinates, for the sidebar
+    // to pass up (Sidebar.blobs, ShellWindow's panel list). A blob is not drawn
+    // here at all: it is one more shape in the shell's distance field, so where
+    // it pokes out past the band the two MELT together instead of one being
+    // parked against the other. Same construction the tooltip uses, at the same
+    // third of a panel's melt, because it is the same kind of thing: a small
+    // shape that has to look like it came out of the body.
+    readonly property var blobs: root.grown.value < 0.01 ? [] : root.tags.map(t => {
+        const w = root.tagWidth(t.count) * root.grown.value + root.tagBed * 2;
+        const h = root.tagHeight * root.grown.value + root.tagBed * 2;
+        return {
+            x: root.tagX + (root.tagWidth(t.count) - w) / 2 + root.tagBed,
+            y: root.tagY(t.row, h - root.tagBed * 2) - root.tagBed,
+            w,
+            h,
+            radius: Math.min(Appearance.rounding.normal, h / 2),
+            smooth: Appearance.sizes.melt / 3
+        };
+    })
+
+    readonly property Follow grown: growth
+
+    // A TAG GROWS, it does not fade. Everything else in this shell that arrives
+    // beside something arrives by swelling out of it, and with the blob under it
+    // that is what the melt has to work with: a shape at full size behind a
+    // rising opacity would pop a bulge into the band's edge at frame one.
+    Follow {
+        id: growth
+
+        speed: Appearance.anim.revealSpeed
+        target: root.tags.length && root.hovering && !layout.scrubbing ? 1 : 0
+        epsilon: 0.005
+    }
+
     // THE FOUR CHASES. Position and size run at the same rate on purpose: a
     // marker that slides and resizes at once is ONE object changing shape, and
     // its edges only read that way while both motions decay together. The two
@@ -1037,88 +1142,75 @@ Item {
                             }
                         }
 
-                        // HOW MANY OF THEM, ON HOVER, BESIDE THE MARK.
-                        //
-                        // A stack is one mark, and the count is the one thing the
-                        // mark cannot say by itself. It does not have to say it
-                        // all the time, though: the column is read at a glance for
-                        // WHICH applications are where, and "three of them" is a
-                        // second question you only ever ask about the workspace
-                        // you are already pointing at. So it arrives with the
-                        // hover, on the workspace under the cursor, and the column
-                        // at rest stays a column of marks.
-                        //
-                        // IT IS A TOOLTIP FOR ONE MARK, and it is made of the
-                        // shell's sheets rather than the shell's tooltip: a
-                        // tooltip is a card in the panel material, which floats
-                        // OVER things, and this is a tab pulled out of the cell it
-                        // belongs to. So it wears exactly what the cell under the
-                        // cursor is wearing, sheet for sheet: the quiet fill every
-                        // cell has, the hover marker's sheet over it, and the
-                        // accent sheet too when the workspace is the one you are
-                        // on. Built as those same three shapes rather than as a
-                        // colour picked to match them, because a colour picked to
-                        // match is a colour that stops matching the day one of
-                        // them moves.
-                        //
-                        // RIGHT UP AGAINST THE BAND'S INNER EDGE, so it reads as
-                        // pulled out of the cell rather than floating beside it,
-                        // and so a two-digit count grows back over the mark rather
-                        // than out over the desktop.
-                        G2Rect {
-                            id: tag
-
-                            readonly property real air: Math.round(Appearance.padding.small / 2)
-                            readonly property bool shown: row.count > 1 && root.hovered === slotItem.index && !layout.scrubbing
-
-                            // Sized to the digits' INK, not their line box: at the
-                            // shell's smallest tier the box is 24px tall and the
-                            // numeral in it is under half that (StyledText).
-                            width: Math.round(tally.inkWidth) + tag.air * 2
-                            height: Math.round(tally.inkHeight) + tag.air * 2
-                            x: root.width - root.lane - width - Math.round(Appearance.padding.small / 3)
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            radius: root.radius
-                            color: Appearance.colour.fill
-                            opacity: tag.shown ? 1 : 0
-                            visible: opacity > 0.01
-
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.anim.fast
-                                }
-                            }
-
-                            G2Rect {
-                                anchors.fill: parent
-                                radius: root.radius
-                                color: Appearance.colour.fillStrong
-                            }
-
-                            G2Rect {
-                                anchors.fill: parent
-                                radius: root.radius
-                                color: Appearance.colour.accentFill
-                                visible: slotItem.isActive && !slotItem.covered
-                            }
-
-                            StyledText {
-                                id: tally
-
-                                // Centred by INK for the reason the tag is sized
-                                // by it: a numeral sits high in its own line box,
-                                // so a number centred by the box is not centred.
-                                anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: tally.inkOffsetX
-                                anchors.verticalCenterOffset: tally.inkOffsetY
-
-                                text: `${row.count}`
-                                color: Appearance.colour.text
-                            }
-                        }
                     }
                 }
+            }
+        }
+    }
+
+    // THE COUNT TAGS, DRAWN. One per stacked mark on the workspace under the
+    // cursor, standing clear of the mark it belongs to and hanging off the band.
+    //
+    // Declared out here rather than inside the slot it belongs to, because it
+    // does not belong to the slot's rectangle: it reaches past the sidebar
+    // entirely, and a shape that leaves its parent should not be a child of it.
+    // Where each one goes is `tagX`/`tagY`, which the blob above is built from
+    // too, so the shell's bulge and the pill on it cannot drift apart.
+    //
+    // WEARING THE CELL'S OWN SHEETS, in the same order the cell wears them: the
+    // quiet fill, the hover marker's over it, and the accent when this is the
+    // workspace you are on. Built as those three shapes rather than as a colour
+    // picked to match them, because a colour picked to match stops matching the
+    // day one of them moves.
+    Repeater {
+        model: root.tags
+
+        delegate: G2Rect {
+            id: tag
+
+            required property var modelData
+
+            readonly property real fullW: root.tagWidth(tag.modelData.count)
+
+            // Grown about its own centre, so it swells out of a point beside the
+            // mark rather than unrolling from a corner.
+            width: tag.fullW * growth.value
+            height: root.tagHeight * growth.value
+            x: root.tagX + (tag.fullW - width) / 2
+            y: root.tagY(tag.modelData.row, height)
+            visible: growth.value > 0.01
+
+            radius: root.radius
+            color: Appearance.colour.fill
+
+            G2Rect {
+                anchors.fill: parent
+                radius: root.radius
+                color: Appearance.colour.fillStrong
+            }
+
+            G2Rect {
+                anchors.fill: parent
+                radius: root.radius
+                color: Appearance.colour.accentFill
+                visible: layout.active === layout.idAt(root.heldSlot) && !layout.eclipsed
+            }
+
+            StyledText {
+                anchors.centerIn: parent
+                // Centred by INK, not by line box: a numeral sits high in its
+                // own line, so a number centred by the box is not centred.
+                anchors.horizontalCenterOffset: inkOffsetX
+                anchors.verticalCenterOffset: inkOffsetY
+
+                // In after the shape, rather than with it. The pill spends the
+                // first part of its growth too small to hold the number, and a
+                // numeral scaled up out of nothing is the one thing here that
+                // would read as an animation rather than as an arrival.
+                opacity: Math.max(0, (growth.value - 0.4) / 0.6)
+
+                text: `${tag.modelData.count}`
+                color: Appearance.colour.text
             }
         }
     }
