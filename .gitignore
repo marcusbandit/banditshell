@@ -1,1 +1,6 @@
-.claude/
+# Everything Claude keeps here is local to one machine and one session, EXCEPT
+# the skills: those are how the project's own workflows are written down (see
+# .claude/skills/app-mark), they reference this repo's files by path, and they
+# are no more machine-local than DESIGN.md is.
+.claude/*
+!.claude/skills/
