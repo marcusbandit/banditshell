@@ -94,7 +94,6 @@ Item {
     readonly property int slot: Appearance.sizes.wsSlot
     readonly property int iconSize: Appearance.sizes.wsIcon
     readonly property int pitch: Appearance.sizes.wsWindowPitch
-    readonly property int maxWindows: Appearance.sizes.wsMaxWindows
 
     // THE LANE: where a full-width cell stands, centred in the whole band.
     //
@@ -251,6 +250,10 @@ Item {
         screen: root.screen
         base: root.slot
         pitch: root.pitch
+        // THIS COLUMN DRAWS APPLICATIONS, so the several windows of one that
+        // stacks are one row and a count rather than a run of identical marks.
+        // See WorkspaceModel.stack and Apps.stackClasses.
+        stack: true
     }
 
     // WHICH SLOT THE ACCENT MARKER IS AIMED AT, and whether it is on this column
@@ -346,7 +349,7 @@ Item {
     // marker is one shape outside the Repeater, and a second copy of this test
     // would be the one thing standing between them.
     function slotSolid(s: var): bool {
-        return !!s && (s.windows.length > 0 || s.rest > 0 || layout.active === s.id);
+        return !!s && (s.windows.length > 0 || layout.active === s.id);
     }
 
     onHoveredChanged: if (root.hovered >= 0)
@@ -772,14 +775,14 @@ Item {
             readonly property var info: layout.slots[index] ?? ({
                     id: layout.idAt(index),
                     windows: [],
-                    rest: 0
+                    marks: []
                 })
             readonly property var geom: layout.at(index)
             // The MODEL'S active workspace, which is this screen's own and not
             // the focused one: the sidebar on the monitor you are not looking
             // at still marks the cell you left it standing on.
             readonly property bool isActive: layout.active === slotItem.info.id
-            readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
+            readonly property bool isOccupied: slotItem.info.windows.length > 0
             // A scratchpad is lying on this cell, so its windows are behind
             // one: you cannot see them, and neither should their marks, which
             // would otherwise show through the card and read as two icons in the
@@ -920,16 +923,29 @@ Item {
                     }
                 }
 
-                // One row per window, CENTRED IN THE CELL, which is why they are
+                // ONE ROW PER MARK, CENTRED IN THE CELL, which is why they are
                 // children of it: the icons ride the cell as it grows rather than
                 // sitting at a fixed place it happens to cover.
+                //
+                // A MARK IS NOT ALWAYS A WINDOW. The model hands this column
+                // applications rather than windows (WorkspaceModel.stack), so the
+                // twelve kitty windows on a workspace arrive as one entry with a
+                // twelve on it. Everything else is one entry per window with a
+                // count of one, and the drawing below never has to know which of
+                // the two it got.
+                //
+                // NOTHING IS DROPPED. There is no cap and no "and more": a
+                // workspace with twenty applications on it draws twenty marks and
+                // is twenty rows tall. The cap existed because twenty identical
+                // terminal glyphs would run the column off the screen, and
+                // stacking answers that without throwing anything away.
                 Repeater {
                     // A ScriptModel, NOT the array: the array is rebuilt on every
                     // Hyprland event, and a plain-array Repeater would tear down
                     // and rebuild every icon each time. This diffs it, so a window
                     // opening touches only its own row.
                     model: ScriptModel {
-                        values: slotItem.info.windows
+                        values: slotItem.info.marks
                     }
 
                     delegate: Item {
@@ -937,19 +953,38 @@ Item {
 
                         required property var modelData
                         required property int index
-                        readonly property bool focused: Hypr.isFocused(modelData)
-                        // Hover is cosmetic here and goes dark during the
-                        // scrub, like the marker's own: a mark glowing under a
-                        // drag promises a click the release will not make.
-                        readonly property bool lit: focused || (winMouse.containsMouse && !layout.scrubbing)
-                        readonly property string appClass: Hypr.classOf(modelData)
 
+                        readonly property string appClass: row.modelData.cls ?? ""
+                        readonly property int count: row.modelData.count ?? 1
+
+                        // A STACK IS LIT IF ANY OF IT IS. The mark stands for
+                        // every window of that application on this workspace, so
+                        // it is the focused one whenever the keyboard is in any
+                        // of them; asking the representative client alone would
+                        // dim the mark the moment you moved to the second
+                        // terminal. One window is the same test, said cheaply.
+                        readonly property bool lit: row.count > 1 ? slotItem.info.windows.some(w => Hypr.classOf(w) === row.appClass && Hypr.isFocused(w)) : Hypr.isFocused(row.modelData.client)
+
+                        // WHERE IT SITS is the model's answer, not this
+                        // delegate's index times a pitch: a mark carrying a count
+                        // is taller than one that is not, so the rows below it
+                        // are no longer a multiple of anything.
                         x: Math.round((cell.width - root.slot) / 2)
-                        y: (root.slot - root.pitch) / 2 + index * root.pitch
+                        y: (root.slot - root.pitch) / 2 + (row.modelData.row ?? row.index) * root.pitch
                         width: root.slot
                         height: root.pitch
                         opacity: slotItem.covered ? 0 : 1
 
+                        // NOTHING IN HERE ANSWERS THE CURSOR, and that is
+                        // deliberate. A mark used to be a button: hovering one lit
+                        // it and clicking it focused that window. It made the
+                        // column answer at two different sizes, a row inside a
+                        // pill, so running the cursor down the sidebar lit a
+                        // sequence of small things inside the big thing the hover
+                        // marker was already lighting. The cell is the control
+                        // now, whole, and a mark is a picture on it. Focusing one
+                        // window of a workspace was never what the sidebar was
+                        // for; going to the workspace is.
                         Behavior on opacity {
                             NumberAnimation {
                                 duration: Appearance.anim.normal
@@ -964,7 +999,7 @@ Item {
                         AppMark {
                             anchors.centerIn: parent
                             size: root.iconSize
-                            spec: AppIcons.markFor(row.appClass)
+                            spec: AppIcons.markFor(row.appClass, "")
                             fallback: Apps.iconFor(row.appClass)
 
                             // The focused window is the only thing in the column
@@ -980,90 +1015,87 @@ Item {
                             }
                         }
 
-                        // Clicking a window goes to THAT window, not merely to its
-                        // workspace. Hyprland's focuswindow brings the workspace
-                        // along with it, so this is strictly more than the cell's
-                        // own click does.
+                        // HOW MANY OF THEM, ON HOVER, BESIDE THE MARK.
                         //
-                        // Also the third doorway into the scrub, fed through
-                        // the same model functions as the slot target and the
-                        // gap backstop: a busy cell is mostly window rows,
-                        // and a drag that died wherever a mark happened to be
-                        // would make the busiest workspaces the hardest ones
-                        // to leave.
-                        MouseArea {
-                            id: winMouse
+                        // A stack is one mark, and the count is the one thing the
+                        // mark cannot say by itself. It does not have to say it
+                        // all the time, though: the column is read at a glance for
+                        // WHICH applications are where, and "three of them" is a
+                        // second question you only ever ask about the workspace
+                        // you are already pointing at. So it arrives with the
+                        // hover, on the workspace under the cursor, and the column
+                        // at rest stays a column of marks.
+                        //
+                        // IT IS A TOOLTIP FOR ONE MARK, and it is made of the
+                        // shell's sheets rather than the shell's tooltip: a
+                        // tooltip is a card in the panel material, which floats
+                        // OVER things, and this is a tab pulled out of the cell it
+                        // belongs to. So it wears exactly what the cell under the
+                        // cursor is wearing, sheet for sheet: the quiet fill every
+                        // cell has, the hover marker's sheet over it, and the
+                        // accent sheet too when the workspace is the one you are
+                        // on. Built as those same three shapes rather than as a
+                        // colour picked to match them, because a colour picked to
+                        // match is a colour that stops matching the day one of
+                        // them moves.
+                        //
+                        // RIGHT UP AGAINST THE BAND'S INNER EDGE, so it reads as
+                        // pulled out of the cell rather than floating beside it,
+                        // and so a two-digit count grows back over the mark rather
+                        // than out over the desktop.
+                        G2Rect {
+                            id: tag
 
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            preventStealing: layout.scrubbing
-                            onEntered: root.hovered = slotItem.index
-                            onExited: if (root.hovered === slotItem.index)
-                                root.hovered = -1
+                            readonly property real air: Math.round(Appearance.padding.small / 2)
+                            readonly property bool shown: row.count > 1 && root.hovered === slotItem.index && !layout.scrubbing
 
-                            onPressed: mouse => {
-                                const p = winMouse.mapToItem(null, mouse.x, mouse.y);
-                                layout.scrubPress(p.x, p.y);
+                            // Sized to the digits' INK, not their line box: at the
+                            // shell's smallest tier the box is 24px tall and the
+                            // numeral in it is under half that (StyledText).
+                            width: Math.round(tally.inkWidth) + tag.air * 2
+                            height: Math.round(tally.inkHeight) + tag.air * 2
+                            x: root.width - root.lane - width - Math.round(Appearance.padding.small / 3)
+                            anchors.verticalCenter: parent.verticalCenter
+
+                            radius: root.radius
+                            color: Appearance.colour.fill
+                            opacity: tag.shown ? 1 : 0
+                            visible: opacity > 0.01
+
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Appearance.anim.fast
+                                }
                             }
 
-                            onPositionChanged: mouse => {
-                                if (!winMouse.pressed)
-                                    return;
-                                const p = winMouse.mapToItem(null, mouse.x, mouse.y);
-                                layout.scrubMove(p.x, p.y);
+                            G2Rect {
+                                anchors.fill: parent
+                                radius: root.radius
+                                color: Appearance.colour.fillStrong
                             }
 
-                            // The tap goes through the model's answer, never
-                            // `clicked`, for the reason the slot target says.
-                            onReleased: {
-                                if (!layout.scrubRelease())
-                                    Hypr.focusClient(row.modelData);
+                            G2Rect {
+                                anchors.fill: parent
+                                radius: root.radius
+                                color: Appearance.colour.accentFill
+                                visible: slotItem.isActive && !slotItem.covered
                             }
 
-                            onCanceled: layout.scrubCancel()
+                            StyledText {
+                                id: tally
 
-                            // The third fingers' doorway, and the one that
-                            // makes the rule true rather than nearly true: a
-                            // busy cell is mostly window rows, so a column
-                            // that answered scrolls everywhere except on its
-                            // marks would be a column you could not swipe
-                            // wherever it had anything on it.
-                            onWheel: wheel => layout.scrubWheel(wheel)
+                                // Centred by INK for the reason the tag is sized
+                                // by it: a numeral sits high in its own line box,
+                                // so a number centred by the box is not centred.
+                                anchors.centerIn: parent
+                                anchors.horizontalCenterOffset: tally.inkOffsetX
+                                anchors.verticalCenterOffset: tally.inkOffsetY
 
-                            // The row dies with its window: the ScriptModel
-                            // above diffs by identity, so the pressed window
-                            // closing (or leaving the workspace) destroys
-                            // exactly this delegate, grab and all, and the
-                            // gesture state would stay latched (the slot
-                            // target's destruction note says why `canceled`
-                            // is not enough). Letting go cleanly is the
-                            // honest answer; keeping the row alive by
-                            // freezing the list while a scrub is latched was
-                            // rejected because the toplevel behind it is
-                            // already gone, and a blank mark under a live
-                            // grab is a worse lie than a drag that ends. The
-                            // next press resumes from wherever the desktop
-                            // actually is.
-                            Component.onDestruction: {
-                                if (winMouse.pressed)
-                                    layout?.scrubCancel();
+                                text: `${row.count}`
+                                color: Appearance.colour.text
                             }
                         }
                     }
-                }
-
-                // "and more". Sits in the row after the last icon, so an
-                // overflowing workspace is capped rather than truncated silently.
-                Icon {
-                    visible: slotItem.info.rest > 0
-                    x: Math.round((cell.width - root.slot) / 2)
-                    y: (root.slot - root.pitch) / 2 + slotItem.info.windows.length * root.pitch
-                    width: root.slot
-                    height: root.pitch
-                    name: "more_horiz"
-                    size: root.iconSize
-                    color: Appearance.colour.textFaint
                 }
             }
         }
@@ -1099,7 +1131,12 @@ Item {
             // travel on the event's frame, not after the monitor refresh.
             readonly property bool open: !!pad.entry.name && layout.special === pad.entry.name
 
-            readonly property var windows: pad.entry.windows.slice(0, root.maxWindows)
+            // EVERY WINDOW ON IT, uncapped and unstacked, which is the one
+            // place in this file that draws windows rather than applications.
+            // The bar answers "which one is this" with a single mark; the card
+            // is what answers "what is on it", and a card that dropped the
+            // fifth window would be answering neither.
+            readonly property var windows: pad.entry.windows
             readonly property int rows: Math.max(1, pad.windows.length)
 
             // The two ends of the journey: the bar in the rack, and the card on

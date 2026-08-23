@@ -391,6 +391,62 @@ Singleton {
             "(nautilus|dolphin|thunar|nemo|files|pcmanfm)": "\uf024b" // md-folder
         })
 
+    // APPLICATIONS THIS SHELL DRAWS ITSELF: { regex: the file in
+    // components/marks }.
+    //
+    // A last resort, and deliberately a short list. Most applications are served
+    // by one of the three automatic answers (their own artwork, a brand glyph, a
+    // category symbol); this is for the ones where all three are wrong. kitty is
+    // the case it exists for: its real icon is an orange cat on a black terminal,
+    // which is a photograph in a band made of one grey and one accent, and its
+    // silhouette is a blob, so tinting it flat does not rescue it either. Drawn
+    // from the official mark, in our colours, it is both recognisable and part of
+    // the shell. See components/marks/Kitty.qml.
+    readonly property var drawnMarks: ({
+            "^kitty$": "Kitty"
+        })
+
+    function drawnFor(appClass: string): string {
+        for (const pattern in root.drawnMarks) {
+            try {
+                if (new RegExp(pattern, "i").test(appClass))
+                    return root.drawnMarks[pattern];
+            } catch (e) {
+                console.warn(`Apps: "${pattern}" is not a valid drawn-mark regex, skipping it.`, e);
+            }
+        }
+        return "";
+    }
+
+    // APPLICATIONS YOU KEEP SEVERAL OF, where a column of identical marks says
+    // less than one mark and a number.
+    //
+    // A terminal is the case this exists for: twelve kitty windows on a
+    // workspace draw twelve identical glyphs down the sidebar, which is a
+    // paragraph saying "terminal" over and over where "kitty, twelve" is the
+    // whole of it. Nothing else on that workspace can be seen past them either,
+    // so the one application you have many of hides every application you have
+    // one of.
+    //
+    // A TABLE HERE rather than a setting, for the reason `brandGlyphs` is one:
+    // it is a fact about how applications are USED, not a preference, and the
+    // list of things people run a dozen of at once is short and well known.
+    // Anything not on it draws one mark per window, which is the honest default:
+    // two browser windows are two places, and collapsing them would lose which.
+    readonly property var stackClasses: ["^(kitty|alacritty|foot|wezterm|ghostty|konsole|xterm|urxvt|st)$"]
+
+    function stacks(appClass: string): bool {
+        for (const pattern of root.stackClasses) {
+            try {
+                if (new RegExp(pattern, "i").test(appClass))
+                    return true;
+            } catch (e) {
+                console.warn(`Apps: "${pattern}" is not a valid stack regex, skipping it.`, e);
+            }
+        }
+        return false;
+    }
+
     // The generic mark, for a window whose class matches no desktop entry at
     // all: wine apps, games launched by an id, anything self-titled. Same glyph
     // the launcher falls back to, so "we could not identify this" looks the

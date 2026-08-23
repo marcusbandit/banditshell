@@ -23,7 +23,33 @@ Item {
     property int base: Appearance.sizes.wsSlot
     property int pitch: Appearance.sizes.wsWindowPitch
     property int gap: Appearance.sizes.wsGap
-    property int maxWindows: Appearance.sizes.wsMaxWindows
+
+    // WHETHER THE STYLE DRAWS APPLICATIONS OR WINDOWS, which is the one thing
+    // about a workspace's contents the model cannot decide for itself.
+    //
+    // A style that draws a MARK per window wants the several kitty windows on a
+    // workspace folded into one mark and a number (see Apps.stackClasses): the
+    // mark says which application, and twelve copies of it say nothing twelve
+    // times. A style that draws the LAYOUT does not: `map` gives every window a
+    // bar as long as the window is wide, and folding twelve tiled terminals into
+    // one bar would be a picture of a screen that is not there. So the styles
+    // that draw pictures of applications ask for this and the ones that draw
+    // pictures of screens leave it alone.
+    //
+    // It has to be here rather than in the style because it changes the layout:
+    // a stack is one ROW, and how many rows a workspace has is how tall it is.
+    property bool stack: false
+
+    // HOW MANY MARKS SHARE A ROW, for a style that lays them out sideways.
+    //
+    // One is a column of marks, which is what `plates` and `map` draw and what
+    // every number in here assumed. `blocks` is the other shape: it puts a
+    // square per window in a ROW, and a row is only as wide as the band, so past
+    // a certain count it has to wrap. How many fit is a fact about that style's
+    // own geometry, so the style works it out and hands it in; what the model
+    // does with it is turn a count of marks into a count of LINES, which is the
+    // only part that is height and therefore the only part that is the model's.
+    property int perRow: 1
 
     readonly property int count: Hypr.count
 
@@ -84,22 +110,48 @@ Item {
     readonly property string special: Hypr.specialOn(root.screen)
     readonly property bool eclipsed: special !== ""
 
-    // THE LAYOUT: { id, y, h, windows, rest } per slot, in one pass. Where slot i
+    // THE LAYOUT: { id, y, h, windows, marks } per slot, in one pass. Where slot i
     // sits depends on what the slots above it are holding, so nothing knows its
     // own y and adding a workspace or a window changes only the data this runs
     // over (see ~/.claude/rules/math-over-hardcoding.md).
+    //
+    // BOTH LISTS, because the two questions are different ones: `windows` is
+    // everything that is on the workspace, and `marks` is what a column draws
+    // one of each of, which with `stack` off is the same list wearing a count of
+    // one. The height comes from `marks`, because rows are what take up room.
+    //
+    // NOTHING IS TRUNCATED HERE ANY MORE. A workspace used to cap at
+    // `maxWindows` and spend its last row on an "and more" ellipsis, so a busy
+    // workspace was drawn as four windows and a shrug: the cap existed because
+    // twenty identical terminal glyphs would run the column off the screen, and
+    // stacking is the answer to that which does not throw anything away. Twenty
+    // windows of twenty different applications now draw twenty marks, which is
+    // what a column of applications is FOR.
     readonly property var slots: {
         const out = [];
         let y = 0;
         for (let i = 0; i < root.count; i++) {
             const id = root.idAt(i);
-            const clients = Hypr.clientsIn(id);
-            // The overflow mark is a ROW like any other, so a workspace with
-            // twenty windows on it is exactly as tall as one at the cap and the
-            // column can never run off the screen.
-            const over = clients.length > root.maxWindows;
-            const windows = over ? clients.slice(0, root.maxWindows - 1) : clients;
-            const rows = Math.max(1, windows.length + (over ? 1 : 0));
+            const windows = Hypr.clientsIn(id);
+            const marks = root.stack ? Hypr.stackClients(windows) : windows.map(w => ({
+                        client: w,
+                        cls: Hypr.classOf(w),
+                        count: 1
+                    }));
+
+            // WHERE EACH MARK SITS, in rows from the top of the slot, and how
+            // many rows the lot of them come to. Counted here rather than in the
+            // style for the same reason the slot's own y is: a mark's place
+            // depends on what is above it, so nothing can know its own
+            // (~/.claude/rules/math-over-hardcoding.md).
+            for (let m = 0; m < marks.length; m++) {
+                // Which line it lands on and how far along it, which is only ever
+                // interesting to a style that WRAPS: down a column each mark is
+                // its own line, and `blocks` fills a line before starting another.
+                marks[m].row = Math.floor(m / root.perRow);
+                marks[m].col = m % root.perRow;
+            }
+            const rows = Math.max(1, Math.ceil(marks.length / root.perRow));
 
             const h = root.base + (rows - 1) * root.pitch;
             out.push({
@@ -107,7 +159,7 @@ Item {
                 y,
                 h,
                 windows,
-                rest: clients.length - windows.length
+                marks
             });
             y += h + root.gap;
         }

@@ -46,6 +46,16 @@ Text {
     readonly property real inkOffsetX: root.width / 2 - (ink.tightBoundingRect.x + ink.tightBoundingRect.width / 2)
     readonly property real inkOffsetY: root.height / 2 - (root.baselineOffset + ink.tightBoundingRect.y + ink.tightBoundingRect.height / 2)
 
+    // AND HOW BIG THE INK ACTUALLY IS, for a shape drawn AROUND text rather than
+    // text placed inside a shape.
+    //
+    // A badge is the case: the line box at the smallest tier is 24px tall, which
+    // in a 25px row is the whole row, while the ink of a numeral is under half
+    // that. Sizing the shape to the box gives a badge that is all box; sizing it
+    // to this gives one that hugs the digits, at any size and for any string.
+    readonly property real inkWidth: ink.tightBoundingRect.width
+    readonly property real inkHeight: ink.tightBoundingRect.height
+
     TextMetrics {
         id: ink
 

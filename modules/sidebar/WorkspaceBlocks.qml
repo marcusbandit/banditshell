@@ -28,6 +28,10 @@ Item {
     readonly property int block: Appearance.sizes.wsBlock
     readonly property int step: block + Appearance.sizes.wsBlockGap
 
+    // How many squares fit across the band. The gap only falls BETWEEN blocks,
+    // so the last one in a line does not have to pay for one.
+    readonly property int perRow: Math.max(1, Math.floor((root.width + Appearance.sizes.wsBlockGap) / root.step))
+
     // Rows are a single line of blocks, so a slot is one block tall whatever it
     // holds: the count runs sideways, not down.
     property int hovered: -1
@@ -39,7 +43,14 @@ Item {
 
         screen: root.screen
         base: root.block
-        pitch: 0
+        // A LINE of blocks, not a row of one: nothing is capped any more, so a
+        // workspace with more windows than the band is wide wraps onto another
+        // line rather than running out over the desktop. The pitch is what a
+        // line costs, and how many fit is arithmetic off the band and the grid
+        // (~/.claude/rules/math-over-hardcoding.md), which is the whole of what
+        // the model needs to turn a count of windows into a height.
+        pitch: root.step
+        perRow: root.perRow
         gap: Appearance.sizes.wsBlockGap * 2
     }
 
@@ -53,13 +64,13 @@ Item {
             readonly property var info: layout.slots[index] ?? ({
                     id: layout.idAt(index),
                     windows: [],
-                    rest: 0
+                    marks: []
                 })
             readonly property var geom: layout.at(index)
             // The MODEL'S active workspace, which is this screen's own rather
             // than the focused one's.
             readonly property bool isActive: layout.active === slotItem.info.id
-            readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
+            readonly property bool isOccupied: slotItem.info.windows.length > 0
 
             y: slotItem.geom.y
             width: root.width
@@ -96,7 +107,7 @@ Item {
 
             Repeater {
                 model: ScriptModel {
-                    values: slotItem.info.windows
+                    values: slotItem.info.marks
                 }
 
                 delegate: G2Rect {
@@ -104,9 +115,13 @@ Item {
 
                     required property var modelData
                     required property int index
-                    readonly property bool focused: Hypr.isFocused(modelData)
+                    readonly property bool focused: Hypr.isFocused(cell.modelData.client)
 
-                    x: index * root.step
+                    // On the grid the model put it on, which is a line and a
+                    // place along it once there are more windows than fit across
+                    // the band.
+                    x: (cell.modelData.col ?? cell.index) * root.step
+                    y: (cell.modelData.row ?? 0) * root.step
                     width: root.block
                     height: root.block
                     radius: 0
@@ -128,22 +143,16 @@ Item {
                         onEntered: root.hovered = slotItem.index
                         onExited: if (root.hovered === slotItem.index)
                             root.hovered = -1
-                        onClicked: Hypr.focusClient(cell.modelData)
+                        onClicked: Hypr.focusClient(cell.modelData.client)
                     }
                 }
             }
 
-            // The ones past the cap: a half block after the last one, so an
-            // overflowing workspace is capped rather than truncated silently.
-            G2Rect {
-                visible: slotItem.info.rest > 0
-                x: slotItem.info.windows.length * root.step
-                y: (root.block - root.block / 2) / 2
-                width: root.block / 2
-                height: root.block / 2
-                radius: 0
-                color: Appearance.colour.textFaint
-            }
+            // THERE IS NO CAP ANY MORE, and so no half block after the last
+            // one. The model stopped truncating (see WorkspaceModel.slots): a
+            // workspace with twenty windows draws twenty blocks, which is what a
+            // row of one block per window is for. A row can outgrow the band on a
+            // very busy workspace, and that is the honest picture of one.
         }
     }
 }

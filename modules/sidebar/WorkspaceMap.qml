@@ -64,13 +64,13 @@ Item {
             readonly property var info: layout.slots[index] ?? ({
                     id: layout.idAt(index),
                     windows: [],
-                    rest: 0
+                    marks: []
                 })
             readonly property var geom: layout.at(index)
             // The MODEL'S active workspace, which is this screen's own rather
             // than the focused one's.
             readonly property bool isActive: layout.active === slotItem.info.id
-            readonly property bool isOccupied: slotItem.info.windows.length > 0 || slotItem.info.rest > 0
+            readonly property bool isOccupied: slotItem.info.windows.length > 0
 
             y: slotItem.geom.y
             width: root.width
@@ -156,19 +156,10 @@ Item {
                 }
             }
 
-            // The ones past the cap, as one short bar rather than a lie about how
-            // many there are.
-            G2Rect {
-                visible: slotItem.info.rest > 0
-                x: 0
-                y: slotItem.info.windows.length * root.pitch
-                width: Math.round(root.span * root.floor / 2)
-                height: root.bar
-                radius: root.bar / 2
-                topLeftRadius: 0
-                bottomLeftRadius: 0
-                color: Appearance.colour.textGhost
-            }
+            // THERE IS NO CAP ANY MORE, and so no short bar for the ones past
+            // it. The model stopped truncating (see WorkspaceModel.slots), which
+            // this style wanted most of the three: a map of a layout that stopped
+            // after four windows was a map of part of the screen.
         }
     }
 }

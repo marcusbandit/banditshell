@@ -284,7 +284,6 @@ Singleton {
         // The scratchpad rack's pinned order, by name. A list, not a size, but
         // it belongs with the rest of what the workspace column is told.
         readonly property var wsSpecials: root.cfg.sidebar.workspaces.specials
-        readonly property int wsMaxWindows: root.cfg.sidebar.workspaces.maxWindows
         // The row pitch of stacked window icons. Derived from the icon size
         // rather than set in pixels, so the stack keeps its proportions when
         // the icons change size.

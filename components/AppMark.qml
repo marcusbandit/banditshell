@@ -19,6 +19,13 @@ import qs.components
 //                         somebody's artwork.
 //   image:/path/x.svg     a file drawn as it is. The application's real icon,
 //                         brand palette and all.
+//   draw:Kitty            a mark this shell draws ITSELF, as vectors, in the
+//                         theme's colours: components/marks/Kitty.qml. For the
+//                         handful of applications whose own artwork is a
+//                         photograph next to a bar made of one grey and one
+//                         accent, and whose silhouette is a blob. It takes
+//                         `colour` off this mark exactly as a status gauge's
+//                         mark takes it off the gauge.
 //
 // An empty spec draws `fallback`, which is how "nothing has been chosen for this
 // application yet" reaches the screen as the category glyph rather than as a
@@ -37,6 +44,22 @@ Item {
 
     implicitWidth: size
     implicitHeight: size
+
+    // A MARK THE SHELL DRAWS. Loaded by name from components/marks, so adding one
+    // is a file rather than a branch here, and its ink is handed down the same
+    // way every other kind's is.
+    Loader {
+        id: drawn
+
+        anchors.centerIn: parent
+        active: root.kind === "draw" && !!root.value
+        source: drawn.active ? `marks/${root.value}.qml` : ""
+
+        onLoaded: {
+            drawn.item.colour = Qt.binding(() => root.color);
+            drawn.item.size = Qt.binding(() => root.size);
+        }
+    }
 
     Icon {
         anchors.centerIn: parent

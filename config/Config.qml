@@ -379,11 +379,6 @@ Singleton {
                     // this ratio, so it is the one number to change if the
                     // column ever reads as a flat list.
                     gap: 12,
-                    // Rows of window icons a slot draws before the rest
-                    // collapse into one "and more" mark. A cap, not a limit on
-                    // what you can open: without it a workspace with twenty
-                    // windows would push the column off the screen.
-                    maxWindows: 4,
                     // Pitch of those rows, as a multiple of the icon size, so
                     // the stack stays proportional if the icons are resized.
                     // At 1 the glyphs stack with only their own built-in

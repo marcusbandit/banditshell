@@ -191,6 +191,14 @@ Singleton {
         if (named)
             return `symbol:${named}`;
 
+        // WHAT THIS SHELL DRAWS FOR IT, which beats every automatic answer
+        // below and loses to both hand-picked ones above. It is artwork made for
+        // this application in this palette (Apps.drawnMarks), so the only things
+        // that should outrank it are the two places a person said otherwise.
+        const drawn = Apps.drawnFor(cls);
+        if (drawn)
+            return `draw:${drawn}`;
+
         const mode = want || Appearance.sizes.wsIconMode;
         if (mode === "brand") {
             const glyph = Apps.brandFor(cls);

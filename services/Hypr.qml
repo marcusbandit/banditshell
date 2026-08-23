@@ -705,6 +705,38 @@ Singleton {
         return o?.class || o?.initialClass || "";
     }
 
+    // ONE ENTRY PER MARK, for a column that draws applications rather than
+    // windows: [{ client, cls, count }], in the order the windows arrive.
+    //
+    // A client whose application stacks (Apps.stacks) folds into the entry
+    // BEFORE IT when that is the same application; everything else is its own
+    // entry with a count of one, so a caller can draw the list straight and
+    // never has to know which of the two happened.
+    //
+    // CONSECUTIVE RUNS, not "all of this class together", and the difference is
+    // the whole of what makes the list still be the workspace's own order. A
+    // workspace holding an editor, a terminal, a browser and two more terminals
+    // reads as those five things in that order; folding by class alone would
+    // pull the last two up into the first terminal and hand back an editor, a
+    // terminal times three, and a browser, which is a list of what is open and
+    // no longer a picture of where it is.
+    function stackClients(clients: var): var {
+        const out = [];
+        for (const client of clients) {
+            const cls = root.classOf(client);
+            const last = out[out.length - 1];
+            if (last && last.cls === cls && Apps.stacks(cls))
+                last.count++;
+            else
+                out.push({
+                    client,
+                    cls,
+                    count: 1
+                });
+        }
+        return out;
+    }
+
     function focusClient(client: var): void {
         root.focusAddress(client?.lastIpcObject?.address ?? "");
     }

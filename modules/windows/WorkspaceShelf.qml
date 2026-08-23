@@ -138,6 +138,14 @@ Item {
     readonly property real docked: 0.72
     readonly property real rowScale: root.docked + (1 - root.docked) * arm.value
 
+    // HOW MANY MARKS A PLATE CAN HOLD, which is arithmetic and not a setting: a
+    // plate is this wide, a mark is this wide, and the row of them is centred in
+    // it. This used to read the sidebar's `maxWindows`, which was a cap on how
+    // many windows the SIDEBAR drew and is gone with it; borrowing it here was
+    // always a number from another drawing that happened to look right.
+    readonly property int marksFit: Math.max(1, Math.floor((root.scaledW - root.markGap) / (Appearance.sizes.wsIcon + root.markGap)))
+    readonly property real markGap: Math.round(Appearance.padding.small / 2)
+
     readonly property real scaledPitch: root.pitch * root.rowScale
     readonly property real scaledW: root.plateW * root.rowScale
     readonly property real scaledH: root.plateH * root.rowScale
@@ -217,7 +225,7 @@ Item {
             // What is on that workspace already, as marks. Empty for the "new
             // one" plate by construction: nothing is on a workspace that has not
             // been used yet.
-            readonly property var windows: typeof plate.modelData.target === "number" ? Hypr.clientsIn(plate.modelData.target).slice(0, Appearance.sizes.wsMaxWindows) : []
+            readonly property var windows: typeof plate.modelData.target === "number" ? Hypr.clientsIn(plate.modelData.target).slice(0, root.marksFit) : []
 
             readonly property point centre: root.plateCentre(plate.index)
 
@@ -286,7 +294,7 @@ Item {
                 // screenshot: which applications are living on it.
                 Row {
                     anchors.horizontalCenter: parent.horizontalCenter
-                    spacing: Appearance.padding.small / 2
+                    spacing: root.markGap
 
                     Repeater {
                         model: plate.windows
