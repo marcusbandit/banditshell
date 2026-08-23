@@ -1192,8 +1192,16 @@ Everything else is an **offset** of that one curve, never a radius of its own:
 ```
 the window          d
 the content area    d - gap          the chassis's inner edge
-the screen's edge   d - gap - band   where the black corners begin
 ```
+
+**The display's edge is the same construction on a different rectangle.** It reads
+like the third line of that table (`d - gap - band`) and it is not one: that is
+only the screen's edge where the shell is a band, which is three sides of four.
+Down the left the shell is a band PLUS the sidebar, so the content's offset curve
+falls `sidebarWidth` inside the display, and a frame drawn on it blacks out the
+whole bar. It is measured off the surface instead - inset by `gap + band`, at
+`windowRadius`, offset back out by `gap + band` - which is the same line to the
+pixel on the three sides that were right.
 
 **"Content radius = window radius + gap" is the trap.** It is true for circles and
 false for every other superellipse. At the compositor's `rounding_power` of 4 it

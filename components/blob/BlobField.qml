@@ -46,7 +46,12 @@ ShaderEffect {
 
     property real gap: Appearance.sizes.gap
     property real band: Appearance.sizes.band
-    property real pad0: 0
+    // What the DISPLAY's corners are rounded off at, before the gap and the band
+    // are added to it. The window's own radius, so the screen's corner cups a
+    // maximised window's corner at a constant distance; the frame is drawn
+    // around the item rather than around the content area, so this is not one of
+    // `baseRadius`'s four (see toScreen in blob.frag).
+    property real screenRadius: Appearance.sizes.windowRadius
 
     // THE BLACK SCREEN-CORNER FRAME: 1 draws it, 0 does not.
     //

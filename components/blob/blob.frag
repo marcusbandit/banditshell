@@ -22,7 +22,11 @@
 //
 //     the window          d
 //     the content area    d - gap          the chassis's inner edge
-//     the screen's edge   d - gap - band   where the black corners begin
+//
+// The DISPLAY's edge, where the black corners begin, is the same construction
+// but not the same curve: it is measured off the item rather than off the
+// content, because the shell is a band on three sides and a band plus a sidebar
+// on the fourth. See `toScreen` in main().
 //
 // This is the reason it has to be a field. An offset curve is at a CONSTANT
 // distance; a larger radius is not. Growing a superellipse's radius by the gap
@@ -66,7 +70,12 @@ layout(std140, binding = 0) uniform buf {
     float band;
     // 0 hides the black screen-corner frame.
     float frameOn;
-    float pad0;
+    // The radius the DISPLAY's corners are rounded off at, before the reach is
+    // added: the window's own, so the screen's corner and a maximised window's
+    // corner are the same curve at a constant distance. One number for all four,
+    // because a display's corners are all the same corner; `baseRadius` is
+    // per-corner because the CHASSIS's are not (see the sidebar's flare).
+    float screenRadius;
 
     // Item size in pixels; the shader works in pixels, not UV.
     vec4 size;
@@ -219,7 +228,29 @@ void main() {
 
     // Offsets, not radii.
     float toContent = window - gap;
-    float toScreen = window - gap - band;
+
+    // THE DISPLAY'S OWN EDGE, which is the content's curve offset outwards on
+    // three sides and NOT on the fourth.
+    //
+    // It used to be `window - gap - band` everywhere, and that reads as the same
+    // sentence the two lines above it are: one curve, offset twice. It is true
+    // wherever the shell is only a band, which is the top, the bottom and the
+    // right. It is false down the LEFT, because there the shell is a band plus a
+    // sidebar: the content starts sidebarWidth further in, so that offset lands
+    // 52px inside the display and everything the bar draws is OUTSIDE it. The
+    // frame then did exactly what it is for, on the wrong line - it blacked out
+    // the entire sidebar, the whole height of the screen, and left the band's
+    // material showing only in the 10px strip beside the windows.
+    //
+    // So it is measured off the ITEM, which is the display. Same construction as
+    // `window`: a curve inset by the reach and then offset back out by it, so
+    // the corner is the offset of a superellipse rather than a bigger one (the
+    // note at the top of this file). On the three sides that were right it is
+    // the same line to the pixel; on the fourth it is the screen's edge, where
+    // it always should have been.
+    float reach = gap + band;
+    vec2 halfScreen = size.xy * 0.5;
+    float toScreen = sdBox(p - halfScreen, max(halfScreen - reach, vec2(0.0)), vec4(screenRadius)) - reach;
 
     // The chassis is everything outside the content area, so its field is the
     // content's negated.
