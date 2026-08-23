@@ -64,21 +64,13 @@ Item {
         width: Appearance.sizes.statusSlot
         height: Appearance.sizes.statusSlot
 
-        G2Rect {
-            anchors.fill: parent
-            radius: Appearance.rounding.normal
-            // A step above the group's own container fill, or hovering inside the
-            // container would not read as anything.
-            color: Appearance.colour.fillStrong
-            opacity: root.hovered ? 1 : 0
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-        }
-
+        // NO HOVER FILL HERE, and there must not be one again. The group draws
+        // it, as a single marker that travels from gauge to gauge (see the
+        // marker in StatusIcons): a fill that belongs to a delegate cannot
+        // travel, because the old one has to end where it is and the new one
+        // has to begin where it is, and no crossfade between two of those is
+        // movement. What is left here is what one gauge can honestly answer on
+        // its own - its glyph, and how lit that glyph is.
         Icon {
             anchors.centerIn: parent
             visible: !root.mark

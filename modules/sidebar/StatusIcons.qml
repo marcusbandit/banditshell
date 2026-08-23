@@ -53,7 +53,66 @@ Item {
 
     // The pointer arriving on an icon is an INCIDENTAL open: it asks for the
     // menu and goes on holding it, so it must not latch.
-    onHoveredKeyChanged: hoveredKey ? root.requested(hoveredKey, false) : root.released()
+    //
+    // The marker is moved from the same handler rather than from a binding of
+    // its own, because where it goes is not a function of the hovered key: a
+    // key of "" leaves it exactly where it was and fades it out, and only a real
+    // key moves it. A binding cannot say "hold", and one written to try reads
+    // its own value back and loops.
+    onHoveredKeyChanged: {
+        root.markGauge(root.hoveredKey);
+
+        if (root.hoveredKey)
+            root.requested(root.hoveredKey, false);
+        else
+            root.released();
+    }
+
+    // WHICH SLOT THE MARKER IS AIMED AT. Not the hovered index: see above.
+    property int markedIndex: 0
+
+    // One slot to the next, which is the pitch the Column below is laying the
+    // gauges out on. Written once here because the marker and the column have to
+    // agree about it exactly, and a marker a pixel out per slot is a marker that
+    // drifts off the last gauge in the group.
+    readonly property real pitch: Appearance.sizes.statusSlot + Appearance.sizes.statusGap
+
+    function markGauge(key: string): void {
+        const i = root.gauges.findIndex(g => g.key === key);
+        if (i < 0)
+            return;
+
+        // ARRIVING COLD, LAND ON IT. A marker that is not on screen has nothing
+        // to travel from: flying in from wherever the cursor left it a minute
+        // ago is motion across gauges nobody touched, and it reads as the
+        // highlight coming off a control rather than onto one. Sampled from the
+        // reveal's live value, not from the key, so a cursor that leaves and
+        // comes back mid-fade still travels.
+        const cold = lit.value < 0.01;
+        root.markedIndex = i;
+        if (cold)
+            slide.snap();
+    }
+
+    // WHERE THE MARKER IS, chasing where it should be, and HOW LIT it is. Two
+    // chases rather than one: they answer different questions (which gauge, and
+    // whether the cursor is in the group at all) and they run at different
+    // speeds, because travel is a movement you follow and a fade is a state
+    // changing. See components/Follow.qml.
+    Follow {
+        id: slide
+
+        speed: Appearance.anim.trackSpeed
+        target: root.markedIndex * root.pitch
+    }
+
+    Follow {
+        id: lit
+
+        speed: Appearance.anim.revealSpeed
+        target: root.hoveredKey ? 1 : 0
+        epsilon: 0.005
+    }
 
     // THE DRAWN COLUMN, top to bottom. An entry that carries a `body` has a
     // menu; the registry of menus below is derived from that, so the column
@@ -191,8 +250,21 @@ Item {
     // same distance it stands off the bar's, which is a thing only the box's own
     // geometry knows and the sidebar would otherwise have to restate in numbers
     // that drift the moment a slot or a padding tier moves.
-    readonly property real sideGap: (width - fill.width) / 2
-    readonly property real overhang: Appearance.padding.small
+    //
+    // WHICH BOX depends on which one is painted, and that is a question about
+    // colour rather than about layout. With the container filled, the edge you
+    // see is the container's and the slot inside it is furniture. With the
+    // container drawn in nothing, the container is not an edge at all: what you
+    // see is the marker under the cursor, and measuring the air off a rectangle
+    // 6px bigger than it stands the marker 6px further off the screen's bottom
+    // than off the bar's sides - which is exactly what it looked like.
+    //
+    // Asked of the fill's own alpha so the two cannot disagree while the
+    // container is on trial: paint it and the air goes back to being the
+    // container's, in the same line that paints it.
+    readonly property bool boxed: fill.color.a > 0
+    readonly property real sideGap: (width - (root.boxed ? fill.width : Appearance.sizes.statusSlot)) / 2
+    readonly property real overhang: root.boxed ? Appearance.padding.small : 0
 
     // A quiet container, so the indicators read as one control rather than a
     // column of loose glyphs.
@@ -212,7 +284,39 @@ Item {
         anchors.bottomMargin: -root.overhang
         width: Appearance.sizes.statusSlot + Appearance.padding.small * 2
         radius: Appearance.rounding.normal
-        color: Appearance.colour.fill
+        // ON TRIAL, being looked at: the container drawn in nothing, so the
+        // gauges sit straight on the band. The shape stays exactly where it was
+        // (the group's `sideGap` and `overhang` are measured off it, and the
+        // bar's end margins off those), so this is only whether it is PAINTED.
+        // Transparent rather than the band's own colour: the band is a
+        // translucent material over a blur, and a solid copy of its colour would
+        // read as a patch on it rather than as nothing.
+        color: "transparent"
+    }
+
+    // THE MARKER: the hover fill, as ONE shape that travels between the gauges.
+    //
+    // Declared before the column so it sits UNDER the icons: it is the surface a
+    // gauge is standing on while the cursor is there, not a pane over it.
+    //
+    // It used to be a fill per gauge, each fading in on its own hover, and four
+    // fills in a fixed column is exactly the case where that reads as a flicker:
+    // nothing travels, so dragging down the bar is four unrelated appearances
+    // and the eye has to re-find the mark after every one. One shape carries
+    // your attention with it, which is the argument the power menu's marker is
+    // built on and the same chase everything else in this shell tracks with.
+    //
+    // Laid out against the COLUMN rather than this item, and on the column's own
+    // pitch, so the marker and the gauge it is under are positioned by one set
+    // of numbers.
+    G2Rect {
+        x: column.x + (column.width - width) / 2
+        y: column.y + slide.value
+        width: Appearance.sizes.statusSlot
+        height: Appearance.sizes.statusSlot
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fillStrong
+        opacity: lit.value
     }
 
     // FULL WIDTH, so that the delegates in it have a full width to take. The

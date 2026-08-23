@@ -71,18 +71,11 @@ Item {
         width: Appearance.sizes.traySlot
         height: Appearance.sizes.traySlot
 
-        G2Rect {
-            anchors.fill: parent
-            radius: Appearance.rounding.normal
-            color: Appearance.colour.fillStrong
-            opacity: root.hovered ? 1 : 0
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-        }
+        // NO HOVER FILL HERE: the group draws it, as one marker that travels
+        // from item to item (see TrayIcons). A fill owned by a delegate cannot
+        // travel - the old one ends where it is and the new one begins where it
+        // is - and it also meant two lit boxes at once, its own and the
+        // container's, for one cursor.
 
         // THE APPLICATION'S MARK, through the shell's own table, so a thing you
         // have picked an icon for looks the same here as it does in the

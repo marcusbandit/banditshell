@@ -51,7 +51,49 @@ Item {
     // through `hoveredKey` would lose it whenever the pointer was already on the
     // icon, which under a finger it always is (the press synthesises the hover
     // and the release is the tap, in that order, on the same icon).
-    onHoveredKeyChanged: hoveredKey ? root.requested(hoveredKey, false) : root.released()
+    // The marker is moved from the same handler rather than from a binding,
+    // because "" means HOLD where it is and fade, not travel to the top. See
+    // StatusIcons, which carries the same marker for the same reason.
+    onHoveredKeyChanged: {
+        root.markItem(root.hoveredKey);
+
+        if (root.hoveredKey)
+            root.requested(root.hoveredKey, false);
+        else
+            root.released();
+    }
+
+    // WHICH SLOT THE MARKER IS AIMED AT, and the pitch the column lays the
+    // items out on.
+    property int markedIndex: 0
+
+    readonly property real pitch: Appearance.sizes.traySlot + Appearance.sizes.trayGap
+
+    function markItem(key: string): void {
+        const i = root.shown.findIndex(item => root.keyFor(item) === key);
+        if (i < 0)
+            return;
+
+        const cold = lit.value < 0.01;
+        root.markedIndex = i;
+        if (cold)
+            slide.snap();
+    }
+
+    Follow {
+        id: slide
+
+        speed: Appearance.anim.trackSpeed
+        target: root.markedIndex * root.pitch
+    }
+
+    Follow {
+        id: lit
+
+        speed: Appearance.anim.revealSpeed
+        target: root.hoveredKey ? 1 : 0
+        epsilon: 0.005
+    }
 
     // CAPPED, like every other list in this shell. A tray is somebody else's
     // list and it has no upper bound: an ordinary session is four or five items,
@@ -113,9 +155,12 @@ Item {
 
     // Where the drawn box is, since it is not this item's rectangle. Read by the
     // bar to stand the group off the screen's edge by the distance it stands off
-    // the bar's; the gauges answer the same pair for the same reason.
-    readonly property real sideGap: (width - fill.width) / 2
-    readonly property real overhang: Appearance.padding.small
+    // the bar's; the gauges answer the same pair for the same reason, including
+    // WHICH box: the container while it is painted, the marker's own slot while
+    // it is not. See StatusIcons for why the answer is the fill's alpha.
+    readonly property bool boxed: fill.color.a > 0
+    readonly property real sideGap: (width - (root.boxed ? fill.width : Appearance.sizes.traySlot)) / 2
+    readonly property real overhang: root.boxed ? Appearance.padding.small : 0
 
     // The same quiet container the gauges get, so the two groups read as two
     // groups of the same kind of thing, and pinned to the column for the same
@@ -132,7 +177,24 @@ Item {
         anchors.bottomMargin: -root.overhang
         width: Appearance.sizes.traySlot + Appearance.padding.small * 2
         radius: Appearance.rounding.normal
-        color: Appearance.colour.fill
+        // ON TRIAL WITH THE GAUGES': the container drawn in nothing, so the one
+        // lit shape in the group is the marker under the cursor. Two boxes at
+        // once - a permanent container and a hover fill inside it - is two
+        // highlights, and only one of them is answering anything.
+        color: "transparent"
+    }
+
+    // THE MARKER: the hover fill, as ONE shape that travels between the items.
+    // Declared before the column so it sits under the icons. The gauges' marker
+    // carries the whole argument; this is the same thing on the same pitch.
+    G2Rect {
+        x: column.x + (column.width - width) / 2
+        y: column.y + slide.value
+        width: Appearance.sizes.traySlot
+        height: Appearance.sizes.traySlot
+        radius: Appearance.rounding.normal
+        color: Appearance.colour.fillStrong
+        opacity: lit.value
     }
 
     // FULL WIDTH, so the delegates in it have a full width to take. Nothing in
