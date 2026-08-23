@@ -134,13 +134,11 @@ Item {
     readonly property int barGap: Math.round(Appearance.padding.small / 2)
     readonly property int rackGap: Appearance.padding.large
 
-    // Marks on a bar run ACROSS it: the bar is a horizontal thing, so its
-    // contents lie along it, the same way a cell is vertical and stacks its own
-    // down. Smaller than a cell's, and sized off the bar rather than off the
-    // cell's mark, because a scratchpad is answering "which one is this" and not
-    // "what is on this workspace".
+    // The bar's one mark, sized off the bar rather than off the cell's mark: a
+    // scratchpad is answering "which one is this" and not "what is on this
+    // workspace", so it needs a mark you can name, not a mark you can read a list
+    // of. See `barSpec` for what that mark actually is.
     readonly property int barMark: Math.round(root.barH * 0.7)
-    readonly property int barPitch: root.barMark + root.barGap
 
     // How much narrower an open card is than the cell it lies on, so the thing it
     // is covering stays visible past its sides and the stack reads as a stack.
@@ -183,52 +181,67 @@ Item {
         return root.rackTop + i * (root.barH + root.barGap);
     }
 
-    // HOW MANY MARKS FIT ON A BAR, which is not a setting: the rack stands in the
-    // same lane the cells do and is no wider, so the cap is the arithmetic of the
-    // room. A cell caps at `maxWindows` because it can always grow another row
-    // downwards; a bar cannot grow sideways out of the lane.
-    readonly property int barFits: Math.max(1, Math.floor((root.slot - root.barGap) / root.barPitch))
-
-    function barMarks(entry: var): int {
-        const n = entry.windows.length;
-        // Over the cap, the last cell says "and more" instead of showing one
-        // arbitrary window of several.
-        return n > root.barFits ? root.barFits - 1 : n;
+    // ONE MARK PER BAR, AND IT IS THE APPLICATION'S OWN.
+    //
+    // A bar answers "which one is this" and never "what is on this workspace":
+    // that second question belongs to the card, which is where the windows are
+    // drawn one per row. So the bar carries a single mark, and the whole job of
+    // the four functions below is to make it as SPECIFIC as the contents allow.
+    //
+    // It used to carry a mark per window, capped by how many fit, and the lane is
+    // exactly one mark wide: so a scratchpad with two windows in it drew nothing
+    // but an "and more" ellipsis, which is the one drawing that answers neither
+    // question. Spotify with a popup open stopped looking like Spotify.
+    //
+    // THE LADDER, most specific first: the application's own brand mark when
+    // every window on the bar is the same application, the category glyph they
+    // agree on when they are not (Discord and Telegram are both a globe, which is
+    // exactly right for a bar holding both), and the generic mark when even that
+    // disagrees. The name over the bar is the same ladder in words, so the label
+    // and the mark can never say different things.
+    function barClass(entry: var): string {
+        const classes = entry.windows.map(w => Hypr.classOf(w));
+        if (!classes.length)
+            return "";
+        return classes.every(c => c === classes[0]) ? classes[0] : "";
     }
 
-    function barRest(entry: var): int {
-        return entry.windows.length - root.barMarks(entry);
+    // The mark's spec, asked for as BRAND whatever the column is set to: the
+    // category glyph is the one mode that cannot say which application this is,
+    // and that is the only thing a bar has to say. Empty when the bar is holding
+    // more than one application, so the glyph below is what gets drawn.
+    function barSpec(entry: var): string {
+        const cls = root.barClass(entry);
+        return cls ? AppIcons.markFor(cls, "brand") : "";
     }
 
-    function barCells(entry: var): int {
-        return root.barMarks(entry) + (root.barRest(entry) > 0 ? 1 : 0);
+    function barGlyph(entry: var): string {
+        const icons = entry.windows.map(w => Apps.iconFor(Hypr.classOf(w)));
+        if (!icons.length)
+            return "";
+        return icons.every(i => i === icons[0]) ? icons[0] : Apps.genericIcon;
     }
 
-    // How wide the marks on a bar are, all told. Written once because the bar's
-    // length is worked out from it and the marks are then centred in the length
-    // it produced, and the two disagreeing by a gap is a row that sits off centre
-    // on every bar in the rack.
-    function barContent(cells: int): real {
-        return cells ? cells * root.barMark + (cells - 1) * root.barGap : 0;
+    // WHAT THE BAR IS CALLED, which is what is ON it rather than what the slot
+    // was named. A rack of scratchpads is a rack of applications: `music` is
+    // Spotify and will only ever be Spotify, and `communication` is Discord until
+    // Telegram is open too. The workspace's own name is the fallback, for a bar
+    // holding several things or nothing, and it is the name you chose for the
+    // slot, so it is exactly right for "more than one of these".
+    function barName(entry: var): string {
+        const cls = root.barClass(entry);
+        if (cls)
+            return Apps.nameFor(cls);
+        const label = entry.label ?? "";
+        return label ? label.charAt(0).toUpperCase() + label.slice(1) : "";
     }
 
     // HOW LONG A BAR IS, in the plates' own language: a stub when there is
-    // nothing on it, a full reach when it is carrying something, and longer than
-    // that only when what it carries needs the room, up to the lane's width.
+    // nothing on it, and the lane's own share when it is carrying something.
     // Length is the state here too, it is just measured along the other axis.
     function barWidth(entry: var): real {
-        const cells = root.barCells(entry);
-        if (!cells)
-            return root.dot;
-        const content = root.barContent(cells) + root.barGap * 2;
-        return Math.min(root.slot, Math.max(root.slot * Appearance.sizes.wsBusyReach, content));
+        return entry.windows.length ? Math.max(Math.round(root.slot * Appearance.sizes.wsBusyReach), root.barMark + root.barGap * 2) : root.dot;
     }
-
-    function barMarkX(i: int, w: real, cells: int): real {
-        return Math.round((w - root.barContent(cells)) / 2) + i * root.barPitch;
-    }
-
-    readonly property real barMarkY: Math.round((root.barH - root.barMark) / 2)
 
     implicitHeight: layout.total + (root.deck.length ? root.rackGap + root.rackHeight : 0)
 
@@ -312,16 +325,28 @@ Item {
                 y: 0,
                 h: root.slot
             });
-        // THE FULL CELL, whatever the cell itself is drawing. An empty workspace
-        // is a dot, and a highlight the size of a dot is not a highlight: it
-        // would land entirely behind the thing it is meant to be lighting. The
-        // marker is the slot, and it is also the answer to "what does pressing
-        // here get me", which is a workspace at full height.
+        // THE SIZE OF THE THING UNDER THE CURSOR, which for an empty workspace is
+        // the dot and not the slot it stands in. The marker is a highlight, and a
+        // highlight is the shape of what it is highlighting: a full cell drawn
+        // around a dot is the shell answering with a workspace that is not there,
+        // and it makes the empty slots look like they grow when you point at them.
+        // Centred in the slot, because the dot is.
+        const solid = root.slotSolid(s);
+        const h = solid ? s.h : root.dot;
         return {
-            y: s.y,
-            h: s.h,
-            w: root.slot
+            y: s.y + (s.h - h) / 2,
+            h,
+            w: solid ? root.slot : root.dot
         };
+    }
+
+    // WHETHER A SLOT IS DRAWN AS A FULL CELL OR AS A DOT. Asked here rather than
+    // worked out in the delegate, because the hover marker has to agree with the
+    // cell it lands on to the pixel and the two are not in the same object: the
+    // marker is one shape outside the Repeater, and a second copy of this test
+    // would be the one thing standing between them.
+    function slotSolid(s: var): bool {
+        return !!s && (s.windows.length > 0 || s.rest > 0 || layout.active === s.id);
     }
 
     onHoveredChanged: if (root.hovered >= 0)
@@ -580,8 +605,7 @@ Item {
             // on the same frame the compositor says so, not an IPC round trip
             // later.
             readonly property bool open: !!bar.entry.name && layout.special === bar.entry.name
-            readonly property int cells: root.barCells(bar.entry)
-            readonly property int marks: root.barMarks(bar.entry)
+            readonly property string name: root.barName(bar.entry)
 
             // A bar whose card is OUT falls back to the empty stub rather than
             // disappearing: the rack is a set of slots and one of them is empty
@@ -642,41 +666,23 @@ Item {
                     }
                 }
 
-                Repeater {
-                    model: ScriptModel {
-                        values: bar.entry.windows.slice(0, bar.marks)
-                    }
+                // THE ONE MARK, centred, because a bar is one lane wide and a
+                // scratchpad is one thing. Which mark it is, is the ladder up in
+                // `barSpec`; an empty bar draws none at all, because a stub with
+                // a glyph on it is a bar claiming to hold something.
+                AppMark {
+                    anchors.centerIn: parent
+                    visible: bar.entry.windows.length > 0
+                    size: root.barMark
+                    spec: root.barSpec(bar.entry)
+                    fallback: root.barGlyph(bar.entry)
+                    color: Appearance.colour.textDim
 
-                    delegate: AppMark {
-                        required property var modelData
-                        required property int index
-
-                        x: root.barMarkX(index, bar.width, bar.cells)
-                        y: root.barMarkY
-                        size: root.barMark
-                        spec: AppIcons.markFor(Hypr.classOf(modelData))
-                        fallback: Apps.iconFor(Hypr.classOf(modelData))
-                        color: Hypr.isFocused(modelData) ? Appearance.colour.text : Appearance.colour.textDim
-
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.anim.fast
-                            }
+                    Behavior on color {
+                        ColorAnimation {
+                            duration: Appearance.anim.fast
                         }
                     }
-                }
-
-                // "and more", in the cell after the last mark, exactly as a cell
-                // does it: a bar that ran out of room says so.
-                Icon {
-                    visible: root.barRest(bar.entry) > 0
-                    x: root.barMarkX(bar.marks, bar.width, bar.cells)
-                    y: root.barMarkY
-                    width: root.barMark
-                    height: root.barMark
-                    name: "more_horiz"
-                    size: root.barMark
-                    color: Appearance.colour.textFaint
                 }
             }
 
@@ -716,7 +722,7 @@ Item {
                 // entire point of asking before acting.
                 onPressAndHold: {
                     barMouse.naming = true;
-                    Tooltips.request(bar, bar.entry.label);
+                    Tooltips.request(bar, bar.name, true);
                 }
 
                 onReleased: if (barMouse.naming) {
@@ -733,8 +739,16 @@ Item {
                 // is what you actually navigate by once you know it; this is how
                 // you come to know it.
                 HoverTip {
-                    text: bar.entry.label
+                    text: bar.name
                     host: bar
+                    // WITHOUT THE WAIT. Every other tip in this shell is a second
+                    // opinion about a glyph you can already read, and the beat
+                    // before one is what keeps the shell quiet as the cursor goes
+                    // past. A rack is the other case: the bars are identical
+                    // lozenges, the name is the only thing telling one from the
+                    // next, and making somebody hold still for the only answer
+                    // there is is the shell being coy about it.
+                    now: true
                 }
             }
         }
@@ -862,7 +876,13 @@ Item {
                 // the active one is solid whether or not it has anything on it:
                 // the workspace you are standing on is not an empty slot even
                 // when it is empty.
-                readonly property bool solid: slotItem.isOccupied || slotItem.isActive
+                //
+                // Through the root's own test rather than off this delegate's
+                // `isOccupied`, which says the same thing: the hover marker has
+                // to land at exactly this size, it is not in this object, and one
+                // of the two copies drifting is how a highlight ends up a pixel
+                // bigger than the thing it is on.
+                readonly property bool solid: root.slotSolid(slotItem.info)
 
                 // THE STATE IS ANIMATED, NOT THE PIXELS. The height resolves
                 // through the slot's live height, which is already being smoothed
@@ -1081,7 +1101,6 @@ Item {
 
             readonly property var windows: pad.entry.windows.slice(0, root.maxWindows)
             readonly property int rows: Math.max(1, pad.windows.length)
-            readonly property int cells: root.barCells(pad.entry)
 
             // The two ends of the journey: the bar in the rack, and the card on
             // the cell.
@@ -1220,10 +1239,19 @@ Item {
 
                         readonly property real markSize: pad.reach(root.barMark, root.iconSize)
 
-                        x: pad.reach(root.barMarkX(mark.index, pad.barW, pad.cells), (card.width - mark.markSize) / 2)
-                        y: pad.reach(root.barMarkY, root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
+                        // CENTRED AT BOTH ENDS, so the travel is the one thing
+                        // that moves: the bar's single mark is centred in the bar
+                        // and a card's row is centred in the card, which means the
+                        // whole rack unfolds out of one mark and folds back into
+                        // it rather than sliding sideways out of a row that is not
+                        // there any more.
+                        x: Math.round((pad.width - mark.markSize) / 2)
+                        y: pad.reach(Math.round((root.barH - mark.markSize) / 2), root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
                         size: Math.round(mark.markSize)
-                        spec: AppIcons.markFor(Hypr.classOf(mark.modelData))
+                        // BRAND, like the bar it came out of: the rack is a rack of
+                        // applications, and which one this is stays the question
+                        // whether it is folded into a lozenge or opened on a card.
+                        spec: AppIcons.markFor(Hypr.classOf(mark.modelData), "brand")
                         fallback: Apps.iconFor(Hypr.classOf(mark.modelData))
                         color: Hypr.isFocused(mark.modelData) ? Appearance.colour.text : Appearance.colour.textDim
                     }

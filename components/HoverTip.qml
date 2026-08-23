@@ -34,6 +34,11 @@ HoverHandler {
     property string text: ""
     property Item host: root.parent
 
+    // WITHOUT THE BEAT, for a control whose label is the only thing telling it
+    // from the one next to it. See the exception in Tooltips.qml; the default is
+    // the wait, and it should stay the default.
+    property bool now: false
+
     // WHO SAYS THE CURSOR IS HERE, and the default is the handler itself.
     //
     // That default is right for anything that is only a shape: a glyph, a
@@ -55,7 +60,7 @@ HoverHandler {
 
     onAskedChanged: {
         if (root.asked)
-            Tooltips.request(root.host, root.text);
+            Tooltips.request(root.host, root.text, root.now);
         else
             Tooltips.release(root.host);
     }
@@ -70,7 +75,7 @@ HoverHandler {
     // tip that reads out a live value: a meter's percentage moves while you are
     // looking straight at it.
     onTextChanged: if (root.asked)
-        Tooltips.request(root.host, root.text)
+        Tooltips.request(root.host, root.text, root.now)
 
     Component.onDestruction: Tooltips.release(root.host)
 }

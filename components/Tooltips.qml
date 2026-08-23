@@ -21,6 +21,13 @@ import qs.config
 // beat, and then, once you have clearly stopped on something, an answer. Moving
 // from one labelled thing to its neighbour swaps instantly, with no second
 // wait, because by then the question is already open.
+//
+// AND THE ONE EXCEPTION IS FOR A THING WHOSE NAME IS ALL IT HAS. The wait is
+// right for a glyph you can already read: it is a second opinion, and paying a
+// beat for one keeps the shell quiet on the way past. It is wrong for a control
+// whose label is the only way to tell it from its neighbour, which is what a rack
+// of scratchpads is: identical bars, one word each, and a wait there is the shell
+// making you ask twice for the only thing it has to say. Those ask with `now`.
 Singleton {
     id: root
 
@@ -34,7 +41,7 @@ Singleton {
 
     readonly property bool shown: !!anchor && !!text
 
-    function request(item: Item, label: string): void {
+    function request(item: Item, label: string, now: bool): void {
         if (!item || !label) {
             root.release(item);
             return;
@@ -43,8 +50,9 @@ Singleton {
         root.pending = item;
         root.pendingText = label;
 
-        // Already answering: the question is open, so answer this one now.
-        if (root.shown) {
+        // Already answering, or asked for without the wait: the question is
+        // open either way, so answer this one now.
+        if (now || root.shown) {
             root.anchor = item;
             root.text = label;
             delay.stop();

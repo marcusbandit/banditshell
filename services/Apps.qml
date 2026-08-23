@@ -492,6 +492,27 @@ Singleton {
         return "";
     }
 
+    // THE APPLICATION'S OWN NAME for a window class, as a person would say it.
+    //
+    // A class is a programmer's string (`org.telegram.desktop`, `vesktop`), and
+    // the desktop entry beside it is the one place the readable name lives. Found
+    // through the same variant ladder the artwork is, and for the same reason:
+    // the class is only approximately what anything files the application under.
+    //
+    // Falls back to the last meaningful segment of the class, capitalised, which
+    // is the best a window with no entry at all can be called. Never empty for a
+    // non-empty class, because every caller is putting this in front of somebody.
+    function nameFor(appClass: string): string {
+        const variants = root.nameVariants(appClass ?? "");
+        for (const variant of variants) {
+            const name = variant ? DesktopEntries.heuristicLookup(variant)?.name : "";
+            if (name)
+                return name;
+        }
+        const tail = variants[variants.length - 1] ?? "";
+        return tail ? tail.charAt(0).toUpperCase() + tail.slice(1) : "";
+    }
+
     function overrideFor(appClass: string): string {
         for (const pattern in root.overrides) {
             try {

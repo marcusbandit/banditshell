@@ -177,7 +177,12 @@ Singleton {
     // hand, then whatever the current mode can work out, then nothing, which
     // AppMark draws as the category glyph. Every step down is less specific and
     // more automatic.
-    function markFor(cls: string): string {
+    // `want` OVERRIDES THE CONFIGURED MODE, for the one caller that is not the
+    // sidebar's column: the scratchpad rack asks for `brand` whatever the column
+    // is set to, because a bar there is answering WHICH APPLICATION THIS IS and
+    // the category glyph is the one mode that cannot say. Empty means "whatever
+    // the shell is set to", which is every other caller.
+    function markFor(cls: string, want: string): string {
         const picked = root.specFor(cls);
         if (picked)
             return picked;
@@ -186,7 +191,7 @@ Singleton {
         if (named)
             return `symbol:${named}`;
 
-        const mode = Appearance.sizes.wsIconMode;
+        const mode = want || Appearance.sizes.wsIconMode;
         if (mode === "brand") {
             const glyph = Apps.brandFor(cls);
             if (glyph)
