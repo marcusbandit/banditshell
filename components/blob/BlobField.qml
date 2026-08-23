@@ -47,7 +47,20 @@ ShaderEffect {
     property real gap: Appearance.sizes.gap
     property real band: Appearance.sizes.band
     property real pad0: 0
-    property bool frameOn: Appearance.sizes.roundOuter
+
+    // THE BLACK SCREEN-CORNER FRAME: 1 draws it, 0 does not.
+    //
+    // A NUMBER, THOUGH IT IS A YES OR NO, and it has to be. The uniform on the
+    // other side is a `float` (a uniform block has no bools), and a QML `bool`
+    // handed to a float uniform arrives as ZERO: the value is written as an int
+    // and read back as a float, and the four bytes of 1 are a denormal far below
+    // any threshold the shader tests. Nothing warns. The frame simply stopped
+    // being drawn, the screen's corners went square, and every uniform around it
+    // was still correct, which is what made it look like a geometry bug.
+    //
+    // Every other switch into this shader is already a float for the same
+    // reason (outlineWidth, sheenWidth); this one was the odd one out.
+    property real frameOn: Appearance.sizes.roundOuter ? 1 : 0
     property color frameColour: Appearance.colour.frame
 
     // A hard edge exactly on the content boundary. 0 draws none.

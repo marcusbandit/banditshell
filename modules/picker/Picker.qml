@@ -214,7 +214,7 @@ MouseArea {
         baseRadius: Qt.vector4d(root.radius, root.radius, root.radius, root.radius)
         gap: 0
         band: 0
-        frameOn: false
+        frameOn: 0
         smoothing: 0
         // The selection is a hard edge, not a melt: it has to say exactly where
         // the crop will be.
