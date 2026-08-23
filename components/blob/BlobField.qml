@@ -60,14 +60,18 @@ ShaderEffect {
     // than in Config because it is being looked at, not lived with: if it stays
     // it becomes an Appearance token like everything else, and if it goes it
     // goes in one line.
-    // TWO PIXELS AND NEARLY OPAQUE, because a hairline does not survive its own
-    // antialiasing. The band is drawn in the field and feathered by about a
-    // pixel on each side, so at 1.5px wide it never reached full coverage
-    // anywhere: half alpha over two thirds coverage came out around a third,
-    // which is a line you can find if you know it is there and cannot see if you
-    // do not.
+    // AN ETCHED SEAM, NOT A HIGHLIGHT, and the alpha is measured rather than
+    // chosen. Taken off the reference: the line there is RGB(29,29,29) on a
+    // background of RGB(12,12,12), which is +17 absolute, and white over that
+    // background at 7% is what puts it there. It reads as a panel gap catching
+    // one degree of light, which is the machined look, where anything an order
+    // brighter reads as a drawn outline around the shell.
+    //
+    // Two pixels wide, not one: the band is feathered by about a pixel on each
+    // side, so a 1px line spends all of itself on the antialiasing and comes out
+    // uneven along a curve. At this alpha the extra width costs nothing.
     property real sheenWidth: 2.0
-    property color sheenColour: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.9)
+    property color sheenColour: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.08)
     property real pad2: 0
     property real pad3: 0
 
