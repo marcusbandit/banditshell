@@ -132,9 +132,14 @@ layout(std140, binding = 0) uniform buf {
     // where an edge is rather than melt across it.
     vec4 outlineColour;
     float outlineWidth;
-    float pad1;
+
+    // A SHEEN ON EVERY EDGE THE CHASSIS HAS. Width in pixels; 0 is off.
+    // Takes one of the three spare floats, which is what they were left for.
+    float sheenWidth;
     float pad2;
     float pad3;
+
+    vec4 sheenColour;
 };
 
 // Rounded box with a different radius per corner (iq). Negative inside.
@@ -259,6 +264,24 @@ void main() {
     if (outlineWidth > 0.0) {
         float ring = inside(abs(toContent) - outlineWidth * 0.5);
         result = outlineColour * ring + result * (1.0 - ring);
+    }
+
+    // A BORDER ON THE INNER EDGE OF THE WHOLE SHELL. TEMPORARY, on trial:
+    // BlobField.sheenWidth = 0 removes it and nothing else depends on it.
+    //
+    // One line here is a line on everything at once - the band, the sidebar, a
+    // menu, the mic pill, the rounding at the screen's corners - because they
+    // are one field and none of them knows its own outline. Drawn just inside
+    // the boundary, so the shape does not grow by the width of its own edge.
+    if (sheenWidth > 0.0) {
+        // The band -sheenWidth < d < 0, which is the inside of the edge.
+        float ring = inside(abs(d + sheenWidth * 0.5) - sheenWidth * 0.5);
+        // Source-over with a PREMULTIPLIED source, not a mix(): a mix would
+        // scale the body down by the coverage while adding back only a fraction
+        // of a translucent line, punching a hole along every edge instead of
+        // drawing on it.
+        vec4 edge = sheenColour * ring;
+        result = edge + result * (1.0 - edge.a);
     }
 
     fragColor = result * qt_Opacity;

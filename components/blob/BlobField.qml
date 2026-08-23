@@ -53,7 +53,15 @@ ShaderEffect {
     // A hard edge exactly on the content boundary. 0 draws none.
     property real outlineWidth: 0
     property color outlineColour: Appearance.colour.accent
-    property real pad1: 0
+
+    // A BORDER ON THE SHELL'S INNER EDGE. TEMPORARY, on trial.
+    //
+    // Set sheenWidth to 0 to remove it; nothing else depends on it. Here rather
+    // than in Config because it is being looked at, not lived with: if it stays
+    // it becomes an Appearance token like everything else, and if it goes it
+    // goes in one line.
+    property real sheenWidth: 1.5
+    property color sheenColour: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.5)
     property real pad2: 0
     property real pad3: 0
 
