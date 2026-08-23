@@ -74,14 +74,20 @@ Item {
             key: "network",
             title: "Network",
             icon: Network.icon(),
-            // A METER while there is a signal to meter, and a glyph for the two
-            // states that are not a level at all: switched off, and on but
-            // joined to nothing. Four dark bars would say both of those, and
-            // they are not the same thing as each other or as a weak signal.
-            mark: Network.connected ? signalMark : null,
-            active: Network.connected,
-            alert: (Network.available && !Network.enabled) || Network.stranded,
-            available: Network.available,
+            // A METER ONLY WHILE THE RADIO IS THE THING CARRYING. Signal
+            // strength is a property of a wireless link and of nothing else: on
+            // a cabled machine there is no level to draw, and drawing the idle
+            // radio's level instead would meter the one part of the network
+            // that is not in use. The glyph covers every state that is not a
+            // level, which now includes the wire.
+            mark: Network.carrier === "wifi" ? signalMark : null,
+            active: Network.linked,
+            // The radio being switched off is worth saying, right up until
+            // something else is carrying: a desktop on a cable with its wifi
+            // deliberately off is not a machine with a problem, and a bar that
+            // lights an accent over it is crying wolf about a choice.
+            alert: (Network.available && !Network.enabled && !Network.wiredConnected) || Network.stranded,
+            available: Network.available || Network.wiredAvailable,
             body: networkMenu
         },
         {
@@ -116,15 +122,34 @@ Item {
             // Drawn, so the level is the level rather than the nearest of six
             // names the font happens to have, and so charging can be shown as
             // motion instead of as one more static picture.
-            mark: Battery.available ? batteryMark : null,
+            mark: batteryMark,
             active: Battery.charging,
             // Alarm, not alert, and the only one in the column: every other
             // gauge reports something you can put right when you notice it.
             alarm: Battery.low,
-            available: Battery.available,
+            // NOT DIMMED ON A DESKTOP: GONE. See `present` below.
+            present: Battery.available,
             body: batteryMenu
         }
-    ]
+    ].filter(g => g.present ?? true)
+
+    // WHAT `present` MEANS, AND WHY IT IS NOT `available`.
+    //
+    // `available` is a gauge that this machine could have and this machine's
+    // copy of is not there: no bluetooth adapter, no wifi card. It stays in the
+    // column, drawn faint, because the absence is news. Pointing at it opens a
+    // menu that says what is missing and, for most of them, offers the switch
+    // that would bring it back.
+    //
+    // A desktop's battery is not that. It is not missing, it was never a
+    // question: the machine runs on mains and it will still be running on mains
+    // tomorrow. A gauge for it was a slot in the bar, a hover target, a menu
+    // page, a key in the CLI and a page kept warm in memory, all spent saying
+    // "there is no battery" to somebody who has known that since they bought
+    // the thing. So the row is filtered out of the list entirely, and because
+    // the menu registry, the sidebar's item list and the IPC keys are all
+    // derived from this same array, every one of those disappears with it
+    // rather than needing to be told separately.
 
 
     // THE MENU REGISTRY: what the sidebar folds into menuItems, what the CLI

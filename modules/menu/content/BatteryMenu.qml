@@ -14,9 +14,17 @@ import qs.services
 // is and how fast it is wearing, which moves over months and would be nonsense
 // as a fourth line in a column that changes every minute.
 //
-// On a desktop there is no battery, so both hide and the "no battery" block
-// shows instead. UPower hands over a device either way, which is why this is
-// checked rather than assumed.
+// THERE IS NO "NO BATTERY" PAGE, and there must not be one again. This menu
+// used to end in a block that said "no battery / this machine runs on mains",
+// which is a sentence nobody has ever needed: where a desktop gets its power
+// from is not news, and the page existed only because the gauge that opens it
+// existed on every machine. It does not any more (StatusIcons `present`), so
+// on a desktop there is no gauge, no hover target, no CLI key and no page.
+//
+// The `Battery.available` guards below stay. UPower hands over a display device
+// whether or not there is a cell behind it, and a menu that is unreachable
+// today is exactly the sort of thing that gets reached from somewhere new
+// tomorrow; the blocks are simply empty rather than wrong when it happens.
 Column {
     id: root
 
@@ -263,23 +271,6 @@ Column {
             text: root.trend()
             color: Appearance.colour.textFaint
             elide: Text.ElideRight
-        }
-    }
-
-    // ---- NO BATTERY --------------------------------------------------------
-
-    Column {
-        visible: !Battery.available
-        spacing: 0
-
-        StyledText {
-            text: "no battery"
-            font.pixelSize: Appearance.font.size.normal
-        }
-
-        StyledText {
-            text: "this machine runs on mains"
-            color: Appearance.colour.textDim
         }
     }
 }

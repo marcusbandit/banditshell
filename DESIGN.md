@@ -401,7 +401,7 @@ banditshell/
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
 │   ├── Battery.qml              UPower
-│   ├── Network.qml              NetworkManager: wifi, one entry per SSID
+│   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
 │   ├── Media.qml                MPRIS, with a stable choice of player
 │   ├── SysInfo.qml              /proc and /sys: cpu, memory, temperature

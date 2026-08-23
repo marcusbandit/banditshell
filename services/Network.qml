@@ -85,6 +85,78 @@ Singleton {
             root.wifiDevice.nmManaged = on;
     }
 
+    // ---- THE WIRE ----------------------------------------------------------
+    //
+    // Everything above this line is the radio, and for a long time that was the
+    // whole of what this shell called "the network". On a desktop it is exactly
+    // backwards: the machine is on a cable, the radio is idle, and the bar was
+    // reporting the one that is doing nothing. "Wi-Fi not connected" was true,
+    // and it was not the answer to the question anybody had.
+    //
+    // NetworkManager knows far more wired devices than the machine has ports:
+    // every docker bridge and every container veth is an ethernet device to it.
+    // Quickshell has already dropped those by the time `devices` is readable
+    // here (measured on this box: enp6s0 and wlan0, with six bridges and four
+    // veths in nmcli's own list), so this does not filter them again. What it
+    // does have to handle is more than one real port, which is a laptop in a
+    // dock: the one carrying traffic is the one the bar is about, and the first
+    // port is only what to fall back to when none of them is.
+    readonly property var wiredDevices: Networking.devices.values.filter(d => d.type === DeviceType.Wired)
+    readonly property var wiredDevice: root.wiredDevices.find(d => d.connected) ?? root.wiredDevices[0] ?? null
+
+    readonly property bool wiredAvailable: !!root.wiredDevice
+    readonly property bool wiredConnected: !!root.wiredDevice?.connected
+    readonly property bool wiredConnecting: root.wiredDevice?.state === ConnectionState.Connecting
+
+    // The port, and the profile riding on it. Usually the same string, because
+    // NetworkManager names a wired profile after the interface it found; on a
+    // machine where somebody has named the connection they differ, and the name
+    // they chose is the better label.
+    readonly property string wiredDeviceName: root.wiredDevice?.name ?? ""
+    readonly property string wiredName: root.wiredDevice?.networks?.values?.find(n => n.connected)?.name ?? ""
+    readonly property string wiredLabel: root.wiredName || root.wiredDeviceName
+
+    readonly property string wiredAddress: root.wiredDevice?.address ?? ""
+    readonly property bool wiredAutoconnect: !!root.wiredDevice?.autoconnect
+    readonly property bool wiredManaged: !!root.wiredDevice?.nmManaged
+
+    function setWiredAutoconnect(on: bool): void {
+        if (root.wiredDevice)
+            root.wiredDevice.autoconnect = on;
+    }
+
+    function setWiredManaged(on: bool): void {
+        if (root.wiredDevice)
+            root.wiredDevice.nmManaged = on;
+    }
+
+    // WHETHER THERE IS ANYTHING TO SAY ABOUT THE WIRE, which is a stricter
+    // question than whether the machine has a port. Nearly every laptop has one
+    // and most of them have never had a cable in it; a row reading "Ethernet /
+    // not connected" over the network you are actually using is noise about a
+    // socket, not news about a connection.
+    //
+    // So: carrying, or about to be, or held down by the one switch in this
+    // shell that can hold it down. That last clause is not tidiness. Turning
+    // "Managed by the system" off drops the link, and without it the row would
+    // disappear on the way out and take the switch that undoes it along, which
+    // makes the setting unreachable by the act of using it. A port that is idle
+    // because nothing is plugged into it has no such way back and needs none.
+    readonly property bool wiredShowing: root.wiredAvailable && (root.wiredConnected || root.wiredConnecting || !root.wiredManaged)
+
+    // ---- WHICH ONE IS ACTUALLY CARRYING ------------------------------------
+    //
+    // "wired", "wifi", or "" for neither. The wire wins when both are up, and
+    // that is not a preference: NetworkManager gives a wired connection the
+    // lower metric, so the wire is the default route and an associated radio
+    // beside it is a spare. A bar that drew the radio in that state would be
+    // metering a link nothing is going through.
+    //
+    // `linked` is the question everything outside this file used to ask
+    // `connected`, back when there was only one thing it could mean.
+    readonly property string carrier: root.wiredConnected ? "wired" : root.connected ? "wifi" : ""
+    readonly property bool linked: !!root.carrier
+
     // WHETHER IT ACTUALLY WORKS, which is not the same question as whether it
     // joined. A hotel's wifi associates perfectly and serves you a login page;
     // an AP with a dead uplink associates perfectly and serves you nothing. The
@@ -157,6 +229,11 @@ Singleton {
             root.checkNow()
     }
 
+    // The link changing at all is worth a fresh check: a cable going in is as
+    // much a new connection to test as a network being joined.
+    onCarrierChanged: settle.restart()
+    onWiredLabelChanged: settle.restart()
+
     onActiveNameChanged: {
         settle.restart();
         // A different network is a different secret, and the one being held is
@@ -173,7 +250,7 @@ Singleton {
     // looking. Bounded to exactly that state, so a working connection is not
     // paying for it.
     Timer {
-        running: root.connected && root.checking && !root.online
+        running: root.linked && root.checking && !root.online
         interval: 8000
         repeat: true
         onTriggered: root.checkNow()
@@ -216,7 +293,7 @@ Singleton {
     // at all, then whether anything is on the other end. Empty while the check
     // is off, because the only honest thing to say then is nothing.
     function reachLabel(): string {
-        if (!root.connected || !root.checking)
+        if (!root.linked || !root.checking)
             return "";
         switch (root.connectivity) {
         case NetworkConnectivity.Portal:
@@ -227,6 +304,14 @@ Singleton {
             return "no internet";
         }
         return "";
+    }
+
+    // THE SAME SENTENCE, BUT ONLY WHERE IT BELONGS. There is one connectivity
+    // answer for the whole machine, and the menu has two rows to hang it on.
+    // Hung on both, a dead uplink on the cable would put "no internet" beside a
+    // radio that is carrying nothing and is not the reason for anything.
+    function reachFor(which: string): string {
+        return root.carrier === which ? root.reachLabel() : "";
     }
 
     // One entry per network NAME, strongest first, in reading order.
@@ -774,7 +859,28 @@ Singleton {
     // draws a real meter now, so the ramp was only ever reachable in the states
     // where strength is not the point, and it had drifted into rounding its
     // steps differently from the meter it was standing in for.
+    // THE WIRE LEADS, for the same reason it wins `carrier`: it is the link the
+    // traffic is on, and a radio glyph over a cabled machine describes the one
+    // part of the network that is idle.
     function icon(): string {
+        if (root.carrier === "wired")
+            return "lan";
+        // A port and no radio, which is most desktops. The only honest thing
+        // left to draw is the wire, dark: the bar dims a gauge that is not
+        // `active`, and the line above has already ruled out this one being it.
+        // "wifi_off" here would report the state of a device the machine does
+        // not have.
+        if (!root.available)
+            return root.wiredAvailable ? "lan" : "wifi_off";
+        return root.wifiIcon();
+    }
+
+    // THE RADIO'S OWN GLYPH, which is not the same picture as the bar's any
+    // more. The bar draws whatever is carrying; the Wi-Fi row of the menu draws
+    // the Wi-Fi, and it has to go on saying "off" while the wire beside it says
+    // "connected". Kept as a function rather than inlined into the menu so the
+    // enumeration of wireless states lives next to the properties it reads.
+    function wifiIcon(): string {
         if (!root.available || !root.enabled)
             return "wifi_off";
         if (!root.connected)

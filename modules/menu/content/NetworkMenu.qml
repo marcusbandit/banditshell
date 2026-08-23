@@ -5,8 +5,20 @@ import qs.config
 import qs.components
 import qs.services
 
-// Wi-Fi. This one is real, and it is as much of it as NetworkManager will hand
-// over through Quickshell.
+// The network. Both of them, when the machine has both.
+//
+// The wire leads, because on a machine that has one it is almost always what
+// the traffic is on: NetworkManager gives it the lower metric, so an associated
+// radio beside a live cable is a spare. The radio used to be the whole of this
+// menu, which meant a cabled desktop opened it and read "not connected" about
+// the one device that was not carrying anything, with nothing on screen about
+// the one that was. A row it never occurred to the shell to draw is worse than
+// a wrong one: there is nothing to correct.
+//
+// EACH ROW IS ONLY ABOUT ITSELF. There is exactly one connectivity answer for
+// the machine and two rows it could be written on, so it goes on the carrier's
+// row and nowhere else (Network.reachFor): "no internet" beside an idle radio
+// names the wrong suspect.
 //
 // The surface is the question you came with: which network, and is it working.
 // Everything else is a layer under the row it belongs to, one open at a time,
@@ -388,14 +400,84 @@ Column {
         }
     }
 
+    // THE WIRE, AND ONLY WHILE THERE IS ONE.
+    //
+    // Not "this machine has a port": a laptop has a port it has not seen a
+    // cable in since it was bought, and a permanent "Ethernet / not connected"
+    // over the network you are actually on is the same dead weight the battery
+    // gauge was on a desktop. So the row appears when the wire is DOING
+    // something and is otherwise not there at all, which on a laptop means the
+    // menu is the Wi-Fi menu it always was, and on a desk means the wire is at
+    // the top where it belongs.
+    //
+    // The third case is the one that stops this being a trap. Turning off
+    // "Managed by the system" below drops the link, and a row that vanished on
+    // the way out would take the switch back with it: the setting would be
+    // unreachable by the exact act of using it. So a port that is down BECAUSE
+    // OF SOMETHING IN HERE stays on screen. A port that is down because there
+    // is no cable in it does not, and there is nothing in this menu that could
+    // have caused that.
+    //
+    // NO SWITCH ON THIS ROW, for the same reason and one more. A toggle that
+    // disconnects would hide the row it lives on, which is the trap again with
+    // one fewer step; and a hover menu is the wrong place to put a
+    // four-hundred-pixel target that drops the link the machine is on. What a
+    // wire needs said about it is a fact, and this row says it.
     MenuRow {
         width: root.width
-        icon: Network.icon()
+        visible: Network.wiredShowing
+        icon: "lan"
+        label: "Ethernet"
+        // The port, then what the port is worth. Same shape as the Wi-Fi line
+        // below it, so the two read as one question asked twice.
+        detail: !Network.wiredManaged ? "nothing is driving it" : Network.wiredConnecting ? "connecting" : Network.reachFor("wired") ? `${Network.wiredLabel} · ${Network.reachFor("wired")}` : Network.wiredLabel
+        interactive: false
+
+        Expander {
+            open: root.opened === "wire"
+            tip: "port settings"
+            onToggled: root.toggleLayer("wire")
+        }
+    }
+
+    MenuLayer {
+        width: root.width
+        visible: Network.wiredShowing
+        open: root.opened === "wire"
+
+        // The wire's half of the adapter layer under Wi-Fi. There is no
+        // scanning to keep fresh and no radio to hand back, so what is left is
+        // the two questions a port can answer: does it come up on its own, and
+        // is NetworkManager driving it at all.
+        Choice {
+            icon: "autorenew"
+            label: "Join on its own"
+            detail: Network.wiredAutoconnect ? "" : "waits to be told"
+            on: Network.wiredAutoconnect
+            onFlipped: Network.setWiredAutoconnect(!Network.wiredAutoconnect)
+        }
+
+        Choice {
+            icon: "cable"
+            label: "Managed by the system"
+            detail: Network.wiredManaged ? "" : "nothing is driving it"
+            on: Network.wiredManaged
+            onFlipped: Network.setWiredManaged(!Network.wiredManaged)
+        }
+
+        Fact {
+            text: Network.wiredDeviceName ? `${Network.wiredDeviceName} · ${Network.wiredAddress}` : Network.wiredAddress
+        }
+    }
+
+    MenuRow {
+        width: root.width
+        icon: Network.wifiIcon()
         label: "Wi-Fi"
         // The name AND what it is worth. This used to hand the whole line over
         // to the reach label, so the moment there was something wrong the row
         // stopped saying which network it was wrong about.
-        detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachLabel() ? `${Network.activeName} · ${Network.reachLabel()}` : Network.activeName
+        detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachFor("wifi") ? `${Network.activeName} · ${Network.reachFor("wifi")}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
         onActivated: Network.setEnabled(!Network.enabled)
         tip: Network.enabled ? "turn off" : "turn on"
