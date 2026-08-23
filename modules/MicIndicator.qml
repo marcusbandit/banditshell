@@ -173,6 +173,45 @@ Item {
     // than readout. The well is the shape now and the pill is the edge it sits
     // in, so the edge is an edge.
     readonly property real rim: Appearance.padding.small
+
+    // CONCENTRIC, not merely both rounded.
+    //
+    // The well took its radius from the type scale and the pill took its own
+    // from further up the same scale, so the two corners were rounded by numbers
+    // that had no relationship to the gap between them: the rim stayed 6px along
+    // the straight edges and opened up to 9 through the diagonal. A gap that
+    // changes as it goes round is the one thing the eye reads instantly as
+    // "wrong" without being able to say why.
+    //
+    // An inner shape sitting at a constant distance inside an outer one has the
+    // outer radius LESS that distance. Derived, so the rim can move and the
+    // corners follow it, and clamped at zero so a rim wider than the radius
+    // gives a square corner rather than a negative one, which in the vector
+    // primitive means something else entirely (a concave flare).
+    // The exponent both curves are drawn with. The pill is a superellipse in the
+    // chassis field and the well is one in the vector primitive, so they are the
+    // same family and can be made parallel; two different families could not be.
+    readonly property real cornerPower: Appearance.rounding.power
+    readonly property real pillRadius: Appearance.rounding.large
+
+    // A CIRCLE'S ANSWER IS r - gap. A SUPERELLIPSE'S IS NOT.
+    //
+    // Inset the box by the gap and the two corner centres land on top of each
+    // other, so the corners differ only in radius. But a superellipse of radius
+    // r sits sqrt(2) * r * 2^(-1/n) from that centre along the 45 degree
+    // diagonal, not r, so a radius difference of D opens a DIAGONAL gap of
+    // sqrt(2) * 2^(-1/n) * D. At the chassis's n = 4 that is 1.19, which is why
+    // a rim of 6 measured 7 through the corner and 6 everywhere else.
+    //
+    // Solving it the other way gives the difference that makes the diagonal gap
+    // equal the straight one. It is exact at both the edges and the diagonal and
+    // close between them, which is the best two shapes can do: a true offset of
+    // a superellipse is not a superellipse, and getting it exactly right
+    // everywhere is why the chassis body is a distance field and not a path.
+    //
+    // Sanity check built into the formula: at n = 2, a circle, it collapses to
+    // r - gap, which is the answer everyone already knows.
+    readonly property real wellRadius: Math.max(0, root.pillRadius - root.rim * Math.pow(2, 1 / root.cornerPower) / Math.SQRT2)
     readonly property real pillWidth: root.contentWidth + root.rim * 2
     readonly property real pillHeight: root.border + root.contentHeight + root.rim * 2
 
@@ -186,7 +225,7 @@ Item {
             y: -(root.pillHeight + Appearance.sizes.melt) * (1 - drop.value),
             w: root.pillWidth,
             h: root.pillHeight,
-            radius: Appearance.rounding.large,
+            radius: root.pillRadius,
             // THE JOIN, SIZED BY WHAT IT IS JOINING. The shell's 34px fillet was
             // set by panels that come out of the band a long way; measured
             // against this one it was half of everything below the band, so the
@@ -503,7 +542,8 @@ Item {
         // nested circular arcs visibly do not.
         G2Rect {
             anchors.fill: parent
-            radius: Appearance.rounding.normal
+            radius: root.wellRadius
+            cornerPower: root.cornerPower
             color: Appearance.colour.fillStronger
 
             Row {
