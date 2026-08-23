@@ -160,10 +160,32 @@ Item {
     // order the two arrive in, the change still arrives.
     property bool sawPointer: false
 
-    // The whole screen off the menu, for the window's input region, and only
-    // ever asked for while pinned. See the MouseArea itself for why it is
-    // conditional and why it stops at the bar.
-    readonly property Item catcher: offPanel
+    // THERE IS NO CATCHER HERE ANY MORE, AND THERE MUST NOT BE ONE AGAIN.
+    //
+    // A full-screen MouseArea used to sit at the top of this file and go into
+    // the surface's input region whenever a menu was pinned, so that a tap
+    // anywhere off the menu would put it away. It reads as a small courtesy and
+    // it is not one. A Wayland surface that owns a region OWNS it: every press
+    // there is delivered to this shell and to nothing else. So for as long as
+    // any menu stood open, no window answered a click, no text could be
+    // selected, and the press that eventually dismissed the menu was spent on
+    // that instead of on whatever it was aimed at. Reaching past an open menu
+    // cost two clicks, the first of which appeared to do nothing at all.
+    //
+    // Nothing about a menu is worth that, because nothing about a menu needs it.
+    // The gauge it came out of closes it again (ShellWindow's onRequested),
+    // Escape closes it, another gauge replaces it, and the push gesture shoves
+    // it back into the bar. Four ways out, none of which costs the desktop a
+    // single event. A fifth, bought by making everything else stop working, is
+    // not a way out; it is a toll.
+    //
+    // The touchscreen was the case this was built for and it is covered by the
+    // same four: a tap on the gauge opens the menu and a second tap on the same
+    // gauge closes it, which is the one control a finger already knows where to
+    // find. `sawPointer` below survives because the grace timer still needs to
+    // tell "the pointer left" from "there was never a pointer", which is a
+    // different question and always was.
+
 
     // True while something in the open menu is waiting to be typed into, which
     // is the only reason a menu ever has to hold the keyboard. See ShellWindow's
@@ -215,6 +237,17 @@ Item {
     // menu, and is one still up", which is what the KEY answers on its own. The
     // incidental menu the drift put on screen is closed by the same Escape,
     // because hide() is one answer for the whole layer rather than for a key.
+    //
+    // WHAT CHANGED IS NOT THIS FLAG BUT WHAT IS ASKED FOR IT. Escape used to be
+    // fetched with an EXCLUSIVE keyboard claim, and that claim does not only
+    // take the keyboard: Hyprland makes the asking surface the focused one and
+    // routes the POINTER to it as well, straight over the input region the
+    // surface set. Measured: with a menu holding the keyboard this way, the
+    // shell was told the cursor was at 3844,720 in its own coordinates, a point
+    // squarely inside the hole the mask subtracts, and every press there was
+    // delivered here. So one key, asked for the wrong way, cost the desktop
+    // everything the catcher above was already being blamed for. It is asked for
+    // on demand now instead; see ShellWindow's keyboardFocus.
     readonly property bool wantsEscape: root.pinnedKey !== ""
 
     // WHETHER SOMETHING ELSE IN THIS WINDOW IS ALREADY READING EVERY KEY. Handed
@@ -476,9 +509,11 @@ Item {
     // actually closes it.
     //
     // A pinned menu is not asking anybody. The pointer leaving is not news about
-    // a menu the pointer never opened, and starting the timer anyway would mean
-    // the pin had to be re-checked when it fired: one question, answered twice,
-    // which is the arrangement the notification tray had to unpick.
+    // a menu that was asked for by name: it is somebody going off to use the
+    // window they opened the menu about, and the menu is what they will look
+    // back at. Starting the timer anyway would mean the pin had to be re-checked
+    // when it fired: one question, answered twice, which is the arrangement the
+    // notification tray had to unpick.
     function release(): void {
         if (root.open && !root.pinned)
             grace.restart();
@@ -527,8 +562,15 @@ Item {
             // overlap freely, so the timer asks all of them rather than trusting
             // whichever one spoke last. Same lesson, and the same shape, as the
             // notification tray's `expanded`.
-            if (root.pinned || root.hovered || root.shellHovered)
+            if (root.pinned || root.hovered || root.shellHovered || root.needsKeyboard)
                 return;
+
+            // `needsKeyboard` is the newcomer in that list, and it covers a menu
+            // that was never pinned at all: a network row pressed out of a menu
+            // the cursor merely opened puts a password field on screen, and a
+            // field is the one thing here that a hand deliberately leaves the
+            // mouse to use. Without it, moving off to reach the keyboard closed
+            // the question being answered.
 
             // NOTHING EVER HELD THIS ONE, so there is nothing to have let go of.
             //
@@ -577,39 +619,6 @@ Item {
         epsilon: 0.005
     }
 
-    // A TAP ANYWHERE OFF THE MENU, which is the way out that has to be found
-    // before it can be used, and therefore the one that must always be there.
-    //
-    // FIRST in this file, so everything else in the layer sits on top of it: the
-    // panel takes its own presses and this only ever hears the ones that missed.
-    //
-    // It starts at the panel's own left edge rather than at the screen's, so the
-    // SIDEBAR is not covered. The bar is where menus come out of: tapping a
-    // second gauge has to reach that gauge and swap the menu, and tapping the
-    // gauge you are already looking at has to reach it to toggle it off. A
-    // catcher over the bar would turn every move between menus into a dismiss,
-    // which is the one gesture in the sidebar nobody would be aiming for.
-    MouseArea {
-        id: offPanel
-
-        x: root.originX
-        y: 0
-        width: root.width - root.originX
-        height: root.height
-
-        // ONLY WHILE PINNED, and never merely while open.
-        //
-        // A hover-opened menu is closed by the pointer leaving, and it lets
-        // clicks through to the desktop the whole time it is up. Catching those
-        // as well would cost a mouse user a click every time they reached past a
-        // menu that opened because they crossed the bar: they never asked for
-        // it, so there is nothing for them to dismiss. Only a menu that was
-        // asked for has anything to answer a tap with. The window's mask entry
-        // is gated on the same flag for the same reason; see ShellWindow.
-        enabled: root.pinned
-
-        onClicked: root.hide()
-    }
 
     // THE PANEL GOES BACK INTO THE BAR IT CAME OUT OF, by the gesture that
     // brought it out, reversed (DESIGN.md 15). Leftward, along the edge's own

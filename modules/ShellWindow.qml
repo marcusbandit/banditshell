@@ -221,7 +221,29 @@ PanelWindow {
     // corner or the strip, one push back into the edge it came out of, or one
     // CLI call from being gone; and the surface holding the keyboard is on
     // screen the whole time it holds it.
-    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard || menuLayer.wantsEscape || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    // EXCLUSIVE IS NOT ONLY ABOUT THE KEYBOARD, and nothing in the protocol
+    // says so. A layer surface that asks for the keyboard exclusively becomes
+    // the compositor's focused surface, and Hyprland then routes the POINTER to
+    // it as well, straight over the input region the surface set. Measured: with
+    // a menu holding the keyboard this way, the shell was told the cursor was at
+    // 3844,720 in its own coordinates, a point squarely inside the hole this
+    // window's mask subtracts, and every click there was delivered here instead
+    // of to the window under it. The mask is not consulted. Asking for the
+    // keyboard is asking for everything.
+    //
+    // So every term on the EXCLUSIVE side costs the desktop its input for as
+    // long as it is true, and each one has to be worth that. The six panels
+    // are: they are the whole screen, and there is nothing underneath them to
+    // click. `needsKeyboard` is: a field is waiting, and this shell is what is
+    // being typed into.
+    //
+    // A PINNED MENU IS NOT, and it used to be. It wants one key, so it asks ON
+    // DEMAND: the compositor hands the surface the keyboard when the surface is
+    // clicked, which a menu opened by clicking its gauge already was, and takes
+    // it back the moment a window is clicked instead. Escape reaches the menu
+    // while the menu is what you are dealing with, the desktop keeps every
+    // event it should have had, and neither has to be traded for the other.
+    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -253,21 +275,11 @@ PanelWindow {
             item: menuLayer.open ? menuLayer.maskItem : null
         }
 
-        // Everything off a PINNED menu, so a tap anywhere else puts it away.
-        //
-        // Gated on `pinned` and deliberately not on `open`. A hover-opened menu
-        // must go on letting clicks through to the desktop exactly as it does
-        // now: the way a pointer closes one is by leaving, so nothing about it
-        // needs dismissing, and swallowing the screen underneath would cost that
-        // user a click every time they reached past a menu they never asked for.
-        // A pinned one has no pointer to leave, and this is its way out. The
-        // power panel's entry above is the same argument from the same side: the
-        // panel that is summoned rather than reached for is the one with nothing
-        // else to dismiss it.
-        Region {
-            intersection: Intersection.Combine
-            item: menuLayer.pinned ? menuLayer.catcher : null
-        }
+        // THE MENU LAYER PUTS NOTHING ELSE IN HERE. A full-screen region used
+        // to be combined in whenever a menu was pinned, so a click off the menu
+        // would dismiss it; what it actually did was take every press on the
+        // desktop away from the windows underneath for as long as any menu was
+        // up. Menus have four ways out that cost nothing. See Menus.
 
         Region {
             intersection: Intersection.Combine
