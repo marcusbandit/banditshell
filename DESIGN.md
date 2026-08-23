@@ -887,6 +887,15 @@ Consequences worth knowing:
 - **`blob.frag.qsb` is build output committed next to its source.** Quickshell loads QML from a
   directory and has nowhere to run a build step, so `banditshell shaders` is that step. Run it
   after editing any `.frag`.
+- **A rebuilt `.qsb` needs the PROCESS restarted, not a QML reload.** Qt caches the compiled
+  shader program by URL for the life of the process, so `banditshell shaders` followed by the
+  usual hot reload leaves the OLD shader running while the new QML properties bind to uniforms
+  it does not have. It fails in the worst possible way: the config reloads, the properties
+  exist, nothing errors, and nothing on screen changes, so you conclude the shader edit is
+  wrong and go and change it again. The tell is a `ShaderEffect: 'x' does not have a matching
+  property` warning naming a uniform you deleted. `qs -p . kill && qs -p . -d`. Verify a shader
+  change by capturing the screen with the feature on and off and diffing the two, because "I
+  can see it" is not reliable at 2px against a busy background; it was another window's border.
 - **Qt hands a `QColor` uniform over premultiplied.** Multiplying rgb by alpha again in the
   shader looks like the surface has quietly lost its colour: the tint goes dark and desaturated
   while still obviously being there. Cost an hour; written down so it costs nothing next time.

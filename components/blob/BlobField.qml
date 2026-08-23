@@ -60,8 +60,14 @@ ShaderEffect {
     // than in Config because it is being looked at, not lived with: if it stays
     // it becomes an Appearance token like everything else, and if it goes it
     // goes in one line.
-    property real sheenWidth: 1.5
-    property color sheenColour: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.5)
+    // TWO PIXELS AND NEARLY OPAQUE, because a hairline does not survive its own
+    // antialiasing. The band is drawn in the field and feathered by about a
+    // pixel on each side, so at 1.5px wide it never reached full coverage
+    // anywhere: half alpha over two thirds coverage came out around a third,
+    // which is a line you can find if you know it is there and cannot see if you
+    // do not.
+    property real sheenWidth: 2.0
+    property color sheenColour: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.9)
     property real pad2: 0
     property real pad3: 0
 
