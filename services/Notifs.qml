@@ -52,10 +52,51 @@ Singleton {
     readonly property int defaultTimeout: Config.values.notifications.timeout
     readonly property int maxPopups: Config.values.notifications.maxPopups
 
-    // Countdowns stop while the tray is open. A notification that expires out
+    // Countdowns stop while a tray is open. A notification that expires out
     // from under the list you are reading is the same bug as one expiring under
     // the pointer, one level up.
-    property bool paused: false
+    //
+    // WHO IS HOLDING THEM STILL, rather than a flag every tray assigns. There is
+    // one tray per monitor (shell.qml wraps the whole shell in Variants over
+    // Quickshell.screens), and while this was a bool they all wrote, whichever
+    // one moved LAST decided for all of them: collapsing an empty tray on the
+    // second screen, one that had never been opened and had nothing in it,
+    // resumed every countdown under the list being read on the first. That is the
+    // same mistake the tray's own `expanded` records one level up, and it takes
+    // the same answer, because a set has no ordering to get wrong. The countdowns
+    // stand still while ANY claim is still out and start again when the last of
+    // them is dropped.
+    property var pausedBy: []
+
+    // Which makes this the cache of an answer rather than the answer, and it is
+    // derived so that it cannot be anything else. Read by the ticker below, and
+    // by nothing outside this file: who is holding the countdowns is the set's
+    // business and nobody asks.
+    readonly property bool paused: root.pausedBy.length > 0
+
+    // A claim is an OBJECT, never a name and never a count. The holder is the
+    // key, so a tray saying the same thing twice is one claim and cannot be
+    // released twice, and no tray can drop another one's. It is asked for rather
+    // than assigned because membership of a list this service owns is this
+    // service's to decide, which is the rule `history` and `popups` are already
+    // kept by.
+    //
+    // A HOLDER THAT DIES STILL HOLDING would stop every countdown in the shell
+    // for as long as it runs, with nothing left anywhere that could take the
+    // claim back, and a monitor being unplugged destroys a tray in exactly that
+    // state. So a tray drops its claim from Component.onDestruction, the way a
+    // ShellWindow unregisters itself (services/Shell.qml), and the filter here is
+    // the second half of that promise: a destroyed QObject reads as falsy, so
+    // anything that did get away is swept out by the next claim either way.
+    function pause(who: var): void {
+        if (root.pausedBy.includes(who))
+            return;
+        root.pausedBy = [...root.pausedBy.filter(w => w), who];
+    }
+
+    function resume(who: var): void {
+        root.pausedBy = root.pausedBy.filter(w => w && w !== who);
+    }
 
     // How long a row has to get itself off the screen. Fixed rather than
     // exponential, unlike everything else in the shell, because the SERVICE has

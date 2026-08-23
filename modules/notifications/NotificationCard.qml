@@ -180,8 +180,42 @@ Item {
     // passive and stays hovered while its own descendants are.
     readonly property bool held: hover.hovered || drag.pressed || root.pinned
 
-    onHeldChanged: if (entry)
-        entry.held = held
+    // REGISTERED WITH THE ENTRY, where this used to be `entry.held = held`.
+    //
+    // One entry can be in front of two cards at once: the hub can be open on
+    // every monitor at the same time, and `pinned` is a term of the union above
+    // and lives on the ENTRY, so a pin made here turns the card on the next
+    // screen held as well. Each of them then wrote that one flag from its own
+    // hover and the last writer won, so a pointer leaving this card resumed a
+    // countdown the card on the other screen was still holding. The entry keeps
+    // the cards instead and answers for itself; see NotifEntry.heldBy, which is
+    // where the argument lives.
+    //
+    // AND THE ENTRY IT WAS SAID TO IS REMEMBERED, so the hold can be taken back
+    // off the same object it was put on. `entry` is handed in once by the
+    // delegate today and nothing swaps it, but a card that let go of whatever it
+    // happened to be pointing at LATER would leave the entry it was actually
+    // holding frozen for the rest of that entry's life, which is a bug that could
+    // only appear long after the line that caused it.
+    property var holding: null
+
+    function holdEntry(): void {
+        const want = root.held ? root.entry : null;
+        if (root.holding === want)
+            return;
+        // `?.`, because the entry can be destroyed before this card is: Notifs
+        // takes an entry out of the lists and destroys it, and the delegate that
+        // list change tears down goes a turn later. A destroyed object reads as
+        // null here (see the note on `notification` at the top of this file), so
+        // that is the hold quietly ceasing to exist along with the thing it was
+        // put on.
+        root.holding?.release(root);
+        root.holding = want;
+        root.holding?.hold(root);
+    }
+
+    onHeldChanged: root.holdEntry()
+    onEntryChanged: root.holdEntry()
 
     // PINNED: the touch answer to hover, and the pin a mouse never had.
     //
@@ -1091,7 +1125,17 @@ Item {
     // as it is built, which is the collapse this is written for; a card already
     // up on another screen sees nothing change and does not start a second copy,
     // which is the half of this that used to go wrong.
-    Component.onDestruction: root.releaseCopy()
+    //
+    // ...AND THE HOLD ON THE COUNTDOWN WITH IT, on the same signal because an
+    // object gets exactly one of these handlers and the two are the same duty
+    // said about two different things: this card holds a picture claim and a
+    // countdown that both outlive it, and a card destroyed mid-hover would leave
+    // its notification stopped forever with nothing left anywhere that could
+    // start it again. See `holdEntry`.
+    Component.onDestruction: {
+        root.releaseCopy();
+        root.holding?.release(root);
+    }
 
     Image {
         id: copier

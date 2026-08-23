@@ -30,6 +30,14 @@ import qs.services
 // is still in there, and so is anything that was PINNED before it was thrown
 // away. Anything else thrown away is not: see Notifs.dismiss.
 //
+// AND THERE IS ONE OF IT PER SCREEN, because the shell is one surface per screen
+// and everything drawn on that surface comes with it. The two states answer to
+// the screen differently, and they have to. What ARRIVES lands on the monitor the
+// keyboard is on and nowhere else: one notification interrupting you on three
+// monitors is three interruptions and three copies of the same card to get rid
+// of. What you ASK FOR answers at the corner you asked at, whichever monitor that
+// is. See `items`, where both halves of that are decided.
+//
 // THE CORNER is what expands it. The tray's own hover keeps it out and cannot
 // open it, which is what stops reaching for a popup from unfolding the history
 // under your hand; see `summoned`.
@@ -248,15 +256,89 @@ Item {
         onTriggered: root.courted = false
     }
 
-    readonly property var items: root.expanded ? Notifs.history : Notifs.popups
+    // WHICH MONITOR THIS TRAY IS ON, since there is one of it per screen and this
+    // is the first thing in the file that has to care which.
+    //
+    // ASKED OF THE WINDOW rather than handed down like every other property up
+    // here. The screen is not a fact about the tray the way its insets are, it is
+    // a fact about the surface the tray happens to be drawn on, and QsWindow is
+    // how anything in this shell asks that (modules/SettingsCorner.qml:222 asks
+    // the same way for the same reason). It also costs the preview harness
+    // nothing: notifpreview.qml builds this tray on a FloatingWindow that is in
+    // none of the shell's wiring and could not be handed a name.
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+
+    // WHETHER THE UNBIDDEN ONES BELONG HERE. A popup lands on the monitor the
+    // keyboard is on and on no other: one notification arriving on three screens at once is
+    // three times the interruption and three copies of the same card to get rid
+    // of, which is what this tray did on every screen it was drawn on.
+    //
+    // `Hypr.focusedScreen` is the answer this shell already gives to "which
+    // screen" for anything that was not reached for with the cursor (its own
+    // comment in services/Hypr.qml says exactly that), and a notification is the
+    // purest case of it: nobody asked for it at all.
+    //
+    // EITHER NAME MISSING MEANS EVERY SCREEN, which is the old behaviour and the
+    // only safe way to be wrong here. A tray that cannot say where it is is the
+    // only tray there is, and a compositor that has not said where the keyboard
+    // is (Hyprland still starting, or not there at all) would otherwise gate
+    // every screen off at once. Showing a popup twice is a nuisance; showing it
+    // nowhere is a notification daemon that does not notify.
+    readonly property bool mine: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
+
+    // WHAT IS IN THE TRAY: two questions, with the screen in front of one of
+    // them.
+    //
+    // Expanded, it is the HUB, and the hub is the shell's rather than this
+    // monitor's: you went to THIS corner and asked, so this corner answers,
+    // wherever the keyboard happens to be. Collapsed, it is the SCREEN, and the
+    // screen a popup belongs to is the focused one.
+    //
+    // AND `expanded` IS THE LATCH, which is why there is no flag beside it saying
+    // so. An open tray must not be yanked away when the pointer wanders onto
+    // another monitor and the focus follows it: pulling a tray out is a
+    // deliberate reach at one specific corner, and taking it back because the
+    // cursor moved would answer a gesture by undoing it. The union three lines up
+    // already holds the tray out for exactly as long as somebody means it to, so
+    // reading it here is the whole latch: while any claim on this tray is still
+    // out it shows the hub whatever the focus does, and when the last one lets go
+    // the tray collapses and the popups are the focused screen's again. A
+    // `latched` property, or a screen name parked on Notifs, would be a second
+    // copy of an answer this file already keeps, and this file has the argument
+    // about second copies written down twice (see `expanded` and `courted`): the
+    // moment there are two, they can disagree. A slot on the SERVICE would be
+    // worse than a local flag, since one slot shared by N trays is the very shape
+    // this change exists to take out of `paused` below.
+    readonly property var items: root.expanded ? Notifs.history : (root.mine ? Notifs.popups : [])
 
     // Visible when there is something to show, and whenever it is summoned: an
     // empty tray that says so is the answer to "did I miss anything", and a
     // corner that does nothing is indistinguishable from a corner that is broken.
     readonly property bool any: root.items.length > 0 || root.expanded
 
-    // Nothing expires while the list is being read.
-    onExpandedChanged: Notifs.paused = root.expanded
+    // Nothing expires while the list is being read, and it is THIS tray saying so
+    // rather than the shell.
+    //
+    // A CLAIM ADDED AND DROPPED, where this used to be `Notifs.paused =
+    // root.expanded`. There is one tray per monitor and every one of them wrote
+    // that flag, so whichever tray moved LAST decided for all of them: collapsing
+    // an empty tray on the second screen, one that had never been opened, resumed
+    // every countdown under the list being read on the first. The set on the
+    // service side takes the ordering out of it; see Notifs.pausedBy.
+    onExpandedChanged: {
+        if (root.expanded)
+            Notifs.pause(root);
+        else
+            Notifs.resume(root);
+    }
+
+    // AND A TRAY THAT GOES AWAY LETS GO. Unplugging a monitor destroys this
+    // surface wherever the tray happened to be in its life, and a claim left
+    // behind by a tray that no longer exists would stop every countdown in the
+    // shell for as long as it runs, with nothing left anywhere that could take it
+    // back. ShellWindow unregisters itself from services/Shell.qml on the same
+    // signal, for the same reason.
+    Component.onDestruction: Notifs.resume(root)
 
     // What the window's input mask should cover: the TRAY, not this item.
     //

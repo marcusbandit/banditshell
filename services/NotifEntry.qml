@@ -463,9 +463,58 @@ QtObject {
     // 1 down to 0.
     property real remaining: timeout > 0 ? 1 : 0
 
-    // Set by whichever card is showing this: a notification must not expire from
-    // under the pointer while you are reaching for its button.
-    property bool held: false
+    // WHICH CARDS ARE HOLDING IT STILL. A notification must not expire from under
+    // the pointer while you are reaching for its button, and a card is the only
+    // part of this that can see a pointer.
+    //
+    // A SET, and it stopped being a bool the moment one notification could be
+    // drawn twice. Every card wrote this flag from its own hover and the last
+    // writer won, which was wrong in the one arrangement that guarantees two
+    // cards disagree: the card's `held` folds in the PIN, and the pin lives here,
+    // on the entry, so it is true on every card at once. Pinning the card on one
+    // screen flipped the card on the next one to held, which wrote true, and the
+    // pointer later leaving THIS card wrote false over a claim the other one
+    // still meant, resuming a countdown two cards were holding. `running` below
+    // has said for as long as the flag existed that `held` is only ever a card's
+    // claim; what it had no way to say is how many cards there are.
+    //
+    // GATING THE POPUPS DOES NOT FIX IT, which is why this is a set rather than
+    // one less writer. A popup now lands on the focused screen only, so a popup
+    // has one card; the HUB has no such rule and must not have one, because
+    // asking for the history at one screen's corner is not a claim on any other
+    // screen's, so any number of monitors may have the same entry open in front
+    // of them at once.
+    property var heldBy: []
+
+    // Which makes the flag the cache of an answer rather than the answer, and it
+    // is derived so that it cannot be anything else. Everything that used to read
+    // `held` still reads it and means the same thing by it: `running` below, the
+    // card's own fill, and modules/Ipc.qml's `notifications held`, which is a
+    // sender asking whether anybody is looking at its card.
+    readonly property bool held: root.heldBy.length > 0
+
+    // A claim is the CARD, never a count: the holder is the key, so a card
+    // saying the same thing twice is one claim and no card can drop another
+    // one's. Asked for rather than assigned, exactly as Notifs.pause is and for
+    // the same reason.
+    //
+    // A CARD THAT DIES STILL HOLDING would freeze this notification's countdown
+    // for the life of the entry, and cards die constantly: the tray tears its
+    // delegates down every time it swaps between the popups and the history, and
+    // it can do that with the pointer resting on one. So a card drops its claim
+    // from Component.onDestruction, the way it already hands back its copy claim
+    // on the same signal, and the filter here is the second half of that: a
+    // destroyed QObject reads as falsy, so anything that got away is swept out by
+    // the next claim either way.
+    function hold(card: var): void {
+        if (root.heldBy.includes(card))
+            return;
+        root.heldBy = [...root.heldBy.filter(c => c), card];
+    }
+
+    function release(card: var): void {
+        root.heldBy = root.heldBy.filter(c => c && c !== card);
+    }
 
     // PINNED: swiped left, or press-and-held. Two things at once. The countdown
     // stops, and the next dismissal HIDES this notification instead of forgetting
@@ -490,7 +539,7 @@ QtObject {
 
     // `pinned` as well as `held`, though the card folds the pin into `held`
     // anyway: an entry with no card on any screen still has to stop counting, and
-    // `held` is only ever written by a card.
+    // `held` is only ever a card's claim.
     readonly property bool running: timeout > 0 && remaining > 0 && !held && !pinned && !leaving
 
     function tick(ms: int): bool {
