@@ -708,25 +708,35 @@ Singleton {
     // ONE ENTRY PER MARK, for a column that draws applications rather than
     // windows: [{ client, cls, count }], in the order the windows arrive.
     //
-    // A client whose application stacks (Apps.stacks) folds into the entry
-    // BEFORE IT when that is the same application; everything else is its own
-    // entry with a count of one, so a caller can draw the list straight and
-    // never has to know which of the two happened.
+    // A client folds into the entry for ITS OWN APPLICATION when the workspace
+    // already has one; otherwise it starts one, in the place it appears. So the
+    // list is one entry per application, in the order those applications first
+    // turn up, and nothing is moved except the duplicates.
     //
-    // CONSECUTIVE RUNS, not "all of this class together", and the difference is
-    // the whole of what makes the list still be the workspace's own order. A
-    // workspace holding an editor, a terminal, a browser and two more terminals
-    // reads as those five things in that order; folding by class alone would
-    // pull the last two up into the first terminal and hand back an editor, a
-    // terminal times three, and a browser, which is a list of what is open and
-    // no longer a picture of where it is.
+    // EVERY APPLICATION, where this used to be a table of the ones you keep
+    // several of (terminals). The table was wrong twice in a week: it started as
+    // kitty, grew to every terminal, and then an Android emulator put four
+    // identical windows on a workspace and hid everything else on it behind them.
+    // There is no list of applications people run several of, there is only the
+    // fact that a mark says WHICH application and a second copy of it says
+    // nothing a number could not say better. So the rule is the same for all of
+    // them and there is nothing to keep up to date.
+    //
+    // BY APPLICATION, NOT BY NEIGHBOUR, which is the correction the emulator
+    // forced. Folding only into the entry immediately before kept more of the
+    // workspace's shape and cannot hold, because the list this runs over is in
+    // SCREEN order (see `clients`): four windows of one application sat two on
+    // the left of a browser and two on its right, so a rule that merges only
+    // neighbours drew the same application twice with the same glyph and no way
+    // to tell the two marks apart. A column that answers "what is on this
+    // workspace" must not be able to say a thing twice.
     function stackClients(clients: var): var {
         const out = [];
         for (const client of clients) {
             const cls = root.classOf(client);
-            const last = out[out.length - 1];
-            if (last && last.cls === cls && Apps.stacks(cls))
-                last.count++;
+            const held = out.find(m => m.cls === cls);
+            if (held)
+                held.count++;
             else
                 out.push({
                     client,

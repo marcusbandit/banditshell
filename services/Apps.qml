@@ -418,35 +418,6 @@ Singleton {
         return "";
     }
 
-    // APPLICATIONS YOU KEEP SEVERAL OF, where a column of identical marks says
-    // less than one mark and a number.
-    //
-    // A terminal is the case this exists for: twelve kitty windows on a
-    // workspace draw twelve identical glyphs down the sidebar, which is a
-    // paragraph saying "terminal" over and over where "kitty, twelve" is the
-    // whole of it. Nothing else on that workspace can be seen past them either,
-    // so the one application you have many of hides every application you have
-    // one of.
-    //
-    // A TABLE HERE rather than a setting, for the reason `brandGlyphs` is one:
-    // it is a fact about how applications are USED, not a preference, and the
-    // list of things people run a dozen of at once is short and well known.
-    // Anything not on it draws one mark per window, which is the honest default:
-    // two browser windows are two places, and collapsing them would lose which.
-    readonly property var stackClasses: ["^(kitty|alacritty|foot|wezterm|ghostty|konsole|xterm|urxvt|st)$"]
-
-    function stacks(appClass: string): bool {
-        for (const pattern of root.stackClasses) {
-            try {
-                if (new RegExp(pattern, "i").test(appClass))
-                    return true;
-            } catch (e) {
-                console.warn(`Apps: "${pattern}" is not a valid stack regex, skipping it.`, e);
-            }
-        }
-        return false;
-    }
-
     // The generic mark, for a window whose class matches no desktop entry at
     // all: wine apps, games launched by an id, anything self-titled. Same glyph
     // the launcher falls back to, so "we could not identify this" looks the

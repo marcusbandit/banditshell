@@ -270,7 +270,7 @@ Item {
         pitch: root.pitch
         // THIS COLUMN DRAWS APPLICATIONS, so the several windows of one that
         // stacks are one row and a count rather than a run of identical marks.
-        // See WorkspaceModel.stack and Apps.stackClasses.
+        // See WorkspaceModel.stack and Hypr.stackClients.
         stack: true
     }
 
@@ -1057,9 +1057,9 @@ Item {
                 // A MARK IS NOT ALWAYS A WINDOW. The model hands this column
                 // applications rather than windows (WorkspaceModel.stack), so the
                 // twelve kitty windows on a workspace arrive as one entry with a
-                // twelve on it. Everything else is one entry per window with a
-                // count of one, and the drawing below never has to know which of
-                // the two it got.
+                // twelve on it, and so do four copies of an emulator. An
+                // application with one window is the same entry with a one on it,
+                // and the drawing below never has to know which it got.
                 //
                 // NOTHING IS DROPPED. There is no cap and no "and more": a
                 // workspace with twenty applications on it draws twenty marks and

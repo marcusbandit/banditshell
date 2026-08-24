@@ -27,10 +27,9 @@ Item {
     // WHETHER THE STYLE DRAWS APPLICATIONS OR WINDOWS, which is the one thing
     // about a workspace's contents the model cannot decide for itself.
     //
-    // A style that draws a MARK per window wants the several kitty windows on a
-    // workspace folded into one mark and a number (see Apps.stackClasses): the
-    // mark says which application, and twelve copies of it say nothing twelve
-    // times. A style that draws the LAYOUT does not: `map` gives every window a
+    // A style that draws a MARK per window wants a run of one application's
+    // windows folded into one mark and a number (Hypr.stackClients): the mark
+    // says which application, and twelve copies of it say nothing twelve times. A style that draws the LAYOUT does not: `map` gives every window a
     // bar as long as the window is wide, and folding twelve tiled terminals into
     // one bar would be a picture of a screen that is not there. So the styles
     // that draw pictures of applications ask for this and the ones that draw
