@@ -1130,6 +1130,47 @@ Scope {
         }
     }
 
+    // THE KEYRING'S QUESTION. Read it, refuse it, or put a fake one up to look
+    // at, and there is deliberately no verb that answers one: a password is not
+    // something to pass on a command line, where it would land in the shell
+    // history of whoever typed it and in the argument list of every process
+    // table on the machine for as long as the call took. The card is the only
+    // way to say yes, which is the same rule `lock` follows one target above and
+    // for a plainer reason.
+    //
+    // `refuse` is the way out, and it is the reason this target exists at all.
+    // Every other panel in this shell can be closed by clicking off it; this one
+    // is answering something, so if the thing it is answering has stopped
+    // listening - a client that hung rather than died, so the bus name never
+    // vanished - the card sits there with a catcher over the whole screen. That
+    // is the panic case `banditshell close` exists for elsewhere, and this is
+    // its entry for this panel.
+    IpcHandler {
+        target: "keyring"
+
+        // WHETHER THE SHELL IS THE PROMPTER AT ALL, first and in those words.
+        // The failure this feature has is invisible from a screenshot: the
+        // helper never started, or lost the bus name to gcr-prompter, and every
+        // keyring question quietly goes back to being a GTK box. Nothing on
+        // screen would say so, because the symptom is a thing NOT being drawn.
+        function status(): string {
+            return [`prompter   ${Keyring.serving ? "the shell" : Keyring.blocked ? "gcr (the shell was refused the bus name)" : "not running"}`, `asking     ${Keyring.active}`, `kind       ${Keyring.kind || "-"}`, `title      ${Keyring.title || "-"}`, `message    ${Keyring.message || "-"}`, `warning    ${Keyring.warning || "-"}`, `choice     ${Keyring.choiceLabel ? `${Keyring.choiceChosen ? "yes" : "no"}: ${Keyring.choiceLabel}` : "-"}`, `screen     ${Keyring.screenName || "-"}`].join("\n");
+        }
+
+        function refuse(): string {
+            if (!Keyring.active)
+                return "nothing is being asked";
+            Keyring.refuse();
+            return "refused";
+        }
+
+        // The card, without a keyring event to summon it. See Keyring.demo.
+        function demo(): string {
+            Keyring.demo();
+            return "showing a made-up question; escape or `keyring refuse` puts it away";
+        }
+    }
+
     // ------------------------------------------------------------------
     // THE CLOCK: countdowns, alarms, and other people's afternoons. Three
     // targets and not one window between them.

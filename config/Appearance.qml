@@ -169,6 +169,24 @@ Singleton {
         // What dims everything outside a selection. Dark rather than tinted: it
         // sits over arbitrary content that has to stay recognisable through it.
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)
+
+        // THE ETCHED SEAM: the hairline along the shell's own inner edge, and
+        // along anything else this shell draws as a piece of the machine.
+        //
+        // The alpha is MEASURED rather than chosen, and the measurement is worth
+        // keeping: on the reference the line is RGB(29,29,29) over a background
+        // of RGB(12,12,12), which is +17 absolute, and paper at 8% over that
+        // ground is what puts it there. It reads as a panel gap catching one
+        // degree of light, which is the machined look; anything an order
+        // brighter reads as a drawn outline around the shell.
+        //
+        // IT LIVES HERE RATHER THAN IN THE SHADER because it now has two users.
+        // components/blob/BlobField.qml drew it first, on the chassis, with a
+        // note saying it would become a token if it stayed. It stayed, and the
+        // keyring card asked for the same line, so this is that promotion: one
+        // seam, one colour, and no chance of the panel's differing from the
+        // edge's by a percent nobody can see but everybody can feel.
+        readonly property color seam: Qt.rgba(root.colour.paper.r, root.colour.paper.g, root.colour.paper.b, 0.08)
     }
 
     readonly property QtObject font: QtObject {
@@ -441,6 +459,14 @@ Singleton {
         readonly property real lockDim: root.cfg.lock.dim
         readonly property real lockDesaturate: root.cfg.lock.desaturate
         readonly property int lockDot: Math.round(root.font.iconSize * root.cfg.lock.dotScale)
+
+        // How thick the etched seam is, for the panels that draw it as a stroke.
+        //
+        // TWO PIXELS, NOT ONE, and that is not a rounding of "thin". The band is
+        // feathered by about a pixel on each side, so a 1px line spends all of
+        // itself on the antialiasing and comes out uneven along a curve. At this
+        // alpha the extra width costs nothing. See colour.seam.
+        readonly property real seam: 2
         readonly property real lockReveal: root.cfg.lock.revealSpeed
 
         readonly property int menuWidth: root.cfg.menu.width

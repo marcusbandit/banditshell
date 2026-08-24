@@ -422,6 +422,16 @@ banditshell/
 │   │                            Two inputs onto one question, so they cannot
 │   │                            disagree; the keypad's own state is not here
 │   ├── Lock.qml                 whether the screen is locked, and what decides it
+│   ├── Keyring.qml              the KEYRING'S question, once the shell is the one
+│   │                            asking it. gnome-keyring draws nothing: it asks
+│   │                            whoever owns org.gnome.keyring.SystemPrompter,
+│   │                            and with nobody there D-Bus activates gcr's GTK
+│   │                            box. scripts/keyring-prompter.py owns the name
+│   │                            instead and talks to this over its pipes. The
+│   │                            second file here that knows a password, and it
+│   │                            holds one for less time than Lock does: the
+│   │                            secret goes straight down the helper's stdin and
+│   │                            is never stored
 │   ├── Tablet.qml               whether the machine is FOLDED OVER. The changes
 │   │                            come from the compositor (a switch bind execs
 │   │                            the CLI); the state at startup comes from
@@ -483,6 +493,12 @@ banditshell/
 │   │                            takes the keyboard and the number row drives it.
 │   │                            NOT a fifth gauge; a gauge answers a glance
 │   ├── lock/                    the lock: one compositor surface per screen, one face
+│   ├── keyring/KeyringPrompt.qml the keyring's password question, as a card. The
+│   │                            one panel nobody asks for: an application wants
+│   │                            a secret and is BLOCKED on the answer, so it
+│   │                            draws over everything, a click off it is a NO
+│   │                            rather than a dismissal, and every panel that
+│   │                            takes the keyboard refuses it on the way in
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
@@ -547,6 +563,14 @@ banditshell/
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and
 │   │                            that is the correct failure
+│   ├── keyring-prompter.py      the keyring's prompter: owns the bus name gcr's
+│   │                            GTK dialog would have been activated for, and
+│   │                            reimplements gcr's `sx-aes-1` secret exchange
+│   │                            (DH over the 1536-bit IKE group, HKDF-SHA256,
+│   │                            AES-128-CBC) because gnome-keyring will not take
+│   │                            a password as a plain string over the bus.
+│   │                            `--selftest` holds a conversation with libgcr
+│   │                            itself rather than with a memory of the spec
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
 ├── bin/
@@ -684,6 +708,12 @@ banditshell hotkeys toggle|open|close|status
 banditshell calendar               sugar for `menu toggle calendar`
 banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
+banditshell keyring status|refuse|demo
+                                   the keyring's question. `status` says whether the shell is
+                                   actually the prompter, which nothing on screen can; `demo`
+                                   draws a made-up one, because this panel cannot be summoned
+                                   by any gesture at all. No verb answers one: a password on a
+                                   command line is a password in the shell history
 banditshell picker open|freeze|clip|freezeclip|close
 banditshell wallpaper toggle|on|off|next|prev|status
 banditshell wallpapers toggle|open|close|status   the picker; the edge's second swipe

@@ -118,7 +118,8 @@ build_table() {
         local n
         for n in hyprland qt6-declarative qt6-multimedia qt6-shadertools \
             ttf-material-symbols-variable ttf-nerd-fonts-symbols wl-clipboard \
-            jq grim ffmpeg python glib2 zenity qrencode zxing-cpp librsvg; do
+            jq grim ffmpeg python python-gobject python-cryptography glib2 zenity \
+            qrencode zxing-cpp librsvg; do
             add_step "$n" "false" "" 2 "pretend"
         done
         return
@@ -139,7 +140,14 @@ build_table() {
     add_step jq                           "command -v jq"                jq                            2 "the clipboard recorder's json"
     add_step grim                         "command -v grim"              grim                          2 "screenshots and the freeze picker"
     add_step ffmpeg                       "command -v ffmpeg"            ffmpeg                        2 "the picker's frozen frame"
-    add_step python                       "command -v python3"           python                        2 "the palette and the hinge probe"
+    add_step python                       "command -v python3"           python                        2 "the palette, the hinge probe, the keyring prompter"
+    # THE KEYRING PROMPTER'S TWO IMPORTS, and the shell degrades honestly
+    # without them: `org.gnome.keyring.SystemPrompter` stays unclaimed, D-Bus
+    # activates gcr's GTK dialog, and a keyring question is a grey box again.
+    # `banditshell keyring status` is what says so, because nothing on screen
+    # can: the symptom is a thing NOT being drawn. See scripts/keyring-prompter.py.
+    add_step python-gobject               "python3 -c 'import gi'"       python-gobject                2 "the keyring prompter's bus side"
+    add_step python-cryptography          "python3 -c 'import cryptography'" python-cryptography       2 "the keyring prompter's secret exchange"
     add_step glib2                        "command -v gdbus"             glib2                         2 "the portal calls"
     add_step zenity                       "command -v zenity"            zenity                        2 "the one dialog qml cannot draw"
     add_step qrencode                     "command -v qrencode"          qrencode                      2 "the qr the shell hands out"
