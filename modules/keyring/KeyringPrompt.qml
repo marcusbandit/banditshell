@@ -128,6 +128,26 @@ Item {
 
     readonly property real cardWidth: Math.min(root.holeWidth - Appearance.padding.huge * 2, em.advanceWidth * 56)
 
+    // HOW TALL THE CARD IS, chased rather than assigned. gnome-keyring answers a
+    // wrong password by asking again down the same conversation, so the card is
+    // already on screen when a warning line appears under the field; taking the
+    // new height on the next frame would move the buttons out from under a
+    // cursor that is on its way to press one of them again.
+    //
+    // Snapped while the card is closed, so an opening card is the size it should
+    // be rather than growing into it, and snapped when the QUESTION changes for
+    // the same reason: a new question is a new card as far as the eye is
+    // concerned, even when it arrives without the old one leaving.
+    Follow {
+        id: tall
+
+        speed: Appearance.anim.resizeSpeed
+        target: body.implicitHeight + Appearance.padding.huge * 2
+
+        onTargetChanged: if (!root.open)
+            tall.snap()
+    }
+
     // WHAT IT SAYS, in the order somebody reads it. Empty lines are absent
     // rather than blank: gnome-keyring fills in different subsets of these
     // depending on what it is asking about, and a card with a hole in it where
@@ -197,7 +217,7 @@ Item {
         x: root.holeX + (root.holeWidth - root.cardWidth) / 2
         y: root.holeY + (root.holeHeight - height) / 2
         width: root.cardWidth
-        height: body.implicitHeight + Appearance.padding.huge * 2
+        height: tall.value
 
         visible: reveal.value > 0.001
         enabled: root.open
@@ -311,34 +331,32 @@ Item {
                     onAskedChanged: field.clear()
                 }
 
-                // -- what went wrong, in a slot that is always there ----------
+                // -- what went wrong ------------------------------------------
                 //
-                // A FIXED HEIGHT, so the card does not grow by a line the moment
-                // a password is rejected. The buttons would move out from under
-                // the cursor at exactly the moment somebody is about to press
-                // one of them again.
+                // NOT A RESERVED SLOT, and it was one for a while. The idea was
+                // that a fixed height keeps the buttons from moving out from
+                // under the cursor when a password is rejected, which is a real
+                // thing to want; what it actually produced was a card with a
+                // hole in it, because the line that used to fill the slot while
+                // there was nothing to report ("enter to answer, escape to
+                // refuse") was furniture and had to go. A row of empty air
+                // between the field and the tickbox reads as a layout that
+                // broke.
                 //
-                // THE SLOT IS THE WARNING'S AND NOBODY ELSE'S. It used to say
-                // "enter to answer, escape to refuse" while there was nothing to
-                // report, and that line was furniture: Enter and Escape on a box
-                // with a field and two buttons are not something anybody has to
-                // be told, and captioning them said the shell thought you might
-                // not know. What it cost was worse than the space - a slot that
-                // always has words in it is a slot the eye stops reading, so the
-                // one message that matters arrived in a place already dismissed
-                // as decoration. Empty by default, and the warning is then the
-                // only thing that has ever appeared there.
-                Item {
+                // So the line is simply absent until there is one, and the CARD
+                // absorbs the difference: its height is smoothed
+                // (`tall`, below), so a warning arriving grows the card into it
+                // over a few frames rather than teleporting the buttons. That is
+                // the shell's own answer to a panel that changes size - the
+                // hotkey sheet does the same thing with its two views - and it
+                // is a better one than reserving room for a message that is
+                // usually not there.
+                StyledText {
                     width: parent.width
-                    height: em.height
-
-                    StyledText {
-                        width: parent.width
-                        elide: Text.ElideRight
-                        visible: !!Keyring.warning
-                        text: Keyring.warning
-                        color: Appearance.colour.alarm
-                    }
+                    elide: Text.ElideRight
+                    visible: !!Keyring.warning
+                    text: Keyring.warning
+                    color: Appearance.colour.alarm
                 }
 
                 // -- the tickbox, on the questions that offer one -------------
