@@ -44,6 +44,20 @@ Singleton {
     // the helper rather than applied to whatever replaced it.
     property int serial: 0
 
+    // HOW MANY QUESTIONS THERE HAVE BEEN, which is a different number from the
+    // one above and exists because the field needs one the wire cannot supply.
+    //
+    // `serial` is the HELPER'S name for a question, and it is the right thing to
+    // send back and the wrong thing to hang a field's "empty yourself" on: a
+    // demo reuses a serial the helper could never issue, so two demos in a row
+    // carried the same one and the second opened with the first one's marks
+    // still in the field. That is a rejected password left sitting under
+    // somebody's cursor, which is worse than it looks.
+    //
+    // This one only ever goes up, and it goes up for every question however it
+    // arrived. The panel keys the field on it.
+    property int asked: 0
+
     // "password" or "confirm". A confirm has no field: it is a yes/no about a
     // certificate or an unlock somebody else asked for.
     property string kind: ""
@@ -192,6 +206,7 @@ Singleton {
         // reason: an empty answer here is a question drawn on NO screen, which
         // is a keyring prompt that silently never appears.
         root.screenName = Hypr.focusedScreen || Quickshell.screens[0]?.name || "";
+        root.asked += 1;
         root.active = true;
     }
 
@@ -221,6 +236,7 @@ Singleton {
         root.continueLabel = "Unlock";
         root.cancelLabel = "Cancel";
         root.screenName = Hypr.focusedScreen || Quickshell.screens[0]?.name || "";
+        root.asked += 1;
         root.active = true;
     }
 

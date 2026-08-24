@@ -174,7 +174,7 @@ Column {
 
     // Put away on the way out, so what comes back is the menu rather than the
     // half-typed password and the unrolled layer you walked away from. It also
-    // gives the keyboard back: PasswordField's claim is released when the field
+    // gives the keyboard back: SecretField's claim is released when the field
     // stops being visible, and nothing else would make it stop.
     onShowingChanged: if (!root.showing) {
         root.asking = "";
@@ -734,10 +734,18 @@ Column {
                         }
                     }
 
-                    PasswordField {
+                    // components/SecretField.qml, CLAIMING, which is the half a
+                    // field in a menu cannot do without. A menu's content is a
+                    // Component handed in and loaded two levels down, so the
+                    // surface it lands on has no idea a field appeared and never
+                    // asks the compositor for the keyboard; the claim is what
+                    // tells it. See components/Prompts.qml, and the note above
+                    // `onShowingChanged` for the other end of it.
+                    SecretField {
                         width: parent.width
                         visible: root.asking === entry.modelData.name
                         placeholder: `password for ${entry.modelData.name}`
+                        claims: true
 
                         onAccepted: secret => {
                             Network.clearFailure(entry.modelData.name);

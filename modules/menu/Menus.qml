@@ -314,7 +314,7 @@ Item {
     // A PROMPT ENDING GIVES THE KEY BACK, and without this the second Escape of
     // the pair goes nowhere.
     //
-    // PasswordField takes the window's focus the moment it appears and answers
+    // SecretField takes the window's focus the moment it appears and answers
     // its own Escape by cancelling, which is the right order: the first Escape
     // answers the question you are being asked, the second puts away the thing
     // that asked it. But the field takes the focus off `keys` to do it and hands

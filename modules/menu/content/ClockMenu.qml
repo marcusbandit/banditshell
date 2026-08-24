@@ -941,7 +941,7 @@ Column {
     // A layer surface is handed no key events at all until its window asks the
     // compositor for them, and the field is the only thing that knows one is
     // wanted, so it registers with Prompts and the window listens. Same discipline
-    // as PasswordField, including the claim being given back on hide AND on
+    // as SecretField, including the claim being given back on hide AND on
     // destruction: a menu closing destroys its rows outright without them ever
     // passing through invisible.
     component Field: Item {
@@ -988,7 +988,7 @@ Column {
         }
 
         // Asking for the keyboard and having it are a round trip apart, so focus
-        // is taken again once the surface actually becomes active. PasswordField's
+        // is taken again once the surface actually becomes active. SecretField's
         // note, and its bug: taken before that lands, it is focus in a surface
         // with no keys to give.
         readonly property bool surfaceActive: entry.Window.active
@@ -1364,7 +1364,7 @@ Column {
                 root.addPlace(root.matches[0])
             // Escape cancels the FIELD; a second Escape then closes the menu,
             // which is the arrangement Menus.qml already documents for
-            // PasswordField.
+            // SecretField.
             onCancelled: root.picking = false
         }
 

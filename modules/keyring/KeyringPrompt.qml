@@ -35,13 +35,12 @@ import qs.services
 // fixed slot for the error so the card does not resize when one appears, and
 // one prominent action.
 //
-// IT DOES NOT USE components/PasswordField.qml, and that is not an oversight.
-// That field registers a claim in components/Prompts.qml so that the WINDOW
-// knows to ask the compositor for the keyboard on its behalf, which is the
-// right answer for a field buried two levels down inside a menu's content. This
-// panel is named directly in ShellWindow's keyboardFocus term, so it needs no
-// claim; making one would put a Prompts entry on the shell for as long as a
-// keyring question is up, and Menus.needsKeyboard reads that list.
+// THE FIELD IS components/SecretField.qml, which is the shell's one field for
+// typing a secret into and knows nothing about keyrings. It is placed here with
+// `claims` off: that flag is for a field buried inside a menu, which has to tell
+// components/Prompts.qml so its surface asks the compositor for the keyboard,
+// and this panel is already named in ShellWindow's keyboardFocus term. A claim
+// on top of that would be an entry Menus.needsKeyboard then reads.
 Item {
     id: root
 
@@ -77,20 +76,33 @@ Item {
     readonly property string goLabel: Keyring.continueLabel || (root.asksForSecret ? "unlock" : "continue")
     readonly property string stopLabel: Keyring.cancelLabel || "cancel"
 
+    // THE ANSWER GOES OUT THROUGH THE FIELD, never around it. SecretField hands
+    // its contents to nobody except its own `accepted` signal, so the button
+    // asks the field to submit rather than reading it and submitting itself;
+    // that is the whole reason the component has no readable text.
     function answer(): void {
         if (root.asksForSecret) {
-            if (field.text.length > 0)
-                Keyring.submit(field.text);
+            field.submit();
             return;
         }
         Keyring.confirm();
     }
 
-    // ONE value drives the arrival, the way the lock screen's does: exponential
-    // smoothing, so it moves fast while it is far and settles rather than
-    // stopping. Nothing drives an exit animation, because the answer has already
-    // gone over the bus by the time this starts coming down and a card lingering
-    // over a question that is finished is a card you can type into twice.
+    // ONE value drives the arrival: the ground going dark, and the card coming
+    // forward out of it. Exponential smoothing, the way everything in this shell
+    // moves, so it goes fast while it is far and settles rather than stopping.
+    //
+    // IT COMES FORWARD RATHER THAN RISING. A panel in this shell arrives from
+    // the edge it was pulled out of, and this one was pulled out of nothing: it
+    // is a question that interrupted you, from an application you were not
+    // looking at. Sliding it in from a direction would be claiming a gesture
+    // that never happened. So it scales up into place from just behind the
+    // screen, which is the one arrival that says "this is in front of
+    // everything" rather than "this came from over there".
+    //
+    // Nothing drives an exit animation, because the answer has already gone over
+    // the bus by the time the card starts coming down, and a card lingering over
+    // a question that is finished is a card you can type into twice.
     Follow {
         id: reveal
 
@@ -120,6 +132,16 @@ Item {
     // rather than blank: gnome-keyring fills in different subsets of these
     // depending on what it is asking about, and a card with a hole in it where
     // an unset description would go reads as a broken card.
+    // WHERE ESCAPE LANDS WHEN THERE IS NO FIELD.
+    //
+    // A password question focuses its field and the field answers Escape itself.
+    // A CONFIRM has no field, so without this there is nothing focused on the
+    // whole surface: the panel holds the compositor's keyboard exclusively and
+    // then drops every key on the floor, which is a yes/no question that cannot
+    // be said no to. It has no size and is always visible, so it is always
+    // focusable - the card is invisible until the reveal has moved off zero, and
+    // an invisible item cannot hold focus. SessionMenu's, and its reasoning,
+    // unchanged.
     Item {
         id: keys
 
@@ -134,8 +156,31 @@ Item {
         }
     }
 
-    // DECLARED FIRST, so it sits under the card: declaration order is input
-    // order. Anywhere that is not the card is a refusal.
+    // The field takes the caret on its own (SecretField.land), so this is only
+    // ever about the question that has no field. Deferred, because the surface
+    // is handed the keyboard a round trip after it asks.
+    onOpenChanged: if (root.open && !root.asksForSecret)
+        Qt.callLater(keys.forceActiveFocus)
+
+    // THE GROUND, going dark. Not decoration: the card is a modal question
+    // standing over somebody's desktop, and without it the shell's own
+    // translucent material sits on whatever noise happens to be behind it and
+    // reads as a panel that failed to load. The lock screen dims and blurs its
+    // ground for the same reason; this one cannot blur (there is a whole desktop
+    // under it, not a wallpaper) so it dims and stops there.
+    //
+    // A plain Rectangle, so it has no corner to get wrong, and it takes no input
+    // of its own: the catcher below is what answers a click.
+    Rectangle {
+        anchors.fill: parent
+        color: Appearance.colour.scrim
+        opacity: reveal.value
+        visible: reveal.value > 0.001
+    }
+
+    // DECLARED FIRST among the things that take input, so it sits under the
+    // card: declaration order is input order. Anywhere that is not the card is a
+    // refusal.
     MouseArea {
         id: catcher
 
@@ -150,13 +195,21 @@ Item {
         id: card
 
         x: root.holeX + (root.holeWidth - root.cardWidth) / 2
-        y: root.holeY + (root.holeHeight - height) / 2 + (1 - reveal.value) * Appearance.padding.huge
+        y: root.holeY + (root.holeHeight - height) / 2
         width: root.cardWidth
         height: body.implicitHeight + Appearance.padding.huge * 2
 
         visible: reveal.value > 0.001
         enabled: root.open
         opacity: reveal.value
+
+        // A TWELFTH OF ITSELF, and no more. The card is most of the width of the
+        // content area, so a scale that started anywhere near zero would sweep
+        // the whole middle of the screen on the way in; from this close it reads
+        // as the card settling onto the glass rather than as something flying at
+        // you. Centred, because it is not coming from anywhere.
+        transformOrigin: Item.Center
+        scale: 1 - (1 - reveal.value) / 12
 
         G2Rect {
             anchors.fill: parent
@@ -203,17 +256,23 @@ Item {
                 // a wrapping Text derives its implicitHeight from the room it
                 // has, so feeding that back into its height is a cycle Qt
                 // reports and then resolves by guessing.
-                StyledText {
+                // BALANCED, not greedy, and every one of these strings is the
+                // reason why: the title, the message, the description and the
+                // tickbox's label are all written by whatever asked for the
+                // secret, at whatever length it felt like, so there is no
+                // hand-placed break anywhere and no way to add one. Greedy wrap
+                // filled the first line and left "logged in" alone on the
+                // second, which reads as text that overflowed rather than text
+                // that was set. See components/BalancedText.qml.
+                BalancedText {
                     width: parent.width
-                    wrapMode: Text.WordWrap
                     visible: !!Keyring.message
                     text: Keyring.message
                     color: Appearance.colour.textDim
                 }
 
-                StyledText {
+                BalancedText {
                     width: parent.width
-                    wrapMode: Text.WordWrap
                     visible: !!Keyring.description
                     text: Keyring.description
                     color: Appearance.colour.textFaint
@@ -222,192 +281,34 @@ Item {
                 // -- the field, when there is one to fill in ------------------
                 //
                 // Absent entirely for a confirm, rather than shown disabled: a
-                // question with a yes and a no has nothing to type into and a
+                // question with a yes and a no has nothing to type into, and a
                 // greyed box would only invite somebody to try.
-                Item {
-                    id: fieldBlock
+                //
+                // components/SecretField.qml, which is the shell's one field for
+                // this. It CLAIMS NOTHING: this panel is named directly in
+                // ShellWindow's keyboardFocus term, so the surface already asks
+                // for the keyboard on its own account, and a Prompts claim on
+                // top of that is an entry Menus.needsKeyboard would then read.
+                SecretField {
+                    id: field
 
                     width: parent.width
-                    height: em.height * 3
                     visible: root.asksForSecret
+                    placeholder: Keyring.passwordNew ? "new password" : "password"
+                    alarm: !!Keyring.warning
 
-                    Follow {
-                        id: focusIn
+                    onAccepted: secret => Keyring.submit(secret)
+                    onCancelled: Keyring.refuse()
 
-                        speed: Appearance.anim.revealSpeed
-                        target: field.activeFocus ? 1 : 0
-                        epsilon: 0.005
-                    }
-
-                    G2Rect {
-                        anchors.fill: parent
-                        topLeftRadius: Appearance.rounding.normal
-                        topRightRadius: Appearance.rounding.normal
-                        // Square at the bottom, because the bottom edge IS the
-                        // active indicator. A true right angle, not a rounding
-                        // somebody forgot.
-                        bottomLeftRadius: 0
-                        bottomRightRadius: 0
-                        color: Appearance.colour.fill
-                        stroke: Appearance.colour.seam
-                        strokeWidth: Appearance.sizes.seam
-                    }
-
-                    // NO ECHO, and no passwordCharacter either. A field full of
-                    // asterisks is a font's answer to this question, and it is
-                    // the one part of a credential prompt everybody looks at
-                    // while they type. The marks below are drawn instead; `text`
-                    // still holds the real thing, so this changes only what is
-                    // painted. The caret goes with the asterisks, because a
-                    // caret in a line that never grows is a caret that never
-                    // moves. Verbatim modules/lock/LockFace.qml, which asks the
-                    // same question two surfaces away.
-                    TextInput {
-                        id: field
-
-                        anchors.fill: parent
-                        anchors.leftMargin: Appearance.padding.large
-                        anchors.rightMargin: Appearance.padding.large
-                        anchors.bottomMargin: Appearance.padding.small
-
-                        verticalAlignment: TextInput.AlignVCenter
-                        echoMode: TextInput.NoEcho
-                        cursorVisible: false
-                        clip: true
-
-                        font.family: Appearance.font.family
-                        font.pixelSize: Appearance.font.size.small
-                        renderType: Text.NativeRendering
-                        color: Appearance.colour.text
-
-                        onAccepted: root.answer()
-
-                        Keys.onEscapePressed: Keyring.refuse()
-
-                        // ASKING for the keyboard and HAVING it are a round trip
-                        // apart: this surface gets no key events until its
-                        // window asks the compositor, and the compositor hands
-                        // them over a frame or more later. Focus taken before
-                        // that lands is focus in a surface with no keys to give,
-                        // so it is taken again when the surface actually becomes
-                        // active. components/PasswordField.qml documents the
-                        // same trap; a password field that swallows the first
-                        // few characters is the worst thing to ship here.
-                        readonly property bool surfaceActive: field.Window.active
-                        onSurfaceActiveChanged: if (field.surfaceActive && root.open)
-                            field.forceActiveFocus()
-
-                        // A FRESH QUESTION EMPTIES IT, keyed on the serial
-                        // rather than on `open`. gnome-keyring answers a wrong
-                        // password by asking again down the same conversation,
-                        // so the card never closes between the two attempts and
-                        // an `open` test would leave the rejected password
-                        // sitting in the field.
-                        readonly property int serial: Keyring.serial
-                        onSerialChanged: {
-                            field.text = "";
-                            if (root.open)
-                                field.forceActiveFocus();
-                        }
-
-                    }
-
-                    StyledText {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Appearance.padding.large
-                        anchors.verticalCenter: field.verticalCenter
-                        visible: !field.text
-                        text: Keyring.passwordNew ? "new password" : "password"
-                        color: Appearance.colour.textGhost
-                    }
-
-                    // WHAT YOU TYPED, one mark per character, each one growing
-                    // in on the frame it is made.
-                    //
-                    // THE SHAPE IS THE SHELL'S OWN. Material's password dot is a
-                    // circle, and Material 3 answers the same question elsewhere
-                    // with its own family of soft shapes; this shell has one
-                    // shape primitive and it is the G2 squircle, so a mark here
-                    // is a squircle at full reach rather than a circle borrowed
-                    // from somebody else's system. A radius of half the side
-                    // through the G2 construction is what a circle looks like in
-                    // this shell's hand: rounder at the compass points, flatter
-                    // on the diagonals, and unmistakably the same corner as the
-                    // card it is sitting in. See ~/.claude/rules/g2-corners.md.
-                    //
-                    // The point of drawing them at all is the ARRIVAL. A mark
-                    // that is simply there on the next frame is the machine
-                    // reporting a fact; one that grows into place is the machine
-                    // answering you, and while a password is being typed that
-                    // acknowledgement is the only feedback this card can give.
-                    //
-                    // Clipped rather than shrunk or scrolled, exactly as the lock
-                    // screen's are: a long password runs out of field eventually,
-                    // and the honest thing is for it to run off the ends.
-                    // Rescaling the marks to fit would turn the LENGTH of what
-                    // you typed into something readable from across the room.
-                    Item {
-                        anchors.fill: field
-                        clip: true
-
-                        Row {
-                            anchors.left: parent.left
-                            anchors.verticalCenter: parent.verticalCenter
-                            spacing: Appearance.padding.small
-
-                            Repeater {
-                                model: field.text.length
-
-                                delegate: G2Rect {
-                                    width: Appearance.sizes.lockDot
-                                    height: width
-                                    radius: width / 2
-                                    color: Keyring.warning ? Appearance.colour.alarm : Appearance.colour.text
-
-                                    // Grown and faded in from nothing, ONCE, on
-                                    // the frame it is created. A Behavior is
-                                    // right here and wrong almost everywhere
-                                    // else in this shell: nothing is already
-                                    // smoothing these, so there is no second
-                                    // ramp for it to fight with.
-                                    scale: 0
-                                    opacity: 0
-
-                                    Component.onCompleted: {
-                                        scale = 1;
-                                        opacity = 1;
-                                    }
-
-                                    Behavior on scale {
-                                        NumberAnimation {
-                                            duration: Appearance.anim.normal
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-
-                                    Behavior on opacity {
-                                        NumberAnimation {
-                                            duration: Appearance.anim.normal
-                                            easing.type: Easing.OutCubic
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // THE ACTIVE INDICATOR: a hairline at rest, thicker and
-                    // coloured on focus, and the alarm colour while the last
-                    // answer stands rejected. Smoothed, so focus arrives as a
-                    // movement rather than a jump.
-                    G2Rect {
-                        anchors.bottom: parent.bottom
-                        anchors.left: parent.left
-                        anchors.right: parent.right
-                        height: Appearance.font.stem * (1 + focusIn.value)
-                        radius: 0
-                        color: Keyring.warning ? Appearance.colour.alarm : field.activeFocus ? Appearance.colour.accent : Appearance.colour.separator
-                    }
+                    // A FRESH QUESTION EMPTIES IT, keyed on the count of
+                    // questions rather than on the card opening. gnome-keyring
+                    // answers a wrong password by asking again down the same
+                    // conversation, so the card never closes between the two
+                    // attempts and an `open` test would leave the rejected
+                    // password sitting in the field for somebody to press Enter
+                    // on a second time.
+                    readonly property int asked: Keyring.asked
+                    onAskedChanged: field.clear()
                 }
 
                 // -- what went wrong, in a slot that is always there ----------
@@ -416,6 +317,17 @@ Item {
                 // a password is rejected. The buttons would move out from under
                 // the cursor at exactly the moment somebody is about to press
                 // one of them again.
+                //
+                // THE SLOT IS THE WARNING'S AND NOBODY ELSE'S. It used to say
+                // "enter to answer, escape to refuse" while there was nothing to
+                // report, and that line was furniture: Enter and Escape on a box
+                // with a field and two buttons are not something anybody has to
+                // be told, and captioning them said the shell thought you might
+                // not know. What it cost was worse than the space - a slot that
+                // always has words in it is a slot the eye stops reading, so the
+                // one message that matters arrived in a place already dismissed
+                // as decoration. Empty by default, and the warning is then the
+                // only thing that has ever appeared there.
                 Item {
                     width: parent.width
                     height: em.height
@@ -423,8 +335,9 @@ Item {
                     StyledText {
                         width: parent.width
                         elide: Text.ElideRight
-                        text: Keyring.warning || (root.asksForSecret ? "enter to answer, escape to refuse" : "escape to refuse")
-                        color: Keyring.warning ? Appearance.colour.alarm : Appearance.colour.textGhost
+                        visible: !!Keyring.warning
+                        text: Keyring.warning
+                        color: Appearance.colour.alarm
                     }
                 }
 
@@ -448,14 +361,13 @@ Item {
                         onToggled: Keyring.choose(!Keyring.choiceChosen)
                     }
 
-                    StyledText {
+                    BalancedText {
                         id: choiceLabel
 
                         anchors.left: choice.right
                         anchors.right: parent.right
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
-                        wrapMode: Text.WordWrap
                         text: Keyring.choiceLabel
                         color: Appearance.colour.textDim
 
@@ -507,7 +419,7 @@ Item {
 
                         // A confirm is always answerable; a password is not
                         // answerable until there is one.
-                        readonly property bool ready: !root.asksForSecret || field.text.length > 0
+                        readonly property bool ready: !root.asksForSecret || !field.empty
 
                         width: goMark.implicitWidth + Appearance.padding.huge * 2
                         height: em.height * 2

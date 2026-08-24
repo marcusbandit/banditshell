@@ -389,7 +389,22 @@ banditshell/
 │   ├── CodeBlock.qml            that, coloured from the theme, one delegate per
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
-│   ├── PasswordField.qml        inline secret entry
+│   ├── SecretField.qml          THE field you type a secret into: the lock
+│   │                            screen's, the keyring's, and the wifi row's.
+│   │                            One mark per character rather than an
+│   │                            asterisk, each a different shape from
+│   │                            lobes.js, and only the NEW one ever moves.
+│   │                            The secret leaves through `accepted` and by
+│   │                            no other door: there is no readable text
+│   │                            property, on purpose
+│   ├── lobes.js                 the mark family, as maths: one polar curve,
+│   │                            r = 1 - depth*cos(lobes*t), at six settings.
+│   │                            Shape comes from the POSITION and never from
+│   │                            the character, which would be the password
+│   │                            written on screen in a code
+│   ├── BalancedText.qml         a paragraph that breaks on purpose: same line
+│   │                            count as greedy wrap, evened out, so a string
+│   │                            somebody else wrote does not leave an orphan
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
