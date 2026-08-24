@@ -8,11 +8,13 @@ import qs.services
 
 // SCREENS: which monitor owns which workspaces.
 //
-// A monitor's whole claim on the desktop is its POSITION in one list of names.
-// The k-th name in `sidebar.workspaces.order` owns the run
-// [k*count + 1 .. k*count + count], so with a five-slot column the first screen
-// owns 1 to 5 and the second owns 6 to 10 (services/Hypr.qml). Move a name up
-// this page and that screen takes the band above it, plates, windows and all.
+// A monitor's whole claim on the desktop is its POSITION in one list of names,
+// counting only the screens that are plugged in. The k-th CONNECTED name in
+// `sidebar.workspaces.order` owns the run [k*count + 1 .. k*count + count], so
+// with a five-slot column the first screen owns 1 to 5 and the second owns 6 to
+// 10 (services/Hypr.qml). Move a name up this page and that screen takes the
+// band above it, plates, windows and all. Unplug one and the screens below it
+// close the gap, so a laptop on its own is always on 1 to 5.
 //
 // THIS IS THE ONLY WAY IN, which is the unusual thing about it. Every other
 // setting in this shell has a terminal in front of it as well as a row;
@@ -168,7 +170,14 @@ Item {
                 // interface should make somebody parse.
                 detail: {
                     const bits = [];
-                    if (Hypr.count > 1)
+                    // A SCREEN THAT IS NOT THERE CLAIMS NOTHING. Bands are
+                    // counted off the connected screens, so an absent one has
+                    // no run to name, and printing `bandFor`'s fallback would
+                    // have every unplugged row claiming 1-5 alongside the
+                    // screen that actually has them.
+                    if (!monitor.output)
+                        bits.push("no workspaces while unplugged");
+                    else if (Hypr.count > 1)
                         bits.push(`workspaces ${monitor.band}-${monitor.band + Hypr.count - 1}`);
                     else
                         bits.push(`workspace ${monitor.band}`);

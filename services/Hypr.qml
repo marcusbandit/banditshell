@@ -54,7 +54,7 @@ Singleton {
     // number above from "how many workspaces there are" into "how long one
     // screen's run is".
     //
-    // A monitor owns a CONTIGUOUS BAND: the k-th name in
+    // A monitor owns a CONTIGUOUS BAND: the k-th CONNECTED name in
     // `sidebar.workspaces.order` owns [k*count + 1 .. k*count + count], so with
     // a five-slot column the first screen owns 1-5 and the second 6-10. One
     // number, k, is the whole of a monitor's claim, and both ends of the band
@@ -79,19 +79,27 @@ Singleton {
     // A name is the one handle on a screen that holds still.
     readonly property var order: Config.values.sidebar.workspaces.order
 
+    // THE ORDER WITH THE UNPLUGGED SCREENS TAKEN OUT, which is what bands are
+    // counted off. A screen that is not here cannot hold a band: alone on the
+    // laptop, eDP-1 is first and owns 1-5 however many desk monitors the order
+    // still lists ahead of it, and that is the same rule that gives it 11-15
+    // when they are all plugged in.
+    //
+    // `order` itself is untouched, so plugging the desk back in puts every
+    // screen back on exactly the workspaces it had.
+    readonly property var live: root.order.filter(name => root.outputs.indexOf(name) >= 0)
+
     // THE FIRST WORKSPACE OF A SCREEN'S RUN, which is the only number a
     // per-screen consumer needs: everything else in its column is this plus an
     // index, and every id it produces is a real workspace, so `switchTo` and
     // `clientsIn` go on meaning exactly what they meant.
     //
-    // A NAME THE ORDER HAS NOT HEARD OF GETS THE FIRST BAND rather than
-    // nothing. That is a monitor in the moment before the seed below catches up
-    // with it, or the whole of a session where the config could not be read,
-    // and a column with no workspaces in it is a column that draws nothing at
-    // all. The first band is at least a set of places, and it is what every
-    // screen drew before bands existed.
+    // A NAME `live` HAS NOT HEARD OF GETS THE FIRST BAND rather than nothing.
+    // That is a monitor in the moment before the seed below catches up with it,
+    // or the whole of a session where the config could not be read, and a
+    // column with no workspaces in it is a column that draws nothing at all.
     function bandFor(screen: string): int {
-        return Math.max(0, root.order.indexOf(screen)) * root.count + 1;
+        return Math.max(0, root.live.indexOf(screen)) * root.count + 1;
     }
 
     // WHERE EACH MONITOR IS, by monitor name, as a NUMBERED workspace.
@@ -254,11 +262,15 @@ Singleton {
     // WHAT THE ORDER WANTS, in the same { workspace: monitor } shape the rules
     // come back in, so the two can simply be compared. Every band, every slot
     // in it, from the count.
+    //
+    // Off `live` for `bandFor`'s reason: binding a workspace to a monitor that
+    // is not plugged in is a rule the compositor cannot honour, and it is the
+    // rule that was stranding 1-5 on an absent screen.
     function wants(): var {
         const out = {};
-        for (let k = 0; k < root.order.length; k++)
+        for (let k = 0; k < root.live.length; k++)
             for (let i = 0; i < root.count; i++)
-                out[`${k * root.count + i + 1}`] = root.order[k];
+                out[`${k * root.count + i + 1}`] = root.live[k];
         return out;
     }
 
