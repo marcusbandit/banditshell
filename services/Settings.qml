@@ -79,6 +79,14 @@ Singleton {
             key: "screens",
             title: "Screens",
             icon: "monitor"
+        },
+        // The one page that is not about what the shell LOOKS like. It is about
+        // the other way in: `banditshell` the command, which is how every verb
+        // on this rail can also be typed, bound to a key or run from a script.
+        {
+            key: "cli",
+            title: "Terminal",
+            icon: "terminal"
         }
     ]
 

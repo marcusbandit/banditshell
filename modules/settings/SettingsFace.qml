@@ -618,6 +618,17 @@ Item {
                         width: pager.extent
                         height: pager.height
 
+                        // A PAGE MAY NOT DRAW INTO ITS NEIGHBOUR. The pager
+                        // clips the strip against the card, which keeps the
+                        // strip inside the window and says nothing about the
+                        // cells inside it: an unbounded Text on one page ran
+                        // clean across the next one's first line, and went
+                        // unnoticed while the page it overflowed into was the
+                        // one nobody had written yet. Content that overruns its
+                        // cell is a bug on the page that wrote it; this is what
+                        // makes it that page's bug rather than its neighbour's.
+                        clip: true
+
                         // The page's own vertical scroll: a target chased by a
                         // Follow, which is the glide idiom GlideList uses,
                         // carried here because a page is arbitrary content

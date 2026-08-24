@@ -73,10 +73,16 @@ done
 # row; nothing downstream counts them by hand, and the surface lays itself out
 # from however many there turn out to be.
 #
-# `@monocraft` is the one payload that is not a package name. The font's AUR
-# packages build it from source with fontforge, which is minutes and a compiler
-# for a 700 KB file that upstream already ships built. Phase 1 has a budget of
-# seconds, so it takes the prebuilt release instead. See install_monocraft.
+# Two payloads are not package names. `@monocraft` is the font: its AUR packages
+# build it from source with fontforge, which is minutes and a compiler for a
+# 700 KB file that upstream already ships built, and phase 1 has a budget of
+# seconds, so it takes the prebuilt release instead. `@zsh-completion` is the
+# CLI's tab completion, which is not something anyone can install for you: it is
+# generated from bin/banditshell and written into the user's own home. See
+# install_monocraft and install_completion.
+#
+# A probe may leave a word in PROBE_NOTE to say WHY it is satisfied, for the row
+# whose honest answer is "nothing to do here" rather than "already present".
 
 STEP_NAME=()
 STEP_PROBE=()
@@ -119,7 +125,7 @@ build_table() {
         for n in hyprland qt6-declarative qt6-multimedia qt6-shadertools \
             ttf-material-symbols-variable ttf-nerd-fonts-symbols wl-clipboard \
             jq grim ffmpeg python python-gobject python-cryptography glib2 zenity \
-            qrencode zxing-cpp librsvg; do
+            qrencode zxing-cpp librsvg zsh-completion; do
             add_step "$n" "false" "" 2 "pretend"
         done
         return
@@ -153,6 +159,25 @@ build_table() {
     add_step qrencode                     "command -v qrencode"          qrencode                      2 "the qr the shell hands out"
     add_step zxing-cpp                    "command -v ZXingReader"       zxing-cpp                     2 "the qr the shell reads back"
     add_step librsvg                      "command -v rsvg-convert"      librsvg                       2 "svg icons, for the palette"
+
+    # LAST, and after python, because it is the only row that runs part of the
+    # shell rather than installing something the shell needs. Its probe is the
+    # same one the settings row reads, so the installer and the panel cannot
+    # disagree about whether this is done.
+    add_step zsh-completion "completion_present" @zsh-completion 2 "tab completion for the CLI, in zsh"
+}
+
+# Whether there is anything to do about completion, which is two questions: is
+# there a zsh on this machine at all, and if so is the completion installed and
+# built from the CLI as it stands now. A machine with no zsh is not missing
+# anything, and says so rather than being reported as already having a file it
+# does not have.
+completion_present() {
+    if ! command -v zsh >/dev/null 2>&1; then
+        PROBE_NOTE="no zsh on this machine"
+        return 0
+    fi
+    "$REPO/scripts/zsh-completion.sh" status --quiet
 }
 
 # ------------------------------------------------------------- the protocol --
@@ -398,6 +423,17 @@ install_monocraft() {
     return 0
 }
 
+# The CLI's tab completion, generated and written into the user's home.
+#
+# Run AS THE USER even when this script is root, the same argument the surface
+# makes below: the file goes in their data directory and the fpath line goes in
+# their .zshrc, and root has neither. The script works its own way back to
+# $SUDO_USER, so this only has to hand it a home to work from.
+install_completion() {
+    command -v zsh >/dev/null 2>&1 || return 0
+    "$REPO/scripts/zsh-completion.sh" install --quiet
+}
+
 # -------------------------------------------------------------- the surface --
 
 UI_PID=""
@@ -456,14 +492,19 @@ DONE_N=0
 SKIP_N=0
 FAIL_N=0
 
+PROBE_NOTE=""
+
 run_step() {
     local i="$1"
     local name="${STEP_NAME[$i]}"
     local probe="${STEP_PROBE[$i]}"
     local pkg="${STEP_PKG[$i]}"
 
+    # Not a subshell: a probe that wants to explain itself writes PROBE_NOTE,
+    # and that only survives if it ran here.
+    PROBE_NOTE=""
     if eval "$probe" >/dev/null 2>&1; then
-        emit_step "$i" skip "already present"
+        emit_step "$i" skip "${PROBE_NOTE:-already present}"
         [ "$UI_PID" = "" ] && bar "$i" "${#STEP_NAME[@]}" "$name" skip
         SKIP_N=$((SKIP_N + 1))
         return 0
@@ -479,6 +520,8 @@ run_step() {
         ok=0
     elif [ "$pkg" = "@monocraft" ]; then
         install_monocraft && ok=0
+    elif [ "$pkg" = "@zsh-completion" ]; then
+        install_completion && ok=0
     else
         install_pkg "$pkg" && ok=0
     fi
@@ -576,6 +619,9 @@ main() {
     fi
 
     say "  banditshell is ready."
+    if command -v zsh >/dev/null 2>&1; then
+        say "    in a NEW zsh:   banditshell <Tab> completes every verb"
+    fi
     say "    run it now:     $REPO/bin/banditshell start"
     say "    see it live:    $REPO/bin/banditshell run"
     say "    every verb:     $REPO/bin/banditshell help"

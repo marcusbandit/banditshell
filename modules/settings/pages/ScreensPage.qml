@@ -115,7 +115,16 @@ Item {
         // The quiet eyebrow the other pages open with, saying the one thing a
         // list of monitors cannot show: there is no apply step, and the bands
         // have already moved by the time the row has finished sliding.
+        //
+        // BOUNDED, like every other paragraph on a page. Without a width a Text
+        // is as wide as its one line, and this one is longer than the column:
+        // it ran straight out of this page and into the next cell of the pager,
+        // where it was invisible for exactly as long as this was the last page.
+        // The page after it inherited the tail of "moved immediately" across
+        // its own first line.
         StyledText {
+            width: list.width
+            wrapMode: Text.WordWrap
             text: `${root.screens.length} ${root.screens.length === 1 ? "screen" : "screens"}, ${Hypr.count} workspaces each, moved immediately`
             color: Appearance.colour.textFaint
             font.pixelSize: Appearance.font.size.small

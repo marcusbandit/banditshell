@@ -23,7 +23,7 @@
 #                                runs; `panel` is the strip on the sidebar's
 #                                flank. Both toggle. The shape is sticky, so
 #                                `toggle` reopens whichever you last used
-#   banditshell tablet on|off|toggle|lid closed|open|status|probe|probe-lid
+#   banditshell tablet on|off|toggle|lid <closed|open|toggle>|status|probe|probe-lid
 #                                the hinge. `on`/`off` are what the compositor's
 #                                switch binds call when the machine is folded
 #                                over; `probe` asks the hardware directly
@@ -71,7 +71,16 @@
 #                                the picker: the bottom edge's second pull
 #   banditshell status
 #   banditshell theme [name]
-#   banditshell get <key> | set <key> <value>
+#   banditshell get <key>
+#   banditshell set <key> <value>
+#   banditshell completions install|print|status|remove
+#                                tab completion in zsh for every verb above,
+#                                GENERATED from this comment block rather than
+#                                written out a second time. `install` puts it
+#                                where zsh looks and wires the fpath; after that
+#                                the file rebuilds itself whenever this script is
+#                                newer than it, so a verb added above needs
+#                                nothing done to it. Bare, it says where it is
 #   banditshell shot [file]      screenshot, for checking a change actually landed
 #   banditshell demo <key>       open a menu, screenshot it, close it
 #   banditshell lockpreview      draw the lock screen WITHOUT locking, and shoot it
@@ -79,6 +88,12 @@
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
 # docs/hyprland-binds.example.conf is a ready-made set to copy or source.
+#
+# The block above is also DATA. scripts/zsh-completion.sh reads it to build the
+# zsh completion, so its shape is a contract: two spaces, `banditshell `, the
+# verb, then the alternatives separated by `|`; a description, when there is
+# one, starts at column 31 and its continuation lines are indented to match.
+# A continuation indented LESS than that is more alternatives (see `alarm`).
 
 set -euo pipefail
 
@@ -535,6 +550,21 @@ get)
 set)
     [ $# -ge 2 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
     ipc shell set "$1" "$2"
+    ;;
+
+# TAB COMPLETION, and the whole of it lives in scripts/zsh-completion.sh: this
+# is a pass-through so that the thing you type is the thing this file documents.
+# It reads the header block at the top of this file to find the verbs, which is
+# why there is no list of them here to fall out of date.
+completions)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    install | print | status | remove)
+        exec "$SHELL_DIR/scripts/zsh-completion.sh" "$sub" "$@"
+        ;;
+    *) echo "usage: banditshell completions install|print|status|remove" >&2; exit 2 ;;
+    esac
     ;;
 
 shot)
