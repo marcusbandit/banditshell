@@ -17,6 +17,23 @@ Item {
     id: root
 
     property string text: ""
+
+    // A MARK INSTEAD OF, OR IN FRONT OF, THE WORDS.
+    //
+    // A pill with no text is a ROUND pill, not a wide one with a glyph rattling
+    // about in it: the radius is already half the height, so dropping the width
+    // to match makes a circle without a second rule being written. That is the
+    // shape a control with one mark in it wants, and it is what lets a row of
+    // them read as a row of buttons rather than as a sentence.
+    //
+    // Icon AND text together is the third case and is deliberately allowed: a
+    // control whose mark is not self-evident can carry both until it is.
+    property string icon: ""
+
+    // Material Symbols treats FILL as a state axis, so a pill that is ON can say
+    // so with the same mark rather than a different one. See components/Icon.qml.
+    property real iconFill: 0
+
     property real labelSize: Appearance.font.size.small
     property bool interactive: true
 
@@ -32,7 +49,16 @@ Item {
 
     signal clicked
 
-    implicitWidth: label.implicitWidth + Appearance.padding.normal * 2
+    // How much of the width the mark and the space after it claim, 0 when there
+    // is no mark. Its own property because the width below is built from the
+    // label's INTRINSIC width rather than from the row's: a caller may cap this
+    // pill (NotificationCard does), the label then narrows to fit and elides,
+    // and a width measured off the row it lives in would chase itself.
+    readonly property real markSpan: root.icon ? root.labelSize + (root.text ? Appearance.padding.small : 0) : 0
+
+    // A MARK ON ITS OWN GETS A CIRCLE, which is the height and not a width of
+    // its own: anything else is a number picked to look round.
+    implicitWidth: root.text ? label.implicitWidth + root.markSpan + Appearance.padding.normal * 2 : implicitHeight
     implicitHeight: Math.max(Appearance.sizes.minTarget, label.implicitHeight + Appearance.padding.small * 2)
     width: implicitWidth
     height: implicitHeight
@@ -61,20 +87,42 @@ Item {
         }
     }
 
-    StyledText {
-        id: label
+    // MARK THEN WORDS, centred as one thing. A Row rather than two anchored
+    // children so the pair has a single width to size the pill from, and so a
+    // pill with only one of the two needs no case anywhere.
+    Row {
+        id: content
 
-        anchors.fill: parent
-        anchors.leftMargin: Appearance.padding.normal
-        anchors.rightMargin: Appearance.padding.normal
+        anchors.centerIn: parent
+        spacing: root.icon && root.text ? Appearance.padding.small : 0
 
-        text: root.text
-        font.pixelSize: root.labelSize
-        horizontalAlignment: Text.AlignHCenter
-        verticalAlignment: Text.AlignVCenter
-        // A pill that is narrower than its label has been capped on purpose by
-        // whoever laid it out; it must lose characters rather than width.
-        elide: Text.ElideRight
+        Icon {
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !!root.icon
+            name: root.icon
+            fill: root.iconFill
+            // The mark is set to the LABEL's size rather than to the icon
+            // tier's, or a pill with a glyph in it is taller than the pill
+            // beside it holding a word.
+            size: root.labelSize
+            color: label.color
+        }
+
+        StyledText {
+            id: label
+
+            anchors.verticalCenter: parent.verticalCenter
+            visible: !!root.text
+            width: visible ? Math.min(implicitWidth, root.width - Appearance.padding.normal * 2 - root.markSpan) : 0
+
+            text: root.text
+            font.pixelSize: root.labelSize
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+            // A pill that is narrower than its label has been capped on purpose by
+            // whoever laid it out; it must lose characters rather than width.
+            elide: Text.ElideRight
+        }
     }
 
     MouseArea {

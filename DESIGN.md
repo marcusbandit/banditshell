@@ -390,6 +390,8 @@ banditshell/
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
 │   ├── PasswordField.qml        inline secret entry
+│   ├── AspectMark.qml          two rectangles: the screen as an outline, the
+│   │                            picture solid inside it, both fitted to one box
 │   ├── PathField.qml            a MenuRow until you press it, then a place to
 │   │                            type; the keyboard is claimed on the edit, not
 │   │                            on being visible
@@ -907,6 +909,73 @@ permanently open text box for a setting changed twice a year. The keyboard is cl
 have made the settings panel hold the keyboard for as long as the page was open: a password
 field appears in answer to a press and is gone a second later, and this one sits there while
 you read everything else.
+
+### The picker stopped talking
+
+A panel whose entire argument is that you recognise a wallpaper faster than you can read its
+name had four badges set in capitals (`GIF`, `VIDEO`, `AUDIO`, `SVG · STILL`) and two pills
+spelling out `this screen` / `all screens` and `fits this screen` / `all shapes`. Every one of
+them is a thing Material Symbols already has a single mark for, and a strip you are flicking
+through gives a badge about a tenth of a second, which is a glyph's native speed and well under
+a word's. `Pill` grew an `icon`, and a pill with a mark and no words is a **circle**: the radius
+was already half the height, so dropping the width to match needs no second rule.
+
+`motion_photos_off` for the frozen SVG is the one worth pointing at. It is the same family as
+the mark for a thing that moves, negated, which is exactly what that file is: it asked to move
+and cannot. No pair of words in the old set carried that relationship. **FILL is the state
+axis** throughout, so "on" is the same mark solid rather than a second glyph to learn, and the
+badge uses fill and hue together because a badge is read in the corner of the eye, where a fill
+survives and a hue does not.
+
+**`components/AspectMark.qml` is the part that is not an icon at all.** "Fits this screen" is
+four words for a fact with no words in it: a picture has a shape, a monitor has a shape, and
+the honest way to say whether one suits the other is to draw both. The outline is the screen,
+because that is what does not change while you scrub; the solid one is the picture. **Both fit
+the same square** rather than sharing a height, or a 32:9 shape comes out eleven times wider
+than a portrait one and the mark stops being a mark. The picture is fitted into a box one
+stroke smaller on each side, which is not decoration: drawn at the same size, a perfect match
+covered the outline exactly and left a single block saying nothing about a screen at all.
+
+### The gap was the shrinkage
+
+`pitch` was `cardWidth + cardGap`, and `cardWidth` is the size the **centre** card is drawn at.
+The cards either side are at `nearScale` and the rest at `farScale`, so spacing them a full
+unscaled card apart added the shrinkage to the gap: at 0.72 the far cards sat a quarter of a
+card apart and the ends of the strip were mostly surface with pictures floating in it. Measured
+off the card **as drawn** (`cardWidth * nearScale + cardGap`), the gap between ordinary cards is
+the gap that was asked for, and the centre card, which is over one, rides **over** its
+neighbours. That overlap is the point rather than a side effect: `cardZ` already lifts the
+middle, so the strip reads as a stack with one card pulled out of it, which is what a wallpaper
+you are considering is.
+
+### Dismissing is choosing
+
+Closing the picker **keeps** the wallpaper the strip is centred on. It used to put the old one
+back, and that was wrong for a reason hiding in plain sight: the picture has already been on
+your desktop, full size, behind the panel, since the card reached the middle. That is not a
+preview in the usual sense of a small version of something that has not happened; it is the
+thing itself, applied. Scrubbing to a wallpaper, judging it against your own windows, deciding
+you liked it and dismissing the panel took it away again, and keeping what you were already
+looking at required pressing it a second time.
+
+So a tap is a **shortcut for leaving** rather than the only way to decide, and all it adds is a
+point for the reveal to open out of. `accept` lost its path parameter with it: every caller
+passed the centred card, because a tap on a side card centres it first and Enter has no card at
+all. **There is no cancel, including Escape**, because a cancel would have to mean "the last
+minute of your desktop was not real", which is the fiction being removed. Scrubbing back is the
+undo, and it is the same gesture that got you there.
+
+This made an ordering bug in `setOn` reachable on every single close, where before it needed a
+tap. `shownOn` is preview-or-current, so clearing the preview **before** writing the config
+hands the surface the old wallpaper for the length of one call: it loads into the back slot,
+finds it already decoded, swaps it in, and then the config write swaps the new one in behind
+it. Two reveals in opposite directions for one choice. Written first and cleared after, `shown`
+never changes value at all, and committing what you were already looking at is correctly not an
+event.
+
+An opening that scrubbed nowhere must also not write, or merely **looking** at the picker would
+pin a screen off the default it was happily following. `everywhere` is the exception, because
+that deed is about the other screens and this one already agreeing says nothing about them.
 
 ### A wallpaper is not only a picture
 

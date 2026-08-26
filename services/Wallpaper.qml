@@ -444,18 +444,31 @@ done`, "sh", ...root.available];
             root.setAll(path);
             return;
         }
-        root.clearPreview(screen);
 
         // ALREADY THE ANSWER, so say nothing. Choosing the picture a screen is
         // already following the default to is not a reason to give that screen
         // an entry: it would pin it there, and the next `set everywhere` would
         // move every screen except this one.
-        if (!root.hasOwn(screen) && path === root.current)
-            return;
+        if (root.hasOwn(screen) || path !== root.current) {
+            const next = Object.assign({}, Config.values.wallpaper.perScreen ?? {});
+            next[screen] = path;
+            Config.set("wallpaper.perScreen", next);
+        }
 
-        const next = Object.assign({}, Config.values.wallpaper.perScreen ?? {});
-        next[screen] = path;
-        Config.set("wallpaper.perScreen", next);
+        // THE PREVIEW GOES LAST, AND THE ORDER IS THE WHOLE POINT.
+        //
+        // `shownOn` is preview-or-current, so clearing the preview first hands
+        // the surface the OLD wallpaper for the length of one call: the window
+        // loads it into the back slot, finds it already decoded, and swaps it
+        // in, and then the config write swaps the new one in behind it. Two
+        // reveals, in opposite directions, for one choice.
+        //
+        // Written first and cleared after, `shown` never changes value at all:
+        // it is the previewed path before, the same path as `current`
+        // afterwards, and the surface's load() returns early because the
+        // picture is already the one in front. Committing what you were looking
+        // at is then, correctly, not an event.
+        root.clearPreview(screen);
     }
 
     // THE SAME ONE EVERYWHERE, which is a write to the default AND a clearing
@@ -463,8 +476,11 @@ done`, "sh", ...root.available];
     // with the default in every entry would go on agreeing with the OLD default
     // the moment the default moved.
     function setAll(path: string): void {
-        root.previews = {};
+        // Written before the previews are dropped, for the reason `setOn`
+        // spells out: a screen whose preview is already this picture must not
+        // be handed its old one back for the length of one call.
         Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", path]]);
+        root.previews = {};
     }
 
     // BACK TO THE DEFAULT. Not "set it to whatever the default currently is":

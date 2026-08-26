@@ -165,7 +165,26 @@ Item {
     // ONE CARD OF TRAVEL. Everything that moves the strip is measured in these:
     // the path's own spacing, the scrub, the wheel. A single number, so the
     // three cannot disagree about how far a card is.
-    readonly property real pitch: root.cardWidth + root.cardGap
+    //
+    // MEASURED OFF THE CARD AS DRAWN, not off the card as declared, and that is
+    // the whole of why the strip used to look so thin.
+    //
+    // `cardWidth` is the size the CENTRE card is drawn at, near enough: the
+    // ones either side of it are down at `nearScale` and the rest at
+    // `farScale`, because that scaling is what makes the middle of the strip a
+    // middle. Spacing them a full unscaled card apart therefore adds the
+    // shrinkage to the gap: at 0.72 the far cards ended up a quarter of a card
+    // apart from each other, so the ends of the strip were mostly surface with
+    // pictures floating in it, and the panel held four wallpapers where it had
+    // room to show seven.
+    //
+    // Spacing off `nearScale` instead makes the gap between the ordinary cards
+    // the gap that was asked for, and it lets the centre card, which is over
+    // one, RIDE OVER its neighbours. That overlap is not a side effect being
+    // tolerated: `cardZ` already lifts the middle above the rest, so the strip
+    // reads as a stack with one card pulled out of it, which is what a
+    // wallpaper you are considering is.
+    readonly property real pitch: Math.round(root.cardWidth * root.nearScale + root.cardGap)
 
     // HOW MANY CARDS THE PATH HOLDS, computed from the room rather than picked.
     // Two more than fit, so a card is fully drawn before it reaches the edge of
@@ -266,19 +285,74 @@ Item {
         Qt.callLater(root.forceActiveFocus);
     }
 
+    // WHAT YOU ARE LOOKING AT IS WHAT YOU GET. Closing the panel KEEPS the
+    // wallpaper the strip is centred on, rather than putting the old one back.
+    //
+    // This is the opposite of what it did, and the old behaviour was wrong for
+    // a reason that was hiding in plain sight the whole time: the picture has
+    // ALREADY been on your desktop, full size, behind this panel, since the
+    // moment the card reached the middle. That is not a preview in the sense
+    // that word usually has, where you are shown a small version of a thing
+    // that has not happened; it is the thing itself, applied. Scrubbing to a
+    // wallpaper, looking at it against your own windows, deciding you like it
+    // and dismissing the panel took it away again, and the only way to keep
+    // what you were already looking at was to press it a second time.
+    //
+    // So there is no separate act of choosing any more, and no way to be shown
+    // one wallpaper while owning another. A tap still exists and still means
+    // something (it is faster, and it gives the reveal a point to open from),
+    // but it is a shortcut for leaving rather than the only way to decide.
+    //
+    // AND NO CANCEL, deliberately, including Escape. A cancel would have to
+    // mean "the last minute of your desktop was not real", which is exactly the
+    // fiction this is removing. Scrubbing back is the undo, and it is the same
+    // gesture that got you here.
     function hide(): void {
         if (!root.shown)
             return;
+        root.commit();
         root.shown = false;
-        // NOTHING WAS DECIDED. The desktop goes back to the setting, which is
-        // where it would have been all along if this had never opened.
-        Wallpaper.clearPreview(root.screen);
-        // AND THE SCOPE GOES BACK TO "HERE". See `everywhere`: it is a property
-        // of one choice, not a mode the panel is left in.
+        root.chosenAt = null;
+        // THE SCOPE GOES BACK TO "HERE". See `everywhere`: it is a property of
+        // one choice, not a mode the panel is left in.
         root.everywhere = false;
         // The filter comes back for the same reason. `show()` turns it off
         // again by itself when the wallpaper you are wearing needs it off.
         root.showAll = false;
+    }
+
+    // KEEP WHAT IS CENTRED, wherever the panel is being closed from.
+    //
+    // Nothing to keep when the folder is empty, and nothing to write when the
+    // screen already wears it: an opening that scrubbed nowhere must not put an
+    // entry in the per-screen map, or merely LOOKING at the picker would pin a
+    // screen off the default it was happily following.
+    //
+    // `everywhere` is the exception to that second rule, because the deed is
+    // about the OTHER screens: this one already agreeing says nothing about
+    // them.
+    function commit(): void {
+        const path = strip.currentPath;
+        const all = root.everywhere && root.manyScreens;
+        if (!path || (!all && path === Wallpaper.currentOn(root.screen))) {
+            Wallpaper.clearPreview(root.screen);
+            return;
+        }
+
+        // The point it opens from, if the choice had one. A dismissal does not:
+        // clicking the desktop is not a place a picture came from. It makes no
+        // visible difference either way, since the wallpaper being kept is
+        // already the one on the screen and the reveal has nothing to run over,
+        // and it is set anyway so the origin is never a stale point from some
+        // earlier choice.
+        const at = root.chosenAt;
+        const x = at ? at.x / Math.max(1, root.width) : 0.5;
+        const y = at ? at.y / Math.max(1, root.height) : 0.5;
+
+        if (all)
+            Wallpaper.setFromAll(path, x, y);
+        else
+            Wallpaper.setFrom(root.screen, path, x, y);
     }
 
     function toggle(): void {
@@ -288,19 +362,24 @@ Item {
             root.show();
     }
 
-    // Chosen, which is the one gesture here that writes anything.
+    // DONE, and WHERE IT WAS DONE FROM, because a new wallpaper opens out of a
+    // point rather than fading in (components/reveal.frag). `from` is mapped
+    // into this item, which is the whole screen, and normalised, which is what
+    // the shader wants and what makes the same fraction mean the same relative
+    // place on a second monitor.
     //
-    // AND WHERE IT WAS CHOSEN FROM, because the new wallpaper opens out of that
-    // point rather than fading in (components/reveal.frag). `from` is an item
-    // whose centre is the place the choice happened: the card you pressed. It
-    // is mapped into this item, which is the whole screen, and normalised,
-    // which is what the shader wants and what makes the same fraction mean the
-    // same relative place on a second monitor.
+    // NO PATH ANY MORE. It used to take one, and every caller passed the
+    // centred card because the centred card is the only thing that can be
+    // accepted: a tap on a side card centres it first (see the strip's
+    // `onReleased`) and Enter has no card at all. Now that closing the panel
+    // keeps what is centred, a parameter naming something else would be a way
+    // to ask for a wallpaper the strip is not showing, which nothing wants and
+    // which `hide()` would ignore.
     //
     // Missing, and it opens from the middle. That is the honest answer for a
     // choice that came from the keyboard: Enter has no place on the screen.
-    function accept(path: string, from: var): void {
-        root.acceptAt(path, from);
+    function accept(from: var): void {
+        root.acceptAt(from);
     }
 
     // WHICH SCREENS A TAP IS ABOUT, and the default is the one you are tapping
@@ -325,19 +404,25 @@ Item {
     // a control offering the choice would be a control for nothing.
     readonly property bool manyScreens: Quickshell.screens.length > 1
 
-    // `at` is a point in this item's coordinates, which is the whole screen, or
-    // null for a choice with no place on it.
-    function acceptAt(path: string, at: var): void {
-        const x = at ? at.x / Math.max(1, root.width) : 0.5;
-        const y = at ? at.y / Math.max(1, root.height) : 0.5;
-        if (root.everywhere && root.manyScreens)
-            Wallpaper.setFromAll(path, x, y);
-        else
-            Wallpaper.setFrom(root.screen, path, x, y);
+    // WHERE THE CHOICE WAS MADE, in this item's coordinates, which are the
+    // whole screen. Null for a dismissal, which is every way out of this panel
+    // except pressing the card itself, and which has no place on the screen to
+    // have come from.
+    //
+    // Held here rather than passed to the write, because since `hide()` became
+    // the thing that commits, a tap and a dismissal go down the SAME path and
+    // differ only in whether they brought a point with them.
+    property var chosenAt: null
+
+    // `at` is a point in this item's coordinates. A tap is now a shortcut for
+    // leaving rather than the only way to decide, so all it adds over closing
+    // the panel is the point the reveal opens out of. See hide().
+    function acceptAt(at: var): void {
+        root.chosenAt = at;
         root.hide();
     }
 
-    // WHAT A CARD SAYS ABOUT ITSELF, or "" for the ordinary case.
+    // WHAT A CARD SAYS ABOUT ITSELF, as a MARK, or "" for the ordinary case.
     //
     // A still picture is what a wallpaper is expected to be and gets no badge.
     // The three that move get one, and so does the fourth thing, which is the
@@ -346,15 +431,29 @@ Item {
     // SVG once. Unbadged, that file is a wallpaper that mysteriously sits
     // there; badged, it is a shell that knows its own limit. See
     // Wallpaper.frozen.
+    //
+    // IT WAS SET IN CAPITALS: "GIF", "VIDEO", "AUDIO", "SVG · STILL". Four
+    // words of shouting under a photograph, and the last of them needed a
+    // separator to fit a sentence into a badge. Every one of the four is a
+    // thing Material Symbols already has one mark for, and the marks are
+    // better than the words at the only job the badge has, which is to be
+    // noticed without being read: a strip you are flicking through gives a
+    // badge about a tenth of a second, and that is a glyph's whole native
+    // speed and well under a word's.
+    //
+    // `motion_photos_off` for the frozen SVG is the one worth pointing at. It
+    // is the SAME family as the mark for a thing that moves, negated, which is
+    // exactly what that file is: it asked to move and cannot. No other pair of
+    // words in the set carried that relationship.
     function badgeFor(path: string): string {
         const k = Wallpaper.kindOf(path);
         if (k === "motion")
-            return "GIF";
+            return "gif";
         if (k === "video")
-            return "VIDEO";
+            return "movie";
         if (k === "audio")
-            return "AUDIO";
-        return Wallpaper.isFrozen(path) ? "SVG · STILL" : "";
+            return "music_note";
+        return Wallpaper.isFrozen(path) ? "motion_photos_off" : "";
     }
 
     // THE KEYBOARD, on a surface built for a finger, and it is not a
@@ -375,10 +474,8 @@ Item {
     Keys.onRightPressed: strip.step(1)
     // No `from`: Enter has no place on the screen, so the reveal opens from the
     // middle. See accept().
-    Keys.onReturnPressed: if (strip.currentPath)
-        root.accept(strip.currentPath, null)
-    Keys.onEnterPressed: if (strip.currentPath)
-        root.accept(strip.currentPath, null)
+    Keys.onReturnPressed: root.accept(null)
+    Keys.onEnterPressed: root.accept(null)
 
     // Pulled by hand, exactly the launcher's pair of calls and for exactly its
     // reasons: while `dragging` is true the panel's reveal is the HAND'S rather
@@ -553,6 +650,28 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             spacing: Appearance.padding.normal
 
+            // WHAT SHAPE THIS ONE IS, AGAINST WHAT SHAPE THE SCREEN IS, drawn
+            // rather than described. See components/AspectMark.qml: the pill
+            // two along says WHICH list you are looking at, and this says why
+            // the picture under the ring is in it. A squat bar inside a tall
+            // outline is an argument nobody has to read.
+            AspectMark {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: !!strip.currentPath
+                aspect: Wallpaper.aspectOf(strip.currentPath)
+                reference: root.screenAspect
+                fits: Wallpaper.fits(strip.currentPath, root.screenAspect)
+                // TWICE THE BODY SIZE, which is the height the pills beside it
+                // come out at and therefore the height this row is. At the icon
+                // tier it was a speck: an ultrawide shape fitted into an 20px
+                // box is 20 by 6, which reads as a dash rather than as a
+                // rectangle, and the mark's whole job is to be a rectangle.
+                // Off the type ladder rather than measured off a Pill, because
+                // a binding onto a sibling's height inside the row that sizes
+                // itself from its children is a loop.
+                size: Appearance.font.size.small * 2
+            }
+
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
                 text: strip.currentPath ? strip.currentPath.split("/").pop() : `nothing in ${Wallpaper.dir}`
@@ -566,10 +685,15 @@ Item {
             //
             // A PILL, NOT A TOGGLE, because it is not a setting. A toggle is a
             // switch you leave in a position; this is the scope of the press
-            // you are about to make, it resets when the panel closes, and it
-            // reads as a word rather than as state. It says what it WILL do
-            // rather than what it currently is, the same contract MenuRow's
-            // `tip` has everywhere else in this shell.
+            // you are about to make, and it resets when the panel closes.
+            //
+            // A MARK, NOT A SENTENCE. It said "this screen" and "all screens",
+            // which is five syllables to distinguish one rectangle from
+            // several, in a panel whose whole argument is that you recognise a
+            // wallpaper faster than you can read its name. One monitor against
+            // a family of devices says the same thing at a glance and at a
+            // third of the width, and the accent behind it is already how this
+            // shell says a thing is on.
             //
             // GONE on one screen, rather than disabled: on a laptop on its own
             // and on a phone, "this screen" and "all screens" are the same
@@ -578,7 +702,11 @@ Item {
             Pill {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.manyScreens
-                text: root.everywhere ? "all screens" : "this screen"
+                icon: root.everywhere ? "devices" : "monitor"
+                // FILLED WHEN IT IS THE WIDER DEED. Material Symbols carries
+                // FILL as a state axis, so the mark that means "everywhere" is
+                // the same family solid rather than a third glyph to learn.
+                iconFill: root.everywhere ? 1 : 0
                 colour: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.everywhere = !root.everywhere
             }
@@ -603,7 +731,14 @@ Item {
             Pill {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
-                text: root.predicted ? "fits this screen" : "all shapes"
+                // A SCREEN WITH SOMETHING FITTED INTO IT, against a stack of
+                // pictures. The mark beside it is already drawing the shapes,
+                // so this one does not have to name them: it is the difference
+                // between a filtered strip and the whole folder, which is a
+                // difference between one thing and many things, which is what
+                // these two glyphs are.
+                icon: root.predicted ? "fit_screen" : "photo_library"
+                iconFill: root.predicted ? 1 : 0
                 colour: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.showAll = !root.showAll
             }
@@ -621,7 +756,14 @@ Item {
                 // three announce a capability and this one admits a limit, and
                 // the shell's colour for state is not the colour for "no".
                 colour: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
-                text: root.badgeFor(strip.currentPath)
+                icon: root.badgeFor(strip.currentPath)
+                // SOLID for the three that announce a capability and outlined
+                // for the one that admits a limit, which is the same split the
+                // colour above already makes. Two channels saying one thing is
+                // right here rather than redundant: the badge is read at a
+                // glance and in the corner of the eye, where a fill survives
+                // and a hue does not.
+                iconFill: Wallpaper.isFrozen(strip.currentPath) ? 0 : 1
             }
         }
 
@@ -906,7 +1048,7 @@ Item {
                             // see `centre`), and the point you touched is a
                             // better origin than the middle of what you touched:
                             // the picture grows out of your fingertip.
-                            root.acceptAt(root.entries[i], swipe.mapToItem(root, mouse.x, mouse.y));
+                            root.acceptAt(swipe.mapToItem(root, mouse.x, mouse.y));
                         else
                             strip.step(strip.shortest(i));
                         return;
@@ -1347,7 +1489,8 @@ Item {
                     visible: !!root.badgeFor(card.modelData)
                     interactive: false
                     colour: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
-                    text: root.badgeFor(card.modelData)
+                    icon: root.badgeFor(card.modelData)
+                    iconFill: Wallpaper.isFrozen(card.modelData) ? 0 : 1
                 }
 
                 // THE MARK ON THE ONE YOU ARE ALREADY WEARING. Not a selection
