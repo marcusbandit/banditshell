@@ -52,25 +52,41 @@ Singleton {
     // copy, and pulling the page out would flip it back to whichever page the
     // other copy last remembered.
     //
-    // `pages` is DATA, not decoration. The face renders its rail from it and
-    // resolves each page's file by naming convention (key "icons" loads
-    // pages/IconsPage.qml), so adding a page here and dropping a <Key>Page.qml
-    // into modules/settings/pages/ is the entire recipe: no switch statement
-    // anywhere grows a case.
-    property string page: "icons"
+    // `pages` is DATA, not decoration. The face renders its list of sections
+    // from it and resolves each page's file by naming convention (key
+    // "general" loads pages/GeneralPage.qml), so adding a page here and
+    // dropping a <Key>Page.qml into modules/settings/pages/ is the entire
+    // recipe: no switch statement anywhere grows a case.
+    //
+    // EMPTY MEANS THE ROOT: the list of sections itself, which is a place of
+    // its own the way a phone's settings app opens on its list rather than on
+    // whichever section you last visited. A face too narrow to show both at
+    // once shows the list; a face wide enough to stand them side by side shows
+    // the list AND the first section, because a pane with nothing in it is
+    // not a state worth drawing. Which of those it is belongs to each copy of
+    // the face (the shell's card and a window can be different widths), and
+    // only the page choice itself is shared here.
+    property string page: ""
 
+    // `group` is which card of the list a section sits in, and `blurb` is the
+    // line under its name that says what is inside before you open it: a list
+    // of six one-word titles is a list you have to open every entry of.
     readonly property var pages: [
         {
-            key: "icons",
-            title: "Icons",
-            icon: "apps"
+            key: "general",
+            title: "General",
+            icon: "tune",
+            group: "shell",
+            blurb: "touch, windows, network"
         },
         {
             key: "appearance",
             title: "Appearance",
-            icon: "palette"
+            icon: "palette",
+            group: "shell",
+            blurb: "palette and wallpaper"
         },
-        // The one page that is not a nicety. Every other setting on this rail
+        // The one page that is not a nicety. Every other setting in this list
         // has `banditshell set` in front of it as well as a row, and the band
         // order does not: it is an array, and Quickshell's IPC splats a
         // bracketed argument into an argument list (see config/Config.qml), so
@@ -78,18 +94,53 @@ Singleton {
         {
             key: "screens",
             title: "Screens",
-            icon: "monitor"
+            icon: "monitor",
+            group: "shell",
+            blurb: "monitors and their workspaces"
+        },
+        {
+            key: "device",
+            title: "Device",
+            icon: "computer",
+            group: "system",
+            blurb: "this machine, right now"
+        },
+        {
+            key: "developer",
+            title: "Developer",
+            icon: "code",
+            group: "system",
+            blurb: "reload, files, status"
+        },
+        {
+            key: "about",
+            title: "About",
+            icon: "info",
+            group: "about",
+            blurb: "version and notes"
         }
     ]
 
+    // The groups, in the order the pages first name them, so the list's cards
+    // come from the data above rather than from a second list that could
+    // disagree with it.
+    readonly property var groups: root.pages.map(p => p.group).filter((g, i, all) => all.indexOf(g) === i)
+
     // Unknown keys are IGNORED rather than reset to a default or taken on
-    // faith. The rail is built from `pages` and cannot say a wrong key; the CLI
-    // and whatever keybind arrives later can, and a typo from those should
+    // faith. The list is built from `pages` and cannot say a wrong key; the
+    // CLI and whatever keybind arrives later can, and a typo from those should
     // change nothing at all rather than blank the face against a key no file
     // answers to.
     function setPage(key: string): void {
         if (root.pages.some(p => p.key === key))
             root.page = key;
+    }
+
+    // Back to the list of sections. Its own verb rather than setPage(""),
+    // because "" is not a page and setPage's whole contract is refusing keys
+    // that are not.
+    function back(): void {
+        root.page = "";
     }
 
     // The window that had the keyboard before the page took it, so it can have it

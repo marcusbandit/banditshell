@@ -35,6 +35,16 @@ Item {
 
         // ------------------------------------------------------- wallpaper
 
+        // The same quiet eyebrow the other pages group under, so a page that
+        // now holds two subjects above the palettes reads as groups rather than
+        // as one run of switches that changes topic halfway down.
+        StyledText {
+            text: "Wallpaper"
+            color: Appearance.colour.textFaint
+            font.pixelSize: Appearance.font.size.small
+            bottomPadding: Appearance.padding.small
+        }
+
         // SWITCHES, not a picker. WHICH wallpaper is a question you answer by
         // looking at wallpapers, and that belongs on a surface the size of the
         // screen with the candidate actually on the desktop behind it: it is
@@ -149,6 +159,51 @@ Item {
                     checked: Config.values.themeFromWallpaper
                     onToggled: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
                 }
+            }
+        }
+
+        // ------------------------------------------------------ compositor
+
+        // WHAT FLOWS BETWEEN THE SHELL AND HYPRLAND, in both directions, and
+        // an appearance question because both switches are about what the
+        // desktop looks like: whose corners the panels wear, and whose colour
+        // the focused window's border does. Two switches rather than one
+        // because they answer opposite questions; config/Compositor.qml owns
+        // the argument, and the `compositor` block in config/Config.qml owns
+        // the reason `pushBorders` had to be declared before it could be set.
+        StyledText {
+            text: "Compositor"
+            color: Appearance.colour.textFaint
+            font.pixelSize: Appearance.font.size.small
+            bottomPadding: Appearance.padding.small
+            topPadding: Appearance.padding.normal
+        }
+
+        MenuRow {
+            width: list.width
+            icon: "crop_square"
+            label: "Corners and gaps from the compositor"
+            detail: "read rounding, its power and the gap from hyprland rather than config.json"
+            tip: Config.values.compositor.follow ? "use config.json's own" : "follow hyprland"
+            onActivated: Config.set("compositor.follow", !Config.values.compositor.follow)
+
+            Toggle {
+                checked: Config.values.compositor.follow
+                onToggled: Config.set("compositor.follow", !Config.values.compositor.follow)
+            }
+        }
+
+        MenuRow {
+            width: list.width
+            icon: "border_color"
+            label: "Push the theme onto window borders"
+            detail: "the focused window wears the accent; off, hyprland.conf's colours stand"
+            tip: Config.values.compositor.pushBorders ? "leave the borders to hyprland" : "paint them"
+            onActivated: Config.set("compositor.pushBorders", !Config.values.compositor.pushBorders)
+
+            Toggle {
+                checked: Config.values.compositor.pushBorders
+                onToggled: Config.set("compositor.pushBorders", !Config.values.compositor.pushBorders)
             }
         }
 

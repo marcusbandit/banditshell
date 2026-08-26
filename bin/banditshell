@@ -67,6 +67,9 @@
 #   banditshell shot [file]      screenshot, for checking a change actually landed
 #   banditshell demo <key>       open a menu, screenshot it, close it
 #   banditshell lockpreview      draw the lock screen WITHOUT locking, and shoot it
+#   banditshell settingspreview [WxH] [page] [file]
+#                                the settings face in a plain window at that size:
+#                                400x800 is a phone, 800x800 the phone unfolded
 #   banditshell shaders          recompile every components/**/*.frag to .qsb
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
@@ -280,7 +283,7 @@ close | panic)
 # way session's do. `open` always sends its page and screen arguments, empty
 # when none was given, because the IPC function declares the parameters and an
 # omitted argument does not read as an empty one on the other side. The screen
-# goes second so `settings open icons` keeps meaning what it always meant; a
+# goes second so `settings open general` keeps meaning what it always meant; a
 # caller that wants to name a screen without naming a page passes "" for the
 # page, the same shape `menu open <key> <screen>` already has.
 settings)
@@ -568,6 +571,41 @@ lockpreview)
     (cd "$HOME" && timeout 9 qs -p "$SHELL_DIR/lockpreview.qml" >/dev/null 2>&1) &
     sleep 4
     grim "$out"
+    wait
+    echo "$out"
+    ;;
+
+settingspreview)
+    # The settings face at a SIZE, which is the thing a running shell cannot
+    # show you: its card is one size, and the page has three shapes. A plain
+    # floating window of the asked-for size draws the same face, and grim
+    # shoots that window's rect alone so the picture is the page and not the
+    # desktop it happens to be over. Its own quickshell instance, on a timer,
+    # for lockpreview's reason.
+    mkdir -p "$SHOT_DIR"
+    size="${1:-560x560}"
+    page="${2:-}"
+    out="${3:-$SHOT_DIR/settings-$size${page:+-$page}.png}"
+    # FLOATED AND SIZED BY A WINDOW RULE, installed before the window exists:
+    # a tiled window is whatever size the layout gives it, and the size IS the
+    # question being asked. The same rule services/Settings.qml installs for
+    # the real settings window, in whichever dialect this Hyprland speaks (the
+    # Lua parser refuses `keyword`, the legacy one has no `eval`).
+    #
+    # AND OUT OF THE WAY: on a workspace of its own, silently, and without
+    # taking the keyboard. A preview is spawned to be photographed, not
+    # looked at, and one that landed on the workspace being worked in and
+    # stole focus would interrupt exactly the person who asked for it.
+    # PREVIEW_WORKSPACE names the workspace; the default is the first band of
+    # the second screen (the vertical monitor here).
+    w="${size%x*}"; h="${size#*x}"
+    ws="${PREVIEW_WORKSPACE:-6}"
+    hyprctl eval "hl.window_rule({ name = \"banditshell-settingspreview\", match = { title = \"^(banditshell-settingspreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true, workspace = \"$ws silent\", no_initial_focus = true, no_focus = true })" >/dev/null 2>&1 ||
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule center on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule workspace $ws silent, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_initial_focus on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_focus on, match:title ^(banditshell-settingspreview)\$" >/dev/null 2>&1
+    (cd "$HOME" && SETTINGS_PREVIEW="$size" SETTINGS_PAGE="$page" timeout 9 qs -p "$SHELL_DIR/settingspreview.qml" >/dev/null 2>&1) &
+    sleep 4
+    rect=$(hyprctl -j clients | jq -r '.[] | select(.title == "banditshell-settingspreview") | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1)
+    if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
     wait
     echo "$out"
     ;;

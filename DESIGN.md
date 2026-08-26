@@ -505,16 +505,23 @@ banditshell/
 │   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
 │   │                            is on the real desktop while you decide about it
 │   ├── picker/                  screenshot: hover a window or drag a region
-│   ├── settings/                the page that is a shell surface OR a window
+│   ├── settings/                the page that is a shell surface OR a window, shaped
+│   │   │                        like a phone's settings app: a list of sections and
+│   │   │                        one section, side by side when wide, stacked when not
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
-│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole
+│   │   ├── SettingsPane.qml     one scrolling column of it, with drag-right as "back"
+│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole;
+│   │   │                        fills the hole on a screen too small for the card
 │   │   ├── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
 │   │   └── pages/               one file per page; Settings.pages is the register,
-│   │       │                    and key "icons" loads IconsPage.qml by convention
-│   │       ├── IconsPage.qml    what each app looks like; grew out of the settings
-│   │       │                    gauge's old menu (a place, not a glance, so it left the bar)
-│   │       └── AppearancePage.qml  which palette the shell wears, and the two
-│                               switches a wallpaper has (WHICH one is the picker's)
+│   │       │                    and key "general" loads GeneralPage.qml by convention
+│   │       ├── GeneralPage.qml  behaviour switches: touch, windows, the fold, network
+│   │       ├── AppearancePage.qml  which palette the shell wears, the wallpaper's two
+│   │       │                    switches (WHICH one is the picker's), the compositor
+│   │       ├── ScreensPage.qml  which monitor owns which workspace band
+│   │       ├── DevicePage.qml   the machine: host, kernel, load, battery, screens
+│   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
+│   │       └── AboutPage.qml    the shell: version, compositor, its files and notes
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
