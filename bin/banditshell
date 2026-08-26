@@ -57,6 +57,8 @@
 #   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
+#                                falls back to grim/slurp when the shell cannot
+#                                be reached, so the screenshot key always shoots
 #   banditshell wallpaper toggle|on|off|next|prev|status|palette
 #                                palette = the colours it is mostly made of
 #   banditshell wallpapers toggle|open|close|status
@@ -88,13 +90,99 @@ SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
 # thing it decides is where the desktop lands, and that is the user's home.
 qs_() { (cd "$HOME" && qs -p "$SHELL_DIR" "$@"); }
 
+# WHICH INSTANCE, and this is the failure it exists to stop.
+#
+# `qs ipc -p <dir>` finds an instance by the config path it was STARTED from,
+# and the only path this script knows is the checkout it happens to live in.
+# Those two agree right up until the shell is started from somewhere else,
+# which a git worktree during development does as a matter of course, and from
+# that moment every verb in this file addresses an instance that does not
+# exist: one line to stderr, exit 1. A Hyprland bind is an exec with no
+# terminal behind it, so the line goes nowhere, the KEY DOES NOTHING, and
+# nothing says why. Nine binds silently dead with a shell running perfectly
+# well on the screen.
+#
+# So the instance is the one that is RUNNING, found by asking rather than
+# assumed from a path. The path stays a preference between candidates instead
+# of a requirement: this checkout wins when it is up, any other shell.qml is
+# taken over nothing at all. Preview instances (lockpreview.qml,
+# settingspreview.qml) fall out by that filename; they are qs processes too and
+# they answer no IPC.
+#
+# Resolved once and cached, because several verbs make more than one call.
+qs_target=()
+qs_target_resolved=0
+
+resolve_target() {
+    if [ "$qs_target_resolved" = 1 ]; then
+        return 0
+    fi
+    qs_target_resolved=1
+
+    local pid path exact="" any=""
+    while IFS=$'\t' read -r pid path; do
+        case "$path" in
+        "$SHELL_DIR/shell.qml") exact="$pid" ;;
+        */shell.qml) [ -n "$any" ] || any="$pid" ;;
+        esac
+    done < <(qs list --all 2>/dev/null | awk '
+        /^[[:space:]]*Process ID:/ { pid = $NF }
+        /^[[:space:]]*Config path:/ {
+            p = $0
+            sub(/^[[:space:]]*Config path:[[:space:]]*/, "", p)
+            print pid "\t" p
+        }
+    ')
+
+    local pick="${exact:-$any}"
+    if [ -n "$pick" ]; then
+        qs_target=(--pid "$pick")
+    else
+        qs_target=(-p "$SHELL_DIR")
+    fi
+}
+
+# SAY SO SOMEWHERE A KEYBIND CAN BE HEARD.
+#
+# stderr is the right place for a line somebody typed in a terminal and the
+# wrong place for a line produced by a key. hyprctl notify draws from the
+# COMPOSITOR, which is the process still standing when the shell is the thing
+# that died; notify-send hands the message to the shell's own notification
+# daemon, so the one failure worth announcing is the one it cannot announce.
+complain() {
+    echo "banditshell: $1" >&2
+    hyprctl notify -1 5000 "rgb(e06c75)" "banditshell: $1" >/dev/null 2>&1 || true
+}
+
 # `qs ipc call` fails loudly when the shell is not running; say so in a way that
 # tells you what to do about it.
+# The answer is BUFFERED rather than streamed, because qs writes its own
+# failure ("No running instances for ...") to STDOUT, not to stderr. Passed
+# straight through, that line lands in the middle of whatever was reading this
+# verb's output as if it were the answer. So the call's output is held and
+# printed only when the call actually worked.
 ipc() {
-    if ! qs_ ipc call "$@" 2>/dev/null; then
-        echo "banditshell: not running (try: banditshell start)" >&2
-        return 1
+    resolve_target
+    local out
+    if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
+        [ -n "$out" ] && printf '%s\n' "$out"
+        return 0
     fi
+    complain "not running (try: banditshell start)"
+    return 1
+}
+
+# The same call for a caller that has its own answer to failure. Quiet only
+# about the FAILURE: a verb that worked still says what it did, the way it
+# always did from a terminal.
+ipc_quiet() {
+    resolve_target
+    local out
+    if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
+        [ -n "$out" ] && printf '%s\n' "$out"
+        return 0
+    fi
+    return 1
 }
 
 running() { pgrep -x qs >/dev/null 2>&1; }
@@ -483,8 +571,93 @@ lock)
     ipc lock "${1:-lock}"
     ;;
 
+# The picker, and the ONE verb in this file that can work without the shell.
+#
+# A screenshot key that does nothing is indistinguishable from broken hardware,
+# and it is the key most likely to be pressed at the exact moment the thing
+# worth keeping is on the screen and about to stop being there. "Nothing
+# happened" is not an acceptable answer to it. So when the shell cannot be
+# reached, this falls through to the same two tools the shell itself drives -
+# slurp for the region, grim for the pixels - and takes the shot anyway.
+#
+# It is an HONEST backup rather than a quiet one, on both counts:
+#
+#   - It cannot freeze the screen first. Freezing means drawing a still over
+#     every output, which means an overlay, which means the shell. A freeze
+#     verb therefore comes back LIVE and the notification says so, instead of
+#     handing back a picture that silently is not the one that was asked for.
+#   - It still reports that the shell is down. A screenshot that worked is not
+#     a reason to stop hearing that the other eight binds did not.
 picker)
-    ipc picker "${1:-freezeclip}"
+    sub="${1:-freezeclip}"
+
+    if ipc_quiet picker "$sub"; then
+        exit 0
+    fi
+
+    # Nothing open, so nothing to close, and no fallback that would mean
+    # anything: the surface this would have dismissed does not exist.
+    if [ "$sub" = close ]; then
+        complain "not running (no picker to close)"
+        exit 1
+    fi
+
+    if ! command -v slurp >/dev/null || ! command -v grim >/dev/null; then
+        complain "not running, and no grim/slurp to fall back on"
+        exit 1
+    fi
+
+    complain "not running - falling back to grim/slurp (try: banditshell start)"
+
+    # Escape during the drag is a CANCEL, not a failure: slurp exits non-zero
+    # for both, and a cancelled screenshot should be as quiet as a successful
+    # one. Same for an empty selection, which is a click that never dragged.
+    region=$(slurp ${SLURP_ARGS:-}) || exit 0
+    if [ -z "$region" ]; then
+        exit 0
+    fi
+
+    note="banditshell was not running"
+    case "$sub" in
+    freeze*) note="$note; taken live, nothing could be frozen" ;;
+    esac
+
+    # A notification the SHELL cannot deliver, because the shell is the thing
+    # that is down. notify-send first anyway - another daemon may be up, and it
+    # renders the thumbnail - then the compositor, which is always there.
+    say() {
+        notify-send -a banditshell "$1" "$2" 2>/dev/null ||
+            hyprctl notify -1 5000 "rgb(e5c07b)" "$1 - $2" >/dev/null 2>&1 || true
+    }
+
+    case "$sub" in
+    *clip)
+        grim -g "$region" - | wl-copy --type image/png
+        say "Screenshot copied" "$note"
+        ;;
+    *)
+        # The same folder and the same editor the shell would have used, read
+        # from the config it reads, so a capture taken while it was down lands
+        # where the others did rather than somewhere only this branch knows.
+        cfg="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+        dir=$(jq -r '.picker.dir // empty' "$cfg" 2>/dev/null || true)
+        editor=$(jq -r '.picker.editor // empty' "$cfg" 2>/dev/null || true)
+        dir="${dir:-~/Pictures/Screenshots}"
+        dir="${dir/#\~/$HOME}"
+        editor="${editor:-swappy -f}"
+
+        mkdir -p "$dir"
+        out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
+        grim -g "$region" "$out"
+        say "Screenshot saved" "$out ($note)"
+        # Unquoted on purpose: the configured editor is a command WITH its
+        # flags ("swappy -f"), the same string the shell splits when it opens
+        # one, so it has to come apart here the same way.
+        # shellcheck disable=SC2086
+        ${editor} "$out" >/dev/null 2>&1 || true
+        echo "$out"
+        ;;
+    esac
     ;;
 
 # The wallpaper the shell draws itself. Every one of these is a write to
