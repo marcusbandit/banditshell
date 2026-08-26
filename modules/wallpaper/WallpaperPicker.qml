@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Effects
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -40,6 +41,15 @@ Item {
     required property real originX
     required property real inset
 
+    // WHICH MONITOR THIS PICKER IS FOR, by output name.
+    //
+    // There is one of these per screen and there always was; what changed is
+    // that it now writes a wallpaper for THIS screen rather than for the shell.
+    // Everything that used to reach the service without saying where goes
+    // through here: the preview it puts on the desktop, the mark on the card
+    // you are wearing, and the point the reveal opens from.
+    required property string screen
+
     // HOW WIDE THE LAUNCHER IS, and therefore how wide this is.
     //
     // The two panels come out of the same edge by the same gesture and one
@@ -64,20 +74,58 @@ Item {
     // SIZED FROM THE SCREEN, not picked and not derived from the minimum
     // target. The floor for a touch target is 24px and a card that size would
     // clear it and be useless anyway: this is a picture you have to RECOGNISE,
-    // and recognition needs area rather than reach. So the height is a fixed
-    // share of the screen, which keeps the trade explicit in one number: how
-    // much of the desktop the picker is allowed to cover while you are looking
-    // at the desktop through it.
+    // and recognition needs area rather than reach. So it is a share of the
+    // screen, which keeps the trade explicit in one number: how much of the
+    // desktop the picker is allowed to cover while you are looking at the
+    // desktop through it. Around 340x190 on a 1080p panel, which is big enough
+    // to tell two forest photographs apart, which is the actual test.
+
+    // THE SHAPE OF THIS SCREEN, and that is the whole of what a card's aspect
+    // should ever have been.
     //
-    // A fifth. The panel comes out at a little over a quarter of the screen
-    // with its caption and its air, which leaves three quarters of the live
-    // preview showing, and the card is around 340x190 on a 1080p panel: big
-    // enough to tell two forest photographs apart, which is the actual test.
-    readonly property real cardHeight: Math.round(root.height * 0.18)
-    // 16:9, because screens are, and a card that is not the shape of the thing
-    // it depicts crops the picture twice.
-    readonly property real cardWidth: Math.round(root.cardHeight / 9 * 16)
+    // It was 16:9, written down, "because screens are". Screens are not. This
+    // one is whatever it is: a monitor stood on its end is 9:16, an ultrawide
+    // is 32:9, a phone is taller than it is wide, and every one of them can be
+    // sitting next to the others on the same machine. A 16:9 card on a portrait
+    // monitor is the one thing the comment above it said not to do, which is to
+    // crop the picture twice: once into a landscape card, and again into a
+    // portrait screen that the card gave you no way to see coming.
+    //
+    // Drawn at the screen's own aspect, the card IS the preview: what you see
+    // in the strip is the crop you are going to get, because PreserveAspectCrop
+    // into this rectangle and PreserveAspectCrop into the screen are the same
+    // operation at two sizes. Nothing has to be said about rotation anywhere,
+    // because a rotated output simply reports the other pair of numbers.
+    readonly property real screenAspect: root.height > 0 ? root.width / root.height : 16 / 9
+
     readonly property real cardGap: Appearance.padding.normal
+
+    // HOW MANY CARDS THE PANEL HAS TO HOLD, and it is the floor everything else
+    // is solved against. The centre card must sit BETWEEN its neighbours or
+    // there is no strip to read, only a picture with edges.
+    readonly property real minCards: 2.5
+
+    // The room there actually is across, which is what a small screen has less
+    // of and what makes this arithmetic rather than a phone case.
+    readonly property real room: Math.max(0, root.width - root.originX - root.inset)
+
+    // A CARD IS SOLVED FROM BOTH DIMENSIONS, not picked from one.
+    //
+    // A share of the height is the size worth having: it states in one number
+    // how much of the desktop the picker may cover while you are looking at the
+    // desktop through it. But a share of the height alone is a card that can be
+    // wider than the screen it is on, and on anything portrait it is: a fifth
+    // of a phone's height, at a phone's aspect... is fine, and at the OLD fixed
+    // 16:9 it was nearly twice the phone's width, with a panel demanding two
+    // and a half of them. That is the shape of bug this shell gets by writing
+    // one of the two numbers down.
+    //
+    // So the width the height WANTS is capped by the width the room ALLOWS,
+    // and the height follows from whichever won. One expression, no branch on
+    // how big the screen is and no mention of a phone: a phone is simply the
+    // case where the second term is the smaller one.
+    readonly property real cardWidth: Math.round(Math.max(Appearance.sizes.minTarget, Math.min(root.height * 0.18 * root.screenAspect, root.room / root.minCards - root.cardGap)))
+    readonly property real cardHeight: Math.round(root.cardWidth / root.screenAspect)
 
     // ONE CARD OF TRAVEL. Everything that moves the strip is measured in these:
     // the path's own spacing, the scrub, the wheel. A single number, so the
@@ -89,7 +137,28 @@ Item {
     // the panel and fully gone after it leaves, instead of popping into
     // existence at the boundary. Never fewer than three, or there is no centre
     // to be either side of.
-    readonly property int slots: Math.max(3, Math.round(root.panelWidth / root.pitch) + 2)
+    // AND NEVER MORE THAN THERE ARE WALLPAPERS, which is not a tidiness clamp:
+    // it is the condition `place()` below is derived under.
+    //
+    // PathView has TWO position formulas and picks between them on exactly this
+    // comparison (`pathItemCount < modelCount` in its own source). `place()`
+    // solves the first one for the offset that centres a card; in the second,
+    // that offset centres a different card, and the strip goes wrong in the one
+    // way that is hardest to disbelieve: the caption names the wallpaper you
+    // chose, the desktop behind shows the wallpaper you chose, and the card
+    // sitting in the middle wearing the ring is somebody else's.
+    //
+    // It was reachable before this line existed and nobody had reached it,
+    // because it needs a folder SMALLER than the strip's capacity: five slots
+    // and four wallpapers. Drawing cards at the screen's aspect made it
+    // ordinary rather than exotic, since a portrait card is narrower and a
+    // panel therefore holds more of them, and a four-wallpaper folder on a
+    // phone asked for seven. Found by running the shell on four screens at four
+    // aspect ratios with four pictures in the folder.
+    //
+    // One less than the count rather than equal to it, because the comparison
+    // Qt makes is strict.
+    readonly property int slots: Math.max(1, Math.min(root.entries.length - 1, Math.max(3, Math.round(root.panelWidth / root.pitch) + 2)))
 
     // HOW BIG THE CENTRE IS, and it is over one on purpose: the card in the
     // middle is not merely the largest of a row, it is lifted out of the row.
@@ -113,7 +182,7 @@ Item {
     // because the centre one has to sit BETWEEN its neighbours or there is no
     // strip to read, only a picture with edges; and capped at the room there
     // actually is, for a small screen where those two disagree.
-    readonly property real panelWidth: Math.min(root.width - root.originX - root.inset, Math.max(root.launcherSpan * 1.25, root.pitch * 2.5))
+    readonly property real panelWidth: Math.min(root.room, Math.max(root.launcherSpan * 1.25, root.pitch * root.minCards))
 
     // The strip's own height rather than a card's, because the centre card is
     // lifted past one and the panel clips: measured from the card, the biggest
@@ -142,7 +211,7 @@ Item {
         // Start where you already are. Opening a picker on the first file in
         // the folder rather than on the wallpaper you are looking at makes the
         // first thing it does an unasked-for change.
-        strip.jumpTo(Math.max(0, root.entries.indexOf(Wallpaper.current)));
+        strip.jumpTo(Math.max(0, root.entries.indexOf(Wallpaper.currentOn(root.screen))));
         // DEFERRED, the launcher's reason: focus is only worth taking once the
         // window has actually asked the compositor for the keyboard, and that
         // follows from `shown` in the same pass this is running in.
@@ -155,7 +224,10 @@ Item {
         root.shown = false;
         // NOTHING WAS DECIDED. The desktop goes back to the setting, which is
         // where it would have been all along if this had never opened.
-        Wallpaper.preview = "";
+        Wallpaper.clearPreview(root.screen);
+        // AND THE SCOPE GOES BACK TO "HERE". See `everywhere`: it is a property
+        // of one choice, not a mode the panel is left in.
+        root.everywhere = false;
     }
 
     function toggle(): void {
@@ -180,13 +252,37 @@ Item {
         root.acceptAt(path, from);
     }
 
+    // WHICH SCREENS A TAP IS ABOUT, and the default is the one you are tapping
+    // on.
+    //
+    // "This screen" is the right default for the same reason the picker is a
+    // per-screen surface at all: you are looking at a wallpaper, on a monitor,
+    // with that monitor's windows on it, and the judgement you are making is
+    // about that monitor. It is also the only default that is reversible in one
+    // press, because a screen with its own wallpaper can be handed back to the
+    // default and a default that has been overwritten everywhere cannot be
+    // recovered.
+    //
+    // NOT REMEMBERED between openings. A scope is a property of the choice you
+    // are making now, not a mode the picker is left in, and a picker that
+    // silently reopened in "all screens" would be the shell repainting six
+    // monitors because of a press you made last week.
+    property bool everywhere: false
+
+    // Only worth showing when there is more than one screen to distinguish. On
+    // a laptop on its own, and on a phone, the two scopes are the same deed and
+    // a control offering the choice would be a control for nothing.
+    readonly property bool manyScreens: Quickshell.screens.length > 1
+
     // `at` is a point in this item's coordinates, which is the whole screen, or
     // null for a choice with no place on it.
     function acceptAt(path: string, at: var): void {
-        if (at)
-            Wallpaper.setFrom(path, at.x / Math.max(1, root.width), at.y / Math.max(1, root.height));
+        const x = at ? at.x / Math.max(1, root.width) : 0.5;
+        const y = at ? at.y / Math.max(1, root.height) : 0.5;
+        if (root.everywhere && root.manyScreens)
+            Wallpaper.setFromAll(path, x, y);
         else
-            Wallpaper.setFrom(path, 0.5, 0.5);
+            Wallpaper.setFrom(root.screen, path, x, y);
         root.hide();
     }
 
@@ -388,6 +484,30 @@ Item {
                 anchors.verticalCenter: parent.verticalCenter
                 text: strip.currentPath ? strip.currentPath.split("/").pop() : `nothing in ${Wallpaper.dir}`
                 color: Appearance.colour.text
+            }
+
+            // WHICH SCREENS THE NEXT TAP IS FOR, and the caption is exactly
+            // where it belongs: the line already says what you are looking at,
+            // and this is the other half of that sentence, which is where it is
+            // going to go.
+            //
+            // A PILL, NOT A TOGGLE, because it is not a setting. A toggle is a
+            // switch you leave in a position; this is the scope of the press
+            // you are about to make, it resets when the panel closes, and it
+            // reads as a word rather than as state. It says what it WILL do
+            // rather than what it currently is, the same contract MenuRow's
+            // `tip` has everywhere else in this shell.
+            //
+            // GONE on one screen, rather than disabled: on a laptop on its own
+            // and on a phone, "this screen" and "all screens" are the same
+            // deed, and a control that offers a choice with one outcome is a
+            // control that makes you stop and work that out.
+            Pill {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.manyScreens
+                text: root.everywhere ? "all screens" : "this screen"
+                colour: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                onClicked: root.everywhere = !root.everywhere
             }
 
             // ONLY WHEN THERE IS SOMETHING TO SAY. A still is what a wallpaper
@@ -1056,7 +1176,7 @@ Item {
 
                 onTriggered: {
                     if (root.open && strip.currentPath)
-                        Wallpaper.preview = strip.currentPath;
+                        Wallpaper.setPreview(root.screen, strip.currentPath);
                 }
             }
 
@@ -1142,7 +1262,7 @@ Item {
                     color: "transparent"
                     stroke: Appearance.colour.accent
                     strokeWidth: Appearance.font.stem * 2
-                    visible: card.modelData === Wallpaper.current
+                    visible: card.modelData === Wallpaper.currentOn(root.screen)
                 }
 
             }

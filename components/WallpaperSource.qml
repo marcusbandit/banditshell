@@ -101,8 +101,22 @@ Item {
             // and a wallpaper-sized blur is what reaches the screen. Set, the
             // curves are drawn at the screen's own resolution, which is the one
             // thing a vector wallpaper is for.
-            sourceSize.width: root.width
-            sourceSize.height: root.height
+            //
+            // THROUGH THE DEVICE PIXEL RATIO, which this was missing and which
+            // is the difference between "the size it is drawn at" and "the
+            // number QML calls the width". A surface's width is in LOGICAL
+            // pixels: a 3840-wide panel at scale 2 reports 1920, so the decode
+            // was at a quarter of the pixels the compositor then had to scale
+            // up, and a HiDPI laptop wore a visibly soft wallpaper while a
+            // scale-1 monitor beside it wore a sharp one. Same conversion
+            // ScreensPage and PickerState make in the other direction.
+            //
+            // Nothing here has to know about rotation: a rotated output reports
+            // its post-transform logical size, so a portrait monitor is simply
+            // a surface that is taller than it is wide and this reads the pair
+            // it is given.
+            sourceSize.width: Math.round(root.width * Screen.devicePixelRatio)
+            sourceSize.height: Math.round(root.height * Screen.devicePixelRatio)
         }
     }
 

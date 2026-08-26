@@ -727,6 +727,110 @@ of this same picture and `LockSurface` is black underneath it.
 on it opens and closes something on the screen and writes nothing, where everything on the
 singular target writes something and draws nothing.
 
+### One wallpaper per monitor: a default, plus the screens that disagree
+
+`docs/superpowers/specs/2026-08-23-multi-monitor-design.md` put per-screen wallpaper out of
+scope and cited `services/Wallpaper.qml`'s own argument for one picture everywhere. That
+argument was about a **change** being one event, and it does not survive the question it was
+never asked: what a landscape photograph looks like on a monitor stood on its end. It looks
+like the middle third of itself. A shell that draws on every output and has exactly one opinion
+about what to draw is a shell that is wrong on every output but one.
+
+The shape is **not a path per output**. It is `wallpaper.current`, the one every screen wears,
+plus `wallpaper.perScreen`, a map keyed by output name holding only the screens that disagree.
+A map with an entry per monitor has to be edited once per monitor every time the picture
+changes, so the second screen quietly keeps last month's wallpaper because nothing told it; a
+default that screens fall back to keeps "all of them" as one write. It also answers two
+different questions with no code: a monitor unplugged and plugged back in **has** an entry and
+gets its wallpaper back, and a brand new one has none and joins the rest. `config/Config.qml`
+already treats an **empty default object** as user data rather than a schema to merge into, so
+the keys are whatever outputs this machine has and no list of them is declared anywhere.
+
+Choosing the same picture everywhere **clears** the map rather than writing the same path N
+times, and that is the part worth stating: a map that agreed with the default in every entry
+would go on agreeing with the OLD default the moment the default moved. The map holds
+disagreements, and there is no such thing as an entry that agrees.
+
+Three shell-wide slots stopped being one slot, all of them the same mistake the multi-monitor
+spec names six times. **The preview** was the worst: the picker is a per-screen surface, so
+scrubbing the strip on the left monitor repainted the right one, which means you were judging a
+picture against the wrong screen's windows while a screen you were not looking at flickered.
+**The origin** the reveal opens from was shared, on the argument that one normalised point
+lands in the same relative place on every screen; that is right for a change that happens
+everywhere and exactly backwards for one that happens on a monitor, where the blob is the shell
+saying which. Both are maps keyed by screen now, and `WallpaperWindow` listens to a binding on
+its **own** output rather than to the service's shell-wide `shown`: that listener could not
+survive in either direction, since a change on another monitor would not fire it and merely
+looking at another monitor would fire it on every surface at once.
+
+The **palette** stayed single, and deliberately. One per screen is a python and an ffmpeg per
+monitor on every change, feeding a switch (`themeFromWallpaper`) that is on purpose not wired
+to anything, and then a shell that would have to decide what it means to be dressed in two
+photographs. The shell is one shell; it wears the focused screen's.
+
+### The card is the crop
+
+A wallpaper is a file and a screen is a rectangle, and **every question about how the one meets
+the other is answered where the picture is drawn**, never in the service. That is what keeps
+the model correct for a setup it has never heard of: ten monitors at ten aspect ratios, a
+rotation, a phone.
+
+`WallpaperSource` decodes at the surface's own size and covers it, so a rotated output needs no
+mention anywhere: it reports the other pair of numbers and everything downstream reads the
+pair it is given. It decodes **through the device pixel ratio**, which it was not doing: a
+surface's width is in logical pixels, so a 3840-wide panel at scale 2 was decoded at a quarter
+of the pixels the compositor then scaled back up, and a HiDPI laptop wore a visibly soft
+wallpaper beside a sharp one. `reveal.frag` already corrects for aspect, so the blob is round
+on a phone in portrait and on a 32:9 panel alike.
+
+The picker's card was **16:9, written down, "because screens are"**. Screens are not, and the
+comment above that line already said what the cost was: a card that is not the shape of the
+thing it depicts crops the picture twice. Drawn at the screen's own aspect the card **is** the
+preview, because `PreserveAspectCrop` into the card and into the screen are the same operation
+at two sizes: what you see in the strip is the crop you are going to get. The card is then
+solved from **both** dimensions rather than picked from one (the width a share of the height
+wants, capped by the width the room allows), so there is no branch on how big a screen is and
+no mention of a phone anywhere. A phone is simply the case where the second term wins.
+
+That change surfaced a **latent PathView bug** that had been reachable and unreached. `slots`
+is the strip's capacity, and PathView has two position formulas and picks between them on
+`pathItemCount < modelCount`; `place()` solves the first. A folder with fewer wallpapers than
+the strip holds puts it in the second, and the strip goes wrong in the way that is hardest to
+disbelieve: the caption names the wallpaper you chose, the desktop behind shows the wallpaper
+you chose, and the card in the middle wearing the ring is somebody else's. Narrower cards mean
+a panel holds more of them, so four wallpapers on a phone asked for seven slots and made an
+exotic case ordinary. `slots` is clamped below the count.
+
+None of this was argued from a diagram. It was run: a **headless nested compositor** with four
+outputs at 1920x1080, a 1080x1920 made by rotating a panel, a 3840x1080 and a 720x1600, a
+throwaway `HOME` because `Config` hardcodes `~/.config/banditshell`, and `grim -o` per output.
+Both bugs above came out of the screenshots rather than out of the code.
+
+### A screen is where a verb happens
+
+`wallpaper next`, `prev`, `set` and `clear` take a screen in one argument slot with three
+readings: empty means the focused one, exactly as `services/Shell.qml`'s `forScreen("")` argues
+for the twenty verbs that go through it; a name means that one, exactly, or an error rather
+than a near miss; and `all` means every screen as one decision. `all` is a screen NAME rather
+than a flag because Quickshell's IPC hands a function a fixed list of typed arguments and has
+no options, so a flag would be a second parameter that is meaningless whenever the first is
+set, and two arguments that can contradict each other are two arguments somebody will make
+contradict each other.
+
+`wallpaper set <path> [screen]` exists because `set wallpaper.current` **cannot** be it. That
+key is the default and writing it moves every screen that has not been given its own; the
+per-screen map is keyed by output name, and `Config.set` refuses a dotted path its defaults do
+not name. `clear` is the verb the picker has nowhere sensible to put: the picker gives a
+monitor its own wallpaper, and "actually, follow the others" is an undo, which is why the
+Screens settings page carries it as the one wallpaper control on a page about monitors. That
+page names the file only when the screen owns one, so the text and the button light on the same
+condition and there is never a live control whose effect the row has not stated.
+
+In the picker itself the scope is a **pill, not a toggle**, next to the caption: a toggle is a
+switch you leave in a position, and this is the scope of the press you are about to make. It
+resets when the panel closes, and it is gone rather than disabled on a single screen, where
+"this screen" and "all screens" are the same deed.
+
 ### A wallpaper is not only a picture
 
 Three kinds of file live behind one surface, and what separates them is only which Qt element

@@ -11,6 +11,35 @@ import qs.config
 // a restart and can be changed by `banditshell set wallpaper.current <path>`
 // without a picker existing yet.
 //
+// ONE WALLPAPER PER SCREEN, and the shape of that is a DEFAULT plus a map of
+// disagreements rather than a wallpaper per output.
+//
+//   wallpaper.current    what a screen wears when nothing says otherwise
+//   wallpaper.perScreen  { "DP-1": path } for the screens that say otherwise
+//
+// So the answer to "what is on that monitor" is a function of a screen name and
+// never a property, and every property in here that used to BE that answer is
+// now the focused screen's copy of it, kept for the CLI and the settings row
+// that ask about "the wallpaper" and mean the one you are looking at.
+//
+// WHY NOT A PATH PER OUTPUT. Because most of the screens on most machines want
+// the same picture, and a map with an entry per monitor has to be edited once
+// per monitor every time that picture changes: the second screen would quietly
+// keep last month's wallpaper because nothing told it. A default that screens
+// fall back to means "all of them" stays one write, and a screen that wants its
+// own says so by having an entry. It also gives an unplugged-then-replugged
+// monitor and a brand new one two different right answers with no code: the
+// first has an entry and gets it back, the second has none and joins the rest.
+//
+// NOTHING IN HERE KNOWS HOW BIG A SCREEN IS, deliberately. A wallpaper is a
+// file and a screen is a rectangle, and every question about how the one meets
+// the other (a portrait monitor, a phone, a 32:9 panel, a rotation) is answered
+// where the picture is actually drawn: components/WallpaperSource decodes at the
+// surface's own pixels and covers it, and modules/wallpaper/WallpaperPicker
+// draws its cards in the shape of the screen it is on. That keeps this file
+// correct for a setup it has never heard of, which is the only way to be
+// correct for ten monitors at ten aspect ratios.
+//
 // The directory is listed by `find` rather than by a QML folder model because
 // the list is wanted once, sorted, filtered to things Qt can actually decode,
 // and a FolderListModel would have to be pumped into a plain array anyway.
@@ -34,8 +63,42 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string dir: Config.values.wallpaper.dir.replace("~", Quickshell.env("HOME"))
-    readonly property string current: Config.values.wallpaper.current.replace("~", Quickshell.env("HOME"))
+    // `~` is expanded ONCE, here, and every path that leaves this file has been
+    // through it. A tilde reaches config.json because a human typed it there,
+    // and an Image handed `~/Pictures/x.png` fails to load with no message at
+    // all, which is a black desktop and nothing to read about why.
+    function expand(path: string): string {
+        return path ? path.replace("~", Quickshell.env("HOME")) : "";
+    }
+
+    readonly property string dir: root.expand(Config.values.wallpaper.dir)
+
+    // THE DEFAULT, which is what "the wallpaper" used to mean and still does on
+    // a machine with one screen or with every screen agreeing. See the note at
+    // the top: a screen with no entry of its own wears this.
+    readonly property string current: root.expand(Config.values.wallpaper.current)
+
+    // WHICH SCREENS DISAGREE, by output name. Raw off the config, so the values
+    // may still hold a tilde; `currentOn` is the reader and it expands.
+    readonly property var perScreen: Config.values.wallpaper.perScreen ?? ({})
+
+    // Whether a screen has been given a wallpaper of its own, which is a
+    // different question from what it is showing: a screen following the
+    // default is showing something and owns nothing.
+    function hasOwn(screen: string): bool {
+        return !!(screen && root.perScreen[screen]);
+    }
+
+    // WHAT THAT SCREEN IS SET TO. The whole per-screen model is this one
+    // function; everything else is a caller of it.
+    //
+    // An empty screen name answers with the default rather than with nothing,
+    // because the callers that have no screen (a preview window, a harness, the
+    // moment before the compositor has named the focused output) are asking
+    // what a wallpaper IS, not what a particular monitor has.
+    function currentOn(screen: string): string {
+        return root.expand(root.perScreen[screen] ?? "") || root.current;
+    }
 
     // WHAT EACH KIND IS MADE OF, as the one list everything else reads.
     //
@@ -77,8 +140,16 @@ Singleton {
         return k === "motion" || k === "video";
     }
 
-    readonly property string kind: root.kindOf(root.current)
-    readonly property bool moves: root.movesOf(root.current)
+    // THE SCREEN A QUESTION WITHOUT A SCREEN IS ABOUT: the focused one.
+    //
+    // services/Shell.qml's `forScreen("")` makes exactly this argument for the
+    // twenty IPC verbs that go through it. `banditshell wallpaper next` and the
+    // settings row that says which wallpaper you have are the same shape of
+    // caller: they arrive with no screen and they mean the one in front of you.
+    readonly property string here: Hypr.focusedScreen
+
+    readonly property string kind: root.kindOf(root.currentOn(root.here))
+    readonly property bool moves: root.movesOf(root.currentOn(root.here))
 
     // SVGs THAT WANT TO MOVE AND CANNOT, by path.
     //
@@ -138,7 +209,11 @@ Singleton {
 
     // The name of the file, for the places that show which one it is. Empty
     // when nothing is set, rather than the "" a split would leave.
-    readonly property string name: root.current.split("/").pop()
+    function nameOf(path: string): string {
+        return path.split("/").pop();
+    }
+
+    readonly property string name: root.nameOf(root.currentOn(root.here))
 
     // Absolute paths, sorted, of everything in `dir` we can show.
     property var available: []
@@ -151,10 +226,55 @@ Singleton {
     // size against your own windows and a thumbnail cannot stand in for that.
     // None of that is a decision until something is chosen, so it is kept here
     // rather than written: dismiss the picker and the setting was never touched.
-    property string preview: ""
+    //
+    // ONE PER SCREEN, and this is the change per-screen wallpapers most needed.
+    // The picker is a per-screen surface, so scrubbing the strip on the left
+    // monitor was repainting the right one too: you were judging a picture
+    // against the wrong screen's windows, and the screen you were not looking
+    // at kept flickering. A preview belongs to the surface previewing it.
+    property var previews: ({})
 
-    readonly property string shown: root.preview || root.current
-    readonly property string shownName: root.shown.split("/").pop()
+    function previewOn(screen: string): string {
+        return root.previews[screen] ?? "";
+    }
+
+    // COPY THEN ASSIGN, never an edit in place: QML notices assignment to
+    // `previews` and nothing about the object it points at, so a mutated map
+    // would change the desktop and tell no binding about it. Same rule as
+    // services/Apps.qml's map and ScreensPage's array.
+    function setPreview(screen: string, path: string): void {
+        if (!screen || root.previews[screen] === path)
+            return;
+        const next = Object.assign({}, root.previews);
+        next[screen] = path;
+        root.previews = next;
+    }
+
+    function clearPreview(screen: string): void {
+        if (!screen || !(screen in root.previews))
+            return;
+        const next = Object.assign({}, root.previews);
+        delete next[screen];
+        root.previews = next;
+    }
+
+    // WHAT THAT SCREEN IS ACTUALLY DRAWING: the thing being previewed on it if
+    // anything is, else what it is set to. This is the property WallpaperWindow
+    // is written against, and the only one it needs.
+    function shownOn(screen: string): string {
+        return root.previewOn(screen) || root.currentOn(screen);
+    }
+
+    function shownNameOn(screen: string): string {
+        return root.nameOf(root.shownOn(screen));
+    }
+
+    function shownKindOn(screen: string): string {
+        return root.kindOf(root.shownOn(screen));
+    }
+
+    readonly property string shown: root.shownOn(root.here)
+    readonly property string shownName: root.nameOf(root.shown)
     readonly property string shownKind: root.kindOf(root.shown)
 
     // WHERE THE CHANGE CAME FROM, normalised 0 to 1 across the screen.
@@ -165,22 +285,113 @@ Singleton {
     // verb, leaves it in the middle, where a circle growing out of nowhere in
     // particular is the honest answer.
     //
-    // ONE POINT FOR EVERY SCREEN, deliberately. It is normalised, so the same
-    // fraction lands in the same relative place on each monitor, and a
-    // wallpaper is one setting rather than one per screen: the change should
-    // read as one event happening everywhere, not as two circles racing.
-    property point origin: Qt.point(0.5, 0.5)
+    // ONE POINT PER SCREEN, and it used to be one point for all of them.
+    //
+    // The old argument was that a wallpaper is one setting, so the change is
+    // one event and should read as one event happening everywhere rather than
+    // as two circles racing. That argument was correct about the shell it was
+    // written for and is exactly backwards for this one: the change now happens
+    // on ONE screen, and the reveal is the shell saying which. A shared origin
+    // would put the second monitor's blob at a fraction of the way across a
+    // screen where nothing was pressed.
+    //
+    // NORMALISED, which is what makes it survive ten monitors at ten aspect
+    // ratios: 0 to 1 across whatever that surface turns out to be, and
+    // components/reveal.frag corrects for the aspect itself so the blob is
+    // round on a phone in portrait and on a 32:9 panel alike.
+    property var origins: ({})
 
-    function set(path: string): void {
-        root.preview = "";
-        Config.set("wallpaper.current", path);
+    readonly property point centre: Qt.point(0.5, 0.5)
+
+    function originOn(screen: string): point {
+        return root.origins[screen] ?? root.centre;
     }
 
-    // Chosen from somewhere. `x` and `y` are 0 to 1 across the screen the
-    // choice was made on.
-    function setFrom(path: string, x: real, y: real): void {
-        root.origin = Qt.point(x, y);
-        root.set(path);
+    function setOrigin(screen: string, x: real, y: real): void {
+        const next = Object.assign({}, root.origins);
+        next[screen] = Qt.point(x, y);
+        root.origins = next;
+    }
+
+    // GIVE ONE SCREEN A WALLPAPER OF ITS OWN.
+    //
+    // Writes one key of the map, which is why this is a function on the service
+    // and not `Config.set("wallpaper.perScreen." + screen, path)`: Config.set
+    // walks a dotted path and refuses a leaf the defaults do not name, and the
+    // defaults deliberately name no monitors at all.
+    function setOn(screen: string, path: string): void {
+        // NO SCREEN MEANS ALL OF THEM here, and only here. `currentOn("")`
+        // reads the default because a reader with no screen is asking what a
+        // wallpaper is; a WRITER with no screen is asking to change one, and
+        // the only honest target for that is the default, which is what every
+        // screen without an entry follows. The two are the same answer from
+        // opposite ends.
+        if (!screen) {
+            root.setAll(path);
+            return;
+        }
+        root.clearPreview(screen);
+
+        // ALREADY THE ANSWER, so say nothing. Choosing the picture a screen is
+        // already following the default to is not a reason to give that screen
+        // an entry: it would pin it there, and the next `set everywhere` would
+        // move every screen except this one.
+        if (!root.hasOwn(screen) && path === root.current)
+            return;
+
+        const next = Object.assign({}, Config.values.wallpaper.perScreen ?? {});
+        next[screen] = path;
+        Config.set("wallpaper.perScreen", next);
+    }
+
+    // THE SAME ONE EVERYWHERE, which is a write to the default AND a clearing
+    // of every disagreement with it. See config/Config.qml: a map that agreed
+    // with the default in every entry would go on agreeing with the OLD default
+    // the moment the default moved.
+    function setAll(path: string): void {
+        root.previews = {};
+        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", path]]);
+    }
+
+    // BACK TO THE DEFAULT. Not "set it to whatever the default currently is":
+    // the entry goes, so the screen follows the default from here on.
+    function clearOn(screen: string): void {
+        if (!root.hasOwn(screen))
+            return;
+        root.clearPreview(screen);
+        const next = Object.assign({}, Config.values.wallpaper.perScreen);
+        delete next[screen];
+        Config.set("wallpaper.perScreen", next);
+    }
+
+    // Kept as the name every caller without a screen already used, and it means
+    // what it always meant: all of them.
+    function set(path: string): void {
+        root.setAll(path);
+    }
+
+    // Chosen from somewhere on a particular screen. `x` and `y` are 0 to 1
+    // across that screen.
+    function setFrom(screen: string, path: string, x: real, y: real): void {
+        root.setOrigin(screen, x, y);
+        root.setOn(screen, path);
+    }
+
+    // THE SAME CHOICE, EVERYWHERE, made at a point on one screen.
+    //
+    // The origin is copied to every monitor as the same FRACTION, which is the
+    // original shell-wide argument and the only one that survives ten screens
+    // at ten aspect ratios: a point two thirds across a 32:9 panel has no
+    // pixel-for-pixel counterpart on a phone in portrait, but two thirds across
+    // is two thirds across on both, and reveal.frag corrects the aspect so the
+    // blob is round on each. So the change reads as one event happening
+    // everywhere, which is exactly what it now is.
+    function setFromAll(path: string, x: real, y: real): void {
+        const at = {};
+        for (const s of Quickshell.screens)
+            at[s.name] = Qt.point(x, y);
+        root.origins = at;
+        root.setAll(path);
     }
 
     function setEnabled(on: bool): void {
@@ -198,14 +409,46 @@ Singleton {
     // from the middle: stepping forward is a picture arriving from the right,
     // and a circle that grows from the right edge says which direction you are
     // travelling through the folder without a single word on the screen.
-    function step(delta: int): void {
+    //
+    // ON ONE SCREEN. Stepping is the keybind's picker, and a keybind means the
+    // screen you are looking at, exactly as services/Shell.qml's forScreen("")
+    // argues for the twenty verbs that go through it. Walking every monitor
+    // through the folder at once is `wallpaper next all`, and it is the rarer of
+    // the two by a wide margin.
+    //
+    // WHERE IT STARTS is that screen's own wallpaper rather than the default,
+    // so two monitors stepping independently do not yank each other back in
+    // step the moment one of them is nudged.
+    function stepOn(screen: string, delta: int): void {
         if (!root.available.length)
             return;
-        root.origin = Qt.point(delta > 0 ? 1 : 0, 0.5);
-        const i = root.available.indexOf(root.current);
+        root.setOrigin(screen, delta > 0 ? 1 : 0, 0.5);
+        const i = root.available.indexOf(root.currentOn(screen));
         // Not in the list (someone set a path elsewhere): start at the front.
         const next = i < 0 ? 0 : (i + delta + root.available.length) % root.available.length;
-        root.set(root.available[next]);
+        root.setOn(screen, root.available[next]);
+    }
+
+    function step(delta: int): void {
+        root.stepOn(root.here, delta);
+    }
+
+    // EVERY SCREEN, ONE STEP, and off the DEFAULT rather than off each screen's
+    // own: this verb means "all of them together", and stepping each from where
+    // it happens to be would leave them further apart than they started.
+    function stepAll(delta: int): void {
+        if (!root.available.length)
+            return;
+        // The same EDGE on each of them, not the same point on one of them:
+        // normalised, so "coming in from the right" is the right edge of a
+        // phone in portrait and of a 32:9 panel without either being named.
+        const edge = {};
+        for (const s of Quickshell.screens)
+            edge[s.name] = Qt.point(delta > 0 ? 1 : 0, 0.5);
+        root.origins = edge;
+        const i = root.available.indexOf(root.current);
+        const next = i < 0 ? 0 : (i + delta + root.available.length) % root.available.length;
+        root.setAll(root.available[next]);
     }
 
     // A PICTURE OF A THING THAT IS NOT A PICTURE.
@@ -307,8 +550,16 @@ done`, root.posterDir, ...videos];
 
     readonly property color dominant: root.palette.length ? root.palette[0].colour : "transparent"
 
+    // OFF THE FOCUSED SCREEN'S WALLPAPER, which is the one question a single
+    // palette can honestly answer once the screens can differ.
+    //
+    // One per screen was the other option and it is the wrong one twice over: a
+    // python and an ffmpeg per monitor on every change, to feed a switch
+    // (`themeFromWallpaper`) that is deliberately not wired to anything, and
+    // then a shell that would have to decide what it means to be dressed in two
+    // photographs at once. The shell is one shell; it can wear one of them.
     function measure(): void {
-        const face = root.faceOf(root.current);
+        const face = root.faceOf(root.currentOn(root.here));
         if (!face) {
             root.palette = [];
             return;
@@ -326,7 +577,12 @@ done`, root.posterDir, ...videos];
     // would otherwise start a python and an ffmpeg for a wallpaper that is
     // already not the current one by the time they finish. The last one to
     // stand still for a moment is the only one worth asking about.
+    // Three notifies for one question: the default moved, this screen's own
+    // entry moved, or you looked at a different screen. All three change the
+    // answer to "what is the wallpaper in front of me made of".
     onCurrentChanged: settle.restart()
+    onPerScreenChanged: settle.restart()
+    onHereChanged: settle.restart()
     onPostersChanged: settle.restart()
 
     Timer {

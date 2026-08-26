@@ -55,7 +55,27 @@ Item {
             // detail line is where that is worth knowing. The choice survives
             // being turned off, so the row goes on saying what the choice is
             // rather than going blank and making the setting look lost.
-            detail: Wallpaper.name ? (Wallpaper.kind === "still" ? Wallpaper.name : `${Wallpaper.name} · ${Wallpaper.kind}`) : "nothing set"
+            //
+            // THE SCREEN YOU ARE LOOKING AT, since a wallpaper is per monitor
+            // now and this row's `Wallpaper.name` is the focused one's. Said
+            // out loud only when it is worth saying: on one screen, and on a
+            // desk where every screen follows the default, "on DP-1" is a
+            // qualification of a thing that was never ambiguous. The row goes
+            // on saying it when this screen has its own, because that is the
+            // case where the same page read on the other monitor says something
+            // different, and a row that quietly changed under you is worse than
+            // a row three words longer. modules/settings/pages/ScreensPage.qml
+            // is where the whole list lives.
+            detail: {
+                if (!Wallpaper.name)
+                    return "nothing set";
+                const bits = [Wallpaper.name];
+                if (Wallpaper.kind !== "still")
+                    bits.push(Wallpaper.kind);
+                if (Wallpaper.hasOwn(Wallpaper.here))
+                    bits.push(`on ${Wallpaper.here}`);
+                return bits.join(" · ");
+            }
             tip: Wallpaper.enabled ? "turn it off" : "turn it on"
             onActivated: Wallpaper.toggle()
 

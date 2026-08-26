@@ -454,7 +454,43 @@ Singleton {
                 // made of this same picture.
                 enabled: true,
                 dir: "~/Pictures/Wallpapers",
+
+                // THE ONE EVERY SCREEN WEARS UNLESS IT HAS BEEN GIVEN ITS OWN.
+                //
+                // Not "the wallpaper" any more: the DEFAULT one. A screen with
+                // no entry in `perScreen` below draws this, which is what makes
+                // a monitor plugged in for the first time show a picture rather
+                // than the black behind the surface, and what makes a one-
+                // monitor session indistinguishable from the shell before per
+                // screen wallpapers existed.
                 current: "~/Pictures/Wallpapers/shaded_landscape.png",
+
+                // ONE WALLPAPER PER MONITOR, by output name: { "DP-1": path }.
+                //
+                // EMPTY ON PURPOSE, and the emptiness is load-bearing rather
+                // than merely a tidy default. merge() treats an empty default
+                // OBJECT as user data instead of a schema to walk (see its
+                // note), so the keys here are whatever monitors this machine
+                // has, and no list of them has to be declared anywhere. A
+                // non-empty default would name somebody else's outputs.
+                //
+                // A MISSING KEY IS NOT AN EMPTY ONE. Absent means "follow
+                // `current`", which is the state every screen starts in, so
+                // per-screen wallpapers cost nothing until one is set. That is
+                // also why choosing the same picture everywhere CLEARS this map
+                // rather than writing the same path N times: the map holds the
+                // screens that disagree with the default, and a map that agreed
+                // with it in every entry would go on disagreeing the day the
+                // default changed.
+                //
+                // A NAME IS NEVER REMOVED WHEN A MONITOR IS UNPLUGGED, the same
+                // reservation `sidebar.workspaces.order` makes for bands: the
+                // cable comes back and the screen wears what it wore.
+                //
+                // Not settable from the CLI as a whole (an object cannot be
+                // typed into `banditshell set`), which is why `wallpaper set`
+                // takes a screen name and writes one key at a time.
+                perScreen: {},
 
                 // A WALLPAPER THAT MOVES, and the one rule that makes one
                 // affordable.
@@ -1455,19 +1491,39 @@ Singleton {
     // Write one setting by dotted path and persist it. This is the whole API a
     // settings menu needs.
     function set(key: string, value: var): void {
-        const keys = key.split(".");
+        root.setMany([[key, value]]);
+    }
+
+    // TWO SETTINGS THAT ARE ONE DECISION, written together.
+    //
+    // `set` twice is not the same thing, and the difference is visible rather
+    // than merely tidy. Assigning `values` notifies synchronously, so the shell
+    // fully re-evaluates against the half-applied state before the second write
+    // lands: `wallpaper set --all` clears the per-screen map and then moves the
+    // default, and done as two writes every screen visibly loads the OLD
+    // default in between. It is also two saves of the same file for one change.
+    //
+    // `pairs` is [[key, value], ...]. A key the defaults do not name is
+    // refused, and refusing one refuses the WHOLE batch: a pair is written
+    // together or the settings are left as they were, because a half-applied
+    // decision is the state this function exists to prevent.
+    function setMany(pairs: var): void {
         const next = JSON.parse(JSON.stringify(root.values));
 
-        let node = next;
-        for (let i = 0; i < keys.length - 1; i++) {
-            node = node[keys[i]];
-            if (typeof node !== "object" || node === null)
+        for (const [key, value] of pairs) {
+            const keys = key.split(".");
+            let node = next;
+            for (let i = 0; i < keys.length - 1; i++) {
+                node = node[keys[i]];
+                if (typeof node !== "object" || node === null)
+                    return console.warn(`Config: no such setting "${key}"`);
+            }
+            if (!(keys[keys.length - 1] in node))
                 return console.warn(`Config: no such setting "${key}"`);
-        }
-        if (!(keys[keys.length - 1] in node))
-            return console.warn(`Config: no such setting "${key}"`);
 
-        node[keys[keys.length - 1]] = value;
+            node[keys[keys.length - 1]] = value;
+        }
+
         root.values = next;
         root.save();
     }

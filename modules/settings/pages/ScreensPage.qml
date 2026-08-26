@@ -182,6 +182,39 @@ Item {
                     else
                         bits.push(`workspace ${monitor.band}`);
 
+                    // WHAT IT IS WEARING, and ONLY WHEN THAT IS A CHOICE.
+                    //
+                    // A wallpaper is per screen now (services/Wallpaper.qml)
+                    // and the shape of that is a default plus the screens that
+                    // disagree with it. The name on its own is therefore not
+                    // the fact: two rows showing the same file are in two
+                    // completely different states if one of them owns it, and
+                    // only one of them will follow the next `set everywhere`.
+                    // So the row says nothing at all while a screen follows the
+                    // default, which is every screen until you choose
+                    // otherwise, and names the file the moment it stops.
+                    //
+                    // That also makes this line say exactly what the button on
+                    // the right is for: the name appears and the button lights
+                    // on the same condition, so there is never a live control
+                    // whose effect the row has not stated.
+                    //
+                    // BEFORE THE RESOLUTION, because this detail elides. At the
+                    // settings panel's width even `workspaces 11-15 · 1080 ×
+                    // 1920` is cut short, which is true on main and is not this
+                    // change's to fix; what IS this change's to get right is
+                    // not queueing a fact you can act on behind one you cannot.
+                    //
+                    // Shown for an unplugged screen too, and that is the point
+                    // rather than an oversight: the band above says an absent
+                    // monitor claims no workspaces, because bands are counted
+                    // off the screens that are there, but a wallpaper is a
+                    // RESERVATION that survives the cable exactly as the name's
+                    // place in the order does. This is how you find out that
+                    // the monitor in the cupboard still has one waiting.
+                    if (Wallpaper.hasOwn(monitor.modelData))
+                        bits.push(Wallpaper.nameOf(Wallpaper.currentOn(monitor.modelData)));
+
                     // The mode, not the layout size. A screen's `width` is in
                     // logical pixels, so a 2560 panel at scale 1.5 reports 1706
                     // and nobody recognises their own monitor in that number;
@@ -219,6 +252,28 @@ Item {
 
                 Row {
                     spacing: Appearance.padding.small / 2
+
+                    // HAND THIS SCREEN BACK TO THE DEFAULT.
+                    //
+                    // The only wallpaper control on this page, and deliberately
+                    // the only one: WHICH wallpaper is a question you answer by
+                    // looking at wallpapers on the screen they are going on,
+                    // which is the picker, and a settings page cannot show you
+                    // a picture at the size the decision is made at. What a
+                    // list of screens CAN do, and the picker cannot, is undo:
+                    // the picker gives a monitor its own wallpaper and has
+                    // nowhere sensible to put "actually, follow the others".
+                    //
+                    // Dead rather than absent on a screen that already follows
+                    // the default, which is Nudge's own contract at the ends of
+                    // the list: a trailing slot that changed width row by row
+                    // would bend the column of buttons out of line.
+                    Nudge {
+                        enabled: Wallpaper.hasOwn(monitor.modelData)
+                        glyph: "settings_backup_restore"
+                        tip: `${monitor.modelData} back to the default wallpaper`
+                        onNudged: Wallpaper.clearOn(monitor.modelData)
+                    }
 
                     Nudge {
                         enabled: monitor.index > 0
