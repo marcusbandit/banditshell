@@ -1123,6 +1123,52 @@ Scope {
 
             return rows.length ? `${head}\n${root.columns(rows)}` : head;
         }
+
+        // THE FOLDER, AND WHICH OF IT SUITS ONE SCREEN.
+        //
+        // The picker predicts, and a prediction that cannot be inspected is one
+        // you have to either trust or argue with by opening the panel and
+        // counting cards. This is the same question asked in a form that fits
+        // in a terminal: every wallpaper, its measured shape, and whether the
+        // rule keeps it for this monitor.
+        //
+        // WHY THIS IS A VERB AT ALL. A filter is the one kind of control whose
+        // failure is INVISIBLE by construction: a wallpaper wrongly excluded
+        // does not appear anywhere for you to notice it missing, and the strip
+        // looks exactly as correct as it would if the rule were right. So the
+        // excluded ones are printed too, marked, rather than the verb answering
+        // with the list the picker would show.
+        //
+        // The aspect is printed even for the ones that fit, because the two
+        // numbers side by side are what makes an argument about the tolerance
+        // possible: `wallpaper.fit` is a single factor in config.json and this
+        // is the only place its consequences are all visible at once.
+        function list(screen: string): string {
+            const name = screen || Hypr.focusedScreen;
+            const aspect = Wallpaper.screenAspect(name);
+            if (!aspect)
+                return `no such screen: ${name || "(none focused)"}`;
+
+            const worn = Wallpaper.currentOn(name);
+            const rows = Wallpaper.available.map(p => {
+                const a = Wallpaper.aspectOf(p);
+                return [
+                    p === worn ? "*" : " ",
+                    Wallpaper.fits(p, aspect) ? "fits" : "-",
+                    // A shape that could not be measured is not a shape of 0,
+                    // and printing one would be this line inventing the answer
+                    // the fitting rule deliberately declines to give. See
+                    // Wallpaper.shapes: unmeasured fits everything, and `?`
+                    // beside `fits` is the whole of why.
+                    a ? a.toFixed(2) : "?",
+                    Wallpaper.nameOf(p)
+                ];
+            });
+
+            const kept = rows.filter(r => r[1] === "fits").length;
+            const head = `${name} ${aspect.toFixed(2)} · ${kept} of ${rows.length} fit · tolerance ${Config.values.wallpaper.fit}`;
+            return rows.length ? `${head}\n${root.columns(rows)}` : head;
+        }
     }
 
     // THE PICKER, which is a SURFACE and therefore its own target rather than

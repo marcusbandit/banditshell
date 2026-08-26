@@ -390,6 +390,9 @@ banditshell/
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
 │   ├── PasswordField.qml        inline secret entry
+│   ├── PathField.qml            a MenuRow until you press it, then a place to
+│   │                            type; the keyboard is claimed on the edit, not
+│   │                            on being visible
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
@@ -830,6 +833,80 @@ In the picker itself the scope is a **pill, not a toggle**, next to the caption:
 switch you leave in a position, and this is the scope of the press you are about to make. It
 resets when the panel closes, and it is gone rather than disabled on a single screen, where
 "this screen" and "all screens" are the same deed.
+
+### The folder predicts, and the prediction is inspectable
+
+Once a wallpaper belongs to a monitor, the collection stops being one list. A folder worth
+browsing holds pictures for every screen its owner has ever had, and on any one screen most of
+them are wrong: a 32:9 panorama on a monitor stood on its end is the middle fourteenth of
+itself. The strip is a row of things you are meant to recognise instantly, and filling it with
+pictures that cannot go there is the one thing that makes it slower to use than a folder.
+
+**The shape is measured, never read off the path.** A collection sorted into `32x9/` and `5x8/`
+is telling you the answer and is not a source for it: the folder name is a human's filing, one
+picture in it is always the one dropped in the wrong place, and a shell that trusted the
+directory would hide the file that fits while offering the one that does not. One `ffprobe`
+pass over the whole folder yields width over height per file, the same "one process, not one
+per file" shape `makePosters` and `findFrozen` already have. ffprobe rather than `identify`
+because ffmpeg is already a hard dependency and one tool answers for a jpg and an mp4 in the
+same breath.
+
+**A file with no measured shape fits everything**, which is a real answer rather than a missing
+one. An SVG has no pixels of its own and rasterises into whatever rectangle it is given; an
+audio file has no picture at all. Neither can fail to suit a screen, and anything else that
+lands there is a file ffprobe could not open, where offering it is a better failure than
+dropping it silently.
+
+**Fit is a ratio through a log, not a difference.** Aspect is multiplicative: 32:9 and 21:9 are
+1.2 apart and are obviously different screens, while 9:16 and 5:8 are 0.005 apart and are the
+same one. `wallpaper.fit` is therefore a **factor** (1.25: a quarter wider or a quarter
+narrower), so too-wide and too-tall are the same distance from home instead of one of them
+being dozens of times further out. Nothing anywhere mentions rotation: a screen stood on its
+end reports the other pair of numbers, so a 1920x1200 panel at transform 1 measures 0.625,
+which is 5:8, which is what the pictures that suit it are. The rule falls out of the
+measurement instead of being a case in it.
+
+Two escape hatches, because a prediction that cannot be overridden has to be right every time.
+A second **pill** beside the scope one shows the whole folder in a press, and it is named for
+the state it is in ("fits this screen") rather than for the press, because that is a fact about
+the strip you are looking at. And `show()` turns the filter off by itself when the wallpaper
+the screen is already wearing would have been hidden: "start where you already are" outranks
+the prediction, or the strip opens on somebody else's picture with no ring anywhere on it,
+which reads as the shell having lost the wallpaper visibly on the screen behind it.
+
+**A filter's failure is invisible by construction.** A wallpaper wrongly excluded does not
+appear anywhere for you to notice it missing, and the strip looks exactly as correct as it
+would if the rule were right. So `banditshell wallpaper list [screen]` prints every wallpaper
+with its measured shape and whether the rule kept it, **including the ones it dropped**, which
+is the only place the tolerance's consequences are all visible at once.
+
+### A wallpaper is a file, and a path is one of its names
+
+The listing goes **all the way down** and follows symlinks, where it used to stop at
+`-maxdepth 1`. A collection that has outgrown one folder has been sorted into subfolders and is
+nearly always sorted by shape, which is the one property per-screen wallpapers care about, so a
+flat listing skipped precisely the folders that exist. `-L` because the folder is very often a
+symlink and so is everything in it: a dotfiles repo checks the pictures in somewhere else and
+links them into place, and `find` without it reports nothing at all.
+
+That makes `realpath` on the way out **necessary rather than tidy**. Following symlinks means
+one picture can be reached by two names, and this shell compares wallpapers by string
+everywhere it matters: the ring on the card you are wearing, the index the picker opens at, the
+position `next` steps from. Browse through `~/.config/wallpapers`, set through the dotfiles
+path it points at, and every one of those comparisons quietly says no. Found exactly that way,
+against a real collection. One name is picked and it is the real one; `-exec ... +` batches, so
+it costs one more process for the folder rather than one per file, and the collector drops
+repeats because two links to one picture are one wallpaper.
+
+`wallpaper.dir` is also the first setting in this shell that is **a piece of text**. Everything
+else on a settings page is a switch, a slider or a list of names, where the whole range is on
+the screen; a folder path is unbounded, and the only honest control for one is a place to type.
+`components/PathField.qml` is a MenuRow until you press it, so a page does not grow a
+permanently open text box for a setting changed twice a year. The keyboard is claimed on the
+**edit** rather than on becoming visible, which is what `PasswordField` does and what would
+have made the settings panel hold the keyboard for as long as the page was open: a password
+field appears in answer to a press and is gone a second later, and this one sits there while
+you read everything else.
 
 ### A wallpaper is not only a picture
 

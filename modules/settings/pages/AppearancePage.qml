@@ -85,6 +85,43 @@ Item {
             }
         }
 
+        // WHERE THE PICTURES COME FROM, and the one setting on this page you
+        // have to type rather than press.
+        //
+        // It earns a control for the reason the row above it does not: WHICH
+        // wallpaper is a question you answer by looking at wallpapers, so it
+        // belongs on the bottom edge with the candidate on the desktop behind
+        // it. WHERE THEY ARE is a question with no pictures in it at all, and
+        // until this row existed the only way to answer it was to edit
+        // config.json by hand, which is the state this whole page exists to
+        // replace.
+        //
+        // THE COUNT IS THE ROW'S HONESTY. A path is a claim about the disk and
+        // the only thing that can contradict it is what came back: a folder
+        // that lists nothing is a typo, a moved collection or a permission, and
+        // all three look identical until something says "0". The second number
+        // is the one per-screen wallpapers added, because a folder can be full
+        // and still have nothing in it for the monitor you are standing at.
+        PathField {
+            width: list.width
+            icon: "folder"
+            label: "Wallpaper folder"
+            value: Config.values.wallpaper.dir
+            placeholder: "~/Pictures/Wallpapers"
+            tip: "type a different folder"
+            detail: {
+                const n = Wallpaper.available.length;
+                if (!n)
+                    return "nothing usable in it";
+                const fit = Wallpaper.fittedFor(Wallpaper.screenAspect(Wallpaper.here)).length;
+                const bits = [`${n} wallpaper${n === 1 ? "" : "s"}`];
+                if (fit < n)
+                    bits.push(`${fit} fit ${Wallpaper.here}`);
+                return bits.join(" · ");
+            }
+            onCommitted: path => Config.set("wallpaper.dir", path)
+        }
+
         // THE ONE RULE THAT MAKES A MOVING WALLPAPER AFFORDABLE, offered as a
         // switch because it is the only part of it worth arguing with. What it
         // costs when it is on is stated rather than left to be discovered: the

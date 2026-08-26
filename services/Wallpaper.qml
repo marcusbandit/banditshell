@@ -199,6 +199,120 @@ Singleton {
         }
     }
 
+    // WHAT SHAPE EACH FILE IS, as width over height. { path: 1.7777, ... }
+    //
+    // MEASURED, NEVER READ OFF THE PATH. A folder of wallpapers sorted into
+    // `32x9/` and `5x8/` is telling you the answer and is not a source for it:
+    // the folder is a human's filing, one picture in it is always the one that
+    // was dropped in the wrong place, and a shell that trusted the directory
+    // name would hide the file that actually fits while offering the one that
+    // does not. The name of a folder is a label; the pixels are the fact.
+    //
+    // A PATH THAT IS NOT IN HERE HAS NO SHAPE, which is a real answer rather
+    // than a missing one, and `fits` below treats it as fitting everything.
+    // Two kinds land there and both want exactly that: an SVG has no pixels of
+    // its own and rasterises to whatever rectangle it is given, so it genuinely
+    // suits any screen; an audio file has no picture at all, so there is
+    // nothing about it that could fail to suit one. Anything else that ends up
+    // unmeasured is a file ffprobe could not open, and offering it is a better
+    // failure than silently dropping it.
+    property var shapes: ({})
+
+    function aspectOf(path: string): real {
+        return root.shapes[path] ?? 0;
+    }
+
+    // WHETHER A PICTURE SUITS A SCREEN, both given as width over height.
+    //
+    // Compared as a RATIO of the two aspects rather than a difference of them,
+    // through a log so the comparison is symmetric. A difference is the wrong
+    // instrument here: 32:9 and 21:9 are 1.2 apart in aspect and are obviously
+    // different screens, while 9:16 and 5:8 are 0.005 apart and are the same
+    // one. Aspect is a multiplicative quantity, so the honest question is "how
+    // many times wider", and `log` makes a picture 25% too wide and a picture
+    // 25% too tall the same distance from home instead of one of them being
+    // dozens of times further out than the other.
+    //
+    // The tolerance is `wallpaper.fit`, a factor rather than a percentage, for
+    // the same reason: see config/Config.qml.
+    function fits(path: string, screenAspect: real): bool {
+        const a = root.aspectOf(path);
+        if (!a || !screenAspect)
+            return true;
+        return Math.abs(Math.log(a / screenAspect)) <= Math.log(Config.values.wallpaper.fit);
+    }
+
+    // The wallpapers that suit a screen of this shape, in the order `available`
+    // already holds. MAY BE EMPTY, and the caller decides what an empty answer
+    // means: the picker falls back to showing everything and says so, because a
+    // strip with nothing in it is a dead end rather than a filter.
+    function fittedFor(screenAspect: real): var {
+        return root.available.filter(p => root.fits(p, screenAspect));
+    }
+
+    // The shape of a monitor by output name, which is the form every caller
+    // outside the picker has the question in.
+    //
+    // NOTHING IS SAID ABOUT ROTATION, and that is the point. A screen stood on
+    // its end reports the other pair of numbers, so a 1920x1200 panel at
+    // transform 1 is 1200x1920 here and comes out at 0.625, which is 5:8, which
+    // is what the pictures that suit it are. The rule falls out of the
+    // measurement instead of being a case in it.
+    function screenAspect(screen: string): real {
+        const s = Quickshell.screens.find(m => m.name === screen);
+        return s && s.height > 0 ? s.width / s.height : 0;
+    }
+
+    // ONE PROCESS FOR THE WHOLE FOLDER, the poster maker's argument again and
+    // for the same numbers: a Process per file would make the first listing a
+    // burst of them, and this runs on every re-list.
+    //
+    // ffprobe rather than ImageMagick's `identify`, though both are on this
+    // machine and identify handles SVG better. ffmpeg is already a hard
+    // dependency here (it is what lifts a poster frame out of a video), and one
+    // tool that answers for a jpg and an mp4 in the same breath is worth more
+    // than a second tool that answers for the stills slightly better. The
+    // formats identify would have won are exactly the ones that do not need an
+    // answer: see `shapes`.
+    //
+    // `csv=p=0` prints `W,H` and nothing else. A file with no video stream
+    // prints nothing, the `case` drops it, and it ends up unmeasured, which is
+    // the state the fitting rule already has a name for.
+    function measureShapes(): void {
+        if (!root.available.length) {
+            root.shapes = {};
+            return;
+        }
+        shaper.command = ["sh", "-c", `for f in "$@"; do
+  s=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$f" </dev/null 2>/dev/null)
+  case "$s" in
+    [0-9]*,[0-9]*) printf '%s\\t%s\\n' "$f" "$s" ;;
+  esac
+done`, "sh", ...root.available];
+        shaper.running = true;
+    }
+
+    Process {
+        id: shaper
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = {};
+                for (const line of text.trim().split("\n")) {
+                    const tab = line.indexOf("\t");
+                    if (tab <= 0)
+                        continue;
+                    const wh = line.slice(tab + 1).split(",");
+                    const w = parseInt(wh[0], 10);
+                    const h = parseInt(wh[1], 10);
+                    if (w > 0 && h > 0)
+                        out[line.slice(0, tab)] = w / h;
+                }
+                root.shapes = out;
+            }
+        }
+    }
+
     // WHETHER IT IS SHOWN, which is a separate question from which one it is.
     //
     // Kept apart from `current` on purpose: clearing the path to hide the
@@ -615,7 +729,42 @@ done`, root.posterDir, ...videos];
         // The pattern is BUILT from `formats` rather than written out, so a
         // format added up there is offered down here without this line being
         // touched. `-iregex` matches the whole path, hence the leading `.*`.
-        lister.command = ["find", root.dir, "-maxdepth", "1", "-type", "f", "-iregex", `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
+        //
+        // ALL THE WAY DOWN, where this used to stop at `-maxdepth 1`.
+        //
+        // A wallpaper collection that has outgrown one folder has been sorted
+        // into subfolders, and it is almost always sorted by SHAPE: `32x9/`,
+        // `16x9/`, `5x8/`. That is the same fact `shapes` measures, so a flat
+        // listing was refusing to look in exactly the folders that exist
+        // because the pictures in them are different from each other. One
+        // setting names the collection and the whole collection is offered.
+        //
+        // `-L` because the folder is very often a symlink, and so is anything
+        // inside it: a dotfiles repo checks the pictures in somewhere else and
+        // links them into place, and `find` without this stops at the link and
+        // reports nothing at all. `-type f` is evaluated against the TARGET
+        // under -L, which is what makes a folder of links list as a folder of
+        // pictures instead of as nothing.
+        //
+        // AND `realpath` ON THE WAY OUT, which the `-L` makes necessary rather
+        // than merely tidy.
+        //
+        // A WALLPAPER IS A FILE, AND A PATH IS ONE OF ITS NAMES. Following
+        // symlinks means the same picture can be reached by two of them, and
+        // this shell compares wallpapers by STRING in every place it matters:
+        // the ring on the card you are wearing, the index the picker opens at,
+        // the position `next` steps from. Browse the collection through
+        // `~/.config/wallpapers` and set it through the dotfiles path it points
+        // at, and every one of those comparisons quietly says no: the strip
+        // opens on the first file with no ring anywhere, which reads as the
+        // shell having lost the wallpaper that is visibly on the screen behind
+        // it. Found exactly that way.
+        //
+        // So one name is picked and it is the real one. `-exec ... +` batches,
+        // so this is one more process for the folder rather than one per file,
+        // and the collector drops repeats because two links to one picture are
+        // one wallpaper.
+        lister.command = ["sh", "-c", `exec find -L "$1" -type f -iregex "$2" -exec realpath -- {} +`, "sh", root.dir, `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
         lister.running = true;
     }
 
@@ -632,11 +781,14 @@ done`, root.posterDir, ...videos];
 
         stdout: StdioCollector {
             onStreamFinished: {
-                root.available = text.trim().split("\n").filter(l => l).sort();
+                // Deduped, because `realpath` above can hand back the same
+                // picture twice when two links in the tree point at it.
+                root.available = [...new Set(text.trim().split("\n").filter(l => l))].sort();
                 if (!root.available.length)
                     console.warn(`Wallpaper: nothing usable in ${root.dir}`);
                 root.makePosters();
                 root.findFrozen();
+                root.measureShapes();
             }
         }
     }

@@ -453,7 +453,35 @@ Singleton {
                 // a wallpaper you do not want to see, and the lock's ground is
                 // made of this same picture.
                 enabled: true,
+
+                // WHERE THE COLLECTION IS, and everything under it.
+                //
+                // Read RECURSIVELY, through symlinks (services/Wallpaper.qml).
+                // A collection worth having has been sorted into subfolders and
+                // is nearly always sorted by shape, which is the one property
+                // per-screen wallpapers care about, so a listing that stopped
+                // at the top level skipped precisely the folders that exist.
+                // One setting names the collection; the shell finds the rest.
                 dir: "~/Pictures/Wallpapers",
+
+                // HOW FAR A PICTURE'S SHAPE MAY BE FROM A SCREEN'S AND STILL BE
+                // OFFERED FOR IT, as a FACTOR rather than a percentage.
+                //
+                // The picker on a monitor shows the wallpapers that suit that
+                // monitor, because a folder holding both 32:9 and 9:16 pictures
+                // is a folder where most of what it could show you is wrong for
+                // the screen you are looking at. This is the width of that
+                // filter: 1.25 offers a picture up to a quarter wider or a
+                // quarter narrower than the screen, so 16:9 and 16:10 are the
+                // same family and 16:9 and 4:3 are not.
+                //
+                // A factor, so it reads the same in both directions: too wide
+                // by a quarter and too tall by a quarter are the same distance,
+                // which a percentage of the aspect is not. 1 would offer only
+                // an exact match and nothing else; anything large enough offers
+                // the whole folder, which is what the picker's own "all" does
+                // in one press without this having to be edited.
+                fit: 1.25,
 
                 // THE ONE EVERY SCREEN WEARS UNLESS IT HAS BEEN GIVEN ITS OWN.
                 //

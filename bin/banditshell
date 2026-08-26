@@ -62,6 +62,11 @@
 #                                a wallpaper is per monitor: no screen means the
 #                                focused one, `all` means the whole desk at once
 #                                palette = the colours it is mostly made of
+#   banditshell wallpaper list [screen]
+#                                every wallpaper in the folder with its measured
+#                                shape, and whether it suits that screen. The
+#                                picker shows you only the ones that do, so this
+#                                is where the ones it left out are visible
 #   banditshell wallpapers toggle [screen]|open [screen]|close|status
 #                                the picker: the bottom edge's second pull. It
 #                                sets the wallpaper for the screen it is on
@@ -509,7 +514,7 @@ wallpaper)
     shift || true
     case "$sub" in
     toggle | on | off | status | palette) ipc wallpaper "$sub" ;;
-    next | prev | clear) ipc wallpaper "$sub" "${1:-}" ;;
+    next | prev | clear | list) ipc wallpaper "$sub" "${1:-}" ;;
     set)
         [ $# -ge 1 ] || { echo "usage: banditshell wallpaper set <path> [screen|all]" >&2; exit 2; }
         # ABSOLUTE, because the shell is not standing in this directory. A
@@ -521,7 +526,7 @@ wallpaper)
         # already knows what it can decode.
         ipc wallpaper set "$(readlink -m -- "$1")" "${2:-}"
         ;;
-    *) echo "usage: banditshell wallpaper toggle|on|off|status|palette|next [screen]|prev [screen]|set <path> [screen|all]|clear [screen|all]" >&2; exit 2 ;;
+    *) echo "usage: banditshell wallpaper toggle|on|off|status|palette|list [screen]|next [screen]|prev [screen]|set <path> [screen|all]|clear [screen|all]" >&2; exit 2 ;;
     esac
     ;;
 

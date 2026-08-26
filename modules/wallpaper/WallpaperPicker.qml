@@ -67,7 +67,42 @@ Item {
     readonly property bool open: shown
     property bool shown: false
 
-    readonly property var entries: Wallpaper.available
+    // THE WALLPAPERS THAT SUIT THIS SCREEN, which is not the same list on the
+    // monitor next to it.
+    //
+    // A collection big enough to be worth browsing holds pictures for every
+    // screen its owner has ever had, and on any one screen most of them are
+    // wrong: a 32:9 panorama on a monitor stood on its end is the middle
+    // fourteenth of itself, and a portrait photograph across an ultrawide is a
+    // stripe with two grey fields beside it. The strip is a row of things you
+    // are meant to recognise instantly, and filling it with pictures that
+    // cannot go here is the one thing that makes it slower to use than a
+    // folder.
+    //
+    // Measured per file and compared against this screen's own shape, so it
+    // works on a rotated output with nothing said about rotation and on a
+    // folder with no shape in its name. See Wallpaper.fits.
+    readonly property var fitted: Wallpaper.fittedFor(root.screenAspect)
+
+    // AND THE WAY OUT, in one press.
+    //
+    // A filter you cannot turn off is a filter that has to be right every time,
+    // and this one is a prediction: a picture a quarter too wide is a crop you
+    // might want anyway, and a shell that will not even show it to you is
+    // wrong more annoyingly than one that shows you everything. `all` is the
+    // second half of the same control rather than a setting, and like the scope
+    // pill beside it, it resets when the panel closes.
+    property bool showAll: false
+
+    // NOTHING FITS is not the same state as "you asked for everything", and the
+    // difference has to survive into the caption: a folder of ultrawide
+    // pictures opened on a portrait monitor would otherwise be an empty strip,
+    // which reads as a broken picker rather than as an answered question. So an
+    // empty prediction shows the whole folder, and `predicted` below is what
+    // the caption uses to say which of the two happened.
+    readonly property bool predicted: !root.showAll && root.fitted.length > 0
+
+    readonly property var entries: root.predicted ? root.fitted : Wallpaper.available
 
     // WHAT A CARD IS, and every other measurement in here comes off it.
     //
@@ -208,10 +243,23 @@ Item {
         if (root.shown)
             return;
         root.shown = true;
-        // Start where you already are. Opening a picker on the first file in
-        // the folder rather than on the wallpaper you are looking at makes the
-        // first thing it does an unasked-for change.
-        strip.jumpTo(Math.max(0, root.entries.indexOf(Wallpaper.currentOn(root.screen))));
+
+        // START WHERE YOU ALREADY ARE, and the filter is not allowed to break
+        // that promise.
+        //
+        // Opening a picker on the first file in the folder rather than on the
+        // wallpaper you are looking at makes the first thing it does an
+        // unasked-for change. A screen wearing a picture the prediction would
+        // hide is exactly the case where that could happen silently: the strip
+        // would open on somebody else's wallpaper with no ring anywhere on it,
+        // which looks like the shell having forgotten what you set. So the
+        // wallpaper you are wearing is a member of the list by definition, and
+        // if the prediction disagrees, the prediction is the thing that gives
+        // way for this opening.
+        const worn = Wallpaper.currentOn(root.screen);
+        root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
+
+        strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
         // DEFERRED, the launcher's reason: focus is only worth taking once the
         // window has actually asked the compositor for the keyboard, and that
         // follows from `shown` in the same pass this is running in.
@@ -228,6 +276,9 @@ Item {
         // AND THE SCOPE GOES BACK TO "HERE". See `everywhere`: it is a property
         // of one choice, not a mode the panel is left in.
         root.everywhere = false;
+        // The filter comes back for the same reason. `show()` turns it off
+        // again by itself when the wallpaper you are wearing needs it off.
+        root.showAll = false;
     }
 
     function toggle(): void {
@@ -508,6 +559,31 @@ Item {
                 text: root.everywhere ? "all screens" : "this screen"
                 colour: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.everywhere = !root.everywhere
+            }
+
+            // WHICH OF THE FOLDER YOU ARE BEING SHOWN, and the way to see the
+            // rest of it.
+            //
+            // The pill beside it says where a choice is going; this one says
+            // where the choices CAME FROM, which is the other thing about this
+            // strip that is not self-evident: a folder of ninety wallpapers
+            // showing six of them looks like a folder of six until something
+            // says otherwise. Named for the state it is in rather than for the
+            // press, unlike the scope pill, because "fits this screen" is a
+            // fact about the strip you are looking at and "show all" would be a
+            // promise about a strip you are not.
+            //
+            // GONE WHEN IT WOULD DO NOTHING, the scope pill's rule. Two ways
+            // that happens and they are different: every wallpaper fits, so
+            // both lists are the same list; or none of them does, so the strip
+            // is already everything there is and the filter has nothing it
+            // could hand back.
+            Pill {
+                anchors.verticalCenter: parent.verticalCenter
+                visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
+                text: root.predicted ? "fits this screen" : "all shapes"
+                colour: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                onClicked: root.showAll = !root.showAll
             }
 
             // ONLY WHEN THERE IS SOMETHING TO SAY. A still is what a wallpaper
