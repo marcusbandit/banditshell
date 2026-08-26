@@ -454,12 +454,34 @@ Item {
         readonly property real bandY: root.height - root.inset
         readonly property real restY: bandY - root.panelHeight
 
-        // CENTRED, the way the launcher it replaces is centred, and clamped off
-        // the bar for the case where the two cannot both be had. It used to be
-        // pinned against the bar, which was right while it was as wide as the
-        // room and is wrong now that it is a panel: two panels that swap places
-        // under one gesture have to arrive in the same place.
-        x: Math.max(root.originX, (root.width - width) / 2)
+        // CENTRED ON THE SCREEN WHILE THE BAR CAN AFFORD IT, AND ON WHAT IS
+        // LEFT WHEN IT CANNOT.
+        //
+        // Centring on the screen is the right answer and `max(originX, ...)`
+        // was the wrong guard for it, because the bar does not have to OVERLAP
+        // the panel to ruin it. On a 1200-wide portrait output the panel came
+        // out at 1050 and centred at x=75, which clears the 62px bar and looks
+        // wrong anyway: thirteen pixels of gap on the left against seventy-five
+        // on the right. The panel was mathematically centred and read as shoved
+        // against the sidebar, because what the eye centres between is the bar
+        // and the far edge, not the two edges of the glass.
+        //
+        // So the screen's centre is used while the gap it leaves beside the bar
+        // is AT LEAST AS WIDE AS THE BAR. That is the threshold worth picking
+        // because it is the one measurement already on the screen: a gap the
+        // width of the thing beside it reads as deliberate spacing, and a gap
+        // narrower than it reads as a near miss. Below it, the panel centres in
+        // the room instead, which is the only other position with nothing
+        // arbitrary in it, and the two gaps come out equal by construction.
+        //
+        // On the ultrawide beside it the first branch wins with a mile to
+        // spare, so the panel is where the launcher is and where the eye is
+        // already pointed. One expression, no screen sizes written down: a
+        // portrait panel is simply the case where the first term is too small.
+        readonly property real onScreen: (root.width - width) / 2
+        readonly property real inRoom: root.originX + (root.room - width) / 2
+
+        x: panel.onScreen - root.originX >= root.originX ? panel.onScreen : panel.inRoom
         y: panel.bandY + (panel.restY - panel.bandY) * root.revealed
 
         width: root.panelWidth
