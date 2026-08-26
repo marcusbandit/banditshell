@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.settings
 
 // SCREENS: which monitor owns which workspaces.
 //
@@ -110,128 +111,127 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.small / 2
+        spacing: Appearance.padding.large
 
-        // The quiet eyebrow the other pages open with, saying the one thing a
-        // list of monitors cannot show: there is no apply step, and the bands
-        // have already moved by the time the row has finished sliding.
-        StyledText {
-            text: `${root.screens.length} ${root.screens.length === 1 ? "screen" : "screens"}, ${Hypr.count} workspaces each, moved immediately`
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            bottomPadding: Appearance.padding.small
-        }
+        // ONE CARD, and its title carries the count. What the title cannot
+        // say, and what a list of monitors cannot show, is that there is no
+        // apply step: the bands have already moved by the time the row has
+        // finished sliding.
+        SettingsCard {
+            title: `${root.screens.length} ${root.screens.length === 1 ? "screen" : "screens"}, ${Hypr.count} workspaces each`
 
-        Repeater {
-            model: root.screens
+            Repeater {
+                model: root.screens
 
-            delegate: MenuRow {
-                id: monitor
+                delegate: SettingsRow {
+                    id: monitor
 
-                required property int index
-                required property string modelData
+                    required property int index
+                    required property string modelData
 
-                // The output itself, when there is one. Null IS the answer to
-                // "is it plugged in", so the lookup does both jobs and there is
-                // no second test that can disagree with this one.
-                readonly property var output: Quickshell.screens.find(s => s.name === monitor.modelData) ?? null
+                    // The output itself, when there is one. Null IS the answer
+                    // to "is it plugged in", so the lookup does both jobs and
+                    // there is no second test that can disagree with this one.
+                    readonly property var output: Quickshell.screens.find(s => s.name === monitor.modelData) ?? null
 
-                // Whether the order has actually heard of this name, which is
-                // not the same question as whether it has a row here: the rows
-                // are the order plus whatever is connected, and the plus is the
-                // interesting case.
-                readonly property bool filed: Hypr.order.indexOf(monitor.modelData) >= 0
+                    // Whether the order has actually heard of this name, which
+                    // is not the same question as whether it has a row here:
+                    // the rows are the order plus whatever is connected, and
+                    // the plus is the interesting case.
+                    readonly property bool filed: Hypr.order.indexOf(monitor.modelData) >= 0
 
-                // ASKED OF THE MODEL, never worked out again from this row's
-                // index. The two agree for every name the order knows, and the
-                // disagreement is the whole reason to ask: a monitor the order
-                // has not filed yet DRAWS the first band, because that is what
-                // `bandFor` falls back to when it cannot find a name, and a row
-                // that showed it the band it is going to get would be
-                // describing the future while its sidebar drew the present.
-                readonly property int band: Hypr.bandFor(monitor.modelData)
+                    // ASKED OF THE MODEL, never worked out again from this
+                    // row's index. The two agree for every name the order
+                    // knows, and the disagreement is the whole reason to ask:
+                    // a monitor the order has not filed yet DRAWS the first
+                    // band, because that is what `bandFor` falls back to when
+                    // it cannot find a name, and a row that showed it the band
+                    // it is going to get would be describing the future while
+                    // its sidebar drew the present.
+                    readonly property int band: Hypr.bandFor(monitor.modelData)
 
-                width: list.width
+                    // A screen that is not there gets the struck-through
+                    // monitor rather than the same glyph as everything else.
+                    // The detail line says it too, but a list is scanned
+                    // before it is read.
+                    icon: monitor.output ? "monitor" : "desktop_access_disabled"
+                    label: monitor.modelData
 
-                // A screen that is not there gets the struck-through monitor
-                // rather than the same glyph as everything else. The detail
-                // line says it too, but a list is scanned before it is read.
-                icon: monitor.output ? "monitor" : "desktop_access_disabled"
-                label: monitor.modelData
+                    // In the order you would ask it: which workspaces, then
+                    // whether the screen is there at all, then the one thing
+                    // that is only true in the moment before the order catches
+                    // up with a cable.
+                    //
+                    // The far end of the band is the near end plus the count,
+                    // so a column lengthened in config.json relabels every row
+                    // here with nothing to keep in step. A one-workspace band
+                    // is a workspace and says so, because "workspaces 3-3" is
+                    // a sentence no interface should make somebody parse.
+                    detail: {
+                        const bits = [];
+                        // A SCREEN THAT IS NOT THERE CLAIMS NOTHING. Bands are
+                        // counted off the connected screens, so an absent one
+                        // has no run to name, and printing `bandFor`'s
+                        // fallback would have every unplugged row claiming 1-5
+                        // alongside the screen that actually has them.
+                        if (!monitor.output)
+                            bits.push("no workspaces while unplugged");
+                        else if (Hypr.count > 1)
+                            bits.push(`workspaces ${monitor.band}-${monitor.band + Hypr.count - 1}`);
+                        else
+                            bits.push(`workspace ${monitor.band}`);
 
-                // In the order you would ask it: which workspaces, then whether
-                // the screen is there at all, then the one thing that is only
-                // true in the moment before the order catches up with a cable.
-                //
-                // The far end of the band is the near end plus the count, so a
-                // column lengthened in config.json relabels every row here with
-                // nothing to keep in step. A one-workspace band is a workspace
-                // and says so, because "workspaces 3-3" is a sentence no
-                // interface should make somebody parse.
-                detail: {
-                    const bits = [];
-                    // A SCREEN THAT IS NOT THERE CLAIMS NOTHING. Bands are
-                    // counted off the connected screens, so an absent one has
-                    // no run to name, and printing `bandFor`'s fallback would
-                    // have every unplugged row claiming 1-5 alongside the
-                    // screen that actually has them.
-                    if (!monitor.output)
-                        bits.push("no workspaces while unplugged");
-                    else if (Hypr.count > 1)
-                        bits.push(`workspaces ${monitor.band}-${monitor.band + Hypr.count - 1}`);
-                    else
-                        bits.push(`workspace ${monitor.band}`);
+                        // The mode, not the layout size. A screen's `width` is
+                        // in logical pixels, so a 2560 panel at scale 1.5
+                        // reports 1706 and nobody recognises their own monitor
+                        // in that number; through the device pixel ratio it is
+                        // the resolution written on the box. See PickerState
+                        // for the other end of the same conversion.
+                        if (monitor.output)
+                            bits.push(`${Math.round(monitor.output.width * monitor.output.devicePixelRatio)} × ${Math.round(monitor.output.height * monitor.output.devicePixelRatio)}`);
+                        else
+                            bits.push("not connected");
 
-                    // The mode, not the layout size. A screen's `width` is in
-                    // logical pixels, so a 2560 panel at scale 1.5 reports 1706
-                    // and nobody recognises their own monitor in that number;
-                    // through the device pixel ratio it is the resolution
-                    // written on the box. See PickerState for the other end of
-                    // the same conversion.
-                    if (monitor.output)
-                        bits.push(`${Math.round(monitor.output.width * monitor.output.devicePixelRatio)} × ${Math.round(monitor.output.height * monitor.output.devicePixelRatio)}`);
-                    else
-                        bits.push("not connected");
+                        if (!monitor.filed)
+                            bits.push("not in the order yet");
 
-                    if (!monitor.filed)
-                        bits.push("not in the order yet");
-
-                    return bits.join(" · ");
-                }
-
-                // THE ROW IS A FACT AND THE BUTTONS ARE THE CONTROL. There is
-                // nothing sensible for a press on the body to do here: a
-                // monitor is not a setting to flip, and a row that lit up on
-                // hover and then swallowed the press would be the same lie the
-                // dead buttons above refuse to tell. Inert also means the fill
-                // below can only ever mean one thing.
-                interactive: false
-
-                // WHICH ONE YOU ARE LOOKING AT. This is the mark the page most
-                // needs and the one a list of names cannot carry on its own:
-                // "DP-1" and "HDMI-A-1" are not how anybody identifies the
-                // screen in front of them, and the fill is the shell answering
-                // that by lighting the row as you look at it. It cannot be
-                // misread as a selection the way a tint in a list of choices
-                // would be, because no row on this page ever lights for any
-                // other reason.
-                selected: Hypr.focusedScreen === monitor.modelData
-
-                Row {
-                    spacing: Appearance.padding.small / 2
-
-                    Nudge {
-                        enabled: monitor.index > 0
-                        glyph: "keyboard_arrow_up"
-                        tip: `move ${monitor.modelData} to the band above`
-                        onNudged: root.move(monitor.index, -1)
+                        return bits.join(" · ");
                     }
 
-                    Nudge {
-                        enabled: monitor.index < root.screens.length - 1
-                        glyph: "keyboard_arrow_down"
-                        tip: `move ${monitor.modelData} to the band below`
-                        onNudged: root.move(monitor.index, 1)
+                    // THE ROW IS A FACT AND THE BUTTONS ARE THE CONTROL. There
+                    // is nothing sensible for a press on the body to do here:
+                    // a monitor is not a setting to flip, and a row that lit
+                    // up on hover and then swallowed the press would be the
+                    // same lie the dead buttons above refuse to tell. Inert
+                    // also means the fill below can only ever mean one thing.
+                    interactive: false
+
+                    // WHICH ONE YOU ARE LOOKING AT. This is the mark the page
+                    // most needs and the one a list of names cannot carry on
+                    // its own: "DP-1" and "HDMI-A-1" are not how anybody
+                    // identifies the screen in front of them, and the fill is
+                    // the shell answering that by lighting the row as you look
+                    // at it. It cannot be misread as a selection the way a
+                    // tint in a list of choices would be, because no row on
+                    // this page ever lights for any other reason.
+                    selected: Hypr.focusedScreen === monitor.modelData
+
+                    Row {
+                        spacing: Appearance.padding.small / 2
+
+                        Nudge {
+                            enabled: monitor.index > 0
+                            glyph: "keyboard_arrow_up"
+                            tip: `move ${monitor.modelData} to the band above`
+                            onNudged: root.move(monitor.index, -1)
+                        }
+
+                        Nudge {
+                            enabled: monitor.index < root.screens.length - 1
+                            glyph: "keyboard_arrow_down"
+                            tip: `move ${monitor.modelData} to the band below`
+                            onNudged: root.move(monitor.index, 1)
+                        }
                     }
                 }
             }

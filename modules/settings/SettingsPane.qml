@@ -204,8 +204,20 @@ Item {
 
         // A touchpad stream is a press, a total is a delta, and a lapse is a
         // release. What the primitive declines (a mouse wheel, a stream under
-        // a held press) falls through to the WheelHandler below.
-        onWheel: wheel => scroll.feed(wheel)
+        // a held press) is answered HERE, on this area's own wheel signal,
+        // rather than by a WheelHandler on the pane: the two inputs then
+        // arrive at one item and are ordered against the rows above by
+        // declaration alone, which is how Pull and Slider already take the
+        // wheel. A notch scrolls by GlideList's own step; the pixel branch
+        // answers a touchpad scroll the gesture declined because a press was
+        // already down.
+        onWheel: wheel => {
+            if (scroll.feed(wheel))
+                return;
+            wheel.accepted = true;
+            const step = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 120 * Appearance.sizes.rowHeight * Appearance.sizes.wheelRows;
+            root.scrollTo(root.target - step);
+        }
 
         ScrollGesture {
             id: scroll
@@ -225,15 +237,4 @@ Item {
         y: -root.position
     }
 
-    // THE MOUSE WHEEL, and only it: an ancestor of the swipe, so it is asked
-    // second and sees exactly what the swipe declines. A notch scrolls by
-    // GlideList's own step; the pixel branch answers a touchpad scroll the
-    // swipe declined because a press was already down.
-    WheelHandler {
-        onWheel: event => {
-            event.accepted = true;
-            const step = event.pixelDelta.y !== 0 ? event.pixelDelta.y : event.angleDelta.y / 120 * Appearance.sizes.rowHeight * Appearance.sizes.wheelRows;
-            root.scrollTo(root.target - step);
-        }
-    }
 }

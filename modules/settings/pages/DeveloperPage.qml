@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.settings
 
 // DEVELOPER: the levers you pull when you are working ON the shell rather than
 // in it.
@@ -44,48 +45,41 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.small / 2
+        spacing: Appearance.padding.large
 
         // ----------------------------------------------------------- shell
 
-        StyledText {
-            text: "Shell"
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            bottomPadding: Appearance.padding.small
-        }
+        SettingsCard {
+            title: "Shell"
 
-        // The detail says the one thing a reload button always gets asked:
-        // no, you do not need it for the config. Config.qml watches its file,
-        // and a reload here is for QML that changed, which nothing watches.
-        MenuRow {
-            width: list.width
-            icon: "refresh"
-            label: "Reload the shell"
-            detail: "re-read every QML file; the config is watched already and needs no reload"
-            tip: "reload now"
-            onActivated: Quickshell.reload(true)
-        }
+            // The detail says the one thing a reload button always gets
+            // asked: no, you do not need it for the config. Config.qml watches
+            // its file, and a reload here is for QML that changed, which
+            // nothing watches.
+            SettingsRow {
+                icon: "refresh"
+                label: "Reload the shell"
+                detail: "re-read every QML file; the config is watched already and needs no reload"
+                onActivated: Quickshell.reload(true)
+            }
 
-        // The rules go in once, at startup, and the compositor forgets them on
-        // its own reload; this is the same call Settings makes then, offered
-        // again for the day hyprland was restarted under a running shell.
-        MenuRow {
-            width: list.width
-            icon: "rule"
-            label: "Reinstall the window rules"
-            detail: "tell the compositor again how the settings window floats"
-            tip: "install them again"
-            onActivated: Settings.installRules()
-        }
+            // The rules go in once, at startup, and the compositor forgets
+            // them on its own reload; this is the same call Settings makes
+            // then, offered again for the day hyprland was restarted under a
+            // running shell.
+            SettingsRow {
+                icon: "rule"
+                label: "Reinstall the window rules"
+                detail: "tell the compositor again how the settings window floats"
+                onActivated: Settings.installRules()
+            }
 
-        MenuRow {
-            width: list.width
-            icon: "sync"
-            label: "Re-read the compositor"
-            detail: "rounding, gaps and border, if you changed them in hyprland.conf"
-            tip: "ask hyprland again"
-            onActivated: Compositor.refresh()
+            SettingsRow {
+                icon: "sync"
+                label: "Re-read the compositor"
+                detail: "rounding, gaps and border, if you changed them in hyprland.conf"
+                onActivated: Compositor.refresh()
+            }
         }
 
         // ----------------------------------------------------------- files
@@ -93,88 +87,70 @@ Item {
         // The path IS the detail, because a row that says "open the config"
         // and a row that says where the config is are the same row, and the
         // second one is the one you can copy out of a screenshot.
-        StyledText {
-            text: "Files"
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            bottomPadding: Appearance.padding.small
-            topPadding: Appearance.padding.normal
-        }
+        SettingsCard {
+            title: "Files"
 
-        MenuRow {
-            width: list.width
-            icon: "data_object"
-            label: "config.json"
-            detail: Config.path
-            tip: "open it"
-            onActivated: opener.exec(["xdg-open", Config.path])
-        }
+            SettingsRow {
+                icon: "data_object"
+                label: "config.json"
+                detail: Config.path
+                onActivated: opener.exec(["xdg-open", Config.path])
+            }
 
-        MenuRow {
-            readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
+            SettingsRow {
+                readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
 
-            width: list.width
-            icon: "folder_open"
-            label: "State folder"
-            detail: dir
-            tip: "open it"
-            onActivated: opener.exec(["xdg-open", dir])
+                icon: "folder_open"
+                label: "State folder"
+                detail: dir
+                onActivated: opener.exec(["xdg-open", dir])
+            }
         }
 
         // ---------------------------------------------------------- status
 
-        // FACTS, not controls, so the rows are inert for ScreensPage's reason: a
-        // row that lit on hover and swallowed the press would be promising a
-        // thing it cannot do. Inline detail, because a fact is a label and its
-        // value and the two read as a table when they share a line.
-        StyledText {
-            text: "Status"
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            bottomPadding: Appearance.padding.small
-            topPadding: Appearance.padding.normal
-        }
+        // FACTS, not controls, so the rows are inert for ScreensPage's reason:
+        // a row that lit on hover and swallowed the press would be promising a
+        // thing it cannot do. Each answer is the row's `value`, which sits
+        // beside its label while it fits so the group reads as a table, and
+        // drops under it rather than being squeezed when it does not.
+        SettingsCard {
+            title: "Status"
 
-        MenuRow {
-            width: list.width
-            icon: "check_circle"
-            label: "Settings file"
-            detail: Config.loaded ? "read" : "not read yet"
-            interactive: false
-            inlineDetail: true
-        }
+            SettingsRow {
+                icon: "check_circle"
+                label: "Settings file"
+                value: Config.loaded ? "read" : "not read yet"
+                interactive: false
+            }
 
-        // Three-way, because the answer is three-way: `lua` reads false while
-        // the probe is still out, and false is also a real answer, so a row
-        // that showed "legacy" before the compositor had replied would be
-        // stating a guess as a fact. See Hypr.parserKnown.
-        MenuRow {
-            width: list.width
-            icon: "code"
-            label: "Compositor dialect"
-            detail: !Compositor.isHyprland ? "not hyprland" : !Hypr.parserKnown ? "asking" : Hypr.lua ? "lua" : "legacy"
-            interactive: false
-            inlineDetail: true
-        }
+            // Three-way, because the answer is three-way: `lua` reads false
+            // while the probe is still out, and false is also a real answer,
+            // so a row that showed "legacy" before the compositor had replied
+            // would be stating a guess as a fact. See Hypr.parserKnown.
+            SettingsRow {
+                icon: "code"
+                label: "Compositor dialect"
+                value: !Compositor.isHyprland ? "not hyprland" : !Hypr.parserKnown ? "asking" : Hypr.lua ? "lua" : "legacy"
+                interactive: false
+            }
 
-        MenuRow {
-            width: list.width
-            icon: "web_asset"
-            label: "This page is held by"
-            detail: (Settings.floating ? "a window" : "the shell") + (Settings.screenName ? ` on ${Settings.screenName}` : "")
-            interactive: false
-            inlineDetail: true
-        }
+            SettingsRow {
+                icon: "web_asset"
+                label: "This page is held by"
+                value: (Settings.floating ? "a window" : "the shell") + (Settings.screenName ? ` on ${Settings.screenName}` : "")
+                interactive: false
+            }
 
-        // Stacked rather than inline, the one exception in the group: this is
-        // not a value but two commands, and squeezed to the right of its label
-        // under the inline cap they would elide into a line that says nothing.
-        MenuRow {
-            width: list.width
-            icon: "terminal"
-            label: "From a terminal"
-            detail: "banditshell settings status · banditshell shell get <key>"
-            interactive: false
+            // A detail rather than a value, the one exception in the group:
+            // this is not an answer but two commands, and they belong under
+            // the label where they can wrap, not beside it.
+            SettingsRow {
+                icon: "terminal"
+                label: "From a terminal"
+                detail: "banditshell settings status · banditshell shell get <key>"
+                interactive: false
+            }
         }
     }
 }

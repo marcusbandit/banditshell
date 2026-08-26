@@ -75,7 +75,7 @@ Item {
     // with nothing chosen, the first one, because an empty pane is not a
     // state worth drawing.
     readonly property string current: Settings.page || (root.split ? Settings.pages[0].key : "")
-    readonly property var entry: Settings.pages.find(p => p.key === root.current) ?? null
+    readonly property var entry: Settings.entry(root.current)
 
     // Whether the face is showing a section OVER the list, which is the one
     // case where "back" is a thing this face can do. The panel asks this to
@@ -152,73 +152,36 @@ Item {
                 // ONE CARD PER GROUP, the grouped-list idiom every phone's
                 // settings app uses, and the groups come from the pages
                 // themselves (Settings.groups) rather than from a list kept
-                // here.
+                // here. Sub-pages name no group and are not in the list.
                 Repeater {
                     model: Settings.groups
 
-                    delegate: G2Rect {
+                    delegate: SettingsCard {
                         id: card
 
                         required property string modelData
 
-                        readonly property var members: Settings.pages.filter(p => p.group === card.modelData)
+                        title: card.modelData
 
-                        width: parent.width
-                        height: rows.implicitHeight
-                        radius: Appearance.rounding.normal
-                        color: Appearance.colour.fill
+                        Repeater {
+                            model: Settings.pages.filter(p => p.group === card.modelData)
 
-                        Column {
-                            id: rows
+                            delegate: SettingsRow {
+                                id: stop
 
-                            width: parent.width
+                                required property var modelData
 
-                            Repeater {
-                                model: card.members
-
-                                delegate: Item {
-                                    id: stop
-
-                                    required property int index
-                                    required property var modelData
-
-                                    // On a split face the section beside the
-                                    // list is marked in it; on a narrow one
-                                    // nothing is, because the list is only
-                                    // ever seen with no section open.
-                                    readonly property bool current: root.split && stop.modelData.key === root.current
-
-                                    width: rows.width
-                                    height: row.implicitHeight + (stop.index > 0 ? Appearance.font.stem : 0)
-
-                                    // A hairline between rows of one card,
-                                    // starting where the text starts so the
-                                    // icons stand in a column of their own.
-                                    Rectangle {
-                                        visible: stop.index > 0
-                                        x: Appearance.padding.normal * 2 + Appearance.font.iconSize
-                                        width: parent.width - x
-                                        height: Appearance.font.stem
-                                        color: Appearance.colour.separator
-                                    }
-
-                                    MenuRow {
-                                        id: row
-
-                                        anchors.bottom: parent.bottom
-                                        width: parent.width
-                                        icon: stop.modelData.icon
-                                        label: stop.modelData.title
-                                        detail: stop.modelData.blurb
-                                        selected: stop.current
-                                        onActivated: Settings.setPage(stop.modelData.key)
-
-                                        Icon {
-                                            name: "chevron_right"
-                                            color: Appearance.colour.textFaint
-                                        }
-                                    }
-                                }
+                                icon: stop.modelData.icon
+                                label: stop.modelData.title
+                                detail: stop.modelData.blurb
+                                chevron: true
+                                // On a split face the section beside the
+                                // list is marked in it (a sub-page marks its
+                                // parent); on a narrow one nothing is,
+                                // because the list is only ever seen with no
+                                // section open.
+                                selected: root.split && Settings.sectionOf(root.current) === stop.modelData.key
+                                onActivated: Settings.setPage(stop.modelData.key)
                             }
                         }
                     }
@@ -229,16 +192,8 @@ Item {
                 // the page is, which is a decision about the page, so it sits
                 // at the end of it where the decisions go, in a card of its own
                 // because it is not a section.
-                G2Rect {
-                    width: parent.width
-                    height: swap.implicitHeight
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colour.fill
-
-                    MenuRow {
-                        id: swap
-
-                        width: parent.width
+                SettingsCard {
+                    SettingsRow {
                         // Out of the shell and into the desktop, or back in
                         // again. Two directions of one gesture, so two arrows
                         // of one drawing.
@@ -306,9 +261,12 @@ Item {
                 spacing: Appearance.padding.normal
 
                 // THE HEADER: the way back, and the section's name at the
-                // title's size. The arrow only exists where there is a list to
-                // go back to that is not already in view.
+                // title's size. The arrow exists where there is somewhere to
+                // go back to that is not already in view: the list, on a
+                // narrow face, or a sub-page's parent on any face.
                 Item {
+                    readonly property bool arrow: !root.split || !!root.entry?.parent
+
                     width: parent.width
                     height: name.implicitHeight
 
@@ -318,9 +276,9 @@ Item {
                         readonly property real slot: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
 
                         anchors.verticalCenter: parent.verticalCenter
-                        width: root.split ? 0 : back.slot + Appearance.padding.small
+                        width: parent.arrow ? back.slot + Appearance.padding.small : 0
                         height: back.slot
-                        visible: !root.split
+                        visible: parent.arrow
 
                         G2Rect {
                             width: back.slot
@@ -363,7 +321,10 @@ Item {
                         text: root.entry?.title ?? ""
                         font.pixelSize: Appearance.font.size.large
                         color: Appearance.colour.text
-                        elide: Text.ElideRight
+                        // Wrapped, never cut: a title that ends in "..." on
+                        // the one screen narrow enough to need it is the page
+                        // failing at its own name.
+                        wrapMode: Text.Wrap
                     }
                 }
 
