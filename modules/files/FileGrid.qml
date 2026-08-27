@@ -34,9 +34,16 @@ Item {
     signal dragged(point position)
     signal dropped(point position)
 
-    readonly property int columns: Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
+    // A LIST IS A GRID WITH ONE COLUMN, which is worth saying because it is what
+    // keeps this file one view instead of two. The rubber band's arithmetic, the
+    // drop hit-test, the keyboard's idea of up and down - all of it is written
+    // against `columns` and `cellHeight`, and all of it keeps working when the
+    // count is one and the cell is a row.
+    readonly property bool list: Files.view === "list"
+
+    readonly property int columns: root.list ? 1 : Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
     readonly property real cell: width / root.columns
-    readonly property real cellHeight: root.cell * 1.18
+    readonly property real cellHeight: root.list ? Appearance.sizes.filesRow : root.cell * 1.18
 
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
 
@@ -87,6 +94,7 @@ Item {
             // same thing: `picked` is what an action will act on, `cursored` is
             // where the keyboard is. Selecting five files and arrowing through
             // them has to show both at once or the next keystroke is a guess.
+            row: root.list
             picked: Files.isPicked(modelData.name)
             cursored: index === Files.cursor
             receiving: root.dragging && root.target === index && droppable && !Files.isPicked(modelData.name)

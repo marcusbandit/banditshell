@@ -451,6 +451,9 @@ Singleton {
         // The browser's own body size. See Config's note on why this window
         // sets a size instead of taking one of the three tiers.
         readonly property int filesText: root.cfg.files.text
+        // A row in the list view: two lines of the browser's own text, which is
+        // the tightest a row can be and still have air in it.
+        readonly property int filesRow: Math.round(root.cfg.files.text * 2)
         readonly property int filesThumbnail: root.cfg.files.thumbnail
         readonly property int filesTextMax: root.cfg.files.textMax
         // The terminal's height IN ROWS, because that is the unit a terminal is

@@ -94,6 +94,16 @@ Singleton {
     readonly property bool showHidden: Config.values.files.hidden
     readonly property string sort: Config.values.files.sort
 
+    // WHICH SHAPE THE FILES ARE DRAWN IN: "icons" or "list". Remembered, because
+    // it is a preference about the folder you are in as much as about the
+    // window, and having to set it again every time is what makes people stop
+    // using the one they prefer.
+    readonly property string view: Config.values.files.view
+
+    function toggleView(): void {
+        Config.set("files.view", root.view === "list" ? "icons" : "list");
+    }
+
     // THE KEYMAPS, straight off Config rather than through Appearance: a chord
     // is a preference, not a design token. See the note in Appearance's sizes.
     readonly property var chords: Config.values.files.keys

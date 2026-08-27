@@ -30,6 +30,13 @@ Item {
     // sits on the third of them.
     property bool picked: false
     property bool cursored: false
+
+    // ONE COMPONENT, TWO SHAPES. A row and a tile differ in how they lay out
+    // four pieces of information; they are identical in every other respect -
+    // the same fills, the same drag, the same clicks, the same menu. Two
+    // components would be two copies of all of that, and the copy that was not
+    // being looked at would be the one that quietly stopped matching.
+    property bool row: false
     // Something is being dragged and it is over THIS tile, which only means
     // anything for a directory: a file dropped on a file has nowhere to go.
     property bool receiving: false
@@ -77,10 +84,12 @@ Item {
         id: hover
     }
 
+    // THE TILE: a picture with a name under it.
     Column {
         anchors.centerIn: parent
         width: parent.width - Appearance.padding.small
         spacing: Appearance.padding.small / 2
+        visible: !root.row
 
         // THE PICTURE ITSELF, when there is one to draw. This is the whole
         // reason to open a file browser on a folder of photographs, so it is not
@@ -146,7 +155,81 @@ Item {
             // sit at four different heights - which is exactly as untidy as it
             // sounds, and is not obvious from the code that causes it.
             height: label.lineHeight * 2
+        }
+    }
+
+    // THE ROW: the same four facts, across instead of down, with the two that
+    // are worth comparing between files given columns of their own.
+    //
+    // No thumbnail here on purpose. A row is 26px tall, a picture in it would be
+    // 26px of picture, and the whole point of the list is that it fits three
+    // times as many files on the screen. The mark says what kind of thing it is,
+    // which at this size is all a picture could say anyway.
+    Item {
+        anchors.fill: parent
+        anchors.leftMargin: Appearance.padding.small
+        anchors.rightMargin: Appearance.padding.small
+        visible: root.row
+
+        // The columns, from the right edge inward: both are fixed-width because
+        // both are being compared DOWN the list rather than read across it, and
+        // a column that moves with the longest value in it cannot be scanned.
+        readonly property real dateWidth: Appearance.sizes.filesText * 7
+        readonly property real sizeWidth: Appearance.sizes.filesText * 5
+
+        FileMark {
+            id: rowMark
+
+            anchors.left: parent.left
+            anchors.verticalCenter: parent.verticalCenter
+
+            fileClass: root.entry.class
+            link: root.entry.link
+            broken: root.entry.broken
+            size: Appearance.sizes.filesText * 1.2
+        }
+
+        StyledText {
+            anchors.left: rowMark.right
+            anchors.leftMargin: Appearance.padding.small
+            anchors.right: rowSize.left
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+
+            text: root.entry.name
+            font.pixelSize: Appearance.sizes.filesText
+            elide: Text.ElideMiddle
             color: root.picked || root.cursored ? Appearance.colour.text : Appearance.colour.textDim
+        }
+
+        StyledText {
+            id: rowSize
+
+            anchors.right: rowDate.left
+            anchors.rightMargin: Appearance.padding.normal
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.sizeWidth
+
+            horizontalAlignment: Text.AlignRight
+            // A FOLDER HAS NO SIZE WORTH PRINTING. The bytes of a directory
+            // entry are a fact about the filesystem, not about the folder, and a
+            // column of them reads as information while being none.
+            text: root.entry.kind === "dir" ? "" : Files.humanSize(root.entry.size)
+            font.pixelSize: Appearance.sizes.filesText
+            color: Appearance.colour.textFaint
+        }
+
+        StyledText {
+            id: rowDate
+
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.dateWidth
+
+            horizontalAlignment: Text.AlignRight
+            text: Files.humanTime(root.entry.mtime)
+            font.pixelSize: Appearance.sizes.filesText
+            color: Appearance.colour.textFaint
         }
     }
 

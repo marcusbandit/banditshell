@@ -322,6 +322,9 @@ Item {
         case "path":
             path.edit();
             return true;
+        case "view":
+            Files.toggleView();
+            return true;
         }
 
         // Anything left is a window action rather than a grid one, and the
@@ -436,6 +439,10 @@ Item {
             });
 
         acts.push({
+            icon: Files.view === "list" ? "grid_view" : "view_list",
+            label: Files.view === "list" ? "Icon view" : "List view",
+            run: () => Files.toggleView()
+        }, {
             icon: "select_all",
             label: "Select all",
             run: () => Files.pickAll()

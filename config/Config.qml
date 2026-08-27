@@ -1141,6 +1141,13 @@ Singleton {
                 // directory is mostly dotfiles and the browser opens on one.
                 hidden: false,
 
+                // icons | list. A grid of thumbnails is what you want in a
+                // folder of pictures and the wrong shape entirely for a folder
+                // of two hundred config files, where the useful columns are the
+                // name, the size and when it changed. Every file manager has
+                // both for the same reason; this remembers which you chose.
+                view: "icons",
+
                 // name | size | mtime | kind. Directories come first whatever
                 // this says: a folder is a place and a file is a thing, and
                 // interleaving them by size is a sort nobody wanted.
@@ -1246,6 +1253,7 @@ Singleton {
                     "/": "search",
                     " ": "preview",
                     ".": "hidden",
+                    "v": "view",
                     "y": "copypath",
                     "-": "parent",
 

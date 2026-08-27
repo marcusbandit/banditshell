@@ -2153,6 +2153,16 @@ a press on the empty part of it. Both, because they answer different questions
 and a browser you cannot paste a path into is a browser that will be closed in
 favour of the terminal beside it.
 
+**Two views, and a list is a grid with one column.** Icons for a folder of
+pictures, a compact list with size and date columns for a folder of two hundred
+config files. Worth saying that it is one view rather than two: the rubber
+band's arithmetic, the drop hit-test and the keyboard's idea of up and down are
+all written against a column count and a cell height, and every one of them keeps
+working when the count is one and the cell is a row. The tile is one component
+with two layouts for the same reason - two components would be two copies of the
+drag, the clicks and the menu, and the copy nobody was looking at would be the
+one that stopped matching.
+
 **A folder's preview is its contents.** Anything else was answering the wrong
 question about the one kind of thing the window is mostly full of.
 
@@ -2182,6 +2192,38 @@ activation and garbage after the first move; `pressPosition` plus
 `activeTranslation` are the reliable pair. And some pointer moves arrive at
 exactly (0, 0), which is why samples that miss the window by a thousand pixels
 are discarded as the noise they are.
+
+### The shell is a shell, not a socket
+
+Three things follow from the terminal being somebody's real shell rather than a
+command channel, and all three were wrong until they were used.
+
+**Its environment must not be this window's.** The shell drawing the browser was
+itself started from a terminal, and on this machine that terminal was inside
+tmux - so TMUX and TERM_PROGRAM were inherited straight through, and an .zshrc
+whose auto-start reads `[[ -z "$TMUX" ]]` correctly did nothing. The config was
+being read perfectly and then declining to do the thing it was being judged on. A
+new terminal window inherits none of that, so neither does this one.
+
+**A line may already have something on it.** Typing a command and then clicking a
+folder produced `swswcd 'folder'`: the browser was appending to a line it could
+not see. zsh's PUSH-LINE is the right primitive - it sets the half-typed line
+aside and gives it back on the prompt after ours has run - so navigating in the
+middle of composing a command now costs nothing at all.
+
+**And something may be RUNNING in it.** `mv` at a prompt uses the shell; `mv`
+into an open vim corrupts a file, and from outside the two are
+indistinguishable unless somebody asks. The helper reports whether the foreground
+process is the shell itself (under tmux, whether the pane's command is), and
+while it is busy commands run beside the session rather than through it.
+
+Navigation is OPTIMISTIC, and that is the difference between the window feeling
+instant and feeling like a remote control. Typing `cd`, waiting for the shell to
+run it, waiting for the next poll to notice and only then listing is up to a
+third of a second of nothing after a double click. The grid moves now and the
+shell catches up behind it; the stale report that follows is recognised and
+ignored, and a `cd` that failed expires and hands authority back to the shell,
+which is where it belongs.
 
 ### Three ways to lose the keyboard
 
