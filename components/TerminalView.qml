@@ -63,8 +63,23 @@ Item {
         text: "0"
     }
 
-    onColsChanged: root.resized(root.cols, root.rows)
-    onRowsChanged: root.resized(root.cols, root.rows)
+    // ONLY WHILE THERE IS SOMETHING TO MEASURE. A hidden panel has no height, a
+    // grid of no height is one row, and telling the shell it has one row is a
+    // real instruction: anything it printed while the panel was shut would wrap
+    // to a single line. The size is reported when the view can actually hold the
+    // rows it is claiming.
+    readonly property bool measurable: root.visible && root.height >= root.cellHeight && root.width >= root.cellWidth
+
+    onColsChanged: if (root.measurable)
+        root.resized(root.cols, root.rows)
+
+    onRowsChanged: if (root.measurable)
+        root.resized(root.cols, root.rows)
+
+    // And once more when it becomes measurable again, because the change that
+    // matters happened while nobody was allowed to report it.
+    onMeasurableChanged: if (root.measurable)
+        root.resized(root.cols, root.rows)
 
     Column {
         id: grid
