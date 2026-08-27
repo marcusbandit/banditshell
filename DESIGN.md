@@ -510,16 +510,34 @@ banditshell/
 │   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
 │   │                            is on the real desktop while you decide about it
 │   ├── picker/                  screenshot: hover a window or drag a region
-│   ├── settings/                the page that is a shell surface OR a window
+│   ├── settings/                the page that is a shell surface OR a window, shaped
+│   │   │                        like a phone's settings app: a list of sections and
+│   │   │                        one section, side by side when wide, stacked when not
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
-│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole
+│   │   ├── SettingsPane.qml     one scrolling column of it, with drag-right as "back"
+│   │   ├── SettingsCard.qml     a titled box of rows: the grouped-list idiom
+│   │   ├── SettingsRow.qml      one row of a card; wraps, never elides, and its
+│   │   │                        highlight takes the card's own corners
+│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole;
+│   │   │                        fills the hole on a screen too small for the card
 │   │   ├── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
 │   │   └── pages/               one file per page; Settings.pages is the register,
-│   │       │                    and key "icons" loads IconsPage.qml by convention
-│   │       ├── IconsPage.qml    what each app looks like; grew out of the settings
-│   │       │                    gauge's old menu (a place, not a glance, so it left the bar)
-│   │       └── AppearancePage.qml  which palette the shell wears, and the two
-│                               switches a wallpaper has (WHICH one is the picker's)
+│   │       │                    and key "general" loads GeneralPage.qml by convention.
+│   │       │                    Grouped the way a phone groups them; a page with a
+│   │       │                    `parent` is a sub-page reached from its parent's rows
+│   │       ├── WifiPage.qml     the bar's network menu, with room, and the port
+│   │       ├── BluetoothPage.qml  the adapter switch and the bar's device list
+│   │       ├── SoundPage.qml    output, input, and the bar's mixer
+│   │       ├── ScreensPage.qml  which monitor owns which workspace band
+│   │       ├── WallpaperPage.qml  the current picture, its two switches, the folder
+│   │       ├── AppearancePage.qml  palette, the font row, the compositor switches
+│   │       ├── FontPage.qml     every installed family, each drawn in itself (sub-page)
+│   │       ├── GeneralPage.qml  behaviour switches: touch, windows, the fold, network
+│   │       ├── BatteryPage.qml  charge and health, and the bar's history
+│   │       ├── DevicePage.qml   the whole machine: board, processor, memory, graphics,
+│   │       │                    storage, software, battery, screens (services/Device.qml)
+│   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
+│   │       └── AboutPage.qml    banditshell itself: what it is and why, and where to read
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes

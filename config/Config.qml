@@ -1053,8 +1053,30 @@ Singleton {
             // either way: two sizes would make it a different object the moment
             // it changed hands.
             settings: {
-                width: 560,
-                height: 560
+                // Wide enough to split into the list and a section side by
+                // side (two panes, below), which is the desktop's shape; a
+                // screen that cannot hold this gets the page full-screen
+                // instead (modules/settings/SettingsPanel.qml).
+                width: 900,
+                height: 600,
+
+                // THE NARROWEST A PANE MAY BE, and therefore the one number
+                // that decides the page's shape. The page is a list of
+                // sections and one section's rows, the way a phone's settings
+                // app is; narrower than two of these it shows one at a time
+                // and slides between them, wider it stands them side by side
+                // (modules/settings/SettingsFace.qml). A fraction of the card
+                // would be wrong here: what decides whether a row of settings
+                // is readable is how many characters fit in it, which is a
+                // width and not a share. Monocraft's advance is two thirds
+                // of its size, so at the 18px body tier a row spends 48 of
+                // padding and 20 of icon and then has (pane - 68) / 12
+                // characters for a label: 400 is twenty-seven, enough for
+                // "Push the theme onto window borders" to say itself, and it
+                // is also a phone screen's worth, which is what an unfolded
+                // phone offers each half. 280 was tried and elided every
+                // second row.
+                pane: 400
             },
 
             // The bottom-right corner, as a way in. See

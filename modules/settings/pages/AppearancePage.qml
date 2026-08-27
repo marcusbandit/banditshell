@@ -4,16 +4,18 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.settings
 
-// APPEARANCE: what the shell wears, and what it stands on.
+// APPEARANCE: what the shell wears.
 //
 // The theme picker first, because it is the one people actually swap, and
 // because `banditshell set theme slate` proving the live re-dress works is
 // exactly the kind of thing that deserves a surface with no terminal in it.
-// The wallpaper switch above it is the other half of the same question: a
-// palette is what the shell is made of, a wallpaper is what it is seen
-// against, and turning the picture off is the fastest way to look at either
-// one honestly.
+//
+// THE WALLPAPER ROWS ARE NOT HERE ANY MORE. What the shell is seen against is
+// its own section now (pages/WallpaperPage.qml, key `wallpaper`), because it
+// grew a picker and a picker is not a row: the two switches went with it so a
+// wallpaper question has one place to be answered.
 //
 // Every other appearance decision already lives in config.json behind
 // Appearance's tokens, so the page grows a control only when a setting earns
@@ -31,121 +33,119 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.small / 2
+        spacing: Appearance.padding.large
 
-        // ------------------------------------------------------- wallpaper
+        // -------------------------------------------------------- palettes
 
-        // SWITCHES, not a picker. WHICH wallpaper is a question you answer by
-        // looking at wallpapers, and that belongs on a surface the size of the
-        // screen with the candidate actually on the desktop behind it: it is
-        // the bottom edge's second swipe, see modules/wallpaper/. What is left
-        // here is the two things about a wallpaper that are settings rather
-        // than choices, both of them a switch you flip and unflip in a second.
-        //
-        // The row itself flips it as well as the toggle on it, MenuRow's usual
-        // contract: the whole line is the target, because the switch alone is
-        // 34px of it.
-        MenuRow {
-            width: list.width
-            icon: "wallpaper"
-            label: "Wallpaper"
-            // What it would show, even while it is off, and what KIND that is
-            // for the three that are not simply a picture: a file that turns
-            // out to be a video behaves differently once it is up, and the
-            // detail line is where that is worth knowing. The choice survives
-            // being turned off, so the row goes on saying what the choice is
-            // rather than going blank and making the setting look lost.
-            //
-            // THE SCREEN YOU ARE LOOKING AT, since a wallpaper is per monitor
-            // now and this row's `Wallpaper.name` is the focused one's. Said
-            // out loud only when it is worth saying: on one screen, and on a
-            // desk where every screen follows the default, "on DP-1" is a
-            // qualification of a thing that was never ambiguous. The row goes
-            // on saying it when this screen has its own, because that is the
-            // case where the same page read on the other monitor says something
-            // different, and a row that quietly changed under you is worse than
-            // a row three words longer. modules/settings/pages/ScreensPage.qml
-            // is where the whole list lives.
-            detail: {
-                if (!Wallpaper.name)
-                    return "nothing set";
-                const bits = [Wallpaper.name];
-                if (Wallpaper.kind !== "still")
-                    bits.push(Wallpaper.kind);
-                if (Wallpaper.hasOwn(Wallpaper.here))
-                    bits.push(`on ${Wallpaper.here}`);
-                return bits.join(" · ");
+        // WORN IMMEDIATELY. There is no apply step: the press writes
+        // config.json and the whole shell re-binds, which is the one thing a
+        // picker cannot show and the reason a row here is the whole gesture.
+        SettingsCard {
+            title: "Palette"
+
+            Repeater {
+                model: Themes.names
+
+                delegate: SettingsRow {
+                    id: row
+
+                    required property string modelData
+
+                    readonly property var theme: Themes.get(row.modelData)
+
+                    label: row.modelData
+                    selected: Config.values.theme === row.modelData
+                    onActivated: Config.set("theme", row.modelData)
+
+                    // WHAT THE THEME LOOKS LIKE, said in its own saturated
+                    // end: dim, mid, bright, the three accents a Theme block
+                    // supplies, drawn from the theme's data rather than listed
+                    // by hand so a theme cannot lie about itself here. The
+                    // ramp is deliberately not swatched: eleven near-neighbour
+                    // greys in an 18px chip read as dirt, and the accents are
+                    // where palettes actually differ.
+                    Row {
+                        spacing: Appearance.padding.small / 2
+
+                        Repeater {
+                            model: [row.theme.dim, row.theme.mid, row.theme.bright]
+
+                            delegate: G2Rect {
+                                required property color modelData
+
+                                // Sized from the type it sits beside rather
+                                // than a number of its own: a swatch here is
+                                // punctuation next to the name, not an exhibit.
+                                width: Appearance.font.size.small
+                                height: width
+                                radius: Appearance.rounding.small
+                                color: modelData
+                            }
+                        }
+                    }
+                }
             }
-            tip: Wallpaper.enabled ? "turn it off" : "turn it on"
-            onActivated: Wallpaper.toggle()
+        }
 
-            Toggle {
-                checked: Wallpaper.enabled
-                onToggled: Wallpaper.toggle()
+        // ------------------------------------------------------------ type
+
+        // One row that leads somewhere. The families a machine has are a list
+        // hundreds long and a page of their own (pages/FontPage.qml); this row
+        // says which one is worn and is the way in.
+        SettingsCard {
+            title: "Type"
+
+            SettingsRow {
+                icon: "text_fields"
+                label: "Font"
+                value: Appearance.font.family
+                detail: "the face every word in the shell is set in"
+                chevron: true
+                onActivated: Settings.setPage("font")
             }
         }
 
-        // WHERE THE PICTURES COME FROM, and the one setting on this page you
-        // have to type rather than press.
+        // ------------------------------------------------------ compositor
+
+        // WHAT FLOWS BETWEEN THE SHELL AND HYPRLAND, in both directions, and
+        // an appearance question because both switches are about what the
+        // desktop looks like: whose corners the panels wear, and whose colour
+        // the focused window's border does. Two switches rather than one
+        // because they answer opposite questions; config/Compositor.qml owns
+        // the argument, and the `compositor` block in config/Config.qml owns
+        // the reason `pushBorders` had to be declared before it could be set.
         //
-        // It earns a control for the reason the row above it does not: WHICH
-        // wallpaper is a question you answer by looking at wallpapers, so it
-        // belongs on the bottom edge with the candidate on the desktop behind
-        // it. WHERE THEY ARE is a question with no pictures in it at all, and
-        // until this row existed the only way to answer it was to edit
-        // config.json by hand, which is the state this whole page exists to
-        // replace.
-        //
-        // THE COUNT IS THE ROW'S HONESTY. A path is a claim about the disk and
-        // the only thing that can contradict it is what came back: a folder
-        // that lists nothing is a typo, a moved collection or a permission, and
-        // all three look identical until something says "0". The second number
-        // is the one per-screen wallpapers added, because a folder can be full
-        // and still have nothing in it for the monitor you are standing at.
-        PathField {
-            width: list.width
-            icon: "folder"
-            label: "Wallpaper folder"
-            value: Config.values.wallpaper.dir
-            placeholder: "~/Pictures/Wallpapers"
-            tip: "type a different folder"
-            detail: {
-                const n = Wallpaper.available.length;
-                if (!n)
-                    return "nothing usable in it";
-                const fit = Wallpaper.fittedFor(Wallpaper.screenAspect(Wallpaper.here)).length;
-                const bits = [`${n} wallpaper${n === 1 ? "" : "s"}`];
-                if (fit < n)
-                    bits.push(`${fit} fit ${Wallpaper.here}`);
-                return bits.join(" · ");
+        // The row itself flips it as well as the toggle on it: the whole line
+        // is the target, because the switch alone is 34px of it.
+        SettingsCard {
+            title: "Compositor"
+
+            SettingsRow {
+                icon: "crop_square"
+                label: "Corners and gaps from the compositor"
+                detail: "read rounding, its power and the gap from hyprland rather than config.json"
+                onActivated: Config.set("compositor.follow", !Config.values.compositor.follow)
+
+                Toggle {
+                    checked: Config.values.compositor.follow
+                    onToggled: Config.set("compositor.follow", !Config.values.compositor.follow)
+                }
             }
-            onCommitted: path => Config.set("wallpaper.dir", path)
-        }
 
-        // THE ONE RULE THAT MAKES A MOVING WALLPAPER AFFORDABLE, offered as a
-        // switch because it is the only part of it worth arguing with. What it
-        // costs when it is on is stated rather than left to be discovered: the
-        // whole reason animated wallpapers are usually a bad idea is a decoder
-        // running behind a full screen of windows, and this row is the shell
-        // saying it does not do that.
-        //
-        // Shown only when it could matter. A folder of photographs has nothing
-        // to animate, and a switch for a thing you do not have is a setting you
-        // have to think about for no reason.
-        MenuRow {
-            width: list.width
-            visible: Wallpaper.available.some(p => Wallpaper.movesOf(p)) || Wallpaper.moves
-            icon: "motion_photos_on"
-            label: "Play animated wallpapers"
-            detail: "only on an empty workspace"
-            tip: Config.values.wallpaper.animate ? "stop playing them" : "play them"
-            onActivated: Config.set("wallpaper.animate", !Config.values.wallpaper.animate)
+            SettingsRow {
+                icon: "border_color"
+                label: "Push the theme onto window borders"
+                detail: "the focused window wears the accent; off, hyprland.conf's colours stand"
+                onActivated: Config.set("compositor.pushBorders", !Config.values.compositor.pushBorders)
 
-            Toggle {
-                checked: Config.values.wallpaper.animate
-                onToggled: Config.set("wallpaper.animate", !Config.values.wallpaper.animate)
+                Toggle {
+                    checked: Config.values.compositor.pushBorders
+                    onToggled: Config.set("compositor.pushBorders", !Config.values.compositor.pushBorders)
+                }
             }
         }
+
+        // ---------------------------------------------- theme from wallpaper
 
         // THE SWITCH THAT DOES NOT WORK YET, and the thing that makes it worth
         // having on the page anyway.
@@ -160,180 +160,59 @@ Item {
         // So the row says so. A setting that lies about being wired up is worse
         // than one that is missing, and a row that shows you the answer it has
         // and admits it cannot use it yet is neither.
-        MenuRow {
-            width: list.width
+        //
+        // Shown only when there is a measurement to show: with no wallpaper
+        // there are no colours, and a switch with nothing on its right would
+        // be a promise with no evidence.
+        SettingsCard {
+            title: "Theme from wallpaper"
             visible: Wallpaper.palette.length > 0
-            icon: "colorize"
-            label: "Theme from wallpaper"
-            detail: "not worn yet"
-            tip: "the colours it would use are on the right"
-            onActivated: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
 
-            Row {
-                spacing: Appearance.padding.normal
+            SettingsRow {
+                icon: "colorize"
+                label: "Theme from wallpaper"
+                detail: "not worn yet"
+                onActivated: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
 
-                // WHAT IT FOUND, in the order it found it, biggest share first.
-                //
-                // Sized by SHARE rather than all alike, because that is the one
-                // fact a row of equal chips throws away: these are not six
-                // colours the wallpaper contains, they are six colours it is
-                // made of in wildly different amounts, and a picture that is
-                // four fifths one blue should say so. The width runs between a
-                // stem and a full swatch, so even the smallest is still a
-                // colour rather than a line.
+                // If the swatches and the switch together outgrow the line,
+                // SettingsRow drops them under the text on its own.
                 Row {
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: Appearance.font.stem
+                    spacing: Appearance.padding.normal
 
-                    Repeater {
-                        model: Wallpaper.palette
+                    // WHAT IT FOUND, in the order it found it, biggest share
+                    // first.
+                    //
+                    // Sized by SHARE rather than all alike, because that is
+                    // the one fact a row of equal chips throws away: these are
+                    // not six colours the wallpaper contains, they are six
+                    // colours it is made of in wildly different amounts, and a
+                    // picture that is four fifths one blue should say so. The
+                    // width runs between a stem and a full swatch, so even the
+                    // smallest is still a colour rather than a line.
+                    Row {
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Appearance.font.stem
 
-                        delegate: G2Rect {
-                            required property var modelData
+                        Repeater {
+                            model: Wallpaper.palette
 
-                            readonly property real swatch: Appearance.font.size.normal
+                            delegate: G2Rect {
+                                required property var modelData
 
-                            width: Math.max(Appearance.font.stem * 2, Math.round(swatch * Math.min(1, modelData.share * 2.5)))
-                            height: swatch
-                            radius: Appearance.rounding.small
-                            color: modelData.colour
+                                readonly property real swatch: Appearance.font.size.normal
+
+                                width: Math.max(Appearance.font.stem * 2, Math.round(swatch * Math.min(1, modelData.share * 2.5)))
+                                height: swatch
+                                radius: Appearance.rounding.small
+                                color: modelData.colour
+                            }
                         }
                     }
-                }
 
-                Toggle {
-                    anchors.verticalCenter: parent.verticalCenter
-                    checked: Config.values.themeFromWallpaper
-                    onToggled: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
-                }
-            }
-        }
-
-        // -------------------------------------------------------- palettes
-
-        // The one boundary space alone would not carry: a switch and a list of
-        // rows are the same shape, so without a rule the palettes read as more
-        // settings rather than as a different question. The rule sits in the
-        // middle of its own air, which is the only way a Column can give a
-        // hairline room on both sides.
-        Item {
-            width: list.width
-            height: Appearance.padding.large
-
-            Separator {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width
-            }
-        }
-
-        // The same quiet eyebrow the icons page opens with, saying the one
-        // thing a picker cannot show: there is no apply step. The write goes
-        // straight to config.json and the whole shell re-binds.
-        StyledText {
-            text: `${Themes.names.length} palettes, worn immediately`
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            bottomPadding: Appearance.padding.small
-        }
-
-        Repeater {
-            model: Themes.names
-
-            delegate: Item {
-                id: row
-
-                required property string modelData
-
-                readonly property var theme: Themes.get(row.modelData)
-                readonly property bool current: Config.values.theme === row.modelData
-                readonly property bool hovered: press.containsMouse
-
-                width: list.width
-                // MenuRow's own maximum: the rowHeight floor, grown if the
-                // label's line box plus its air ever outgrows it, so a type
-                // scale change cannot quietly crop the row it is named in.
-                height: Math.max(Appearance.sizes.rowHeight, name.implicitHeight + Appearance.padding.small * 2)
-
-                // The full radius, for MenuRow's reason: at a small radius the
-                // G2 ramp has no room to read and renders as the plain arc it
-                // exists to replace.
-                G2Rect {
-                    anchors.fill: parent
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colour.fill
-                    opacity: row.hovered ? 1 : 0
-
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.anim.fast
-                        }
-                    }
-                }
-
-                // Before the content, MenuRow's lesson: a row-wide target
-                // declared last would sit on top of whatever the row grows
-                // later and eat its clicks. The swatches take no input today;
-                // the order is so that stays a fact about the swatches.
-                MouseArea {
-                    id: press
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: Config.set("theme", row.modelData)
-                }
-
-                // The active row is marked by its NAME going accent, not by a
-                // tinted row. A whole-row tint is the selection treatment, and
-                // this is not a selection you are moving through a list: it is
-                // a fact about one row, and the accent is the shell's colour
-                // for state genuinely worth a colour. It is also self-proving:
-                // the accent IS the active theme's, so the mark is drawn in
-                // the very paint it is announcing.
-                StyledText {
-                    id: name
-
-                    anchors.left: parent.left
-                    anchors.leftMargin: Appearance.padding.normal
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    text: row.modelData
-                    color: row.current ? Appearance.colour.accent : row.hovered ? Appearance.colour.text : Appearance.colour.textDim
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.anim.fast
-                        }
-                    }
-                }
-
-                // WHAT THE THEME LOOKS LIKE, said in its own saturated end:
-                // dim, mid, bright, the three accents a Theme block supplies,
-                // drawn from the theme's data rather than listed by hand so a
-                // theme cannot lie about itself here. The ramp is deliberately
-                // not swatched: eleven near-neighbour greys in an 18px chip
-                // read as dirt, and the accents are where palettes actually
-                // differ.
-                Row {
-                    anchors.right: parent.right
-                    anchors.rightMargin: Appearance.padding.normal
-                    anchors.verticalCenter: parent.verticalCenter
-                    spacing: Appearance.padding.small / 2
-
-                    Repeater {
-                        model: [row.theme.dim, row.theme.mid, row.theme.bright]
-
-                        delegate: G2Rect {
-                            required property color modelData
-
-                            // Sized from the type it sits beside rather than a
-                            // number of its own: a swatch here is punctuation
-                            // next to the name, not an exhibit.
-                            width: Appearance.font.size.small
-                            height: width
-                            radius: Appearance.rounding.small
-                            color: modelData
-                        }
+                    Toggle {
+                        anchors.verticalCenter: parent.verticalCenter
+                        checked: Config.values.themeFromWallpaper
+                        onToggled: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
                     }
                 }
             }
