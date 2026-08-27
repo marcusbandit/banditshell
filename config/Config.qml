@@ -1245,6 +1245,9 @@ Singleton {
                     // typing in is a sidebar you forget exists; move it to the
                     // `grid` map below if you want the binding back.
                     "Ctrl+B": "sidebar",
+                    // The universal spelling of "preferences", and the answer to
+                    // not knowing what any of the other ones are.
+                    "Ctrl+,": "settings",
                     "Alt+Left": "back",
                     "Alt+Right": "forward",
                     "Alt+Up": "parent",
@@ -1814,7 +1817,24 @@ Singleton {
     // and keeping the old one silently leaves the new entries undefined. The
     // label ladder growing from three tiers to four did exactly that, and
     // undefined fed straight into a colour.
-    function merge(base: var, over: var): var {
+    // SETTINGS WHOSE KEYS ARE THE USER'S DATA, not a schema to merge into.
+    //
+    // The rule below already knows this shape - an EMPTY default object is data,
+    // because the defaults name no keys. A keymap is the same kind of thing with
+    // one difference: it ships populated, so a fresh install has bindings.
+    //
+    // Merging it key by key makes a REMOVAL IMPOSSIBLE. Rebinding "back" from
+    // Alt+Left to Ctrl+7 writes a map without Alt+Left in it; the merge then
+    // walks the defaults, finds Alt+Left there, and puts it straight back, so
+    // the setting saved correctly and had no effect. Listed here, the user's map
+    // is taken whole, which is what a set means.
+    readonly property var opaque: ["files.keys", "files.grid"]
+
+    function merge(base: var, over: var, path: string): var {
+        // The whole thing, or the default when there is nothing to take.
+        if (root.opaque.includes(path))
+            return over && typeof over === "object" ? over : base;
+
         // An EMPTY default array is a list, not a tuple: there is no shape to
         // have changed, so whatever the user put there is data and survives. A
         // non-empty one is a fixed set of slots (a scale, a ladder) and a
@@ -1832,7 +1852,7 @@ Singleton {
 
         const out = {};
         for (const k in base)
-            out[k] = merge(base[k], over[k]);
+            out[k] = merge(base[k], over[k], path ? `${path}.${k}` : k);
         return out;
     }
 
@@ -1853,7 +1873,7 @@ Singleton {
                 return console.warn(`Config: ${root.path} is not valid JSON, keeping previous values.`, e);
             }
 
-            root.values = root.merge(root.defaults, parsed);
+            root.values = root.merge(root.defaults, parsed, "");
 
             // AND THE FILE IS IN, which is the answer a writer has been waiting
             // for. After `values`, never before it: a listener that writes back

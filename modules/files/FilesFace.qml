@@ -64,7 +64,17 @@ Item {
             [Qt.Key_Plus]: "+",
             [Qt.Key_Equal]: "=",
             [Qt.Key_Minus]: "-",
-            [Qt.Key_Underscore]: "_"
+            [Qt.Key_Underscore]: "_",
+            // Punctuation a chord can be built on. Without these `chordOf`
+            // returns nothing for them and the binding can never be found, which
+            // is a keymap entry that silently does not exist.
+            [Qt.Key_Comma]: ",",
+            [Qt.Key_Period]: ".",
+            [Qt.Key_Slash]: "/",
+            [Qt.Key_Semicolon]: ";",
+            [Qt.Key_Apostrophe]: "'",
+            [Qt.Key_BracketLeft]: "[",
+            [Qt.Key_BracketRight]: "]"
         })
 
     function keyLabel(key: int): string {
@@ -136,6 +146,12 @@ Item {
     }
 
     Keys.onPressed: event => {
+        // A PANEL THAT IS UP TAKES EVERYTHING. Both of these hold Qt's focus
+        // themselves while they are open, but a key that arrived here first
+        // would still act on the grid behind them.
+        if (settings.up || prompt.up)
+            return;
+
         // A MENU THAT IS UP TAKES EVERYTHING. Arrow through it, Return runs the
         // entry, Escape puts it away, and every other key is swallowed rather
         // than acted on: a keystroke that reached the grid from under an open
@@ -173,7 +189,14 @@ Item {
         // 1. The window's own.
         const chord = root.isChord(event) ? root.chordOf(event) : "";
         if (chord && Files.chords[chord] !== undefined) {
-            event.accepted = Files.act(Files.chords[chord]);
+            // THROUGH THE FACE'S DISPATCHER, not the service's. Half the
+            // vocabulary is the service's (navigate, toggle a panel) and half is
+            // this file's (open the settings, rename, type a path), and a chord
+            // that named one of the second half used to resolve, dispatch to the
+            // service, be refused, and fall through to the grid's keymap where
+            // it was not either. `act` below tries this file first and hands the
+            // rest to the service, so both keymaps speak the same language.
+            event.accepted = root.act(Files.chords[chord]);
             if (event.accepted)
                 return;
         }
@@ -205,7 +228,7 @@ Item {
         // this file.
         const chord = root.chordOf(event);
         if (chord && Files.gridKeys[chord] !== undefined) {
-            event.accepted = root.gridAct(Files.gridKeys[chord]);
+            event.accepted = root.act(Files.gridKeys[chord]);
             if (event.accepted)
                 return;
         }
@@ -262,10 +285,13 @@ Item {
 
         const action = Files.gridKeys[event.text];
         if (action)
-            event.accepted = root.gridAct(action);
+            event.accepted = root.act(action);
     }
 
-    function gridAct(action: string): bool {
+    // THE WHOLE VOCABULARY, in one place. Both keymaps and the context menus
+    // dispatch through here: an action means the same thing however it was
+    // reached, and there is one list of what the words are.
+    function act(action: string): bool {
         switch (action) {
         case "left":
             root.move(-1, false);
@@ -328,6 +354,9 @@ Item {
             return true;
         case "path":
             path.edit();
+            return true;
+        case "settings":
+            settings.show();
             return true;
         case "view":
             Files.toggleView();
@@ -478,6 +507,10 @@ Item {
             icon: "refresh",
             label: "Refresh",
             run: () => Files.refresh()
+        }, {
+            icon: "settings",
+            label: "Settings…",
+            run: () => settings.show()
         });
 
         return acts;
@@ -522,6 +555,7 @@ Item {
         id: sheet
 
         anchors.fill: parent
+        z: 200
 
         // A grid that scrolls takes the tile out from under the sheet, and a
         // menu pointing at nothing is worse than no menu.
@@ -541,6 +575,12 @@ Item {
         id: prompt
 
         anchors.fill: parent
+        // ABOVE THE PANELS, whatever the declaration order is. These three are
+        // declared with the menus, which read better next to the actions that
+        // open them, and the layout is declared after - so without a z they were
+        // drawn UNDER the grid and the scrim only dimmed the parts of the window
+        // nothing else was covering.
+        z: 200
 
         onDismissed: Qt.callLater(root.forceActiveFocus)
     }
@@ -549,6 +589,16 @@ Item {
         id: properties
 
         anchors.fill: parent
+        z: 200
+    }
+
+    FilesSettings {
+        id: settings
+
+        anchors.fill: parent
+        z: 200
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
     }
 
     // ---------------------------------------------------------- the layout

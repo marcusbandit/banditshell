@@ -575,7 +575,12 @@ banditshell/
 │   │   │                        share of the wheel, never listed
 │   │   ├── PathBar.qml          where you are, every step back, a field to type
 │   │   │                        one into, and the `/` search
-│   │   ├── Sidebar.qml          places and mounted drives, down the left
+│   │   ├── Sidebar.qml          places and mounted drives, down the left, each
+│   │   │                        drive with a bar for how full it is
+│   │   ├── FilesSettings.qml    the browser's OWN settings, inside it, and the
+│   │   │                        one place the keymaps are written down
+│   │   ├── Setting.qml          one row of that: label, meaning, control
+│   │   ├── marks.js             which folder is which: home is a house
 │   │   ├── SplitHandle.qml      the line between two panels, and the way to
 │   │   │                        move it; a separator that is also a control
 │   │   ├── NamePrompt.qml       one line of text, asked for: new, new, rename
@@ -2217,6 +2222,27 @@ activation and garbage after the first move; `pressPosition` plus
 `activeTranslation` are the reliable pair. And some pointer moves arrive at
 exactly (0, 0), which is why samples that miss the window by a thousand pixels
 are discarded as the noise they are.
+
+**The settings are in the window, not in the shell's settings page.** This is an
+application; its preferences belong to it, and somebody wondering how to open the
+preview looks in the window they are standing in. Everything lands in the same
+config.json as the rest of the shell - same storage, reached from where it is
+being used.
+
+THE KEYMAPS ARE THE POINT OF IT. Every other row there is a switch that could
+have been found by right-clicking, but a chord written down nowhere is a chord
+that does not exist: the preview panel was on Ctrl+4 and there was no way at all
+to discover that. Both maps are listed in full, sorted by what the action DOES
+rather than by which key does it, and every row rebinds by pressing the chord you
+would rather have.
+
+Which turned up a real bug in the shell's config, not in the browser: `merge`
+walks the DEFAULTS' keys, so removing a binding was impossible - rebinding "back"
+wrote a map without Alt+Left in it, the merge found Alt+Left in the defaults and
+put it straight back, and the setting saved correctly and did nothing. Config now
+has a short list of paths whose keys are the user's DATA rather than a schema,
+and takes those whole. It is the same rule the file already had for empty default
+objects, extended to the ones that ship populated.
 
 **Markdown reads both ways.** It is written to be read as text and as a
 document, and which one you want depends on whether you are reading it or

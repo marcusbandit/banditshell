@@ -76,8 +76,14 @@ Item {
 
                         readonly property bool here: Files.cwd === place.modelData.path
 
+                        readonly property var usage: place.modelData.usage ?? null
+
                         width: section.width
-                        height: Appearance.sizes.filesRow
+                        // A DRIVE IS A TALLER ROW, because it has a bar under
+                        // it. Derived from whether there is a bar rather than
+                        // set per section, so a place and a drive that both had
+                        // one would both get the room.
+                        height: place.usage ? Appearance.sizes.filesRow * 1.5 : Appearance.sizes.filesRow
 
                         G2Rect {
                             anchors.fill: parent
@@ -94,7 +100,9 @@ Item {
 
                             anchors.left: parent.left
                             anchors.leftMargin: Appearance.padding.normal
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenter: place.usage ? undefined : parent.verticalCenter
+                            anchors.top: place.usage ? parent.top : undefined
+                            anchors.topMargin: place.usage ? Appearance.padding.small / 2 : 0
 
                             name: place.modelData.icon
                             size: Appearance.sizes.filesText * 1.2
@@ -106,7 +114,7 @@ Item {
                             anchors.leftMargin: Appearance.padding.small
                             anchors.right: detail.left
                             anchors.rightMargin: Appearance.padding.small
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenter: glyph.verticalCenter
 
                             text: place.modelData.name
                             font.pixelSize: Appearance.sizes.filesText
@@ -119,7 +127,7 @@ Item {
 
                             anchors.right: parent.right
                             anchors.rightMargin: Appearance.padding.normal
-                            anchors.verticalCenter: parent.verticalCenter
+                            anchors.verticalCenter: glyph.verticalCenter
 
                             // The size of a drive, and nothing at all for a
                             // place: "how big is Downloads" is not a question
@@ -129,8 +137,51 @@ Item {
                             color: Appearance.colour.textGhost
                         }
 
-                        HoverHandler {
+                        // HOW FULL IT IS, as a bar rather than a percentage.
+                        //
+                        // A number is a thing to read and compare; a bar is a
+                        // thing you see without reading, which is what you
+                        // actually want from a sidebar you are glancing at on
+                        // the way somewhere else. The figures are there on hover
+                        // for when the answer matters.
+                        //
+                        // It goes ACCENT when the drive is nearly full, which is
+                        // the one state worth a colour here: a disk at 96% is
+                        // about to become somebody's afternoon.
+                        Item {
+                            visible: !!place.usage
+
+                            anchors.left: glyph.left
+                            anchors.right: parent.right
+                            anchors.rightMargin: Appearance.padding.normal
+                            anchors.bottom: parent.bottom
+                            anchors.bottomMargin: Appearance.padding.small
+
+                            implicitHeight: Appearance.font.stem * 2
+
+                            G2Rect {
+                                anchors.fill: parent
+
+                                radius: height / 2
+                                color: Appearance.colour.fill
+                            }
+
+                            G2Rect {
+                                width: Math.max(parent.height, parent.width * (place.usage ? place.usage.fraction : 0))
+                                height: parent.height
+
+                                radius: height / 2
+                                color: place.usage && place.usage.fraction > 0.9 ? Appearance.colour.alarm : hover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
+                            }
+                        }
+
+                        // HoverTip IS the hover handler - it is a HoverHandler
+                        // with a label on it - so there is only one here rather
+                        // than one for the tip and one for the highlight.
+                        HoverTip {
                             id: hover
+
+                            text: place.usage ? `${Files.humanSize(place.usage.used)} of ${Files.humanSize(place.usage.size)} used  ·  ${Math.round(place.usage.fraction * 100)}%` : place.modelData.path
                         }
 
                         TapHandler {

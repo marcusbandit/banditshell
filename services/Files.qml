@@ -236,6 +236,16 @@ Singleton {
                         walk(device, false);
 
                     root.drives = out;
+
+                    // HOW FULL EACH ONE IS, asked separately because lsblk does
+                    // not know: a size is a property of the partition and a
+                    // usage is a property of the filesystem mounted on it, and
+                    // only the second one changes while you look at it.
+                    if (out.length > 0) {
+                        usage.running = false;
+                        usage.command = ["df", "-P", "-B1", ...out.map(d => d.path)];
+                        usage.running = true;
+                    }
                 } catch (e) {
                     root.drives = [];
                 }
@@ -252,6 +262,32 @@ Singleton {
     // compositor both need to reach it from outside any window.
     readonly property string windowTitle: "banditshell-files"
     property bool windowOpen: false
+
+    Process {
+        id: usage
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                // df's columns, in POSIX mode: device, blocks, used, available,
+                // capacity, mountpoint. The mountpoint is LAST and may contain
+                // spaces, so it is taken as the remainder rather than as a
+                // field; everything before it is fixed and countable.
+                const filled = {};
+                for (const line of text.split("\n").slice(1)) {
+                    const parts = line.trim().split(/\s+/);
+                    if (parts.length < 6)
+                        continue;
+                    const where = parts.slice(5).join(" ");
+                    const size = parseFloat(parts[1]);
+                    const used = parseFloat(parts[2]);
+                    if (size > 0)
+                        filled[where] = {used: used, size: size, fraction: used / size};
+                }
+
+                root.drives = root.drives.map(d => Object.assign({}, d, {usage: filled[d.path] ?? null}));
+            }
+        }
+    }
 
     // ------------------------------------------------------------ the listing
 
