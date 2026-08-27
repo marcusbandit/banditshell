@@ -113,8 +113,11 @@ Item {
         }
 
         StyledText {
+            id: label
+
             width: parent.width
             horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignTop
 
             text: root.entry.name
             // TWO LINES, then elide. One line elides half the names in a
@@ -124,6 +127,13 @@ Item {
             maximumLineCount: 2
             wrapMode: Text.Wrap
             elide: Text.ElideRight
+
+            // AND ALWAYS THE ROOM FOR TWO, whether or not the second is used.
+            // Sized to the text instead, a one-word name makes a shorter tile,
+            // the column centres its contents higher, and the icons along a row
+            // sit at four different heights - which is exactly as untidy as it
+            // sounds, and is not obvious from the code that causes it.
+            height: label.lineHeight * 2
             color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
         }
     }

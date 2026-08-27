@@ -1100,7 +1100,7 @@ Singleton {
                 // fetched - is arithmetic on this and the width available, so
                 // there is no column count anywhere and no per-size branch. See
                 // ~/.claude/rules/math-over-hardcoding.md.
-                tile: 132,
+                tile: 116,
 
                 // How wide the preview panel stands. Same reasoning as the
                 // settings pane above: what decides whether a preview is worth
@@ -1109,7 +1109,7 @@ Singleton {
                 preview: 420,
 
                 // The longest edge a thumbnail is decoded at. A grid tile is
-                // ~132px, so this is nearly two of them: enough to stay
+                // ~116px, so this is a bit over two of them: enough to stay
                 // sharp on a hidpi screen and to survive the tile growing,
                 // nowhere near enough to hold a 6000px photograph in memory
                 // forty times over.

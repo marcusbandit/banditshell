@@ -69,7 +69,12 @@ Item {
         // it and the name is two lines. The ratio is a proportion of the cell
         // rather than a second configured number, so both move together when the
         // tile size does.
-        cellHeight: root.cell * 1.24
+        //
+        // Only just taller: at 1.24 the rows drifted far enough apart that the
+        // grid read as a scatter of icons rather than as a grid, because the
+        // drawn content of a tile is the picture plus two lines and everything
+        // past that is space between rows.
+        cellHeight: root.cell * 1.12
 
         model: root.entries
         currentIndex: root.selected

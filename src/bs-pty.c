@@ -308,7 +308,17 @@ int main(int argc, char **argv) {
             }
         }
 
-        if (fds[1].revents & POLLIN) {
+        // POLLHUP AS WELL AS POLLIN, and this is not belt and braces: it is the
+        // difference between a helper that dies with the window that opened it
+        // and one that does not.
+        //
+        // When the shell that spawned this goes away, our stdin is closed. A
+        // closed pipe reports POLLHUP and NOT POLLIN, so a loop that tests only
+        // for readability never notices, poll() returns immediately forever, and
+        // the process spins on undying - along with the whole shell session
+        // under it. Six of them were found running after an afternoon of opening
+        // and closing preview windows.
+        if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
             char in[4096];
             ssize_t n = read(STDIN_FILENO, in, sizeof in);
             if (n <= 0)
