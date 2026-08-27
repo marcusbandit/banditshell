@@ -198,12 +198,29 @@ Item {
             }
 
             Item {
+                id: transport
+
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                implicitWidth: ring
-                implicitHeight: ring
+                implicitWidth: transport.ring
+                implicitHeight: transport.ring
 
                 readonly property real ring: Appearance.font.iconSize + Appearance.padding.normal * 2
+
+                // The answer to the cursor is MOTION, not colour - the same rule
+                // the shell's own transport keeps (modules/media/MediaTransport)
+                // and the same swell a slider's bead has. This is a play button
+                // in that idiom deliberately: not that component, which is wired
+                // to MPRIS while this is a file on disk, but the same shape, so
+                // the shell has one way of drawing the thing you press.
+                scale: press.pressed ? 0.94 : press.containsMouse ? 1.12 : 1
+
+                Behavior on scale {
+                    NumberAnimation {
+                        duration: Appearance.anim.fast
+                        easing.type: Easing.OutBack
+                    }
+                }
 
                 G2Rect {
                     anchors.fill: parent
@@ -223,12 +240,28 @@ Item {
                     name: player.playing ? "pause" : "play_arrow"
                 }
 
-                TapHandler {
-                    onTapped: {
+                MouseArea {
+                    id: press
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+
+                    onClicked: {
                         // THE FIRST PRESS IS WHAT OPENS THE FILE. Everything
-                        // above this line has read nothing but the name.
-                        if (player.source === "")
-                            player.source = `file://${root.path}`;
+                        // above this line has read nothing but the name: a
+                        // MediaPlayer with a source set has already opened the
+                        // file and read its headers, which is fine for one and
+                        // absurd for a directory of them.
+                        // COMPARED AS A STRING, and that is not fussiness.
+                        // `source` is a url, which is an OBJECT: `source === ""`
+                        // is false even when it is empty, so the version that
+                        // read that way never assigned anything at all and the
+                        // button played silence. It also means switching files
+                        // reloads, since the url it should hold has changed.
+                        const url = `file://${root.path}`;
+                        if (String(player.source) !== url)
+                            player.source = url;
                         if (player.playing)
                             player.pause();
                         else
