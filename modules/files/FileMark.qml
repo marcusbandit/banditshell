@@ -3,6 +3,8 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
+import "marks.js" as Marks
 
 // WHAT KIND OF THING THIS IS, as one glyph in one colour.
 //
@@ -27,6 +29,14 @@ Item {
     id: root
 
     required property string fileClass
+
+    // WHICH ONE IT IS, as opposed to what kind of thing it is. Optional: the
+    // callers that only have a class to hand (the properties card, the preview's
+    // header) leave these empty and get the class mark, which is correct for
+    // them.
+    property string path: ""
+    property string name: ""
+
     property bool link: false
     property bool broken: false
     property real size: Appearance.font.iconSize
@@ -68,7 +78,20 @@ Item {
         return root.classes.length - 1;
     }
 
-    readonly property string icon: root.classes[root.index].icon
+    // The class's own mark, which is what everything falls back to.
+    readonly property string classIcon: root.classes[root.index].icon
+
+    // AND THE PARTICULAR ONE, when this is a folder or a file that is somebody
+    // in its own right. See marks.js.
+    readonly property string special: root.path ? Marks.iconFor(root.path, root.name, root.fileClass === "directory", Files.home) : ""
+
+    readonly property string icon: root.special || root.classIcon
+
+    // WHETHER THE MAIN GLYPH STILL SAYS "FOLDER". When it does not - when it is
+    // a house, or a history, or a downward arrow - a small folder badge says the
+    // thing it replaced, because "this is a directory" is the one fact a file
+    // browser may never leave you to infer.
+    readonly property bool foldered: root.fileClass === "directory" && root.special !== "" && root.special !== "folder"
 
     // The accent, turned. An achromatic accent has no hue to turn (Qt reports
     // -1), so the wheel starts at red rather than at nothing.
@@ -138,43 +161,58 @@ Item {
         // spending the Material Symbols fill axis on: it separates "a place" from
         // "a thing" at a glance and across the whole grid, without a second
         // colour or a second shape.
-        fill: root.fileClass === "directory" ? 1 : 0
+        fill: root.fileClass === "directory" && !root.foldered ? 1 : 0
         opacity: root.broken ? 0.7 : 1
     }
 
-    // A SYMLINK SAYS SO, in the corner, at the weight of a footnote. It is drawn
-    // as what it points AT (see src/bs-ls.c) because that is what you want to
-    // open, so this badge is the only thing left that says it is not the thing
-    // itself.
+    // TWO CORNERS, WITH TWO DIFFERENT JOBS, and keeping them apart is what stops
+    // the badges fighting for the same spot.
+    //
+    //   bottom LEFT   what KIND of thing this is, when the main glyph has
+    //                 stopped saying it
+    //   bottom RIGHT  what STATE it is in: a link, a broken link, or something
+    //                 you may not write
+    //
+    // The right slot shows one badge at a time, worst first, because two badges
+    // stacked in a corner at a third of the icon's size is a smudge rather than
+    // information.
     Icon {
-        visible: root.link
+        visible: root.foldered
 
-        anchors.right: parent.right
+        anchors.left: parent.left
         anchors.bottom: parent.bottom
-        anchors.rightMargin: -root.size * 0.1
-        anchors.bottomMargin: -root.size * 0.1
+        anchors.leftMargin: -root.size * 0.12
+        anchors.bottomMargin: -root.size * 0.08
 
-        name: root.broken ? "link_off" : "link"
-        size: root.size * 0.45
-        color: root.broken ? Appearance.colour.alarm : Appearance.colour.textFaint
+        name: "folder"
+        fill: 1
+        size: root.size * 0.42
+        color: root.hue
+        opacity: 0.75
     }
 
-    // A LOCK, when the thing cannot be written.
-    //
-    // The colour says it as well, and the colour is not enough on its own: it is
-    // one hue among a dozen the grid already uses for types, and "which of these
-    // greys means read-only" is not a question anybody should have to answer
-    // from memory. The badge is unambiguous and costs a corner.
+    readonly property string state: {
+        if (root.broken)
+            return "link_off";
+        if (!root.readable)
+            return "block";
+        if (root.link)
+            return "link";
+        if (!root.writable)
+            return "lock";
+        return "";
+    }
+
     Icon {
-        visible: !root.writable && root.readable && !root.link
+        visible: root.state !== ""
 
         anchors.right: parent.right
         anchors.bottom: parent.bottom
         anchors.rightMargin: -root.size * 0.1
-        anchors.bottomMargin: -root.size * 0.1
+        anchors.bottomMargin: -root.size * 0.08
 
-        name: "lock"
+        name: root.state
         size: root.size * 0.42
-        color: root.rooted ? Appearance.rampAt(6, 1) : Appearance.colour.textFaint
+        color: root.broken || !root.readable ? Appearance.colour.alarm : root.rooted ? Appearance.rampAt(6, 1) : Appearance.colour.textFaint
     }
 }

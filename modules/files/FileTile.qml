@@ -124,6 +124,8 @@ Item {
                 visible: !thumb.visible || thumb.status !== Image.Ready
 
                 fileClass: root.entry.class
+                path: root.path
+                name: root.entry.name
                 link: root.entry.link
                 broken: root.entry.broken
                 readable: root.entry.read
@@ -189,6 +191,8 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             fileClass: root.entry.class
+            path: root.path
+            name: root.entry.name
             link: root.entry.link
             broken: root.entry.broken
             readable: root.entry.read
