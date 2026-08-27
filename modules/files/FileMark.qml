@@ -31,6 +31,14 @@ Item {
     property bool broken: false
     property real size: Appearance.font.iconSize
 
+    // WHAT MAY BE DONE WITH IT, from src/bs-ls.c. Absent (all defaults) for the
+    // callers that only have a class to hand, which read as "ordinary".
+    property bool readable: true
+    property bool writable: true
+    property bool owned: true
+    property bool rooted: false
+    property bool worldWritable: false
+
     implicitWidth: size
     implicitHeight: size
 
@@ -66,7 +74,39 @@ Item {
     // -1), so the wheel starts at red rather than at nothing.
     readonly property real baseHue: Appearance.colour.accent.hslHue < 0 ? 0 : Appearance.colour.accent.hslHue
 
+    // PERMISSION BEATS TYPE, when there is something to say.
+    //
+    // A folder's class is always "directory", so a folder's colour is a hue
+    // spent saying something you can already see from the shape of the icon.
+    // Permission is the thing about a directory that is invisible and that
+    // matters: whether you can go in, whether you can write there, whose it is.
+    // So that is what the colour carries.
+    //
+    // The order is by consequence, not by severity: unreadable stops you dead,
+    // world-writable is a thing to be suspicious of, root-owned means look but
+    // do not touch, and merely not-yours is worth a shade rather than a colour.
+    // A file you own and may write is ordinary and takes its class hue, which is
+    // what makes the marked ones stand out at all.
+    readonly property color permissionHue: {
+        if (!root.readable || root.broken)
+            return Appearance.colour.alarm;
+        if (root.worldWritable)
+            return Appearance.blend(Appearance.colour.alarm, Appearance.colour.accent, 0.5);
+        if (root.rooted)
+            return Appearance.rampAt(6, 1);
+        if (!root.writable)
+            return Appearance.colour.textFaint;
+        return "transparent";
+    }
+
+    readonly property bool marked: root.permissionHue.a > 0
+
     readonly property color hue: {
+        // PERMISSION FIRST for a directory, always, and for anything with
+        // something worth saying about it.
+        if (root.marked && (root.fileClass === "directory" || !root.readable))
+            return root.permissionHue;
+
         // UNKNOWN IS NOT A COLOUR. The last class is the one that means "we do
         // not know what this is", and giving it a confident hue of its own would
         // be the browser stating something it does not know. It wears the shell's
@@ -117,5 +157,24 @@ Item {
         name: root.broken ? "link_off" : "link"
         size: root.size * 0.45
         color: root.broken ? Appearance.colour.alarm : Appearance.colour.textFaint
+    }
+
+    // A LOCK, when the thing cannot be written.
+    //
+    // The colour says it as well, and the colour is not enough on its own: it is
+    // one hue among a dozen the grid already uses for types, and "which of these
+    // greys means read-only" is not a question anybody should have to answer
+    // from memory. The badge is unambiguous and costs a corner.
+    Icon {
+        visible: !root.writable && root.readable && !root.link
+
+        anchors.right: parent.right
+        anchors.bottom: parent.bottom
+        anchors.rightMargin: -root.size * 0.1
+        anchors.bottomMargin: -root.size * 0.1
+
+        name: "lock"
+        size: root.size * 0.42
+        color: root.rooted ? Appearance.rampAt(6, 1) : Appearance.colour.textFaint
     }
 }

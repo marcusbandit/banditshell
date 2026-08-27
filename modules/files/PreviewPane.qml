@@ -29,6 +29,8 @@ Item {
     // question an extension cannot answer, which is whether the body is text.
     property var stat: null
 
+    readonly property bool isMarkdown: root.language === "markdown"
+    readonly property bool rendered: root.isMarkdown && Files.markdownRendered
     readonly property bool isFolder: root.entry && root.entry.kind === "dir"
     readonly property bool isImage: root.entry && root.entry.class === "image" && !root.entry.broken
     readonly property bool isAudio: root.entry && root.entry.class === "audio"
@@ -167,13 +169,62 @@ Item {
 
             StyledText {
                 anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Appearance.font.iconSize - Appearance.padding.normal
+                width: parent.width - Appearance.font.iconSize - Appearance.padding.normal - (root.isMarkdown ? toggle.width + Appearance.padding.normal : 0)
 
                 text: root.entry ? root.entry.name : ""
                 // The one thing this panel is about, at the one size reserved
                 // for that (~/.claude/rules/type-scale.md).
                 font.pixelSize: Appearance.font.size.normal
                 elide: Text.ElideMiddle
+            }
+
+            // RENDERED OR RAW, for the one kind of file where both are the
+            // point. Markdown is written to be read as text and read as a
+            // document, and which of those you want depends on whether you are
+            // reading it or editing it - a question the panel cannot answer, so
+            // it asks.
+            //
+            // Only on markdown. A toggle that appears for every file and does
+            // nothing for most of them is a control that has to be learned
+            // before it can be ignored.
+            Item {
+                id: toggle
+
+                anchors.verticalCenter: parent.verticalCenter
+
+                visible: root.isMarkdown
+                implicitWidth: Appearance.sizes.minTarget
+                implicitHeight: Appearance.sizes.minTarget
+
+                G2Rect {
+                    anchors.fill: parent
+                    anchors.margins: Appearance.padding.small / 2
+
+                    radius: Appearance.rounding.small
+                    color: root.rendered ? Appearance.colour.fillStrong : togglepress.containsMouse ? Appearance.colour.fill : "transparent"
+                }
+
+                Icon {
+                    id: toggleGlyph
+
+                    anchors.centerIn: parent
+                    anchors.horizontalCenterOffset: toggleGlyph.inkOffsetX
+                    anchors.verticalCenterOffset: toggleGlyph.inkOffsetY
+
+                    name: root.rendered ? "article" : "code"
+                    size: Appearance.sizes.filesText * 1.2
+                    color: root.rendered ? Appearance.colour.text : Appearance.colour.textDim
+                }
+
+                MouseArea {
+                    id: togglepress
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    cursorShape: Qt.PointingHandCursor
+
+                    onClicked: Files.toggleMarkdown()
+                }
             }
         }
 
@@ -383,9 +434,46 @@ Item {
         // is anchored to its own bottom edge - so a wrapper that gave it a
         // content height instead of a real one left it exactly zero pixels tall
         // and the panel drew a correct header over nothing at all.
+        // MARKDOWN, AS A DOCUMENT. Qt renders it natively, so this is a text
+        // item with a format set rather than a parser: headings, emphasis,
+        // lists, code spans and links all come out without this file knowing
+        // what any of them are.
+        //
+        // NOT StyledText, and this is the one place in the shell that departs
+        // from it on purpose. StyledText pins a line box for the pixel font's
+        // grid, which is exactly right for interface text and wrong for a
+        // document that sets its own heading sizes - the three-size rule
+        // (~/.claude/rules/type-scale.md) is about the interface, and this is
+        // content.
+        Flickable {
+            anchors.fill: parent
+            visible: root.isText && root.rendered
+            clip: true
+
+            contentHeight: document.implicitHeight
+            boundsBehavior: Flickable.StopAtBounds
+
+            Text {
+                id: document
+
+                width: parent.width
+
+                text: body.content
+                textFormat: Text.MarkdownText
+                wrapMode: Text.Wrap
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.sizes.filesText
+                color: Appearance.colour.text
+                linkColor: Appearance.colour.accent
+
+                onLinkActivated: link => Files.openWith(link)
+            }
+        }
+
         CodeBlock {
             anchors.fill: parent
-            visible: root.isText
+            visible: root.isText && !root.rendered
 
             text: body.content
             // The extension IS the language here, which is the one place a file

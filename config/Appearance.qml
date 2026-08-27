@@ -446,11 +446,21 @@ Singleton {
         readonly property int filesHeight: root.cfg.files.height
         // The one number the grid scales from: a column count is arithmetic on
         // this and the room available, never a setting of its own.
-        readonly property int filesTile: root.cfg.files.tile
+        //
+        // Both this and the text below are the configured value times the zoom,
+        // so Ctrl+= moves the whole grid rather than the type alone.
+        // WITHOUT `root.`, and that is not a style choice. These live inside
+        // this QtObject, so `root.filesZoom` is a property of the Appearance
+        // singleton - which has none, so it read undefined, the tile size came
+        // out NaN, the column count came out zero and the grid laid out nothing
+        // at all while every binding feeding it was correct.
+        readonly property real filesZoom: root.cfg.files.zoom
+        readonly property int filesTile: Math.round(root.cfg.files.tile * filesZoom)
         readonly property int filesPreview: root.cfg.files.preview
         // The browser's own body size. See Config's note on why this window
         // sets a size instead of taking one of the three tiers.
-        readonly property int filesText: root.cfg.files.text
+        readonly property int filesText: Math.round(root.cfg.files.text * filesZoom)
+        readonly property int filesSidebar: root.cfg.files.sidebar
         // A row in the list view: two lines of the browser's own text, which is
         // the tightest a row can be and still have air in it.
         readonly property int filesRow: Math.round(root.cfg.files.text * 2)

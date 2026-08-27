@@ -126,6 +126,11 @@ Item {
                 fileClass: root.entry.class
                 link: root.entry.link
                 broken: root.entry.broken
+                readable: root.entry.read
+                writable: root.entry.write
+                owned: root.entry.mine
+                rooted: root.entry.root
+                worldWritable: root.entry.world
                 size: Math.min(parent.height, root.width * 0.46)
             }
         }
@@ -186,6 +191,11 @@ Item {
             fileClass: root.entry.class
             link: root.entry.link
             broken: root.entry.broken
+            readable: root.entry.read
+            writable: root.entry.write
+            owned: root.entry.mine
+            rooted: root.entry.root
+            worldWritable: root.entry.world
             size: Appearance.sizes.filesText * 1.2
         }
 

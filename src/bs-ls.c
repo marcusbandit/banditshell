@@ -259,17 +259,34 @@ static void list(const char *path) {
         json_string(cls);
         printf(",\"ext\":");
         json_string(ext);
-        printf(",\"size\":%lld,\"mtime\":%lld,\"mode\":%u,\"link\":%s,\"broken\":%s,\"exec\":%s,\"hidden\":%s",
+        // WHAT YOU MAY DO WITH IT, and WHOSE IT IS.
+        //
+        // Asked of the kernel rather than worked out from the mode bits, because
+        // the mode alone cannot answer it: whether you may write to a file
+        // depends on which of the three triads applies to you, which depends on
+        // your uid and your groups - all of which faccessat already knows and
+        // gets right for the cases (supplementary groups, ACLs) that a triad
+        // test would quietly get wrong.
+        //
+        // `root` and `mine` are about OWNERSHIP rather than access, and they are
+        // a different question worth answering separately: a root-owned file you
+        // happen to be able to read is still a file that is not yours.
+        printf(",\"size\":%lld,\"mtime\":%lld,\"mode\":%u,\"link\":%s,\"broken\":%s,\"exec\":%s,\"hidden\":%s,\"read\":%s,\"write\":%s,\"root\":%s,\"mine\":%s,\"world\":%s",
                (long long)st.st_size, (long long)st.st_mtime,
                (unsigned)(st.st_mode & 07777),
                link ? "true" : "false",
                broken ? "true" : "false",
                exec ? "true" : "false",
-               e->d_name[0] == '.' ? "true" : "false");
+               e->d_name[0] == '.' ? "true" : "false",
+               faccessat(fd, e->d_name, R_OK, 0) == 0 ? "true" : "false",
+               faccessat(fd, e->d_name, W_OK, 0) == 0 ? "true" : "false",
+               st.st_uid == 0 ? "true" : "false",
+               st.st_uid == getuid() ? "true" : "false",
+               (st.st_mode & S_IWOTH) ? "true" : "false");
 
-        // WHETHER YOU CAN GO IN, asked only of directories and only because the
-        // answer changes what the tile draws. Everything else about permission
-        // is in `mode` for whoever wants to render it.
+        // WHETHER YOU CAN GO IN, asked only of directories: reading a directory
+        // and entering it are two different permissions, and a folder you may
+        // list but not enter is a folder the tile should not offer to open.
         if (S_ISDIR(st.st_mode))
             printf(",\"open\":%s", faccessat(fd, e->d_name, R_OK | X_OK, 0) == 0 ? "true" : "false");
 

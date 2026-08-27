@@ -100,8 +100,147 @@ Singleton {
     // using the one they prefer.
     readonly property string view: Config.values.files.view
 
+    readonly property bool markdownRendered: Config.values.files.markdown !== "raw"
+
+    function toggleMarkdown(): void {
+        Config.set("files.markdown", root.markdownRendered ? "raw" : "rendered");
+    }
+
     function toggleView(): void {
         Config.set("files.view", root.view === "list" ? "icons" : "list");
+    }
+
+    property bool sidebarOpen: true
+
+    // HOW WIDE THE TWO SIDE PANELS ARE.
+    //
+    // Live properties rather than reads of the config, because they are dragged:
+    // writing the file on every pointer move would rewrite it a hundred times
+    // per drag. They start at the configured width and are written back when the
+    // handle is let go, which is the moment the answer stops changing.
+    property int sidebarWidth: Appearance.sizes.filesSidebar
+    property int previewWidth: Appearance.sizes.filesPreview
+
+    function commitWidths(): void {
+        if (root.sidebarWidth !== Appearance.sizes.filesSidebar)
+            Config.set("files.sidebar", root.sidebarWidth);
+        if (root.previewWidth !== Appearance.sizes.filesPreview)
+            Config.set("files.preview", root.previewWidth);
+    }
+
+    // HOW BIG THE GRID IS DRAWN, and it is written straight back to config so
+    // the size you settled on is the size it opens at. Clamped rather than free:
+    // below about two thirds the names stop being readable and above two and a
+    // half a folder holds four things.
+    function zoom(step: real): void {
+        const now = Config.values.files.zoom;
+        const next = step === 0 ? 1 : Math.max(0.7, Math.min(2.5, Math.round((now + step) * 20) / 20));
+        if (next !== now)
+            Config.set("files.zoom", next);
+    }
+
+    // ------------------------------------------------------------ the sidebar
+
+    // WHERE YOU KEEP GOING. The XDG directories, which is what every file
+    // manager puts here, plus the two ends of the tree.
+    //
+    // Filtered to the ones that EXIST rather than listed blindly: a machine
+    // without a Videos directory should not be offered one, and the check costs
+    // one process for the whole list rather than one each.
+    property var places: []
+
+    readonly property var placeSpec: [
+        {name: "Home", icon: "home", path: root.home},
+        {name: "Desktop", icon: "desktop_windows", path: `${root.home}/Desktop`},
+        {name: "Documents", icon: "description", path: `${root.home}/Documents`},
+        {name: "Downloads", icon: "download", path: `${root.home}/Downloads`},
+        {name: "Pictures", icon: "image", path: `${root.home}/Pictures`},
+        {name: "Music", icon: "music_note", path: `${root.home}/Music`},
+        {name: "Videos", icon: "movie", path: `${root.home}/Videos`},
+        {name: "Root", icon: "hard_drive_2", path: "/"}
+    ]
+
+    // The mounted volumes, from lsblk, which already knows about labels, sizes
+    // and which of them are removable. Anything without a mountpoint is not
+    // somewhere you can go, and the tree is flattened because a partition inside
+    // a disk inside a controller is a fact about the hardware and not about
+    // where your files are.
+    property var drives: []
+
+    function refreshPlaces(): void {
+        placer.running = false;
+        placer.command = ["sh", "-c", root.placeSpec.map(p => `test -d ${root.quote(p.path)} && echo ${root.quote(p.path)}`).join("; ")];
+        placer.running = true;
+
+        mounter.running = false;
+        mounter.command = ["lsblk", "-J", "-o", "NAME,LABEL,MOUNTPOINTS,SIZE,RM,TYPE,FSTYPE"];
+        mounter.running = true;
+    }
+
+    Process {
+        id: placer
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const found = text.split("\n").filter(l => l.length > 0);
+                root.places = root.placeSpec.filter(p => found.includes(p.path));
+            }
+        }
+    }
+
+    Process {
+        id: mounter
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const tree = JSON.parse(text).blockdevices ?? [];
+                    const out = [];
+
+                    // MOUNTPOINTS, plural. The singular column reports one per
+                    // device and this machine mounts five subvolumes off the
+                    // same one, so the singular answer was whichever the kernel
+                    // happened to list first - which was not the root
+                    // filesystem.
+                    const walk = (node, removable) => {
+                        const rm = removable || node.rm === true || node.rm === "1";
+
+                        for (const where of node.mountpoints ?? []) {
+                            // WHAT COUNTS AS A PLACE. Anything you plugged in,
+                            // and anything mounted where volumes are mounted.
+                            // Not the subvolumes: /var/log and /.snapshots are
+                            // facts about how the disk is laid out, and a
+                            // sidebar listing them is a sidebar nobody reads.
+                            // Not / or /home either, which are Places already.
+                            if (!where)
+                                continue;
+                            const volume = where.startsWith("/mnt/") || where.startsWith("/media/") || where.startsWith("/run/media/");
+                            if (!rm && !volume)
+                                continue;
+                            if (out.some(d => d.path === where))
+                                continue;
+
+                            out.push({
+                                name: node.label || where.split("/").pop() || node.name,
+                                path: where,
+                                detail: node.size ?? "",
+                                icon: rm ? "usb" : "hard_drive"
+                            });
+                        }
+
+                        for (const child of node.children ?? [])
+                            walk(child, rm);
+                    };
+
+                    for (const device of tree)
+                        walk(device, false);
+
+                    root.drives = out;
+                } catch (e) {
+                    root.drives = [];
+                }
+            }
+        }
     }
 
     // THE KEYMAPS, straight off Config rather than through Appearance: a chord
@@ -314,8 +453,13 @@ Singleton {
         target: root
 
         function onWindowOpenChanged(): void {
-            if (root.windowOpen && root.entries.length === 0)
+            if (!root.windowOpen)
+                return;
+            if (root.entries.length === 0)
                 root.checkHelpers();
+            // Drives come and go while the window is shut, so the list is taken
+            // on each open rather than once at startup.
+            root.refreshPlaces();
         }
     }
 
@@ -939,6 +1083,9 @@ Singleton {
             return true;
         case "hidden":
             Config.set("files.hidden", !root.showHidden);
+            return true;
+        case "sidebar":
+            root.sidebarOpen = !root.sidebarOpen;
             return true;
         case "back":
             root.goBack();

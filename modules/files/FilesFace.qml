@@ -57,7 +57,14 @@ Item {
             [Qt.Key_F3]: "F3",
             [Qt.Key_F4]: "F4",
             [Qt.Key_F5]: "F5",
-            [Qt.Key_F6]: "F6"
+            [Qt.Key_F6]: "F6",
+            // The zoom chords. `+` and `=` are the same key with and without
+            // shift, and both are spelled out so that either reaches the same
+            // action without the keymap needing to know about shift.
+            [Qt.Key_Plus]: "+",
+            [Qt.Key_Equal]: "=",
+            [Qt.Key_Minus]: "-",
+            [Qt.Key_Underscore]: "_"
         })
 
     function keyLabel(key: int): string {
@@ -325,6 +332,15 @@ Item {
         case "view":
             Files.toggleView();
             return true;
+        case "zoomin":
+            Files.zoom(0.1);
+            return true;
+        case "zoomout":
+            Files.zoom(-0.1);
+            return true;
+        case "zoomreset":
+            Files.zoom(0);
+            return true;
         }
 
         // Anything left is a window action rather than a grid one, and the
@@ -560,15 +576,60 @@ Item {
     // configured one, except on a window too narrow to hold both, where the grid
     // wins: a grid squeezed to one column is not a grid, and a preview is the
     // half you can put away with a chord.
+    // THE SIDEBAR, and the line you drag to widen it. Both live to the left of
+    // everything else and neither is inside `middle`, because the sidebar is a
+    // fixture of the window rather than a third panel sharing the grid's space.
+    Sidebar {
+        id: sidebar
+
+        anchors.left: parent.left
+        anchors.top: rule.bottom
+        anchors.bottom: terminal.top
+
+        width: Files.sidebarOpen ? Files.sidebarWidth : 0
+        visible: width > 0
+        clip: true
+
+        receiving: root.dragging ? sidebar.pathAt(sidebar.mapFromItem(root, root.dragAt.x, root.dragAt.y)) : ""
+    }
+
+    SplitHandle {
+        id: sidebarEdge
+
+        anchors.left: sidebar.right
+        anchors.top: rule.bottom
+        anchors.bottom: terminal.top
+
+        visible: Files.sidebarOpen
+
+        onMoved: delta => Files.sidebarWidth = Math.max(120, Math.min(root.width * 0.4, sidebarEdge.from + delta))
+        onCommitted: Files.commitWidths()
+
+        // Where the width was when the drag began. Read at the START rather than
+        // accumulated, for the reason the terminal's own handle documents: an
+        // integer derived from a running sum of fractional pixels drifts away
+        // from the pointer.
+        property int from: 0
+
+        Connections {
+            target: sidebarEdge
+
+            function onActiveChanged(): void {
+                if (sidebarEdge.active)
+                    sidebarEdge.from = Files.sidebarWidth;
+            }
+        }
+    }
+
     Item {
         id: middle
 
-        anchors.left: parent.left
+        anchors.left: Files.sidebarOpen ? sidebarEdge.right : parent.left
         anchors.right: parent.right
         anchors.top: rule.bottom
         anchors.bottom: terminal.top
 
-        readonly property bool roomForBoth: width > Appearance.sizes.filesPreview * 2
+        readonly property bool roomForBoth: width > Files.previewWidth * 1.8
 
         FileGrid {
             id: grid
@@ -576,7 +637,7 @@ Item {
             anchors.left: parent.left
             anchors.top: parent.top
             anchors.bottom: parent.bottom
-            anchors.right: preview.visible ? preview.left : parent.right
+            anchors.right: preview.visible ? previewEdge.left : parent.right
             anchors.margins: Appearance.padding.small
 
             entries: Files.visible
@@ -603,12 +664,14 @@ Item {
                 // possible reading of the gesture.
                 if (!Files.isPicked(Files.visible[index].name))
                     Files.setCursor(index);
-                sheet.popup(middle.mapToItem(root, position.x, position.y).x, middle.mapToItem(root, position.x, position.y).y, root.fileActions());
+                const at = grid.mapToItem(root, position.x, position.y);
+                sheet.popup(at.x, at.y, root.fileActions());
             }
             onMenuForEmpty: position => {
                 Files.focus = "grid";
                 Files.clearPicked();
-                sheet.popup(grid.mapToItem(root, position.x, position.y).x, grid.mapToItem(root, position.x, position.y).y, root.folderActions());
+                const at = grid.mapToItem(root, position.x, position.y);
+                sheet.popup(at.x, at.y, root.folderActions());
             }
             onLifted: index => {
                 // A DRAG CARRIES THE WHOLE SELECTION, unless it started on
@@ -665,6 +728,33 @@ Item {
             onDropped: position => root.drop(root.mapFromItem(grid, position.x, position.y))
         }
 
+        SplitHandle {
+            id: previewEdge
+
+            anchors.right: preview.left
+            anchors.top: parent.top
+            anchors.bottom: parent.bottom
+
+            visible: preview.visible
+
+            // Dragged LEFT makes the preview wider, so the delta is negated: the
+            // handle is on the panel's left edge and the panel grows toward the
+            // pointer.
+            onMoved: delta => Files.previewWidth = Math.max(200, Math.min(middle.width * 0.7, previewEdge.from - delta))
+            onCommitted: Files.commitWidths()
+
+            property int from: 0
+
+            Connections {
+                target: previewEdge
+
+                function onActiveChanged(): void {
+                    if (previewEdge.active)
+                        previewEdge.from = Files.previewWidth;
+                }
+            }
+        }
+
         PreviewPane {
             id: preview
 
@@ -673,7 +763,7 @@ Item {
             anchors.bottom: parent.bottom
             anchors.margins: Appearance.padding.normal
 
-            width: Appearance.sizes.filesPreview
+            width: Files.previewWidth
             visible: Files.previewOpen && middle.roomForBoth && !!Files.current
 
             entry: Files.current
@@ -778,6 +868,17 @@ Item {
         if (crumb) {
             Files.moveInto(moving, crumb);
             return;
+        }
+
+        // Then the sidebar, which is a column of directories and so a column of
+        // drop targets: dragging a download onto Documents is the gesture the
+        // sidebar exists to make possible.
+        if (Files.sidebarOpen) {
+            const place = sidebar.pathAt(sidebar.mapFromItem(root, position.x, position.y));
+            if (place) {
+                Files.moveInto(moving, place);
+                return;
+            }
         }
 
         const local = grid.mapFromItem(root, position.x, position.y);

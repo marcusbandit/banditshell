@@ -575,6 +575,9 @@ banditshell/
 │   │   │                        share of the wheel, never listed
 │   │   ├── PathBar.qml          where you are, every step back, a field to type
 │   │   │                        one into, and the `/` search
+│   │   ├── Sidebar.qml          places and mounted drives, down the left
+│   │   ├── SplitHandle.qml      the line between two panels, and the way to
+│   │   │                        move it; a separator that is also a control
 │   │   ├── NamePrompt.qml       one line of text, asked for: new, new, rename
 │   │   ├── Properties.qml       everything known ABOUT a file, as opposed to
 │   │   │                        what is in it
@@ -2163,6 +2166,28 @@ with two layouts for the same reason - two components would be two copies of the
 drag, the clicks and the menu, and the copy nobody was looking at would be the
 one that stopped matching.
 
+**Colour says what permission is, because nothing else can.** A folder's class is
+always "directory", so a folder's class colour is a hue spent saying what the
+icon's shape already says. Permission is the thing about a directory that is
+invisible and that matters, so that is what the colour carries: unreadable stops
+you dead and wears the alarm, world-writable is a thing to be suspicious of,
+root-owned means look but do not touch, and not-writable takes a shade and a lock
+badge - because "which of these greys means read-only" is not a question anybody
+should answer from memory. A file you own and may write is ordinary and keeps its
+type colour, which is what makes the marked ones visible at all. The flags come
+from the kernel via faccessat rather than from the mode bits, which cannot answer
+"may I write this" without knowing your groups.
+
+**Ctrl+= and Ctrl+- scale the grid**, and one number does it: tile and text
+together, because a tile is a picture with a name under it and scaling the
+picture alone gives you a large icon labelled in fine print. It is written back
+to config, so the size you settled on is the size it opens at.
+
+**The sidebar is places and drives**, split the classic way because the split is
+right: places are directories you chose to care about, drives are hardware that
+happens to be mounted, and they change for completely different reasons. Both are
+drop targets, because both are directories.
+
 **A folder's preview is its contents.** Anything else was answering the wrong
 question about the one kind of thing the window is mostly full of.
 
@@ -2192,6 +2217,16 @@ activation and garbage after the first move; `pressPosition` plus
 `activeTranslation` are the reliable pair. And some pointer moves arrive at
 exactly (0, 0), which is why samples that miss the window by a thousand pixels
 are discarded as the noise they are.
+
+**Markdown reads both ways.** It is written to be read as text and as a
+document, and which one you want depends on whether you are reading it or
+editing it - a question the panel cannot answer, so it asks, with a toggle that
+appears only on markdown. Qt renders it natively, so the rendered half is a text
+item with a format set rather than a parser. It is the one place in the shell
+that departs from StyledText on purpose: StyledText pins a line box to the pixel
+font's grid, which is right for interface text and wrong for a document that sets
+its own heading sizes. The three-size rule is about the interface; this is
+content.
 
 ### The shell is a shell, not a socket
 

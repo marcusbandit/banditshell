@@ -1116,7 +1116,23 @@ Singleton {
                 // Off Monocraft's design grid (9px) deliberately. On the grid
                 // the only step below 18 is 9, which is half, and the font
                 // renders acceptably between them.
-                text: 13,
+                text: 15,
+
+                // HOW BIG EVERYTHING IN THE GRID IS, as a multiplier on `tile`
+                // and `text` together.
+                //
+                // One number rather than two, because they are not independent:
+                // a tile is a picture with a name under it, and scaling the
+                // picture without the name gives you a large icon labelled in
+                // fine print. Ctrl+= and Ctrl+- move this and it is written back
+                // here, so the size you settled on is the size it opens at next
+                // time.
+                zoom: 1.0,
+
+                // The left sidebar's width, and the preview's. Both are drag
+                // handles as well as settings: the number here is where they
+                // start and where a drag leaves them.
+                sidebar: 200,
 
                 // How wide the preview panel stands. Same reasoning as the
                 // settings pane above: what decides whether a preview is worth
@@ -1140,6 +1156,12 @@ Singleton {
                 // Whether dotfiles are shown at rest. Off, because a home
                 // directory is mostly dotfiles and the browser opens on one.
                 hidden: false,
+
+                // rendered | raw. Which way a markdown file opens in the
+                // preview. Remembered, because whichever one you want you
+                // usually want every time: reading notes is a different activity
+                // from editing them, and people do mostly one or the other.
+                markdown: "rendered",
 
                 // icons | list. A grid of thumbnails is what you want in a
                 // folder of pictures and the wrong shape entirely for a folder
@@ -1217,6 +1239,12 @@ Singleton {
                     "Ctrl+3": "focus:terminal",
                     "Ctrl+4": "preview",
                     "Ctrl+5": "hidden",
+                    // Ctrl+B is zsh's backward-char while the terminal has
+                    // focus, and this takes it. Left arrow does the same job,
+                    // and a sidebar you cannot summon from the panel you are
+                    // typing in is a sidebar you forget exists; move it to the
+                    // `grid` map below if you want the binding back.
+                    "Ctrl+B": "sidebar",
                     "Alt+Left": "back",
                     "Alt+Right": "forward",
                     "Alt+Up": "parent",
@@ -1254,6 +1282,10 @@ Singleton {
                     " ": "preview",
                     ".": "hidden",
                     "v": "view",
+                    "Ctrl+=": "zoomin",
+                    "Ctrl++": "zoomin",
+                    "Ctrl+-": "zoomout",
+                    "Ctrl+0": "zoomreset",
                     "y": "copypath",
                     "-": "parent",
 
