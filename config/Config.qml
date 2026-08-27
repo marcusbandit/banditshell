@@ -1214,6 +1214,12 @@ Singleton {
                 // grid rather than a column, so `l` meaning "open" would leave
                 // no way to move sideways; Return opens and `-` goes up, which
                 // are the two that ranger spends h and l on.
+                // Both spellings live here: a bare character like "j", and a
+                // chord like "Ctrl+C". The chords are in THIS table rather than
+                // in `keys` above precisely because the grid is where there is
+                // no shell waiting: Ctrl+C is a shell's interrupt, Ctrl+X its
+                // kill-line and Ctrl+V its literal-next, and a window-level bind
+                // would take all three away from the terminal permanently.
                 grid: {
                     "h": "left",
                     "j": "down",
@@ -1224,8 +1230,20 @@ Singleton {
                     "/": "search",
                     " ": "preview",
                     ".": "hidden",
-                    "y": "copy",
-                    "-": "parent"
+                    "y": "copypath",
+                    "-": "parent",
+
+                    "Ctrl+A": "all",
+                    "Ctrl+C": "copy",
+                    "Ctrl+X": "cut",
+                    "Ctrl+V": "paste",
+                    "Ctrl+N": "newfolder",
+                    "Ctrl+Shift+N": "newfile",
+                    "Ctrl+L": "path",
+                    "Ctrl+I": "properties",
+                    "F2": "rename",
+                    "Delete": "trash",
+                    "Shift+Delete": "destroy"
                 }
             },
             // The bottom-right corner, as a way in. See

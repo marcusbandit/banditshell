@@ -71,7 +71,23 @@ Singleton {
     property bool terminalOpen: false
     property bool previewOpen: true
 
-    property int selected: -1
+    // WHERE THE KEYBOARD IS, as an index into `visible`.
+    property int cursor: -1
+
+    // WHAT IS SELECTED, as NAMES rather than indices.
+    //
+    // The listing is retaken whenever anything might have changed it (see
+    // restat), and an index into the previous listing is a different file in the
+    // next one - which is how a multi-file delete ends up deleting the wrong
+    // multiple files. A name survives a re-list, and one that has genuinely gone
+    // simply stops matching.
+    property var picked: []
+
+    // Where a range starts. Shift-click extends from here, not from the cursor,
+    // so shift-clicking twice re-picks the range rather than growing it by
+    // whatever the last click happened to leave behind.
+    property int anchor: -1
+
     property string search: ""
     property bool searching: false
 
@@ -116,8 +132,68 @@ Singleton {
         });
     }
 
-    readonly property var current: root.selected >= 0 && root.selected < root.visible.length ? root.visible[root.selected] : null
+    readonly property var current: root.cursor >= 0 && root.cursor < root.visible.length ? root.visible[root.cursor] : null
     readonly property string currentPath: root.current ? root.join(root.cwd, root.current.name) : ""
+
+    // WHAT AN ACTION ACTS ON. The selection, or - when nothing is selected - the
+    // thing the cursor is on, because "delete" with a cursor on a file and no
+    // selection is not an ambiguous request.
+    readonly property var picks: {
+        const names = root.picked;
+        if (names.length === 0)
+            return root.current ? [root.current] : [];
+        return root.visible.filter(e => names.includes(e.name));
+    }
+
+    readonly property var pickedPaths: root.picks.map(e => root.join(root.cwd, e.name))
+
+    function isPicked(name: string): bool {
+        return root.picked.includes(name);
+    }
+
+    // ONE THING, and it becomes the anchor for whatever range comes next.
+    function setCursor(index: int): void {
+        if (index < 0 || index >= root.visible.length)
+            return;
+        root.cursor = index;
+        root.anchor = index;
+        root.picked = [root.visible[index].name];
+    }
+
+    // Ctrl-click: add or remove one, leaving the rest alone.
+    function togglePick(index: int): void {
+        if (index < 0 || index >= root.visible.length)
+            return;
+        const name = root.visible[index].name;
+        root.picked = root.isPicked(name) ? root.picked.filter(n => n !== name) : [...root.picked, name];
+        root.cursor = index;
+        root.anchor = index;
+    }
+
+    // Shift-click: everything between the anchor and here, inclusive.
+    function extendTo(index: int): void {
+        if (index < 0 || index >= root.visible.length)
+            return;
+        const from = root.anchor < 0 ? index : root.anchor;
+        const lo = Math.min(from, index);
+        const hi = Math.max(from, index);
+        root.picked = root.visible.slice(lo, hi + 1).map(e => e.name);
+        root.cursor = index;
+    }
+
+    // A rubber band's result, handed in as indices.
+    function pickRange(indices: var, add: bool): void {
+        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.visible[i].name);
+        root.picked = add ? [...new Set([...root.picked, ...names])] : names;
+    }
+
+    function pickAll(): void {
+        root.picked = root.visible.map(e => e.name);
+    }
+
+    function clearPicked(): void {
+        root.picked = [];
+    }
 
     function join(dir: string, name: string): string {
         return dir === "/" ? `/${name}` : `${dir}/${name}`;
@@ -150,7 +226,9 @@ Singleton {
     }
 
     onCwdChanged: {
-        root.selected = -1;
+        root.cursor = -1;
+        root.anchor = -1;
+        root.picked = [];
         root.search = "";
         root.searching = false;
         root.refresh();
@@ -172,7 +250,15 @@ Singleton {
                         return;
                     root.error = answer.ok ? "" : answer.error;
                     root.entries = answer.ok ? answer.entries : [];
-                    root.selected = root.visible.length > 0 ? 0 : -1;
+
+                    // A RE-LIST MUST NOT MOVE THE CURSOR. This runs after every
+                    // command the terminal ran, and a cursor that jumped back to
+                    // the first row each time would make the grid unusable while
+                    // anything was happening in the shell. Only a listing that
+                    // has nowhere to put the cursor moves it.
+                    root.picked = root.picked.filter(n => root.visible.some(e => e.name === n));
+                    if (root.cursor < 0 || root.cursor >= root.visible.length)
+                        root.cursor = root.visible.length > 0 ? 0 : -1;
                 } catch (e) {
                     root.error = "unreadable listing";
                     root.entries = [];
@@ -487,6 +573,95 @@ Singleton {
         root.revision = root.term.revision;
         if (pty.running)
             pty.write(`r ${cols} ${rows}\n`);
+    }
+
+    // ------------------------------------------------------------ doing things
+
+    // Every one of these goes through run(), which types it into the shell when
+    // there is one. That is the whole reason a file manager built on a terminal
+    // is worth having: `mkdir`, `mv` and `rm` are not hidden behind a menu that
+    // did something to your disk and told you nothing - they are in the history,
+    // where you can read what happened, run it again, or undo it by hand.
+
+    function makeFolder(name: string): void {
+        if (name)
+            root.run(`mkdir -p -- ${root.quote(root.join(root.cwd, name))}`);
+    }
+
+    function makeFile(name: string): void {
+        if (name)
+            root.run(`touch -- ${root.quote(root.join(root.cwd, name))}`);
+    }
+
+    function renameTo(path: string, name: string): void {
+        if (!path || !name)
+            return;
+        const to = root.join(root.parentOf(path), name);
+        if (to !== path)
+            root.run(`mv -i -- ${root.quote(path)} ${root.quote(to)}`);
+    }
+
+    // TO THE TRASH, not to /dev/null. `gio trash` puts it where every desktop
+    // agrees to look for it, so a mistake costs a trip to the trash rather than
+    // a backup. Permanent deletion is a separate verb below, and the interface
+    // asks first.
+    function trash(paths: var): void {
+        if (paths.length > 0)
+            root.run(`gio trash -- ${paths.map(root.quote).join(" ")}`);
+    }
+
+    function deleteForever(paths: var): void {
+        if (paths.length > 0)
+            root.run(`rm -rf -- ${paths.map(root.quote).join(" ")}`);
+    }
+
+    function copyInto(paths: var, dir: string): void {
+        if (paths.length > 0)
+            root.run(`cp -ri -- ${paths.map(root.quote).join(" ")} ${root.quote(dir)}`);
+    }
+
+    function moveInto(paths: var, dir: string): void {
+        if (paths.length > 0)
+            root.run(`mv -i -- ${paths.map(root.quote).join(" ")} ${root.quote(dir)}`);
+    }
+
+    // THE BROWSER'S OWN CLIPBOARD, which is not the system one.
+    //
+    // Copying a FILE and copying its PATH are different requests, and the second
+    // is the one wl-copy is for (see copyText below). This holds what a paste
+    // will act on, and whether the paste should leave the original behind.
+    property var clipboard: []
+    property bool clipboardCut: false
+
+    function clip(paths: var, cut: bool): void {
+        root.clipboard = paths;
+        root.clipboardCut = cut;
+    }
+
+    function paste(): void {
+        if (root.clipboard.length === 0)
+            return;
+        if (root.clipboardCut) {
+            root.moveInto(root.clipboard, root.cwd);
+            // A cut is spent once. Pasting it twice would move what is no longer
+            // there and fail on the second go for a reason nobody would guess.
+            root.clipboard = [];
+        } else {
+            root.copyInto(root.clipboard, root.cwd);
+        }
+    }
+
+    // The system clipboard, for text: a path, or a list of them.
+    function copyText(text: string): void {
+        copier.exec(["wl-copy", "--", text]);
+    }
+
+    Process {
+        id: copier
+    }
+
+    function openWith(path: string): void {
+        opener.exec(["xdg-open", path]);
     }
 
     // ------------------------------------------------------------ navigation

@@ -51,7 +51,13 @@ Item {
             [Qt.Key_Enter]: "Return",
             [Qt.Key_Backspace]: "Backspace",
             [Qt.Key_Delete]: "Delete",
-            [Qt.Key_Escape]: "Escape"
+            [Qt.Key_Escape]: "Escape",
+            [Qt.Key_F1]: "F1",
+            [Qt.Key_F2]: "F2",
+            [Qt.Key_F3]: "F3",
+            [Qt.Key_F4]: "F4",
+            [Qt.Key_F5]: "F5",
+            [Qt.Key_F6]: "F6"
         })
 
     function keyLabel(key: int): string {
@@ -73,14 +79,19 @@ Item {
             parts.push("Alt");
         if (event.modifiers & Qt.ShiftModifier)
             parts.push("Shift");
-        if (parts.length === 0)
-            return "";
 
         const label = root.keyLabel(event.key);
         if (!label)
             return "";
         parts.push(label);
         return parts.join("+");
+    }
+
+    // The window's keymap only ever answers to a MODIFIED chord; the grid's
+    // answers to bare F2 and Delete as well, which is why the spelling function
+    // above no longer refuses an unmodified key and this test lives out here.
+    function isChord(event: var): bool {
+        return (event.modifiers & (Qt.ControlModifier | Qt.AltModifier | Qt.MetaModifier)) !== 0;
     }
 
     // THE MODIFIER, WATCHED. Held on its own it is a question ("what does Ctrl
@@ -118,6 +129,30 @@ Item {
     }
 
     Keys.onPressed: event => {
+        // A MENU THAT IS UP TAKES EVERYTHING. Arrow through it, Return runs the
+        // entry, Escape puts it away, and every other key is swallowed rather
+        // than acted on: a keystroke that reached the grid from under an open
+        // menu would act on a selection the menu is describing.
+        if (sheet.open) {
+            switch (event.key) {
+            case Qt.Key_Up:
+                sheet.move(-1);
+                break;
+            case Qt.Key_Down:
+                sheet.move(1);
+                break;
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+                sheet.activate(sheet.selected);
+                break;
+            case Qt.Key_Escape:
+                sheet.close();
+                break;
+            }
+            event.accepted = true;
+            return;
+        }
+
         if (event.key === Qt.Key_Control) {
             hints.held = "Ctrl";
             return;
@@ -129,7 +164,7 @@ Item {
         hints.held = "";
 
         // 1. The window's own.
-        const chord = root.chordOf(event);
+        const chord = root.isChord(event) ? root.chordOf(event) : "";
         if (chord && Files.chords[chord] !== undefined) {
             event.accepted = Files.act(Files.chords[chord]);
             if (event.accepted)
@@ -147,32 +182,52 @@ Item {
     }
 
     // The bare-key layer, live only while the grid has the keyboard.
+    //
+    // THE EDITING CHORDS LIVE HERE, not in the window's keymap, and that is the
+    // whole reason they can exist at all. Ctrl+C, Ctrl+X and Ctrl+V are a
+    // shell's interrupt, its kill-line and its literal-next; a window-level bind
+    // would take them away from the terminal permanently. Read here, they are
+    // only ever seen when there is no shell waiting for them.
     function gridKey(event: var): void {
+        const shift = (event.modifiers & Qt.ShiftModifier) !== 0;
+
+        // THE KEYMAP FIRST, chords included. `files.grid` in config holds both
+        // spellings - a bare character like "j" and a chord like "Ctrl+C" - so
+        // everything the grid does is in one table the user owns, rather than
+        // vim's half being configurable and the editing half being buried in
+        // this file.
+        const chord = root.chordOf(event);
+        if (chord && Files.gridKeys[chord] !== undefined) {
+            event.accepted = root.gridAct(Files.gridKeys[chord]);
+            if (event.accepted)
+                return;
+        }
+
         // The arrows and Return are handled as themselves rather than through
         // the keymap, so a map emptied out still leaves the grid navigable.
         switch (event.key) {
         case Qt.Key_Left:
-            root.move(-1);
+            root.move(-1, shift);
             event.accepted = true;
             return;
         case Qt.Key_Right:
-            root.move(1);
+            root.move(1, shift);
             event.accepted = true;
             return;
         case Qt.Key_Up:
-            root.move(-grid.columns);
+            root.move(-grid.columns, shift);
             event.accepted = true;
             return;
         case Qt.Key_Down:
-            root.move(grid.columns);
+            root.move(grid.columns, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageUp:
-            root.move(-grid.columns * 3);
+            root.move(-grid.columns * 3, shift);
             event.accepted = true;
             return;
         case Qt.Key_PageDown:
-            root.move(grid.columns * 3);
+            root.move(grid.columns * 3, shift);
             event.accepted = true;
             return;
         case Qt.Key_Return:
@@ -185,10 +240,16 @@ Item {
             event.accepted = true;
             return;
         case Qt.Key_Escape:
-            if (Files.search) {
+            if (properties.visible) {
+                properties.close();
+            } else if (Files.search) {
                 Files.search = "";
-                event.accepted = true;
+            } else if (Files.picked.length > 0) {
+                Files.clearPicked();
+            } else {
+                return;
             }
+            event.accepted = true;
             return;
         }
 
@@ -200,22 +261,22 @@ Item {
     function gridAct(action: string): bool {
         switch (action) {
         case "left":
-            root.move(-1);
+            root.move(-1, false);
             return true;
         case "right":
-            root.move(1);
+            root.move(1, false);
             return true;
         case "up":
-            root.move(-grid.columns);
+            root.move(-grid.columns, false);
             return true;
         case "down":
-            root.move(grid.columns);
+            root.move(grid.columns, false);
             return true;
         case "first":
-            root.select(0);
+            root.select(0, false);
             return true;
         case "last":
-            root.select(Files.visible.length - 1);
+            root.select(Files.visible.length - 1, false);
             return true;
         case "open":
             Files.open(Files.current);
@@ -223,9 +284,43 @@ Item {
         case "search":
             Files.searching = true;
             return true;
+        case "copypath":
+            if (Files.pickedPaths.length > 0)
+                Files.copyText(Files.pickedPaths.join("\n"));
+            return true;
+        case "all":
+            Files.pickAll();
+            return true;
         case "copy":
+            Files.clip(Files.pickedPaths, false);
+            return true;
+        case "cut":
+            Files.clip(Files.pickedPaths, true);
+            return true;
+        case "paste":
+            Files.paste();
+            return true;
+        case "newfolder":
+            root.newThing(false);
+            return true;
+        case "newfile":
+            root.newThing(true);
+            return true;
+        case "rename":
+            root.renameCurrent();
+            return true;
+        case "trash":
+            Files.trash(Files.pickedPaths);
+            return true;
+        case "destroy":
+            root.confirmDelete();
+            return true;
+        case "properties":
             if (Files.currentPath)
-                copier.exec(["wl-copy", "--", Files.currentPath]);
+                properties.show(Files.currentPath);
+            return true;
+        case "path":
+            path.edit();
             return true;
         }
 
@@ -235,19 +330,202 @@ Item {
         return Files.act(action);
     }
 
-    function select(index: int): void {
+    function select(index: int, extend: bool): void {
         if (Files.visible.length === 0)
             return;
-        Files.selected = Math.max(0, Math.min(index, Files.visible.length - 1));
-        grid.reveal(Files.selected);
+        const to = Math.max(0, Math.min(index, Files.visible.length - 1));
+        if (extend)
+            Files.extendTo(to);
+        else
+            Files.setCursor(to);
+        grid.reveal(to);
     }
 
-    function move(delta: int): void {
-        root.select(Math.max(0, Files.selected) + delta);
+    function move(delta: int, extend: bool): void {
+        root.select(Math.max(0, Files.cursor) + delta, extend ?? false);
     }
 
-    Process {
-        id: copier
+    // ---------------------------------------------------------- the menus
+
+    // WHAT CAN BE DONE, as data, so the sheet has no idea what a file is.
+    // components/ActionSheet.qml takes { icon, label, run } and draws it; the
+    // same component is what the clipboard and the launcher open on a row.
+
+    readonly property int count: Files.picks.length
+    readonly property string counted: root.count === 1 ? Files.picks[0].name : `${root.count} items`
+
+    function fileActions(): var {
+        const picks = Files.picks;
+        if (picks.length === 0)
+            return [];
+
+        const paths = Files.pickedPaths;
+        const one = picks.length === 1 ? picks[0] : null;
+        const acts = [];
+
+        if (one)
+            acts.push({
+                icon: one.kind === "dir" ? "folder_open" : "open_in_new",
+                label: one.kind === "dir" ? "Open" : "Open with…",
+                run: () => Files.open(one)
+            });
+
+        acts.push({
+            icon: "content_copy",
+            label: "Copy",
+            run: () => Files.clip(paths, false)
+        }, {
+            icon: "content_cut",
+            label: "Cut",
+            run: () => Files.clip(paths, true)
+        });
+
+        if (one)
+            acts.push({
+                icon: "edit",
+                label: "Rename…",
+                run: () => root.renameCurrent()
+            });
+
+        acts.push({
+            icon: "link",
+            label: paths.length === 1 ? "Copy path" : "Copy paths",
+            run: () => Files.copyText(paths.join("\n"))
+        }, {
+            icon: "delete",
+            label: "Move to trash",
+            run: () => Files.trash(paths)
+        }, {
+            icon: "delete_forever",
+            label: "Delete permanently…",
+            run: () => root.confirmDelete()
+        });
+
+        if (one)
+            acts.push({
+                icon: "info",
+                label: "Properties",
+                run: () => properties.show(Files.join(Files.cwd, one.name))
+            });
+
+        return acts;
+    }
+
+    function folderActions(): var {
+        const acts = [
+            {
+                icon: "create_new_folder",
+                label: "New folder…",
+                run: () => root.newThing(false)
+            },
+            {
+                icon: "note_add",
+                label: "New file…",
+                run: () => root.newThing(true)
+            }
+        ];
+
+        // Paste is only offered when there is something to paste, and says which
+        // way it will go: a cut that is about to move five files should not be
+        // spelled the same as a copy that is about to duplicate them.
+        if (Files.clipboard.length > 0)
+            acts.push({
+                icon: "content_paste",
+                label: `${Files.clipboardCut ? "Move" : "Paste"} ${Files.clipboard.length} here`,
+                run: () => Files.paste()
+            });
+
+        acts.push({
+            icon: "select_all",
+            label: "Select all",
+            run: () => Files.pickAll()
+        }, {
+            icon: Files.showHidden ? "visibility_off" : "visibility",
+            label: Files.showHidden ? "Hide hidden files" : "Show hidden files",
+            run: () => Config.set("files.hidden", !Files.showHidden)
+        }, {
+            icon: "terminal",
+            label: Files.terminalOpen ? "Hide terminal" : "Terminal here",
+            run: () => Files.act("terminal")
+        }, {
+            icon: "link",
+            label: "Copy this path",
+            run: () => Files.copyText(Files.cwd)
+        }, {
+            icon: "refresh",
+            label: "Refresh",
+            run: () => Files.refresh()
+        });
+
+        return acts;
+    }
+
+    // The three things that need a word typed or a mind made up.
+
+    function newThing(file: bool): void {
+        prompt.ask(file ? "New file" : "New folder", file ? "untitled" : "untitled folder", 0, name => {
+            if (file)
+                Files.makeFile(name);
+            else
+                Files.makeFolder(name);
+        });
+    }
+
+    function renameCurrent(): void {
+        const entry = Files.current;
+        if (!entry)
+            return;
+        const path = Files.join(Files.cwd, entry.name);
+        // Select the stem and not the extension: renaming "photo.jpg" is almost
+        // always renaming "photo".
+        const dot = entry.name.lastIndexOf(".");
+        prompt.ask(`Rename ${entry.name}`, entry.name, dot > 0 ? dot : 0, name => Files.renameTo(path, name));
+    }
+
+    function confirmDelete(): void {
+        const paths = Files.pickedPaths;
+        if (paths.length === 0)
+            return;
+        // TYPED OUT, not a yes/no button. Permanent deletion is the one thing
+        // here that cannot be undone by reading the history and running the
+        // opposite command, so it costs a word.
+        prompt.ask(`Delete ${root.counted} permanently? Type "delete" to confirm`, "", 0, answer => {
+            if (answer.toLowerCase() === "delete")
+                Files.deleteForever(paths);
+        });
+    }
+
+    ActionSheet {
+        id: sheet
+
+        anchors.fill: parent
+
+        // A grid that scrolls takes the tile out from under the sheet, and a
+        // menu pointing at nothing is worse than no menu.
+        Connections {
+            target: Files
+
+            function onCwdChanged(): void {
+                sheet.close();
+            }
+        }
+
+        onClosed: if (!Files.searching)
+            Qt.callLater(root.forceActiveFocus)
+    }
+
+    NamePrompt {
+        id: prompt
+
+        anchors.fill: parent
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
+    }
+
+    Properties {
+        id: properties
+
+        anchors.fill: parent
     }
 
     // ---------------------------------------------------------- the layout
@@ -295,17 +573,42 @@ Item {
             anchors.margins: Appearance.padding.small
 
             entries: Files.visible
-            selected: Files.selected
             dragging: root.dragging
             dragPoint: root.dragging ? grid.mapFromItem(root, root.dragAt.x, root.dragAt.y) : Qt.point(-1, -1)
 
-            onPicked: index => {
-                Files.selected = index;
+            onPicked: (index, modifiers) => {
                 Files.focus = "grid";
+                // Three different requests, told apart by what was held down:
+                // add one, take a range, or start over with this one.
+                if (modifiers & Qt.ControlModifier)
+                    Files.togglePick(index);
+                else if (modifiers & Qt.ShiftModifier)
+                    Files.extendTo(index);
+                else
+                    Files.setCursor(index);
             }
             onActivated: index => Files.open(Files.visible[index])
+            onMenuFor: (index, position) => {
+                Files.focus = "grid";
+                // A menu opened on something that is not in the selection is
+                // about THAT thing: right-clicking a file you had not selected
+                // and getting a menu that would delete five others is the worst
+                // possible reading of the gesture.
+                if (!Files.isPicked(Files.visible[index].name))
+                    Files.setCursor(index);
+                sheet.popup(middle.mapToItem(root, position.x, position.y).x, middle.mapToItem(root, position.x, position.y).y, root.fileActions());
+            }
+            onMenuForEmpty: position => {
+                Files.focus = "grid";
+                Files.clearPicked();
+                sheet.popup(grid.mapToItem(root, position.x, position.y).x, grid.mapToItem(root, position.x, position.y).y, root.folderActions());
+            }
             onLifted: index => {
-                Files.selected = index;
+                // A DRAG CARRIES THE WHOLE SELECTION, unless it started on
+                // something outside it - in which case the gesture is about that
+                // one thing and the selection was not what you meant.
+                if (!Files.isPicked(Files.visible[index].name))
+                    Files.setCursor(index);
                 root.dragging = true;
                 root.exported = false;
                 // NOT POSITIONED YET, deliberately. The centroid at the instant
@@ -456,7 +759,9 @@ Item {
 
     function drop(position: point): void {
         root.dragging = false;
-        if (!Files.current)
+
+        const moving = Files.pickedPaths;
+        if (moving.length === 0)
             return;
 
         // A crumb first, because the path bar sits over the grid's top edge and
@@ -464,18 +769,23 @@ Item {
         // it.
         const crumb = path.pathAt(path.mapFromItem(root, position.x, position.y));
         if (crumb) {
-            Files.move(Files.currentPath, crumb);
+            Files.moveInto(moving, crumb);
             return;
         }
 
         const local = grid.mapFromItem(root, position.x, position.y);
         const index = grid.dropIndexAt(local);
-        if (index < 0 || index === Files.selected)
+        if (index < 0)
             return;
 
         const target = Files.visible[index];
-        if (target && target.kind === "dir" && target.open)
-            Files.move(Files.currentPath, Files.join(Files.cwd, target.name));
+        // Not onto itself, and not onto anything that is coming along for the
+        // ride: dropping a selection onto one of its own members is a request
+        // that cannot be honoured.
+        if (!target || target.kind !== "dir" || !target.open || Files.isPicked(target.name))
+            return;
+
+        Files.moveInto(moving, Files.join(Files.cwd, target.name));
     }
 
     // THE GHOST. It follows the pointer by exponential smoothing rather than

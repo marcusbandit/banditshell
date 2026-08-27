@@ -29,6 +29,7 @@ Item {
     // question an extension cannot answer, which is whether the body is text.
     property var stat: null
 
+    readonly property bool isFolder: root.entry && root.entry.kind === "dir"
     readonly property bool isImage: root.entry && root.entry.class === "image" && !root.entry.broken
     readonly property bool isAudio: root.entry && root.entry.class === "audio"
     readonly property bool isText: root.stat && root.stat.text && root.stat.size <= Appearance.sizes.filesTextMax
@@ -71,12 +72,56 @@ Item {
         return "";
     }
 
+    // WHAT IS IN A FOLDER, because that is what a folder's preview IS. A panel
+    // that answered "no preview" for the one kind of thing this window is mostly
+    // full of was answering the wrong question: the contents are not a fallback
+    // for a folder, they are the content.
+    property var contents: []
+    property string contentsError: ""
+
     onPathChanged: {
         root.stat = null;
+        root.contents = [];
+        root.contentsError = "";
         player.stop();
         body.content = "";
-        if (root.path)
-            statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
+        if (!root.path)
+            return;
+
+        statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
+        // ASKED UNCONDITIONALLY, not only for folders. `path` and `entry` are
+        // two properties that change for the same reason, and QML does not
+        // promise which is updated first: testing the kind here read the
+        // PREVIOUS selection's kind, so selecting a folder from a file listed
+        // nothing at all. Listing a file simply fails and is ignored, which
+        // costs one process and removes an ordering assumption.
+        peek.exec([Files.helper("bs-ls"), root.path]);
+    }
+
+    Process {
+        id: peek
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const answer = JSON.parse(text);
+                    if (answer.path !== root.path)
+                        return;
+                    root.contentsError = answer.ok ? "" : answer.error;
+                    // Same order the grid uses, for the same reason: a folder
+                    // whose preview lists its contents differently from the way
+                    // they appear when you open it is a folder you have to read
+                    // twice.
+                    root.contents = answer.ok ? answer.entries.filter(e => Files.showHidden || !e.hidden).sort((a, b) => {
+                        if ((a.kind === "dir") !== (b.kind === "dir"))
+                            return a.kind === "dir" ? -1 : 1;
+                        return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
+                    }) : [];
+                } catch (e) {
+                    root.contents = [];
+                }
+            }
+        }
     }
 
     Process {
@@ -140,7 +185,11 @@ Item {
             text: {
                 if (!root.entry)
                     return "";
-                const parts = [Files.humanSize(root.entry.size), Files.humanTime(root.entry.mtime)];
+                // A FOLDER'S SIZE IS HOW MANY THINGS ARE IN IT. The bytes of a
+                // directory entry are an implementation detail of the
+                // filesystem and mean nothing to anybody looking at a folder.
+                const size = root.isFolder ? `${root.contents.length} item${root.contents.length === 1 ? "" : "s"}` : Files.humanSize(root.entry.size);
+                const parts = [size, Files.humanTime(root.entry.mtime)];
                 if (root.stat && root.stat.owner)
                     parts.push(`${root.stat.owner} ${Files.humanMode(root.stat.mode)}`);
                 return parts.join("  ·  ");
@@ -287,6 +336,42 @@ Item {
             }
         }
 
+        // A FOLDER, as a list of what is in it. Compact and not interactive:
+        // this is a look-ahead, and the way to act on any of it is to open the
+        // folder, which is one press away.
+        GlideList {
+            anchors.fill: parent
+            visible: root.isFolder && root.contents.length > 0
+            clip: true
+
+            model: root.contents
+
+            delegate: Row {
+                id: line
+
+                required property var modelData
+
+                spacing: Appearance.padding.small
+
+                FileMark {
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    fileClass: line.modelData.class
+                    link: line.modelData.link
+                    broken: line.modelData.broken
+                    size: Appearance.font.iconSize * 0.8
+                }
+
+                StyledText {
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    text: line.modelData.name
+                    color: Appearance.colour.textDim
+                    elide: Text.ElideRight
+                }
+            }
+        }
+
         // TEXT, coloured by the shell's own highlighter. A preview panel that
         // showed source code as grey prose would be throwing away the one thing
         // that makes code readable at a glance, and the machinery for it is
@@ -314,12 +399,12 @@ Item {
         Column {
             anchors.centerIn: parent
             spacing: Appearance.padding.normal
-            visible: !root.isImage && !root.isAudio && !root.isText
+            visible: !root.isImage && !root.isAudio && !root.isText && !(root.isFolder && root.contents.length > 0)
 
             Icon {
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                name: root.stat && !root.stat.readable ? "lock" : root.entry && root.entry.kind === "dir" ? "folder_open" : "visibility_off"
+                name: root.stat && !root.stat.readable || root.contentsError ? "lock" : root.isFolder ? "folder_open" : "visibility_off"
                 size: Appearance.font.iconSize * 2
                 color: Appearance.colour.textGhost
             }
@@ -332,8 +417,8 @@ Item {
                         return "nothing selected";
                     if (root.stat && !root.stat.readable)
                         return "not readable";
-                    if (root.entry.kind === "dir")
-                        return "folder";
+                    if (root.isFolder)
+                        return root.contentsError ? root.contentsError : "empty folder";
                     if (root.stat && root.stat.text)
                         return "too large to preview";
                     return "no preview";

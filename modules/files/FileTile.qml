@@ -25,7 +25,11 @@ Item {
     readonly property var entry: root.modelData
     readonly property string path: Files.join(Files.cwd, root.entry.name)
 
-    property bool selected: false
+    // WHAT AN ACTION WOULD ACT ON, and WHERE THE KEYBOARD IS. Two different
+    // facts once there is a selection: five files can be picked while the cursor
+    // sits on the third of them.
+    property bool picked: false
+    property bool cursored: false
     // Something is being dragged and it is over THIS tile, which only means
     // anything for a directory: a file dropped on a file has nowhere to go.
     property bool receiving: false
@@ -33,8 +37,9 @@ Item {
     readonly property bool droppable: root.entry.kind === "dir" && root.entry.open
     readonly property bool isImage: root.entry.class === "image" && !root.entry.broken
 
-    signal clicked
+    signal clicked(int modifiers)
     signal activated
+    signal menuRequested(point position)
     signal lifted
     signal dragged(point position)
     signal dropped(point position)
@@ -48,14 +53,18 @@ Item {
         anchors.fill: parent
 
         radius: Appearance.rounding.normal
-        color: root.receiving ? Appearance.colour.accentFill : root.selected ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
+        color: root.receiving ? Appearance.colour.accentFill : root.picked ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
 
         // A DROP TARGET IS OUTLINED, not filled harder. The tile under the
         // pointer has to say "this one" while the thing being dropped is
         // floating over it and partly covering it, and an outline survives being
         // covered in a way a fill does not.
-        stroke: root.receiving ? Appearance.colour.accent : "transparent"
-        strokeWidth: root.receiving ? Appearance.font.stem : 0
+        //
+        // The CURSOR is outlined too, at a quieter weight. A fill would be a
+        // second kind of selection; a ring is "the keyboard is here", which is a
+        // different statement and has to be readable on top of a filled tile.
+        stroke: root.receiving ? Appearance.colour.accent : root.cursored ? Appearance.colour.textFaint : "transparent"
+        strokeWidth: root.receiving || root.cursored ? Appearance.font.stem : 0
 
         Behavior on color {
             ColorAnimation {
@@ -134,7 +143,7 @@ Item {
             // sit at four different heights - which is exactly as untidy as it
             // sounds, and is not obvious from the code that causes it.
             height: label.lineHeight * 2
-            color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
+            color: root.picked || root.cursored ? Appearance.colour.text : Appearance.colour.textDim
         }
     }
 
@@ -189,11 +198,31 @@ Item {
             root.dragged(root.pointer)
     }
 
-    TapHandler {
+    // CLICKS, WITH THEIR MODIFIERS. A MouseArea rather than a TapHandler,
+    // because plain, Ctrl and Shift clicking are three different requests and a
+    // handler that cannot tell them apart cannot select more than one file.
+    //
+    // It coexists with the drag: the DragHandler above is allowed to take the
+    // grab from items (see grabPermissions), so a press that turns into a drag
+    // leaves here and becomes a lift, and a press that does not is a click.
+    MouseArea {
+        anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+        onClicked: mouse => {
+            if (mouse.button === Qt.RightButton) {
+                root.menuRequested(Qt.point(mouse.x, mouse.y));
+                return;
+            }
+            root.clicked(mouse.modifiers);
+        }
+
         // SINGLE CLICK SELECTS, DOUBLE OPENS. The other convention - one click
         // opens - is unusable next to a drag: every attempt to pick a file up
         // that fell short of the threshold would open it instead.
-        onSingleTapped: root.clicked()
-        onDoubleTapped: root.activated()
+        onDoubleClicked: mouse => {
+            if (mouse.button === Qt.LeftButton)
+                root.activated();
+        }
     }
 }
