@@ -573,7 +573,11 @@ banditshell/
 │   │   ├── FileMark.qml         what kind of thing it is, as one glyph in one
 │   │   │                        colour - and the hue is COMPUTED from the class's
 │   │   │                        share of the wheel, never listed
-│   │   ├── PathBar.qml          where you are, every step back, and the `/` search
+│   │   ├── PathBar.qml          where you are, every step back, a field to type
+│   │   │                        one into, and the `/` search
+│   │   ├── NamePrompt.qml       one line of text, asked for: new, new, rename
+│   │   ├── Properties.qml       everything known ABOUT a file, as opposed to
+│   │   │                        what is in it
 │   │   ├── PreviewPane.qml      the thing itself: picture, sound, or text
 │   │   ├── TerminalPane.qml     the shell along the bottom; its height is in ROWS
 │   │   ├── ChordHints.qml       hold a modifier, see what it does
@@ -2118,6 +2122,46 @@ come from the ramp - the only place in this shell where that is the right answer
 1; colour is carrying MEANING there rather than identity, and a green-family ramp
 would paint deletions green.
 
+### It has to be usable, which is more than browsable
+
+A file browser that can only look at files is a viewer. The working parts, and
+the one decision behind each:
+
+**Selection is a set.** Ctrl-click adds, Shift-click takes a range, a rubber band
+from empty space takes what it crosses, and every action - drag, copy, trash -
+acts on the whole of it. Two states are drawn rather than one: `picked` is what
+an action would act on and `cursored` is where the keyboard is, which stop being
+the same fact the moment there is more than one of them. The set is held as
+NAMES, not indices, because the listing is retaken after anything that might
+have changed it and an index into the previous listing is a different file in the
+next one.
+
+**Right click opens components/ActionSheet.qml**, the same sheet the clipboard
+and the launcher open on a row - so it arrived knowing how to be arrowed through,
+and the actions are handed in as data exactly as they are there.
+
+**Every operation goes through the shell**, which is the whole point of building
+this on a terminal: `mkdir`, `mv` and `rm` land in the history where they can be
+read, repeated, or undone by hand. A file manager that does something to your
+disk and tells you nothing is the thing this is not. Deletion goes to the trash
+through `gio`; permanent deletion is a separate verb that asks you to type the
+word, because it is the one action here that reading the history cannot reverse.
+
+**The path bar takes a path.** The crumbs stay - they go back several steps in one
+press, and they are drop targets - but the strip is a field as well, on Ctrl+L or
+a press on the empty part of it. Both, because they answer different questions
+and a browser you cannot paste a path into is a browser that will be closed in
+favour of the terminal beside it.
+
+**A folder's preview is its contents.** Anything else was answering the wrong
+question about the one kind of thing the window is mostly full of.
+
+The editing chords live in the GRID's keymap rather than the window's, and that
+placement is the whole reason they can exist: Ctrl+C is a shell's interrupt,
+Ctrl+X its kill-line and Ctrl+V its literal-next. A window-level bind would take
+all three away from the terminal permanently; read only where the grid has focus,
+they are only ever seen when no shell is waiting for them.
+
 ### Drag before click, again
 
 Section 15's rule, applied to files: the drag is the primary gesture and the
@@ -2138,6 +2182,27 @@ activation and garbage after the first move; `pressPosition` plus
 `activeTranslation` are the reliable pair. And some pointer moves arrive at
 exactly (0, 0), which is why samples that miss the window by a thousand pixels
 are discarded as the noise they are.
+
+### Three ways to lose the keyboard
+
+All found by pressing keys rather than by reading code, and all the same shape:
+something that looks focused is not.
+
+A **Loader** is an item in the focus chain. The face asks for focus; a Loader
+that has none has none to give, so not one keystroke reached the window while
+every mouse gesture worked perfectly. It never showed in testing because the
+preview harness has the face as a direct child, so the one arrangement exercised
+was the one arrangement not shipped.
+
+**An invisible item cannot take focus.** The rename prompt appeared, correctly
+filled, and swallowed nothing: `visible` was bound to an opacity that a Behavior
+starts at zero, so at the instant `forceActiveFocus()` ran the item was not yet
+visible. Everything typed went to the grid behind it.
+
+**A field that lets go does not hand focus back** - it goes nowhere, and the
+window stops answering keys entirely. Search once and the grid was dead until
+something was clicked, which reads as "Enter does not open folders" and sends you
+looking in the wrong place.
 
 ---
 
