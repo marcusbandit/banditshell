@@ -4,3 +4,10 @@
 # are no more machine-local than DESIGN.md is.
 .claude/*
 !.claude/skills/
+
+# Compiled helpers. Unlike the .qsb shaders beside them, these are ELF for one
+# architecture and would be wrong on any other machine that cloned this, so they
+# are built rather than committed: `banditshell build`. The browser says so
+# itself when they are missing, rather than failing quietly.
+bin/bs-pty
+bin/bs-ls

@@ -81,7 +81,10 @@
 #   banditshell settingspreview [WxH] [page] [file]
 #                                the settings face in a plain window at that size:
 #                                400x800 is a phone, 800x800 the phone unfolded
+#   banditshell files [toggle|open [path]|close]
+#                                the file browser, in its own window
 #   banditshell shaders          recompile every components/**/*.frag to .qsb
+#   banditshell build            compile src/*.c into bin/ (bs-pty, bs-ls)
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
 # docs/hyprland-binds.example.conf is a ready-made set to copy or source.
@@ -739,6 +742,35 @@ shot)
     out="${1:-$SHOT_DIR/shot.png}"
     grim "$out"
     echo "$out"
+    ;;
+
+files)
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    toggle | open | close | status) ipc files "$sub" "${1:-}" ;;
+    *) echo "usage: banditshell files toggle|open [path]|close|status" >&2; exit 2 ;;
+    esac
+    ;;
+
+# The C helpers, compiled here because Quickshell loads QML out of a directory
+# and has nowhere to run a build step - the same reason `shaders` exists, and the
+# same bargain: the binary is build output that lives next to its source.
+#
+# Not a Makefile. Two translation units with no options between them do not need
+# one, and a build system would be a second thing to install before the shell
+# runs at all.
+build)
+    cc="${CC:-gcc}"
+    command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
+    mkdir -p "$SHELL_DIR/bin"
+    # bs-pty wants -lutil for forkpty; bs-ls wants nothing. Listed per target
+    # rather than shared, because a link line that is one thing for everything
+    # is a link line nobody reads.
+    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" -lutil
+    echo "src/bs-pty.c -> bin/bs-pty"
+    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c"
+    echo "src/bs-ls.c -> bin/bs-ls"
     ;;
 
 shaders)
