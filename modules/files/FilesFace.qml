@@ -91,6 +91,32 @@ Item {
             hints.held = "";
     }
 
+    // TAKING THE KEYBOARD BACK.
+    //
+    // The search field is the one thing in this window that holds Qt's own focus
+    // (it has to: a field that routed through the handler below would need the
+    // handler to reimplement editing, selection and the cursor). When it lets go,
+    // focus does not come back here on its own - it goes NOWHERE, and the window
+    // stops answering keys entirely. Which is what happened: search once, and the
+    // grid was dead until you clicked something.
+    //
+    // Watched on the service rather than fixed in the field, because "which panel
+    // has the keyboard" is the service's fact and this is the same statement in
+    // Qt's terms.
+    Connections {
+        target: Files
+
+        function onSearchingChanged(): void {
+            if (!Files.searching)
+                root.forceActiveFocus();
+        }
+
+        function onFocusChanged(): void {
+            if (!Files.searching)
+                root.forceActiveFocus();
+        }
+    }
+
     Keys.onPressed: event => {
         if (event.key === Qt.Key_Control) {
             hints.held = "Ctrl";
