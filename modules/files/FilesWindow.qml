@@ -55,8 +55,16 @@ FloatingWindow {
     // nowhere. It is also why `visible` above is assigned rather than bound: a
     // binding Qt overwrites is a binding that is gone.
     onVisibleChanged: {
-        if (!win.visible && Files.windowOpen)
+        if (!win.visible && Files.windowOpen) {
             Files.hide();
+            return;
+        }
+
+        // AND THE KEYBOARD HAS TO BE ASKED FOR AGAIN ON EVERY OPEN. The window
+        // is hidden rather than destroyed between uses, and a hidden window's
+        // item loses active focus; showing it again does not hand it back.
+        if (win.visible)
+            face.forceActiveFocus();
     }
 
     // THE HELPERS ARE BUILD OUTPUT and are not committed, so the first run after
@@ -70,9 +78,21 @@ FloatingWindow {
     }
 
     Loader {
+        id: face
+
         anchors.fill: parent
 
+        // FOCUS: TRUE, AND IT IS LOAD-BEARING. A Loader is an item in the focus
+        // chain like any other: the face inside it asks for focus, but a Loader
+        // that has none has none to give, so not one keystroke reached the
+        // window. Everything worked under the mouse and no chord did anything at
+        // all - including Ctrl+J, which is the way in to the terminal.
+        //
+        // It never showed up in the preview harness because there the face is a
+        // direct child of the window and there is no Loader between them.
+        focus: true
         active: !Files.helpersMissing
         sourceComponent: FilesFace {}
     }
+
 }
