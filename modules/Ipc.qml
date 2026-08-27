@@ -1020,14 +1020,63 @@ Scope {
         // picker. Silent about the switch on purpose: changing wallpaper while
         // it is turned off is a perfectly sensible thing to do, and the answer
         // says which one it landed on rather than whether you can see it.
-        function next(): string {
-            Wallpaper.step(1);
-            return Wallpaper.name || "nothing to step to";
+        //
+        // ON ONE SCREEN unless told otherwise, which is the change per-screen
+        // wallpapers make to this pair. Held down, `wallpaper next` walks the
+        // folder on the monitor you are looking at and leaves the others alone;
+        // `wallpaper next all` walks the whole desk together, off the default
+        // rather than off each screen's own, so screens that had drifted apart
+        // do not drift further with every press.
+        function next(screen: string): string {
+            return root.walkWallpaper(screen, 1);
         }
 
-        function prev(): string {
-            Wallpaper.step(-1);
-            return Wallpaper.name || "nothing to step to";
+        function prev(screen: string): string {
+            return root.walkWallpaper(screen, -1);
+        }
+
+        // PUT THIS PICTURE ON THAT SCREEN, which is the verb the picker's
+        // gesture already was and which the CLI had no way to say.
+        //
+        // `banditshell set wallpaper.current <path>` still exists and still
+        // means the DEFAULT, which is the honest reading of a key called
+        // `current` in a file: it is the one every screen falls back to. What
+        // it cannot say is "that monitor", because the per-screen map is keyed
+        // by output name and config/Config.qml refuses a dotted path the
+        // defaults do not name. That is the whole reason this verb is here.
+        function set(path: string, screen: string): string {
+            if (!path)
+                return "usage: wallpaper set <path> [screen|all]";
+
+            const where = root.wallpaperScreen(screen);
+            if (!where)
+                return `no such screen: ${screen}`;
+
+            if (where === "all") {
+                Wallpaper.setAll(path);
+                return `all screens: ${Wallpaper.nameOf(path)}`;
+            }
+            Wallpaper.setOn(where, path);
+            return `${where}: ${Wallpaper.nameOf(Wallpaper.currentOn(where))}`;
+        }
+
+        // HAND A SCREEN BACK TO THE DEFAULT, which is not the same deed as
+        // setting it to whatever the default happens to be right now: the entry
+        // goes, so the screen follows the default from here on rather than
+        // being pinned to today's value of it. See services/Wallpaper.qml.
+        function clear(screen: string): string {
+            const where = root.wallpaperScreen(screen);
+            if (!where)
+                return `no such screen: ${screen}`;
+
+            if (where === "all") {
+                Wallpaper.setAll(Wallpaper.current);
+                return `all screens follow the default: ${Wallpaper.name || "-"}`;
+            }
+            if (!Wallpaper.hasOwn(where))
+                return `${where} already follows the default`;
+            Wallpaper.clearOn(where);
+            return `${where} follows the default: ${Wallpaper.nameOf(Wallpaper.currentOn(where))}`;
         }
 
         // WHAT THE WALLPAPER IS MADE OF, one colour per line with the fraction
@@ -1043,8 +1092,82 @@ Scope {
 
         // Which one, whether it is showing, and how many there were to choose
         // from: the third is what tells a wrong `dir` from an empty one.
+        //
+        // AND ONE LINE PER SCREEN UNDERNEATH, because "which one" stopped being
+        // a question with one answer. The first line is the shell's state and
+        // the DEFAULT, since that is what the folder count and the switch are
+        // about; the lines under it are the outputs, each saying whether it
+        // wears the default or something of its own.
+        //
+        // The size is in there for the same reason ScreensPage prints it: `DP-1`
+        // is not how anybody identifies the monitor in front of them, and a
+        // resolution is. Through the device pixel ratio, so it is the number
+        // written on the box rather than the logical one, and printed as the
+        // pair the output actually reports, so a screen stood on its end reads
+        // as taller than it is wide.
         function status(): string {
-            return `${Wallpaper.enabled ? "on" : "off"} ${Wallpaper.kind || "?"} ${Wallpaper.name || "(nothing set)"} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
+            const head = `${Wallpaper.enabled ? "on" : "off"} default ${Wallpaper.kindOf(Wallpaper.current) || "?"} ${Wallpaper.nameOf(Wallpaper.current) || "(nothing set)"} ${Wallpaper.available.length} in ${Wallpaper.dir}`;
+
+            const rows = Quickshell.screens.map(s => {
+                const own = Wallpaper.hasOwn(s.name);
+                const path = Wallpaper.currentOn(s.name);
+                const bits = [s.name === Hypr.focusedScreen ? "*" : " ", s.name, `${Math.round(s.width * s.devicePixelRatio)}x${Math.round(s.height * s.devicePixelRatio)}`, Wallpaper.nameOf(path) || "-", own ? "own" : "default"];
+                // The preview, only while something is previewing it, because
+                // that is the state where the desktop and the setting disagree
+                // and the one thing a status line is genuinely needed for.
+                const seen = Wallpaper.previewOn(s.name);
+                if (seen)
+                    bits.push(`showing ${Wallpaper.nameOf(seen)}`);
+                return bits;
+            });
+
+            return rows.length ? `${head}\n${root.columns(rows)}` : head;
+        }
+
+        // THE FOLDER, AND WHICH OF IT SUITS ONE SCREEN.
+        //
+        // The picker predicts, and a prediction that cannot be inspected is one
+        // you have to either trust or argue with by opening the panel and
+        // counting cards. This is the same question asked in a form that fits
+        // in a terminal: every wallpaper, its measured shape, and whether the
+        // rule keeps it for this monitor.
+        //
+        // WHY THIS IS A VERB AT ALL. A filter is the one kind of control whose
+        // failure is INVISIBLE by construction: a wallpaper wrongly excluded
+        // does not appear anywhere for you to notice it missing, and the strip
+        // looks exactly as correct as it would if the rule were right. So the
+        // excluded ones are printed too, marked, rather than the verb answering
+        // with the list the picker would show.
+        //
+        // The aspect is printed even for the ones that fit, because the two
+        // numbers side by side are what makes an argument about the tolerance
+        // possible: `wallpaper.fit` is a single factor in config.json and this
+        // is the only place its consequences are all visible at once.
+        function list(screen: string): string {
+            const name = screen || Hypr.focusedScreen;
+            const aspect = Wallpaper.screenAspect(name);
+            if (!aspect)
+                return `no such screen: ${name || "(none focused)"}`;
+
+            const worn = Wallpaper.currentOn(name);
+            const rows = Wallpaper.available.map(p => {
+                const a = Wallpaper.aspectOf(p);
+                return [
+                    p === worn ? "*" : " ",
+                    Wallpaper.fits(p, aspect) ? "fits" : "-",
+                    // A shape that could not be measured is not a shape of 0,
+                    // and printing one would be this line inventing the answer
+                    // the fitting rule deliberately declines to give. See
+                    // Wallpaper.shapes: unmeasured fits everything, and `?`
+                    // beside `fits` is the whole of why.
+                    a ? a.toFixed(2) : "?",
+                    Wallpaper.nameOf(p)
+                ];
+            });
+
+            const kept = rows.filter(r => r[1] === "fits").length;
+            const head = `${name} ${aspect.toFixed(2)} · ${kept} of ${rows.length} fit · tolerance ${Config.values.wallpaper.fit}`;
+            return rows.length ? `${head}\n${root.columns(rows)}` : head;
         }
     }
 
@@ -1068,16 +1191,26 @@ Scope {
         // already out is what a second press is about, wherever the focus has
         // wandered to since the first one. `open` stays on the focused screen,
         // because a summon means here.
-        function toggle(): string {
-            const win = Shell.showing(w => w.wallpapers.open);
+        //
+        // AND BOTH TAKE A SCREEN NOW, which they did not need while a wallpaper
+        // was one setting: the panel was the same panel wherever it stood, so
+        // which monitor it came up on was a matter of taste. It is the control
+        // for THAT screen's wallpaper now, and choosing a picture for the
+        // monitor in the corner has to be askable. Same shape as `menu open
+        // <key> [screen]` above: named is exact or an error, empty means here.
+        function toggle(screen: string): string {
+            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.wallpapers.open);
             if (!win)
-                return "no shell window";
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
             win.wallpapers.toggle();
             return win.wallpapers.open ? "open" : "closed";
         }
 
-        function open(): string {
-            Shell.forScreen("")?.wallpapers.show();
+        function open(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+            win.wallpapers.show();
             return "open";
         }
 
@@ -1092,14 +1225,22 @@ Scope {
         // of those being different at once is exactly the state a preview is.
         //
         // Read off the window with the strip out, since a preview is only a
-        // state while something is previewing it: the two names come from the
-        // Wallpaper service and are the session's, and open-ness is the one part
-        // of this line that belongs to a particular screen.
+        // state while something is previewing it.
+        //
+        // AND EVERY NAME ON THIS LINE IS THAT WINDOW'S SCREEN'S, which is the
+        // change per-screen wallpapers make here. The two names used to come
+        // from the service unqualified and were "the session's"; there is no
+        // such thing now. A picker open on DP-2 is previewing DP-2's desktop
+        // against DP-2's setting, and a line that mixed in the focused screen's
+        // wallpaper would be describing two monitors at once while claiming to
+        // describe one. `scope` is the other half of the same fact: it says
+        // which screens the next tap on that strip is going to repaint.
         function status(): string {
             const win = Shell.showing(w => w.wallpapers.open);
             if (!win)
                 return "no shell window";
-            return `${win.wallpapers.open ? "open" : "closed"} showing=${Wallpaper.shownName || "-"} set=${Wallpaper.name || "-"} of ${Wallpaper.available.length}`;
+            const on = win.screen?.name ?? "";
+            return `${win.wallpapers.open ? "open" : "closed"} on=${on || "?"} scope=${win.wallpapers.everywhere ? "all" : "here"} showing=${Wallpaper.shownNameOn(on) || "-"} set=${Wallpaper.nameOf(Wallpaper.currentOn(on)) || "-"} of ${Wallpaper.available.length}`;
         }
     }
 
@@ -1285,6 +1426,71 @@ Scope {
     // a label somebody really typed and too wide for the four short fields
     // beside it. The LAST column is never padded, because trailing spaces on
     // every line of a terminal are invisible until something copies them.
+    // WHICH SCREEN A WALLPAPER VERB IS ABOUT, and the three answers a caller
+    // can give in the one argument slot.
+    //
+    //   ""      the focused one, because a keybind and a bare CLI call both mean
+    //           "here"; services/Shell.qml's forScreen("") makes this argument
+    //           at length for the twenty verbs that go through it
+    //   "DP-1"  that one, exactly, or "" for the caller to turn into an error.
+    //           A name that quietly resolved to some other monitor would report
+    //           success while repainting the wrong screen
+    //   "all"   every screen, as one decision
+    //
+    // `all` is a screen NAME rather than a second parameter or a flag, because
+    // Quickshell's IPC hands a function a fixed list of typed arguments and has
+    // no options: a flag would be a parameter that is meaningless whenever the
+    // screen one is set, and two arguments that can contradict each other are
+    // two arguments somebody will make contradict each other. A word in the
+    // slot that already means "where" cannot disagree with itself. No output is
+    // called `all`; they are `DP-1`, `HDMI-A-1`, `eDP-1`.
+    //
+    // ASKED OF Quickshell.screens rather than of Shell.windows: this is a
+    // question about monitors, and a monitor the shell has not built a window
+    // on yet still has a wallpaper surface and still has a wallpaper.
+    //
+    // NOT the same helper as `Shell.forScreen`, deliberately. That one answers
+    // with a shell WINDOW, and half of these verbs act on a screen that has no
+    // window: `wallpaper set DP-3 ...` for a monitor whose surfaces are still
+    // being built is a perfectly good thing to ask for, and the config takes it.
+    // These two are the same rule about the empty string over different nouns.
+    function wallpaperScreen(screen: string): string {
+        if (screen === "all")
+            return "all";
+        if (screen)
+            return Quickshell.screens.some(s => s.name === screen) ? screen : "";
+
+        // THE FIRST SCREEN IS THE LAST RESORT, not the default, which is
+        // services/Shell.qml's `?? root.windows[0]` said again for outputs
+        // rather than for windows. `focusedScreen` is empty in the moment
+        // before the compositor has named a monitor, and it is empty for the
+        // whole session under a compositor that is not Hyprland; without this,
+        // `wallpaper next` in either case answers "no such screen: " about a
+        // screen nobody named, which reads as a bug in the argument you did not
+        // pass. Caught by running the shell under a bare wlroots compositor,
+        // where it is not an edge case at all.
+        return Hypr.focusedScreen || Quickshell.screens[0]?.name || "";
+    }
+
+    // One step through the folder, on one screen or on all of them. Both verbs
+    // are this function, because "which direction" is the only thing that
+    // differs between them and a second copy is a second thing to keep in step.
+    function walkWallpaper(screen: string, delta: int): string {
+        if (!Wallpaper.available.length)
+            return "nothing to step to";
+
+        const where = root.wallpaperScreen(screen);
+        if (!where)
+            return `no such screen: ${screen}`;
+
+        if (where === "all") {
+            Wallpaper.stepAll(delta);
+            return `all screens: ${Wallpaper.name || "-"}`;
+        }
+        Wallpaper.stepOn(where, delta);
+        return `${where}: ${Wallpaper.nameOf(Wallpaper.currentOn(where))}`;
+    }
+
     function columns(rows: var): string {
         const width = [];
         for (const row of rows)

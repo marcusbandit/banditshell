@@ -27,6 +27,21 @@ import qs.services
 PanelWindow {
     id: win
 
+    // WHICH SCREEN'S WALLPAPER THIS IS, and every question in here is asked of
+    // it rather than of the shell. A surface is per output, so it draws that
+    // output's picture, previews that output's scrub, and opens its reveal from
+    // the point on ITS screen the choice was made at.
+    //
+    // Read once into a name rather than reaching through `screen?.name` at
+    // every call: `screen` is null for a frame while the surface is being
+    // built, and the guards below are easier to read than four `?.` are.
+    readonly property string output: win.screen?.name ?? ""
+
+    // WHAT THIS SURFACE IS SHOWING, which is the preview if it is being
+    // scrubbed on this monitor and the setting otherwise. The whole of the
+    // per-screen model reaches this file through this one line.
+    readonly property string wanted: Wallpaper.shownOn(win.output)
+
     anchors {
         top: true
         bottom: true
@@ -64,11 +79,11 @@ PanelWindow {
     // Paused rather than stopped, and the last frame stays on screen; see
     // WallpaperSource. So what a busy workspace shows is a still of whatever
     // frame it was on, which is a wallpaper rather than a hole.
-    readonly property bool bare: Hypr.windowsOn(win.screen?.name ?? "") === 0
+    readonly property bool bare: Hypr.windowsOn(win.output) === 0
     readonly property bool playing: Wallpaper.enabled && Config.values.wallpaper.animate && win.bare
 
     function load(): void {
-        const path = Wallpaper.shown;
+        const path = win.wanted;
         if (!path || front.path === path)
             return;
         // First one: no fade, there is nothing to fade from.
@@ -107,7 +122,7 @@ PanelWindow {
     function settled(slot: var): void {
         if (!slot || !back)
             return;
-        if (slot.ready && slot === back && slot.path === Wallpaper.shown) {
+        if (slot.ready && slot === back && slot.path === win.wanted) {
             showB = !showB;
             // A NEW SHAPE, chosen before the sweep starts rather than during
             // it: the seed shifts the phases of the sines the outline is made
@@ -142,20 +157,26 @@ PanelWindow {
         interval: Appearance.sizes.wallpaperReveal * 1.25
 
         onTriggered: {
-            if (win.back.path !== Wallpaper.shown)
+            if (win.back.path !== win.wanted)
                 win.back.path = "";
         }
     }
 
     Component.onCompleted: load()
 
-    Connections {
-        target: Wallpaper
-
-        function onShownChanged(): void {
-            win.load();
-        }
-    }
+    // ONE HANDLER ON THIS SURFACE'S OWN ANSWER, where there used to be a
+    // Connections on the service's shell-wide `shown`.
+    //
+    // That listener cannot survive per-screen wallpapers in either direction. A
+    // change on the OTHER monitor would not fire it, because the shell-wide
+    // property is the focused screen's and this surface may not be on the
+    // focused screen; and merely looking at another monitor WOULD fire it on
+    // every surface, because the focused screen's wallpaper is a different file
+    // now, so every screen would reload a picture that had not changed.
+    //
+    // `wanted` is a binding on this output's name, so it notifies when this
+    // output's wallpaper changes and at no other time. Nothing else is needed.
+    onWantedChanged: win.load()
 
     // HOW A NEW WALLPAPER ARRIVES: as a hole opening in the old one, from the
     // point the choice was made at. See components/reveal.frag for the argument
@@ -238,7 +259,7 @@ PanelWindow {
             layer.effect: RevealMask {
                 progress: win.reveal
                 aspect: win.width / Math.max(1, win.height)
-                origin: Wallpaper.origin
+                origin: Wallpaper.originOn(win.output)
                 seed: win.seed
             }
 
@@ -258,7 +279,7 @@ PanelWindow {
             layer.effect: RevealMask {
                 progress: win.reveal
                 aspect: win.width / Math.max(1, win.height)
-                origin: Wallpaper.origin
+                origin: Wallpaper.originOn(win.output)
                 seed: win.seed
             }
 

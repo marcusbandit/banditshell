@@ -163,6 +163,39 @@ Item {
                 leftPadding: Appearance.padding.small
             }
 
+            // WHICH FOLDER, and the one setting on this page you have to type
+            // rather than press.
+            //
+            // It sits under that count on purpose: the count is a claim about
+            // the disk and this is the claim it was counted from, so a folder
+            // that lists nothing is a typo, a moved collection or a permission,
+            // and all three look identical until the two lines are read
+            // together. The second number is the one per-screen wallpapers
+            // added, because a folder can be full and still hold nothing for
+            // the monitor you are standing at.
+            //
+            // OUTSIDE the SettingsCard above rather than a row in it, for the
+            // reason the comment on this Column already gives: it is not a
+            // SettingsRow and would be handed Positioner properties meant for
+            // one, which is what draws a card's corners onto its first and last
+            // rows. Here it is a row belonging to this hand-built section.
+            PathField {
+                width: parent.width
+                icon: "folder"
+                label: "Wallpaper folder"
+                value: Config.values.wallpaper.dir
+                placeholder: "~/Pictures/Wallpapers"
+                tip: "type a different folder"
+                detail: {
+                    const n = Wallpaper.available.length;
+                    if (!n)
+                        return "nothing usable in it";
+                    const fit = Wallpaper.fittedFor(Wallpaper.screenAspect(Wallpaper.here)).length;
+                    return fit < n ? `${fit} of them fit ${Wallpaper.here}` : "read all the way down";
+                }
+                onCommitted: path => Config.set("wallpaper.dir", path)
+            }
+
             G2Rect {
                 width: parent.width
                 height: grid.implicitHeight + Appearance.padding.small * 2
