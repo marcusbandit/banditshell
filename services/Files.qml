@@ -287,11 +287,20 @@ Singleton {
     property var term: null
     property int revision: 0
 
+    // Whether the shell and the browser have agreed on a directory yet. See
+    // frame()'s handling of the first report.
+    property bool synced: false
+
     function ensureTerminal(): void {
         if (root.term)
             return;
 
         pty.command = [root.helper("bs-pty"), "80", String(Appearance.sizes.filesTerminalRows)];
+        // Where the shell is born. Silent and exact when it is honoured; under
+        // tmux it is not, because attaching to a session inherits that session's
+        // directory instead, which is what the first-report handshake is for.
+        pty.workingDirectory = root.cwd;
+        root.synced = false;
         root.term = Vt.create(80, Appearance.sizes.filesTerminalRows, {
             palette: Appearance.colour.terminalPalette,
             scrollback: Appearance.sizes.filesScrollback,
@@ -317,18 +326,54 @@ Singleton {
     // RUN A COMMAND AS IF IT HAD BEEN TYPED, which is what a click on a folder
     // and a file dropped on another folder both do.
     //
-    // Through the shell rather than as a process of our own, and that is a
-    // deliberate trade: it is slower, it needs a shell to exist, and it puts the
-    // command in the history where it can be seen, edited, repeated and undone
-    // by hand. A move that happens invisibly is a move you cannot check.
+    // Through the shell WHEN THERE IS ONE, and that is a deliberate trade: it is
+    // slower, and it puts the command in the history where it can be read,
+    // repeated, or reversed by hand. A move that happens invisibly is a move you
+    // cannot check.
+    //
+    // AND DIRECTLY WHEN THERE IS NOT. Starting a shell in order to run one `mv`
+    // is a strange amount of machinery for the job, and it is a race as well:
+    // Process.running does not go true until the child is actually up, so the
+    // obvious version - start the shell, then type into it - typed into a
+    // process that did not exist yet and the move was silently dropped. Which is
+    // exactly what happened, on the first drag that ever landed.
     function run(command: string): void {
-        root.ensureTerminal();
-        // It lands in the history like anything else typed, deliberately. A
-        // generated `cd` is a record of where the browser went, and a generated
-        // `mv` is a record of what it did that can be read, repeated, or
-        // reversed by hand. Hiding them would make the terminal a liar about
-        // its own session.
-        root.send(`${command}\r`);
+        if (pty.running) {
+            root.send(`${command}\r`);
+            root.restat();
+            return;
+        }
+
+        runner.exec(["sh", "-c", command]);
+        root.restat();
+    }
+
+    Process {
+        id: runner
+    }
+
+    // LOOK AGAIN, shortly.
+    //
+    // Nothing tells this window that a directory changed: there is no watcher,
+    // and the shell that just moved a file has no way to say so. So the listing
+    // is retaken a moment after anything that might have changed it, and the
+    // delay is what makes it one listing rather than one per keystroke of a
+    // command still being typed.
+    //
+    // It is also why the terminal's own output restarts it (see frame()): a `rm`
+    // typed by hand, a `git checkout`, a build that drops files in the directory
+    // you are looking at - none of those come through this file at all, and all
+    // of them should move the grid.
+    function restat(): void {
+        settle.restart();
+    }
+
+    Timer {
+        id: settle
+
+        interval: 400
+
+        onTriggered: root.refresh()
     }
 
     function cd(path: string): void {
@@ -364,17 +409,6 @@ Singleton {
         // construction.
         stdinEnabled: true
 
-        onStarted: {
-            // Whatever was asked for before there was anybody to ask. Sent as a
-            // real `cd` so that the shell and the browser start out agreeing,
-            // rather than the browser being somewhere the shell has never heard
-            // of.
-            if (root.pending) {
-                root.send(`cd ${root.quote(root.pending)}\r`);
-                root.pending = "";
-            }
-        }
-
         stdout: SplitParser {
             onRead: line => root.frame(line)
         }
@@ -388,6 +422,9 @@ Singleton {
         if (kind === "o") {
             root.term.write(B64.decode(body));
             root.revision = root.term.revision;
+            // Anything the shell prints might be the tail of something that
+            // changed this directory. See restat().
+            root.restat();
 
             // ANSWERS THE SHELL IS WAITING FOR. A cursor-position report or a
             // device attributes query is asked mid-draw and blocked on, so an
@@ -401,10 +438,31 @@ Singleton {
 
         if (kind === "c") {
             const path = B64.decode(body);
+            if (!path)
+                return;
+
+            // THE FIRST REPORT GOES THE OTHER WAY. Every report after this one
+            // moves the browser to the shell; this one moves the SHELL to the
+            // browser, because at birth it is the browser that knows where the
+            // user is and the shell that has just been started somewhere.
+            //
+            // Without it, opening the terminal for the first time yanked the
+            // grid to wherever the shell happened to land - which under a
+            // .zshrc that attaches to an existing tmux session is not even the
+            // directory the process was started in, it is wherever that session
+            // was last left.
+            if (!root.synced) {
+                root.synced = true;
+                if (path !== root.cwd) {
+                    root.run(`cd ${root.quote(root.cwd)}`);
+                    return;
+                }
+            }
+
             // The shell has moved. This is the ONLY writer of `cwd` once the
             // session is up, which is what keeps the two halves of the window
             // from ever disagreeing.
-            if (path && path !== root.cwd)
+            if (path !== root.cwd)
                 root.cwd = path;
             return;
         }
@@ -415,6 +473,7 @@ Singleton {
             // finding a dead panel.
             root.term = null;
             root.terminalOpen = false;
+            root.synced = false;
             pty.running = false;
         }
     }

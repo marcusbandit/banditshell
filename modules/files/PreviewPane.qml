@@ -33,6 +33,44 @@ Item {
     readonly property bool isAudio: root.entry && root.entry.class === "audio"
     readonly property bool isText: root.stat && root.stat.text && root.stat.size <= Appearance.sizes.filesTextMax
 
+    // WHAT LANGUAGE AN EXTENSION IS, for the highlighter next door.
+    //
+    // Written language-to-extensions rather than the other way round, because
+    // that is the direction the knowledge actually runs: "shell is .sh, .bash,
+    // .zsh and .fish" is one fact, and the inverted table is four entries that
+    // have to agree. Adding a language is one line here.
+    //
+    // The names are components/highlight.js's own, and an extension that is not
+    // in this table answers "", which is that file's signal to fall back to
+    // detecting from the content. That fallback is why the table can afford to
+    // be short: a file it has never heard of is not a file it gets wrong, it is
+    // a file it looks at.
+    readonly property var languages: ({
+            c: ["c", "h", "cpp", "cc", "cxx", "hpp", "hh"],
+            css: ["css", "scss", "sass", "less"],
+            javascript: ["js", "jsx", "mjs", "cjs", "ts", "tsx"],
+            json: ["json"],
+            python: ["py"],
+            qml: ["qml"],
+            shell: ["sh", "bash", "zsh", "fish"],
+            sql: ["sql"],
+            toml: ["toml"],
+            yaml: ["yaml", "yml"],
+            html: ["html", "htm", "xml", "svg"],
+            diff: ["diff", "patch"],
+            markdown: ["md", "markdown"]
+        })
+
+    readonly property string language: {
+        const ext = root.entry ? root.entry.ext : "";
+        if (!ext)
+            return "";
+        for (const name in root.languages)
+            if (root.languages[name].includes(ext))
+                return name;
+        return "";
+    }
+
     onPathChanged: {
         root.stat = null;
         player.stop();
@@ -220,23 +258,21 @@ Item {
         // showed source code as grey prose would be throwing away the one thing
         // that makes code readable at a glance, and the machinery for it is
         // already here (components/CodeBlock.qml).
-        Flickable {
+        //
+        // FILLING, not inside a Flickable. CodeBlock scrolls itself - its list
+        // is anchored to its own bottom edge - so a wrapper that gave it a
+        // content height instead of a real one left it exactly zero pixels tall
+        // and the panel drew a correct header over nothing at all.
+        CodeBlock {
             anchors.fill: parent
             visible: root.isText
-            clip: true
 
-            contentHeight: code.implicitHeight
-            boundsBehavior: Flickable.StopAtBounds
-
-            CodeBlock {
-                id: code
-
-                width: parent.width
-
-                text: body.content
-                language: root.entry ? root.entry.ext : ""
-                wrap: true
-            }
+            text: body.content
+            // The extension IS the language here, which is the one place a file
+            // browser has an advantage over a clipboard: the highlighter has to
+            // guess from content when all it has is a paste, and this knows.
+            language: root.language
+            wrap: true
         }
 
         // WHY THERE IS NOTHING TO SHOW, when there is nothing to show. "Binary"

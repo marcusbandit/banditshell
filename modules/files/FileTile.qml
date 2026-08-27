@@ -35,7 +35,7 @@ Item {
 
     signal clicked
     signal activated
-    signal lifted(point position)
+    signal lifted
     signal dragged(point position)
     signal dropped(point position)
 
@@ -128,6 +128,24 @@ Item {
         }
     }
 
+    // WHERE THE POINTER IS, in this tile's own coordinates.
+    //
+    // Built from the PRESS plus the TRANSLATION, and not read off the centroid,
+    // which is the obvious way and does not work. Three things were found by
+    // logging it during a real drag:
+    //
+    //   `onCentroidChanged` is not a per-move signal. The centroid is a grouped
+    //   property; the handler fires when the group is replaced, which is once,
+    //   at activation.
+    //   `centroid.position` at activation is (0, 0) - a corner nobody pressed.
+    //   `centroid.position` after the first move is a large negative number,
+    //   apparently in some other space once the grab has moved.
+    //
+    // `pressPosition` and `activeTranslation` are both stable and both in this
+    // item's coordinates, and their sum is the answer. It is also what
+    // components/CodeBlock.qml already drives its pan from, for the same reason.
+    readonly property point pointer: Qt.point(drag.centroid.pressPosition.x + drag.activeTranslation.x, drag.centroid.pressPosition.y + drag.activeTranslation.y)
+
     // THE GESTURE. A drag that never moved is a click, which is why both live on
     // one handler rather than on a MouseArea plus a DragHandler racing for the
     // same press.
@@ -142,15 +160,23 @@ Item {
         // somewhere. Only a deliberate press-and-move picks something up.
         dragThreshold: Appearance.sizes.dragThreshold
 
+        // AND THE GRID HAS TO LET GO OF IT. A GridView is a Flickable, and a
+        // Flickable claims the grab the moment it decides a drag is its own -
+        // which it decides about any drag that started inside it, meaning all of
+        // them. Without this the press selects the file, the pointer moves, the
+        // list quietly takes the gesture as a scroll, and nothing is ever picked
+        // up. components/CodeBlock.qml hit the identical wall on the other axis.
+        grabPermissions: PointerHandler.CanTakeOverFromItems | PointerHandler.CanTakeOverFromHandlersOfDifferentType
+
         onActiveChanged: {
             if (active)
-                root.lifted(drag.centroid.scenePosition);
+                root.lifted();
             else
-                root.dropped(drag.centroid.scenePosition);
+                root.dropped(root.pointer);
         }
 
-        onCentroidChanged: if (active)
-            root.dragged(drag.centroid.scenePosition)
+        onActiveTranslationChanged: if (drag.active)
+            root.dragged(root.pointer)
     }
 
     TapHandler {

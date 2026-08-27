@@ -31,7 +31,7 @@ Item {
 
     signal picked(int index)
     signal activated(int index)
-    signal lifted(int index, point position)
+    signal lifted(int index)
     signal dragged(point position)
     signal dropped(point position)
 
@@ -87,9 +87,12 @@ Item {
 
             onClicked: root.picked(index)
             onActivated: root.activated(index)
-            onLifted: position => root.lifted(index, position)
-            onDragged: position => root.dragged(position)
-            onDropped: position => root.dropped(position)
+            // MAPPED OUT OF THE TILE as it leaves, so what travels upward is
+            // always a point in the coordinates of whoever is receiving it.
+            // The tile reports in its own; nobody above has to know that.
+            onLifted: root.lifted(index)
+            onDragged: position => root.dragged(root.mapFromItem(tile, position.x, position.y))
+            onDropped: position => root.dropped(root.mapFromItem(tile, position.x, position.y))
         }
     }
 

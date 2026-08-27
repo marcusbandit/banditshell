@@ -27,6 +27,14 @@ Item {
     // Which modifier is being held, as the prefix its chords start with.
     property string held: ""
 
+    // THE DELAY IS RESET HERE, on the thing that actually changed, and not in
+    // the Timer's own onRunningChanged - which is where it was, and which does
+    // not work. A non-repeating Timer takes its own `running` down when it
+    // fires, so a handler on that runs immediately after the trigger and undoes
+    // exactly what the trigger just set. The panel was correct for less than one
+    // frame and then never appeared.
+    onHeldChanged: settle.elapsed = false
+
     readonly property var shown: {
         if (root.held === "")
             return [];
@@ -84,12 +92,37 @@ Item {
             strokeWidth: Appearance.font.stem
         }
 
-        Flow {
+        // A GRID, not a Flow, and the column count is arithmetic on how many
+        // there are.
+        //
+        // The Flow that was here bound its own width to its own implicitWidth,
+        // which is a loop: constrained, a Flow reports the width of its widest
+        // child, so it settled at one item per line and the legend became a
+        // column ten tall. A Grid sizes itself from its content and needs no
+        // width at all.
+        //
+        // Five rows a column, and as many columns as that takes
+        // (~/.claude/rules/math-over-hardcoding.md): one chord makes one column
+        // of one, and a keymap somebody has filled out grows sideways instead of
+        // off the top of the window.
+        Grid {
             id: list
 
             anchors.centerIn: parent
-            width: Math.min(root.width * 0.8, implicitWidth)
-            spacing: Appearance.padding.large
+
+            readonly property int perColumn: 5
+
+            // Columns from the ceiling on height, then rows from the columns,
+            // which is what BALANCES them: taking the rows straight from the
+            // ceiling instead puts five in the first column and one in the
+            // second, and the panel looks like it ran out rather than like it
+            // was laid out.
+            columns: Math.max(1, Math.ceil(root.shown.length / list.perColumn))
+            rows: Math.ceil(root.shown.length / list.columns)
+            flow: Grid.TopToBottom
+
+            columnSpacing: Appearance.padding.huge
+            rowSpacing: Appearance.padding.small
 
             Repeater {
                 model: root.shown
@@ -99,7 +132,7 @@ Item {
 
                     required property var modelData
 
-                    spacing: Appearance.padding.small
+                    spacing: Appearance.padding.normal
 
                     StyledText {
                         anchors.verticalCenter: parent.verticalCenter
@@ -133,7 +166,5 @@ Item {
         running: root.held !== ""
 
         onTriggered: settle.elapsed = true
-        onRunningChanged: if (!running)
-            settle.elapsed = false
     }
 }

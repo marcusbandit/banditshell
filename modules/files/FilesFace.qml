@@ -278,15 +278,55 @@ Item {
                 Files.focus = "grid";
             }
             onActivated: index => Files.open(Files.visible[index])
-            onLifted: (index, position) => {
+            onLifted: index => {
                 Files.selected = index;
                 root.dragging = true;
-                root.dragAt = root.mapFromItem(null, position.x, position.y);
-                followX.snap();
-                followY.snap();
+                root.exported = false;
+                // NOT POSITIONED YET, deliberately. The centroid at the instant
+                // a DragHandler activates is not a position anybody has been at:
+                // it arrives as (0, 0), which is off the top-left corner of the
+                // window, which is outside it - and the edge test below read
+                // that as "the pointer has left" and handed the whole gesture to
+                // the compositor before it had begun. The ghost appeared for one
+                // frame and the drag was over.
+                //
+                // So the first real sample is what places it, and until then
+                // there is nothing to place.
+                root.placed = false;
             }
-            onDragged: position => root.dragAt = root.mapFromItem(null, position.x, position.y)
-            onDropped: position => root.drop(root.mapFromItem(null, position.x, position.y))
+            onDragged: position => {
+                const at = root.mapFromItem(grid, position.x, position.y);
+
+                // NOISE, DISCARDED. Some pointer moves arrive with a position of
+                // exactly (0, 0): the handler's translation then comes out as
+                // minus the window's own screen position, which is a point some
+                // thousands of pixels off the top-left corner. One of those is
+                // enough to throw the ghost across the screen and - before the
+                // dwell below existed - to hand the file to another application
+                // mid-gesture.
+                //
+                // A generous margin rather than the window's exact rect,
+                // because a drag that really has left the window reports
+                // coordinates just outside it, and those are the ones the
+                // handover is FOR. The bogus samples miss by a thousand.
+                const slack = Appearance.sizes.filesTile * 4;
+                if (at.x < -slack || at.y < -slack || at.x > root.width + slack || at.y > root.height + slack)
+                    return;
+
+                root.dragAt = at;
+
+                if (!root.placed) {
+                    // Land the ghost under the pointer rather than gliding to it
+                    // from wherever it was left last time.
+                    followX.snap();
+                    followY.snap();
+                    root.placed = true;
+                    return;
+                }
+
+                root.outside = at.x < 0 || at.y < 0 || at.x > root.width || at.y > root.height;
+            }
+            onDropped: position => root.drop(root.mapFromItem(grid, position.x, position.y))
         }
 
         PreviewPane {
@@ -321,6 +361,72 @@ Item {
     // be a drag you could not take upwards.
     property bool dragging: false
     property point dragAt: Qt.point(0, 0)
+
+    // WHETHER THE DRAG HAS LEFT THE BUILDING.
+    //
+    // A drag inside this window and a drag out of it are two different
+    // mechanisms and only one of them can hold the pointer. Ours is a ghost
+    // following the cursor, which the window draws and can cancel; a drag to
+    // another application is a compositor-level operation that Qt runs, and once
+    // it starts it owns the gesture.
+    //
+    // So the handover happens at the WINDOW'S EDGE, which is also where it means
+    // something: while the pointer is inside, the drop targets are the folders
+    // and the crumbs, and the moment it leaves there are no targets here and the
+    // only thing the gesture can mean is "into whatever is out there". One
+    // gesture, no modifier to remember, and the direction you move decides.
+    property bool exported: false
+
+    // Whether the ghost has had a real pointer position yet. See onLifted.
+    property bool placed: false
+
+    // Whether the pointer is currently off the window, and for how long.
+    //
+    // THE HANDOVER IS A DWELL, not an instant. Leaving by a pixel on the way to
+    // somewhere else inside the window is not a request to give the file to
+    // another application, and neither is a single stray sample. Holding it
+    // outside for a moment is.
+    property bool outside: false
+
+    Timer {
+        id: leaving
+
+        interval: Appearance.anim.settle
+        running: root.dragging && root.outside
+
+        onTriggered: root.exportDrag()
+    }
+
+    function exportDrag(): void {
+        if (root.exported || !Files.currentPath)
+            return;
+        root.exported = true;
+        root.dragging = false;
+        // text/uri-list is what every file manager, browser and toolkit reads,
+        // and text/plain beside it because a terminal or an editor dropped on
+        // wants the path rather than a URL.
+        exporter.Drag.mimeData = {
+            "text/uri-list": `file://${Files.currentPath}`,
+            "text/plain": Files.currentPath
+        };
+        exporter.Drag.active = true;
+    }
+
+    Item {
+        id: exporter
+
+        // Automatic, so setting `active` hands the gesture to the compositor
+        // rather than to QML's own DropArea machinery, which nothing outside
+        // this window can see.
+        Drag.dragType: Drag.Automatic
+        Drag.supportedActions: Qt.CopyAction | Qt.MoveAction
+        Drag.proposedAction: Qt.CopyAction
+
+        // Qt runs the drag and tells us when it is over. Taking `active` back down
+        // here rather than assuming it: a second drag started while the first
+        // was still notionally active does nothing at all.
+        Drag.onDragFinished: exporter.Drag.active = false
+    }
 
     function drop(position: point): void {
         root.dragging = false;
@@ -369,7 +475,7 @@ Item {
     }
 
     Item {
-        visible: root.dragging
+        visible: root.dragging && root.placed
 
         x: followX.value - width / 2
         y: followY.value - height / 2
