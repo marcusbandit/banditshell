@@ -33,12 +33,10 @@ Item {
     implicitHeight: visible ? root.bodyHeight + root.chrome : 0
     height: implicitHeight
 
-    Behavior on implicitHeight {
-        NumberAnimation {
-            duration: Appearance.anim.normal
-            easing.type: Easing.OutQuad
-        }
-    }
+    // NO ANIMATION ON THE HEIGHT. Ctrl+J is a key you press when you want to
+    // type: the terminal has to be there, focused, on the frame you asked for
+    // it, not a fifth of a second later while the panel is still growing under
+    // the cursor.
 
     // THE TOP EDGE IS THE HANDLE, which is the same idea as every other edge in
     // this shell: the boundary between two things is what you grab to change how
@@ -111,11 +109,6 @@ Item {
         stroke: root.focused ? Appearance.colour.accent : "transparent"
         strokeWidth: root.focused ? Appearance.font.stem : 0
 
-        Behavior on stroke {
-            ColorAnimation {
-                duration: Appearance.anim.fast
-            }
-        }
     }
 
     TerminalView {

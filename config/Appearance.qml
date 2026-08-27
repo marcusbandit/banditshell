@@ -448,6 +448,9 @@ Singleton {
         // this and the room available, never a setting of its own.
         readonly property int filesTile: root.cfg.files.tile
         readonly property int filesPreview: root.cfg.files.preview
+        // The browser's own body size. See Config's note on why this window
+        // sets a size instead of taking one of the three tiers.
+        readonly property int filesText: root.cfg.files.text
         readonly property int filesThumbnail: root.cfg.files.thumbnail
         readonly property int filesTextMax: root.cfg.files.textMax
         // The terminal's height IN ROWS, because that is the unit a terminal is

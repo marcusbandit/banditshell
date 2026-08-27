@@ -377,6 +377,38 @@ Singleton {
     // frame()'s handling of the first report.
     property bool synced: false
 
+    // WHICH SHELL IT IS, and WHETHER IT IS BUSY. Both reported by the helper;
+    // see src/bs-pty.c for how it works out the second one.
+    property string shellName: ""
+    property bool shellBusy: false
+
+    // The browser has moved somewhere the shell has not been told about, because
+    // it was busy when we went. Its next directory report is therefore STALE and
+    // must not drag the grid back; it gets a `cd` the moment it is free instead.
+    property bool desynced: false
+
+    // WHERE WE HAVE JUST ASKED THE SHELL TO GO, while it is on its way.
+    //
+    // This is what makes clicking a folder instant. The honest sequence - type
+    // `cd`, wait for the shell to run it, wait for the helper's next poll to
+    // notice, then list - is up to a third of a second of nothing happening
+    // after a double click, and it FEELS like the third of a second it is.
+    //
+    // So the grid moves at once and the shell catches up behind it. The report
+    // that then arrives says the OLD directory, and would drag the browser back
+    // if it were believed; this is how it is recognised and ignored. The timer
+    // is the other half: a `cd` that FAILED (no permission, gone) never sends
+    // the expected report at all, and after it expires the shell's word is final
+    // again, which puts the browser back where the shell really is.
+    property string expecting: ""
+
+    Timer {
+        id: expiry
+
+        interval: 1500
+        onTriggered: root.expecting = ""
+    }
+
     function ensureTerminal(): void {
         if (root.term)
             return;
@@ -424,14 +456,36 @@ Singleton {
     // process that did not exist yet and the move was silently dropped. Which is
     // exactly what happened, on the first drag that ever landed.
     function run(command: string): void {
-        if (pty.running) {
-            root.send(`${command}\r`);
+        // NOT INTO A RUNNING PROGRAM. Typing `mv` at a prompt uses the shell;
+        // typing it into an open vim corrupts a file, and from outside the two
+        // look identical unless somebody asks. So when the shell is busy the
+        // command is run beside it instead of through it: it loses its place in
+        // the history, which is a smaller loss than the alternative.
+        if (!pty.running || root.shellBusy) {
+            runner.exec(["sh", "-c", `cd ${root.quote(root.cwd)} && ${command}`]);
             root.restat();
             return;
         }
 
-        runner.exec(["sh", "-c", command]);
+        root.send(root.clearLine() + `${command}\r`);
         root.restat();
+    }
+
+    // WHAT TO SEND BEFORE A GENERATED COMMAND, so it does not land on top of
+    // something half-typed.
+    //
+    // Without this, typing `swsw` and then double-clicking a folder produced
+    // `swswcd 'folder'` and an error - the browser was appending to a line it
+    // could not see.
+    //
+    // zsh gets PUSH-LINE, which is the good answer: the half-typed line is set
+    // aside and comes back on the prompt after ours has run, so navigating in
+    // the middle of composing a command costs nothing at all. Anything else gets
+    // "go to the end and kill backwards", which clears the line in both bash and
+    // zsh whatever mode they are in, and leaves the text in the kill ring where
+    // Ctrl+Y can still reach it.
+    function clearLine(): string {
+        return root.shellName === "zsh" ? "\x1bq" : "\x05\x15";
     }
 
     Process {
@@ -463,6 +517,16 @@ Singleton {
     }
 
     function cd(path: string): void {
+        // BUSY MEANS THE BROWSER GOES ON ITS OWN. Navigating should never be
+        // refused because something is running in the panel below, and the one
+        // place `cwd` may be written by the interface is when there is nobody to
+        // ask. The shell is told where we went as soon as it is listening again.
+        if (pty.running && root.shellBusy) {
+            root.desynced = true;
+            root.cwd = path;
+            return;
+        }
+
         if (!pty.running) {
             // Before the shell exists there is nobody to ask, so the browser
             // moves on its own and hands the destination over when the session
@@ -473,6 +537,11 @@ Singleton {
             root.cwd = path;
             return;
         }
+
+        // OPTIMISTIC: the grid moves now, the shell follows. See `expecting`.
+        root.expecting = path;
+        expiry.restart();
+        root.cwd = path;
         root.run(`cd ${root.quote(path)}`);
     }
 
@@ -522,10 +591,42 @@ Singleton {
             return;
         }
 
+        if (kind === "s") {
+            root.shellName = B64.decode(body);
+            return;
+        }
+
+        if (kind === "b") {
+            const busy = body.charAt(0) === "1";
+            root.shellBusy = busy;
+
+            // Free again, and behind: catch it up rather than being dragged back
+            // by the directory it never left.
+            if (!busy && root.desynced) {
+                root.desynced = false;
+                root.run(`cd ${root.quote(root.cwd)}`);
+            }
+            return;
+        }
+
         if (kind === "c") {
             const path = B64.decode(body);
             if (!path)
                 return;
+
+            // A report from a shell that has not been told where we went is a
+            // report about the past.
+            if (root.desynced)
+                return;
+
+            // Nor is one from a shell still on its way to where we already are.
+            if (root.expecting) {
+                if (path === root.expecting) {
+                    root.expecting = "";
+                    expiry.stop();
+                }
+                return;
+            }
 
             // THE FIRST REPORT GOES THE OTHER WAY. Every report after this one
             // moves the browser to the shell; this one moves the SHELL to the

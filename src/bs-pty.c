@@ -40,6 +40,8 @@
 //
 //   out   o <base64>   bytes the terminal produced
 //         c <base64>   the shell's working directory, when it changes
+//         s <base64>   which shell this is, once, at startup
+//         b <0|1>      whether something is RUNNING in it, when that changes
 //         x <status>   the shell exited
 //   in    i <base64>   bytes to type into it
 //         r <cols> <rows>   the window resized
@@ -104,6 +106,19 @@ static void proc_name(pid_t pid, char *out, size_t cap) {
 // tmux-wrapper.sh, so the client is that script's child rather than the
 // foreground process. One level down is enough for every arrangement of this
 // shape, and it is a handful of small reads out of /proc rather than a fork.
+// WHETHER THE SHELL IS BUSY, which decides whether anything may be typed at it.
+//
+// A file browser that types `cd` at a prompt is using the shell. One that types
+// `cd` into a running vim is corrupting a file. The two are indistinguishable
+// from the outside unless somebody asks, so this asks: the foreground process
+// group is the shell itself when it is waiting for you, and something else when
+// it is not.
+//
+// Under tmux it is always the client, so the question goes to the server along
+// with the directory - one query answers both.
+static int shell_busy = -1;
+static char shell_name[64] = "";
+
 static int looks_like_tmux(pid_t pid) {
     char name[64];
     proc_name(pid, name, sizeof name);
@@ -137,7 +152,7 @@ static int tmux_cwd(char *out, size_t cap) {
     if (!tty)
         return 0;
 
-    FILE *f = popen("tmux list-clients -F '#{client_tty}\t#{pane_current_path}' 2>/dev/null", "r");
+    FILE *f = popen("tmux list-clients -F '#{client_tty}\t#{pane_current_path}\t#{pane_current_command}' 2>/dev/null", "r");
     if (!f)
         return 0;
 
@@ -151,7 +166,17 @@ static int tmux_cwd(char *out, size_t cap) {
         *tab = '\0';
         if (strcmp(line, tty) != 0 || tab[1] != '/')
             continue;
-        snprintf(out, cap, "%s", tab + 1);
+
+        char *rest = tab + 1;
+        char *second = strchr(rest, '\t');
+        if (second) {
+            *second = '\0';
+            // The command the pane is running. When it is the shell, the shell
+            // is what is waiting for you.
+            shell_busy = strcmp(second + 1, shell_name) != 0;
+        }
+
+        snprintf(out, cap, "%s", rest);
         found = 1;
     }
     pclose(f);
@@ -167,8 +192,12 @@ static int read_cwd(char *out, size_t cap) {
     if (fg <= 0)
         fg = child;
 
-    if (looks_like_tmux(fg) && tmux_cwd(out, cap))
-        return 1;
+    if (looks_like_tmux(fg))
+        return tmux_cwd(out, cap);
+
+    // Not under tmux: the shell is idle exactly when it is its own foreground
+    // process group.
+    shell_busy = fg != child;
 
     char link[64];
     snprintf(link, sizeof link, "/proc/%d/cwd", (int)fg);
@@ -254,6 +283,27 @@ int main(int argc, char **argv) {
         unsetenv("COLUMNS");
         unsetenv("LINES");
 
+        // AND THE PREVIOUS TERMINAL'S IDENTITY, which is not stale so much as
+        // someone else's.
+        //
+        // The shell drawing this window was itself started from a terminal, and
+        // on this machine that terminal was inside tmux - so TMUX, TMUX_PANE and
+        // TERM_PROGRAM were in its environment, were inherited straight through
+        // here, and an .zshrc whose auto-start reads `[[ -z "$TMUX" ]]` decided
+        // it was already inside a session and did nothing. The user's config was
+        // being read perfectly and then correctly declining to do the thing they
+        // were looking for.
+        //
+        // A new terminal window inherits none of this, so neither does this one.
+        // It is the one place where NOT passing the environment on is what makes
+        // the config behave the way it does everywhere else.
+        unsetenv("TMUX");
+        unsetenv("TMUX_PANE");
+        unsetenv("TERM_PROGRAM");
+        unsetenv("TERM_PROGRAM_VERSION");
+        // screen's equivalent, for the same reason.
+        unsetenv("STY");
+
         const char *shell = getenv("SHELL");
         if (!shell || !*shell)
             shell = "/bin/sh";
@@ -276,6 +326,18 @@ int main(int argc, char **argv) {
     char cwd[4096] = "";
     char last[4096] = "";
     long long next_cwd = 0;
+    int last_busy = -1;
+
+    // WHICH SHELL THIS IS, said once. The far end needs it to know how to clear
+    // a half-typed line: zsh can push it aside and give it back afterwards,
+    // which is a nicer thing to do to somebody's typing than deleting it, and
+    // not every shell can.
+    {
+        const char *shell = getenv("SHELL");
+        const char *base = shell ? strrchr(shell, '/') : NULL;
+        snprintf(shell_name, sizeof shell_name, "%s", base ? base + 1 : shell ? shell : "sh");
+        emit("s", (const unsigned char *)shell_name, strlen(shell_name));
+    }
 
     // A growable line buffer for stdin: a paste arrives as one frame and there
     // is no useful ceiling on how long that is.
@@ -351,6 +413,12 @@ int main(int argc, char **argv) {
             if (read_cwd(cwd, sizeof cwd) && strcmp(cwd, last) != 0) {
                 strcpy(last, cwd);
                 emit("c", (const unsigned char *)cwd, strlen(cwd));
+            }
+
+            if (shell_busy >= 0 && shell_busy != last_busy) {
+                last_busy = shell_busy;
+                printf("b %d\n", shell_busy);
+                fflush(stdout);
             }
         }
 

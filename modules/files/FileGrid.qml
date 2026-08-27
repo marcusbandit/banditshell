@@ -36,7 +36,7 @@ Item {
 
     readonly property int columns: Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
     readonly property real cell: width / root.columns
-    readonly property real cellHeight: root.cell * 1.12
+    readonly property real cellHeight: root.cell * 1.18
 
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
 

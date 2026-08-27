@@ -66,11 +66,11 @@ Item {
         stroke: root.receiving ? Appearance.colour.accent : root.cursored ? Appearance.colour.textFaint : "transparent"
         strokeWidth: root.receiving || root.cursored ? Appearance.font.stem : 0
 
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.anim.fast
-            }
-        }
+        // NO TRANSITION ON THE FILL. Hover and selection are answers to
+        // something you just did, and an answer that fades in is an answer that
+        // arrives after you have moved on. This is a tool: the feedback is the
+        // point, and 100ms of it is 100ms of doubt about whether the click
+        // landed.
     }
 
     HoverHandler {
@@ -79,8 +79,8 @@ Item {
 
     Column {
         anchors.centerIn: parent
-        width: parent.width - Appearance.padding.small * 2
-        spacing: Appearance.padding.small
+        width: parent.width - Appearance.padding.small
+        spacing: Appearance.padding.small / 2
 
         // THE PICTURE ITSELF, when there is one to draw. This is the whole
         // reason to open a file browser on a folder of photographs, so it is not
@@ -94,7 +94,7 @@ Item {
         Item {
             anchors.horizontalCenter: parent.horizontalCenter
             width: parent.width
-            height: root.height * 0.56
+            height: root.height * 0.52
 
             G2Image {
                 id: thumb
@@ -117,7 +117,7 @@ Item {
                 fileClass: root.entry.class
                 link: root.entry.link
                 broken: root.entry.broken
-                size: Math.min(parent.height, root.width * 0.5)
+                size: Math.min(parent.height, root.width * 0.46)
             }
         }
 
@@ -129,6 +129,9 @@ Item {
             verticalAlignment: Text.AlignTop
 
             text: root.entry.name
+            // THE WINDOW'S OWN BODY SIZE, smaller than the shell's `small`.
+            // See Config's `files.text`.
+            font.pixelSize: Appearance.sizes.filesText
             // TWO LINES, then elide. One line elides half the names in a
             // directory of anything real; three makes the tiles different
             // heights, and a grid whose rows do not line up is a grid you cannot

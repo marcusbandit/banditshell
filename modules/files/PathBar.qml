@@ -149,6 +149,7 @@ Item {
                     anchors.centerIn: parent
 
                     text: crumb.modelData.name
+                    font.pixelSize: Appearance.sizes.filesText
                     // THE LAST CRUMB IS WHERE YOU ARE; the rest are where you
                     // have been. Weight rather than size carries that, which is
                     // the whole reason the type scale can stay at three
@@ -210,7 +211,7 @@ Item {
             anchors.margins: Appearance.padding.normal
 
             font.family: Appearance.font.family
-            font.pixelSize: Appearance.font.size.small
+            font.pixelSize: Appearance.sizes.filesText
             color: Appearance.colour.text
             selectionColor: Appearance.colour.accent
             selectedTextColor: Appearance.colour.accentText
@@ -252,12 +253,6 @@ Item {
         implicitWidth: Files.searching ? root.width * 0.4 : glass.implicitWidth + Appearance.padding.normal
         implicitHeight: field.implicitHeight + Appearance.padding.small * 2
 
-        Behavior on implicitWidth {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutQuad
-            }
-        }
 
         G2Rect {
             anchors.fill: parent
@@ -296,7 +291,7 @@ Item {
             activeFocusOnTab: false
 
             font.family: Appearance.font.family
-            font.pixelSize: Appearance.font.size.small
+            font.pixelSize: Appearance.sizes.filesText
             color: Appearance.colour.text
             selectionColor: Appearance.colour.accent
             selectedTextColor: Appearance.colour.accentText

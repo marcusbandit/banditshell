@@ -194,6 +194,7 @@ Item {
                     parts.push(`${root.stat.owner} ${Files.humanMode(root.stat.mode)}`);
                 return parts.join("  ·  ");
             }
+            font.pixelSize: Appearance.sizes.filesText
             color: Appearance.colour.textFaint
             // ELIDED, because this line is three facts joined with dots and the
             // last of them is a permission string that is always the same width:
@@ -366,6 +367,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     text: line.modelData.name
+                    font.pixelSize: Appearance.sizes.filesText
                     color: Appearance.colour.textDim
                     elide: Text.ElideRight
                 }

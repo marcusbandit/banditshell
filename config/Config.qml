@@ -1100,7 +1100,23 @@ Singleton {
                 // fetched - is arithmetic on this and the width available, so
                 // there is no column count anywhere and no per-size branch. See
                 // ~/.claude/rules/math-over-hardcoding.md.
-                tile: 116,
+                tile: 96,
+
+                // THE TEXT IN THE GRID, in pixels, and the one place in this
+                // shell that sets a size rather than taking a tier.
+                //
+                // ~/.claude/rules/type-scale.md allows three sizes and this is
+                // not a fourth for the shell - it is this WINDOW's body size,
+                // and the window is a utility. The shell's `small` is 18px,
+                // which is right for a panel you glance at and much too big for
+                // a grid of two hundred filenames you are scanning: a file
+                // manager is dense on purpose, and Dolphin, Finder and every
+                // other one of them draw names at about this.
+                //
+                // Off Monocraft's design grid (9px) deliberately. On the grid
+                // the only step below 18 is 9, which is half, and the font
+                // renders acceptably between them.
+                text: 13,
 
                 // How wide the preview panel stands. Same reasoning as the
                 // settings pane above: what decides whether a preview is worth
@@ -1109,7 +1125,7 @@ Singleton {
                 preview: 420,
 
                 // The longest edge a thumbnail is decoded at. A grid tile is
-                // ~116px, so this is a bit over two of them: enough to stay
+                // ~96px, so this is a bit over two and a half of them: enough to stay
                 // sharp on a hidpi screen and to survive the tile growing,
                 // nowhere near enough to hold a 6000px photograph in memory
                 // forty times over.
