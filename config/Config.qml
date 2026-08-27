@@ -1079,6 +1079,155 @@ Singleton {
                 pane: 400
             },
 
+
+            // The file browser, in its own window. See modules/files/.
+            //
+            // It is the first thing in this shell that is an APPLICATION rather
+            // than a surface: it has panels, a focus, a keymap and a terminal
+            // inside it, and all four of those are settings because all four are
+            // arguments somebody will want to have differently.
+            files: {
+                // The window at birth, in the compositor's terms. A hint, not a
+                // binding: the user is allowed to drag the corner, and the size
+                // that wins after that is theirs. Wide enough for a grid and a
+                // preview side by side, because a preview that pushes the grid
+                // into one column is a preview that is in the way.
+                width: 1200,
+                height: 760,
+
+                // THE ONE NUMBER THE GRID SCALES FROM. Everything else about it
+                // - how many columns fit, where they sit, how big a thumbnail is
+                // fetched - is arithmetic on this and the width available, so
+                // there is no column count anywhere and no per-size branch. See
+                // ~/.claude/rules/math-over-hardcoding.md.
+                tile: 132,
+
+                // How wide the preview panel stands. Same reasoning as the
+                // settings pane above: what decides whether a preview is worth
+                // having is how many characters of a text file fit across it,
+                // which is a width and not a share of the window.
+                preview: 420,
+
+                // The longest edge a thumbnail is decoded at. A grid tile is
+                // ~132px, so this is nearly two of them: enough to stay
+                // sharp on a hidpi screen and to survive the tile growing,
+                // nowhere near enough to hold a 6000px photograph in memory
+                // forty times over.
+                thumbnail: 256,
+
+                // How much of a text file the preview will read, in bytes. Two
+                // megabytes is far more text than anybody reads in a side panel
+                // and far less than the log file that would otherwise be loaded
+                // into a string, tokenised, and drawn.
+                textMax: 2000000,
+
+                // Whether dotfiles are shown at rest. Off, because a home
+                // directory is mostly dotfiles and the browser opens on one.
+                hidden: false,
+
+                // name | size | mtime | kind. Directories come first whatever
+                // this says: a folder is a place and a file is a thing, and
+                // interleaving them by size is a sort nobody wanted.
+                sort: "name",
+
+                terminal: {
+                    // How tall the terminal opens, IN ROWS rather than pixels,
+                    // because that is the unit it is actually measured in: a
+                    // terminal's size is a character grid, and a pixel height
+                    // that did not divide by the line height would leave a strip
+                    // of dead material under the last row.
+                    rows: 16,
+
+                    // How much history it keeps. Rows that have scrolled off are
+                    // held as rendered lines rather than as cells (see
+                    // components/vt.js), so this is cheap enough to be generous
+                    // with.
+                    scrollback: 5000,
+
+                    // THE SIXTEEN COLOURS, which is what an application means
+                    // when it says "red".
+                    //
+                    // NOT from the theme, and this is the one place in the shell
+                    // where that is the right answer. Everything else here is a
+                    // ramp index precisely so a palette swap moves it; a
+                    // terminal's colours are a CONTRACT with the programs
+                    // drawing in it. `git diff` says removed lines are colour 1,
+                    // a compiler says an error is colour 1, and if colour 1 came
+                    // out of a green-family ramp then removed lines would be
+                    // green. Colour is carrying meaning here rather than
+                    // identity, so it stays where the meaning is.
+                    //
+                    // Muted rather than the VGA primaries, so that a terminal
+                    // sitting inside a translucent panel reads as part of it.
+                    // The order is the one every terminal uses: black, red,
+                    // green, yellow, blue, magenta, cyan, white, then the eight
+                    // bright ones.
+                    palette: ["#282c34", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#abb2bf", "#5c6370", "#ef7681", "#a6d189", "#efcb8b", "#74bdff", "#d68fe8", "#66c4d0", "#d7dae0"]
+                },
+
+                // WHAT A CHORD DOES, and the fact that this is a list rather
+                // than a switch statement is the point: a keymap belongs to the
+                // person typing on it.
+                //
+                // These are read while ANY panel has focus, which is why they
+                // are all modified and why the modifier is nearly always Ctrl
+                // with a DIGIT. The terminal panel hands every key it is given
+                // straight to the shell, and a shell's own bindings are a
+                // control code per letter: taking Ctrl+A or Ctrl+K here would
+                // silently break the line editor for anyone who uses them. The
+                // digits are free, and Alt with an arrow is what every file
+                // manager already means by "back".
+                //
+                // Ctrl+J is the exception, and knowingly: it is the linefeed
+                // character, so a shell reads it as Return. Intercepting it
+                // costs nothing because Return still submits, and it is the one
+                // chord that has to work from inside the terminal - it is how
+                // you get back out.
+                //
+                // Only chords that appear HERE are intercepted. Everything else
+                // falls through to whatever has focus, which is what keeps
+                // Ctrl+C, Ctrl+R and Ctrl+D the shell's.
+                keys: {
+                    "Ctrl+J": "terminal",
+                    "Ctrl+1": "focus:grid",
+                    "Ctrl+2": "focus:preview",
+                    "Ctrl+3": "focus:terminal",
+                    "Ctrl+4": "preview",
+                    "Ctrl+5": "hidden",
+                    "Alt+Left": "back",
+                    "Alt+Right": "forward",
+                    "Alt+Up": "parent",
+                    "Alt+Home": "home"
+                },
+
+                // THE SAME THING FOR BARE KEYS, read only while the grid has
+                // focus - which is exactly the state in which there is no shell
+                // waiting for them.
+                //
+                // vim's, because that is the vocabulary the hands already have,
+                // and `/` for search because that is where it comes from. The
+                // arrows do the same jobs and are not listed: they are handled
+                // as arrows, so a keymap emptied out still leaves the grid
+                // navigable.
+                //
+                // hjkl are DIRECTIONS here, not ranger's in-and-out. This is a
+                // grid rather than a column, so `l` meaning "open" would leave
+                // no way to move sideways; Return opens and `-` goes up, which
+                // are the two that ranger spends h and l on.
+                grid: {
+                    "h": "left",
+                    "j": "down",
+                    "k": "up",
+                    "l": "right",
+                    "g": "first",
+                    "G": "last",
+                    "/": "search",
+                    " ": "preview",
+                    ".": "hidden",
+                    "y": "copy",
+                    "-": "parent"
+                }
+            },
             // The bottom-right corner, as a way in. See
             // modules/SettingsCorner.qml.
             //

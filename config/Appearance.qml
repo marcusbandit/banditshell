@@ -162,6 +162,15 @@ Singleton {
         // position, so a theme is free to have more or fewer stops.
         readonly property var spectrum: [root.theme.dim, root.theme.mid, root.theme.bright]
 
+
+        // THE TERMINAL'S SIXTEEN, straight from config and deliberately not from
+        // the ramp. See Config's note: in a terminal, colour 1 is what `git
+        // diff` means by "removed" and what a compiler means by "error", so it
+        // is carrying meaning rather than identity and must not follow a theme
+        // that has decided everything is green. It is here rather than read
+        // straight off Config only because it is a list of COLOURS, and this is
+        // where the shell keeps those.
+        readonly property var terminalPalette: root.cfg.files.terminal.palette
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour
@@ -424,6 +433,28 @@ Singleton {
         readonly property int settingsHeight: root.cfg.settings.height
         readonly property int settingsPane: root.cfg.settings.pane
 
+
+        // The file browser's window, and the grid inside it. See modules/files/.
+        //
+        // The GEOMETRY is here; what the browser prefers is not. Which way it
+        // sorts, whether it shows dotfiles and what a chord does are read off
+        // Config by the service that owns them, the way the cheatsheet's two
+        // preferences are: they are state the interface keeps, not tokens it is
+        // drawn from, and a keymap in the appearance file would be a keymap
+        // nobody could find.
+        readonly property int filesWidth: root.cfg.files.width
+        readonly property int filesHeight: root.cfg.files.height
+        // The one number the grid scales from: a column count is arithmetic on
+        // this and the room available, never a setting of its own.
+        readonly property int filesTile: root.cfg.files.tile
+        readonly property int filesPreview: root.cfg.files.preview
+        readonly property int filesThumbnail: root.cfg.files.thumbnail
+        readonly property int filesTextMax: root.cfg.files.textMax
+        // The terminal's height IN ROWS, because that is the unit a terminal is
+        // measured in; the pixels are the line height times this, worked out
+        // where the line height is known.
+        readonly property int filesTerminalRows: root.cfg.files.terminal.rows
+        readonly property int filesScrollback: root.cfg.files.terminal.scrollback
         // The bottom-right corner, as a way in. The corner's SIZE is not here:
         // it is derived from this mark in modules/SettingsCorner.qml, because
         // the swell exists to hold the glyph.

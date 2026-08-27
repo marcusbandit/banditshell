@@ -803,6 +803,38 @@ demo)
     echo "$out"
     ;;
 
+filespreview)
+    # The browser in a plain window, for looking at it without touching the
+    # running shell's own session. lockpreview's shape, with one difference: no
+    # timeout, because a terminal you cannot type into for more than nine
+    # seconds is not a terminal you can test. Close the window to end it.
+    #
+    # `banditshell filespreview [dir] [shot]` - with a second argument it
+    # screenshots the window's own rect and exits, which is the form worth
+    # binding while working on the layout.
+    where="${1:-$HOME}"
+    out="${2:-}"
+    # Floated and sized by a window rule, the way settingspreview does it: a
+    # tiled preview is whatever size the layout gives it, and a file grid at
+    # 2500px wide is not the grid anybody will actually use.
+    w=$(get files.width 2>/dev/null || echo 1200)
+    h=$(get files.height 2>/dev/null || echo 760)
+    hyprctl eval "hl.window_rule({ name = \"banditshell-filespreview\", match = { title = \"^(banditshell-filespreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1
+    (cd "$HOME" && FILES_PREVIEW="$where" qs -p "$SHELL_DIR/filespreview.qml" >/dev/null 2>&1) &
+    preview=$!
+    if [ -n "$out" ]; then
+        mkdir -p "$SHOT_DIR"
+        sleep 4
+        rect=$(hyprctl -j clients | jq -r '.[] | select(.title == "banditshell-filespreview") | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1)
+        if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
+        kill "$preview" 2>/dev/null
+        echo "$out"
+    else
+        wait "$preview"
+    fi
+    ;;
+
 lockpreview)
     # The lock screen's LOOK, without the lock. A session lock cannot be opened
     # to look at, and the way back from one that drew wrong is a TTY, so the face

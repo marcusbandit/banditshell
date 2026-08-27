@@ -930,6 +930,40 @@ Scope {
         return `${Math.round(target * 100)}%`;
     }
 
+    IpcHandler {
+        target: "files"
+
+        // The browser is a window rather than a panel, so "where" is not a
+        // question here the way it is for the menus: a window is wherever it was
+        // dragged to. What it takes instead is a PATH, because the useful thing
+        // to bind is not "open the browser" but "open the browser here", and a
+        // keybind that carries the directory it was pressed in is the difference
+        // between a file manager and a file manager you actually reach for.
+        function open(path: string): string {
+            Files.show(path);
+            return path ? `files ${path}` : "files";
+        }
+
+        function toggle(path: string): string {
+            Files.toggle(path);
+            return Files.windowOpen ? "open" : "closed";
+        }
+
+        function close(): string {
+            Files.hide();
+            return "closed";
+        }
+
+        // What the browser currently believes, in one line. The same reasoning
+        // as `menu hover`: "the terminal is not responding" and "the terminal
+        // was never started" look identical from a screenshot, and so do "the
+        // grid is empty" and "the listing failed".
+        function status(): string {
+            const shell = Files.term ? `rows=${Files.term.rows} alt=${Files.term.altActive}` : "no session";
+            return `open=${Files.windowOpen} cwd=${Files.cwd} entries=${Files.entries.length} focus=${Files.focus} terminal=[${shell}] error=[${Files.error}]`;
+        }
+    }
+
     // The output volume, driven through the Audio singleton the way settings
     // is driven through its own: sound is one value for the session, not a
     // per-window thing, so there is no window to guard for. No drawing here

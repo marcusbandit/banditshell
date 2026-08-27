@@ -4,6 +4,7 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import qs.modules
+import qs.modules.files
 import qs.modules.lock
 import qs.modules.picker
 import qs.modules.settings
@@ -23,6 +24,12 @@ import qs.modules.settings
 // Ipc is shell-wide rather than per-screen: it finds windows through the
 // registry they put themselves in, so nothing has to be wired up here.
 ShellRoot {
+    // The file browser, like the settings page and the lock: shell-wide, because
+    // a window is on whichever monitor it was dragged to rather than on all of
+    // them. Hidden until asked for, and kept alive afterwards - there is a live
+    // shell session inside it.
+    FilesWindow {}
+
     // The picker's state is shell-wide; its surfaces are per screen.
     PickerState {
         id: picker
