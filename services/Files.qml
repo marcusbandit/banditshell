@@ -553,6 +553,74 @@ Singleton {
             root.show(path);
     }
 
+    // HOW THE COMPOSITOR SHOULD FRAME IT.
+    //
+    // Without this the browser opens TILED, because that is what Hyprland does
+    // with a new window, and a file grid squeezed into whatever the layout had
+    // left is not the window that was designed. `implicitWidth` is a hint the
+    // compositor is free to ignore, and it does.
+    //
+    // Same machinery as the settings window (services/Settings.qml), including
+    // the two dialects: the Lua parser takes a whole named spec at once and
+    // refuses `keyword`, the legacy one has no `eval`. NOT centred, for the
+    // reason Settings is not: the window is kept alive and re-shown, so the
+    // compositor re-applies the rules on every open, and a window that jumped
+    // back to the middle of the screen each time you toggled it would be
+    // throwing away the place you put it.
+    readonly property var rules: [
+        {
+            lua: "float = true",
+            legacy: "float on"
+        },
+        {
+            lua: `size = { ${Appearance.sizes.filesWidth}, ${Appearance.sizes.filesHeight} }`,
+            legacy: `size ${Appearance.sizes.filesWidth} ${Appearance.sizes.filesHeight}`
+        },
+        {
+            lua: "no_anim = true",
+            legacy: "no_anim on"
+        }
+    ]
+
+    function installRules(): void {
+        // Not before the compositor has said which language it speaks: `lua`
+        // reads false while the question is still in flight, and false is also a
+        // real answer. See Hypr.parserKnown.
+        if (!Compositor.isHyprland || !Hypr.parserKnown)
+            return;
+
+        const title = `^(${root.windowTitle})$`;
+
+        if (Hypr.lua) {
+            ruler.exec(["hyprctl", "eval", `hl.window_rule({ name = "${root.windowTitle}", match = { title = "${title}" }, ${root.rules.map(r => r.lua).join(", ")} })`]);
+            return;
+        }
+
+        ruler.exec(["hyprctl", "--batch", root.rules.map(r => `keyword windowrule ${r.legacy}, match:title ${title}`).join(" ; ")]);
+    }
+
+    Process {
+        id: ruler
+    }
+
+    Connections {
+        target: Hypr
+
+        // A compositor reload drops every rule that was set with hyprctl, so
+        // they go back on afterwards.
+        function onConfigReloaded(): void {
+            root.installRules();
+        }
+
+        // The compositor has just said which language it speaks, which is the
+        // last thing the rules were waiting for.
+        function onParserKnownChanged(): void {
+            root.installRules();
+        }
+    }
+
+    Component.onCompleted: root.installRules()
+
     // WHAT A CHORD DOES. One place, because the keymap is data and every panel
     // routes through here rather than each having its own opinion.
     function act(action: string): bool {

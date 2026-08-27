@@ -748,7 +748,11 @@ files)
     sub="${1:-toggle}"
     shift || true
     case "$sub" in
-    toggle | open | close | status) ipc files "$sub" "${1:-}" ;;
+    # Only the two that OPEN take a path. `close` and `status` declare no
+    # parameter, and an extra argument is a hard error on the other side rather
+    # than an ignored one, so passing "" to them turned both into failures.
+    toggle | open) ipc files "$sub" "${1:-}" ;;
+    close | status) ipc files "$sub" ;;
     *) echo "usage: banditshell files toggle|open [path]|close|status" >&2; exit 2 ;;
     esac
     ;;
