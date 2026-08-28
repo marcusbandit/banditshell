@@ -471,6 +471,8 @@ Singleton {
         // where the line height is known.
         readonly property int filesTerminalRows: root.cfg.files.terminal.rows
         readonly property int filesScrollback: root.cfg.files.terminal.scrollback
+        // See Config: the shell's pixel font cannot draw a terminal.
+        readonly property string filesTerminalFont: root.cfg.files.terminal.font
         // The bottom-right corner, as a way in. The corner's SIZE is not here:
         // it is derived from this mark in modules/SettingsCorner.qml, because
         // the swell exists to hold the glyph.

@@ -505,6 +505,12 @@ Singleton {
     // WHICH SHELL IT IS, and WHETHER IT IS BUSY. Both reported by the helper;
     // see src/bs-pty.c for how it works out the second one.
     property string shellName: ""
+
+    // The session the helper adopted or made, and the windows in it. These are
+    // what tabs will be built on; today they are what the debug view reports so
+    // a real terminal can be attached to the same session and compared.
+    property string tmuxSession: ""
+    property var tmuxWindows: []
     property bool shellBusy: false
 
     // The browser has moved somewhere the shell has not been told about, because
@@ -738,6 +744,26 @@ Singleton {
 
         if (kind === "s") {
             root.shellName = B64.decode(body);
+            return;
+        }
+
+        // WHICH TMUX SESSION IS OURS, settled by the helper before anything
+        // needs it (see src/bs-pty.c). Everything that treats a tmux window as a
+        // tab addresses this session and no other.
+        if (kind === "t") {
+            root.tmuxSession = B64.decode(body);
+            return;
+        }
+
+        // THE WINDOW LIST, as "id\tname\tactive" lines. Keyed on the ID rather
+        // than the name: a name changes on its own as commands run, because the
+        // user's own tmux hook renames a window after whatever is running in it.
+        if (kind === "w") {
+            const rows = B64.decode(body).split("\n").filter(l => l.length > 0);
+            root.tmuxWindows = rows.map(line => {
+                const parts = line.split("\t");
+                return {id: parts[0], name: parts[1] ?? "", active: parts[2] === "1"};
+            });
             return;
         }
 

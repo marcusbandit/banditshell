@@ -61,8 +61,12 @@ run)
     # windows that were never taken down, and looked exactly like the code being
     # broken.
     "$0" reap
+    # nohup rather than setsid, because setsid FORKS: the pid recorded would be
+    # setsid's and killing it leaves the real process running. That is how stale
+    # windows survived every reap and got screenshotted instead of the new ones,
+    # twice, each time looking exactly like the change having no effect.
     ( cd "$HOME" && env WAYLAND_DISPLAY="$(bed_display)" "$@" \
-        setsid qs -p "$qml" > /tmp/banditshell-testbed-qs.log 2>&1 &
+        nohup qs -p "$qml" > /tmp/banditshell-testbed-qs.log 2>&1 &
       echo $! >> "$PIDS" )
     sleep "${TESTBED_SETTLE:-5}"
     ;;

@@ -1176,6 +1176,22 @@ Singleton {
                 sort: "name",
 
                 terminal: {
+                    // THE TERMINAL'S OWN FACE, and it has to be its own.
+                    //
+                    // The shell is drawn in Monocraft, which is a pixel font
+                    // with no box-drawing characters, no block elements and no
+                    // Braille in it at all - its coverage stops around U+04FF.
+                    // Those three ranges are what a terminal user interface is
+                    // MADE of: every border btop draws, every meter htop fills,
+                    // every graph anything plots. Rendered in Monocraft they are
+                    // missing glyphs, so the emulator was parsing them perfectly
+                    // and the screen showed nothing where the frames should be.
+                    //
+                    // Any monospace face with those ranges will do; this one is
+                    // installed here and has all three. Nerd Font rather than
+                    // plain so that a prompt with powerline separators in it
+                    // draws as well.
+                    font: "CaskaydiaCove Nerd Font Mono",
                     // How tall the terminal opens, IN ROWS rather than pixels,
                     // because that is the unit it is actually measured in: a
                     // terminal's size is a character grid, and a pixel height

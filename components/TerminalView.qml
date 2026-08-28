@@ -36,7 +36,7 @@ Item {
     // position, where a background run starts. Monocraft is monospaced, so one
     // advance is every advance.
     readonly property real cellWidth: metrics.advanceWidth
-    readonly property real cellHeight: Math.round(Appearance.font.size.small * 4 / 3)
+    readonly property real cellHeight: Math.round(Appearance.sizes.filesText * 4 / 3)
 
     readonly property int cols: Math.max(1, Math.floor(width / Math.max(1, cellWidth)))
     readonly property int rows: Math.max(1, Math.floor(height / Math.max(1, cellHeight)))
@@ -55,11 +55,19 @@ Item {
         return root.term ? root.term.view(root.scrollOffset) : [];
     }
 
+    // THE FACE, and it is deliberately not the shell's.
+    //
+    // Monocraft has no box-drawing, no block elements and no Braille, which is
+    // what every terminal user interface is built out of - so a perfectly parsed
+    // btop drew as text with holes where all its frames should be. Measured off
+    // the same font that draws, so the grid is the grid whatever face is set.
+    readonly property string face: Appearance.sizes.filesTerminalFont
+
     TextMetrics {
         id: metrics
 
-        font.family: Appearance.font.family
-        font.pixelSize: Appearance.font.size.small
+        font.family: root.face
+        font.pixelSize: Appearance.sizes.filesText
         text: "0"
     }
 
@@ -116,6 +124,14 @@ Item {
                 StyledText {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
+
+                    font.family: root.face
+                    font.pixelSize: Appearance.sizes.filesText
+                    // NOT NativeRendering for this one. StyledText pins it for
+                    // Monocraft's pixel grid, which is right for a pixel font
+                    // and wrong for an outline face at a size that is not a
+                    // multiple of anything.
+                    renderType: Text.QtRendering
 
                     text: row.modelData.markup
                     textFormat: Text.StyledText
