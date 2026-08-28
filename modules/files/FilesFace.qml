@@ -273,7 +273,7 @@ Item {
             if (properties.visible) {
                 properties.close();
             } else if (Files.search) {
-                Files.search = "";
+                Files.setSearch("");
             } else if (Files.picked.length > 0) {
                 Files.clearPicked();
             } else {
@@ -315,7 +315,7 @@ Item {
             Files.open(Files.current);
             return true;
         case "search":
-            Files.searching = true;
+            Files.setSearching(true);
             return true;
         case "copypath":
             if (Files.pickedPaths.length > 0)

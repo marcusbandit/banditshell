@@ -52,44 +52,144 @@ Singleton {
         return `${Quickshell.shellDir}/bin/${name}`;
     }
 
-    // WHERE THE BROWSER IS. Written only by the pty's report, never by the UI:
-    // see the header. `pending` is the one exception's escape hatch - the
-    // directory asked for before the shell was running to be asked.
-    property string cwd: root.home
+    // THE PANES, and which one has the keyboard.
+    //
+    // A pane is one view onto one directory, with its own selection and its own
+    // history (services/FilePane.qml). There is one today and there will be
+    // several: a tab holds panes, and the window holds tabs.
+    //
+    // EVERYTHING BELOW DELEGATES to the focused one. That is deliberate and
+    // temporary in equal measure: it means the interface can go on asking
+    // `Files.cwd` while the model underneath it grows, and each view can be
+    // handed its own pane one at a time rather than all at once. The reads are
+    // forwarded; the two writable fields (the search box) go through functions,
+    // because a property cannot forward a write.
+    property var panes: []
+    property int activePane: 0
+
+    readonly property var pane: root.panes.length > 0 ? root.panes[Math.min(root.activePane, root.panes.length - 1)] : null
+
+    property Component paneMaker: Component {
+        FilePane {}
+    }
+
+    function addPane(path: string): var {
+        const made = root.paneMaker.createObject(root, {
+            lister: root.helper("bs-ls"),
+            cwd: path || root.home
+        });
+        // A pane cannot cd itself: the shell owns the directory and there is one
+        // shell for the window. See FilePane's header.
+        made.wantsCd.connect(where => root.cd(where, made));
+        root.panes = [...root.panes, made];
+        return made;
+    }
+
+    // The directory asked for before the shell was running to be asked.
     property string pending: ""
 
-    property var entries: []
-    property bool loading: false
-    // Why a directory is empty, when it is not empty. A listing that failed and
-    // a listing with nothing in it look identical on screen and mean completely
-    // different things.
-    property string error: ""
+    readonly property string cwd: root.pane ? root.pane.cwd : root.home
+    readonly property var entries: root.pane ? root.pane.entries : []
+    readonly property bool loading: root.pane ? root.pane.loading : false
+    readonly property string error: root.pane ? root.pane.error : ""
+    readonly property var visible: root.pane ? root.pane.visible : []
+    readonly property int cursor: root.pane ? root.pane.cursor : -1
+    readonly property var picked: root.pane ? root.pane.picked : []
+    readonly property var current: root.pane ? root.pane.current : null
+    readonly property string currentPath: root.pane ? root.pane.currentPath : ""
+    readonly property var picks: root.pane ? root.pane.picks : []
+    readonly property var pickedPaths: root.pane ? root.pane.pickedPaths : []
+    readonly property var crumbs: root.pane ? root.pane.crumbs : []
+    readonly property var back: root.pane ? root.pane.back : []
+    readonly property var forward: root.pane ? root.pane.forward : []
+    readonly property string search: root.pane ? root.pane.search : ""
+    readonly property bool searching: root.pane ? root.pane.searching : false
+
+    function setSearch(text: string): void {
+        if (root.pane)
+            root.pane.search = text;
+    }
+
+    function setSearching(on: bool): void {
+        if (root.pane)
+            root.pane.searching = on;
+    }
+
+    function isPicked(name: string): bool {
+        return root.pane ? root.pane.isPicked(name) : false;
+    }
+
+    function setCursor(index: int): void {
+        root.pane?.setCursor(index);
+    }
+
+    function togglePick(index: int): void {
+        root.pane?.togglePick(index);
+    }
+
+    function extendTo(index: int): void {
+        root.pane?.extendTo(index);
+    }
+
+    function pickRange(indices: var, add: bool): void {
+        root.pane?.pickRange(indices, add);
+    }
+
+    function pickAll(): void {
+        root.pane?.pickAll();
+    }
+
+    function clearPicked(): void {
+        root.pane?.clearPicked();
+    }
+
+    function join(dir: string, name: string): string {
+        return dir === "/" ? `/${name}` : `${dir}/${name}`;
+    }
+
+    function parentOf(path: string): string {
+        if (path === "/")
+            return "/";
+        const cut = path.lastIndexOf("/");
+        return cut <= 0 ? "/" : path.slice(0, cut);
+    }
+
+    function go(path: string): void {
+        root.pane?.go(path);
+    }
+
+    function goBack(): void {
+        root.pane?.goBack();
+    }
+
+    function goForward(): void {
+        root.pane?.goForward();
+    }
+
+    function open(entry: var): void {
+        if (!entry || !root.pane)
+            return;
+        const path = root.join(root.pane.cwd, entry.name);
+        if (entry.kind === "dir")
+            root.pane.go(path);
+        else
+            opener.exec(["xdg-open", path]);
+    }
+
+    // REFRESH EVERY PANE, not just the focused one. A command in the terminal
+    // can change any directory the window is showing, and a pane you were about
+    // to look at going stale is the same bug as the one you are looking at going
+    // stale - it just takes a second longer to notice.
+    function refresh(): void {
+        for (const p of root.panes)
+            p.refresh();
+    }
 
     // WHICH PANEL HAS THE KEYBOARD: "grid", "preview" or "terminal". One at a
     // time, and every key in the window is routed by it.
     property string focus: "grid"
     property bool terminalOpen: false
     property bool previewOpen: true
-
-    // WHERE THE KEYBOARD IS, as an index into `visible`.
-    property int cursor: -1
-
-    // WHAT IS SELECTED, as NAMES rather than indices.
-    //
-    // The listing is retaken whenever anything might have changed it (see
-    // restat), and an index into the previous listing is a different file in the
-    // next one - which is how a multi-file delete ends up deleting the wrong
-    // multiple files. A name survives a re-list, and one that has genuinely gone
-    // simply stops matching.
-    property var picked: []
-
-    // Where a range starts. Shift-click extends from here, not from the cursor,
-    // so shift-clicking twice re-picks the range rather than growing it by
-    // whatever the last click happened to leave behind.
-    property int anchor: -1
-
-    property string search: ""
-    property bool searching: false
 
     readonly property bool showHidden: Config.values.files.hidden
     readonly property string sort: Config.values.files.sort
@@ -289,171 +389,6 @@ Singleton {
         }
     }
 
-    // ------------------------------------------------------------ the listing
-
-    // WHAT IS ACTUALLY DRAWN: the entries, filtered and ordered. Kept here
-    // rather than in the grid because the terminal panel's `/` search and the
-    // grid's own arrow keys index into the SAME list, and two copies of "which
-    // row is third" is the bug that puts the selection on the wrong file.
-    readonly property var visible: {
-        const all = root.entries.filter(e => root.showHidden || !e.hidden);
-        const query = root.search.toLowerCase();
-        const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
-
-        // Directories first, always. A folder is a place and a file is a thing;
-        // interleaving them by size is a sort nobody asked for. Within each
-        // half, whatever the setting says.
-        const key = root.sort;
-        return matched.slice().sort((a, b) => {
-            if ((a.kind === "dir") !== (b.kind === "dir"))
-                return a.kind === "dir" ? -1 : 1;
-            if (key === "size" && a.size !== b.size)
-                return b.size - a.size;
-            if (key === "mtime" && a.mtime !== b.mtime)
-                return b.mtime - a.mtime;
-            if (key === "kind" && a.class !== b.class)
-                return a.class < b.class ? -1 : 1;
-            return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
-        });
-    }
-
-    readonly property var current: root.cursor >= 0 && root.cursor < root.visible.length ? root.visible[root.cursor] : null
-    readonly property string currentPath: root.current ? root.join(root.cwd, root.current.name) : ""
-
-    // WHAT AN ACTION ACTS ON. The selection, or - when nothing is selected - the
-    // thing the cursor is on, because "delete" with a cursor on a file and no
-    // selection is not an ambiguous request.
-    readonly property var picks: {
-        const names = root.picked;
-        if (names.length === 0)
-            return root.current ? [root.current] : [];
-        return root.visible.filter(e => names.includes(e.name));
-    }
-
-    readonly property var pickedPaths: root.picks.map(e => root.join(root.cwd, e.name))
-
-    function isPicked(name: string): bool {
-        return root.picked.includes(name);
-    }
-
-    // ONE THING, and it becomes the anchor for whatever range comes next.
-    function setCursor(index: int): void {
-        if (index < 0 || index >= root.visible.length)
-            return;
-        root.cursor = index;
-        root.anchor = index;
-        root.picked = [root.visible[index].name];
-    }
-
-    // Ctrl-click: add or remove one, leaving the rest alone.
-    function togglePick(index: int): void {
-        if (index < 0 || index >= root.visible.length)
-            return;
-        const name = root.visible[index].name;
-        root.picked = root.isPicked(name) ? root.picked.filter(n => n !== name) : [...root.picked, name];
-        root.cursor = index;
-        root.anchor = index;
-    }
-
-    // Shift-click: everything between the anchor and here, inclusive.
-    function extendTo(index: int): void {
-        if (index < 0 || index >= root.visible.length)
-            return;
-        const from = root.anchor < 0 ? index : root.anchor;
-        const lo = Math.min(from, index);
-        const hi = Math.max(from, index);
-        root.picked = root.visible.slice(lo, hi + 1).map(e => e.name);
-        root.cursor = index;
-    }
-
-    // A rubber band's result, handed in as indices.
-    function pickRange(indices: var, add: bool): void {
-        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.visible[i].name);
-        root.picked = add ? [...new Set([...root.picked, ...names])] : names;
-    }
-
-    function pickAll(): void {
-        root.picked = root.visible.map(e => e.name);
-    }
-
-    function clearPicked(): void {
-        root.picked = [];
-    }
-
-    function join(dir: string, name: string): string {
-        return dir === "/" ? `/${name}` : `${dir}/${name}`;
-    }
-
-    function parentOf(path: string): string {
-        if (path === "/")
-            return "/";
-        const cut = path.lastIndexOf("/");
-        return cut <= 0 ? "/" : path.slice(0, cut);
-    }
-
-    // The path as its parts, for a breadcrumb. Root is a crumb of its own, so
-    // there is always something to press to get all the way out.
-    readonly property var crumbs: {
-        const parts = root.cwd.split("/").filter(p => p.length > 0);
-        const out = [{name: "/", path: "/"}];
-        let path = "";
-        for (const part of parts) {
-            path += `/${part}`;
-            out.push({name: part, path: path});
-        }
-        return out;
-    }
-
-    function refresh(): void {
-        lister.running = false;
-        lister.command = [root.helper("bs-ls"), root.cwd];
-        lister.running = true;
-    }
-
-    onCwdChanged: {
-        root.cursor = -1;
-        root.anchor = -1;
-        root.picked = [];
-        root.search = "";
-        root.searching = false;
-        root.refresh();
-    }
-
-    Process {
-        id: lister
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                root.loading = false;
-                try {
-                    const answer = JSON.parse(text);
-                    // A LISTING FOR SOMEWHERE ELSE IS THROWN AWAY. Two `cd`s in
-                    // quick succession start two of these, and the slower one
-                    // finishing last would repaint the grid with the previous
-                    // directory's contents under the new directory's name.
-                    if (answer.path !== root.cwd)
-                        return;
-                    root.error = answer.ok ? "" : answer.error;
-                    root.entries = answer.ok ? answer.entries : [];
-
-                    // A RE-LIST MUST NOT MOVE THE CURSOR. This runs after every
-                    // command the terminal ran, and a cursor that jumped back to
-                    // the first row each time would make the grid unusable while
-                    // anything was happening in the shell. Only a listing that
-                    // has nowhere to put the cursor moves it.
-                    root.picked = root.picked.filter(n => root.visible.some(e => e.name === n));
-                    if (root.cursor < 0 || root.cursor >= root.visible.length)
-                        root.cursor = root.visible.length > 0 ? 0 : -1;
-                } catch (e) {
-                    root.error = "unreadable listing";
-                    root.entries = [];
-                }
-            }
-        }
-
-        onRunningChanged: if (running)
-            root.loading = true
-    }
 
     // WHETHER THE HELPERS ARE THERE AT ALL. They are build output and are not
     // committed (see .gitignore), so the first run after a clone has none, and
@@ -592,11 +527,20 @@ Singleton {
     // again, which puts the browser back where the shell really is.
     property string expecting: ""
 
+    // WHICH pane asked. With one shell and several panes, a directory report
+    // belongs to the pane whose `cd` produced it, not to whichever one happens
+    // to have the keyboard when the answer arrives.
+    property var expectingPane: null
+
     Timer {
         id: expiry
 
         interval: 1500
-        onTriggered: root.expecting = ""
+
+        onTriggered: {
+            root.expecting = "";
+            root.expectingPane = null;
+        }
     }
 
     function ensureTerminal(): void {
@@ -706,14 +650,24 @@ Singleton {
         onTriggered: root.refresh()
     }
 
-    function cd(path: string): void {
+    // MOVE A PANE, which means moving the shell that pane is showing.
+    //
+    // The pane is passed in rather than assumed to be the focused one: a pane
+    // can be told to go somewhere while another has the keyboard - a drop onto a
+    // sidebar place, a `cd` reported by a shell, a linked pane following its
+    // twin - and "the active pane" would be the wrong answer for all three.
+    function cd(path: string, which: var): void {
+        const target = which ?? root.pane;
+        if (!target)
+            return;
+
         // BUSY MEANS THE BROWSER GOES ON ITS OWN. Navigating should never be
         // refused because something is running in the panel below, and the one
         // place `cwd` may be written by the interface is when there is nobody to
         // ask. The shell is told where we went as soon as it is listening again.
         if (pty.running && root.shellBusy) {
             root.desynced = true;
-            root.cwd = path;
+            target.cwd = path;
             return;
         }
 
@@ -724,14 +678,15 @@ Singleton {
             // its terminal has been opened once, which is a strange thing to
             // explain to somebody who never wanted the terminal.
             root.pending = path;
-            root.cwd = path;
+            target.cwd = path;
             return;
         }
 
         // OPTIMISTIC: the grid moves now, the shell follows. See `expecting`.
         root.expecting = path;
+        root.expectingPane = target;
         expiry.restart();
-        root.cwd = path;
+        target.cwd = path;
         root.run(`cd ${root.quote(path)}`);
     }
 
@@ -813,6 +768,7 @@ Singleton {
             if (root.expecting) {
                 if (path === root.expecting) {
                     root.expecting = "";
+                    root.expectingPane = null;
                     expiry.stop();
                 }
                 return;
@@ -836,11 +792,11 @@ Singleton {
                 }
             }
 
-            // The shell has moved. This is the ONLY writer of `cwd` once the
-            // session is up, which is what keeps the two halves of the window
-            // from ever disagreeing.
-            if (path !== root.cwd)
-                root.cwd = path;
+            // The shell has moved, so the pane it is showing moves with it. This
+            // is the ONLY writer of a pane's `cwd` once the session is up, which
+            // is what keeps the two halves of the window from ever disagreeing.
+            if (root.pane && path !== root.pane.cwd)
+                root.pane.cwd = path;
             return;
         }
 
@@ -955,47 +911,6 @@ Singleton {
         opener.exec(["xdg-open", path]);
     }
 
-    // ------------------------------------------------------------ navigation
-
-    property var back: []
-    property var forward: []
-
-    function go(path: string): void {
-        if (path === root.cwd)
-            return;
-        root.back = [...root.back, root.cwd];
-        root.forward = [];
-        root.cd(path);
-    }
-
-    function goBack(): void {
-        if (root.back.length === 0)
-            return;
-        const to = root.back[root.back.length - 1];
-        root.back = root.back.slice(0, -1);
-        root.forward = [root.cwd, ...root.forward];
-        root.cd(to);
-    }
-
-    function goForward(): void {
-        if (root.forward.length === 0)
-            return;
-        const to = root.forward[0];
-        root.forward = root.forward.slice(1);
-        root.back = [...root.back, root.cwd];
-        root.cd(to);
-    }
-
-    function open(entry: var): void {
-        if (!entry)
-            return;
-        const path = root.join(root.cwd, entry.name);
-        if (entry.kind === "dir")
-            root.go(path);
-        else
-            opener.exec(["xdg-open", path]);
-    }
-
     Process {
         id: opener
     }
@@ -1004,7 +919,7 @@ Singleton {
 
     function show(path: string): void {
         if (path)
-            root.cd(path);
+            root.cd(path, root.pane);
         root.windowOpen = true;
     }
 
@@ -1085,7 +1000,12 @@ Singleton {
         }
     }
 
-    Component.onCompleted: root.installRules()
+    Component.onCompleted: {
+        // ONE PANE TO START WITH. Everything below reads `root.pane`, so the
+        // window must never be in a state where there is not one.
+        root.addPane(root.home);
+        root.installRules();
+    }
 
     // WHAT A CHORD DOES. One place, because the keymap is data and every panel
     // routes through here rather than each having its own opinion.

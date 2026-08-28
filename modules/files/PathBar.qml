@@ -298,26 +298,26 @@ Item {
             renderType: Text.NativeRendering
 
             text: Files.search
-            onTextChanged: Files.search = text
+            onTextChanged: Files.setSearch(text)
 
             // Both ways out land on the grid, and differ in what they leave
             // behind: Return keeps the filter and hands the keys back, Escape
             // takes the filter off as well.
             Keys.onReturnPressed: {
-                Files.searching = false;
+                Files.setSearching(false);
                 Files.focus = "grid";
             }
 
             Keys.onEscapePressed: {
-                Files.search = "";
-                Files.searching = false;
+                Files.setSearch("");
+                Files.setSearching(false);
                 Files.focus = "grid";
             }
         }
 
         TapHandler {
             onTapped: {
-                Files.searching = true;
+                Files.setSearching(true);
                 Files.focus = "grid";
             }
         }

@@ -27,10 +27,10 @@ ShellRoot {
         implicitHeight: Appearance.sizes.filesHeight
 
         Component.onCompleted: {
-            const where = Quickshell.env("FILES_PREVIEW");
-            if (where)
-                Files.cwd = where;
-            Files.windowOpen = true;
+            // Through show() rather than by assigning `cwd`, which is a
+            // delegating read now: a pane owns the directory and the service
+            // forwards to whichever pane has the keyboard.
+            Files.show(Quickshell.env("FILES_PREVIEW") ?? "");
         }
 
         FilesFace {
