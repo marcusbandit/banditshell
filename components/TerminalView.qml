@@ -143,6 +143,70 @@ Item {
         opacity: 0.55
     }
 
+    // WHICH CELL A POINT IS IN. Everything the mouse does is in cells; the
+    // pixels stop here.
+    function cellAt(x: real, y: real): var {
+        return {
+            col: Math.max(0, Math.min(root.cols - 1, Math.floor(x / Math.max(1, root.cellWidth)))),
+            row: Math.max(0, Math.min(root.rows - 1, Math.floor(y / Math.max(1, root.cellHeight))))
+        };
+    }
+
+    function mods(modifiers: int): var {
+        return {
+            shift: (modifiers & Qt.ShiftModifier) !== 0,
+            alt: (modifiers & Qt.AltModifier) !== 0,
+            ctrl: (modifiers & Qt.ControlModifier) !== 0
+        };
+    }
+
+    function buttonOf(button: int): int {
+        if (button === Qt.RightButton)
+            return 2;
+        if (button === Qt.MiddleButton)
+            return 1;
+        return 0;
+    }
+
+    // THE MOUSE, WHEN THE APPLICATION HAS ASKED FOR IT.
+    //
+    // Enabled only while a mouse mode is on, so a terminal showing a prompt does
+    // not swallow presses that belong to the window around it - and so text
+    // selection, when it exists, is not fighting an area that took the press
+    // first.
+    MouseArea {
+        anchors.fill: parent
+        enabled: root.term && root.term.mouse !== 0
+        visible: enabled
+        acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
+        hoverEnabled: root.term && root.term.mouse === 1003
+
+        onPressed: mouse => {
+            const at = root.cellAt(mouse.x, mouse.y);
+            root.send(root.term.mouseSequence(root.buttonOf(mouse.button), at.col, at.row, true, root.mods(mouse.modifiers), false));
+        }
+
+        onReleased: mouse => {
+            const at = root.cellAt(mouse.x, mouse.y);
+            root.send(root.term.mouseSequence(root.buttonOf(mouse.button), at.col, at.row, false, root.mods(mouse.modifiers), false));
+        }
+
+        onPositionChanged: mouse => {
+            const at = root.cellAt(mouse.x, mouse.y);
+            // A motion report every pixel is a report per pixel; the application
+            // wants to know it entered a new CELL, and nothing finer exists as
+            // far as it is concerned.
+            if (at.col === root.lastCol && at.row === root.lastRow)
+                return;
+            root.lastCol = at.col;
+            root.lastRow = at.row;
+            root.send(root.term.mouseSequence(mouse.buttons === Qt.NoButton ? -1 : root.buttonOf(mouse.buttons), at.col, at.row, true, root.mods(mouse.modifiers), true));
+        }
+    }
+
+    property int lastCol: -1
+    property int lastRow: -1
+
     // Scrolling is by WHOLE ROWS, not by pixels, because a terminal is a grid
     // and half a row of it is not a thing you can look at. This is the one list
     // in the shell that does not glide (components/GlideList.qml): the content
@@ -155,8 +219,40 @@ Item {
         onWheel: event => {
             if (!root.term)
                 return;
-            const step = event.pixelDelta.y !== 0 ? event.pixelDelta.y / root.cellHeight : event.angleDelta.y / 40;
-            root.scrollOffset = Math.max(0, Math.min(root.term.scrollback.length, root.scrollOffset + Math.round(step)));
+
+            const notches = event.pixelDelta.y !== 0 ? event.pixelDelta.y / root.cellHeight : event.angleDelta.y / 40;
+            const step = Math.round(notches);
+            if (step === 0)
+                return;
+
+            // THREE ANSWERS, and picking the wrong one is why a wheel in a
+            // terminal so often does nothing useful.
+            //
+            // An application that asked for the mouse gets the wheel as a mouse
+            // button, which is what makes htop and tmux scroll.
+            if (root.term.mouse) {
+                const at = root.cellAt(event.x, event.y);
+                for (let i = 0; i < Math.abs(step); i++)
+                    root.send(root.term.wheelSequence(step > 0, at.col, at.row, root.mods(event.modifiers)));
+                return;
+            }
+
+            // An application on the ALT SCREEN did not ask, but it is also not
+            // showing history: there is nothing behind it to scroll back to. So
+            // the wheel becomes arrow keys, which is the convention that makes
+            // less, man and a pager built into anything scroll at all. Without
+            // this the wheel moved OUR scrollback, which on the alt screen is
+            // the shell's history from before the application started - the one
+            // thing that is certainly not what was meant.
+            if (root.term.altActive) {
+                const key = step > 0 ? "up" : "down";
+                for (let i = 0; i < Math.abs(step) * 3; i++)
+                    root.send(Vt.keySequence(key, false, false, false, root.term.appCursor));
+                return;
+            }
+
+            // And an ordinary prompt scrolls the history, which is ours.
+            root.scrollOffset = Math.max(0, Math.min(root.term.scrollback.length, root.scrollOffset + step));
         }
     }
 

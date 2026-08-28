@@ -604,6 +604,90 @@ test.describe("vt: resize", () => {
     });
 });
 
+test.describe("vt: the DEC special graphics set", () => {
+    test.it("draws a box out of ordinary letters", () => {
+        const t = term(20, 3);
+        t.write("\x1b(0lqqqk\x1b(B plain");
+        assert.strictEqual(rows(t)[0], "\u250c\u2500\u2500\u2500\u2510 plain");
+    });
+
+    test.it("keeps two slots and switches between them with SO and SI", () => {
+        const t = term(20, 3);
+        // G0 is graphics, G1 is left as ASCII: SO selects G1, SI comes back.
+        t.write("\x1b(0\x0eq\x0fq");
+        assert.strictEqual(rows(t)[0], "q\u2500");
+    });
+
+    test.it("puts the translated character in the cell, not just on the screen", () => {
+        const t = term(20, 3);
+        t.write("\x1b(0q");
+        // A search or a copy over the grid should find the box character.
+        assert.strictEqual(t.screen.lines[0][0].c, "\u2500");
+    });
+
+    test.it("forgets the designation on a reset", () => {
+        const t = term(20, 3);
+        t.write("\x1b(0q\x1bcq");
+        assert.strictEqual(rows(t)[0], "q");
+    });
+});
+
+test.describe("vt: the mouse", () => {
+    test.it("says nothing at all until an application asks", () => {
+        const t = term(80, 24);
+        assert.strictEqual(t.mouseSequence(0, 4, 2, true, {}, false), "");
+    });
+
+    test.it("reports a press and a release apart under SGR", () => {
+        const t = term(80, 24);
+        t.write("\x1b[?1000h\x1b[?1006h");
+        assert.strictEqual(t.mouseSequence(0, 4, 2, true, {}, false), "\x1b[<0;5;3M");
+        assert.strictEqual(t.mouseSequence(0, 4, 2, false, {}, false), "\x1b[<0;5;3m");
+    });
+
+    test.it("adds the modifiers the way xterm does", () => {
+        const t = term(80, 24);
+        t.write("\x1b[?1000h\x1b[?1006h");
+        // right button 2, plus ctrl 16
+        assert.strictEqual(t.mouseSequence(2, 10, 5, true, {ctrl: true}, false), "\x1b[<18;11;6M");
+        // shift 4 plus alt 8
+        assert.strictEqual(t.mouseSequence(0, 0, 0, true, {shift: true, alt: true}, false), "\x1b[<12;1;1M");
+    });
+
+    test.it("holds back motion the mode did not ask for", () => {
+        const press = term(80, 24);
+        press.write("\x1b[?1000h\x1b[?1006h");
+        assert.strictEqual(press.mouseSequence(0, 4, 2, true, {}, true), "");
+
+        const drag = term(80, 24);
+        drag.write("\x1b[?1002h\x1b[?1006h");
+        assert.strictEqual(drag.mouseSequence(0, 4, 2, true, {}, true), "\x1b[<32;5;3M");
+        // 1002 is drag only: no button means no report
+        assert.strictEqual(drag.mouseSequence(-1, 4, 2, true, {}, true), "");
+
+        const any = term(80, 24);
+        any.write("\x1b[?1003h\x1b[?1006h");
+        assert.strictEqual(any.mouseSequence(-1, 4, 2, true, {}, true), "\x1b[<35;5;3M");
+    });
+
+    test.it("sends a wheel notch as a button and never as a release", () => {
+        const t = term(80, 24);
+        t.write("\x1b[?1000h\x1b[?1006h");
+        assert.strictEqual(t.wheelSequence(true, 4, 2, {}), "\x1b[<64;5;3M");
+        assert.strictEqual(t.wheelSequence(false, 4, 2, {}), "\x1b[<65;5;3M");
+    });
+
+    test.it("falls back to the old three-byte encoding, and drops what it cannot express", () => {
+        const t = term(300, 24);
+        t.write("\x1b[?1002h");
+        assert.strictEqual(t.mouseSequence(0, 4, 2, true, {}, false), "\x1b[M" + String.fromCharCode(32, 37, 35));
+        // a release cannot say which button it was
+        assert.strictEqual(t.mouseSequence(2, 4, 2, false, {}, false), "\x1b[M" + String.fromCharCode(35, 37, 35));
+        // and a column past 223 cannot be expressed, so it is not guessed at
+        assert.strictEqual(t.mouseSequence(0, 250, 2, true, {}, false), "");
+    });
+});
+
 test.describe("vt: the answers an application waits for", () => {
     test.it("answers DA with a VT100 with advanced video", () => {
         const t = term();

@@ -56,6 +56,24 @@ function charWidth(cp) {
     return 1;
 }
 
+// THE DEC SPECIAL GRAPHICS SET, which is how a terminal drew boxes before
+// anybody could rely on UTF-8 and how ncurses still draws them when it is told
+// to. An application switches into it with ESC ( 0 and then sends ordinary
+// letters: `lqk` is the top of a box, not three letters.
+//
+// Ignoring it does not look like a missing feature, it looks like the
+// application is broken - `man` and anything built on ACS draw their frames as
+// strings of q's and x's.
+var DEC_GRAPHICS = {
+    0x5f: " ", 0x60: "\u25c6", 0x61: "\u2592", 0x62: "\u2409", 0x63: "\u240c",
+    0x64: "\u240d", 0x65: "\u240a", 0x66: "\u00b0", 0x67: "\u00b1", 0x68: "\u2424",
+    0x69: "\u240b", 0x6a: "\u2518", 0x6b: "\u2510", 0x6c: "\u250c", 0x6d: "\u2514",
+    0x6e: "\u253c", 0x6f: "\u23ba", 0x70: "\u23bb", 0x71: "\u2500", 0x72: "\u23bc",
+    0x73: "\u23bd", 0x74: "\u251c", 0x75: "\u2524", 0x76: "\u2534", 0x77: "\u252c",
+    0x78: "\u2502", 0x79: "\u2264", 0x7a: "\u2265", 0x7b: "\u03c0", 0x7c: "\u2260",
+    0x7d: "\u00a3", 0x7e: "\u00b7"
+};
+
 function blankCell() {
     return {c: " ", f: null, b: null, a: 0, w: 1};
 }
@@ -136,6 +154,13 @@ function Terminal(cols, rows, opts) {
     this.tabs = {};
     for (var t = 8; t < this.cols; t += 8)
         this.tabs[t] = true;
+
+    // WHICH CHARACTER SET EACH SLOT HOLDS, and which slot is live. Two slots
+    // because an application designates them separately and then switches
+    // between them with SI and SO, which is how it draws a box inside otherwise
+    // ordinary text without redesignating anything.
+    this.charsets = ["B", "B"];
+    this.charset = 0;
 
     this.state = "ground";
     this.params = [];
@@ -357,6 +382,21 @@ function rgbReply(hex) {
     return "rgb:" + pair(m[1]) + "/" + pair(m[2]) + "/" + pair(m[3]);
 }
 
+// Two hex colours, blended. The parser deals in hex strings by the time
+// anything needs mixing, so this takes them rather than components.
+function mixHex(a, b, t) {
+    var pa = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(a);
+    var pb = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/i.exec(b);
+    if (!pa || !pb)
+        return a;
+    var lerp = function (i) {
+        var x = parseInt(pa[i], 16);
+        var y = parseInt(pb[i], 16);
+        return hex2(x + (y - x) * t);
+    };
+    return "#" + lerp(1) + lerp(2) + lerp(3);
+}
+
 function hex2(n) {
     var s = Math.max(0, Math.min(255, Math.round(n))).toString(16);
     return s.length < 2 ? "0" + s : s;
@@ -417,6 +457,17 @@ Terminal.prototype.renderLine = function (row) {
             fg = fg === null ? null : this.colour(fg);
             bg = bg === null ? null : this.colour(bg);
         }
+
+        // DIM IS A COLOUR, not a font weight, and it was being dropped: SGR 2
+        // was parsed, stored on the cell and then never read. Applications use
+        // it constantly for secondary text - a prompt's path, a diff's context,
+        // half of git's output - so losing it flattens exactly the hierarchy the
+        // application was drawing.
+        //
+        // Mixed toward the background rather than made grey, so it dims the
+        // colour it was rather than replacing it.
+        if (a & DIM)
+            fg = mixHex(fg === null ? this.foreground : fg, bg === null ? this.background : bg, 0.45);
 
         if (bg !== null)
             runs.push({x: i, len: j - i, colour: bg});
@@ -511,6 +562,7 @@ Terminal.prototype.byte = function (b) {
     }
 
     if (this.state === "charset") {
+        this.charsets[this.charsetSlot || 0] = String.fromCharCode(b);
         this.state = "ground";
         return;
     }
@@ -533,6 +585,12 @@ Terminal.prototype.control = function (b) {
     switch (b) {
     case 0x07: // BEL. Nothing rings; a file browser that beeped would be a
                // file browser you turned off.
+        break;
+    case 0x0e: // SO: the other slot becomes live.
+        this.charset = 1;
+        break;
+    case 0x0f: // SI: back to the first.
+        this.charset = 0;
         break;
     case 0x08:
         if (s.pending)
@@ -604,6 +662,15 @@ Terminal.prototype.text = function (b) {
         cp = 0xfffd;
     }
 
+    // Translated HERE rather than at render time, because what the cell holds
+    // should be the character that was meant: a search, a copy or a width
+    // calculation over the grid all want the box character, not the `q` that
+    // stood for it.
+    if (this.charsets[this.charset] === "0" && DEC_GRAPHICS[cp]) {
+        this.put(DEC_GRAPHICS[cp], 1);
+        return;
+    }
+
     var ch = cp > 0xffff
         ? String.fromCharCode(0xd800 + (cp - 0x10000 >> 10), 0xdc00 + (cp - 0x10000 & 0x3ff))
         : String.fromCharCode(cp);
@@ -627,9 +694,11 @@ Terminal.prototype.escape = function (b) {
         this.stringBuf = "";
         return;
     }
-    // Charset designators take one more byte, which is not a command.
+    // Charset designators take one more byte, which names the set rather than
+    // being a command. Which SLOT is being designated is this character.
     if (c === "(" || c === ")" || c === "*" || c === "+") {
         this.state = "charset";
+        this.charsetSlot = c === "(" ? 0 : 1;
         return;
     }
 
@@ -1040,6 +1109,8 @@ Terminal.prototype.reset = function () {
     this.cursorVisible = true;
     this.appCursor = false;
     this.autowrap = true;
+    this.charsets = ["B", "B"];
+    this.charset = 0;
     this.touch();
 };
 
@@ -1058,6 +1129,66 @@ Terminal.prototype.cursorRow = function (offset) {
 function create(cols, rows, opts) {
     return new Terminal(cols, rows, opts);
 }
+
+// ---------------------------------------------------------------- the mouse
+
+// THE POINTER, AS THE APPLICATION EXPECTS IT.
+//
+// Every mode below was already parsed and stored and NOTHING was ever sent, so
+// clicking inside htop, vim, less or tmux did nothing at all. That is most of
+// what "the terminal is bad" means in practice: it looks like a terminal and
+// then does not answer the mouse.
+//
+// The modes differ only in WHEN they report, which is why they are one function:
+//   1000  presses and releases
+//   1002  those, plus motion while a button is down
+//   1003  those, plus motion with no button at all
+//
+// And two encodings. The old one packs everything into three bytes offset by 32,
+// which breaks silently past column 223 - a real limit on a wide window. SGR
+// (1006) is decimal, unbounded and says press and release apart properly, so
+// everything modern asks for it; the old one stays for whatever does not.
+Terminal.prototype.mouseSequence = function (button, col, row, pressed, mods, motion) {
+    if (!this.mouse)
+        return "";
+    if (motion && this.mouse === 1000)
+        return "";
+    if (motion && this.mouse === 1002 && button < 0)
+        return "";
+
+    var code = button < 0 ? 3 : button;
+    if (mods) {
+        if (mods.shift)
+            code += 4;
+        if (mods.alt)
+            code += 8;
+        if (mods.ctrl)
+            code += 16;
+    }
+    if (motion)
+        code += 32;
+
+    var x = Math.max(1, Math.min(this.cols, col + 1));
+    var y = Math.max(1, Math.min(this.rows, row + 1));
+
+    if (this.mouseSgr)
+        return "\x1b[<" + code + ";" + x + ";" + y + (pressed ? "M" : "m");
+
+    // The old encoding has no way to say WHICH button was released, so a release
+    // is always button 3, and a coordinate past 223 cannot be expressed at all -
+    // sending a wrapped one would put the click somewhere else, so it is dropped.
+    if (x > 223 || y > 223)
+        return "";
+    var legacy = pressed ? code : 3;
+    return "\x1b[M" + String.fromCharCode(32 + legacy, 32 + x, 32 + y);
+};
+
+// A wheel notch. Buttons 64 and 65, and never a release: a wheel has no up.
+Terminal.prototype.wheelSequence = function (up, col, row, mods) {
+    if (!this.mouse)
+        return "";
+    return this.mouseSequence(up ? 64 : 65, col, row, true, mods, false);
+};
 
 // ---------------------------------------------------------------- the keyboard
 
