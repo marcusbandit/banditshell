@@ -282,9 +282,18 @@ Terminal.prototype.resize = function (cols, rows) {
         }
         while (s.lines.length < rows)
             s.lines.push(blankRow(cols));
-        // GROWING PULLS HISTORY BACK DOWN, on the ordinary screen. A window
-        // made taller should show more of what was there, not more blank rows
-        // under it, which is what appending alone does.
+        // GROWING APPENDS BLANK ROWS, and cannot do the nicer thing.
+        //
+        // A window made taller ought to show more of what was there rather than
+        // more empty space under it - every terminal you have used does that.
+        // This one cannot, and the reason is a trade made deliberately further
+        // up: the scrollback holds RENDERED LINES, not cells, because keeping
+        // half a million live cell objects to represent history costs far more
+        // than the strings do. A rendered line cannot be put back into a live
+        // screen that is made of cells.
+        //
+        // Shrinking is not symmetric and does work: a row leaving the screen is
+        // being rendered anyway.
         while (s.lines.length > rows) {
             if (s === this.main && this.scrollbackMax > 0 && s.y < s.lines.length - 1)
                 this.scrollback.push(this.renderLine(s.lines.shift()));
@@ -1077,7 +1086,6 @@ var FUNCTION_TILDE = {f5: 15, f6: 17, f7: 18, f8: 19, f9: 20, f10: 21, f11: 23, 
 
 function keySequence(name, shift, alt, ctrl, appCursor) {
     var mod = modCode(shift, alt, ctrl);
-    var esc = alt && mod === 3 ? "" : "";
 
     if (CURSOR_KEYS[name]) {
         var letter = CURSOR_KEYS[name];
@@ -1117,7 +1125,9 @@ function keySequence(name, shift, alt, ctrl, appCursor) {
         return ctrl ? "\x00" : " ";
     }
 
-    return esc;
+    // A key with no sequence of its own sends nothing. Alt is not special here:
+    // meta-sends-escape applies to CHARACTERS, which go through textSequence.
+    return "";
 }
 
 // A typed character, with whatever was held down while it was typed.

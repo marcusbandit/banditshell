@@ -85,6 +85,8 @@
 #                                the file browser, in its own window
 #   banditshell shaders          recompile every components/**/*.frag to .qsb
 #   banditshell build            compile src/*.c into bin/ (bs-pty, bs-ls)
+#   banditshell test             run tests/ against the plain-JavaScript parts
+#                                (the terminal, the base64 codec, the file marks)
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
 # docs/hyprland-binds.example.conf is a ready-made set to copy or source.
@@ -791,6 +793,23 @@ shaders)
         "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
         echo "${f#"$SHELL_DIR/"} -> ${f#"$SHELL_DIR/"}.qsb"
     done < <(find "$SHELL_DIR/components" -name '*.frag' | sort)
+    ;;
+
+test)
+    # The parts of the shell that are plain JavaScript are the parts a
+    # screenshot cannot check. A colour that resolves to the wrong hex, an
+    # erase that forgets its background, a character split across two reads of
+    # the pty: none of those throw, they just make the terminal quietly wrong,
+    # and the only evidence is a picture that looks a bit off. Node runs the
+    # same files with no Qt under them, which is the whole reason vt.js has no
+    # QML in it.
+    #
+    # A glob rather than the directory: node 26 reads `--test tests/` as a
+    # module to load and fails with "Cannot find module". Quoted so node does
+    # the expanding, since it is node's idea of a test file that decides.
+    command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+    cd "$SHELL_DIR" || exit 1
+    exec node --test 'tests/*.test.js' "$@"
     ;;
 
 demo)

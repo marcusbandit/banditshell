@@ -92,8 +92,7 @@ var FOLDERS = {
     backup: "save",
     backups: "save",
     games: "sports_esports",
-    projects: "work",
-    downloads: "download"
+    projects: "work"
 };
 
 // Individual files worth recognising on sight. Exact names, because these are
