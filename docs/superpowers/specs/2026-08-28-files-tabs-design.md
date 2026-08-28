@@ -37,9 +37,8 @@ a browser that ignores half of what you do to the thing it is showing you. The
 cost is reconciliation, and the rule that keeps it safe is the one this project
 already uses twice - act only on what is provably ours.
 
-*Not yet decided, and my call unless overruled:* closing a tmux window closes its
-browser tab, and closing a browser tab kills its tmux window. Mirroring that is
-only distressing if it is a surprise.
+Closing a tmux window closes its browser tab, and closing a browser tab kills its
+tmux window. Confirmed, not assumed.
 
 ### Splitting
 
@@ -87,6 +86,16 @@ reached, so the answer is settled before it matters.
 
 Adopted or created, the session is renamed to something we control.
 
+### When the session dies underneath us
+
+Killing a tmux window closes its browser tab; killing a pane closes its browser
+pane. Whatever tmux focuses next is what the browser follows, so the redirection
+handles itself.
+
+**Killing the whole session does not kill the browser.** It starts a fresh
+session and lands you in the home directory - the window is not a view of a
+particular shell, it is a file browser that has one.
+
 ### Ending it
 
 **Closing the browser kills the session, and everything in it.** No survival
@@ -117,16 +126,29 @@ Not `mv -i`. That prompt appears in the terminal panel, which may be shut, and
 a drop onto a folder with a same-named file wedges the shell invisibly with
 every later command queued behind it. This was a real bug, found by testing it.
 
-### Progress
+### Progress, and which tool does the work
 
-`cp` by default - it is what you would have typed and it belongs in the history.
-The panel says "working" while it runs.
+**Anything the GUI does uses rsync.** Not a threshold, not a prompt, not a
+measurement - a drag, a paste or a menu copy is always
+`rsync --info=progress2`, which means it always has a real percentage and always
+survives being interrupted. `cp` is what YOU type when you want `cp`; it is not
+what the interface reaches for.
 
-Over a threshold, the browser offers - without blocking - to switch to
-`rsync --info=progress2`, which reports a real percentage. Accepting stops the
-`cp` and restarts as rsync; declining leaves the `cp` running. The threshold is
-configured, and its default is derived from a one-off write-speed measurement on
-the machine rather than a number picked here.
+**With one exception, and it is not a preference.** A move inside one filesystem
+is a rename: the kernel changes one directory entry and no data is touched, which
+is why dragging a 40GB folder across your home directory is instant. rsync cannot
+do that - it would copy every byte and delete the original, turning an
+instantaneous operation into a twenty-minute one. So:
+
+- **Copy** - always rsync.
+- **Move, same filesystem** - `mv`. Instant, and there is no progress to report
+  because there is no work to do.
+- **Move, across filesystems** - rsync with `--remove-source-files`. A cross-device
+  move is a copy-and-delete however it is spelled, and there rsync's progress and
+  its resumability are worth having.
+
+Same-filesystem is decided by comparing the device id of the source and the
+destination, which the lister already has to hand.
 
 ### Undo
 
@@ -212,6 +234,24 @@ hand.
 
 ---
 
-*Decisions taken by me where they were delegated: the collision dialog's shape,
-the test runner, and the tab/window close mirroring. Everything else in here was
-answered directly.*
+## 9. The wire, so both halves can be built at once
+
+`src/bs-pty.c` grows three frames, and the QML is written against them rather
+than against a running helper:
+
+```
+out   t <base64>   the tmux session this pty is using, once it is settled
+      w <base64>   the window list, as "id\tname\tactive" lines, when it changes
+in    k            kill the session (used on close)
+```
+
+The adoption dance - is tmux running, is it empty, adopt or start our own,
+rename - happens inside the helper when the pty starts, and `t` is how the
+browser learns the answer. `w` is what makes the mapping two-way: the browser
+mirrors that list rather than polling tmux itself.
+
+---
+
+*Decisions taken by me where they were delegated: the collision dialog's shape
+and the test runner. The rsync exception for same-filesystem moves is mine and is
+a correction rather than a choice - say so if you would rather have it uniform.*
