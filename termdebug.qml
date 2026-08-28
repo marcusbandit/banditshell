@@ -40,7 +40,15 @@ ShellRoot {
             focused: true
 
             onSend: bytes => Files.send(bytes)
-            onResized: (cols, rows) => Files.resizeTerminal(cols, rows)
+            onResized: (cols, rows) => {
+                Files.resizeTerminal(cols, rows);
+                // WRITTEN DOWN so the comparison can open its kitty at exactly
+                // this grid. tmux sizes a session to its smallest client, so a
+                // mismatched second client changes the session itself and fills
+                // the difference with its own filler - which looks precisely
+                // like this emulator drawing dots it should not.
+                grid.exec(["sh", "-c", `printf '%dx%d' ${cols} ${rows} > /tmp/banditshell-termdebug.grid`]);
+            }
 
             Keys.onPressed: event => view.key(event)
             focus: true
@@ -62,5 +70,9 @@ ShellRoot {
 
     Process {
         id: stamp
+    }
+
+    Process {
+        id: grid
     }
 }

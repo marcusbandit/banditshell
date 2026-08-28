@@ -42,16 +42,32 @@ done
 SESSION=$(cat "$STAMP")
 echo "session: $SESSION"
 
-# A SECOND CLIENT, not a second session. Two clients on one session see the same
-# windows and tmux sizes to the smaller of them, which is exactly the shared
-# state the comparison needs.
+# A SECOND CLIENT, AND A SESSION THAT REFUSES TO RESIZE.
+#
+# tmux sizes a session to its SMALLEST client, so two windows of different
+# shapes do not merely look different - the larger one is shown tmux's filler
+# over the area the session does not cover, which reads exactly like this
+# emulator drawing dots it should not. It cost twenty minutes to work that out
+# the first time.
+#
+# So the session is pinned to a fixed grid and both clients draw the same
+# region. Whatever either has left over is filler on BOTH sides, which is
+# honest and comparable.
+GRID="${GRID:-100x30}"
+COLS=${GRID%x*}
+ROWS=${GRID#*x}
+
 if [ -n "$HERE" ]; then
-    hyprctl keyword windowrule "workspace 3 silent, match:class ^(kitty)$" >/dev/null 2>&1 || true
     ( nohup kitty --title banditshell-truth -e tmux attach -t "$SESSION" >/dev/null 2>&1 & )
 else
     ( WAYLAND_DISPLAY=$(cat /tmp/banditshell-testbed.display) \
         nohup kitty --title banditshell-truth -e tmux attach -t "$SESSION" >/dev/null 2>&1 & )
 fi
+
+sleep 4
+tmux set-option -t "$SESSION" window-size manual 2>/dev/null || true
+tmux resize-window -t "$SESSION" -x "$COLS" -y "$ROWS" 2>/dev/null || true
+echo "session pinned to ${COLS}x${ROWS}"
 
 sleep 4
 [ -n "$HERE" ] || "$DIR/scripts/testbed.sh" shot "${SHOT:-/tmp/termcompare.png}"

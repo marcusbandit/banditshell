@@ -466,8 +466,12 @@ Terminal.prototype.renderLine = function (row) {
         //
         // Mixed toward the background rather than made grey, so it dims the
         // colour it was rather than replacing it.
+        // A THIRD OF THE WAY, not nearly half. Compared side by side against a
+        // real terminal on the same session, 0.45 made tmux's status segments
+        // unreadable where kitty's were merely quieter - dim is meant to
+        // de-emphasise text, not retire it.
         if (a & DIM)
-            fg = mixHex(fg === null ? this.foreground : fg, bg === null ? this.background : bg, 0.45);
+            fg = mixHex(fg === null ? this.foreground : fg, bg === null ? this.background : bg, 0.3);
 
         if (bg !== null)
             runs.push({x: i, len: j - i, colour: bg});
