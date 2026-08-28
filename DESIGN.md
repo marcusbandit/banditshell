@@ -603,6 +603,11 @@ banditshell/
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 ├── scripts/
+│   ├── testbed.sh               A COMPOSITOR TO TEST IN: headless sway on its
+│   │                            own display, so opening a window to check
+│   │                            something never lands on the desktop somebody
+│   │                            is using. grim shoots that display, wtype types
+│   │                            into it, swaymsg moves its pointer
 │   ├── palette.py               a wallpaper's dominant colours
 │   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
 │   │                            that needs an ioctl, so it needs a process.
@@ -772,6 +777,7 @@ banditshell filespreview [dir]     the browser in a plain window; no timeout, be
                                    a terminal you cannot type into is not a terminal
 banditshell shaders                recompile components/blob/*.frag
 banditshell build                  compile src/*.c into bin/ (bs-pty, bs-ls)
+banditshell test                   node --test over tests/*.test.js
 ```
 
 A CLI open is always a **pinned** open. Nobody driving a terminal has a pointer resting on
