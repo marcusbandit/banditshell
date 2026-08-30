@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Services.Pipewire
+import qs.config
 
 // PipeWire, adapted.
 //
@@ -237,6 +238,131 @@ Singleton {
             Pipewire.preferredDefaultAudioSource = node;
     }
 
+    // SPEAKERS AND HEADPHONES, which is the one thing about a sink that
+    // PipeWire cannot be asked.
+    //
+    // A node knows its bus, its profile and what the driver calls it, and none
+    // of that answers which box you listen through and which one goes on your
+    // head. Reading `device.icon_name` harder does not help: the machine this
+    // was written on has an onboard chip that describes its speaker output as a
+    // headphone jack and an interface that describes its headphone amp as a
+    // line output, so the two devices claim each other's names. It is a
+    // SETTING, one node name each in config/Config.qml's `audio` block, and
+    // what is left for this file is resolving those names and saying plainly
+    // when it cannot.
+
+    // The names as configured, passed through rather than hidden behind the
+    // nodes below, because "" is an answer a null node cannot give. A role that
+    // resolves to nothing is EITHER unassigned OR assigned to something that is
+    // not plugged in, and a keybind, a CLI and a settings row all want
+    // different words for those two. The name is what tells them apart.
+    readonly property string speakersName: Config.values.audio.speakers ?? ""
+    readonly property string headphonesName: Config.values.audio.headphones ?? ""
+
+    // The sink of that name, or null when it is not here.
+    //
+    // Searched over `sinks`, which is also what makes the tracker at the bottom
+    // of this file enough for the two roles: anything this can hand back was
+    // already in the list that tracker binds, so a resolved role reports real
+    // numbers rather than the zeroes an untracked node reads as.
+    function sinkByName(name: string): PwNode {
+        if (!name)
+            return null;
+        return root.sinks.find(n => n.name === name) ?? null;
+    }
+
+    readonly property PwNode speakers: root.sinkByName(root.speakersName)
+    readonly property PwNode headphones: root.sinkByName(root.headphonesName)
+
+    // BOTH ROLES ON ONE SINK, which earns its own answer because it is the
+    // failure that looks like success. The toggle works: it sets the default to
+    // the device already playing and reports the role it landed on, so nothing
+    // anywhere says no and the only symptom is a key that has quietly stopped
+    // moving the sound. Two presses on the same device in the settings page is
+    // all it takes to get here.
+    readonly property bool rolesCollide: !!root.speakersName && root.speakersName === root.headphonesName
+
+    // WHICH OF THE TWO IS PLAYING, compared BY NAME.
+    //
+    // Object identity is the wrong question even where it happens to work.
+    // `Pipewire.defaultAudioSink` and the node found in `sinks` are one object
+    // today, and comparing them would still be asking whether PipeWire handed
+    // out one wrapper or two for one device rather than whether this is the
+    // device that was configured. The name is what was written down and what is
+    // being matched, so the name is what to compare.
+    //
+    // "" is a real place to be standing rather than an error: HDMI is a sink
+    // like any other and nothing stops the default from being on it.
+    readonly property string outputRole: {
+        const now = root.sink?.name ?? "";
+        if (!now)
+            return "";
+        if (now === root.speakersName)
+            return "speakers";
+        if (now === root.headphonesName)
+            return "headphones";
+        return "";
+    }
+
+    function roleName(role: string): string {
+        return role === "speakers" ? root.speakersName : role === "headphones" ? root.headphonesName : "";
+    }
+
+    // Through the properties above rather than through another lookup, so a
+    // role resolves to the same object the bindings are watching.
+    function roleNode(role: string): PwNode {
+        return role === "speakers" ? root.speakers : role === "headphones" ? root.headphones : null;
+    }
+
+    // WHY A ROLE CANNOT BE SWITCHED TO, or "" when it can.
+    //
+    // Three failures, and they are three different things to go and do: assign
+    // the device, plug it in, or fix the spelling. A setter that returned only
+    // false would leave the CLI and the settings page each guessing which of
+    // the three had happened, and they would guess differently.
+    function roleProblem(role: string): string {
+        if (role !== "speakers" && role !== "headphones")
+            return "no such role, expected speakers or headphones";
+        if (!root.roleName(role))
+            return "not assigned";
+        if (!root.roleNode(role))
+            return "assigned, but not connected right now";
+        return "";
+    }
+
+    // Go there, and say where you landed. "" means it did not move, and
+    // `roleProblem` has the sentence for why.
+    function setOutputRole(role: string): string {
+        const node = root.roleNode(role);
+        if (!node)
+            return "";
+        root.setSink(node);
+        return role;
+    }
+
+    // THE KEY'S VERB: whichever one you are not on.
+    //
+    // Standing on NEITHER is the case worth thinking about, and doing nothing
+    // there would be wrong. A key pressed while the sound is on HDMI is a key
+    // asking to bring it back, and the speakers are the answer that is right on
+    // every machine that has any, so that is the home it heads for. Only when
+    // the speakers are not to be had does it take the headphones instead:
+    // landing somewhere audible beats refusing over a role nobody named.
+    //
+    // Standing on one of the two, a refusal is the whole answer. Falling back
+    // to the role already playing is not a toggle, it is a key that reports
+    // having done something it did not do.
+    function toggleOutput(): string {
+        if (root.rolesCollide)
+            return "";
+
+        const other = root.outputRole === "speakers" ? "headphones" : "speakers";
+        const landed = root.setOutputRole(other);
+        if (landed || root.outputRole)
+            return landed;
+        return root.setOutputRole(other === "speakers" ? "headphones" : "speakers");
+    }
+
     function icon(v: real, isMuted: bool): string {
         if (isMuted)
             return "no_sound";
@@ -249,6 +375,10 @@ Singleton {
 
     // Nothing reports until it is tracked, and an untracked node reads 0 rather
     // than failing, so a forgotten stream looks like an app sitting at silence.
+    //
+    // The two roles need no entry of their own: `sinkByName` only ever returns
+    // something it found in `sinks`, so the spread below already covers
+    // whatever `speakers` and `headphones` resolve to.
     PwObjectTracker {
         objects: [root.sink, root.source, ...root.sinks, ...root.sources, ...root.streams]
     }

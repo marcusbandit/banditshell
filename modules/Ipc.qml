@@ -1025,6 +1025,128 @@ Scope {
         }
     }
 
+    // The reply every verb of the output target gives: the role, AND the device
+    // that role currently means.
+    //
+    // Shared so a role reached by a key and the same role named on a command
+    // line come back in exactly the same words. "headphones" on its own is the
+    // CLI repeating what it was asked rather than saying what happened; the
+    // label after it is the part that shows the shell and the hardware agree
+    // about which box the sound just moved to.
+    function roleLine(role: string): string {
+        const node = Audio.roleNode(role);
+        return node ? `${role} (${Audio.deviceLabel(node)})` : role;
+    }
+
+    // Named-role switching, for `speakers` and `headphones`, which are one verb
+    // called twice rather than two verbs.
+    function goRole(role: string): string {
+        const landed = Audio.setOutputRole(role);
+        return landed ? root.roleLine(landed) : `cannot switch to ${role}: ${Audio.roleProblem(role)}`;
+    }
+
+    // THE OUTPUT, as one key.
+    //
+    // Speakers or headphones is the audio question a keyboard actually gets
+    // asked, and the one the volume keys cannot answer: they can turn the sound
+    // down, not move it. Which sink each name means is a setting, because no
+    // two machines have the same cards in them (config/Config.qml's `audio`
+    // block), so this target is both the switch and the way to wire the switch
+    // up: `list` prints the names, `assign` writes one, `toggle` is the verb to
+    // bind.
+    //
+    // Nothing here draws anything, and nothing needs to. Moving the default
+    // sink changes Audio.volume for the new device, and the volume rail's
+    // linger restarts on any change to it whoever made it, so the switch shows
+    // itself on screen the same way a wheel notch does.
+    IpcHandler {
+        target: "output"
+
+        function toggle(): string {
+            const landed = Audio.toggleOutput();
+            if (landed)
+                return root.roleLine(landed);
+            if (Audio.rolesCollide)
+                return "speakers and headphones name the same device, so there is nowhere to toggle to";
+            // Standing on one of the two, only the OTHER one refused and it is
+            // the only one worth a sentence. Standing on neither, both refused,
+            // and both reasons print: the fix is a different sentence for each,
+            // and a key that reported one of them would send you to plug in a
+            // device that was never the problem.
+            if (Audio.outputRole) {
+                const other = Audio.outputRole === "speakers" ? "headphones" : "speakers";
+                return `cannot switch to ${other}: ${Audio.roleProblem(other)}`;
+            }
+            return `cannot switch: speakers ${Audio.roleProblem("speakers")}; headphones ${Audio.roleProblem("headphones")}`;
+        }
+
+        // Where you asked for, regardless of where you are. The same argument
+        // `volume mute on|off` makes one target up: a toggle is only a switch
+        // when you can see the state it started from, and a script cannot.
+        function speakers(): string {
+            return root.goRole("speakers");
+        }
+
+        function headphones(): string {
+            return root.goRole("headphones");
+        }
+
+        // Which role is playing, and what both of them resolve to right now.
+        //
+        // Both, always, including the one you are on, because the question this
+        // gets asked is "why did the key do nothing" and the answer is nearly
+        // always on the line for the role you are NOT standing on: a name that
+        // was never set, or a device that is set and asleep in a drawer.
+        function status(): string {
+            const say = role => {
+                const name = Audio.roleName(role);
+                if (!name)
+                    return "not assigned";
+                const node = Audio.roleNode(role);
+                return node ? `${Audio.deviceLabel(node)} · ${name}` : `${name} · not connected`;
+            };
+
+            const on = Audio.outputRole || (Audio.sink ? `neither, playing through ${Audio.deviceLabel(Audio.sink)}` : "no output device");
+            const lines = [`playing     ${on}`, `speakers    ${say("speakers")}`, `headphones  ${say("headphones")}`];
+            if (Audio.rolesCollide)
+                lines.push("both roles name one device, so the toggle cannot move the sound");
+            return lines.join("\n");
+        }
+
+        // NAME FIRST, because the name is the string you copy into `assign` and
+        // a list that led with the label would make you hunt for it. What each
+        // one is doing is in brackets after it, since the reason to run this is
+        // usually to find out why a role resolved to nothing.
+        function list(): string {
+            if (!Audio.sinks.length)
+                return "no output devices";
+            return Audio.sinks.map(n => {
+                const marks = [n.name === Audio.sink?.name ? "playing" : "", n.name === Audio.speakersName ? "speakers" : "", n.name === Audio.headphonesName ? "headphones" : ""].filter(m => m);
+                return `${n.name}  ${Audio.deviceLabel(n)}${marks.length ? ` [${marks.join(", ")}]` : ""}`;
+            }).join("\n");
+        }
+
+        // Write the setting. An empty name unassigns, which is the one edit the
+        // settings page and this verb both have to be able to make: a role
+        // pointing at a device that is gone for good is worse than a role
+        // pointing at nothing, because only one of the two says so.
+        //
+        // A NAME THAT MATCHES NO SINK IS STILL WRITTEN, and still reported. It
+        // is how you assign a device that is unplugged this minute, and
+        // refusing it would mean the headphones can only be set up while they
+        // are on. The reply is where a typo shows: the name comes back with a
+        // note that nothing here answers to it.
+        function assign(role: string, name: string): string {
+            if (role !== "speakers" && role !== "headphones")
+                return `assign takes speakers or headphones, not: ${role}`;
+            Config.set(`audio.${role}`, name);
+            if (!name)
+                return `${role} unassigned`;
+            const node = Audio.sinkByName(name);
+            return node ? `${role} = ${Audio.deviceLabel(node)} (${name})` : `${role} = ${name}, which is not a sink that is here right now`;
+        }
+    }
+
     // THE WALLPAPER. Every verb here is a write to config.json that `set` could
     // already make, and that is exactly why the target exists: a keybind cannot
     // read a value before writing it, so "the other one" and "the opposite of

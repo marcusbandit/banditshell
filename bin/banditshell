@@ -55,6 +55,11 @@
 #   banditshell zone list|find <text>|add <place>|remove <place>
 #                                a place is an IANA id, or enough of one to name only itself
 #   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
+#   banditshell output toggle|speakers|headphones|status|list|assign <role> <name>
+#                                the speakers/headphones switch, as one key. Which
+#                                sink each name means is a setting, because no two
+#                                machines have the same cards: `list` prints the
+#                                names on this one and `assign` writes one
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
 #                                falls back to grim/slurp when the shell cannot
@@ -575,6 +580,25 @@ volume)
     mute) ipc volume mute "${1:-}" ;;
     status) ipc volume status ;;
     *) echo "usage: banditshell volume up|down [n]|set <pct>|mute [on|off]|status" >&2; exit 2 ;;
+    esac
+    ;;
+
+# Where the sound comes out, as opposed to how loud it is. `toggle` is the one
+# to bind: it goes to whichever of the two you are not on, and to the speakers
+# when you are on neither. Spelled out rather than passed through the way
+# session's is, because `assign` takes two arguments and has to be able to say
+# which of them it did not understand.
+output)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    toggle | speakers | headphones | status | list) ipc output "$sub" ;;
+    assign)
+        [ $# -ge 1 ] || { echo "usage: banditshell output assign <role> <name>" >&2; exit 2; }
+        # An empty name is a real argument: it unassigns the role.
+        ipc output assign "$1" "${2:-}"
+        ;;
+    *) echo "usage: banditshell output toggle|speakers|headphones|status|list|assign <role> <name>" >&2; exit 2 ;;
     esac
     ;;
 

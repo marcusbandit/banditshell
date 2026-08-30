@@ -909,6 +909,34 @@ Singleton {
                 trackWidth: 288
             },
 
+            // WHICH SINK IS "THE SPEAKERS" AND WHICH IS "THE HEADPHONES".
+            //
+            // Not part of the volume block below it, which is a meter on the
+            // right edge: this is about hardware, and two machines that agree
+            // on every pixel of that rail still have entirely different sound
+            // cards in them.
+            //
+            // A NODE NAME, NOT A POSITION IN THE SINK LIST. That list is
+            // whatever PipeWire enumerated this boot, so it grows when a dock
+            // comes back and reorders when an interface takes a moment longer
+            // to appear than the onboard chip, and "the second one" is a
+            // different device on Tuesday. `node.name` is the string PipeWire
+            // builds out of the bus, the vendor and the profile; it is the same
+            // string every boot for as long as the hardware is the same
+            // hardware. `banditshell output list` prints the ones on this
+            // machine, and `banditshell output assign` writes them here.
+            //
+            // EMPTY IS UNASSIGNED, and empty is what the repo ships, because
+            // there is no sink name that means anything on a machine this file
+            // has never seen. Guessing would be worse than nothing: on a box
+            // with one sound card it happens to be right, and on every other
+            // one it silently moves the audio somewhere nobody is listening.
+            // The toggle says the role is unset instead.
+            audio: {
+                speakers: "",
+                headphones: ""
+            },
+
             // The right edge, as a volume rail.
             volume: {
                 // What one notch of the wheel is worth. The same five points the
