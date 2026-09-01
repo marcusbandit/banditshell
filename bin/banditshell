@@ -300,12 +300,12 @@ penmap | pen)
     sub="${1:-status}"
     shift || true
     case "$sub" in
-    open | commit | cancel | aspect | status) ipc penmap "$sub" ;;
+    open | commit | cancel | aspect | follow | status) ipc penmap "$sub" ;;
     set)
         [ $# -eq 4 ] || { echo "usage: banditshell penmap set <x> <y> <w> <h>" >&2; exit 2; }
         ipc penmap set "$1" "$2" "$3" "$4"
         ;;
-    *) echo "usage: banditshell penmap open|commit|cancel|aspect|status|set <x> <y> <w> <h>" >&2; exit 2 ;;
+    *) echo "usage: banditshell penmap open|commit|cancel|aspect|follow|status|set <x> <y> <w> <h>" >&2; exit 2 ;;
     esac
     ;;
 
@@ -752,10 +752,18 @@ wallpaper)
         # relative path typed at a terminal is relative to the terminal, and the
         # shell would take it as relative to its own working directory and load
         # nothing at all, silently, which looks exactly like a broken wallpaper.
-        # readlink -m rather than -f: it does not require the file to exist, and
-        # refusing a path here would be this script second-guessing a shell that
-        # already knows what it can decode.
-        ipc wallpaper set "$(readlink -m -- "$1")" "${2:-}"
+        #
+        # `-s` SO THE NAME YOU TYPED IS THE NAME THAT ARRIVES. A collection is
+        # very often a symlink into a dotfiles repo, and canonicalising here put
+        # `~/dotfiles/wallpapers/.config/wallpapers/32x9/leaves.jpg` into
+        # config.json for somebody who had said `~/.config/wallpapers`: where
+        # that link lands is the repo's business, and the shell was told where
+        # the pictures are. services/Wallpaper.qml lists the folder by the same
+        # rule and tells two names for one file apart by inode instead.
+        #
+        # `-m` so the file need not exist: refusing a path here would be this
+        # script second-guessing a shell that already knows what it can decode.
+        ipc wallpaper set "$(realpath -s -m -- "$1")" "${2:-}"
         ;;
     *) echo "usage: banditshell wallpaper toggle|on|off|status|palette|list [screen]|next [screen]|prev [screen]|set <path> [screen|all]|clear [screen|all]" >&2; exit 2 ;;
     esac

@@ -20,11 +20,23 @@ import qs.config
 // right one, then it wants the middle third of the ultrawide, and editing a Lua
 // file and reloading the compositor is not a thing anybody does mid-stroke.
 //
-// SO THE TABLET REMAPS ITSELF, FROM ITSELF. Hold a pad button, an outline
-// appears over the region, push it around with the pen, let go. The hand never
-// leaves the tablet and the keyboard is never touched, which is the whole point:
-// reaching for a mouse to fix where the pen points is the exact interruption the
-// feature removes.
+// SO THE TABLET REMAPS ITSELF, FROM ITSELF. Press a pad button, an outline
+// appears over the region, push it around with the pen, press the same button
+// again and it is applied. The hand never leaves the tablet and the keyboard is
+// never touched, which is the whole point: reaching for a mouse to fix where the
+// pen points is the exact interruption the feature removes.
+//
+// A TOGGLE RATHER THAN A HOLD, and that is a correction rather than a
+// preference. Held was the obvious shape and it works on a pad whose contacts
+// are clean. This one's are not: BTN_0 chatters, and a contact that lets go for
+// six milliseconds in the middle of a drag reads as a release, which under a
+// hold meant the mapping was committed halfway through a move with the pen
+// still down and the hand still going. So the button now only ever means "the
+// other thing": press to open, press to apply. The release edge carries nothing
+// at all, which removes the event a bad contact was inventing. What chatter can
+// still invent is a second PRESS, and that is what the debounce in padLine is
+// for; it is the one piece of this file that exists because of the hardware
+// rather than because of the geometry.
 //
 // THIS FILE OWNS THE RECTANGLE, and nothing else does. modules/pen/ draws an
 // outline and reports where the pen dragged it to; every question about whether
@@ -96,13 +108,19 @@ Singleton {
     // is the one thing this service exists to make impossible.
     // ------------------------------------------------------------------
 
-    // IS THE EDITOR UP. True between the pad button going down and it coming
-    // back up, which is also exactly the window in which the tablet is unbound
-    // and the region on screen is provisional.
+    // IS THE EDITOR UP. True between the press that opened it and the press
+    // that applies it, which is also exactly the window in which the tablet is
+    // unbound and the region on screen is provisional.
     readonly property bool active: root.editing
 
     // IS THE REGION SHAPE-LOCKED to the tablet's own aspect.
     readonly property bool aspectLocked: root.locked
+
+    // IS THE SECOND PRESS GOING TO TAKE A WINDOW rather than the rectangle the
+    // pen has been pushing around. Persisted beside the shape lock, because it
+    // is the same kind of answer: a standing decision about how the editor
+    // behaves rather than a fact about any one gesture.
+    readonly property bool followWindow: root.following
 
     // THE TABLET'S OWN ASPECT, width over height, from the surface millimetres
     // in the config. The units cancel, so what is in the config file can be
@@ -140,6 +158,21 @@ Singleton {
     // rounding happens once, on the way out.
     readonly property rect region: root.mapping
 
+    // THE WINDOW UNDER THE PEN, in the same GLOBAL layout coordinates `region`
+    // is in, and an EMPTY rect when there is not one.
+    //
+    // EMPTY IS THE ORDINARY ANSWER rather than a failure, and it is worth
+    // saying because a caller only has to handle the one case: the editor is
+    // shut, the mode is off, the pen is over bare desktop, or the compositor
+    // has not answered yet. All four mean there is nothing to draw and nothing
+    // a press would take, so all four look the same from out here.
+    readonly property rect hoveredWindow: root.hovered
+
+    // SOMETHING SHORT TO PUT ON THAT HIGHLIGHT, so a rectangle covering most of
+    // a screen says which window it is instead of leaving somebody to work it
+    // out from its edges. Empty exactly when `hoveredWindow` is.
+    readonly property string hoveredWindowName: root.hoveredName
+
     // IS THE PAD ACTUALLY THERE. The tablet is Bluetooth, so absent is the
     // normal weather rather than an error: it goes when the tablet sleeps, when
     // the machine suspends, and when the battery runs out.
@@ -155,7 +188,7 @@ Singleton {
     // it cannot even follow its own outline out to the edge of the one it is
     // on. Every gesture would be a feedback loop where moving the target moves
     // the reach. Pointed at the entire layout the pen addresses every monitor,
-    // one to one, for exactly as long as the button is held.
+    // one to one, for exactly as long as the editor is open.
     function begin(): void {
         if (root.editing)
             return;
@@ -186,16 +219,64 @@ Singleton {
         // time it takes to press a button and start moving a hand, and until it
         // does the previous answer is used, which is right nearly always.
         root.scanMonitors();
+
+        // AND THE WINDOWS ARE READ, but only in the mode that is going to point
+        // at one.
+        //
+        // FRESH, AND NOT FROM services/Hypr.qml, which keeps a client list and
+        // whose own comment says why it cannot answer this: `lastIpcObject` is
+        // filled by an IPC round trip that only happens when the compositor
+        // announces something, and a window resized by hand announces nothing.
+        // A stale rectangle in that file is a readout a few pixels out. A stale
+        // rectangle in this one is the tablet snapped to where a window used to
+        // be, which is a mapping nobody asked for with nothing on screen to say
+        // it happened.
+        //
+        // ONCE PER OPEN, AND NOT ON A TIMER. Windows do not move while somebody
+        // is holding a pen still over one, and what happens between this press
+        // and the next is a person aiming. A poll would spend a process several
+        // times a second re-answering a question whose answer is not changing.
+        //
+        // AND ONLY WHEN THE MODE IS ON, so a machine that never uses it never
+        // spawns the process at all. Switching the mode on mid-edit asks for the
+        // read itself; see toggleFollowWindow.
+        root.forgetWindows();
+        if (root.following)
+            root.scanClients();
+
+        // AND ANY GRACE LEFT OVER FROM A DISCONNECT IS CALLED OFF, because it
+        // was counting down against an edit that is over. An edit opened while
+        // the pad is absent gets no grace of its own: the pad is not what
+        // opened it, so the pad is not what has to be able to close it.
+        padLost.stop();
     }
 
-    // APPLY IT FOR REAL, and remember it. The pad button coming back up.
+    // APPLY IT FOR REAL, and remember it. The same pad button pressed a second
+    // time, or `banditshell penmap commit`.
     function commit(): void {
         if (!root.editing)
             return;
 
+        // THE SECOND PRESS TAKES THE WINDOW, and that is the whole of what
+        // Follow Window changes. Everything below this line runs exactly as it
+        // does in the ordinary mode; the only difference is which rectangle it
+        // is running on.
+        //
+        // WITH NOTHING UNDER THE PEN IT DOES NOTHING, deliberately, and the
+        // check is for a rectangle with area rather than for the mode being on.
+        // The pen can perfectly well be over bare desktop, over a screen with
+        // nothing open on it, or over a window the compositor had not told us
+        // about yet, and the honest answer in all of those is that no window was
+        // chosen. Committing to an empty rectangle instead would take the
+        // mapping away entirely, and the way back from that is another gesture
+        // made with a pen that no longer points anywhere useful.
+        if (root.following && root.hovered.width > 0 && root.hovered.height > 0)
+            root.snapToWindow(root.hovered);
+
         root.editing = false;
         root.applyRegion();
         root.save();
+        root.forgetWindows();
     }
 
     // PUT IT BACK. Nothing was chosen, so nothing is changed, but the tablet is
@@ -216,9 +297,16 @@ Singleton {
         }
 
         // `mapped` is NOT restored, for the reason begin() gives: ownership of
-        // the mapping is not something this file can hand back.
+        // the mapping is not something this file can hand back. Neither is
+        // `following`, and that one is a choice rather than an impossibility.
+        // The shape lock comes back because it is part of the definition of the
+        // rectangle being put back; Follow Window is not part of any rectangle,
+        // it is a standing decision about what the next press will mean, and an
+        // edit ending badly is no reason to have changed somebody's mind about
+        // that.
         root.applyRegion();
         root.save();
+        root.forgetWindows();
     }
 
     // SHAPE LOCK ON OR OFF, from the pad button or from the pill in the
@@ -240,6 +328,81 @@ Singleton {
                 root.applyRegion();
             root.save();
         }
+    }
+
+    // FOLLOW WINDOW ON OR OFF, from the control in the overlay.
+    //
+    // Written down at once when it is pressed outside an edit and left to the
+    // commit or the cancel when it is pressed inside one, which is toggleAspect's
+    // rule and is here for the same reason: inside a gesture it is part of that
+    // gesture, and the end of the gesture is what settles everything at once.
+    // There is nothing to push to the compositor either way, because this
+    // changes what a press MEANS and never where the tablet currently points.
+    function toggleFollowWindow(): void {
+        root.following = !root.following;
+
+        if (!root.following) {
+            // SWITCHED OFF, SO THERE IS NOTHING TO POINT AT. Dropping the
+            // snapshot here rather than leaving it to the end of the edit is
+            // what makes the highlight go out on the same press that turned the
+            // mode off, instead of one motion later.
+            root.forgetWindows();
+            if (!root.editing)
+                root.save();
+            return;
+        }
+
+        // SWITCHED ON WHILE THE EDITOR IS ALREADY OPEN is the case that has to
+        // be said out loud, because begin() is where the snapshot normally comes
+        // from and an edit that started with the mode off never took one. So the
+        // read is asked for here too. It lands a few milliseconds later, the
+        // candidate list is rebuilt from it, and the pen position this file has
+        // been remembering since the editor opened is tested against it without
+        // the hand having to move at all.
+        if (root.editing)
+            root.scanClients();
+        else
+            root.save();
+    }
+
+    // WHERE THE PEN IS, in global layout coordinates, published by the overlay
+    // on every motion.
+    //
+    // THE OVERLAY IS THE ONLY THING THAT CAN SAY. Hyprland forwards the stylus
+    // to surfaces as ordinary pointer input, so a MouseArea sees it; nothing in
+    // here does, and asking the compositor where the cursor is would mean a
+    // process several times a second for as long as the editor is open. That
+    // trade is the reason this mode is not click-through, and the reason it does
+    // not need to be: the selection is made with the PAD button and never with
+    // the pen tip, so nothing underneath the overlay ever has to be clicked.
+    //
+    // REMEMBERED WHETHER OR NOT THE MODE IS ON, which is the small thing that
+    // makes switching it on mid-edit feel instant rather than needing a nudge of
+    // the hand first. The hit test itself is gated in refreshHover, so an editor
+    // in the ordinary mode does the storing and none of the work.
+    //
+    // AND CHEAP, because this runs on every pen event and a tablet reports a
+    // few hundred a second. The hit test is one pass over a list that is usually
+    // under a dozen entries, and setHover below refuses to republish a rectangle
+    // that has not changed, which is what keeps the overlay's bindings from
+    // re-running several hundred times a second to draw the same highlight.
+    function setPointer(gx: real, gy: real): void {
+        // THE EDITOR IS THE ONLY TIME THIS MEANS ANYTHING. Outside one the
+        // tablet is bound to its region, the overlay is not on screen, and there
+        // is no pen position for this file to have an opinion about.
+        if (!root.editing)
+            return;
+
+        // The same refusal proposeRegion makes, for the same reason: a NaN here
+        // would compare false against every edge and quietly turn the hit test
+        // into one that never hits anything.
+        if (!isFinite(gx) || !isFinite(gy))
+            return;
+
+        root.pointerX = gx;
+        root.pointerY = gy;
+        root.pointerKnown = true;
+        root.refreshHover();
     }
 
     // WHERE THE OVERLAY WOULD LIKE THE REGION TO BE, in global layout
@@ -350,6 +513,16 @@ Singleton {
     // round they land, an answer read off disk has broken the binding by the
     // time the config could re-evaluate it.
     property bool locked: Config.values.pen.aspectLock
+
+    // FOLLOW WINDOW, off until somebody says otherwise and then remembered.
+    //
+    // NOT BOUND TO A CONFIG KEY, unlike the lock above, and the asymmetry is
+    // deliberate. The shape lock is a statement about this desk that is true
+    // before anybody has touched anything, so it has a default worth shipping.
+    // This is a mode somebody switches on for a minute to grab a window and
+    // switches off again, and a config key for it would only be a way for a
+    // machine to start up in a state nobody chose.
+    property bool following: false
 
     property bool padAlive: false
 
@@ -701,11 +874,33 @@ Singleton {
 
             next.push({
                 name: m.name,
+                // THE COMPOSITOR'S OWN NUMBER FOR IT, which is the only handle
+                // a CLIENT gives on which screen it belongs to: a window says
+                // `monitor: 0` and never says HDMI-A-1. Kept alongside the name
+                // rather than instead of it, because ids are handed out in plug
+                // order and are renumbered by unplugging a neighbour, which is
+                // exactly why `home` is a name and this is not.
+                id: typeof m.id === "number" ? m.id : -1,
                 x: Number(m.x) || 0,
                 y: Number(m.y) || 0,
                 w: w,
                 h: h,
-                focused: m.focused === true
+                focused: m.focused === true,
+                // WHAT THIS SCREEN IS SHOWING RIGHT NOW, which is the only way
+                // to tell a window that is on screen from one that is merely
+                // open. A workspace is visible when a monitor says it is on it,
+                // and a scratchpad is visible only while a monitor has it pulled
+                // over; both read zero when there is none. They cost nothing,
+                // because they arrive in an answer this file is already asking
+                // for, which is why the window hit test does not go and ask a
+                // second time.
+                //
+                // AND THEY ARE DELIBERATELY LEFT OUT OF `layoutSeen` below.
+                // Changing workspace is not the desk moving, so it must not
+                // count as a layout change and must not drag a re-push of the
+                // mapping along behind it.
+                ws: Number(m.activeWorkspace?.id) || 0,
+                special: Number(m.specialWorkspace?.id) || 0
             });
         }
 
@@ -764,6 +959,384 @@ Singleton {
     }
 
     // ------------------------------------------------------------------
+    // The windows, and which one the pen is over.
+    // ------------------------------------------------------------------
+
+    // WHAT FOLLOW WINDOW IS: a different meaning for the second press, and
+    // nothing else at all.
+    //
+    // The gesture is untouched. The pad button opens the editor and unbinds the
+    // tablet to the whole layout, which is the part that makes pointing at any
+    // window on any screen possible in the first place; the pen moves; the pad
+    // button closes it. The only thing that changes is which rectangle the
+    // closing press takes, the one that was dragged or the one belonging to the
+    // window the pen was on.
+    //
+    // A SNAP AND NOT A BINDING. The region takes the window's shape at the
+    // instant of the press and from then on has nothing to do with that window:
+    // it does not follow it when it is moved and it does not notice when it is
+    // closed. A mapping that chased a window would be a pen whose reach changed
+    // under the hand every time something was dragged, which is the same
+    // feedback loop begin() unbinds the tablet to escape.
+    //
+    // AND IT IS NOT CLICK-THROUGH, which is worth writing down because
+    // click-through is what was asked for. An overlay with an empty input region
+    // does let the pen reach what is underneath, and it also stops the overlay
+    // hearing the pen, so the only way left to know what to highlight would be
+    // to ask the compositor where the cursor is several times a second. Since
+    // the selection is made with the PAD button and never with the pen tip,
+    // nothing underneath ever has to be clicked, so the input region stays and
+    // the poll never has to exist. The pen still cannot press what is under the
+    // overlay while the editor is open, and no part of this pretends otherwise.
+
+    // THE CLIENT LIST AS THE COMPOSITOR LAST PRINTED IT, raw and unfiltered,
+    // taken once per open by begin(). Emptied the moment the editor closes,
+    // because a list of where windows were several minutes ago is precisely the
+    // thing this mode must never be allowed to point at.
+    property var snapshot: []
+
+    // WHERE THE PEN WAS LAST HEARD FROM, global, and whether it has said yet.
+    // Plain properties rather than anything cleverer: nothing binds to them, so
+    // the change signal they emit a few hundred times a second reaches nobody.
+    property real pointerX: 0
+    property real pointerY: 0
+    property bool pointerKnown: false
+
+    // The rect and the label behind hoveredWindow and hoveredWindowName. A rect
+    // that was never assigned is 0x0 at the origin, which is the empty this
+    // whole path uses to mean "no window", so there is nothing to initialise.
+    property rect hovered
+    property string hoveredName: ""
+
+    // THE WINDOWS AS THE HIT TEST NEEDS THEM, derived rather than stored,
+    // because it takes two answers that arrive separately and in either order.
+    // The client list says where each window is and which screen it is on; the
+    // monitor list says which workspaces are actually being shown and where the
+    // edges of those screens are. Written out by whichever of the two landed
+    // last, the list would be a scan behind whenever the other one won the race;
+    // recomputed from both, it is right as soon as both are in and stays right
+    // when either changes underneath it.
+    readonly property var candidates: root.buildCandidates(root.snapshot, root.monitors)
+
+    // AND THE PEN IS RE-ASKED whenever that list is rebuilt, because the hand is
+    // usually holding still at exactly this moment. The press that opened the
+    // editor is barely over, the compositor's answer is the thing everybody is
+    // waiting for, and a highlight that waited for the next motion would leave a
+    // pen already aimed at the right window looking like it was aimed at
+    // nothing.
+    onCandidatesChanged: root.refreshHover()
+
+    // WHICH RECTANGLES ARE REALLY ON SCREEN, out of everything the compositor is
+    // holding, and where each of them sits in the stack.
+    //
+    // THE COORDINATES NEED NO CONVERSION, which is the first thing to be sure of
+    // and the easiest to be quietly wrong about. Hyprland reports a client's
+    // `at` and `size` in GLOBAL LAYOUT coordinates, the same frame `region` is
+    // kept in, already through that monitor's transform and scale. On this desk
+    // that is checkable rather than a matter of faith, in two independent ways.
+    // The ultrawide's origin is (1200,240) and its windows report x values above
+    // 1200, so the frame is not monitor-relative. DP-1 is at transform 1, a
+    // quarter turn, so its 1920x1200 mode occupies a 1200x1920 footprint, and
+    // the window on it reports 1104x1876, which is the turned shape and not the
+    // mode. Either of those would read the other way round if a conversion were
+    // owed here. What is NOT verified, because this desk cannot exercise it, is
+    // a fractional monitor scale under an XWayland window; both screens here are
+    // at scale 1, where the question does not arise.
+    //
+    // ONLY WHAT IS BEING SHOWN. A window lives on a workspace and a workspace is
+    // only on screen while a monitor says it is on it, so the test is against
+    // the set of workspaces the monitors report, plus whatever special workspace
+    // each one currently has pulled over. A scratchpad nobody has pulled out is
+    // a window with a perfectly good rectangle that nobody can see, and on this
+    // machine every one of them sits exactly on top of the windows that ARE
+    // visible, so leaving them in would mean aiming at a terminal and being
+    // handed Discord.
+    //
+    // AND `visible` IS NOT THAT TEST, though the field is right there in the
+    // JSON and reads as though it were. Hyprland 0.56 prints `visible: true` for
+    // every client including the ones on closed special workspaces, so it is
+    // answering some other question than the one it appears to answer. The
+    // workspace comparison is done here instead, out of numbers whose meaning is
+    // not in doubt.
+    //
+    // CLIPPED TO ITS OWN SCREEN, which is not a nicety on this desk. The layout
+    // is a scrolling one, so a window on the active workspace routinely sits
+    // half or entirely outside the monitor showing it and the compositor draws
+    // only the part that lands there. Untrimmed, a terminal scrolled off the
+    // left of the ultrawide reaches right across the portrait screen beside it,
+    // and pointing at bare desktop over there would light it up. A window
+    // trimmed to nothing has been scrolled away completely and is dropped.
+    //
+    // The trim also settles a question proposeRegion would otherwise get wrong.
+    // That function decides which monitor a rectangle belongs to by where its
+    // CENTRE falls, and the centre of a window hanging off one screen is easily
+    // on the next one, so an untrimmed rectangle handed to it could re-home the
+    // mapping to a screen the window is not even on. settle() nudges a saved
+    // rectangle inside its named monitor before proposing it for exactly this
+    // reason; this is the same move for the same reason.
+    function buildCandidates(raw: var, mons: var): var {
+        const out = [];
+        if (!Array.isArray(raw) || !Array.isArray(mons))
+            return out;
+
+        // NO SCREENS MEANS NO CANDIDATES, and that is the safe way round. It
+        // happens for the few milliseconds before the first monitor scan lands,
+        // and the cost is a highlight that appears a frame late rather than one
+        // that appears over the wrong window; the binding above rebuilds this
+        // list the instant the scan arrives.
+        const byId = {};
+        const shown = {};
+        for (const m of mons) {
+            byId[m.id] = m;
+            if (m.ws)
+                shown[m.ws] = true;
+            if (m.special)
+                shown[m.special] = true;
+        }
+
+        for (let i = 0; i < raw.length; i++) {
+            const c = raw[i];
+            if (!c || c.mapped !== true || c.hidden === true)
+                continue;
+
+            const ws = Number(c.workspace?.id);
+            if (!isFinite(ws))
+                continue;
+
+            // A PINNED WINDOW IS ON WHATEVER YOU ARE LOOKING AT, which is the
+            // whole of what pinning means, so it is not asked which workspace it
+            // is on. If the compositor also reassigns its workspace as you
+            // switch, this line is a harmless no-op; if it does not, this line
+            // is the difference between a pinned window being pointable and not.
+            if (c.pinned !== true && shown[ws] !== true)
+                continue;
+
+            const at = c.at;
+            const size = c.size;
+            if (!Array.isArray(at) || !Array.isArray(size))
+                continue;
+
+            let x = Number(at[0]);
+            let y = Number(at[1]);
+            let w = Number(size[0]);
+            let h = Number(size[1]);
+            if (!isFinite(x) || !isFinite(y) || !(w > 0) || !(h > 0))
+                continue;
+
+            const mon = byId[Number(c.monitor)];
+            if (mon) {
+                const x0 = Math.max(x, mon.x);
+                const y0 = Math.max(y, mon.y);
+                const x1 = Math.min(x + w, mon.x + mon.w);
+                const y1 = Math.min(y + h, mon.y + mon.h);
+                if (!(x1 > x0) || !(y1 > y0))
+                    continue;
+                x = x0;
+                y = y0;
+                w = x1 - x0;
+                h = y1 - y0;
+            }
+
+            // WHERE IT SITS IN THE STACK, which is what decides the winner when
+            // two rectangles both contain the pen.
+            //
+            // TWO QUESTIONS, AND THEY MULTIPLY RATHER THAN ADD. The first is
+            // which SURFACE the window is on: a special workspace is pulled over
+            // the whole of the ordinary one, so anything on it is above
+            // everything that is not, whatever either of them happens to be
+            // doing. The second is where in that surface it sits, which is the
+            // ladder below. Composing them as surface * rungs + rung reads the
+            // pair in the right order without either of them having a number
+            // written down beside it.
+            //
+            // THE LADDER IS A LIST so that a rung IS its position in the list.
+            // The last line that matches wins, which is what puts a float over
+            // the tiling and a pinned float over a plain one, and adding a rung
+            // means adding a line rather than renumbering the ones around it.
+            const above = [Number(c.fullscreen) > 0, c.floating === true, c.pinned === true];
+            let rung = 0;
+            for (let r = 0; r < above.length; r++)
+                if (above[r])
+                    rung = r + 1;
+
+            // SOMETHING SHORT TO CALL IT. The class rather than the title,
+            // because a title is whatever document happens to be open and can be
+            // a sentence long, while the class is what the thing IS and holds
+            // still while you aim at it. Application ids are reverse DNS by
+            // convention, so the last dotted segment of one is the word a person
+            // would actually say, qBittorrent rather than
+            // org.qbittorrent.qBittorrent, and a class with no dots in it is its
+            // own last segment, so kitty is left alone by the same line. The
+            // title is what is left for a window carrying no class at all.
+            const parts = String(c["class"] ?? "").split(".").filter(s => s.length > 0);
+
+            out.push({
+                x: x,
+                y: y,
+                w: w,
+                h: h,
+                // The list's own order is the tie-break inside a rung. Hyprland
+                // prints its window list in stacking order and raising a window
+                // moves it towards the end, so later is nearer the top; two
+                // floats overlapping is the case it decides.
+                order: i,
+                rank: (ws < 0 ? 1 : 0) * (above.length + 1) + rung,
+                name: parts.length ? parts[parts.length - 1] : String(c.title ?? "")
+            });
+        }
+
+        return out;
+    }
+
+    // THE TOPMOST ONE CONTAINING THE POINT, or null.
+    //
+    // Half-open on the right and the bottom, the way homeFor asks the same
+    // question of a monitor, so two rectangles that share an edge hand the pen
+    // to exactly one of them rather than to both or to neither.
+    //
+    // THE SHELL'S OWN SURFACES ARE NOT IN HERE AT ALL, and that is worth
+    // knowing rather than fixing. The bar, the wallpaper and this editor's own
+    // overlay are layer surfaces, and layer surfaces are not clients, so nothing
+    // in the snapshot can ever be one of them. Aiming at the bar therefore
+    // highlights the window BEHIND the bar, which is the only answer available
+    // and, since the press that chooses comes from the pad rather than from the
+    // pen tip, is also the useful one.
+    function windowAt(gx: real, gy: real): var {
+        let best = null;
+        for (const c of root.candidates) {
+            if (gx < c.x || gy < c.y || gx >= c.x + c.w || gy >= c.y + c.h)
+                continue;
+            if (!best || c.rank > best.rank || (c.rank === best.rank && c.order > best.order))
+                best = c;
+        }
+        return best;
+    }
+
+    // ASK AGAIN WITH WHAT WE ALREADY KNOW. Called from every pen motion and from
+    // every rebuild of the candidate list, so both of the things that can change
+    // the answer converge on one place rather than each carrying a copy of the
+    // rules.
+    //
+    // ONE PATH THROUGH IT, including the failures: an editor that is shut, a
+    // mode that is off, a pen that has not reported yet and a pen over bare
+    // desktop all fall out of the same expression as no window, which is what
+    // makes "empty means nothing to draw" true for every reason at once.
+    function refreshHover(): void {
+        const hit = root.editing && root.following && root.pointerKnown ? root.windowAt(root.pointerX, root.pointerY) : null;
+        root.setHover(hit ? Qt.rect(hit.x, hit.y, hit.w, hit.h) : Qt.rect(0, 0, 0, 0), hit ? hit.name : "");
+    }
+
+    // THE SAME RECTANGLE SAYS NOTHING. refreshHover runs on every pen event, a
+    // tablet reports a few hundred a second, and very nearly every one of them
+    // lands on the window the last one did. Assigning the same rectangle again
+    // would re-run every binding in the overlay that draws the highlight, a few
+    // hundred times a second, to arrive back at the picture already on screen.
+    // The comparison lives here, once, rather than in each of the readers.
+    function setHover(r: rect, name: string): void {
+        if (root.hoveredName === name && root.hovered.x === r.x && root.hovered.y === r.y && root.hovered.width === r.width && root.hovered.height === r.height)
+            return;
+
+        root.hovered = r;
+        root.hoveredName = name;
+    }
+
+    // THERE IS NOTHING TO POINT AT ANY MORE, which is what closing the editor
+    // and switching the mode off both amount to. The snapshot goes rather than
+    // being kept for next time, because the next edit reads a fresh one anyway
+    // and the only thing a kept one could do is be wrong later. The pen position
+    // goes with it so that the first frame of the next edit cannot briefly
+    // highlight whatever happens to be under where the pen was left last time.
+    function forgetWindows(): void {
+        root.snapshot = [];
+        root.pointerKnown = false;
+        root.refreshHover();
+    }
+
+    // THE WINDOW'S RECTANGLE, TAKEN AS THE REGION.
+    //
+    // SHRUNK TO THE TABLET'S SHAPE WHEN THE LOCK IS ON, and centred in the
+    // window rather than pinned to a corner of it. A window is not the tablet's
+    // shape, and stretching the pen to match one would hand back exactly the
+    // distortion this whole service exists to remove: aim at a wide browser
+    // window with the lock on and every circle drawn in it comes out an ellipse.
+    // So the largest tablet-shaped rectangle that fits INSIDE the window is what
+    // gets taken, and the leftover strip is split evenly on the two sides of
+    // whichever axis had it to spare.
+    //
+    // ONE NUMBER AGAIN, for proposeRegion's reason: locked, the region is a
+    // point on the ray (aspect*t, t), so the largest one that fits is whichever
+    // of the two axes runs out first. That is a min and not a branch on the
+    // window's shape. It also means the rectangle handed on below is already on
+    // the ray, so proposeRegion's projection is a no-op and the shape survives
+    // the trip unchanged.
+    //
+    // AND IT GOES THROUGH proposeRegion LIKE EVERYTHING ELSE, which is the
+    // point: a window can be smaller than the minimum region, and the clamp
+    // still has the last word on where a rectangle is allowed to sit. Nothing
+    // here is a second copy of those rules.
+    function snapToWindow(r: rect): void {
+        let x = r.x;
+        let y = r.y;
+        let w = r.width;
+        let h = r.height;
+
+        if (root.locked) {
+            const aspect = root.surfaceAspect;
+            const t = Math.min(w / aspect, h);
+            x += (w - t * aspect) / 2;
+            y += (h - t) / 2;
+            w = t * aspect;
+            h = t;
+        }
+
+        root.proposeRegion(x, y, w, h);
+    }
+
+    function scanClients(): void {
+        // ALREADY RUNNING IS ALREADY ANSWERED, which is why there is no queue
+        // here and there is one for the monitor scan. Every one of these reads
+        // asks the identical question and comes back with a list milliseconds
+        // old either way, so a second request while one is in flight has nothing
+        // to add to it. The monitor scan queues because the things that ask for
+        // one want a push afterwards, and the last one to ask has to get it.
+        if (winScan.running)
+            return;
+        winScan.running = true;
+    }
+
+    Process {
+        id: winScan
+
+        command: ["hyprctl", "-j", "clients"]
+
+        stdout: StdioCollector {
+            onStreamFinished: root.readClients(text)
+        }
+    }
+
+    function readClients(text: string): void {
+        let raw = [];
+        try {
+            raw = JSON.parse(text);
+        } catch (e) {
+            // hyprctl answers with nothing, or with half a document, while the
+            // compositor is starting or dying, which is the same tolerance
+            // readMonitors takes above.
+        }
+
+        // AND A BAD ANSWER AND AN EMPTY DESK END UP THE SAME WAY, on purpose.
+        // An empty monitor list is refused above because a machine genuinely has
+        // screens while this shell is drawing on them, so nothing there means
+        // the read failed. A machine genuinely can have no windows open, so
+        // nothing here is an answer, and both a real one and a failed parse land
+        // as no candidates, no highlight, and a press that commits the dragged
+        // rectangle. That is the mode quietly behaving as though it were off,
+        // which is the right way for this to fail: an editor that still does
+        // something ordinary rather than one that has broken.
+        root.snapshot = Array.isArray(raw) ? raw : [];
+    }
+
+    // ------------------------------------------------------------------
     // Remembering it.
     // ------------------------------------------------------------------
 
@@ -786,7 +1359,8 @@ Singleton {
     // rather than a second encoding of it.
     function save(): void {
         const out = {
-            aspectLocked: root.locked
+            aspectLocked: root.locked,
+            followWindow: root.following
         };
 
         const mon = root.mapped ? root.monitorNamed(root.home) : null;
@@ -811,6 +1385,17 @@ Singleton {
 
         if (typeof data.aspectLocked === "boolean")
             root.locked = data.aspectLocked;
+
+        // A FILE WRITTEN BEFORE THIS MODE EXISTED HAS NO SUCH KEY, and an older
+        // file is not a damaged one. So the question asked is what type the
+        // value has and never whether it is there, which is how every other
+        // field in here is read: a key that is missing leaves the default
+        // standing and says nothing about it. Warning would be worse than
+        // useless, because it would fire exactly once on every machine that had
+        // used the feature before today, and the correct response to it would be
+        // to do nothing.
+        if (typeof data.followWindow === "boolean")
+            root.following = data.followWindow;
 
         const name = typeof data.monitor === "string" ? data.monitor : "";
         const nums = [data.x, data.y, data.width, data.height].map(Number);
@@ -873,8 +1458,8 @@ Singleton {
             console.warn(`PenMap: the saved mapping is on "${s.monitor}", which is not connected; starting from the focused screen instead.`);
 
         // NOTHING SAVED, SO NOTHING PUSHED. The outline has somewhere sensible
-        // to appear the first time the button is held, and until it is held the
-        // compositor's own device block is the mapping and is untouched.
+        // to appear the first time the editor is opened, and until it is opened
+        // the compositor's own device block is the mapping and is untouched.
         root.defaultRegion();
     }
 
@@ -965,6 +1550,62 @@ Singleton {
         }
     }
 
+    // HOW LONG A CONTACT HAS TO BE QUIET before the next press off the same
+    // button is believed, in milliseconds.
+    //
+    // THE TWO THINGS BEING TOLD APART are switch bounce and a person pressing
+    // twice, and they are nowhere near each other. A contact bounces for
+    // single-digit milliseconds when it is healthy and for a few tens of them
+    // when it is worn, which is what this pad's BTN_0 is.
+    // The fastest a hand can press, release and press again on purpose is
+    // around a fifth of a second, which is roughly where every toolkit's
+    // double-click threshold sits for the same reason. The line therefore goes
+    // between them, and nearer the bounce than the hand.
+    //
+    // REJECTED, both ends: the 20 to 30ms a textbook switch debounce uses,
+    // because that is sized for a contact in good order and this one
+    // demonstrably is not, and the 400 to 500ms of a double-click window,
+    // because that is long enough to eat a real second press from somebody who
+    // already knew where they wanted the rectangle. 150 gives a worn contact an
+    // order of magnitude more settling time than a healthy one needs and is
+    // still over before a hand could deliberately ask again.
+    //
+    // AND THE TWO MISTAKES DO NOT COST THE SAME, which is what decides which
+    // way to err. Swallowing a real press costs one more press. Believing a
+    // bounce opens the editor and commits it in the same millisecond, which is
+    // the failure this whole toggle exists to remove, so the guard is sized to
+    // be generous about the first in order to be strict about the second.
+    readonly property int chatterGuard: 150
+
+    // WHEN EACH PAD BUTTON'S CONTACT LAST MOVED, keyed by evdev code, in
+    // milliseconds.
+    //
+    // PER CODE, NOT ONE CLOCK FOR THE PAD. The buttons are separate contacts
+    // and bounce separately, so what the aspect key is doing says nothing about
+    // the state of the one that opens the editor. Sharing a single timestamp
+    // between them would let a press of either swallow a press of the other,
+    // which is a pad that ignores people for no reason they can see.
+    property var padEdgeAt: ({})
+
+    // IS THIS EDGE THE HAND OR THE CONTACT, and the clock is reset either way.
+    //
+    // RETRIGGERABLE, and counted from EVERY edge rather than from the last
+    // press that was believed, because a release bounces exactly as a press
+    // does and the reader faithfully narrates that bounce as `up`, `down`,
+    // `up`, `down`. Under the old hold those spare lines were ugly and
+    // harmless: they committed the same rectangle two or three times over as
+    // the finger came off. Under a toggle the first spare `down` is a second
+    // press, so it would close the editor at the exact moment the button was
+    // released, which is the hold rebuilt by accident out of the very fault the
+    // toggle was meant to escape. Letting an `up` reset the clock too puts the
+    // whole burst inside one quiet window, and none of it is heard.
+    function padSteady(code: int): bool {
+        const now = Date.now();
+        const last = root.padEdgeAt[code];
+        root.padEdgeAt[code] = now;
+        return last === undefined || now - last >= root.chatterGuard;
+    }
+
     // THE PROTOCOL, one event per line: `ready`, `gone`, `down <code>`,
     // `up <code>`, `ring <value>`. Anything else is ignored in silence rather
     // than warned about, because the reader is allowed to grow a word without
@@ -977,20 +1618,52 @@ Singleton {
 
         if (verb === "ready") {
             root.padAlive = true;
+
+            // THE PAD IS BACK, SO THE EDIT IT INTERRUPTED SURVIVES. The grace
+            // started by `gone` is called off and an editor that was open is
+            // left open, in the state the hand left it in.
+            padLost.stop();
+
+            // AND THE DEBOUNCE STARTS FROM NOTHING. The reader documents this
+            // word as "opened, and nothing is held", which makes it a hard
+            // resync point rather than an event: it is not a `down`, so it
+            // opens and closes nothing, and the only state it touches is the
+            // record of when each contact last moved, which is stale by however
+            // long the tablet was away. Clearing it means the first press after
+            // a reconnect is believed at once instead of being weighed against
+            // an edge from before the disconnect.
+            root.padEdgeAt = {};
             return;
         }
 
         if (verb === "gone") {
             root.padAlive = false;
+            root.padEdgeAt = {};
 
-            // A PAD THAT VANISHES MID-EDIT NEVER SENDS THE `up`, and without
-            // this the editor would stay open forever with the tablet unbound
-            // to the whole layout: the exact broken state the feature exists to
-            // fix, entered by the feature itself, and unfixable with the pen
-            // because the pad is the only way back out. Bluetooth going away is
-            // the normal weather here, so this is not an edge case.
+            // A PAD THAT VANISHES MID-EDIT IS NO LONGER A RELEASE, and that is
+            // the part of this the toggle changed. Under a hold it was one: the
+            // finger came off with the connection whether the user meant it or
+            // not, so cancelling was the only honest reading and the only way
+            // not to be left with an overlay the pen could never dismiss. Now
+            // the editor is open because somebody opened it, and the tablet
+            // dropping off Bluetooth says nothing about whether they are done.
+            // It goes when the tablet sleeps, when the machine suspends and
+            // when the thing is picked up and carried to the sofa, all of which
+            // a half-placed rectangle should survive, because the pad nearly
+            // always comes back and the `ready` above hands the gesture back
+            // exactly where it was.
+            //
+            // NEARLY ALWAYS IS NOT ALWAYS, hence the grace. A flat battery is a
+            // pad that never returns, the overlay swallows the pointer on every
+            // screen while it is up, and an editor whose only button is gone is
+            // the worst state this file can leave a desk in. The timer is the
+            // whole of the difference between the two cases: quiet for long
+            // enough and the disconnect was real, so the edit is cancelled, the
+            // tablet is re-bound and the mouse comes back on its own.
+            // `banditshell penmap cancel` is the way out for the seconds in
+            // between, and it stays the way out whatever this timer decides.
             if (root.editing)
-                root.cancel();
+                padLost.restart();
             return;
         }
 
@@ -1008,18 +1681,36 @@ Singleton {
         if (!isFinite(code))
             return;
 
+        // EVERY EDGE RESETS THAT BUTTON'S CLOCK, believed or not, which is why
+        // this is asked out here rather than inside the branches: an `up` has
+        // to count as movement on the contact even though nothing acts on one
+        // any more. See padSteady for why that is the half a toggle needs.
+        const steady = root.padSteady(code);
+        if (verb !== "down" || !steady)
+            return;
+
         const cfg = Config.values.pen;
 
-        // HELD, NOT TOGGLED. Down opens the editor and up commits it, so the
-        // gesture is one press with a drag inside it and there is no state to
-        // get stuck in: let go of everything and the mapping is whatever the
-        // outline was showing.
-        if (code === cfg.holdButton) {
-            if (verb === "down")
-                root.begin();
-            else
+        // TOGGLED, NOT HELD. A press opens the editor and the next press
+        // applies it, so the gesture is bounded by two deliberate presses
+        // instead of by a contact staying shut for the length of a drag. The
+        // release edge means nothing here at all now, which is the point of the
+        // change: on this pad the button chatters, and one dropped contact
+        // mid-drag used to commit the mapping halfway through a move.
+        //
+        // A STATE IT CAN GET STUCK IN is what a toggle buys with that, and it
+        // is paid for twice: `gone` above will not leave an editor open forever
+        // with no pad behind it, and `banditshell penmap cancel` puts the
+        // tablet back from outside the shell whatever else has gone wrong.
+        if (code === cfg.toggleButton) {
+            if (root.editing)
                 root.commit();
-        } else if (code === cfg.aspectButton && verb === "down") {
+            else
+                root.begin();
+        } else if (code === cfg.aspectButton) {
+            // STILL A PLAIN PRESS-TO-TOGGLE, and independent of the other
+            // button in every way that matters: its own contact, its own entry
+            // in padEdgeAt, its own quiet window.
             root.toggleAspect();
         }
     }
@@ -1040,6 +1731,7 @@ Singleton {
 
         onExited: {
             root.padAlive = false;
+            root.padEdgeAt = {};
 
             // The reader is written never to exit on its own, so being here at
             // all means something outside it went wrong: no python3, the script
@@ -1047,8 +1739,16 @@ Singleton {
             // until it comes back and nothing else would say so, hence the
             // retry; the delay is there so that a script that cannot start
             // fails twice a second forever instead of as fast as fork allows.
+            //
+            // AN OPEN EDITOR IS TREATED EXACTLY AS `gone` TREATS ONE, on
+            // purpose. From in here a reader that died and a tablet that went
+            // to sleep are the same event, an edit with no button behind it any
+            // more, and the retry means both usually end the same way, in a
+            // `ready` a second or two later that hands the gesture back. One
+            // grace decides "it came back" against "it is not coming back", in
+            // one place, rather than this path holding an opinion of its own.
             if (root.editing)
-                root.cancel();
+                padLost.restart();
             padRetry.restart();
         }
     }
@@ -1058,6 +1758,27 @@ Singleton {
 
         interval: 2000
         onTriggered: root.syncPad()
+    }
+
+    // HOW LONG AN OPEN EDITOR OUTLIVES THE PAD IT WAS OPENED FROM.
+    //
+    // LONG ENOUGH TO BE A RECONNECT, SHORT ENOUGH TO BE NOTICED. The reader
+    // rescans every two seconds, so a tablet that wakes up is heard from within
+    // about that, and a Bluetooth link that drops and re-establishes itself is
+    // a handful of seconds at its worst. Half a minute covers both several
+    // times over and is still shorter than the time it would take somebody to
+    // work out why the pointer had stopped answering.
+    //
+    // IT CANCELS RATHER THAN COMMITS, because a rectangle that was still being
+    // moved when the tablet went away was never agreed to, and the one thing
+    // known for certain about this moment is that nobody is watching the pen.
+    // cancel() is also the call that re-binds the tablet, which is the whole
+    // reason there is a deadline at all.
+    Timer {
+        id: padLost
+
+        interval: 30000
+        onTriggered: root.cancel()
     }
 
     // ------------------------------------------------------------------

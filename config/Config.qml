@@ -1533,15 +1533,27 @@ Singleton {
                     height: 148
                 },
 
-                // THE PAD BUTTON THAT OPENS THE EDITOR, held. Press and the
-                // outline appears, release and the region under it is applied.
+                // THE PAD BUTTON THAT OPENS THE EDITOR, and closes it. Press
+                // once and the outline appears, press again and the region
+                // under it is applied.
+                //
+                // A TOGGLE RATHER THAN A HOLD, which is the second answer and
+                // not the first. Holding reads better on paper: the editor is
+                // open exactly while a finger says so, and letting go is a
+                // gesture nobody has to be taught. It relies on the contact
+                // being honest, and on this pad it is not. A key that chatters
+                // reports a release the finger never made, and under a hold
+                // that lands as a commit in the middle of a drag, which is the
+                // rectangle being applied halfway to where it was going. A
+                // toggle spends one more press and stops asking the worst
+                // switch on the device to be right for the length of a gesture.
                 //
                 // An evdev code rather than a name, because the code is what
                 // arrives on the wire: the pad's keys are BTN_0 through BTN_8,
                 // which is 256 through 264, and nothing between the kernel and
                 // here ever spells them out. BTN_0 is the top one on this
                 // tablet, which is the one a thumb finds without looking.
-                holdButton: 256,
+                toggleButton: 256,
 
                 // THE PAD BUTTON THAT TOGGLES THE SHAPE LOCK, tapped. BTN_1,
                 // the next one down.

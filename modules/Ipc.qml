@@ -29,7 +29,8 @@ Scope {
         const r = PenMap.region;
         const lock = PenMap.aspectLocked ? "locked" : "free";
         const pad = PenMap.padConnected ? "pad" : "no pad";
-        return `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.x)},${Math.round(r.y)} on ${PenMap.monitorName || "no monitor"} (${lock}, ${pad})`;
+        const mode = PenMap.followWindow ? ", follow" : "";
+        return `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.x)},${Math.round(r.y)} on ${PenMap.monitorName || "no monitor"} (${lock}, ${pad}${mode})`;
     }
 
     IpcHandler {
@@ -2184,6 +2185,16 @@ Scope {
         function aspect(): string {
             PenMap.toggleAspect();
             return PenMap.aspectLocked ? "locked" : "free";
+        }
+
+        // The window picker, as a verb, for the same reason the rest of this
+        // handler exists: the mode is toggled from a pill drawn inside the
+        // region, and a region small enough to have dropped its controls has no
+        // pill to press. That corner is reachable by snapping to a narrow
+        // window, which is a thing this very mode does.
+        function follow(): string {
+            PenMap.toggleFollowWindow();
+            return PenMap.followWindow ? "following" : "off";
         }
 
         // Absolute, in global layout coordinates, because that is the frame the
