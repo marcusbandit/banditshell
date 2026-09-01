@@ -73,10 +73,42 @@ Singleton {
 
     readonly property string dir: root.expand(Config.values.wallpaper.dir)
 
+    // SOME OTHER NAME FOR A FILE, mapped to the one `available` lists it under.
+    //
+    // Empty on a machine whose config already speaks the folder's names, which
+    // is every machine once reconcile() at the bottom has run once and put the
+    // file right, since what it writes there is what the next shell reads.
+    property var aliases: ({})
+
+    // THE NAME THIS SHELL USES FOR A FILE, and `available` is the authority on
+    // what that is.
+    //
+    // Thirteen places across the picker, the settings page, the IPC and this
+    // file ask whether two paths are the same wallpaper, and every one of them
+    // is a `===` or an `indexOf` against the listing. Teaching each of them to
+    // forgive a second name would be thirteen edits, thirteen chances to miss
+    // one, and one more every time a fourteenth comparison is written. So the
+    // two readers every one of those comparisons already flows through,
+    // `current` and `currentOn`, answer in the folder's names, and both sides
+    // of all thirteen are dir-rooted without one of them being touched.
+    //
+    // A path that is already a member is itself, which is the normal case and
+    // costs an indexOf over thirty strings. A path nothing has heard of is
+    // itself too: a wallpaper set from outside the folder is still a wallpaper,
+    // and declining to name it would be a worse answer than not knowing it.
+    function normalise(path: string): string {
+        if (!path || root.available.indexOf(path) >= 0)
+            return path;
+        return root.aliases[path] ?? path;
+    }
+
     // THE DEFAULT, which is what "the wallpaper" used to mean and still does on
     // a machine with one screen or with every screen agreeing. See the note at
     // the top: a screen with no entry of its own wears this.
-    readonly property string current: root.expand(Config.values.wallpaper.current)
+    //
+    // Through `normalise`, which is one of the two places the folder's names
+    // are imposed on what the config happens to hold. See it above.
+    readonly property string current: root.normalise(root.expand(Config.values.wallpaper.current))
 
     // WHICH SCREENS DISAGREE, by output name. Raw off the config, so the values
     // may still hold a tilde; `currentOn` is the reader and it expands.
@@ -97,7 +129,7 @@ Singleton {
     // moment before the compositor has named the focused output) are asking
     // what a wallpaper IS, not what a particular monitor has.
     function currentOn(screen: string): string {
-        return root.expand(root.perScreen[screen] ?? "") || root.current;
+        return root.normalise(root.expand(root.perScreen[screen] ?? "")) || root.current;
     }
 
     // WHAT EACH KIND IS MADE OF, as the one list everything else reads.
@@ -480,6 +512,13 @@ done`, "sh", ...fresh];
     // walks a dotted path and refuses a leaf the defaults do not name, and the
     // defaults deliberately name no monitors at all.
     function setOn(screen: string, path: string): void {
+        // NORMALISED BEFORE ANYTHING ELSE, because this writes to the file and
+        // what goes in the file is what the next shell reads back. A caller
+        // holding the resolved name of a linked picture would otherwise put it
+        // there, and the whole reason `available` speaks the folder's names is
+        // that nothing should have to know the difference afterwards.
+        const name = root.normalise(path);
+
         // NO SCREEN MEANS ALL OF THEM here, and only here. `currentOn("")`
         // reads the default because a reader with no screen is asking what a
         // wallpaper is; a WRITER with no screen is asking to change one, and
@@ -487,7 +526,7 @@ done`, "sh", ...fresh];
         // screen without an entry follows. The two are the same answer from
         // opposite ends.
         if (!screen) {
-            root.setAll(path);
+            root.setAll(name);
             return;
         }
 
@@ -495,9 +534,9 @@ done`, "sh", ...fresh];
         // already following the default to is not a reason to give that screen
         // an entry: it would pin it there, and the next `set everywhere` would
         // move every screen except this one.
-        if (root.hasOwn(screen) || path !== root.current) {
+        if (root.hasOwn(screen) || name !== root.current) {
             const next = Object.assign({}, Config.values.wallpaper.perScreen ?? {});
-            next[screen] = path;
+            next[screen] = name;
             Config.set("wallpaper.perScreen", next);
         }
 
@@ -524,8 +563,9 @@ done`, "sh", ...fresh];
     function setAll(path: string): void {
         // Written before the previews are dropped, for the reason `setOn`
         // spells out: a screen whose preview is already this picture must not
-        // be handed its old one back for the length of one call.
-        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", path]]);
+        // be handed its old one back for the length of one call. Normalised for
+        // the reason `setOn` spells out too: the file gets the folder's name.
+        Config.setMany([["wallpaper.perScreen", {}], ["wallpaper.current", root.normalise(path)]]);
         root.previews = {};
     }
 
@@ -808,8 +848,8 @@ done`, root.posterDir, ...videos];
         // under -L, which is what makes a folder of links list as a folder of
         // pictures instead of as nothing.
         //
-        // AND `realpath` ON THE WAY OUT, which the `-L` makes necessary rather
-        // than merely tidy.
+        // AND ONE NAME PER FILE ON THE WAY OUT, which the `-L` makes necessary
+        // rather than merely tidy.
         //
         // A WALLPAPER IS A FILE, AND A PATH IS ONE OF ITS NAMES. Following
         // symlinks means the same picture can be reached by two of them, and
@@ -822,11 +862,34 @@ done`, root.posterDir, ...videos];
         // shell having lost the wallpaper that is visibly on the screen behind
         // it. Found exactly that way.
         //
-        // So one name is picked and it is the real one. `-exec ... +` batches,
-        // so this is one more process for the folder rather than one per file,
-        // and the collector drops repeats because two links to one picture are
-        // one wallpaper.
-        const cmd = ["sh", "-c", `exec find -L "$1" -type f -iregex "$2" -exec realpath -- {} +`, "sh", root.dir, `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
+        // SO ONE NAME IS PICKED, AND IT IS THE ONE THE SETTING ASKED FOR rather
+        // than the one the disk keeps the file under. This used to hand every
+        // path to `realpath` and take the real one, which answered the
+        // comparison question by making the shell speak somebody's filing: a
+        // collection kept in a dotfiles repo and linked into place had the
+        // picker, the settings tile and config.json all saying
+        // `~/dotfiles/wallpapers/.config/wallpapers/32x9/leaves.jpg` to a human
+        // who had said `~/.config/wallpapers`. Where a link lands is that
+        // repo's business. `dir` is the name the shell was given, so `dir` is
+        // the name the shell speaks, everywhere, and `normalise` above is what
+        // makes that hold for a path arriving from anywhere else.
+        //
+        // `%D:%i` IS THE DEDUPE, and it is a better one than the string was.
+        // Under `-L` those are the TARGET's device and inode, so two links to
+        // one picture come back under one key and are one wallpaper, and so
+        // does a HARDLINK pair, which no comparison of names could ever have
+        // caught. `find` already had to stat every file to answer `-type f`, so
+        // the whole of it stays one process for the folder.
+        // NO FOLDER, NO LISTING. `dir` is empty for the moment between this
+        // singleton existing and config.json having been read, and both
+        // Component.onCompleted and the onDirChanged that follows fire across
+        // that gap: the first listed nothing, said so, and left an empty list
+        // and a warning standing until the second one landed. There is no
+        // folder to be unhappy about yet, so there is nothing to report.
+        if (!root.dir)
+            return;
+
+        const cmd = ["sh", "-c", `exec find -L "$1" -type f -iregex "$2" -printf '%D:%i\\t%p\\n'`, "sh", root.dir, `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
 
         // A LISTING ALREADY IN FLIGHT IS USUALLY THE LISTING BEING ASKED FOR.
         // The picker asks for one every time it opens, so opening it twice
@@ -866,14 +929,171 @@ done`, root.posterDir, ...videos];
 
         stdout: StdioCollector {
             onStreamFinished: {
-                // Deduped, because `realpath` above can hand back the same
-                // picture twice when two links in the tree point at it.
-                root.available = [...new Set(text.trim().split("\n").filter(l => l))].sort();
+                // `dev:inode<TAB>path`, one line per name the tree reaches. One
+                // path is kept per file, and it is the SMALLEST of that file's
+                // names, so which of two links wins is a property of the names
+                // themselves rather than of the order `find` happened to walk a
+                // tree in, which is the order unrelated files were created in.
+                const byFile = {};
+                for (const line of text.trim().split("\n")) {
+                    const tab = line.indexOf("\t");
+                    if (tab <= 0)
+                        continue;
+                    const key = line.slice(0, tab);
+                    const path = line.slice(tab + 1);
+                    if (byFile[key] === undefined || path < byFile[key])
+                        byFile[key] = path;
+                }
+                root.available = Object.keys(byFile).map(k => byFile[k]).sort();
                 if (!root.available.length)
                     console.warn(`Wallpaper: nothing usable in ${root.dir}`);
                 root.makePosters();
                 root.findFrozen();
                 root.measureShapes();
+                root.reconcile();
+            }
+        }
+    }
+
+    // THE NAMES ALREADY PUT TO `realpath`, so a configured wallpaper that
+    // matches nothing in the folder costs one process for the life of the shell
+    // rather than one on every listing. See reconcile(), its only reader.
+    property var asked: ({})
+
+    // A CONFIG SPEAKING A NAME THE FOLDER DOES NOT USE, healed once.
+    //
+    // Everything above is one name per file and it is the dir-rooted one, and a
+    // config written before that was true holds the resolved name instead: this
+    // shell's own did, in `current` and in both `perScreen` entries, because
+    // `banditshell wallpaper set` ran the path through `readlink -m` first.
+    // Such a value matches nothing in `available`, which is precisely the
+    // no-ring-anywhere failure refresh() describes above, so it is not left for
+    // a human to notice and fix by hand in a file they never opened.
+    //
+    // ONE `realpath` OVER THE ODD NAMES AND THE WHOLE FOLDER, which is the
+    // cheapest way to ask "which of these files is that one": the real names
+    // line up or they do not. What comes back is a map from the name the config
+    // has to the name the folder uses, which goes into `aliases` so the ring is
+    // right immediately, and then the config is rewritten so nothing needs the
+    // map ever again. A hand edit that reintroduces a resolved path later heals
+    // the same way, which is why this is a rule rather than a migration step.
+    //
+    // ASKED ONCE PER NAME, and that is the loop guard. A configured wallpaper
+    // that was deleted resolves to nothing in the folder and always will, so
+    // asking about it on every listing would be a process per opening of the
+    // picker, forever, to be told the same thing. The rewrite itself starts no
+    // second listing: a listing follows `dir`, and `dir` did not move.
+    function reconcile(): void {
+        // A LISTING THAT FOUND NOTHING IS NOT EVIDENCE ABOUT A NAME. Marking
+        // the config's wallpapers unresolvable against an empty folder would
+        // spend the one question each of them gets on a wrong folder setting.
+        if (!root.available.length || resolver.running)
+            return;
+
+        const per = Config.values.wallpaper.perScreen ?? {};
+        const wanted = [root.expand(Config.values.wallpaper.current), ...Object.keys(per).map(s => root.expand(per[s]))];
+
+        const strange = [];
+        for (const p of wanted)
+            if (p && root.available.indexOf(p) < 0 && !root.aliases[p] && !root.asked[p] && strange.indexOf(p) < 0)
+                strange.push(p);
+        if (!strange.length)
+            return;
+
+        // COPY THEN ASSIGN, the rule `previews` states, and marked BEFORE the
+        // process runs rather than after it answers: the guard is against being
+        // asked again, and the window where it matters is while the answer is
+        // still coming.
+        const seen = Object.assign({}, root.asked);
+        for (const p of strange)
+            seen[p] = true;
+        root.asked = seen;
+
+        // `-m` SO EVERY ARGUMENT ANSWERS. The map is built positionally, and a
+        // path whose file is gone would otherwise print an error instead of a
+        // line and quietly shift every answer after it by one.
+        resolver.strange = strange;
+        resolver.listed = root.available;
+        resolver.command = ["realpath", "-m", "--", ...strange, ...root.available];
+        resolver.running = true;
+    }
+
+    // THE LISTING AND THE CONFIG ARRIVE IN EITHER ORDER, so both sides ask.
+    //
+    // The folder is listed at Component.onCompleted and config/Config.qml reads
+    // the file asynchronously, and nothing promises which of the two lands
+    // first. Reconciling off the listing alone would do nothing at all on the
+    // boot where the settings were still the defaults at that moment, and then
+    // wait for the next opening of the picker to notice. Cheap enough to hang
+    // off every write: an indexOf per configured screen, and it returns on the
+    // first line in the ordinary case where nothing is strange.
+    Connections {
+        target: Config
+
+        function onValuesChanged(): void {
+            root.reconcile();
+        }
+    }
+
+    Process {
+        id: resolver
+
+        // WHAT WAS ASKED, kept beside the process, because the answer is
+        // positional: `realpath` prints one line per argument in order, and the
+        // map is these two lists laid against those lines. Read off the process
+        // rather than off `root`, which may have re-listed underneath it.
+        property var strange: []
+        property var listed: []
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const lines = text.trim().split("\n");
+                const n = resolver.strange.length;
+                if (lines.length !== n + resolver.listed.length) {
+                    console.warn(`Wallpaper: could not match ${n} configured wallpaper(s) against ${root.dir}`);
+                    return;
+                }
+
+                // The folder's half first, real name to the name it is listed
+                // under, then each odd name that lands on one of those reals. A
+                // name that lands on none is a wallpaper this folder does not
+                // hold, and it gets no entry: `normalise` leaves such a path
+                // alone, which is the right answer for a picture set from
+                // somewhere else entirely.
+                const home = {};
+                for (let i = 0; i < resolver.listed.length; i++)
+                    home[lines[n + i]] = resolver.listed[i];
+
+                const map = Object.assign({}, root.aliases);
+                for (let i = 0; i < n; i++)
+                    if (home[lines[i]])
+                        map[resolver.strange[i]] = home[lines[i]];
+                root.aliases = map;
+
+                // AND THE FILE IS PUT RIGHT, which is what makes this a healing
+                // rather than a translation layer the shell carries forever.
+                // One write for both keys: see Config.setMany, a half-applied
+                // pair is the thing it exists to prevent.
+                const pairs = [];
+                const fixed = map[root.expand(Config.values.wallpaper.current)];
+                if (fixed)
+                    pairs.push(["wallpaper.current", fixed]);
+
+                const per = Config.values.wallpaper.perScreen ?? {};
+                const next = Object.assign({}, per);
+                let moved = false;
+                for (const screen in per) {
+                    const own = map[root.expand(per[screen])];
+                    if (own) {
+                        next[screen] = own;
+                        moved = true;
+                    }
+                }
+                if (moved)
+                    pairs.push(["wallpaper.perScreen", next]);
+
+                if (pairs.length)
+                    Config.setMany(pairs);
             }
         }
     }
