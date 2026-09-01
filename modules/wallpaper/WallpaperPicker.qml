@@ -316,14 +316,46 @@ Item {
         root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
 
         strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
+        root.settled = strip.goal;
+    }
+
+    // WHERE settle() LEFT THE STRIP, so the difference between "nobody has
+    // touched this yet" and "a hand is using it" is a fact rather than a guess.
+    property real settled: -1
+
+    // RE-CENTRE ONLY ON A STRIP NOBODY HAS MOVED.
+    //
+    // The list can change under an open picker for two honest reasons: the
+    // listing this panel asked for on the way up has landed, and the shapes
+    // behind the fit filter have. Either one renumbers `entries`, and a strip
+    // centred against the old numbering is centred on the wrong card, wearing
+    // a ring that belongs to a picture now sitting somewhere else.
+    //
+    // But by then the hand may be scrubbing, and the wallpaper you are looking
+    // for is not the one you are wearing: that is the entire point of the
+    // panel. Yanking the strip home mid-drag would be the shell overruling the
+    // gesture in progress. So the goal settle() set is remembered, and this
+    // gives way the moment it no longer matches, which is the moment anything
+    // at all has moved the strip. Untouched, it re-centres; touched, it is
+    // none of its business.
+    function resettle(): void {
+        if (root.shown && strip.goal === root.settled)
+            root.settle();
     }
 
     Connections {
         target: Wallpaper
 
+        // The folder was re-listed, so a picture may have joined or left.
         function onAvailableChanged(): void {
-            if (root.shown)
-                root.settle();
+            root.resettle();
+        }
+
+        // The shapes landed, so the fit filter may have changed its mind about
+        // which of them belong on this screen. Measured by an ffprobe per file
+        // and therefore always later than the listing that asked for it.
+        function onShapesChanged(): void {
+            root.resettle();
         }
     }
 
@@ -374,6 +406,30 @@ Item {
     // about the OTHER screens: this one already agreeing says nothing about
     // them.
     function commit(): void {
+        // NOTHING WAS CHOSEN IF NOTHING WAS MOVED.
+        //
+        // Closing this panel keeps the card in the middle, and that is right
+        // exactly while the card in the middle is where a hand put it. Once
+        // anything else can move it the rule quietly inverts, and something
+        // else can: the folder is re-listed on the way up and the shapes behind
+        // the fit filter land after that, so `entries` is renumbered under a
+        // strip that has already centred itself. The picture under the ring
+        // changes with nobody touching the machine, and dismissing the picker
+        // then wrote THAT picture to the config as though it had been picked.
+        // Open the panel, put a file in the folder, close the panel, and your
+        // wallpaper had changed to something you never looked at. Found by
+        // doing precisely that.
+        //
+        // `settled` is where settle() last put the strip, and every other way
+        // the strip moves is a hand on it: an arrow key, the wheel, a drag, a
+        // click on a card. So a strip still sitting on that exact number has
+        // not been scrubbed, and this close is a dismissal rather than a
+        // choice. Dismissals put the wallpaper back and write nothing.
+        if (strip.goal === root.settled) {
+            Wallpaper.clearPreview(root.screen);
+            return;
+        }
+
         const path = strip.currentPath;
         const all = root.everywhere && root.manyScreens;
         if (!path || (!all && path === Wallpaper.currentOn(root.screen))) {

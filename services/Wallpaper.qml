@@ -283,21 +283,67 @@ Singleton {
             root.shapes = {};
             return;
         }
+
+        // ONLY THE ONES NOT MEASURED YET, which became load-bearing the moment
+        // the picker started re-listing the folder on every opening.
+        //
+        // A picture's shape is a property of the file, and this shell has no
+        // story at all for a wallpaper being re-cropped underneath it, so
+        // measuring one a second time can only produce the answer already in
+        // hand. Doing it anyway cost an ffprobe per file per opening, thirty
+        // processes to learn nothing. That was the cheap half of the bill.
+        //
+        // The expensive half: the map was REPLACED when they finished, so
+        // `shapes` changed, so `fitted` changed, so `entries` changed, and the
+        // picker's strip re-indexed a beat after it had already centred itself.
+        // The ring stayed on your wallpaper and a different card slid under it,
+        // and closing the panel keeps what is in the middle, so a picker opened
+        // and dismissed without touching anything could change your wallpaper.
+        // Measuring only what is new means a second opening moves nothing at
+        // all, which is the real fix; the picker guards the first one.
+        const known = {};
+        for (const p of root.available)
+            if (root.shapes[p] !== undefined)
+                known[p] = root.shapes[p];
+
+        const fresh = root.available.filter(p => root.shapes[p] === undefined);
+
+        if (!fresh.length) {
+            // Assigning an equal object is still a CHANGE as far as QML is
+            // concerned, and the whole point here is to not move. So this only
+            // writes when a file has actually left the folder, which is the
+            // pruning that rebuilding from nothing used to do for free.
+            if (Object.keys(known).length !== Object.keys(root.shapes).length)
+                root.shapes = known;
+            return;
+        }
+
+        // An ffprobe run already in flight measured a subset of this same list,
+        // and anything it misses is still missing from `shapes` when the next
+        // listing asks, so it comes back round. Nothing is lost by waiting.
+        if (shaper.running)
+            return;
+
+        shaper.known = known;
         shaper.command = ["sh", "-c", `for f in "$@"; do
   s=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=p=0 "$f" </dev/null 2>/dev/null)
   case "$s" in
     [0-9]*,[0-9]*) printf '%s\\t%s\\n' "$f" "$s" ;;
   esac
-done`, "sh", ...root.available];
+done`, "sh", ...fresh];
         shaper.running = true;
     }
 
     Process {
         id: shaper
 
+        // WHAT WAS ALREADY MEASURED, carried across the process so the answers
+        // that come back are added to it rather than standing in for it.
+        property var known: ({})
+
         stdout: StdioCollector {
             onStreamFinished: {
-                const out = {};
+                const out = Object.assign({}, shaper.known);
                 for (const line of text.trim().split("\n")) {
                     const tab = line.indexOf("\t");
                     if (tab <= 0)
