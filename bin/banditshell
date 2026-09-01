@@ -283,6 +283,32 @@ session)
     ipc session "${1:-toggle}"
     ;;
 
+# THE TABLET MAPPING, and this is the verb you reach for when the tablet cannot
+# speak for itself. PenMap is meant to be driven from the pad: hold a button,
+# drag with the pen, let go. That is the whole design, and it is also the whole
+# risk, because the pad arrives over Bluetooth and a tablet that is asleep, flat
+# or unpaired has no buttons to hold. Nothing here is bound to a key by default;
+# it exists so "the mapper will not open" is one command to work around rather
+# than a shell restart.
+#
+# `set` takes GLOBAL layout coordinates, the same frame `hyprctl monitors`
+# prints, because that is the only frame in which "which monitor is this on" has
+# an answer. The service clamps and re-homes whatever it is handed, so a
+# rectangle that is off the edge or the wrong shape is corrected rather than
+# refused.
+penmap | pen)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    open | commit | cancel | aspect | status) ipc penmap "$sub" ;;
+    set)
+        [ $# -eq 4 ] || { echo "usage: banditshell penmap set <x> <y> <w> <h>" >&2; exit 2; }
+        ipc penmap set "$1" "$2" "$3" "$4"
+        ;;
+    *) echo "usage: banditshell penmap open|commit|cancel|aspect|status|set <x> <y> <w> <h>" >&2; exit 2 ;;
+    esac
+    ;;
+
 # Spelled out rather than passed through the way session's is, because one verb
 # takes an argument: `answer` is the only route to the arithmetic that involves
 # no panel at all, so it has to be able to say what it could not parse.

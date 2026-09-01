@@ -446,6 +446,24 @@ banditshell/
 │   │                            an exclusive zone belongs to a one-edge surface
 │   │                            and the board is drawn in the four-edge one, so
 │   │                            the two ends need one answer between them
+│   ├── PenMap.qml               WHERE THE DRAWING TABLET POINTS, and nothing to
+│   │                            do with Tablet.qml above, which is the hinge.
+│   │                            A tablet is an ABSOLUTE device, so pointed at a
+│   │                            32:9 panel its 224x148mm surface is stretched
+│   │                            2.35x sideways. This owns the rectangle it maps
+│   │                            to instead, in GLOBAL layout coordinates,
+│   │                            because that is the only frame in which "which
+│   │                            monitor is this on" has an answer. Clamps to
+│   │                            that monitor, keeps the tablet's own aspect
+│   │                            unless told not to, and converts to Hyprland's
+│   │                            monitor-relative form on the way out. Applied
+│   │                            with `hyprctl eval` and hl.device, because the
+│   │                            Lua config killed `hyprctl keyword`; eval is
+│   │                            WIPED by a reload, so it re-applies on
+│   │                            configreloaded. Driven from the pad by
+│   │                            scripts/pen-pad.py, and from `banditshell
+│   │                            penmap` when the tablet is asleep and cannot
+│   │                            ask for itself.
 │   ├── Keystrokes.qml           the one service that types OUTWARD, and it needs
 │   │                            TWO transports: wtype for characters (the
 │   │                            compositor never acts on them, so no bind can

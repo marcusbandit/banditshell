@@ -22,6 +22,16 @@ Scope {
 
     required property var picker
 
+    // Shared by two of the penmap verbs, so `set` can answer with the same
+    // sentence `status` does rather than inventing a second phrasing for the
+    // same fact.
+    function penmapStatus(): string {
+        const r = PenMap.region;
+        const lock = PenMap.aspectLocked ? "locked" : "free";
+        const pad = PenMap.padConnected ? "pad" : "no pad";
+        return `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.x)},${Math.round(r.y)} on ${PenMap.monitorName || "no monitor"} (${lock}, ${pad})`;
+    }
+
     IpcHandler {
         target: "menu"
 
@@ -2136,6 +2146,61 @@ Scope {
             } catch (e) {}
             Config.set(key, parsed);
             return `${key} = ${JSON.stringify(parsed)}`;
+        }
+    }
+
+    // THE TABLET MAPPING, WITHOUT THE TABLET. Everything about PenMap is meant
+    // to be driven from the pad: hold a button, drag with the pen, let go. That
+    // is the whole point of it, and it is also a single point of failure, since
+    // the pad arrives over Bluetooth and a tablet that is asleep, out of
+    // battery or unpaired has no buttons at all. A feature whose only way in is
+    // the device it configures cannot be used to rescue itself.
+    //
+    // So the same verbs are here, reachable from a keybind or a terminal. Not
+    // as the intended route, and deliberately not bound to a key by default,
+    // but so that "the mapper will not open" is a thing the user can work
+    // around in one command rather than a thing that needs the shell restarted.
+    //
+    // `status` prints the region and the monitor it is homed to, which is the
+    // one question worth asking when the pen is landing somewhere unexpected.
+    IpcHandler {
+        target: "penmap"
+
+        function open(): string {
+            PenMap.begin();
+            return "open";
+        }
+
+        function commit(): string {
+            PenMap.commit();
+            return "committed";
+        }
+
+        function cancel(): string {
+            PenMap.cancel();
+            return "cancelled";
+        }
+
+        function aspect(): string {
+            PenMap.toggleAspect();
+            return PenMap.aspectLocked ? "locked" : "free";
+        }
+
+        // Absolute, in global layout coordinates, because that is the frame the
+        // service thinks in and the frame `hyprctl monitors` prints. The
+        // service clamps and re-homes whatever lands here, so a nonsense
+        // rectangle is corrected rather than rejected.
+        function set(x: string, y: string, w: string, h: string): string {
+            const nums = [x, y, w, h].map(Number);
+            if (nums.some(isNaN))
+                return "four numbers: x y w h";
+            PenMap.proposeRegion(nums[0], nums[1], nums[2], nums[3]);
+            PenMap.commit();
+            return root.penmapStatus();
+        }
+
+        function status(): string {
+            return root.penmapStatus();
         }
     }
 }

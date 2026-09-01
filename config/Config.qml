@@ -1464,6 +1464,124 @@ Singleton {
                 repeatInterval: 45
             },
 
+            // THE DRAWING TABLET, and where on the desk it points. See
+            // services/PenMap.qml and modules/pen/.
+            //
+            // NOT `tablet` ABOVE, which is the laptop's HINGE. Two entirely
+            // different devices share one English word, and the shell has a
+            // service for each of them, so the settings are kept as far apart
+            // as the services are: `tablet` is the machine folded over, `pen`
+            // is the Wacom on the desk. Merging them would mean a config file
+            // in which `tablet.height` and `tablet.surface` are facts about
+            // different pieces of hardware.
+            //
+            // EVERYTHING DEVICE-SPECIFIC ABOUT THE TABLET IS HERE, which is
+            // deliberate and is the whole reason this block is as long as it
+            // is. The QML knows about a rectangle, a monitor and two button
+            // codes; it does not know it is a Wacom. Point these keys at
+            // another tablet and the feature follows, with nothing to edit in
+            // services/PenMap.qml at all.
+            pen: {
+                // WHETHER THE SHELL WATCHES THE PAD AT ALL.
+                //
+                // On, because this machine has the tablet. Off is for every
+                // other machine in the fleet: the pad reader is a resident
+                // python process, and a box with no Wacom on it would keep one
+                // alive for the rest of the session to be told every two
+                // seconds that there is still no tablet. Nothing else in the
+                // feature costs anything when it is off, and the mapping
+                // already in the compositor's own config is left alone.
+                enabled: true,
+
+                // THE NAME HYPRLAND KNOWS THE STYLUS BY, which is what
+                // `hl.device` is addressed to and the one string that has to
+                // match exactly. `hyprctl devices` prints it under Tablets.
+                //
+                // Lower case and hyphenated because that is the compositor's
+                // own normalised spelling rather than the product name: the
+                // pen that reports itself as "Wacom Intuos Pro M Pen" is
+                // addressed as `wacom-intuos-pro-m-pen`. A device block naming
+                // a device that does not exist is accepted in silence, so a
+                // typo here does not fail, it simply does nothing.
+                device: "wacom-intuos-pro-m-pen",
+
+                // THE NAME THE KERNEL KNOWS THE PAD BY, which is a different
+                // string for a different device. The stylus and the ExpressKeys
+                // are two evdev nodes on one lump of plastic, the compositor
+                // only forwards the stylus, and scripts/pen-pad.py has to find
+                // the other one itself.
+                //
+                // BY NAME, never by node number: the pad is Bluetooth, and
+                // /dev/input/eventNN is handed out fresh on every reconnect. It
+                // is passed to the script as `--device-name`, so this key is
+                // the only place the name is written down.
+                pad: "Wacom Intuos Pro M Pad",
+
+                // THE ACTIVE SURFACE, IN MILLIMETRES. Only the RATIO is ever
+                // used, so the units are arbitrary and are millimetres because
+                // that is what the number printed on the box is, which makes
+                // this a key somebody can fill in without measuring anything.
+                //
+                // WHY THE SHAPE MATTERS AT ALL: a tablet is an ABSOLUTE device.
+                // Its surface maps corner to corner onto whatever region it is
+                // pointed at, so a 224x148 surface stretched across a 5120x1440
+                // panel draws a circle 2.35 times too wide. Mapping it to a
+                // region carrying its own aspect is the fix, and this is where
+                // that aspect comes from.
+                surface: {
+                    width: 224,
+                    height: 148
+                },
+
+                // THE PAD BUTTON THAT OPENS THE EDITOR, held. Press and the
+                // outline appears, release and the region under it is applied.
+                //
+                // An evdev code rather than a name, because the code is what
+                // arrives on the wire: the pad's keys are BTN_0 through BTN_8,
+                // which is 256 through 264, and nothing between the kernel and
+                // here ever spells them out. BTN_0 is the top one on this
+                // tablet, which is the one a thumb finds without looking.
+                holdButton: 256,
+
+                // THE PAD BUTTON THAT TOGGLES THE SHAPE LOCK, tapped. BTN_1,
+                // the next one down.
+                //
+                // It exists so the toggle is reachable without aiming the pen
+                // at a control: the whole point of this feature is that the
+                // hand never leaves the tablet, and a pill you have to hit with
+                // the stylus is exactly the aiming problem the feature is being
+                // used to fix. The on-screen pill does the same job for the
+                // case where you would rather see the state than remember it.
+                aspectButton: 257,
+
+                // WHETHER THE REGION STARTS OUT SHAPE-LOCKED.
+                //
+                // Locked, because an unlocked region is a region that can be
+                // made the wrong shape, and the wrong shape is the exact defect
+                // this whole feature exists to correct. Locked the region is
+                // one fixed rectangle the user slides around and scales, which
+                // is the entire decision worth making most of the time.
+                //
+                // THIS IS THE DEFAULT AND NOT THE LIVE VALUE. The pad button
+                // above toggles the lock during a session and that choice is
+                // remembered in the state file, so this key decides what a
+                // machine that has never been asked does.
+                aspectLock: true,
+
+                // THE SMALLEST THE REGION MAY BE MADE, in logical pixels, on
+                // whichever axis hits it first.
+                //
+                // Not a limit on precision. A small region is a GOOD thing here
+                // and is most of why anyone would move the mapping: the
+                // smaller the rectangle, the more screen travel one millimetre
+                // of tablet buys. The floor is about the OUTLINE, which has
+                // four corner handles and an interior to drag, and which stops
+                // being grabbable long before the mapping stops being useful. A
+                // region dragged down to nothing would be a mapping the pen can
+                // no longer reach in order to undo.
+                minSize: 160
+            },
+
             // The lock screen. See modules/lock/.
             lock: {
                 // How wide the field you type into is. Wide enough that a long

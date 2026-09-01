@@ -11,3 +11,6 @@
 # itself when they are missing, rather than failing quietly.
 bin/bs-pty
 bin/bs-ls
+
+# Python bytecode, from running the scripts/ helpers directly.
+__pycache__/

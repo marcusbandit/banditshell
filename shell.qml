@@ -6,6 +6,7 @@ import Quickshell
 import qs.modules
 import qs.modules.files
 import qs.modules.lock
+import qs.modules.pen
 import qs.modules.picker
 import qs.modules.settings
 
@@ -72,6 +73,14 @@ ShellRoot {
             PickerWindow {
                 screen: scope.modelData
                 state: picker
+            }
+
+            // Where the drawing tablet maps. Its own surface for the picker's
+            // reason: it has to be above a fullscreen window, and the shell's
+            // own surface deliberately is not. Unmapped unless the pad button
+            // is being held, so the rest of the time the pen draws through it.
+            PenOverlay {
+                screen: scope.modelData
             }
         }
     }
