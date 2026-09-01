@@ -780,15 +780,38 @@ done`, root.posterDir, ...videos];
         // so this is one more process for the folder rather than one per file,
         // and the collector drops repeats because two links to one picture are
         // one wallpaper.
-        lister.command = ["sh", "-c", `exec find -L "$1" -type f -iregex "$2" -exec realpath -- {} +`, "sh", root.dir, `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
+        const cmd = ["sh", "-c", `exec find -L "$1" -type f -iregex "$2" -exec realpath -- {} +`, "sh", root.dir, `.*\\.\\(${root.extensions.join("\\|")}\\)$`];
+
+        // A LISTING ALREADY IN FLIGHT IS USUALLY THE LISTING BEING ASKED FOR.
+        // The picker asks for one every time it opens, so opening it twice
+        // inside the time a `find` takes would otherwise reassign the command
+        // of a running process, and a Process whose command changes under it is
+        // not something to find out about at runtime. Same command means the
+        // same answer, so the one in flight stands; a DIFFERENT command means
+        // the folder itself changed and the running one is now answering the
+        // wrong question, so it is dropped rather than waited for.
+        if (lister.running) {
+            if (JSON.stringify(lister.command) === JSON.stringify(cmd))
+                return;
+            lister.running = false;
+        }
+
+        lister.command = cmd;
         lister.running = true;
     }
 
     Component.onCompleted: refresh()
 
-    // Re-list when the directory setting changes, not on a timer: wallpapers do
-    // not appear on their own.
+    // Re-list when the directory setting changes.
     onDirChanged: refresh()
+
+    // AND WHENEVER SOMETHING IS ABOUT TO READ THE LIST, which is the picker
+    // opening: see WallpaperPicker's show(). This file used to claim wallpapers
+    // do not appear on their own and list the folder exactly once, at startup,
+    // which made "I just put a picture in there" a thing the shell could not be
+    // told. It is not a timer, and it is deliberately not a watcher over a tree
+    // that is mostly symlinks into somebody's dotfiles: it is one `find` at the
+    // moment the answer is wanted.
 
     Process {
         id: lister

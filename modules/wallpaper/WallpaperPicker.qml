@@ -263,26 +263,68 @@ Item {
             return;
         root.shown = true;
 
-        // START WHERE YOU ALREADY ARE, and the filter is not allowed to break
-        // that promise.
+        // ASK THE FOLDER WHAT IS IN IT, rather than answering from the listing
+        // taken when the shell started.
         //
-        // Opening a picker on the first file in the folder rather than on the
-        // wallpaper you are looking at makes the first thing it does an
-        // unasked-for change. A screen wearing a picture the prediction would
-        // hide is exactly the case where that could happen silently: the strip
-        // would open on somebody else's wallpaper with no ring anywhere on it,
-        // which looks like the shell having forgotten what you set. So the
-        // wallpaper you are wearing is a member of the list by definition, and
-        // if the prediction disagrees, the prediction is the thing that gives
-        // way for this opening.
-        const worn = Wallpaper.currentOn(root.screen);
-        root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
+        // services/Wallpaper.qml used to say "wallpapers do not appear on their
+        // own" and list the folder once, at boot. They do appear on their own:
+        // a human puts one there, and that human is usually about to open this
+        // panel to go and look at it. Drop a picture in six minutes after the
+        // shell came up and the strip would keep showing the folder as it was
+        // before, with no way to tell it otherwise short of a restart, which
+        // reads as the shell refusing to see a file that is plainly on disk.
+        // Found exactly that way.
+        //
+        // HERE rather than on a timer, because this is the only moment the
+        // whole list is looked at. A poll would spend a process every few
+        // seconds forever to be ready for a question nobody is asking; this
+        // spends one per opening, against a gesture a hand makes a few times a
+        // day, and it is by definition never stale at the moment it matters.
+        Wallpaper.refresh();
 
-        strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
+        root.settle();
         // DEFERRED, the launcher's reason: focus is only worth taking once the
         // window has actually asked the compositor for the keyboard, and that
         // follows from `shown` in the same pass this is running in.
         Qt.callLater(root.forceActiveFocus);
+    }
+
+    // START WHERE YOU ALREADY ARE, and the filter is not allowed to break
+    // that promise.
+    //
+    // Opening a picker on the first file in the folder rather than on the
+    // wallpaper you are looking at makes the first thing it does an
+    // unasked-for change. A screen wearing a picture the prediction would
+    // hide is exactly the case where that could happen silently: the strip
+    // would open on somebody else's wallpaper with no ring anywhere on it,
+    // which looks like the shell having forgotten what you set. So the
+    // wallpaper you are wearing is a member of the list by definition, and
+    // if the prediction disagrees, the prediction is the thing that gives
+    // way for this opening.
+    //
+    // ITS OWN FUNCTION, BECAUSE THE LIST ARRIVES AFTER THE PANEL DOES. The
+    // refresh above is a process, so `available` changes a beat later, while
+    // the picker is already on screen and already centred. Every index moves
+    // when a picture that sorts earlier joins the list, so a strip settled
+    // against the old listing is settled on the wrong card the instant the new
+    // one lands: the ring would sit on your wallpaper and a different picture
+    // would be in the middle. So the same settling runs again whenever the list
+    // changes underneath an open picker, which is also what makes a wallpaper
+    // added while the panel is open simply show up in it.
+    function settle(): void {
+        const worn = Wallpaper.currentOn(root.screen);
+        root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
+
+        strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
+    }
+
+    Connections {
+        target: Wallpaper
+
+        function onAvailableChanged(): void {
+            if (root.shown)
+                root.settle();
+        }
     }
 
     // WHAT YOU ARE LOOKING AT IS WHAT YOU GET. Closing the panel KEEPS the
