@@ -173,6 +173,37 @@ Singleton {
     // out from its edges. Empty exactly when `hoveredWindow` is.
     readonly property string hoveredWindowName: root.hoveredName
 
+    // THE WINDOW THE MAPPING IS BOUND TO, by address, and "" when the mapping
+    // is a rectangle somebody placed rather than a window somebody chose.
+    //
+    // AN ADDRESS AND NOT A RECTANGLE, because the rectangle is `region` and
+    // always was. What a binding adds is a REASON for the region to be where it
+    // is, and that reason outlives every particular rectangle it produces: the
+    // window is moved, the region moves with it, and the address is the only
+    // thing that held still across the two. Anything wanting the shape of the
+    // bound window can read `region`, which is that shape aspect-fitted, which
+    // is the shape the tablet is actually pointing at.
+    readonly property string boundWindow: root.bound
+
+    // SOMETHING SHORT TO CALL IT, taken at the moment of binding and then left
+    // alone. A window's class does not change while it is open, and a label
+    // that held still is worth more here than one re-derived every update:
+    // this one has to go on saying which window is being followed while that
+    // window sits on a workspace nobody is looking at and there is nothing live
+    // to re-derive it from.
+    readonly property string boundWindowName: root.boundName
+
+    // IS THE MAPPING FOLLOWING SOMETHING RIGHT NOW. The same fact as
+    // `boundWindow` being non-empty, said as a bool because that is the shape
+    // it gets used in: it is the whole of the poll's stop condition below, and
+    // it is what a pill in the overlay is asking when it wants to know whether
+    // to say so.
+    //
+    // NOT THE SAME QUESTION AS `followWindow`, which is about what the NEXT
+    // press will mean and is true for the whole time somebody is deciding.
+    // This one is about whether a decision has been made.
+    readonly property bool tracking: root.bound !== ""
+
     // IS THE PAD ACTUALLY THERE. The tablet is Bluetooth, so absent is the
     // normal weather rather than an error: it goes when the tablet sleeps, when
     // the machine suspends, and when the battery runs out.
@@ -196,10 +227,16 @@ Singleton {
         // WHAT CANCEL PUTS BACK. Taken before anything moves, and copied by
         // value: `rect` is a value type in QML, so this is a snapshot rather
         // than a second name for the live rectangle.
+        // The binding is in it for the same reason the rectangle is: it is
+        // part of what was showing when the edit started. An edit that ends in
+        // a cancel has not chosen a different window any more than it has
+        // chosen a different rectangle.
         root.before = {
             home: root.home,
             region: root.mapping,
-            locked: root.locked
+            locked: root.locked,
+            bound: root.bound,
+            boundName: root.boundName
         };
 
         // THE HANDOVER, and it happens here rather than at commit because it
@@ -257,10 +294,17 @@ Singleton {
         if (!root.editing)
             return;
 
-        // THE SECOND PRESS TAKES THE WINDOW, and that is the whole of what
+        // THE SECOND PRESS CHOOSES THE WINDOW, and that is the whole of what
         // Follow Window changes. Everything below this line runs exactly as it
         // does in the ordinary mode; the only difference is which rectangle it
-        // is running on.
+        // is running on, and whether that rectangle has a reason to keep
+        // changing afterwards.
+        //
+        // CHOOSES, NOT COPIES. The snap on the next line is only the first
+        // frame of the answer; the bind after it is what makes the mapping go
+        // on being that window's rectangle as the window is moved, resized,
+        // retiled, floated, fullscreened and carried to the other monitor. See
+        // the Following section below for how, and for what it costs.
         //
         // WITH NOTHING UNDER THE PEN IT DOES NOTHING, deliberately, and the
         // check is for a rectangle with area rather than for the mode being on.
@@ -270,8 +314,25 @@ Singleton {
         // chosen. Committing to an empty rectangle instead would take the
         // mapping away entirely, and the way back from that is another gesture
         // made with a pen that no longer points anywhere useful.
-        if (root.following && root.hovered.width > 0 && root.hovered.height > 0)
+        //
+        // AND IT DROPS ANY BINDING IT DID NOT REPLACE, which is this file's
+        // answer to who wins between a live binding and a hand. The hand does.
+        // Somebody who has just dragged an outline somewhere and pressed the
+        // button has said where the mapping goes in the most direct terms
+        // available, and an old binding left standing would drag it back within
+        // a quarter of a second, which is the mapping undoing a deliberate
+        // gesture in front of the person who made it.
+        //
+        // The unbind is deliberately BEFORE `editing` goes false, so that its
+        // own save is suppressed and the one below covers it. Inside a gesture
+        // it is part of the gesture; the end of the gesture writes everything
+        // down at once, which is toggleAspect's rule.
+        if (root.following && root.hovered.width > 0 && root.hovered.height > 0) {
             root.snapToWindow(root.hovered);
+            root.bindWindow(root.hoveredAddr, root.hoveredName);
+        } else {
+            root.unbindWindow();
+        }
 
         root.editing = false;
         root.applyRegion();
@@ -294,6 +355,21 @@ Singleton {
             root.home = was.home;
             root.mapping = was.region;
             root.locked = was.locked;
+
+            // THE BINDING COMES BACK WITH THE RECTANGLE, because it is the
+            // reason that rectangle was where it was. Cancelling means nothing
+            // was chosen, and a window that was being followed before the
+            // editor opened was not chosen during it.
+            //
+            // UNLESS THE MODE WENT OUT UNDER IT. `following` is deliberately
+            // not restored, for the reason below, so an edit that switched the
+            // mode off and then ended badly would otherwise put a live binding
+            // back underneath a switch that says it is off. That is exactly the
+            // haunted state unbindWindow exists to prevent, and it must not be
+            // reachable by the back door either.
+            root.bound = root.following ? was.bound : "";
+            root.boundName = root.following ? was.boundName : "";
+            root.boundMisses = 0;
         }
 
         // `mapped` is NOT restored, for the reason begin() gives: ownership of
@@ -307,6 +383,17 @@ Singleton {
         root.applyRegion();
         root.save();
         root.forgetWindows();
+
+        // AND THE BINDING GETS THE LAST WORD, if one survived the edit. The
+        // rectangle just put back is where the window was when the editor
+        // opened, and the window has had the whole length of the gesture to
+        // move; tracking is suspended for that length, so nothing has corrected
+        // it. Asked for here rather than waited for, because the next thing to
+        // change `boundRect` might be minutes away, and a cancel that left the
+        // mapping on a stale rectangle until the window happened to move again
+        // is the binding looking broken at the exact moment somebody chose to
+        // keep it.
+        root.followBound();
     }
 
     // SHAPE LOCK ON OR OFF, from the pad button or from the pill in the
@@ -347,8 +434,15 @@ Singleton {
             // what makes the highlight go out on the same press that turned the
             // mode off, instead of one motion later.
             root.forgetWindows();
-            if (!root.editing)
-                root.save();
+
+            // AND NOTHING TO FOLLOW EITHER, which is the more important half.
+            // A binding still steering the mapping under a mode whose switch
+            // says it is off is the kind of thing that looks haunted: windows
+            // get moved, the tablet moves with them, and the one control that
+            // claims to govern that is sitting there switched off. The save
+            // this needs is unbindWindow's, which is why there is no longer one
+            // written out here.
+            root.unbindWindow();
             return;
         }
 
@@ -362,6 +456,34 @@ Singleton {
         if (root.editing)
             root.scanClients();
         else
+            root.save();
+    }
+
+    // STOP FOLLOWING, KEEP THE REGION.
+    //
+    // THE RECTANGLE IS DELIBERATELY NOT TOUCHED. It is where the window was
+    // when the binding ended, which is where the tablet has been pointing and
+    // where a hand expects it to still be. Taking the mapping away as well
+    // would turn "stop following" into "lose the mapping", and the way back
+    // from that is another gesture made with a pen that no longer points
+    // anywhere useful, which is the same argument commit() makes for refusing
+    // to commit an empty rectangle.
+    //
+    // AND IT IS WRITTEN DOWN, unless an edit is in progress. That is
+    // toggleAspect's rule and it is here for toggleAspect's reason: inside a
+    // gesture this is part of the gesture, and the commit or the cancel that
+    // ends it saves everything at once.
+    //
+    // IT DOES NOT ASK WHETHER ANYTHING WAS BOUND, on purpose. Every caller that
+    // reaches it is saying "there must be no binding after this", and half of
+    // them cannot know whether there was one; an early return would make the
+    // save conditional on a fact none of them are asking about.
+    function unbindWindow(): void {
+        root.bound = "";
+        root.boundName = "";
+        root.boundMisses = 0;
+
+        if (!root.editing)
             root.save();
     }
 
@@ -588,6 +710,32 @@ Singleton {
         if (hi < lo)
             return lo;
         return v < lo ? lo : v > hi ? hi : v;
+    }
+
+    // ARE THESE THE SAME RECTANGLE, field by field.
+    //
+    // Asked in the two places that exist to refuse to publish an answer which
+    // has not changed: the hover highlight, recomputed a few hundred times a
+    // second by the pen, and the tracked binding, where an unchanged rectangle
+    // must not turn into another `hyprctl eval`. Written once, because the two
+    // would otherwise be two copies of the same four comparisons and a copy
+    // that drifts is a thrash somebody has to find twice.
+    function sameRect(a: rect, b: rect): bool {
+        return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
+    }
+
+    // AN ADDRESS AS SOMETHING TWO SPELLINGS CAN BE COMPARED IN.
+    //
+    // Hyprland writes an address with its `0x`, in the client JSON and on the
+    // event stream both; Quickshell's model writes the same address bare. This
+    // shell talks to both and owns neither spelling, so both ends are stripped
+    // before they are compared, which is the reconciliation Hypr.monitorOf
+    // makes for the same reason. Comparing them as they come answers "no
+    // window" for every window there is, which is a bug that looks exactly like
+    // the feature never having worked.
+    function bareAddress(addr: string): string {
+        const s = String(addr ?? "");
+        return (s.startsWith("0x") ? s.slice(2) : s).toLowerCase();
     }
 
     function monitorNamed(name: string): var {
@@ -1008,6 +1156,13 @@ Singleton {
     property rect hovered
     property string hoveredName: ""
 
+    // AND THE ADDRESS OF THE SAME WINDOW, which is the one thing about it that
+    // is not on the highlight and is the only thing a binding can be made of.
+    // Internal, because nothing outside this file has ever needed to name a
+    // window: the overlay draws the rectangle and reads the label, and the
+    // press that chooses is handled in here.
+    property string hoveredAddr: ""
+
     // THE WINDOWS AS THE HIT TEST NEEDS THEM, derived rather than stored,
     // because it takes two answers that arrive separately and in either order.
     // The client list says where each window is and which screen it is on; the
@@ -1111,9 +1266,21 @@ Singleton {
             if (c.pinned !== true && shown[ws] !== true)
                 continue;
 
+            // A PAIR OF NUMBERS, ASKED FOR BY LENGTH RATHER THAN BY TYPE, and
+            // the distinction is not pedantry: it is the difference between
+            // this function working for both its callers and working for one.
+            // The same client object arrives here two ways. Out of JSON.parse
+            // on `hyprctl -j clients`, `at` is a plain JS array. Out of a
+            // toplevel's `lastIpcObject` it is a QVariantList, which reaches JS
+            // as a sequence that indexes, has a length, holds the same two
+            // numbers, and answers FALSE to Array.isArray. Asking the type
+            // therefore threw away every tracked rectangle in silence, with no
+            // error anywhere and a mapping that simply never moved. What is
+            // actually being asked is whether there are two numbers in there,
+            // and the isFinite tests just below are what decide that.
             const at = c.at;
             const size = c.size;
-            if (!Array.isArray(at) || !Array.isArray(size))
+            if (!at || !size || at.length < 2 || size.length < 2)
                 continue;
 
             let x = Number(at[0]);
@@ -1175,6 +1342,12 @@ Singleton {
                 y: y,
                 w: w,
                 h: h,
+                // THE ONE FIELD THAT IS NOT GEOMETRY, and the only handle on
+                // this window that will still mean something after the pen has
+                // moved on. Kept in the spelling it arrived in, `0x` and all,
+                // because that is also the spelling Hypr's closewindow signal
+                // uses; bareAddress is what reconciles it with Quickshell's.
+                address: String(c.address ?? ""),
                 // The list's own order is the tie-break inside a rung. Hyprland
                 // prints its window list in stacking order and raising a window
                 // moves it towards the end, so later is nearer the top; two
@@ -1223,7 +1396,7 @@ Singleton {
     // makes "empty means nothing to draw" true for every reason at once.
     function refreshHover(): void {
         const hit = root.editing && root.following && root.pointerKnown ? root.windowAt(root.pointerX, root.pointerY) : null;
-        root.setHover(hit ? Qt.rect(hit.x, hit.y, hit.w, hit.h) : Qt.rect(0, 0, 0, 0), hit ? hit.name : "");
+        root.setHover(hit ? Qt.rect(hit.x, hit.y, hit.w, hit.h) : Qt.rect(0, 0, 0, 0), hit ? hit.name : "", hit ? hit.address : "");
     }
 
     // THE SAME RECTANGLE SAYS NOTHING. refreshHover runs on every pen event, a
@@ -1232,12 +1405,18 @@ Singleton {
     // would re-run every binding in the overlay that draws the highlight, a few
     // hundred times a second, to arrive back at the picture already on screen.
     // The comparison lives here, once, rather than in each of the readers.
-    function setHover(r: rect, name: string): void {
-        if (root.hoveredName === name && root.hovered.x === r.x && root.hovered.y === r.y && root.hovered.width === r.width && root.hovered.height === r.height)
+    // THE ADDRESS IS PART OF THE COMPARISON and not merely carried alongside
+    // it, because two different windows can present the identical rectangle and
+    // the identical label: a tile handed straight from a terminal that closed to
+    // a terminal that opened is exactly that, and leaving the address out would
+    // let a press bind to the window that is no longer there.
+    function setHover(r: rect, name: string, addr: string): void {
+        if (root.hoveredName === name && root.hoveredAddr === addr && root.sameRect(root.hovered, r))
             return;
 
         root.hovered = r;
         root.hoveredName = name;
+        root.hoveredAddr = addr;
     }
 
     // THERE IS NOTHING TO POINT AT ANY MORE, which is what closing the editor
@@ -1246,6 +1425,11 @@ Singleton {
     // and the only thing a kept one could do is be wrong later. The pen position
     // goes with it so that the first frame of the next edit cannot briefly
     // highlight whatever happens to be under where the pen was left last time.
+    //
+    // AND THE BINDING IS NOT IN HERE, which is the distinction the whole
+    // Following section rests on. What this forgets is where the pen was aiming,
+    // which is a fact about an editor that is now shut. What a binding is, is a
+    // fact about the mapping, and the mapping outlives the editor by design.
     function forgetWindows(): void {
         root.snapshot = [];
         root.pointerKnown = false;
@@ -1290,6 +1474,340 @@ Singleton {
         }
 
         root.proposeRegion(x, y, w, h);
+    }
+
+    // ------------------------------------------------------------------
+    // Following the window that was chosen.
+    // ------------------------------------------------------------------
+
+    // CHOOSING A WINDOW IS CHOOSING A WINDOW, and this section is the
+    // correction that makes that true. The first version of Follow Window took
+    // the hovered rectangle at the instant of the press and then forgot which
+    // window it had come from. That is a defensible thing to have built and it
+    // is not what anybody meant: move the window afterwards and the tablet goes
+    // on pointing at the hole it left. The mapping is BOUND to the window now.
+    // It follows it moved, resized, retiled by a neighbour opening, dragged to
+    // the other screen, made floating and made fullscreen, and it goes on
+    // following while the editor is shut, because the binding IS the mapping
+    // rather than a mode of the editor.
+    //
+    // HYPRLAND HAS NO GEOMETRY EVENT, which is the whole of the difficulty and
+    // is written down here because the next person will go looking for one too.
+    // The socket2 stream carries openwindow, closewindow, movewindowv2,
+    // activewindowv2, changefloatingmode, fullscreen, workspace, focusedmon,
+    // monitorlayoutchanged and their friends, and not one of them means "this
+    // window's rectangle changed". Quickshell forwards what there is and
+    // invents nothing: its own IPC handles exactly openwindow, closewindow,
+    // movewindowv2, windowtitlev2, activewindowv2, urgent and configreloaded,
+    // and movewindowv2 is a workspace move rather than a geometry one. A tiling
+    // reflow is therefore covered by accident, because the open or the close
+    // that caused it is itself an event. An interactive resize is covered by
+    // nothing at all: dragging a window edge with the mouse is silence on the
+    // socket from the first pixel to the last.
+    //
+    // SO WHAT DOES A READ COST. Read out of Quickshell 0.3.0 (b66495f), the
+    // revision this machine is running, rather than assumed, because the answer
+    // is what decides whether a poll is allowed to exist here at all:
+    //
+    //   `Hyprland.refreshToplevels()` IS NOT A PROCESS. It opens
+    //   `.socket.sock`, writes `j/clients`, reads the answer and parses it, all
+    //   on the Qt event loop inside this process. There is no QProcess and no
+    //   `hyprctl` anywhere in Quickshell's Hyprland IPC. On this desk the
+    //   answer is about seven kilobytes for eight clients. That is one unix
+    //   socket round trip and one JSON parse against the fork, the exec, the
+    //   dynamic link and the second socket connection that running
+    //   `hyprctl -j clients` costs, and it is the entire reason a poll is
+    //   affordable.
+    //
+    //   IT REFRESHES EVERY TOPLEVEL, not just the list. There is no per-window
+    //   refresh; the granularity is all or nothing, which costs nothing here
+    //   because the whole answer arrives in one read anyway.
+    //
+    //   `lastIpcObject` CARRIES THE WHOLE CLIENT OBJECT, unfiltered, the same
+    //   shape `hyprctl -j clients` prints, `at` and `size` included. That is
+    //   why buildCandidates can be handed one of them directly and this section
+    //   needs no second copy of the rules about what is on screen and where.
+    //   It is documented as not updating on its own, and that is exactly right:
+    //   it changes when somebody refreshes and never otherwise, so it cannot
+    //   drive its own loop.
+    //
+    //   AND IT IS SELF-DEBOUNCING against a refresh already in flight, and rate
+    //   limited against nothing else.
+    //
+    // AND THE SOCKET IS ALREADY OPEN, once, in services/Hypr.qml, which hears
+    // the raw event stream and already calls refreshToplevels() on every event
+    // whose name mentions a window, a workspace or a monitor. So the event half
+    // of this costs nothing at all here: binding to the model that file is
+    // already keeping fresh catches every geometry change any event caused,
+    // within a millisecond of the event, with no second connection and no
+    // second subscription. Hypr.resync() is that same call under the name it
+    // was given for exactly this, a reader that picks its own moment.
+    //
+    // WHICH LEAVES THE POLL AS THE SAFETY NET, for the interactive resize and
+    // the interactive drag of a floating window, which are the two things the
+    // event stream says nothing about.
+    //
+    // A QUARTER OF A SECOND, and the number comes from the hand rather than
+    // from the eye. This is where a PEN points. Nobody draws while dragging a
+    // window, so what actually has to be true is that the mapping has settled
+    // by the time a hand that let go of the mouse has got back to the tablet
+    // and put a nib down, which is several hundred milliseconds at its very
+    // fastest. 250ms is inside that with room to spare, and it is four socket
+    // round trips a second rather than the sixty a frame-rate poll would spend
+    // beating a deadline nothing is measuring against. Rejected in both
+    // directions: 16ms, because it buys smoothness for an outline that is not
+    // on screen while a window is being dragged, and a second or more, because
+    // a mapping still visibly catching up when the pen arrives is worse than
+    // one that never followed.
+    //
+    // AND IT STOPS DEAD WITH NOTHING BOUND, which is the one part of this that
+    // is not a trade. This is a desktop that stays up for days; a timer still
+    // waking four times a second because a mode was switched off last Tuesday
+    // is a defect and not a rounding error.
+
+    // THE ADDRESS, AND THE LABEL THAT WAS TAKEN WITH IT.
+    property string bound: ""
+    property string boundName: ""
+
+    // HOW MANY POLLS IN A ROW HAVE NOT FOUND IT. See pollBound for what this is
+    // really guarding, which is not the window closing.
+    property int boundMisses: 0
+
+    readonly property int trackPoll: 250
+
+    // HOW LONG AN ADDRESS IS ALLOWED TO BE MISSING before the binding is given
+    // up on, in milliseconds. See pollBound; kept beside the interval because
+    // the two are only meaningful against each other.
+    readonly property int trackGrace: 1000
+
+    // THE TOPLEVEL BEHIND THE ADDRESS, or null. Quickshell's model rather than
+    // a client list of this file's own, because services/Hypr.qml already keeps
+    // that model in step with the event stream and a second copy would be a
+    // second thing to keep in step, out of a second process, for the same
+    // answer.
+    readonly property var boundToplevel: {
+        if (!root.bound)
+            return null;
+        const want = root.bareAddress(root.bound);
+        return Hyprland.toplevels.values.find(t => root.bareAddress(t.address) === want) ?? null;
+    }
+
+    // WHERE THAT WINDOW IS NOW, in the same global layout coordinates
+    // everything else here is in, and EMPTY when there is nothing to point at.
+    //
+    // THROUGH buildCandidates, which is the point of computing it this way.
+    // That function already knows every rule this rectangle has to obey: that a
+    // window on a workspace nobody is looking at is not on screen, that a
+    // scrolling layout leaves windows hanging off the side of the monitor
+    // showing them and only the part that lands there is real, and that
+    // `lastIpcObject` is exactly the shape it reads. Handing it a list of one
+    // gets all of that for nothing and leaves one copy of those rules in the
+    // file instead of two that drift apart.
+    //
+    // EMPTY MEANS FREEZE, and it covers three situations that all want the same
+    // answer: the window has gone, the window is on a workspace that is not
+    // being shown, and the window has been scrolled entirely off its own
+    // monitor. In all three there is no rectangle to follow, and the honest
+    // thing is to leave the mapping exactly where it last was rather than move
+    // it somewhere nobody chose. It picks itself up again the moment the window
+    // is visible again, with no state in between.
+    //
+    // A BINDING, which is what makes the event half free: Hypr's refreshes
+    // change `lastIpcObject`, this re-evaluates, and QML publishes nothing at
+    // all when the rectangle it computes is the one it computed last time,
+    // which is nearly every time. A window gaining focus rewrites most of its
+    // client object and moves it not at all, and that whole class of update
+    // dies here without anything downstream hearing about it.
+    readonly property rect boundRect: {
+        const tl = root.boundToplevel;
+        const shown = tl ? root.buildCandidates([tl.lastIpcObject], root.monitors) : [];
+        return shown.length ? Qt.rect(shown[0].x, shown[0].y, shown[0].w, shown[0].h) : Qt.rect(0, 0, 0, 0);
+    }
+
+    onBoundRectChanged: root.followBound()
+
+    // BIND THE MAPPING TO A WINDOW. The region has already been snapped to it
+    // by the caller; this is the part that makes it stay there.
+    function bindWindow(addr: string, name: string): void {
+        // A CANDIDATE WITH NO ADDRESS CANNOT BE FOLLOWED, and there is nothing
+        // useful to do about that but the old thing. The region has already
+        // taken the window's shape, so the gesture still did what it looked
+        // like it did; it simply does not track. Not a shape this compositor
+        // has been seen to produce, and here because the alternative is a
+        // binding to the empty string, which matches no window, never resolves,
+        // and would poll forever.
+        if (!addr)
+            return root.unbindWindow();
+
+        root.bound = addr;
+        root.boundName = name;
+        root.boundMisses = 0;
+    }
+
+    // THE WINDOW MOVED, SO THE MAPPING MOVES.
+    function followBound(): void {
+        // NOT BEFORE THERE IS A MAPPING TO MOVE. Until the state file and the
+        // screens have both landed this file has no region of its own and
+        // settle() is what places the saved one. Moving it first would be this
+        // path racing that one for the first rectangle of the session, and a
+        // binding restored from disk arrives precisely in that window.
+        if (!root.bound || !root.settled)
+            return;
+
+        // AND NOT WHILE THE EDITOR IS OPEN, which is the answer to who wins
+        // between a live binding and a hand. The hand does, always. Inside an
+        // edit the pen is pushing an outline around, and a binding dragging it
+        // back a quarter of a second later would be a rectangle fighting the
+        // person holding it. So tracking is suspended for the length of the
+        // gesture and the press that ends it settles the question: aimed at a
+        // window it rebinds, aimed at nothing it drops the binding and keeps
+        // the rectangle that was placed by hand. `boundRect` goes on updating
+        // throughout, because the overlay still has a bound window to draw and
+        // the fact that it is not currently steering the mapping does not make
+        // it any less true.
+        if (root.editing)
+            return;
+
+        const r = root.boundRect;
+        if (!(r.width > 0) || !(r.height > 0))
+            return;
+
+        // COPIED, FIELD BY FIELD, and this is a trap rather than a style
+        // choice. `const was = root.mapping` does NOT take a snapshot: reading
+        // a value-type property into a JS variable hands back a reference that
+        // reads through to the property, so `was` would silently follow the
+        // assignment two lines down and the comparison below would compare the
+        // new rectangle against itself and answer "unchanged" every single
+        // time. Tracking then looked like it worked, because `region` really
+        // did move, and pushed nothing to the compositor unless the MONITOR had
+        // also changed, which is the one term of that comparison that is a
+        // plain string. Building a fresh rect is what makes it a value.
+        const wasHome = root.home;
+        const was = Qt.rect(root.mapping.x, root.mapping.y, root.mapping.width, root.mapping.height);
+
+        // THE SAME PATH A SNAPPED RECTANGLE TOOK, and not a second one. The
+        // aspect fit, the size cap, the clamp and the choice of monitor all
+        // live behind snapToWindow and proposeRegion, so a window dragged to
+        // the other screen re-homes here by the same arithmetic that re-homes a
+        // rectangle dragged there by hand, and the shape lock is recomputed on
+        // every update rather than being a fact about the moment of the press.
+        root.snapToWindow(r);
+
+        // AND A RECTANGLE THAT DID NOT MOVE SAYS NOTHING. `hyprctl eval` is a
+        // process, and this runs up to four times a second for as long as a
+        // binding is live, so re-pushing an identical mapping would be the
+        // worst thing in this file by a wide margin: a fork several times a
+        // second, forever, to tell the compositor what it is already holding.
+        //
+        // THE COMPARISON IS ON THE REGION AND NOT ON THE WINDOW, because they
+        // are not the same question. A window can change in the axis the aspect
+        // lock is not using, or move under a clamp that was already pinning it,
+        // and leave the region exactly where it was. Asking the question about
+        // the thing that actually gets pushed is the only version of it that
+        // cannot be wrong.
+        if (root.home === wasHome && root.sameRect(root.mapping, was))
+            return;
+
+        root.applyRegion();
+        boundSave.restart();
+    }
+
+    // ASK AGAIN, ON THE CLOCK, for the changes no event covers.
+    function pollBound(): void {
+        if (!root.bound)
+            return;
+
+        // IS IT STILL THERE, and this is NOT how a closing window is normally
+        // noticed. `closewindow` is, off the event stream, through Hypr's own
+        // signal, and it lands in milliseconds. This is the backstop for what
+        // that signal cannot cover: a binding restored from disk whose address
+        // died with a previous compositor, which is the ordinary case after any
+        // reboot and is not a fault, and the general case of an address this
+        // shell is holding that nothing is ever going to mention again. Without
+        // it such a binding would keep this timer waking forever, which is
+        // exactly the defect the timer's `running` was written to avoid,
+        // arrived at from the other side.
+        //
+        // A WHOLE SECOND OF ABSENCE, not a single miss, and the grace is why
+        // this is a count rather than a test. Quickshell's client model is
+        // empty for the first moments of a shell start, before its own first
+        // read has landed, and a restored binding checked inside that window
+        // would drop itself every single time the shell restarted. A second is
+        // several times what that read takes and is still far too fast for
+        // anybody to wonder why a dead binding was still showing.
+        //
+        // COUNTED AGAINST THE INTERVAL rather than as a number of ticks, so
+        // that changing the poll rate cannot silently change the grace with it.
+        if (root.boundToplevel) {
+            root.boundMisses = 0;
+        } else {
+            root.boundMisses += 1;
+            if (root.boundMisses * root.trackPoll >= root.trackGrace)
+                return root.unbindWindow();
+        }
+
+        // AND THAT IS ALL A TICK DOES: it asks. It deliberately does NOT
+        // re-derive the region from what it already has, and that restraint is
+        // the whole reason this reads as one line.
+        //
+        // WHAT IS ALREADY IN HAND CAN BE ARBITRARILY OLD. `lastIpcObject` only
+        // changes when somebody refreshes, so at the instant a binding begins
+        // it holds wherever that window was the last time anything asked, which
+        // can be minutes and several moves ago. A tick that acted on it would
+        // push that stale rectangle to the compositor, and the tablet would
+        // jump to where the window used to be for as long as it takes the very
+        // refresh on the next line to come back. Measured, not imagined: the
+        // first draft of this did exactly that, and the trace showed a mapping
+        // landing on a window's position from before it had been moved,
+        // corrected a millisecond and a half later.
+        //
+        // SO ONLY A FRESH ANSWER MOVES ANYTHING. `boundRect` changes when a
+        // refresh brings back something different, and its change is what calls
+        // followBound. The two moments where a binding is live and something
+        // ELSE set the region ask for it by hand instead, which is settle() for
+        // a restore and cancel() for an abandoned edit; both are named and both
+        // are one call.
+        //
+        // services/Hypr.qml's own name for `Hyprland.refreshToplevels()`, asked
+        // for through that file rather than called directly, so the one place
+        // this shell re-reads window geometry stays one place.
+        Hypr.resync();
+    }
+
+    Timer {
+        id: boundPoll
+
+        // THE WHOLE OF THE STOP CONDITION, and deliberately nothing else in it.
+        // No editor state, no mode, no monitor count: a binding exists or it
+        // does not, and this timer exists exactly when it does.
+        running: root.tracking
+        repeat: true
+        interval: root.trackPoll
+
+        // THE FIRST TICK IS IMMEDIATE, which is what makes a binding correct
+        // itself the instant it is made or restored rather than a quarter of a
+        // second afterwards. It matters most on the restore, where the
+        // rectangle read off disk is from whenever the shell last wrote it and
+        // the window has had a whole reboot in which to move.
+        triggeredOnStart: true
+        onTriggered: root.pollBound()
+    }
+
+    // HOW LONG AFTER THE WINDOW STOPS BEFORE THE FILE IS WRITTEN.
+    //
+    // THE STATE FILE IS A RECORD OF WHERE THINGS ENDED UP, not a transcript of
+    // the drag. A tracked region changes several times a second while somebody
+    // resizes a window, and writing on each of those would be a few hundred
+    // writes to say what the last one says. Deferring costs a second of drift
+    // in exactly one situation, a shell killed mid-drag coming back to a
+    // compositor that also restarted, where the frozen rectangle it restores is
+    // a second stale. Nobody can tell, and every other path through this file
+    // saves directly and cancels this.
+    Timer {
+        id: boundSave
+
+        interval: 1000
+        onTriggered: root.save()
     }
 
     function scanClients(): void {
@@ -1358,9 +1876,30 @@ Singleton {
     // the compositor is told, so the file is a faithful record of the mapping
     // rather than a second encoding of it.
     function save(): void {
+        // ANY DEFERRED WRITE IS ABSORBED BY THIS ONE. boundSave exists to turn
+        // a drag's worth of tracked rectangles into a single write, and every
+        // caller that reaches here is stating the whole of the truth anyway, so
+        // a pending timer behind it has nothing left to add.
+        boundSave.stop();
+
         const out = {
             aspectLocked: root.locked,
-            followWindow: root.following
+            followWindow: root.following,
+
+            // THE BINDING, WHICH IS THE REASON THE RECTANGLE BELOW IS WHERE IT
+            // IS. Written even when it is empty, so that the file's shape does
+            // not depend on the mode and absorb() never has to tell a machine
+            // that stopped following from one that never started.
+            //
+            // AN ADDRESS DOES NOT SURVIVE A COMPOSITOR RESTART, which is worth
+            // saying beside the thing being saved: what is written here is
+            // usually dead by the time it is read, and that is not a fault. It
+            // is live and worth restoring in the one case that matters, the
+            // shell being restarted under a compositor that kept running, which
+            // is the case somebody hits a dozen times an evening while working
+            // on the shell itself. See settle() for what happens to the other.
+            boundWindow: root.bound,
+            boundWindowName: root.boundName
         };
 
         const mon = root.mapped ? root.monitorNamed(root.home) : null;
@@ -1396,6 +1935,23 @@ Singleton {
         // to do nothing.
         if (typeof data.followWindow === "boolean")
             root.following = data.followWindow;
+
+        // AND THE BINDING, RESTORED OPTIMISTICALLY AND NOT CHECKED HERE. There
+        // is nothing to check it against yet: Quickshell's client model is
+        // still empty this early and would answer "gone" for a window that is
+        // perfectly alive. So the address is taken at face value and the poll
+        // is left to find out, which it does within a second either way; see
+        // pollBound for why that is a count and not a test.
+        //
+        // UNDER THE MODE, THOUGH. A file claiming a binding while claiming the
+        // mode is off has been edited by hand or written by something older,
+        // and the mode is the one to believe: a binding that outlives its own
+        // switch is the state unbindWindow exists to make unreachable, and a
+        // state file is not a licence to reach it.
+        if (root.following && typeof data.boundWindow === "string" && typeof data.boundWindowName === "string" && data.boundWindow) {
+            root.bound = data.boundWindow;
+            root.boundName = data.boundWindowName;
+        }
 
         const name = typeof data.monitor === "string" ? data.monitor : "";
         const nums = [data.x, data.y, data.width, data.height].map(Number);
@@ -1451,6 +2007,17 @@ Singleton {
             root.proposeRegion(mon.x + root.clamp(s.x, 0, mon.w - w), mon.y + root.clamp(s.y, 0, mon.h - h), s.width, s.height);
 
             root.applyRegion();
+
+            // AND THE BINDING GETS THE LAST WORD HERE TOO, for cancel()'s
+            // reason read from the other end. The rectangle above is the one
+            // the file remembered, which is where the bound window was when the
+            // shell last wrote it down, and a window is under no obligation to
+            // still be there after a restart. This is also the first moment at
+            // which followBound is willing to act at all, since it refuses to
+            // move anything before `settled`, so without this call a restored
+            // binding whose window then held still would have gone on pointing
+            // at the remembered rectangle for as long as nothing moved.
+            root.followBound();
             return;
         }
 
@@ -1824,6 +2391,29 @@ Singleton {
         function onConfigReloaded(): void {
             root.pushAnyway = true;
             root.scanMonitors();
+        }
+
+        // THE WINDOW WENT, so there is nothing left to follow.
+        //
+        // AND THE REGION STAYS EXACTLY WHERE IT IS, which is the part worth
+        // being deliberate about. The window's last rectangle is the last thing
+        // the tablet was pointing at and is where the hand still expects to be
+        // pointing; the alternatives are all worse. Snapping back to whatever
+        // was mapped before the binding would move the pen at the moment
+        // somebody closed an unrelated window. Falling to a default would throw
+        // away a mapping that was chosen on purpose. Following the window into
+        // nothing is not a thing a rectangle can do. So the binding is dropped,
+        // the rectangle is frozen, and the next gesture decides what happens
+        // next, which is the same answer boundRect gives for a window that has
+        // merely gone off screen.
+        //
+        // HEARD HERE RATHER THAN INFERRED from the client model going quiet,
+        // because this signal says which window and says it at once, and
+        // Hypr already emits it for its own reasons. The poll's miss count is
+        // the backstop for the closures no signal can carry, not the mechanism.
+        function onWindowClosed(addr: string): void {
+            if (root.bound && root.bareAddress(addr) === root.bareAddress(root.bound))
+                root.unbindWindow();
         }
     }
 

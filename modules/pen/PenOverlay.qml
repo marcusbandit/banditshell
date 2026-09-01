@@ -31,12 +31,26 @@ import qs.services
 // the edge of the world is a bug there and not something to patch over here.
 //
 // AND IN FOLLOW WINDOW MODE IT STOPS BEING AN EDITOR AT ALL. The service has a
-// mode in which the pad button's second press takes the WINDOW under the pen
-// instead of the rectangle the pen dragged, and this file's whole job in it is
-// to aim: publish where the pen is, draw the window the service says is under
-// it, and refuse every gesture that would edit the rectangle in the meantime.
-// The pointer it publishes is what the service hit-tests, so the highlight and
-// the press are answering the same question from the same number.
+// mode in which the pad button's second press BINDS the mapping to the window
+// under the pen instead of committing the rectangle the pen dragged, and this
+// file's whole job in it is to aim: publish where the pen is, draw the window
+// the service says is under it, and refuse every gesture that would edit the
+// rectangle in the meantime. The pointer it publishes is what the service
+// hit-tests, so the highlight and the press are answering the same question
+// from the same number.
+//
+// THE MODE HAS THREE STATES AND THEY MUST NOT LOOK ALIKE, which is most of what
+// this surface has to get right beyond input. On with nothing bound, a press
+// binds: the outline is quiet because it is about to be replaced, and the wash
+// under the pen is the only thing wearing the accent. On with a window bound,
+// the region is that window's own rectangle and the outline says so, in the
+// accent and at twice the weight, while the wash goes on marking whatever a
+// press would REBIND to; the two are a filled rounded wash and an open square
+// ring, so they stay separable even on the frames where they coincide. And a
+// window bound while the editor was SHUT, which draws nothing at all, because
+// there is nothing up to draw on: the follow pill reads the service's own
+// persisted binding, so it is already naming the window the next time the pad
+// button opens this.
 PanelWindow {
     id: win
 
@@ -60,13 +74,20 @@ PanelWindow {
 
     // WHETHER A GESTURE CAN CHANGE ANYTHING AT ALL.
     //
-    // Follow Window is a mode in which the second press of the pad button takes
-    // the window under the pen instead of the rectangle under the pen, and a
-    // rectangle that is one press from being replaced wholesale has no business
-    // letting anybody nudge it four pixels first. So while the mode is on this
-    // surface refuses the lot: no move, no corner resize, no barrel resize, and
-    // no handles drawn either, because a grip that is drawn is a promise that it
-    // can be dragged.
+    // Follow Window is a mode in which the second press of the pad button binds
+    // the mapping to the window under the pen instead of committing the
+    // rectangle under the pen, and a rectangle that is one press from being
+    // replaced wholesale has no business letting anybody nudge it four pixels
+    // first. So while the mode is on this surface refuses the lot: no move, no
+    // corner resize, no barrel resize, and no handles drawn either, because a
+    // grip that is drawn is a promise that it can be dragged.
+    //
+    // AND IT REFUSES THEM HARDER ONCE SOMETHING IS BOUND, without a second test
+    // being written. A bound region is not the user's rectangle at all, it is
+    // the service's arithmetic on a window that moves by itself, so a drag would
+    // be undone by the next thing the compositor did to that window. One
+    // boolean covers both, because the mode is the thing that takes the
+    // rectangle away and the binding is only what it does with it afterwards.
     //
     // THE CONTROLS ARE THE EXCEPTION, and they have to be. The pill that turns
     // the mode off is on this surface, so a mode that suppressed presses on its
@@ -132,6 +153,19 @@ PanelWindow {
         return gx >= r.x && gy >= r.y && gx <= r.x + r.width && gy <= r.y + r.height;
     }
 
+    // DOES THE FIRST RECTANGLE HOLD THE SECOND, to within the width of the line
+    // that draws them.
+    //
+    // The slack is half a stroke because two edges that agree to closer than the
+    // stroke lying between them are the same edge on screen, and because the
+    // region is derived from a window by arithmetic that has no reason to land
+    // anywhere else: it is there for that arithmetic's own dust and not as a
+    // tolerance anybody is meant to tune.
+    function holds(outer: rect, inner: rect): bool {
+        const slack = Appearance.sizes.pickerOutline / 2;
+        return inner.x >= outer.x - slack && inner.y >= outer.y - slack && inner.x + inner.width <= outer.x + outer.width + slack && inner.y + inner.height <= outer.y + outer.height + slack;
+    }
+
     // IS THIS POINT ON ONE OF THE CONTROLS, and which one. They live INSIDE the
     // region now, so they sit on the surface that drags the region and the two
     // have to be told apart somewhere. Here, next to the other two hit tests, so
@@ -195,6 +229,42 @@ PanelWindow {
     // plate does not reflow to nothing halfway through going away.
     property rect aimed
     property string aimedName: ""
+
+    // IS THE MAPPING ALREADY INSIDE THE WINDOW THE PEN IS AIMED AT.
+    //
+    // A press in this mode means one of three things, bind, rebind, or nothing,
+    // and the only difference between the last two is whether the window under
+    // the pen is the one the mapping is already welded to. The service publishes
+    // the binding as an ADDRESS and publishes no address for the window under
+    // the pen, so there is no identity here to compare. What there is instead is
+    // a question about RECTANGLES, which this file is entitled to ask and which
+    // has a true answer of its own: is the region already sitting inside this
+    // window. While a binding is live the region IS that window, aspect
+    // corrected and centred in it, so it is inside that window and usually
+    // inside nothing else.
+    //
+    // THE NAME IS THE SECOND HALF, because containment on its own is not enough.
+    // Bind to a small floating terminal, then aim at the maximised editor behind
+    // it: the editor's rectangle contains the region too. The classes differ, so
+    // the name catches that one. What neither catches is two windows of the SAME
+    // application stacked so that the back one also holds the front one's
+    // mapping, and there the word on the plate is wrong while the press it
+    // describes is still perfectly sensible, which is the right way round for a
+    // claim this cheap to be wrong.
+    //
+    // OFF THE HELD RECTANGLE, like the name beside it and for the same reason:
+    // the word must not change under a highlight that is halfway through fading
+    // out.
+    readonly property bool aimedBound: PenMap.tracking && win.aimedName === PenMap.boundWindowName && win.holds(win.aimed, PenMap.region)
+
+    // WHAT A PRESS ON THAT WINDOW WOULD DO, in one word. The whole of this mode
+    // is a press whose meaning depends on where the pen is, and the pen is
+    // already pointing at the one place where saying so costs nothing.
+    readonly property string aimedWord: {
+        if (!PenMap.tracking)
+            return "bind";
+        return win.aimedBound ? "bound" : "rebind";
+    }
 
     anchors {
         top: true
@@ -336,8 +406,16 @@ PanelWindow {
             // the thing you are about to take" and is the true one here. The
             // four-way arrow would be offering a drag that this mode has just
             // finished refusing.
+            //
+            // EXCEPT OVER THE WINDOW THAT IS ALREADY BOUND, where there is
+            // nothing to take: the mapping is on that window, and a press would
+            // put it back exactly where it is. Aiming at a thing already held is
+            // not aiming, so the mark drops to the plain arrow, which is what
+            // the rest of this surface says wherever a press changes nothing.
+            // Over bare desktop it stays a crosshair, because there the mode is
+            // still looking even though this particular spot has no answer.
             if (!win.editable)
-                return Qt.CrossCursor;
+                return highlight.shown && win.aimedBound ? Qt.ArrowCursor : Qt.CrossCursor;
             return pen.over ? Qt.SizeAllCursor : Qt.ArrowCursor;
         }
 
@@ -537,9 +615,36 @@ PanelWindow {
         width: win.aimed.width
         height: win.aimed.height
         radius: Appearance.sizes.windowRadius
-        color: Appearance.colour.accentFill
-        stroke: Appearance.colour.accent
+
+        // AND IT GOES NEUTRAL OVER THE WINDOW IT IS ALREADY BOUND TO.
+        //
+        // The accent is spent on what a press would CHANGE, and over the bound
+        // window a press changes nothing. Left in the accent this wash would be
+        // inviting a press with no work to do, and it would be wearing the same
+        // colour as the ring nested inside it, which is the one thing on screen
+        // that actually IS the binding.
+        //
+        // NOT HIDDEN, though, because that window is the one there is most to
+        // say about. Aim at it and what you get is a quiet wash with the bright
+        // ring of the mapping sitting inside it, which is the whole state drawn
+        // rather than written: this window is taken, and that is the part of it
+        // the pen reaches. A highlight that vanished instead would be saying
+        // "nothing here" over the only window that is already yours.
+        color: win.aimedBound ? Appearance.colour.fill : Appearance.colour.accentFill
+        stroke: win.aimedBound ? Appearance.colour.textDim : Appearance.colour.accent
         strokeWidth: Appearance.sizes.pickerOutline
+
+        Behavior on color {
+            ColorAnimation {
+                duration: Appearance.anim.normal
+            }
+        }
+
+        Behavior on stroke {
+            ColorAnimation {
+                duration: Appearance.anim.normal
+            }
+        }
 
         // WHAT IT IS, said the way the region says what it is: the size at the
         // tier above, the name beside it in the quiet colour, on the same plate
@@ -587,9 +692,17 @@ PanelWindow {
                     font.pixelSize: Appearance.font.size.normal
                 }
 
+                // WHAT IT IS, AND WHAT WOULD HAPPEN TO IT, as one phrase rather
+                // than as two items with a gap between them. "rebind
+                // qBittorrent" is read in one go where a word and a name set
+                // apart are read as two facts, and it costs the plate a word
+                // instead of a word plus a gap, which is worth having: a plate
+                // wider than the window under it is not drawn at all, so every
+                // pixel added here is a band of window sizes that lose the
+                // whole label rather than part of it.
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    text: win.aimedName
+                    text: `${win.aimedWord} ${win.aimedName}`
                     color: Appearance.colour.textDim
                 }
             }
@@ -663,19 +776,48 @@ PanelWindow {
         radius: 0
         color: "transparent"
 
-        // AND IT GOES QUIET WHILE FOLLOWING. Still drawn, because it is still
-        // exactly where the tablet points and will go on being that until the
-        // press lands. Not in the accent, because it is one press from being
-        // thrown away and replaced by the window under the pen, and the loud
-        // colour belongs on the thing about to happen rather than on the thing
-        // about to end. It is also what keeps the two rectangles apart on the
-        // frames where they nearly coincide.
-        stroke: win.editable ? Appearance.colour.accent : Appearance.colour.textFaint
-        strokeWidth: Appearance.sizes.pickerOutline
+        // AND IT GOES QUIET WHILE FOLLOWING WITH NOTHING BOUND YET. Still drawn,
+        // because it is still exactly where the tablet points and will go on
+        // being that until the press lands. Not in the accent, because it is one
+        // press from being thrown away and replaced by the window under the pen,
+        // and the loud colour belongs on the thing about to happen rather than
+        // on the thing about to end. It is also what keeps the two rectangles
+        // apart on the frames where they nearly coincide.
+        //
+        // AND IT COMES BACK, HEAVIER, THE MOMENT A WINDOW IS BOUND. That is the
+        // one place this rectangle changes what it MEANS. It is no longer a
+        // rectangle anybody placed: it is the largest tablet-shaped rectangle
+        // that fits inside the window the mapping is welded to, worked out again
+        // every time that window moves or resizes, and the first instinct is to
+        // stop drawing it for exactly that reason, since nobody put it there.
+        //
+        // THAT INSTINCT IS WRONG TWICE. The window and the region are not the
+        // same rectangle once the shape is locked, and a tall window keeps a
+        // wide tablet well inside itself, so this outline is the only thing on
+        // screen that says where the pen actually LANDS as opposed to which
+        // window it lands in. And the panel carrying the only way out of this
+        // mode rides inside it, so an outline that went away would leave its own
+        // controls floating over open desktop.
+        //
+        // WEIGHT IS WHAT SAYS WELDED, because every other channel is already
+        // spent: the colour says whether the mapping is live, the square corners
+        // say the tablet's corners land on these, and the four handles say
+        // whether it can be dragged. A doubled line needs no new vocabulary, and
+        // it is the difference that survives the frames where this ring and the
+        // wash over the window it is bound to lie exactly on top of each other.
+        stroke: win.editable || PenMap.tracking ? Appearance.colour.accent : Appearance.colour.textFaint
+        strokeWidth: Appearance.sizes.pickerOutline * (PenMap.tracking ? 2 : 1)
 
         Behavior on stroke {
             ColorAnimation {
                 duration: Appearance.anim.normal
+            }
+        }
+
+        Behavior on strokeWidth {
+            NumberAnimation {
+                duration: Appearance.anim.normal
+                easing.type: Easing.OutCubic
             }
         }
     }
@@ -749,8 +891,57 @@ PanelWindow {
         readonly property string words: PenMap.aspectLocked ? `aspect ${PenMap.surfaceAspect.toFixed(2)}` : "aspect free"
         readonly property string mark: PenMap.aspectLocked ? "lock" : "lock_open"
 
-        readonly property string followWords: PenMap.followWindow ? "follow window" : "follow off"
+        // AND THE FOLLOW PILL NAMES WHAT IT CAUGHT, by the same rule: once a
+        // window is bound the state is not "follow window" any more, it is
+        // "follow qBittorrent". This is the only place in the shell where a live
+        // binding is written in words, and it is also the whole of the answer to
+        // a binding made while the editor was SHUT. Nothing has to be carried
+        // across the close and nothing has to be replayed on the open, because
+        // this reads the service's own persisted state and simply says it the
+        // next time this surface is up.
+        //
+        // A BOUND WINDOW WITH NO NAME falls back to the mode's own word rather
+        // than leaving "follow " with a space hanging off the end of it. That is
+        // not a lie about the state either: the mark's fill below is what says
+        // something is caught, and these words are saying no more than they
+        // know.
+        readonly property string followWords: {
+            if (!PenMap.followWindow)
+                return "follow off";
+            return PenMap.tracking ? `follow ${PenMap.boundWindowName || "window"}` : "follow window";
+        }
+
+        // STILL A PAIR, and deliberately not a trio. The mark is the SWITCH, and
+        // a switch has two positions; what the mode has caught is a different
+        // question and gets a different channel, the FILL axis on the pill
+        // below. That is precisely what Material Symbols means by FILL, so an
+        // empty frame filling in as it takes hold of a window is the mark saying
+        // it in its own vocabulary rather than in a third drawing nobody in this
+        // shell has seen before.
         readonly property string followMark: PenMap.followWindow ? "select_window" : "select_window_off"
+
+        // HOW MANY CHARACTERS OF A WINDOW'S NAME THE PILL WILL EVER SHOW.
+        //
+        // A BUDGET RATHER THAN A MEASUREMENT, and that is the entire point of
+        // it. The ladder below is a set of thresholds compared against pill
+        // widths, and a pill whose width came from a window name would move
+        // every one of them each time the pen crossed a window: the plate would
+        // gain and lose its words as a consequence of what happened to be under
+        // the pen, which is the same strobing the hidden twins were introduced
+        // to stop, driven this time by the hand instead of by a binding loop. So
+        // the twin that feeds the ladder is a FIXED string this many characters
+        // long, and the drawn pill is capped to it, which turns a name too long
+        // to fit into an elision inside a control that did not move.
+        //
+        // ELEVEN, because that is what the longest window class on this machine
+        // needs: qBittorrent, with thunderbird and libreoffice the same length
+        // behind it. Each character past it costs one glyph of the body size on
+        // two of the three rungs, 12px on the words rung and 12px on the numbers
+        // rung, for a name that almost nothing has. Setting it too SMALL breaks
+        // nothing either, because the cap is a width and not a slice: the pill
+        // just elides sooner, and even "follow window" would lose its tail
+        // rather than overflow the plate.
+        readonly property int followBudget: 11
 
         // THE CONTROLS, IN ROW ORDER. One list, walked by the press test and
         // counted by the ladder below, so the fourth control is one entry here
@@ -829,6 +1020,23 @@ PanelWindow {
         // than the alternatives: a rung that drops a control rather than its
         // words would hide a switch while implying the other one is all there is.
         //
+        // AND NAMING THE BOUND WINDOW RAISED THE TWO WORDY RUNGS, once, by a
+        // fixed amount. The follow twin went from "follow window" at thirteen
+        // characters to a permanent eighteen, seven for the word and the space
+        // and eleven for the budget, which at the body size is 59.92px of extra
+        // pill. The words rung moves from 479.63px of region, or 443.67px with
+        // the mode off, to a flat 539.55px; the numbers rung moves from 773.56px
+        // to 833.48px for a monitor named like DP-1 and a size string of eleven
+        // characters. The mark rung does not move at all, because no text
+        // reaches it: it is still 168px wide by 84px tall.
+        //
+        // THE FLATNESS IS THE PART WORTH HAVING. Those two rungs used to sit at
+        // different heights depending on which way the follow switch was thrown,
+        // 35.95px apart, because "follow window" is three characters longer than
+        // "follow off", so a region parked between them lost its words as a side
+        // effect of turning the mode on. They are one number now, and no window
+        // name can move them.
+        //
         // Below even the marks, nothing is drawn. A control narrower than the
         // WCAG target is a control the pen cannot hit, and a plate wider than its
         // region is worse than no plate. What is lost at that size is the sight
@@ -886,7 +1094,22 @@ PanelWindow {
 
             visible: false
             interactive: false
-            text: readout.followWords
+
+            // PERMANENTLY WORDY IN THE STRONGEST SENSE, which the aspect twin
+            // above is not and did not need to be. This one's text depends on
+            // nothing: not on the mode, not on the binding, not on the name of
+            // whatever window the pen last crossed. It is the widest thing the
+            // drawn pill is ALLOWED to be, so every threshold it feeds is a
+            // constant that the state it is measuring cannot reach back and
+            // move.
+            //
+            // A RUN OF THE WIDEST GLYPH rather than a phrase, because what is
+            // wanted here is a width and not a sentence. The shell's face is
+            // monospaced, so a run of any glyph is exact; in a proportional face
+            // this would come out a little too wide, which is the safe direction
+            // for a measurement whose whole job is deciding whether something
+            // fits.
+            text: `follow ${"M".repeat(readout.followBudget)}`
             icon: readout.followMark
         }
 
@@ -981,8 +1204,27 @@ PanelWindow {
                 anchors.verticalCenter: parent.verticalCenter
                 interactive: false
                 text: readout.wordy ? readout.followWords : ""
+
+                // CAPPED AT THE TWIN, which is the other half of the budget
+                // above. A Pill elides a label it has been given too little room
+                // for, so a window name longer than the budget loses its tail
+                // instead of pushing this control wider than the ladder was told
+                // it could be. Every state shorter than the cap keeps its own
+                // width, so the pill is not padded out to the worst case for the
+                // sake of a name it is not currently showing.
+                width: Math.min(follow.implicitWidth, followMeasure.implicitWidth)
                 icon: readout.followMark
-                iconFill: PenMap.followWindow ? 1 : 0
+
+                // THE FILL SAYS WHAT IT CAUGHT, not whether it is on. The mark
+                // already carries the switch, with and without its slash, and
+                // the pill's fill carries the same boolean a second time in
+                // colour; spending the FILL axis on it a third time would leave
+                // the one thing this mode is actually about with nowhere to
+                // show. So an outlined frame is the mode looking for a window
+                // and a solid one is the mode holding one, and that is what
+                // tells the two apart at the bottom rung of the ladder, where
+                // the words are gone and the mark is the whole of the control.
+                iconFill: PenMap.tracking ? 1 : 0
                 colour: readout.paint(PenMap.followWindow, pen.overControl === follow)
                 onClicked: PenMap.toggleFollowWindow()
             }
