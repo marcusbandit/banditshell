@@ -1273,10 +1273,6 @@ Singleton {
                 // here. Off, the edges collapse back to the band exactly as
                 // they were.
                 touchEdges: true,
-                // How many rows a list menu shows before it says "+N more". A
-                // street is eighty wifi networks and a menu that scrolls forever
-                // is worse than one that admits what it left out.
-                networkListMax: 7,
                 // How many steps the signal meter has, and therefore how
                 // finely the wifi list is ORDERED. The two are one number on
                 // purpose: NetworkManager reports a strength that wanders a
@@ -1420,9 +1416,17 @@ Singleton {
                 //
                 // Not a licence to grow forever. MenuPanel takes the min of this
                 // and the space actually below the icon, so the screen still
-                // decides; this only stops the cap deciding first. What it
-                // cannot do is make a menu SCROLL, so anything past here is
-                // still cut off rather than reachable.
+                // decides; this only stops the cap deciding first.
+                //
+                // AND PAST HERE A MENU SCROLLS, which this comment used to deny.
+                // It said anything beyond this height was "cut off rather than
+                // reachable", and that stopped being true when MenuPanel's page
+                // became a Flickable that turns interactive and starts clipping
+                // on overflow. The line mattered while it was believed: the wifi
+                // list capped itself at seven rows and wrote "+33 more" on the
+                // strength of it, so a menu that could already scroll was hiding
+                // networks nobody could reach. This is a ceiling on how tall a
+                // menu is DRAWN, not on how much it may contain.
                 maxHeight: 1000
             }
         })

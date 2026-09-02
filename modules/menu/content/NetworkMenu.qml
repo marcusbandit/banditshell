@@ -25,14 +25,29 @@ import qs.services
 // the same shape the bluetooth menu uses: the adapter's own settings under the
 // Wi-Fi row, and what little there is to say about a network under its row.
 //
-// WHAT IS NOT HERE, and why. A hotspot is supported by this radio and permitted
-// by policy, but making one means handing NetworkManager a whole nested settings
-// profile, and Quickshell exposes the type that carries one without exposing any
-// way to build it. The same wall stands in front of static addresses, custom
-// DNS, metered marking, MAC randomisation and joining a hidden SSID: all of them
-// are profile edits, and a profile is exactly what this API cannot construct.
-// The alternative is shelling out to nmcli, which this shell does not do for
-// anything else and will not start doing here.
+// WHAT IS NOT HERE, and why, which is a shorter list than it used to be. A
+// hotspot, a static address, custom DNS, metered marking, MAC randomisation and
+// joining a hidden SSID are all edits to a NetworkManager settings profile, and
+// Quickshell exposes the type that carries a profile without exposing any way to
+// build one.
+//
+// THAT USED TO BE THE END OF THE ARGUMENT, and it was the wrong end. What the
+// paragraph actually said was "this shell does not shell out, so anything that
+// needs a profile is out of scope", and an 802.1X sign-in needs a profile too,
+// so one sentence about implementation quietly ruled out an entire way of
+// logging in to a network. What that bought was a menu offering a passphrase box
+// to a campus network that has never wanted a passphrase, and a person opening a
+// terminal. DESIGN.md section 3 asks each menu to cover the WHOLE of its domain
+// and names WPA-Enterprise in the same breath as WPA personal, so the login type
+// outranks the objection: signing in IS here now, profile and all, built with
+// nmcli in Network.qml the way ~/bin/wifi has built it from this machine for
+// years. Section 11 records that exception and how narrow it is kept.
+//
+// So the line the project draws is not "never a command line". It is that a
+// binding that does not exist is not a reason for a login type to be missing.
+// The six above are missing for a much plainer reason: nothing has needed them
+// from this menu yet. They are work not done rather than things ruled out, and
+// whichever is wanted first gets built the same way this one was.
 Column {
     id: root
 
@@ -76,6 +91,23 @@ Column {
     // the space it was using. Nothing above shifts, nothing below survives, and
     // the panel's height does not change at all. See `body` at the bottom.
     readonly property bool takeover: root.opened === "code" || root.opened === "share"
+
+    // AND "AS TALL AS A THIRD OF IT" IS NOW SAID IN CODE, because the list stopped
+    // saying it on the card's behalf.
+    //
+    // The card's ceiling was the list's own height, and that read as generous
+    // rather than as a limit for exactly as long as the list could not pass seven
+    // rows: seven rows is about the menu's own width, so the code came out square
+    // and stopped there. Uncapping the list turned the same expression into "as
+    // tall as there are access points in earshot", which is not a ceiling at all,
+    // and a code drawn eight hundred pixels tall is not more scannable than one at
+    // three hundred, only further from the phone and further down a scroll.
+    //
+    // A third of the tallest a menu may be, off the one token that decides that,
+    // so the number moves when the menu's own limit does and nothing is typed here
+    // twice. The list still competes: a street with two networks in it shrinks the
+    // card exactly as it always did, and this only stops the crowd growing it.
+    readonly property real cardMax: Appearance.sizes.menuMaxHeight / 3
 
     // WHICH FACE THE CARD IS SHOWING, kept on the menu rather than on the card,
     // so it survives the card being built and thrown away with its layer. A
@@ -149,7 +181,7 @@ Column {
 
     property var frozen: []
 
-    readonly property var rows: root.busy ? root.frozen : Network.enabled ? Network.networks.slice(0, Appearance.sizes.networkListMax) : []
+    readonly property var rows: root.busy ? root.frozen : Network.enabled ? Network.networks : []
 
     // THE NOTICES FREEZE TOO, and for the same reason, which is easy to miss
     // because they are not part of the list.
@@ -619,6 +651,15 @@ Column {
     // the list's height as a ceiling and shrinks into it first; past the point
     // where shrinking would make the code too small to scan, growing the menu is
     // the honest answer.
+    //
+    // THE HEIGHT IS STILL THE LIST'S and deliberately not the clamp's, which
+    // looks like an oversight on a forty-network list and is the whole point.
+    // Sizing this to the card while a takeover is open would collapse a tall menu
+    // to a card's height on the way in and inflate it back on the way out, which
+    // is precisely the shunt the paragraph above exists to prevent, only larger.
+    // What the clamp on `cardMax` fixes is the CARD, not the room it is drawn in:
+    // the object stays an object, and the space it is drawn over stays the space
+    // the list was using.
     Item {
         id: body
 
@@ -641,9 +682,23 @@ Column {
                 }
             }
 
-            // The list. Capped, because a flat is a dozen networks and a street
-            // is eighty, and a menu that scrolls forever is worse than one that
-            // says how many it left out.
+            // THE WHOLE LIST, WHICH IT DID NOT USED TO BE.
+            //
+            // It stopped at seven rows and wrote "+3 more" underneath, on the
+            // argument that a flat is a dozen networks and a street is eighty
+            // and a menu that scrolls forever is worse than one that admits what
+            // it left out. That argument loses on the only case that decides it:
+            // the network you opened this menu to join is the one under the cut,
+            // and a count of what is hidden is not a way to reach any of it. A
+            // list that will not show you a network cannot join it either, and
+            // "+33 more" is the shell telling you it knows and will not say.
+            //
+            // Nothing here scrolls it and nothing here has to. Every menu body
+            // is loaded into a Flickable that turns interactive and starts
+            // clipping the moment its content passes `menuMaxHeight` (see `page`
+            // in MenuPanel), so the scrolling has been sitting there the whole
+            // time waiting for a list honest about its own length. This is that
+            // list; uncapping it was the entire fix.
             Repeater {
                 model: root.rows
 
@@ -670,11 +725,20 @@ Column {
                             if (n.connected)
                                 return n.disconnect();
                             // Known networks already have the secret, and an
-                            // open one never needed one. Only a stranger with a
-                            // lock has to be asked, and an enterprise network
-                            // cannot be joined with an answer to that question
-                            // at all.
-                            if (n.known || !Network.secured(n) || Network.enterprise(n))
+                            // open one never needed one. Everything else has to
+                            // be asked something first, and the row you just
+                            // pressed is where the asking happens.
+                            //
+                            // ENTERPRISE IS NO LONGER A SPECIAL CASE HERE, and
+                            // taking it out of this chain is most of the fix. It
+                            // used to ride along with the first branch and call
+                            // `connect()`, which for an 802.1X network is a
+                            // request NetworkManager can only refuse: there is
+                            // no profile for it to bring up and nothing in the
+                            // press to build one from. It is now just another
+                            // network that has to be asked something, and only
+                            // the shape of the form below differs.
+                            if (n.known || !Network.secured(n))
                                 return n.connect();
                             root.asking = root.asking === n.name ? "" : n.name;
                         }
@@ -683,12 +747,17 @@ Column {
                         // says. The label is the network's name and the detail
                         // is its state; neither of them is "and this is the
                         // button that joins it".
-                        tip: entry.modelData.connected ? "disconnect" : entry.modelData.known || !Network.secured(entry.modelData) ? "join" : Network.enterprise(entry.modelData) ? "needs profile" : "needs password"
+                        //
+                        // "needs sign-in" stands where "needs profile" did, and
+                        // the old one was never about this network: it named a
+                        // thing the shell could not make, in the one line
+                        // reserved for saying what pressing will do.
+                        tip: entry.modelData.connected ? "disconnect" : entry.modelData.known || !Network.secured(entry.modelData) ? "join" : Network.enterprise(entry.modelData) ? "needs sign-in" : "needs password"
 
                         Row {
                             spacing: Appearance.padding.normal
 
-                            // A LOCK, WHERE THE WORD "WPA2" WAS.
+                            // A MARK, WHERE THE WORD "WPA2" WAS.
                             //
                             // The state line under a name used to read "wpa2",
                             // or "wpa2, saved", down eight rows: a column of the
@@ -701,9 +770,22 @@ Column {
                                 anchors.verticalCenter: parent.verticalCenter
 
                                 visible: Network.secured(entry.modelData)
-                                // A key for one we already hold, a lock for one
-                                // that is going to ask.
-                                name: entry.modelData.known ? "key" : "lock"
+                                // THREE MARKS, BECAUSE THERE ARE THREE ANSWERS.
+                                // A key for one whose secret we already hold. A
+                                // lock for one about to ask for the room's
+                                // shared string. And a badge for 802.1X, which
+                                // HAS no such string: it asks who you are, and
+                                // wants a name, a password that is yours rather
+                                // than the room's, and the method the two of
+                                // them travel in.
+                                //
+                                // The third mark earns its place because it
+                                // answers a different question. A lock says
+                                // "this will ask you for something"; a badge
+                                // says "it will ask who you are", and that
+                                // changes what you need to have ready before you
+                                // press the row rather than after.
+                                name: entry.modelData.known ? "key" : Network.enterprise(entry.modelData) ? "badge" : "lock"
                                 color: Appearance.colour.textFaint
 
                                 HoverTip {
@@ -734,59 +816,140 @@ Column {
                         }
                     }
 
-                    PasswordField {
-                        width: parent.width
-                        visible: root.asking === entry.modelData.name
-                        placeholder: `password for ${entry.modelData.name}`
+                    // BUILT WHEN IT IS ASKED FOR, AND NOT BEFORE, which is the
+                    // bill for uncapping the list above rather than an
+                    // optimisation gone looking for a problem.
+                    //
+                    // Every row used to carry a fully constructed entry field
+                    // whether or not it was the row being asked, and a whole
+                    // layer of switches under that. At seven rows the waste was
+                    // a rounding error and not worth the machinery. Forty
+                    // networks in earshot is forty text inputs and forty layers,
+                    // thirty-nine of each for a question nobody asked, on a menu
+                    // that is rebuilt every time the scan comes back;
+                    // Network.qml's own note already names these rows as the
+                    // expensive thing in here. The change directly above is what
+                    // makes that real, so this is where it gets paid for.
+                    //
+                    // VISIBLE FOLLOWS ACTIVE for the reason the media column at
+                    // the bottom of this file sets out at length: a Loader that
+                    // has just destroyed its item goes on claiming that item's
+                    // height, and a positioner skips an invisible child
+                    // entirely, so the stale number is never asked for.
+                    Loader {
+                        id: secret
 
-                        onAccepted: secret => {
-                            Network.clearFailure(entry.modelData.name);
-                            entry.modelData.connectWithPsk(secret);
-                            root.asking = "";
+                        width: parent.width
+
+                        active: root.asking === entry.modelData.name
+                        visible: secret.active
+
+                        // WHICH FORM, decided by the network rather than by a
+                        // flag somebody has to remember to set. A shared secret
+                        // and an identity are different questions, and
+                        // IdentityField's own note says why they are two
+                        // components instead of one that changes shape.
+                        sourceComponent: Network.enterprise(entry.modelData) ? signIn : passphrase
+                    }
+
+                    Component {
+                        id: passphrase
+
+                        PasswordField {
+                            placeholder: `password for ${entry.modelData.name}`
+
+                            onAccepted: psk => {
+                                // Both sentences a previous attempt could have
+                                // left under this row, because the row is about
+                                // to be in a new state and either one of them
+                                // would be read as describing it.
+                                Network.clearFailure(entry.modelData.name);
+                                Network.clearEnroll(entry.modelData.name);
+                                entry.modelData.connectWithPsk(psk);
+                                root.asking = "";
+                            }
+                            onCancelled: root.asking = ""
                         }
-                        onCancelled: root.asking = ""
+                    }
+
+                    // THE NAME IS THE PLACEHOLDER, not a sentence built here:
+                    // IdentityField composes "username for <name>" itself, so
+                    // the two boxes are worded by the component that owns them
+                    // and cannot drift apart at one call site.
+                    Component {
+                        id: signIn
+
+                        IdentityField {
+                            placeholder: entry.modelData.name
+
+                            onAccepted: (identity, password, eap, phase2) => {
+                                Network.joinEnterprise(entry.modelData.name, identity, password, eap, phase2);
+                                root.asking = "";
+                            }
+                            onCancelled: root.asking = ""
+                        }
                     }
 
                     MenuLayer {
+                        id: layer
+
                         width: parent.width
                         open: entry.showing
 
-                        Act {
-                            visible: entry.modelData.connected
-                            icon: "link_off"
-                            label: "Disconnect"
-                            tip: "keeps password"
-                            onActivated: entry.modelData.disconnect()
-                        }
+                        // AND THE LAYER'S CONTENTS THE SAME WAY, for the same
+                        // reason: three rows per network, on every network,
+                        // whether or not anything is unrolled.
+                        //
+                        // ON THE LAYER'S OWN `visible`, NOT ON `open`. A layer
+                        // unrolls and rolls back up on a Follow, so it is on
+                        // screen for the whole of the way out as well as the way
+                        // in, and `open` goes false at the START of the way out:
+                        // binding to it would empty the layer into a bare rule
+                        // and then animate the emptiness closed. `visible` is
+                        // the layer's own answer to "is any part of me on
+                        // screen", and it stays true until the roll finishes.
+                        Loader {
+                            id: switches
 
-                        // Forgetting is the only cure for a saved network whose
-                        // password has changed: it will keep failing with the
-                        // secret it has, and nothing else in this menu can take
-                        // that secret away.
-                        Act {
-                            visible: entry.modelData.known
-                            icon: "delete"
-                            label: "Forget it"
-                            tip: "drops password"
-                            onActivated: {
-                                root.opened = "";
-                                Network.forget(entry.modelData);
+                            width: parent.width
+
+                            active: layer.visible
+
+                            sourceComponent: Column {
+                                width: switches.width
+                                spacing: 0
+
+                                Act {
+                                    visible: entry.modelData.connected
+                                    icon: "link_off"
+                                    label: "Disconnect"
+                                    tip: "keeps password"
+                                    onActivated: entry.modelData.disconnect()
+                                }
+
+                                // Forgetting is the only cure for a saved
+                                // network whose password has changed: it will
+                                // keep failing with the secret it has, and
+                                // nothing else in this menu can take that secret
+                                // away.
+                                Act {
+                                    visible: entry.modelData.known
+                                    icon: "delete"
+                                    label: "Forget it"
+                                    tip: "drops password"
+                                    onActivated: {
+                                        root.opened = "";
+                                        Network.forget(entry.modelData);
+                                    }
+                                }
+
+                                Fact {
+                                    text: `${Network.securityLabel(entry.modelData)} · ${Network.percent(entry.modelData)}%${entry.modelData.known ? " · saved" : ""}`
+                                }
                             }
-                        }
-
-                        Fact {
-                            text: `${Network.securityLabel(entry.modelData)} · ${Network.percent(entry.modelData)}%${entry.modelData.known ? " · saved" : ""}`
                         }
                     }
                 }
-            }
-
-            StyledText {
-                visible: Network.enabled && Network.networks.length > Appearance.sizes.networkListMax
-                leftPadding: Appearance.padding.normal
-                text: `+${Network.networks.length - Appearance.sizes.networkListMax} more`
-                color: Appearance.colour.textFaint
-                font.pixelSize: Appearance.font.size.small
             }
 
             StyledText {
@@ -859,11 +1022,13 @@ Column {
                         id: card
 
                         width: parent.width
-                        // The list's height, less whatever the line below is
+                        // The list's height or a card's worth of it, whichever
+                        // is less, and then less whatever the line below is
                         // using. Reading the LIST rather than the space left in
                         // `body` is what keeps this out of a loop: body's height
-                        // is partly this card's.
-                        maxHeight: Math.max(0, list.implicitHeight - (note.visible ? note.implicitHeight + parent.spacing : 0))
+                        // is partly this card's. See `cardMax` for why the
+                        // list's height alone stopped being a ceiling.
+                        maxHeight: Math.max(0, Math.min(list.implicitHeight, root.cardMax) - (note.visible ? note.implicitHeight + parent.spacing : 0))
 
                         text: Network.card
                         // The network's name, and the passphrase under it. The

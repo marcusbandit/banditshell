@@ -429,20 +429,90 @@ Singleton {
         return s !== undefined && s !== WifiSecurityType.Open && s !== WifiSecurityType.Owe && s !== WifiSecurityType.Unknown;
     }
 
-    // A PASSWORD IS NOT ENOUGH FOR ALL OF THEM. Enterprise networks want an
-    // identity and often a certificate, which arrive as a settings profile, not
-    // as a string typed into a box. The menu offered a passphrase field for them
-    // anyway, which could only ever fail; there is nothing this shell can do for
-    // them yet beyond saying so and joining the ones already saved.
+    // A PASSWORD IS NOT ENOUGH FOR ALL OF THEM. An enterprise network's secret
+    // is an identity and a password, checked by a RADIUS server somewhere behind
+    // the access point rather than by the access point itself, and
+    // NetworkManager holds that pair as a settings PROFILE: a key management of
+    // wpa-eap, an EAP method, an inner phase-2 auth, and the credentials. The
+    // only thing Quickshell will take is a pre-shared key, so there is no API
+    // here that can build one, and for a long time that was the end of the
+    // sentence: the menu offered a passphrase box that could only ever fail, or
+    // later said "needs a profile" and left the person to go and open a
+    // terminal.
+    //
+    // IT IS NOT THE END OF THE SENTENCE ANY MORE. DESIGN.md section 3 is
+    // explicit that this menu covers the whole of its domain, WPA-Enterprise
+    // named in the same breath as WPA personal and captive portals, and half a
+    // wifi menu is exactly what guarantees the terminal goes on being the real
+    // one. So `joinEnterprise` below builds the profile with nmcli, which is
+    // what `~/bin/wifi` has been doing from this machine all along and does
+    // without sudo: polkit grants the session user
+    // org.freedesktop.NetworkManager.settings.modify.system and
+    // network-control, so writing a system connection is something a desktop is
+    // allowed to ask for.
+    //
+    // That is the ONE exception in this file and it is narrow on purpose.
+    // Everything else here goes through Quickshell's API, or reads a property
+    // off the bus that Quickshell does not expose; a command line standing in
+    // for an API that exists is how a shell rots.
     function enterprise(n: var): bool {
         const s = n?.security;
         return s === WifiSecurityType.Wpa2Eap || s === WifiSecurityType.WpaEap || s === WifiSecurityType.Leap || s === WifiSecurityType.DynamicWep || s === WifiSecurityType.Wpa3SuiteB192;
     }
 
+    // THE SECURITY, IN WORDS SOMEBODY WOULD SAY. This string is one hover away
+    // on the row's lock and written out in full in the row's own layer, so it is
+    // read by a person working out whether they are about to be asked for
+    // something, and by nothing that needs to know a cipher suite.
+    //
+    // OFF THE ENUM MEMBERS, not off `WifiSecurityType.toString`. That
+    // stringification is Quickshell's own label for its own enum: it names the
+    // MECHANISM, it is free to change shape under this file whenever the enum
+    // grows, and lowercasing it has produced everything from "wpa2eap" to
+    // "wpa3 suite b 192-bit" sitting under a network's name where a person is
+    // trying to pick one. The members are the stable thing to ask about, and the
+    // words are then this shell's own vocabulary: "enterprise" for every EAP
+    // flavour, because that is the word that says what is about to be asked of
+    // you, and no suite number, because nobody has ever chosen a network on one.
+    //
+    // The `undefined` guard is the first line for the reason `secured` explains:
+    // a member a given Quickshell build does not carry compares as undefined,
+    // and so does the security of a network that is not there, so a switch below
+    // must never be reached holding it.
+    //
+    // Anything a future Quickshell adds falls through to its own string rather
+    // than to silence, which is wrong-sounding but visible, and visible is what
+    // gets it fixed.
     function securityLabel(n: var): string {
-        if (!secured(n))
+        const s = n?.security;
+        if (s === undefined)
             return "open";
-        return WifiSecurityType.toString(n.security).toLowerCase();
+        switch (s) {
+        case WifiSecurityType.Wpa3SuiteB192:
+            return "wpa3 enterprise";
+        case WifiSecurityType.Wpa2Eap:
+            return "wpa2 enterprise";
+        case WifiSecurityType.WpaEap:
+            return "wpa enterprise";
+        case WifiSecurityType.Leap:
+            return "leap";
+        case WifiSecurityType.Sae:
+            return "wpa3";
+        case WifiSecurityType.Wpa2Psk:
+            return "wpa2";
+        case WifiSecurityType.WpaPsk:
+            return "wpa";
+        case WifiSecurityType.StaticWep:
+            return "wep";
+        case WifiSecurityType.DynamicWep:
+            return "dynamic wep";
+        case WifiSecurityType.Owe:
+            return "owe";
+        case WifiSecurityType.Open:
+        case WifiSecurityType.Unknown:
+            return "open";
+        }
+        return WifiSecurityType.toString(s).toLowerCase();
     }
 
     // What a row says about itself, in the order it becomes true.
@@ -458,6 +528,23 @@ Singleton {
     // What is left is only ever the states that differ from each other, and an
     // ordinary network in range says nothing at all, which is correct: there is
     // nothing to say about it that its name and its meter have not said.
+    //
+    // AND AN ENTERPRISE NETWORK IS AN ORDINARY NETWORK HERE. Every one of them
+    // used to read "needs a profile", which was not a state at all: it was this
+    // shell's refusal written into the column where a network describes itself,
+    // and it sat there permanently with nowhere to go from it. The refusal is
+    // gone, so the sentence goes with it and nothing replaces it. In range and
+    // doing nothing is in range and doing nothing, whatever the network will ask
+    // for when it is pressed. That it wants an identity is a fact ABOUT the
+    // network rather than a state it is in, and the row carries facts like that
+    // as a mark, next to the lock, where the security word already lives.
+    //
+    // What does belong here is the enrolment while it is happening and the
+    // sentence it leaves behind if it does not work, which are states in exactly
+    // the way "connecting" and "wrong password" are, and which sit in the same
+    // place in the order: after the real connection states, because a network
+    // that has since connected has answered every question an old failure was
+    // asking.
     function stateLabel(n: var): string {
         if (!n)
             return "";
@@ -467,16 +554,369 @@ Singleton {
             return "connecting";
         if (root.failedName === n.name)
             return root.failureLabel();
-        if (root.enterprise(n))
-            return "needs a profile";
+        if (root.enrollingName === n.name)
+            return "signing in";
+        if (root.enrollFailedName === n.name)
+            return root.enrollTrouble;
         return "";
     }
 
     function forget(n: var): void {
         if (n) {
             root.clearFailure(n.name);
+            root.clearEnroll(n.name);
             n.forget();
         }
+    }
+
+    // ---- SIGNING IN TO AN ENTERPRISE NETWORK -------------------------------
+    //
+    // The one place this shell drives NetworkManager through a command line
+    // instead of an API, for the reason set out above `enterprise`: the thing
+    // being made is a settings profile and there is nothing in Quickshell that
+    // makes one.
+    //
+    // THE SHAPE IS `~/bin/wifi`'s, because that script has been getting this
+    // machine onto eduroam and campus networks for years and its answers are the
+    // tested ones. Ask what is already saved, amend that profile if there is
+    // one and create it if there is not, then bring it up. The amend branch
+    // matters more than it looks: a profile left behind by a password that has
+    // since been rotated is the single most common reason an enterprise network
+    // stops working, and `add` beside an existing profile of the same name
+    // leaves TWO of them, with NetworkManager free to keep picking the stale
+    // one. Deleting and recreating would work as well and would throw away
+    // whatever else has been set on that profile by hand.
+    //
+    // THE CREDENTIALS GO THROUGH ARGV, and for the moment nmcli is running they
+    // are visible to anyone else with a shell on this box who runs `ps`. That is
+    // a deliberate trade and `~/bin/wifi` records the same one: putting them in
+    // the profile is precisely what makes the network rejoin itself after a
+    // reboot instead of asking again every morning, and at rest NetworkManager
+    // keeps the file root-owned and mode 600. It is also not a cost nmcli is
+    // adding. The D-Bus route to the same profile is an AddConnection call, and
+    // driving that from here means handing the identity and the password to
+    // `busctl` as argv in exactly the same way; the only version of this without
+    // the exposure is a native D-Bus client, which is Quickshell's job and not
+    // this file's. On a single-user laptop the trade is not close.
+    //
+    // ONE AT A TIME. Three processes run in sequence and each hands the next its
+    // argument list, so a reply from an abandoned attempt landing in the middle
+    // of a live one would either point a write at the wrong profile or write a
+    // sentence about a network nobody is looking at. `enrollingName` is the
+    // whole of that state, and because a second attempt cannot begin while it is
+    // set, "is this name still the one in flight" is the same guard `readCard`
+    // makes on `sharing`, and every handler below makes it.
+    property string enrollingName: ""
+
+    // WHICH NETWORK THE SENTENCE IS ABOUT, held apart from the sentence for the
+    // same reason `failedName` is held apart from `failedReason`: an attempt
+    // that has finished failing is no longer in flight, `enrollingName` is empty
+    // by then, and a row still has to be able to ask whether the failure was
+    // its. Whoever is doing the enrolling reads `enrollTrouble` directly, since
+    // there is only ever one of these and it belongs to the thing they just did.
+    property string enrollFailedName: ""
+    property string enrollTrouble: ""
+
+    // What the profile is made of, held between the question and the write:
+    // the write cannot know whether it is adding or amending until the question
+    // comes back, and the arguments are identical either way.
+    property var enrollArgs: []
+
+    function clearEnroll(name: string): void {
+        if (root.enrollFailedName === name) {
+            root.enrollFailedName = "";
+            root.enrollTrouble = "";
+        }
+    }
+
+    // Failing is one motion: the attempt stops being in flight, and the name it
+    // was for keeps the sentence. Separated out because three handlers do it and
+    // an attempt that forgot to clear `enrollingName` would lock the whole thing
+    // out for the rest of the session.
+    function failEnroll(why: string): void {
+        root.enrollFailedName = root.enrollingName;
+        root.enrollTrouble = why;
+        root.enrollingName = "";
+    }
+
+    // DEFAULTS THAT MATCH THE CLI'S, because they are what almost every campus
+    // and office network actually wants, and a form insisting on being filled in
+    // before it will do anything is a form that gets abandoned. PEAP with
+    // MSCHAPv2 is what eduroam is nearly everywhere.
+    //
+    // Phase 2 is a PEAP and TTLS question: it names the authentication that runs
+    // INSIDE the tunnel those two set up. TLS has no inside, it proves itself
+    // with a client certificate, so the setting is left off entirely rather than
+    // filled with something meaningless. The certificate and key that TLS then
+    // does want are not asked for here yet; `~/bin/wifi` takes them, and this
+    // will grow the same two fields when there is a reason to. Until it does, a
+    // TLS network gets as far as the profile and NetworkManager refuses it for
+    // the missing certificate, which is at least the true reason and is the
+    // sentence the write below already says.
+    function joinEnterprise(name: string, identity: string, password: string, eap: string, phase2: string): void {
+        if (!name || root.enrollingName)
+            return;
+        if (!root.deviceName) {
+            root.enrollFailedName = name;
+            root.enrollTrouble = "there is no wireless adapter to put it on";
+            return;
+        }
+
+        // A fresh attempt is the answer to everything the last one said, its own
+        // sentence included: leaving the old trouble up while "signing in" is
+        // showing is two states at once and the stale one reads as the live one.
+        root.clearFailure(name);
+        root.enrollFailedName = "";
+        root.enrollTrouble = "";
+        root.enrollingName = name;
+
+        const method = eap || "peap";
+        const args = ["wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", method, "802-1x.identity", identity, "802-1x.password", password];
+        if (method !== "tls")
+            args.push("802-1x.phase2-auth", phase2 || "mschapv2");
+        root.enrollArgs = args;
+
+        profile.want = name;
+        profile.exists = false;
+        up.refused = false;
+        profile.running = true;
+    }
+
+    // IS THERE ALREADY A PROFILE BY THAT NAME. `-e no` so that a network whose
+    // name contains a colon comes back whole instead of backslashed, which means
+    // the name is everything after the FIRST colon and the line is not a thing
+    // to split on. That is `~/bin/wifi`'s own reading of the same output, and
+    // the reason it is awk there and a scan here rather than a split in either.
+    //
+    // Asked of nmcli rather than of `n.known`, which looks like the same
+    // question and is not: `known` is about the network in front of the radio,
+    // and the profile being amended is a record on disk that may well outlive
+    // every AP this machine can currently hear.
+    Process {
+        id: profile
+
+        property string want: ""
+        property bool exists: false
+
+        command: ["nmcli", "-t", "-e", "no", "-f", "TYPE,NAME", "connection", "show"]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                if (profile.want !== root.enrollingName)
+                    return;
+                profile.exists = text.split("\n").some(line => {
+                    const cut = line.indexOf(":");
+                    return cut > 0 && line.slice(0, cut) === "802-11-wireless" && line.slice(cut + 1) === profile.want;
+                });
+            }
+        }
+
+        // SET, NOT BOUND, and assembled here rather than declared above, for the
+        // reason `onSavedPathChanged` gives further down: what this command IS
+        // depends on an answer that has only just arrived, and a bound argument
+        // list would have had to be right before the question was asked.
+        onExited: code => {
+            if (profile.want !== root.enrollingName)
+                return;
+            if (code !== 0) {
+                root.failEnroll("could not ask NetworkManager what it has saved");
+                return;
+            }
+            const head = profile.exists ? ["nmcli", "connection", "modify", profile.want] : ["nmcli", "connection", "add", "type", "wifi", "con-name", profile.want, "ifname", root.deviceName, "ssid", profile.want];
+            enrol.command = head.concat(root.enrollArgs);
+            enrol.running = true;
+        }
+    }
+
+    // THE PROFILE ITSELF, and nothing is on the air when this succeeds: it has
+    // written a connection down, no more. Which is exactly why its failure gets
+    // its own sentence. Nothing here has been anywhere near the person's
+    // credentials yet, so a refusal at this point is NetworkManager objecting to
+    // the shape of what it was handed, and telling somebody to check their
+    // password over it would send them to look at the one thing that cannot be
+    // the cause.
+    Process {
+        id: enrol
+
+        onExited: code => {
+            if (!root.enrollingName)
+                return;
+            if (code !== 0) {
+                root.failEnroll("NetworkManager would not take the profile");
+                return;
+            }
+            up.command = ["nmcli", "--wait", "30", "connection", "up", "id", root.enrollingName];
+            up.running = true;
+        }
+    }
+
+    // AND NOW ON THE AIR. This is the one that carries the credentials out to
+    // the RADIUS server, so it is the one that can be told no.
+    //
+    // BOUNDED, because the alternative is a menu that says "signing in" forever.
+    // An association that is never going to work does not fail fast: nmcli waits
+    // ninety seconds by default, and a supplicant talking to a RADIUS server
+    // that is simply not answering will use every one of them. Worse, nothing in
+    // here cancels, so those ninety seconds are ninety in which `enrollingName`
+    // is set and every further attempt is refused. Thirty is past the slowest
+    // honest case, which is a RADIUS round trip and then DHCP.
+    //
+    // ONE SENTENCE FOR THE REJECTION, still, because an activation that failed
+    // cannot separate a mistyped password from a wrong EAP method from an inner
+    // auth the server does not run: all three come back the same way, so naming
+    // them would be three things to check and an admission that the shell does
+    // not know which. But the half of that argument which said the exit code is
+    // what tells the rejection apart from everything else was simply wrong, and
+    // this is what the real network did when it was asked.
+    //
+    // A REFUSED PASSWORD IS NOT AN EXIT CODE, IT IS A SECOND REQUEST FOR THE
+    // PASSWORD. Point this at a live 802.1X network with credentials that are
+    // wrong on purpose and NetworkManager never reports a failed activation at
+    // all. RADIUS says no, NM concludes that the secrets it was handed must be
+    // the wrong ones, and it ASKS FOR THEM AGAIN. There is no secret agent
+    // behind a bare nmcli, so the re-request has nowhere to go and nmcli says so
+    // instead, in two halves, on two different streams, at the same instant:
+    //
+    //     stdout: Passwords or encryption keys are required to access the
+    //             wireless network 'eduroam'.
+    //     stderr: Warning: password for '802-1x.identity' not given in
+    //             'passwd-file' and nmcli cannot ask without '--ask' option.
+    //
+    // and then it holds the line open, doing nothing further, until `--wait`
+    // runs out and it exits 3. Exit 3 is the timeout, and "no answer, so nothing
+    // was checked" is the honest sentence for a timeout, so a version of this
+    // that reads only the exit code sits through the whole wait in order to
+    // finally tell somebody who mistyped their password to go and look at the
+    // network instead. It is not a near miss. It is the one wrong answer of the
+    // set, given to the most likely question.
+    //
+    // MEASURED, TWICE, on two different campus networks: the re-request lands at
+    // about twenty-six seconds and the timeout at thirty. So the time this saves
+    // is roughly four seconds of a thirty second wait, and the time is not the
+    // point; the sentence is. What the four seconds do buy is the case where the
+    // wait is longer than thirty, which is nmcli's own default of ninety and is
+    // what this would fall back to if the bound above were ever loosened.
+    //
+    // WHICH IS WHY THIS IS THE ONE PROCESS IN THE FILE THAT READS OUTPUT AS IT
+    // ARRIVES. Everywhere else a StdioCollector is right, because everywhere
+    // else the whole of what was said is wanted and the process ending is no
+    // worse a moment to be handed it than any other. Here the process ending is
+    // precisely the thing being cut short, so a collector would be waiting for
+    // exactly what it was added to avoid. A SplitParser hands the line over
+    // while nmcli is still sitting there.
+    //
+    // BOTH STREAMS, one handler, because the two halves above are one thought
+    // that nmcli happens to split, and which half arrives depends on plumbing
+    // rather than on meaning: run it in a terminal and both appear, run it under
+    // a process that reads only stderr and the stdout half is simply gone. Being
+    // right either way costs one more parser. Matched on the parts that are not
+    // about this network, since the SSID, the quoting and the capitalisation are
+    // none of them promised and the shape of the sentence is the only stable
+    // thing in it.
+    //
+    // THE EXIT CODES STAY, as the fallback for everything the output did not
+    // already answer, and exit 3 now means what its sentence says: reached
+    // WITHOUT the re-request, nothing answered, and sending somebody to look at
+    // the network is right. The parsed path simply gets to the credential case
+    // first, and more accurately than a number ever could.
+    Process {
+        id: up
+
+        // WHETHER THE CREDENTIALS CAME BACK, kept on the process because it is
+        // about this one invocation and nothing outside these handlers has any
+        // use for it. Cleared at the top of every attempt in `joinEnterprise`,
+        // so a refusal cannot be inherited by the one after it.
+        //
+        // THE SECOND FIRING IS REAL. `running = false` is a kill, a killed
+        // process still exits, and the exit measured here arrives one
+        // millisecond later carrying code 1, which is not in the list below and
+        // would land on "could not sign in" and paint that over the sentence
+        // that was right. The same goes for the other half of the re-request,
+        // which lands on the other stream in the same millisecond and would
+        // otherwise be read as a second refusal and delete the profile twice.
+        //
+        // BOTH OF THOSE ARE ALREADY CAUGHT by the older `enrollingName` test, as
+        // it happens, because failing clears that name and both handlers refuse
+        // to act without it. The flag stays anyway, and not out of caution: the
+        // older test only works because `failEnroll` happens to be called BEFORE
+        // `running = false` a few lines down, which is a fact about the order of
+        // two statements rather than anything anyone would think to preserve.
+        // This one says what it means.
+        property bool refused: false
+
+        function refuse(line: string): void {
+            if (up.refused || !root.enrollingName)
+                return;
+            if (!/passwords or encryption keys|required to access the wireless network|not given in .passwd-file|cannot ask without/i.test(line))
+                return;
+
+            // Read before failing, because failing clears `enrollingName` and
+            // the tidy-up below still needs to know which profile it is about.
+            const name = root.enrollingName;
+            const ours = !profile.exists;
+
+            up.refused = true;
+            root.failEnroll("wrong username or password");
+            up.running = false;
+
+            if (ours) {
+                discard.command = ["nmcli", "connection", "delete", "id", name];
+                discard.running = true;
+            }
+        }
+
+        stdout: SplitParser {
+            onRead: line => up.refuse(line)
+        }
+
+        stderr: SplitParser {
+            onRead: line => up.refuse(line)
+        }
+
+        onExited: code => {
+            if (up.refused || !root.enrollingName)
+                return;
+            switch (code) {
+            case 0:
+                root.enrollingName = "";
+                return;
+            case 3:
+                return root.failEnroll("no answer, so nothing was checked");
+            case 4:
+                return root.failEnroll("wrong username or password");
+            case 8:
+                return root.failEnroll("NetworkManager is not running");
+            case 10:
+                return root.failEnroll("it went away while signing in");
+            }
+            root.failEnroll("could not sign in");
+        }
+    }
+
+    // THE PROFILE WE MADE AND COULD NOT GET ONTO. A refused sign-in leaves a
+    // saved connection behind holding credentials that are now known not to
+    // work, and leaving it there is worse than untidy: NetworkManager keeps
+    // autoconnecting to it and keeps failing, and the row in the menu grows the
+    // mark that says this network is saved, about a network nobody has ever been
+    // on. The mark is a claim, and it would be a false one.
+    //
+    // ONLY WHEN THIS ATTEMPT IS THE ONE THAT MADE IT. `profile.exists` recorded
+    // which branch the write took, and it is still this attempt's answer at the
+    // moment the refusal arrives: it is set once per attempt, a second attempt
+    // cannot begin while `enrollingName` is set, and this reads it before
+    // `failEnroll` releases that lock. If the write amended a profile that was
+    // already there, that profile is the person's rather than this shell's. It
+    // may be carrying a certificate, an anonymous identity, a static address,
+    // anything put on it by hand years ago, and destroying all of it because one
+    // password was typed wrong takes away enormously more than was asked for.
+    // `~/bin/wifi` deletes a stale profile it could not connect with and is
+    // right to, and this is the same instinct with the line drawn where it
+    // belongs: at what this shell itself created.
+    //
+    // Nothing reads the result. There is no second thing to tell somebody if the
+    // tidy-up fails, and the sentence they are already reading is the true one.
+    Process {
+        id: discard
     }
 
     // A WI-FI CARD, which is what the square of dots on the back of a router is.
@@ -556,6 +996,13 @@ Singleton {
     // the cafe you are going to tomorrow, or for a hidden SSID, is a profile,
     // and the honest thing is to say so rather than to appear to do nothing.
     //
+    // THE ENTERPRISE REFUSAL IS NOW ABOUT THE CARD, not about the shell.
+    // `joinEnterprise` can build that profile, but the format has no field to
+    // put an identity in: a Wi-Fi card carries a passphrase, there is no sign-in
+    // printed on it to read, and a code that has been scanned successfully
+    // cannot be answered by asking for two more things. So the code is refused
+    // and the row, which can ask, is where enrolling happens.
+    //
     // Returns "" when it acted, and the sentence to show when it did not.
     function joinQr(text: string): string {
         const card = root.parseQr(text);
@@ -570,7 +1017,7 @@ Singleton {
         if (n.connected)
             return `already on ${card.ssid}`;
         if (root.enterprise(n))
-            return `${card.ssid} needs a profile`;
+            return `${card.ssid} signs in with an identity, and a card cannot carry one`;
 
         root.clearFailure(n.name);
         // A card for an open network carries no password, and a card for a
@@ -840,10 +1287,15 @@ Singleton {
                     root.noteFailure(watcher.modelData.name, reason);
                 }
 
-                // Succeeding is the only real answer to having failed.
+                // Succeeding is the only real answer to having failed, and that
+                // holds for a sign-in exactly as it holds for a passphrase: a
+                // network that is carrying traffic is not still telling anybody
+                // their username was wrong.
                 function onConnectedChanged(): void {
-                    if (watcher.modelData.connected)
+                    if (watcher.modelData.connected) {
                         root.clearFailure(watcher.modelData.name);
+                        root.clearEnroll(watcher.modelData.name);
+                    }
                 }
             }
         }

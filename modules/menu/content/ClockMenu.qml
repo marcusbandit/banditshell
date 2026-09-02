@@ -119,8 +119,10 @@ Column {
     // correct for this one.
     readonly property var dayBand: root.token("dayBand", [6, 18])
 
-    // How many rows the add-a-place filter shows, exactly as networkListMax caps
-    // the network list.
+    // How many rows the add-a-place filter shows. A cap is right HERE and was
+    // wrong for the wifi list, which used to carry one and no longer does: this
+    // is a search, so the rows past the eighth are reached by typing another
+    // letter, and a list of every zone on earth is not an answer to anything.
     readonly property int zoneListMax: root.token("zoneListMax", 8)
 
     // What the minute and second scrubs magnetise to. Apple's HIG explicitly

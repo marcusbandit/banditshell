@@ -389,7 +389,10 @@ banditshell/
 │   ├── CodeBlock.qml            that, coloured from the theme, one delegate per
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
-│   ├── PasswordField.qml        inline secret entry
+│   ├── PasswordField.qml        inline secret entry: the string a whole room shares
+│   ├── IdentityField.qml        the same slot for a network that wants to know WHO
+│   │                            you are: a username, a password, and the method
+│   │                            the two of them travel in (802.1X)
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
@@ -1043,7 +1046,17 @@ What the plates get that the first two attempts did not:
 ## 11. What the services taught
 
 Every menu reads the real machine. Quickshell ships bindings for PipeWire,
-UPower, NetworkManager, bluez and MPRIS, so none of it shells out.
+UPower, NetworkManager, bluez and MPRIS, so almost none of it shells out.
+
+Almost, and the exceptions are worth naming because the sentence used to claim
+there were none. Two of them only READ: a pair of NetworkManager properties the
+bindings do not carry (where the captive portal lives, and the passphrase behind
+the share card) are asked for over `busctl`. The third WRITES, and it is the one
+that had to be argued for: an 802.1X sign-in is a settings profile, Quickshell
+exposes the type that carries one without exposing any way to build one, and
+section 3 requires the feature anyway. So `Network.qml` builds that one profile
+with `nmcli`, the way `~/bin/wifi` already did. A binding that does not exist is
+not a reason to be missing a login type.
 
 Four rules came out of writing them, and they are worth keeping:
 
