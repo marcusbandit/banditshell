@@ -487,6 +487,10 @@ Item {
                 anchors.bottom: parent.bottom
                 height: implicitHeight
                 visible: root.showsMedia
+                // The scrubber's wave is a clock, and a clock under a parked
+                // notch draws sixty frames a second of nothing: the reason
+                // `clock` above only ticks while `active`.
+                watched: root.active
             }
         }
     }

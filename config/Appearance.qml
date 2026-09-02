@@ -388,6 +388,12 @@ Singleton {
         // animation tiers.
         readonly property int wallpaperReveal: root.cfg.wallpaper.reveal
         readonly property int notchTrack: root.cfg.notch.trackWidth
+        // The media scrubber's line, wave and wheel; see modules/media/Scrubber.qml.
+        readonly property int scrubStroke: root.cfg.media.stroke
+        readonly property int scrubWaveLength: root.cfg.media.waveLength
+        readonly property int scrubWaveAmplitude: root.cfg.media.waveAmplitude
+        readonly property real scrubWaveSpeed: root.cfg.media.waveSpeed
+        readonly property real scrubWheelSeek: root.cfg.media.wheelSeek
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone

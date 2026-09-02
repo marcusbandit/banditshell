@@ -80,8 +80,44 @@ Singleton {
             active.previous();
     }
 
+    // Seeking is a capability a player advertises on its own, separate from
+    // playing at all: a browser tab streaming live radio has a position and no
+    // way to move it. The scrubber takes input only while this is true.
+    readonly property bool canSeek: !!active?.canSeek
+
+    // Go to a place in the track, in seconds from its start.
+    function seekTo(seconds: real): void {
+        if (!active?.canSeek)
+            return;
+        active.position = Math.max(0, Math.min(root.length, seconds));
+        reask.restart();
+    }
+
+    // Move by an amount, in seconds, signed.
+    function seekBy(offset: real): void {
+        if (!active?.canSeek)
+            return;
+        active.seek(offset);
+        reask.restart();
+    }
+
+    // A seek is a REQUEST. The player answers it with a Seeked signal when it
+    // has moved, and until then the position it reports is the old one, which
+    // matters most for a paused track: nothing else polls a paused player, so
+    // a seek it acknowledged quietly would show the old place until the next
+    // press of play. So the position is asked for again a moment after every
+    // seek, once, whether or not the player already said.
+    Timer {
+        id: reask
+
+        interval: 250
+        onTriggered: root.active?.positionChanged()
+    }
+
+    // m:ss. Zero is a real answer here, the start of a track, and only a
+    // number that is not a time at all gets nothing.
     function timeLabel(seconds: real): string {
-        if (!(seconds > 0))
+        if (!isFinite(seconds) || seconds < 0)
             return "";
         const total = Math.floor(seconds);
         const m = Math.floor(total / 60);

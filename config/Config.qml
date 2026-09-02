@@ -909,6 +909,29 @@ Singleton {
                 trackWidth: 288
             },
 
+            // The scrubber: where the track is, and where to send it.
+            //
+            // The played part of the line is a wave and the rest is a straight
+            // run, which is Android's media-notification bar and the one
+            // progress bar that says "sound" rather than "loading". See
+            // modules/media/Scrubber.qml for the construction.
+            media: {
+                // The line's weight, in px. Two of the pixel font's stems at
+                // the body tier, so the wave is drawn in the same ink as the
+                // title over it rather than as a fatter rail.
+                stroke: 4,
+                // One crest to the next, in px.
+                waveLength: 28,
+                // Centre line to a crest, in px. A full swing is twice this.
+                waveAmplitude: 4,
+                // How fast the crests travel toward the pip, in px per second.
+                // About a wavelength a second: fast enough to read as moving
+                // from across the room, slow enough not to shimmer.
+                waveSpeed: 24,
+                // How far one notch of the wheel moves the track, in seconds.
+                wheelSeek: 5
+            },
+
             // WHICH SINK IS "THE SPEAKERS" AND WHICH IS "THE HEADPHONES".
             //
             // Not part of the volume block below it, which is a meter on the

@@ -358,6 +358,7 @@ banditshell/
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
+│   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── G2Rect.qml               the ONE rounded-rect primitive; fill and/or outline
 │   ├── G2Image.qml              a picture cut to that same corner, by mask
 │   ├── CornerWedge.qml          a corner's leftover; rounds off the screen corners
@@ -485,7 +486,8 @@ banditshell/
 │   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
 │   ├── media/
 │   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
-│   │   └── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
+│   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
+│   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
 │   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
