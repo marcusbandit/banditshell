@@ -21,7 +21,8 @@ import qs.modules.settings
 // Appearance's tokens, so the page grows a control only when a setting earns
 // one.
 //
-// Rows come FROM Themes.names, so a palette added to config/Themes.qml appears
+// Rows come FROM Themes.availableNames, which is every theme the machine's
+// renderer can build, so a theme dropped into ~/.config/theme/themes appears
 // here without this file changing: the page renders data, it does not keep a
 // second list of what the data contains.
 Item {
@@ -37,30 +38,34 @@ Item {
 
         // -------------------------------------------------------- palettes
 
-        // WORN IMMEDIATELY. There is no apply step: the press writes
-        // config.json and the whole shell re-binds, which is the one thing a
-        // picker cannot show and the reason a row here is the whole gesture.
+        // WORN IMMEDIATELY, AND NOT ONLY HERE. There is no apply step: the
+        // press runs `theme-set`, which re-renders the colours for every app
+        // on the machine and reloads them, so the shell re-binds in the same
+        // breath as the terminal and the window borders. That is the one thing
+        // a picker cannot show, and the reason a row here is the whole gesture.
         SettingsCard {
             title: "Palette"
 
             Repeater {
-                model: Themes.names
+                model: Themes.availableNames
 
                 delegate: SettingsRow {
                     id: row
 
                     required property string modelData
 
-                    readonly property var theme: Themes.get(row.modelData)
+                    readonly property var accents: Themes.accentsFor(row.modelData)
 
                     label: row.modelData
-                    selected: Config.values.theme === row.modelData
-                    onActivated: Config.set("theme", row.modelData)
+                    selected: Themes.activeName === row.modelData
+                    onActivated: Themes.apply(row.modelData)
 
                     // WHAT THE THEME LOOKS LIKE, said in its own saturated
-                    // end: dim, mid, bright, the three accents a Theme block
-                    // supplies, drawn from the theme's data rather than listed
-                    // by hand so a theme cannot lie about itself here. The
+                    // end: dim, mid, bright, the three accents a theme
+                    // supplies, and ITS OWN whether or not it is the one being
+                    // worn, so the row shows what pressing it would do rather
+                    // than what is already true. Drawn from the theme's data
+                    // rather than listed by hand, so it cannot lie here. The
                     // ramp is deliberately not swatched: eleven near-neighbour
                     // greys in an 18px chip read as dirt, and the accents are
                     // where palettes actually differ.
@@ -68,7 +73,7 @@ Item {
                         spacing: Appearance.padding.small / 2
 
                         Repeater {
-                            model: [row.theme.dim, row.theme.mid, row.theme.bright]
+                            model: [row.accents.dim, row.accents.mid, row.accents.bright]
 
                             delegate: G2Rect {
                                 required property color modelData
