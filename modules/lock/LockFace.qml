@@ -38,6 +38,20 @@ Item {
     // sets it true and gets the settled state.
     property bool active: true
 
+    // WHICH MONITOR'S WALLPAPER IS THE GROUND HERE, by output name.
+    //
+    // A lock grows a surface on every output and the wallpapers behind them can
+    // differ now, so a lock face that asked the shell for "the wallpaper" would
+    // dress every screen in the focused one's picture. Blurred and dimmed the
+    // difference is small, which is precisely why it would never be noticed and
+    // never be fixed: the lock would simply be the one place in the shell that
+    // still thought there was one wallpaper.
+    //
+    // Empty is the harness's answer (lockpreview.qml is an unplaced window with
+    // no output of its own), and empty resolves to the default, which is the
+    // right thing for a preview of a lock screen in general.
+    property string output: ""
+
     // HARNESS ONLY, and zero everywhere that matters. The marks below cannot be
     // looked at without a keyboard, and the preview surface deliberately takes
     // no input, so it says how many to draw instead. The real surface never sets
@@ -87,11 +101,15 @@ Item {
         // of the way to black, so a video playing under all that would be a
         // decoder running for a picture that is, by construction, unreadable.
         // A video's poster frame gets the same treatment and looks identical.
-        source: Wallpaper.enabled ? Wallpaper.faceOf(Wallpaper.current) : ""
+        source: Wallpaper.enabled ? Wallpaper.faceOf(Wallpaper.currentOn(root.output)) : ""
         fillMode: Image.PreserveAspectCrop
         asynchronous: true
-        sourceSize.width: root.width
-        sourceSize.height: root.height
+        // Through the device pixel ratio, WallpaperSource's reason exactly: a
+        // surface's size is in logical pixels, and decoding a HiDPI lock ground
+        // at a quarter of its pixels is a soft picture under the blur rather
+        // than a blurred one.
+        sourceSize.width: Math.round(root.width * Screen.devicePixelRatio)
+        sourceSize.height: Math.round(root.height * Screen.devicePixelRatio)
         visible: false
     }
 

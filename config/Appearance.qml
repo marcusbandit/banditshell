@@ -421,6 +421,7 @@ Singleton {
         // the handover is that it is the same object either way.
         readonly property int settingsWidth: root.cfg.settings.width
         readonly property int settingsHeight: root.cfg.settings.height
+        readonly property int settingsPane: root.cfg.settings.pane
 
         // The bottom-right corner, as a way in. The corner's SIZE is not here:
         // it is derived from this mark in modules/SettingsCorner.qml, because

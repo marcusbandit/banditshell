@@ -453,8 +453,72 @@ Singleton {
                 // a wallpaper you do not want to see, and the lock's ground is
                 // made of this same picture.
                 enabled: true,
+
+                // WHERE THE COLLECTION IS, and everything under it.
+                //
+                // Read RECURSIVELY, through symlinks (services/Wallpaper.qml).
+                // A collection worth having has been sorted into subfolders and
+                // is nearly always sorted by shape, which is the one property
+                // per-screen wallpapers care about, so a listing that stopped
+                // at the top level skipped precisely the folders that exist.
+                // One setting names the collection; the shell finds the rest.
                 dir: "~/Pictures/Wallpapers",
+
+                // HOW FAR A PICTURE'S SHAPE MAY BE FROM A SCREEN'S AND STILL BE
+                // OFFERED FOR IT, as a FACTOR rather than a percentage.
+                //
+                // The picker on a monitor shows the wallpapers that suit that
+                // monitor, because a folder holding both 32:9 and 9:16 pictures
+                // is a folder where most of what it could show you is wrong for
+                // the screen you are looking at. This is the width of that
+                // filter: 1.25 offers a picture up to a quarter wider or a
+                // quarter narrower than the screen, so 16:9 and 16:10 are the
+                // same family and 16:9 and 4:3 are not.
+                //
+                // A factor, so it reads the same in both directions: too wide
+                // by a quarter and too tall by a quarter are the same distance,
+                // which a percentage of the aspect is not. 1 would offer only
+                // an exact match and nothing else; anything large enough offers
+                // the whole folder, which is what the picker's own "all" does
+                // in one press without this having to be edited.
+                fit: 1.25,
+
+                // THE ONE EVERY SCREEN WEARS UNLESS IT HAS BEEN GIVEN ITS OWN.
+                //
+                // Not "the wallpaper" any more: the DEFAULT one. A screen with
+                // no entry in `perScreen` below draws this, which is what makes
+                // a monitor plugged in for the first time show a picture rather
+                // than the black behind the surface, and what makes a one-
+                // monitor session indistinguishable from the shell before per
+                // screen wallpapers existed.
                 current: "~/Pictures/Wallpapers/shaded_landscape.png",
+
+                // ONE WALLPAPER PER MONITOR, by output name: { "DP-1": path }.
+                //
+                // EMPTY ON PURPOSE, and the emptiness is load-bearing rather
+                // than merely a tidy default. merge() treats an empty default
+                // OBJECT as user data instead of a schema to walk (see its
+                // note), so the keys here are whatever monitors this machine
+                // has, and no list of them has to be declared anywhere. A
+                // non-empty default would name somebody else's outputs.
+                //
+                // A MISSING KEY IS NOT AN EMPTY ONE. Absent means "follow
+                // `current`", which is the state every screen starts in, so
+                // per-screen wallpapers cost nothing until one is set. That is
+                // also why choosing the same picture everywhere CLEARS this map
+                // rather than writing the same path N times: the map holds the
+                // screens that disagree with the default, and a map that agreed
+                // with it in every entry would go on disagreeing the day the
+                // default changed.
+                //
+                // A NAME IS NEVER REMOVED WHEN A MONITOR IS UNPLUGGED, the same
+                // reservation `sidebar.workspaces.order` makes for bands: the
+                // cable comes back and the screen wears what it wore.
+                //
+                // Not settable from the CLI as a whole (an object cannot be
+                // typed into `banditshell set`), which is why `wallpaper set`
+                // takes a screen name and writes one key at a time.
+                perScreen: {},
 
                 // A WALLPAPER THAT MOVES, and the one rule that makes one
                 // affordable.
@@ -989,8 +1053,30 @@ Singleton {
             // either way: two sizes would make it a different object the moment
             // it changed hands.
             settings: {
-                width: 560,
-                height: 560
+                // Wide enough to split into the list and a section side by
+                // side (two panes, below), which is the desktop's shape; a
+                // screen that cannot hold this gets the page full-screen
+                // instead (modules/settings/SettingsPanel.qml).
+                width: 900,
+                height: 600,
+
+                // THE NARROWEST A PANE MAY BE, and therefore the one number
+                // that decides the page's shape. The page is a list of
+                // sections and one section's rows, the way a phone's settings
+                // app is; narrower than two of these it shows one at a time
+                // and slides between them, wider it stands them side by side
+                // (modules/settings/SettingsFace.qml). A fraction of the card
+                // would be wrong here: what decides whether a row of settings
+                // is readable is how many characters fit in it, which is a
+                // width and not a share. Monocraft's advance is two thirds
+                // of its size, so at the 18px body tier a row spends 48 of
+                // padding and 20 of icon and then has (pane - 68) / 12
+                // characters for a label: 400 is twenty-seven, enough for
+                // "Push the theme onto window borders" to say itself, and it
+                // is also a phone screen's worth, which is what an unfolded
+                // phone offers each half. 280 was tried and elided every
+                // second row.
+                pane: 400
             },
 
             // The bottom-right corner, as a way in. See
@@ -1459,19 +1545,39 @@ Singleton {
     // Write one setting by dotted path and persist it. This is the whole API a
     // settings menu needs.
     function set(key: string, value: var): void {
-        const keys = key.split(".");
+        root.setMany([[key, value]]);
+    }
+
+    // TWO SETTINGS THAT ARE ONE DECISION, written together.
+    //
+    // `set` twice is not the same thing, and the difference is visible rather
+    // than merely tidy. Assigning `values` notifies synchronously, so the shell
+    // fully re-evaluates against the half-applied state before the second write
+    // lands: `wallpaper set --all` clears the per-screen map and then moves the
+    // default, and done as two writes every screen visibly loads the OLD
+    // default in between. It is also two saves of the same file for one change.
+    //
+    // `pairs` is [[key, value], ...]. A key the defaults do not name is
+    // refused, and refusing one refuses the WHOLE batch: a pair is written
+    // together or the settings are left as they were, because a half-applied
+    // decision is the state this function exists to prevent.
+    function setMany(pairs: var): void {
         const next = JSON.parse(JSON.stringify(root.values));
 
-        let node = next;
-        for (let i = 0; i < keys.length - 1; i++) {
-            node = node[keys[i]];
-            if (typeof node !== "object" || node === null)
+        for (const [key, value] of pairs) {
+            const keys = key.split(".");
+            let node = next;
+            for (let i = 0; i < keys.length - 1; i++) {
+                node = node[keys[i]];
+                if (typeof node !== "object" || node === null)
+                    return console.warn(`Config: no such setting "${key}"`);
+            }
+            if (!(keys[keys.length - 1] in node))
                 return console.warn(`Config: no such setting "${key}"`);
-        }
-        if (!(keys[keys.length - 1] in node))
-            return console.warn(`Config: no such setting "${key}"`);
 
-        node[keys[keys.length - 1]] = value;
+            node[keys[keys.length - 1]] = value;
+        }
+
         root.values = next;
         root.save();
     }

@@ -857,6 +857,11 @@ PanelWindow {
             anchors.fill: parent
             originX: chassis.barWidth
             inset: win.border
+            // WHICH MONITOR IT IS CHOOSING FOR. A wallpaper is per screen now
+            // (services/Wallpaper.qml), and this picker is the one standing on
+            // that screen: it previews there, marks the card that screen wears,
+            // and opens its reveal out of a point on it.
+            screen: win.screen?.name ?? ""
             // Whatever the live launcher concept is actually as wide as, with a
             // floor for the moment before its loader has built one: a zero
             // would size the picker off its own minimum for one frame and it

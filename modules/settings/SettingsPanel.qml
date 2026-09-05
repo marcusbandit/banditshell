@@ -45,8 +45,18 @@ Item {
     // ...and the shell, rather than a window, is currently holding it.
     readonly property bool docked: root.mine && !Settings.floating
 
-    readonly property real homeWidth: Settings.homeWidth
-    readonly property real homeHeight: Settings.homeHeight
+    // THE SIZE IT RESTS AT: the configured card, unless the content area
+    // cannot hold that card with a margin of air around it, in which case it
+    // is the content area less that margin in BOTH dimensions. A desktop gets
+    // a card; a phone, whose whole screen is narrower than the card, gets a
+    // page that fills it, which is what a settings app on a phone is. Both
+    // dimensions together rather than each clamped alone, because a card that
+    // had shrunk to fit sideways and kept its height would be a strip, and a
+    // strip is neither of the two things this page knows how to be.
+    readonly property real air: Appearance.padding.large
+    readonly property bool cramped: root.holeWidth < Settings.homeWidth + root.air * 2 || root.holeHeight < Settings.homeHeight + root.air * 2
+    readonly property real homeWidth: root.cramped ? root.holeWidth - root.air * 2 : Settings.homeWidth
+    readonly property real homeHeight: root.cramped ? root.holeHeight - root.air * 2 : Settings.homeHeight
     readonly property real homeX: root.holeX + (root.holeWidth - root.homeWidth) / 2
     readonly property real homeY: root.holeY + (root.holeHeight - root.homeHeight) / 2
 
@@ -384,9 +394,17 @@ Item {
         // is very much open, the window draws the card and answers for it, and
         // an ungated handler here would spend an Escape aimed at whatever else
         // is pinned on closing the user's settings window instead.
+        // ESCAPE IS "BACK" BEFORE IT IS "CLOSE". A section open over the list
+        // on a narrow face is one level in, and the key that leaves a level
+        // leaves that one first; the second press closes the page, the way a
+        // phone's back gesture walks out of an app one screen at a time. On a
+        // split face there is no level to leave, so the first press closes.
         Keys.onPressed: event => {
             if (root.docked && event.key === Qt.Key_Escape) {
-                root.hide();
+                if (face.deep)
+                    Settings.back();
+                else
+                    root.hide();
                 event.accepted = true;
             }
         }

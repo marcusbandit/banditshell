@@ -52,25 +52,60 @@ Singleton {
     // copy, and pulling the page out would flip it back to whichever page the
     // other copy last remembered.
     //
-    // `pages` is DATA, not decoration. The face renders its rail from it and
-    // resolves each page's file by naming convention (key "icons" loads
-    // pages/IconsPage.qml), so adding a page here and dropping a <Key>Page.qml
-    // into modules/settings/pages/ is the entire recipe: no switch statement
-    // anywhere grows a case.
-    property string page: "icons"
+    // `pages` is DATA, not decoration. The face renders its list of sections
+    // from it and resolves each page's file by naming convention (key
+    // "general" loads pages/GeneralPage.qml), so adding a page here and
+    // dropping a <Key>Page.qml into modules/settings/pages/ is the entire
+    // recipe: no switch statement anywhere grows a case.
+    //
+    // EMPTY MEANS THE ROOT: the list of sections itself, which is a place of
+    // its own the way a phone's settings app opens on its list rather than on
+    // whichever section you last visited. A face too narrow to show both at
+    // once shows the list; a face wide enough to stand them side by side shows
+    // the list AND the first section, because a pane with nothing in it is
+    // not a state worth drawing. Which of those it is belongs to each copy of
+    // the face (the shell's card and a window can be different widths), and
+    // only the page choice itself is shared here.
+    property string page: ""
 
+    // `group` is which card of the list a section sits in, and `blurb` is the
+    // line under its name that says what is inside before you open it: a list
+    // of one-word titles is a list you have to open every entry of.
+    //
+    // THE GROUPS ARE A PHONE'S. Settings is the one surface that has
+    // EVERYTHING, which is what makes it settings rather than a menu: the
+    // wifi, bluetooth and sound menus on the bar are the same questions asked
+    // in a hurry, and this is where they are asked with room. So the list is
+    // laid out the way Android lays its own out, network first, then what you
+    // see and hear, then the system, then what this thing is.
+    //
+    // A page with a `parent` is a SUB-PAGE: it is not in the list, it is
+    // reached from its parent's own rows, and back from it goes to the parent
+    // rather than to the list. The font picker is one; a page of a hundred
+    // typeface names does not belong in a list of sections.
     readonly property var pages: [
         {
-            key: "icons",
-            title: "Icons",
-            icon: "apps"
+            key: "wifi",
+            title: "Wi-Fi",
+            icon: "wifi",
+            group: "Network",
+            blurb: "networks, the adapter, sharing"
         },
         {
-            key: "appearance",
-            title: "Appearance",
-            icon: "palette"
+            key: "bluetooth",
+            title: "Bluetooth",
+            icon: "bluetooth",
+            group: "Network",
+            blurb: "paired devices and pairing"
         },
-        // The one page that is not a nicety. Every other setting on this rail
+        {
+            key: "sound",
+            title: "Sound",
+            icon: "volume_up",
+            group: "Sound and display",
+            blurb: "output, input, each app"
+        },
+        // The one page that is not a nicety. Every other setting in this list
         // has `banditshell set` in front of it as well as a row, and the band
         // order does not: it is an array, and Quickshell's IPC splats a
         // bracketed argument into an argument list (see config/Config.qml), so
@@ -78,18 +113,99 @@ Singleton {
         {
             key: "screens",
             title: "Screens",
-            icon: "monitor"
+            icon: "monitor",
+            group: "Sound and display",
+            blurb: "monitors and their workspace bands"
+        },
+        {
+            key: "wallpaper",
+            title: "Wallpaper",
+            icon: "wallpaper",
+            group: "Sound and display",
+            blurb: "the picture behind everything"
+        },
+        {
+            key: "appearance",
+            title: "Appearance",
+            icon: "palette",
+            group: "Sound and display",
+            blurb: "palette, font, the compositor"
+        },
+        {
+            key: "font",
+            title: "Font",
+            icon: "text_fields",
+            parent: "appearance",
+            blurb: "the face every word is set in"
+        },
+        {
+            key: "general",
+            title: "General",
+            icon: "tune",
+            group: "System",
+            blurb: "touch, windows, the fold, network rules"
+        },
+        {
+            key: "battery",
+            title: "Battery",
+            icon: "battery_full",
+            group: "System",
+            blurb: "charge, health, the log"
+        },
+        {
+            key: "device",
+            title: "Device",
+            icon: "computer",
+            group: "System",
+            blurb: "the hardware, and how it is doing"
+        },
+        {
+            key: "developer",
+            title: "Developer",
+            icon: "code",
+            group: "System",
+            blurb: "reload, files, what the shell knows"
+        },
+        {
+            key: "about",
+            title: "About",
+            icon: "info",
+            group: "About",
+            blurb: "what it is, and why it is like this"
         }
     ]
 
+    // The groups, in the order the pages first name them, so the list's cards
+    // come from the data above rather than from a second list that could
+    // disagree with it. Sub-pages name no group and appear in none.
+    readonly property var groups: root.pages.map(p => p.group).filter((g, i, all) => g && all.indexOf(g) === i)
+
+    function entry(key: string): var {
+        return root.pages.find(p => p.key === key) ?? null;
+    }
+
+    // The section a page belongs to in the list: itself, or for a sub-page,
+    // its parent. What the list highlights beside an open page.
+    function sectionOf(key: string): string {
+        const e = root.entry(key);
+        return e?.parent ?? key;
+    }
+
     // Unknown keys are IGNORED rather than reset to a default or taken on
-    // faith. The rail is built from `pages` and cannot say a wrong key; the CLI
-    // and whatever keybind arrives later can, and a typo from those should
+    // faith. The list is built from `pages` and cannot say a wrong key; the
+    // CLI and whatever keybind arrives later can, and a typo from those should
     // change nothing at all rather than blank the face against a key no file
     // answers to.
     function setPage(key: string): void {
         if (root.pages.some(p => p.key === key))
             root.page = key;
+    }
+
+    // One level out: a sub-page goes to its parent, a section goes to the
+    // list. Its own verb rather than setPage(""), because "" is not a page
+    // and setPage's whole contract is refusing keys that are not.
+    function back(): void {
+        root.page = root.entry(root.page)?.parent ?? "";
     }
 
     // The window that had the keyboard before the page took it, so it can have it

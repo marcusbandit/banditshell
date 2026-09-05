@@ -393,6 +393,11 @@ banditshell/
 │   ├── IdentityField.qml        the same slot for a network that wants to know WHO
 │   │                            you are: a username, a password, and the method
 │   │                            the two of them travel in (802.1X)
+│   ├── AspectMark.qml           two rectangles: the screen as an outline, the
+│   │                            picture solid inside it, both fitted to one box
+│   ├── PathField.qml            a MenuRow until you press it, then a place to
+│   │                            type; the keyboard is claimed on the edit, not
+│   │                            on being visible
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
@@ -508,16 +513,34 @@ banditshell/
 │   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
 │   │                            is on the real desktop while you decide about it
 │   ├── picker/                  screenshot: hover a window or drag a region
-│   ├── settings/                the page that is a shell surface OR a window
+│   ├── settings/                the page that is a shell surface OR a window, shaped
+│   │   │                        like a phone's settings app: a list of sections and
+│   │   │                        one section, side by side when wide, stacked when not
 │   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
-│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole
+│   │   ├── SettingsPane.qml     one scrolling column of it, with drag-right as "back"
+│   │   ├── SettingsCard.qml     a titled box of rows: the grouped-list idiom
+│   │   ├── SettingsRow.qml      one row of a card; wraps, never elides, and its
+│   │   │                        highlight takes the card's own corners
+│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole;
+│   │   │                        fills the hole on a screen too small for the card
 │   │   ├── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
 │   │   └── pages/               one file per page; Settings.pages is the register,
-│   │       │                    and key "icons" loads IconsPage.qml by convention
-│   │       ├── IconsPage.qml    what each app looks like; grew out of the settings
-│   │       │                    gauge's old menu (a place, not a glance, so it left the bar)
-│   │       └── AppearancePage.qml  which palette the shell wears, and the two
-│                               switches a wallpaper has (WHICH one is the picker's)
+│   │       │                    and key "general" loads GeneralPage.qml by convention.
+│   │       │                    Grouped the way a phone groups them; a page with a
+│   │       │                    `parent` is a sub-page reached from its parent's rows
+│   │       ├── WifiPage.qml     the bar's network menu, with room, and the port
+│   │       ├── BluetoothPage.qml  the adapter switch and the bar's device list
+│   │       ├── SoundPage.qml    output, input, and the bar's mixer
+│   │       ├── ScreensPage.qml  which monitor owns which workspace band
+│   │       ├── WallpaperPage.qml  the current picture, its two switches, the folder
+│   │       ├── AppearancePage.qml  palette, the font row, the compositor switches
+│   │       ├── FontPage.qml     every installed family, each drawn in itself (sub-page)
+│   │       ├── GeneralPage.qml  behaviour switches: touch, windows, the fold, network
+│   │       ├── BatteryPage.qml  charge and health, and the bar's history
+│   │       ├── DevicePage.qml   the whole machine: board, processor, memory, graphics,
+│   │       │                    storage, software, battery, screens (services/Device.qml)
+│   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
+│   │       └── AboutPage.qml    banditshell itself: what it is and why, and where to read
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
@@ -729,6 +752,251 @@ of this same picture and `LockSurface` is black underneath it.
 `wallpapers`, plural, is the picker, and it is a **surface** rather than a setting: everything
 on it opens and closes something on the screen and writes nothing, where everything on the
 singular target writes something and draws nothing.
+
+### One wallpaper per monitor: a default, plus the screens that disagree
+
+`docs/superpowers/specs/2026-08-23-multi-monitor-design.md` put per-screen wallpaper out of
+scope and cited `services/Wallpaper.qml`'s own argument for one picture everywhere. That
+argument was about a **change** being one event, and it does not survive the question it was
+never asked: what a landscape photograph looks like on a monitor stood on its end. It looks
+like the middle third of itself. A shell that draws on every output and has exactly one opinion
+about what to draw is a shell that is wrong on every output but one.
+
+The shape is **not a path per output**. It is `wallpaper.current`, the one every screen wears,
+plus `wallpaper.perScreen`, a map keyed by output name holding only the screens that disagree.
+A map with an entry per monitor has to be edited once per monitor every time the picture
+changes, so the second screen quietly keeps last month's wallpaper because nothing told it; a
+default that screens fall back to keeps "all of them" as one write. It also answers two
+different questions with no code: a monitor unplugged and plugged back in **has** an entry and
+gets its wallpaper back, and a brand new one has none and joins the rest. `config/Config.qml`
+already treats an **empty default object** as user data rather than a schema to merge into, so
+the keys are whatever outputs this machine has and no list of them is declared anywhere.
+
+Choosing the same picture everywhere **clears** the map rather than writing the same path N
+times, and that is the part worth stating: a map that agreed with the default in every entry
+would go on agreeing with the OLD default the moment the default moved. The map holds
+disagreements, and there is no such thing as an entry that agrees.
+
+Three shell-wide slots stopped being one slot, all of them the same mistake the multi-monitor
+spec names six times. **The preview** was the worst: the picker is a per-screen surface, so
+scrubbing the strip on the left monitor repainted the right one, which means you were judging a
+picture against the wrong screen's windows while a screen you were not looking at flickered.
+**The origin** the reveal opens from was shared, on the argument that one normalised point
+lands in the same relative place on every screen; that is right for a change that happens
+everywhere and exactly backwards for one that happens on a monitor, where the blob is the shell
+saying which. Both are maps keyed by screen now, and `WallpaperWindow` listens to a binding on
+its **own** output rather than to the service's shell-wide `shown`: that listener could not
+survive in either direction, since a change on another monitor would not fire it and merely
+looking at another monitor would fire it on every surface at once.
+
+The **palette** stayed single, and deliberately. One per screen is a python and an ffmpeg per
+monitor on every change, feeding a switch (`themeFromWallpaper`) that is on purpose not wired
+to anything, and then a shell that would have to decide what it means to be dressed in two
+photographs. The shell is one shell; it wears the focused screen's.
+
+### The card is the crop
+
+A wallpaper is a file and a screen is a rectangle, and **every question about how the one meets
+the other is answered where the picture is drawn**, never in the service. That is what keeps
+the model correct for a setup it has never heard of: ten monitors at ten aspect ratios, a
+rotation, a phone.
+
+`WallpaperSource` decodes at the surface's own size and covers it, so a rotated output needs no
+mention anywhere: it reports the other pair of numbers and everything downstream reads the
+pair it is given. It decodes **through the device pixel ratio**, which it was not doing: a
+surface's width is in logical pixels, so a 3840-wide panel at scale 2 was decoded at a quarter
+of the pixels the compositor then scaled back up, and a HiDPI laptop wore a visibly soft
+wallpaper beside a sharp one. `reveal.frag` already corrects for aspect, so the blob is round
+on a phone in portrait and on a 32:9 panel alike.
+
+The picker's card was **16:9, written down, "because screens are"**. Screens are not, and the
+comment above that line already said what the cost was: a card that is not the shape of the
+thing it depicts crops the picture twice. Drawn at the screen's own aspect the card **is** the
+preview, because `PreserveAspectCrop` into the card and into the screen are the same operation
+at two sizes: what you see in the strip is the crop you are going to get. The card is then
+solved from **both** dimensions rather than picked from one (the width a share of the height
+wants, capped by the width the room allows), so there is no branch on how big a screen is and
+no mention of a phone anywhere. A phone is simply the case where the second term wins.
+
+That change surfaced a **latent PathView bug** that had been reachable and unreached. `slots`
+is the strip's capacity, and PathView has two position formulas and picks between them on
+`pathItemCount < modelCount`; `place()` solves the first. A folder with fewer wallpapers than
+the strip holds puts it in the second, and the strip goes wrong in the way that is hardest to
+disbelieve: the caption names the wallpaper you chose, the desktop behind shows the wallpaper
+you chose, and the card in the middle wearing the ring is somebody else's. Narrower cards mean
+a panel holds more of them, so four wallpapers on a phone asked for seven slots and made an
+exotic case ordinary. `slots` is clamped below the count.
+
+None of this was argued from a diagram. It was run: a **headless nested compositor** with four
+outputs at 1920x1080, a 1080x1920 made by rotating a panel, a 3840x1080 and a 720x1600, a
+throwaway `HOME` because `Config` hardcodes `~/.config/banditshell`, and `grim -o` per output.
+Both bugs above came out of the screenshots rather than out of the code.
+
+### A screen is where a verb happens
+
+`wallpaper next`, `prev`, `set` and `clear` take a screen in one argument slot with three
+readings: empty means the focused one, exactly as `services/Shell.qml`'s `forScreen("")` argues
+for the twenty verbs that go through it; a name means that one, exactly, or an error rather
+than a near miss; and `all` means every screen as one decision. `all` is a screen NAME rather
+than a flag because Quickshell's IPC hands a function a fixed list of typed arguments and has
+no options, so a flag would be a second parameter that is meaningless whenever the first is
+set, and two arguments that can contradict each other are two arguments somebody will make
+contradict each other.
+
+`wallpaper set <path> [screen]` exists because `set wallpaper.current` **cannot** be it. That
+key is the default and writing it moves every screen that has not been given its own; the
+per-screen map is keyed by output name, and `Config.set` refuses a dotted path its defaults do
+not name. `clear` is the verb the picker has nowhere sensible to put: the picker gives a
+monitor its own wallpaper, and "actually, follow the others" is an undo, which is why the
+Screens settings page carries it as the one wallpaper control on a page about monitors. That
+page names the file only when the screen owns one, so the text and the button light on the same
+condition and there is never a live control whose effect the row has not stated.
+
+In the picker itself the scope is a **pill, not a toggle**, next to the caption: a toggle is a
+switch you leave in a position, and this is the scope of the press you are about to make. It
+resets when the panel closes, and it is gone rather than disabled on a single screen, where
+"this screen" and "all screens" are the same deed.
+
+### The folder predicts, and the prediction is inspectable
+
+Once a wallpaper belongs to a monitor, the collection stops being one list. A folder worth
+browsing holds pictures for every screen its owner has ever had, and on any one screen most of
+them are wrong: a 32:9 panorama on a monitor stood on its end is the middle fourteenth of
+itself. The strip is a row of things you are meant to recognise instantly, and filling it with
+pictures that cannot go there is the one thing that makes it slower to use than a folder.
+
+**The shape is measured, never read off the path.** A collection sorted into `32x9/` and `5x8/`
+is telling you the answer and is not a source for it: the folder name is a human's filing, one
+picture in it is always the one dropped in the wrong place, and a shell that trusted the
+directory would hide the file that fits while offering the one that does not. One `ffprobe`
+pass over the whole folder yields width over height per file, the same "one process, not one
+per file" shape `makePosters` and `findFrozen` already have. ffprobe rather than `identify`
+because ffmpeg is already a hard dependency and one tool answers for a jpg and an mp4 in the
+same breath.
+
+**A file with no measured shape fits everything**, which is a real answer rather than a missing
+one. An SVG has no pixels of its own and rasterises into whatever rectangle it is given; an
+audio file has no picture at all. Neither can fail to suit a screen, and anything else that
+lands there is a file ffprobe could not open, where offering it is a better failure than
+dropping it silently.
+
+**Fit is a ratio through a log, not a difference.** Aspect is multiplicative: 32:9 and 21:9 are
+1.2 apart and are obviously different screens, while 9:16 and 5:8 are 0.005 apart and are the
+same one. `wallpaper.fit` is therefore a **factor** (1.25: a quarter wider or a quarter
+narrower), so too-wide and too-tall are the same distance from home instead of one of them
+being dozens of times further out. Nothing anywhere mentions rotation: a screen stood on its
+end reports the other pair of numbers, so a 1920x1200 panel at transform 1 measures 0.625,
+which is 5:8, which is what the pictures that suit it are. The rule falls out of the
+measurement instead of being a case in it.
+
+Two escape hatches, because a prediction that cannot be overridden has to be right every time.
+A second **pill** beside the scope one shows the whole folder in a press, and it is named for
+the state it is in ("fits this screen") rather than for the press, because that is a fact about
+the strip you are looking at. And `show()` turns the filter off by itself when the wallpaper
+the screen is already wearing would have been hidden: "start where you already are" outranks
+the prediction, or the strip opens on somebody else's picture with no ring anywhere on it,
+which reads as the shell having lost the wallpaper visibly on the screen behind it.
+
+**A filter's failure is invisible by construction.** A wallpaper wrongly excluded does not
+appear anywhere for you to notice it missing, and the strip looks exactly as correct as it
+would if the rule were right. So `banditshell wallpaper list [screen]` prints every wallpaper
+with its measured shape and whether the rule kept it, **including the ones it dropped**, which
+is the only place the tolerance's consequences are all visible at once.
+
+### A wallpaper is a file, and a path is one of its names
+
+The listing goes **all the way down** and follows symlinks, where it used to stop at
+`-maxdepth 1`. A collection that has outgrown one folder has been sorted into subfolders and is
+nearly always sorted by shape, which is the one property per-screen wallpapers care about, so a
+flat listing skipped precisely the folders that exist. `-L` because the folder is very often a
+symlink and so is everything in it: a dotfiles repo checks the pictures in somewhere else and
+links them into place, and `find` without it reports nothing at all.
+
+That makes `realpath` on the way out **necessary rather than tidy**. Following symlinks means
+one picture can be reached by two names, and this shell compares wallpapers by string
+everywhere it matters: the ring on the card you are wearing, the index the picker opens at, the
+position `next` steps from. Browse through `~/.config/wallpapers`, set through the dotfiles
+path it points at, and every one of those comparisons quietly says no. Found exactly that way,
+against a real collection. One name is picked and it is the real one; `-exec ... +` batches, so
+it costs one more process for the folder rather than one per file, and the collector drops
+repeats because two links to one picture are one wallpaper.
+
+`wallpaper.dir` is also the first setting in this shell that is **a piece of text**. Everything
+else on a settings page is a switch, a slider or a list of names, where the whole range is on
+the screen; a folder path is unbounded, and the only honest control for one is a place to type.
+`components/PathField.qml` is a MenuRow until you press it, so a page does not grow a
+permanently open text box for a setting changed twice a year. The keyboard is claimed on the
+**edit** rather than on becoming visible, which is what `PasswordField` does and what would
+have made the settings panel hold the keyboard for as long as the page was open: a password
+field appears in answer to a press and is gone a second later, and this one sits there while
+you read everything else.
+
+### The picker stopped talking
+
+A panel whose entire argument is that you recognise a wallpaper faster than you can read its
+name had four badges set in capitals (`GIF`, `VIDEO`, `AUDIO`, `SVG · STILL`) and two pills
+spelling out `this screen` / `all screens` and `fits this screen` / `all shapes`. Every one of
+them is a thing Material Symbols already has a single mark for, and a strip you are flicking
+through gives a badge about a tenth of a second, which is a glyph's native speed and well under
+a word's. `Pill` grew an `icon`, and a pill with a mark and no words is a **circle**: the radius
+was already half the height, so dropping the width to match needs no second rule.
+
+`motion_photos_off` for the frozen SVG is the one worth pointing at. It is the same family as
+the mark for a thing that moves, negated, which is exactly what that file is: it asked to move
+and cannot. No pair of words in the old set carried that relationship. **FILL is the state
+axis** throughout, so "on" is the same mark solid rather than a second glyph to learn, and the
+badge uses fill and hue together because a badge is read in the corner of the eye, where a fill
+survives and a hue does not.
+
+**`components/AspectMark.qml` is the part that is not an icon at all.** "Fits this screen" is
+four words for a fact with no words in it: a picture has a shape, a monitor has a shape, and
+the honest way to say whether one suits the other is to draw both. The outline is the screen,
+because that is what does not change while you scrub; the solid one is the picture. **Both fit
+the same square** rather than sharing a height, or a 32:9 shape comes out eleven times wider
+than a portrait one and the mark stops being a mark. The picture is fitted into a box one
+stroke smaller on each side, which is not decoration: drawn at the same size, a perfect match
+covered the outline exactly and left a single block saying nothing about a screen at all.
+
+### The gap was the shrinkage
+
+`pitch` was `cardWidth + cardGap`, and `cardWidth` is the size the **centre** card is drawn at.
+The cards either side are at `nearScale` and the rest at `farScale`, so spacing them a full
+unscaled card apart added the shrinkage to the gap: at 0.72 the far cards sat a quarter of a
+card apart and the ends of the strip were mostly surface with pictures floating in it. Measured
+off the card **as drawn** (`cardWidth * nearScale + cardGap`), the gap between ordinary cards is
+the gap that was asked for, and the centre card, which is over one, rides **over** its
+neighbours. That overlap is the point rather than a side effect: `cardZ` already lifts the
+middle, so the strip reads as a stack with one card pulled out of it, which is what a wallpaper
+you are considering is.
+
+### Dismissing is choosing
+
+Closing the picker **keeps** the wallpaper the strip is centred on. It used to put the old one
+back, and that was wrong for a reason hiding in plain sight: the picture has already been on
+your desktop, full size, behind the panel, since the card reached the middle. That is not a
+preview in the usual sense of a small version of something that has not happened; it is the
+thing itself, applied. Scrubbing to a wallpaper, judging it against your own windows, deciding
+you liked it and dismissing the panel took it away again, and keeping what you were already
+looking at required pressing it a second time.
+
+So a tap is a **shortcut for leaving** rather than the only way to decide, and all it adds is a
+point for the reveal to open out of. `accept` lost its path parameter with it: every caller
+passed the centred card, because a tap on a side card centres it first and Enter has no card at
+all. **There is no cancel, including Escape**, because a cancel would have to mean "the last
+minute of your desktop was not real", which is the fiction being removed. Scrubbing back is the
+undo, and it is the same gesture that got you there.
+
+This made an ordering bug in `setOn` reachable on every single close, where before it needed a
+tap. `shownOn` is preview-or-current, so clearing the preview **before** writing the config
+hands the surface the old wallpaper for the length of one call: it loads into the back slot,
+finds it already decoded, swaps it in, and then the config write swaps the new one in behind
+it. Two reveals in opposite directions for one choice. Written first and cleared after, `shown`
+never changes value at all, and committing what you were already looking at is correctly not an
+event.
+
+An opening that scrubbed nowhere must also not write, or merely **looking** at the picker would
+pin a screen off the default it was happily following. `everywhere` is the exception, because
+that deed is about the other screens and this one already agreeing says nothing about them.
 
 ### A wallpaper is not only a picture
 

@@ -32,5 +32,10 @@ WlSessionLockSurface {
         // arrival should start when it is on screen rather than when it was
         // constructed.
         active: surface.visible
+
+        // WHICH SCREEN'S WALLPAPER IS BEHIND THE BLUR. The compositor makes one
+        // of these per output, so this one is standing on a monitor and that
+        // monitor has a wallpaper of its own; see LockFace's note.
+        output: surface.screen?.name ?? ""
     }
 }
