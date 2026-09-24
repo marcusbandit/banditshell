@@ -363,7 +363,6 @@ banditshell/
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── G2Rect.qml               the ONE rounded-rect primitive; fill and/or outline
 │   ├── G2Image.qml              a picture cut to that same corner, by mask
-│   ├── CornerWedge.qml          a corner's leftover; rounds off the screen corners
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`

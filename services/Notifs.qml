@@ -353,17 +353,6 @@ Singleton {
         onExited: Qt.callLater(root.flush)
     }
 
-    function urgencyLabel(n: var): string {
-        switch (n?.urgency) {
-        case NotificationUrgency.Critical:
-            return "critical";
-        case NotificationUrgency.Low:
-            return "low";
-        default:
-            return "";
-        }
-    }
-
     // A notification's own icon if it gave one, else something that says what
     // kind of thing it is.
     function icon(n: var): string {

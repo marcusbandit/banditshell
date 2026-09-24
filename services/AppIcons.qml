@@ -217,104 +217,6 @@ Singleton {
         return spec.startsWith("mono:") || spec.startsWith("image:");
     }
 
-    // Two specs that name the same FILE, whatever colour each asks for.
-    function sameMark(a: string, b: string): bool {
-        if (!a || !b)
-            return false;
-        return a === b || (root.isFile(a) && root.isFile(b) && a.slice(a.indexOf(":")) === b.slice(b.indexOf(":")));
-    }
-
-    // Flip the chosen file between the shell's colour and its own.
-    function recolour(cls: string): void {
-        const spec = root.specFor(cls);
-        if (!root.isFile(spec))
-            return;
-        const path = spec.slice(spec.indexOf(":") + 1);
-        root.assign(cls, `${spec.startsWith("mono:") ? "image" : "mono"}:${path}`);
-    }
-
-    // ------------------------------------------------------------------
-    // Suggestions: what this machine already has for an application.
-
-    // { class: [spec, ...] } once a scan has run for that class.
-    property var found: ({})
-    property string scanning: ""
-
-    function suggest(cls: string): void {
-        if (!cls || root.scanning === cls)
-            return;
-        root.scanning = cls;
-        scan.needle = root.needleFor(cls);
-        scan.cls = cls;
-        scan.running = true;
-    }
-
-    // What to look for on disk. The window class with its reverse-DNS wrapping
-    // taken off, because `org.telegram.desktop` never names a file and
-    // `telegram` names a dozen.
-    function needleFor(cls: string): string {
-        const parts = cls.toLowerCase().split(".").filter(p => p);
-        while (parts.length > 1 && ["desktop", "app", "gui", "client", "bin"].includes(parts[parts.length - 1]))
-            parts.pop();
-        return (parts[parts.length - 1] ?? cls).replace(/[^a-z0-9_-]/g, "");
-    }
-
-    // A file is MONOCHROME by convention, not by inspection: every icon theme
-    // files its single-colour versions under `panel`, `status` or `symbolic`, or
-    // names them so. Reading the SVG to find out would be more honest and much
-    // slower, and the convention is near-universal.
-    function monoLooking(path: string): bool {
-        const p = path.toLowerCase();
-        return p.includes("symbolic") || p.includes("/panel/") || p.includes("-panel") || p.includes("/status/");
-    }
-
-    Process {
-        id: scan
-
-        property string needle: ""
-        property string cls: ""
-
-        command: ["sh", "-c", `find /usr/share/icons /usr/share/pixmaps "$HOME/.local/share/icons" "${root.store}" -type f \\( -iname '*${needle}*.svg' -o -iname '*${needle}*.png' \\) 2>/dev/null | head -60`]
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // One entry per BASENAME. A theme ships the same icon at eight
-                // sizes and there are four themes installed; that is thirty-two
-                // paths and one choice.
-                const seen = {};
-                for (const line of text.split("\n")) {
-                    const path = line.trim();
-                    if (!path)
-                        continue;
-                    const base = path.slice(path.lastIndexOf("/") + 1).replace(/\.(svg|png)$/i, "");
-                    const prev = seen[base];
-                    // Prefer SVG, then the largest raster: a 16px icon blown up
-                    // to 25 is a smear, and the picker is showing it at size.
-                    const score = (path.endsWith(".svg") ? 1000 : 0) + (parseInt(path.match(/(\d+)x\1/)?.[1] ?? "0") || 0);
-                    if (!prev || score > prev.score)
-                        seen[base] = {
-                            path,
-                            score
-                        };
-                }
-
-                // EVERY file is offered as a `mono`, whatever it is. The
-                // alternatives are meant to be comparable, and five brand
-                // palettes in a row are not comparable to each other or to the
-                // rest of the bar; the picker has a switch for the ones you
-                // want in their own colours.
-                const specs = [];
-                for (const base in seen)
-                    specs.push(`mono:${seen[base].path}`);
-
-                const next = Object.assign({}, root.found);
-                next[scan.cls] = specs;
-                root.found = next;
-                root.scanning = "";
-            }
-        }
-    }
-
     // ------------------------------------------------------------------
     // Ask Claude: when the machine has nothing good, go and find one.
 
@@ -359,12 +261,7 @@ Singleton {
                 console.warn(`AppIcons: asking Claude for ${cls} came back with nothing (exit ${code}).`);
                 return;
             }
-            // Straight into the suggestions, as a monochrome candidate: it was
-            // asked for a single-colour logo, and a wrong guess about that costs
-            // one click to correct.
-            const next = Object.assign({}, root.found);
-            next[cls] = [`mono:${root.askResult}`, `image:${root.askResult}`].concat(next[cls] ?? []);
-            root.found = next;
+            // The picker reads askResult directly; nothing else needs telling.
         }
     }
 

@@ -60,10 +60,6 @@ Singleton {
         }
     ]
 
-    function actionFor(key: string): var {
-        return root.actions.find(a => a.key === key) ?? null;
-    }
-
     function run(entry: var): void {
         const cmd = entry.command.slice();
         // terminate-user needs the actual user, and hardcoding a name in a

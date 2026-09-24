@@ -67,8 +67,8 @@ Singleton {
     // column take it, and watch the tray go on drawing something else.
     //
     // Matched on the last segment of a reverse-DNS class, which is the half an
-    // application actually calls itself. AppIcons.needleFor takes the same view
-    // from the other end when it goes looking for icon FILES, and for the same
+    // application actually calls itself. It is the same half an icon search
+    // would look for when it goes looking for icon FILES, and for the same
     // reason: `org.qbittorrent.qBittorrent` is wrapping, `qbittorrent` is the
     // name. Only classes already in the table are considered, so this has
     // nothing to say about an application the shell has never seen a window

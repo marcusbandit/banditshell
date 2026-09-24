@@ -461,10 +461,6 @@ done`, "sh", ...fresh];
         return root.nameOf(root.shownOn(screen));
     }
 
-    function shownKindOn(screen: string): string {
-        return root.kindOf(root.shownOn(screen));
-    }
-
     readonly property string shown: root.shownOn(root.here)
     readonly property string shownName: root.nameOf(root.shown)
     readonly property string shownKind: root.kindOf(root.shown)
