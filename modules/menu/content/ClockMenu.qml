@@ -1160,7 +1160,7 @@ Column {
 
             height: stop.height
 
-            Pill {
+            Button {
                 anchors.left: parent.left
 
                 width: parent.width - stop.width - Appearance.padding.large
@@ -1168,7 +1168,7 @@ Column {
                 onClicked: Clock.snooze()
             }
 
-            Pill {
+            Button {
                 id: stop
 
                 anchors.right: parent.right
@@ -1339,7 +1339,7 @@ Column {
     // ADDING ONE. The pill IS the empty state: while no zone is configured at all
     // it still reads "Add a place", so there is no sentence explaining that a
     // list nobody has added to is empty.
-    Pill {
+    Button {
         width: parent.width
         text: root.picking ? "Never mind" : "Add a place"
         onClicked: {
@@ -1555,7 +1555,7 @@ Column {
         // Drawn only while there is a duration to start. A control with nothing
         // to do is not drawn, which is the same rule the calendar's Today pill
         // keeps.
-        Pill {
+        Button {
             anchors.right: parent.right
             anchors.verticalCenter: fields.verticalCenter
 
@@ -1582,7 +1582,7 @@ Column {
         Repeater {
             model: root.timerPresets
 
-            delegate: Pill {
+            delegate: Button {
                 required property int index
                 required property var modelData
 
@@ -1744,15 +1744,16 @@ Column {
                     Repeater {
                         model: 7
 
-                        delegate: StatePill {
+                        delegate: Button {
                             required property int index
 
                             x: index * (days.width - width) / 6
                             width: (days.width - Appearance.padding.small * 6) / 7
 
-                            label: Qt.locale().dayName(index + 1, Locale.NarrowFormat).toUpperCase()
-                            on: alarmCard.modelData.days.includes(index)
-                            onClicked: {
+                            text: Qt.locale().dayName(index + 1, Locale.NarrowFormat).toUpperCase()
+                            checkable: true
+                            checked: alarmCard.modelData.days.includes(index)
+                            onToggled: {
                                 const was = alarmCard.modelData.days;
                                 Clock.setAlarm(alarmCard.modelData.id, {
                                     days: was.includes(index) ? was.filter(d => d !== index) : [...was, index]
@@ -1794,18 +1795,19 @@ Column {
                             }
                         ]
 
-                        delegate: StatePill {
+                        delegate: Button {
                             required property int index
                             required property var modelData
 
                             x: index * (modes.width - width) / 2
                             width: (modes.width - Appearance.padding.small * 2) / 3
 
-                            label: modelData.label
-                            on: alarmCard.modelData.mode === modelData.key
-                            onClicked: Clock.setAlarm(alarmCard.modelData.id, {
-                                    mode: modelData.key
-                                })
+                            text: modelData.label
+                            checkable: true
+                            checked: alarmCard.modelData.mode === modelData.key
+                            onToggled: Clock.setAlarm(alarmCard.modelData.id, {
+                                mode: modelData.key
+                            })
                         }
                     }
                 }
@@ -1832,7 +1834,7 @@ Column {
     // A new alarm at the next whole hour, armed, one-shot, with its editor
     // already open: a new alarm that starts at 00:00 is a new alarm you have to
     // fix before it is worth anything.
-    Pill {
+    Button {
         width: parent.width
         text: "Add an alarm"
         onClicked: {

@@ -15,6 +15,11 @@
 #                                which a history that has quietly stopped growing
 #                                cannot tell you any other way.
 #   banditshell session toggle|open|close
+#   banditshell media toggle|open|close|status
+#                                the media controller, Super+M's card in the
+#                                middle of the screen. The card's own keys do
+#                                the media work - space, arrows, shift+arrows
+#                                - so this target only decides whether it is out
 #   banditshell calculator toggle|open|close|app|panel|status|answer <expression>
 #                                the keypad panel; `answer` evaluates and prints
 #                                without a surface: `calculator answer "2+3*4"`.
@@ -55,6 +60,11 @@
 #   banditshell zone list|find <text>|add <place>|remove <place>
 #                                a place is an IANA id, or enough of one to name only itself
 #   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
+#   banditshell output toggle|speakers|headphones|status|list|assign <role> <name>
+#                                the speakers/headphones switch, as one key. Which
+#                                sink each name means is a setting, because no two
+#                                machines have the same cards: `list` prints the
+#                                names on this one and `assign` writes one
 #   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
 #   banditshell picker open|freeze|clip|freezeclip|close
 #                                falls back to grim/slurp when the shell cannot
@@ -81,7 +91,18 @@
 #   banditshell settingspreview [WxH] [page] [file]
 #                                the settings face in a plain window at that size:
 #                                400x800 is a phone, 800x800 the phone unfolded
+#   banditshell gallery [WxH]    the component gallery: every component the shell
+#                                means to own, listed down the side, drawn where
+#                                it exists, with knobs on the ones that do. A
+#                                workbench, not a preview - it stays up until
+#                                closed, and `scripts/testbed.sh run` drives it
+#                                headless for scripted shots
+#   banditshell files [toggle|open [path]|close]
+#                                the file browser, in its own window
 #   banditshell shaders          recompile every components/**/*.frag to .qsb
+#   banditshell build            compile src/*.c into bin/ (bs-pty, bs-ls)
+#   banditshell test             run tests/ against the plain-JavaScript parts
+#                                (the terminal, the base64 codec, the file marks)
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
 # docs/hyprland-binds.example.conf is a ready-made set to copy or source.
@@ -273,6 +294,40 @@ session)
     ipc session "${1:-toggle}"
     ;;
 
+# The media controller. Verbs only, on the session's shape: the card holds the
+# keyboard while it is out, so everything that can be done to the MEDIA is done
+# on the card, and a CLI verb for "seek" would be a second control that cannot
+# see the card. `status` says which player the shell is pointed at.
+media)
+    ipc media "${1:-toggle}"
+    ;;
+
+# THE TABLET MAPPING, and this is the verb you reach for when the tablet cannot
+# speak for itself. PenMap is meant to be driven from the pad: hold a button,
+# drag with the pen, let go. That is the whole design, and it is also the whole
+# risk, because the pad arrives over Bluetooth and a tablet that is asleep, flat
+# or unpaired has no buttons to hold. Nothing here is bound to a key by default;
+# it exists so "the mapper will not open" is one command to work around rather
+# than a shell restart.
+#
+# `set` takes GLOBAL layout coordinates, the same frame `hyprctl monitors`
+# prints, because that is the only frame in which "which monitor is this on" has
+# an answer. The service clamps and re-homes whatever it is handed, so a
+# rectangle that is off the edge or the wrong shape is corrected rather than
+# refused.
+penmap | pen)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    open | commit | cancel | aspect | follow | status) ipc penmap "$sub" ;;
+    set)
+        [ $# -eq 4 ] || { echo "usage: banditshell penmap set <x> <y> <w> <h>" >&2; exit 2; }
+        ipc penmap set "$1" "$2" "$3" "$4"
+        ;;
+    *) echo "usage: banditshell penmap open|commit|cancel|aspect|follow|status|set <x> <y> <w> <h>" >&2; exit 2 ;;
+    esac
+    ;;
+
 # Spelled out rather than passed through the way session's is, because one verb
 # takes an argument: `answer` is the only route to the arithmetic that involves
 # no panel at all, so it has to be able to say what it could not parse.
@@ -367,7 +422,7 @@ keyboard | osk)
 close | panic)
     for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
                   "settings close" "notifications close" "notch close" "picker close" \
-                  "calculator close" "keyboard close"; do
+                  "calculator close" "keyboard close" "media close"; do
         # Unquoted on purpose: this is the one place a verb and its argument
         # travel as one string and have to come apart again.
         # shellcheck disable=SC2086
@@ -573,6 +628,25 @@ volume)
     esac
     ;;
 
+# Where the sound comes out, as opposed to how loud it is. `toggle` is the one
+# to bind: it goes to whichever of the two you are not on, and to the speakers
+# when you are on neither. Spelled out rather than passed through the way
+# session's is, because `assign` takes two arguments and has to be able to say
+# which of them it did not understand.
+output)
+    sub="${1:-status}"
+    shift || true
+    case "$sub" in
+    toggle | speakers | headphones | status | list) ipc output "$sub" ;;
+    assign)
+        [ $# -ge 1 ] || { echo "usage: banditshell output assign <role> <name>" >&2; exit 2; }
+        # An empty name is a real argument: it unassigns the role.
+        ipc output assign "$1" "${2:-}"
+        ;;
+    *) echo "usage: banditshell output toggle|speakers|headphones|status|list|assign <role> <name>" >&2; exit 2 ;;
+    esac
+    ;;
+
 # No `unlock` here, and that is not an oversight: see the lock handler in
 # modules/Ipc.qml. The way back in is `loginctl unlock-session`, which works
 # from a TTY and over SSH, which is where you will be if you need it.
@@ -697,10 +771,18 @@ wallpaper)
         # relative path typed at a terminal is relative to the terminal, and the
         # shell would take it as relative to its own working directory and load
         # nothing at all, silently, which looks exactly like a broken wallpaper.
-        # readlink -m rather than -f: it does not require the file to exist, and
-        # refusing a path here would be this script second-guessing a shell that
-        # already knows what it can decode.
-        ipc wallpaper set "$(readlink -m -- "$1")" "${2:-}"
+        #
+        # `-s` SO THE NAME YOU TYPED IS THE NAME THAT ARRIVES. A collection is
+        # very often a symlink into a dotfiles repo, and canonicalising here put
+        # `~/dotfiles/wallpapers/.config/wallpapers/32x9/leaves.jpg` into
+        # config.json for somebody who had said `~/.config/wallpapers`: where
+        # that link lands is the repo's business, and the shell was told where
+        # the pictures are. services/Wallpaper.qml lists the folder by the same
+        # rule and tells two names for one file apart by inode instead.
+        #
+        # `-m` so the file need not exist: refusing a path here would be this
+        # script second-guessing a shell that already knows what it can decode.
+        ipc wallpaper set "$(realpath -s -m -- "$1")" "${2:-}"
         ;;
     *) echo "usage: banditshell wallpaper toggle|on|off|status|palette|list [screen]|next [screen]|prev [screen]|set <path> [screen|all]|clear [screen|all]" >&2; exit 2 ;;
     esac
@@ -741,6 +823,39 @@ shot)
     echo "$out"
     ;;
 
+files)
+    sub="${1:-toggle}"
+    shift || true
+    case "$sub" in
+    # Only the two that OPEN take a path. `close` and `status` declare no
+    # parameter, and an extra argument is a hard error on the other side rather
+    # than an ignored one, so passing "" to them turned both into failures.
+    toggle | open) ipc files "$sub" "${1:-}" ;;
+    close | status) ipc files "$sub" ;;
+    *) echo "usage: banditshell files toggle|open [path]|close|status" >&2; exit 2 ;;
+    esac
+    ;;
+
+# The C helpers, compiled here because Quickshell loads QML out of a directory
+# and has nowhere to run a build step - the same reason `shaders` exists, and the
+# same bargain: the binary is build output that lives next to its source.
+#
+# Not a Makefile. Two translation units with no options between them do not need
+# one, and a build system would be a second thing to install before the shell
+# runs at all.
+build)
+    cc="${CC:-gcc}"
+    command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
+    mkdir -p "$SHELL_DIR/bin"
+    # bs-pty wants -lutil for forkpty; bs-ls wants nothing. Listed per target
+    # rather than shared, because a link line that is one thing for everything
+    # is a link line nobody reads.
+    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" -lutil
+    echo "src/bs-pty.c -> bin/bs-pty"
+    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c"
+    echo "src/bs-ls.c -> bin/bs-ls"
+    ;;
+
 shaders)
     # .qsb files are build output committed alongside their source, because
     # Quickshell loads QML from a directory and has nowhere to run a build step.
@@ -757,6 +872,23 @@ shaders)
     done < <(find "$SHELL_DIR/components" -name '*.frag' | sort)
     ;;
 
+test)
+    # The parts of the shell that are plain JavaScript are the parts a
+    # screenshot cannot check. A colour that resolves to the wrong hex, an
+    # erase that forgets its background, a character split across two reads of
+    # the pty: none of those throw, they just make the terminal quietly wrong,
+    # and the only evidence is a picture that looks a bit off. Node runs the
+    # same files with no Qt under them, which is the whole reason vt.js has no
+    # QML in it.
+    #
+    # A glob rather than the directory: node 26 reads `--test tests/` as a
+    # module to load and fails with "Cannot find module". Quoted so node does
+    # the expanding, since it is node's idea of a test file that decides.
+    command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+    cd "$SHELL_DIR" || exit 1
+    exec node --test 'tests/*.test.js' "$@"
+    ;;
+
 demo)
     # Open a menu, wait for the reveal to settle, capture it, put it away. The
     # sleep is the animation, not a guess: the reveal is exponential smoothing,
@@ -769,6 +901,38 @@ demo)
     grim "$out"
     ipc menu close >/dev/null
     echo "$out"
+    ;;
+
+filespreview)
+    # The browser in a plain window, for looking at it without touching the
+    # running shell's own session. lockpreview's shape, with one difference: no
+    # timeout, because a terminal you cannot type into for more than nine
+    # seconds is not a terminal you can test. Close the window to end it.
+    #
+    # `banditshell filespreview [dir] [shot]` - with a second argument it
+    # screenshots the window's own rect and exits, which is the form worth
+    # binding while working on the layout.
+    where="${1:-$HOME}"
+    out="${2:-}"
+    # Floated and sized by a window rule, the way settingspreview does it: a
+    # tiled preview is whatever size the layout gives it, and a file grid at
+    # 2500px wide is not the grid anybody will actually use.
+    w=$(get files.width 2>/dev/null || echo 1200)
+    h=$(get files.height 2>/dev/null || echo 760)
+    hyprctl eval "hl.window_rule({ name = \"banditshell-filespreview\", match = { title = \"^(banditshell-filespreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1
+    (cd "$HOME" && FILES_PREVIEW="$where" qs -p "$SHELL_DIR/filespreview.qml" >/dev/null 2>&1) &
+    preview=$!
+    if [ -n "$out" ]; then
+        mkdir -p "$SHOT_DIR"
+        sleep 4
+        rect=$(hyprctl -j clients | jq -r '.[] | select(.title == "banditshell-filespreview") | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1)
+        if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
+        kill "$preview" 2>/dev/null
+        echo "$out"
+    else
+        wait "$preview"
+    fi
     ;;
 
 lockpreview)
@@ -822,6 +986,33 @@ settingspreview)
     if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
     wait
     echo "$out"
+    ;;
+
+gallery)
+    # THE WORKBENCH. settingspreview's shape with the opposite purpose: the
+    # previews exist to be photographed and killed, so they run on a timeout
+    # and refuse focus. The gallery exists to be USED - flipped, dragged,
+    # compared - so it takes focus, sets no timeout, and stays up until it
+    # is closed. Same window rule as the previews, minus the parts that push
+    # it out of the way: floated, sized, centred, before the window exists.
+    #
+    # SELF-HEALING, because things have already gone wrong here: a reload
+    # that died mid-edit could leave a WINDOWLESS qs husk squatting on the
+    # config path; a second run stacked a second window; and a window on
+    # another workspace looked exactly like "the command did nothing". The
+    # gallery now QUITS on window close (gallery.qml), so husks cannot
+    # accumulate any more; the sweep stays as the janitor for anything older
+    # than that fix, and every run of this command starts a fresh gallery -
+    # more than one is allowed, drag them apart.
+    size="${1:-1280x800}"
+    w="${size%x*}"; h="${size#*x}"
+    for pid in $(pgrep -f "^qs -p $SHELL_DIR/gallery" 2>/dev/null); do
+        kill "$pid" 2>/dev/null && echo "windowless husk $pid put down"
+    done
+    hyprctl eval "hl.window_rule({ name = \"banditshell-gallery\", match = { title = \"^(banditshell-gallery)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1
+    (cd "$HOME" && GALLERY_SIZE="$size" qs -p "$SHELL_DIR/gallery.qml" >/dev/null 2>&1) &
+    echo "gallery up at $size"
     ;;
 
 help | -h | --help) usage ;;

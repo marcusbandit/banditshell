@@ -8,6 +8,7 @@ import qs.modules.calculator
 import qs.modules.cheatsheet
 import qs.modules.clipboard
 import qs.modules.keyboard
+import qs.modules.media
 import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
@@ -63,6 +64,12 @@ PanelWindow {
     // no gauge, no edge and no gesture that summons it, only a key bound to
     // `banditshell hotkeys toggle`.
     readonly property CheatSheet hotkeys: cheatLayer
+    // The media controller: Super+M, a card floating in the middle of the
+    // screen with the keyboard taken outright. See modules/media/
+    // MediaController.qml for why it is the CheatSheet's kind of object
+    // (floating clear of the bands) and the power panel's kind of guest
+    // (exclusive keyboard, whole-screen catcher).
+    readonly property MediaController media: mediaLayer
     // The tray and the notch register whole, but what the IPC handler actually
     // writes on them is the PIN and nothing else: presence on both is a derived
     // union (see NotificationTray.expanded), so a keybind pinning the tray and
@@ -243,7 +250,7 @@ PanelWindow {
     // it back the moment a window is clicked instead. Escape reaches the menu
     // while the menu is what you are dealing with, the desktop keeps every
     // event it should have had, and neither has to be traded for the other.
-    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -344,6 +351,15 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: settingsLayer.docked ? settingsLayer.maskItem : null
+        }
+
+        // THE WHOLE SCREEN WHILE THE MEDIA CONTROLLER IS OUT, on the power
+        // panel's argument: Super+M summoned it from wherever the hands were,
+        // so there is no edge to leave, and a click anywhere off the card is
+        // the same "done" that Escape is.
+        Region {
+            intersection: Intersection.Combine
+            item: mediaLayer.open ? mediaLayer.maskItem : null
         }
 
         // ALWAYS, not only while swollen. At rest the zone is exactly the band,
@@ -538,6 +554,8 @@ PanelWindow {
                 cheatLayer.hide();
             else if (calcLayer.open)
                 calcLayer.hide();
+            else if (mediaLayer.open)
+                mediaLayer.hide();
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
             else if (settingsLayer.docked)
@@ -813,6 +831,7 @@ PanelWindow {
                 wallpaperLayer.hide();
                 clipLayer.hide();
                 calcLayer.hide();
+                mediaLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -840,6 +859,7 @@ PanelWindow {
                 sessionLayer.hide();
                 cheatLayer.hide();
                 calcLayer.hide();
+                mediaLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -871,6 +891,7 @@ PanelWindow {
             onOpenChanged: if (open) {
                 launcherLayer.hide();
                 clipLayer.hide();
+                mediaLayer.hide();
             }
         }
 
@@ -909,6 +930,7 @@ PanelWindow {
                 clipLayer.hide();
                 cheatLayer.hide();
                 calcLayer.hide();
+                mediaLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -935,6 +957,7 @@ PanelWindow {
                 wallpaperLayer.hide();
                 sessionLayer.hide();
                 cheatLayer.hide();
+                mediaLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -1015,6 +1038,7 @@ PanelWindow {
                 clipLayer.hide();
                 sessionLayer.hide();
                 calcLayer.hide();
+                mediaLayer.hide();
                 if (settingsLayer.docked)
                     settingsLayer.hide();
                 if (menuLayer.needsKeyboard)
@@ -1065,6 +1089,35 @@ PanelWindow {
             onSymbolsChanged: {
                 if (cheatLayer.symbols !== Config.get("cheatsheet.symbols"))
                     Config.set("cheatsheet.symbols", cheatLayer.symbols);
+            }
+        }
+
+        // THE MEDIA CONTROLLER, popped into the middle of the screen by
+        // Super+M. Declared after the sheet because the two are the same kind
+        // of object - floating documents, centred, no blob in the field - and
+        // they cannot share the middle: whichever was asked for second is the
+        // one on top, so the other goes. Takes the keyboard outright (space
+        // and the arrows ARE the panel) and puts a whole-screen catcher in the
+        // mask (summoned by chord, so there is no edge to leave); both halves
+        // of that are the session panel's construction, and both halves are
+        // why it closes the panels above and they close it.
+        MediaController {
+            id: mediaLayer
+
+            anchors.fill: parent
+            border: win.border
+
+            onOpenChanged: if (open) {
+                launcherLayer.hide();
+                clipLayer.hide();
+                wallpaperLayer.hide();
+                sessionLayer.hide();
+                cheatLayer.hide();
+                calcLayer.hide();
+                if (settingsLayer.docked)
+                    settingsLayer.hide();
+                if (menuLayer.needsKeyboard)
+                    menuLayer.hide();
             }
         }
 
@@ -1145,8 +1198,10 @@ PanelWindow {
             target: settingsLayer
 
             function onDockedChanged(): void {
-                if (settingsLayer.docked)
+                if (settingsLayer.docked) {
                     cheatLayer.hide();
+                    mediaLayer.hide();
+                }
             }
         }
 

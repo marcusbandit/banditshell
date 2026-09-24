@@ -131,7 +131,12 @@ Singleton {
                 // colour in it. Kept near a fill's weight on purpose. It goes
                 // over one of them, not instead of it, so the surface reads as
                 // thicker glass with colour in it rather than as a stain.
-                accentFill: 0.2
+                accentFill: 0.2,
+
+                // How much the unselected tonal desaturates: the accent
+                // mixed toward its own grey by this fraction - quite a bit,
+                // but the hue survives (a full 1 would be monochrome).
+                accentDull: 0.65
             },
             // Take rounding, corner smoothing and the edge gap from the running
             // compositor instead of the values below, so the shell agrees with
@@ -186,6 +191,26 @@ Singleton {
                 // happens to look right.
                 base: 6,
                 scale: [1, 2, 4, 6]
+            },
+            button: {
+                // FIVE sizes, not three, measured off Google's own button
+                // spec sheet (the expressive sizes): heights 32 / 40 / 56 /
+                // 96 / 136, horizontal padding 12 / 16 / 24 / 48 / 64, icon
+                // sizes 20 / 20 / 24 / 32 / 40, icon-to-text gaps 4 / 8 /
+                // 8 / 12 / 16. Note the small row's horizontal padding IS
+                // the recommended 16, and the deprecated 24 belongs to
+                // medium - the spec's advice, kept verbatim.
+                //
+                // THE ONE EXCEPTION is the label, because Monocraft has an
+                // opinion the spec does not: text stays on the 9px pixel
+                // grid (integer multiples of the base, nothing below 2x -
+                // see the font block), so the label ladder is the shell's
+                // and everything around it is the spec's.
+                scale: [2, 2, 3, 4, 5],
+                heights: [32, 40, 56, 96, 136],
+                padX: [12, 16, 24, 48, 64],
+                iconSizes: [20, 20, 24, 32, 40],
+                iconGaps: [4, 8, 8, 12, 16]
             },
             anim: {
                 base: 220,
@@ -909,6 +934,68 @@ Singleton {
                 trackWidth: 288
             },
 
+            // The scrubber: where the track is, and where to send it.
+            //
+            // The played part of the line is a wave and the rest is a straight
+            // run, which is Android's media-notification bar and the one
+            // progress bar that says "sound" rather than "loading". See
+            // modules/media/Scrubber.qml for the construction.
+            media: {
+                // The line's weight, in px. Two of the pixel font's stems at
+                // the body tier, so the wave is drawn in the same ink as the
+                // title over it rather than as a fatter rail.
+                stroke: 4,
+                // One crest to the next, in px.
+                waveLength: 28,
+                // Centre line to a crest, in px. A full swing is twice this.
+                waveAmplitude: 4,
+                // How fast the crests travel toward the pip, in px per second.
+                // About a wavelength a second: fast enough to read as moving
+                // from across the room, slow enough not to shimmer.
+                waveSpeed: 24,
+                // How far one notch of the wheel moves the track, in seconds.
+                wheelSeek: 5,
+
+                // THE FLOATING CONTROLLER (modules/media/MediaController.qml):
+                // the card that Super+M pops in the middle of the screen.
+                panelWidth: 420,
+                // What one press of the arrow keys moves, in seconds, and what
+                // the same key does with shift held. "A few seconds" and "a
+                // good chunk of the track"; the wheel above shares the small
+                // number, because a notch of the wheel and a tap of the key
+                // are the same request.
+                seekSmall: 5,
+                seekLarge: 30
+            },
+
+            // WHICH SINK IS "THE SPEAKERS" AND WHICH IS "THE HEADPHONES".
+            //
+            // Not part of the volume block below it, which is a meter on the
+            // right edge: this is about hardware, and two machines that agree
+            // on every pixel of that rail still have entirely different sound
+            // cards in them.
+            //
+            // A NODE NAME, NOT A POSITION IN THE SINK LIST. That list is
+            // whatever PipeWire enumerated this boot, so it grows when a dock
+            // comes back and reorders when an interface takes a moment longer
+            // to appear than the onboard chip, and "the second one" is a
+            // different device on Tuesday. `node.name` is the string PipeWire
+            // builds out of the bus, the vendor and the profile; it is the same
+            // string every boot for as long as the hardware is the same
+            // hardware. `banditshell output list` prints the ones on this
+            // machine, and `banditshell output assign` writes them here.
+            //
+            // EMPTY IS UNASSIGNED, and empty is what the repo ships, because
+            // there is no sink name that means anything on a machine this file
+            // has never seen. Guessing would be worse than nothing: on a box
+            // with one sound card it happens to be right, and on every other
+            // one it silently moves the audio somewhere nobody is listening.
+            // The toggle says the role is unset instead.
+            audio: {
+                speakers: "",
+                headphones: ""
+            },
+
             // The right edge, as a volume rail.
             volume: {
                 // What one notch of the wheel is worth. The same five points the
@@ -1079,6 +1166,248 @@ Singleton {
                 pane: 400
             },
 
+
+            // The file browser, in its own window. See modules/files/.
+            //
+            // It is the first thing in this shell that is an APPLICATION rather
+            // than a surface: it has panels, a focus, a keymap and a terminal
+            // inside it, and all four of those are settings because all four are
+            // arguments somebody will want to have differently.
+            files: {
+                // The window at birth, in the compositor's terms. A hint, not a
+                // binding: the user is allowed to drag the corner, and the size
+                // that wins after that is theirs. Wide enough for a grid and a
+                // preview side by side, because a preview that pushes the grid
+                // into one column is a preview that is in the way.
+                width: 1200,
+                height: 760,
+
+                // THE ONE NUMBER THE GRID SCALES FROM. Everything else about it
+                // - how many columns fit, where they sit, how big a thumbnail is
+                // fetched - is arithmetic on this and the width available, so
+                // there is no column count anywhere and no per-size branch. See
+                // ~/.claude/rules/math-over-hardcoding.md.
+                tile: 96,
+
+                // THE TEXT IN THE GRID, in pixels, and the one place in this
+                // shell that sets a size rather than taking a tier.
+                //
+                // ~/.claude/rules/type-scale.md allows three sizes and this is
+                // not a fourth for the shell - it is this WINDOW's body size,
+                // and the window is a utility. The shell's `small` is 18px,
+                // which is right for a panel you glance at and much too big for
+                // a grid of two hundred filenames you are scanning: a file
+                // manager is dense on purpose, and Dolphin, Finder and every
+                // other one of them draw names at about this.
+                //
+                // Off Monocraft's design grid (9px) deliberately. On the grid
+                // the only step below 18 is 9, which is half, and the font
+                // renders acceptably between them.
+                text: 15,
+
+                // HOW BIG EVERYTHING IN THE GRID IS, as a multiplier on `tile`
+                // and `text` together.
+                //
+                // One number rather than two, because they are not independent:
+                // a tile is a picture with a name under it, and scaling the
+                // picture without the name gives you a large icon labelled in
+                // fine print. Ctrl+= and Ctrl+- move this and it is written back
+                // here, so the size you settled on is the size it opens at next
+                // time.
+                zoom: 1.0,
+
+                // The left sidebar's width, and the preview's. Both are drag
+                // handles as well as settings: the number here is where they
+                // start and where a drag leaves them.
+                sidebar: 200,
+
+                // How wide the preview panel stands. Same reasoning as the
+                // settings pane above: what decides whether a preview is worth
+                // having is how many characters of a text file fit across it,
+                // which is a width and not a share of the window.
+                preview: 420,
+
+                // The longest edge a thumbnail is decoded at. A grid tile is
+                // ~96px, so this is a bit over two and a half of them: enough to stay
+                // sharp on a hidpi screen and to survive the tile growing,
+                // nowhere near enough to hold a 6000px photograph in memory
+                // forty times over.
+                thumbnail: 256,
+
+                // How much of a text file the preview will read, in bytes. Two
+                // megabytes is far more text than anybody reads in a side panel
+                // and far less than the log file that would otherwise be loaded
+                // into a string, tokenised, and drawn.
+                textMax: 2000000,
+
+                // Whether dotfiles are shown at rest. Off, because a home
+                // directory is mostly dotfiles and the browser opens on one.
+                hidden: false,
+
+                // rendered | raw. Which way a markdown file opens in the
+                // preview. Remembered, because whichever one you want you
+                // usually want every time: reading notes is a different activity
+                // from editing them, and people do mostly one or the other.
+                markdown: "rendered",
+
+                // icons | list. A grid of thumbnails is what you want in a
+                // folder of pictures and the wrong shape entirely for a folder
+                // of two hundred config files, where the useful columns are the
+                // name, the size and when it changed. Every file manager has
+                // both for the same reason; this remembers which you chose.
+                view: "icons",
+
+                // name | size | mtime | kind. Directories come first whatever
+                // this says: a folder is a place and a file is a thing, and
+                // interleaving them by size is a sort nobody wanted.
+                sort: "name",
+
+                terminal: {
+                    // THE TERMINAL'S OWN FACE, and it has to be its own.
+                    //
+                    // The shell is drawn in Monocraft, which is a pixel font
+                    // with no box-drawing characters, no block elements and no
+                    // Braille in it at all - its coverage stops around U+04FF.
+                    // Those three ranges are what a terminal user interface is
+                    // MADE of: every border btop draws, every meter htop fills,
+                    // every graph anything plots. Rendered in Monocraft they are
+                    // missing glyphs, so the emulator was parsing them perfectly
+                    // and the screen showed nothing where the frames should be.
+                    //
+                    // Any monospace face with those ranges will do; this one is
+                    // installed here and has all three. Nerd Font rather than
+                    // plain so that a prompt with powerline separators in it
+                    // draws as well.
+                    font: "CaskaydiaCove Nerd Font Mono",
+                    // How tall the terminal opens, IN ROWS rather than pixels,
+                    // because that is the unit it is actually measured in: a
+                    // terminal's size is a character grid, and a pixel height
+                    // that did not divide by the line height would leave a strip
+                    // of dead material under the last row.
+                    rows: 16,
+
+                    // How much history it keeps. Rows that have scrolled off are
+                    // held as rendered lines rather than as cells (see
+                    // components/vt.js), so this is cheap enough to be generous
+                    // with.
+                    scrollback: 5000,
+
+                    // THE SIXTEEN COLOURS, which is what an application means
+                    // when it says "red".
+                    //
+                    // NOT from the theme, and this is the one place in the shell
+                    // where that is the right answer. Everything else here is a
+                    // ramp index precisely so a palette swap moves it; a
+                    // terminal's colours are a CONTRACT with the programs
+                    // drawing in it. `git diff` says removed lines are colour 1,
+                    // a compiler says an error is colour 1, and if colour 1 came
+                    // out of a green-family ramp then removed lines would be
+                    // green. Colour is carrying meaning here rather than
+                    // identity, so it stays where the meaning is.
+                    //
+                    // Muted rather than the VGA primaries, so that a terminal
+                    // sitting inside a translucent panel reads as part of it.
+                    // The order is the one every terminal uses: black, red,
+                    // green, yellow, blue, magenta, cyan, white, then the eight
+                    // bright ones.
+                    palette: ["#282c34", "#e06c75", "#98c379", "#e5c07b", "#61afef", "#c678dd", "#56b6c2", "#abb2bf", "#5c6370", "#ef7681", "#a6d189", "#efcb8b", "#74bdff", "#d68fe8", "#66c4d0", "#d7dae0"]
+                },
+
+                // WHAT A CHORD DOES, and the fact that this is a list rather
+                // than a switch statement is the point: a keymap belongs to the
+                // person typing on it.
+                //
+                // These are read while ANY panel has focus, which is why they
+                // are all modified and why the modifier is nearly always Ctrl
+                // with a DIGIT. The terminal panel hands every key it is given
+                // straight to the shell, and a shell's own bindings are a
+                // control code per letter: taking Ctrl+A or Ctrl+K here would
+                // silently break the line editor for anyone who uses them. The
+                // digits are free, and Alt with an arrow is what every file
+                // manager already means by "back".
+                //
+                // Ctrl+J is the exception, and knowingly: it is the linefeed
+                // character, so a shell reads it as Return. Intercepting it
+                // costs nothing because Return still submits, and it is the one
+                // chord that has to work from inside the terminal - it is how
+                // you get back out.
+                //
+                // Only chords that appear HERE are intercepted. Everything else
+                // falls through to whatever has focus, which is what keeps
+                // Ctrl+C, Ctrl+R and Ctrl+D the shell's.
+                keys: {
+                    "Ctrl+J": "terminal",
+                    "Ctrl+1": "focus:grid",
+                    "Ctrl+2": "focus:preview",
+                    "Ctrl+3": "focus:terminal",
+                    "Ctrl+4": "preview",
+                    "Ctrl+5": "hidden",
+                    // Ctrl+B is zsh's backward-char while the terminal has
+                    // focus, and this takes it. Left arrow does the same job,
+                    // and a sidebar you cannot summon from the panel you are
+                    // typing in is a sidebar you forget exists; move it to the
+                    // `grid` map below if you want the binding back.
+                    "Ctrl+B": "sidebar",
+                    // The universal spelling of "preferences", and the answer to
+                    // not knowing what any of the other ones are.
+                    "Ctrl+,": "settings",
+                    "Alt+Left": "back",
+                    "Alt+Right": "forward",
+                    "Alt+Up": "parent",
+                    "Alt+Home": "home"
+                },
+
+                // THE SAME THING FOR BARE KEYS, read only while the grid has
+                // focus - which is exactly the state in which there is no shell
+                // waiting for them.
+                //
+                // vim's, because that is the vocabulary the hands already have,
+                // and `/` for search because that is where it comes from. The
+                // arrows do the same jobs and are not listed: they are handled
+                // as arrows, so a keymap emptied out still leaves the grid
+                // navigable.
+                //
+                // hjkl are DIRECTIONS here, not ranger's in-and-out. This is a
+                // grid rather than a column, so `l` meaning "open" would leave
+                // no way to move sideways; Return opens and `-` goes up, which
+                // are the two that ranger spends h and l on.
+                // Both spellings live here: a bare character like "j", and a
+                // chord like "Ctrl+C". The chords are in THIS table rather than
+                // in `keys` above precisely because the grid is where there is
+                // no shell waiting: Ctrl+C is a shell's interrupt, Ctrl+X its
+                // kill-line and Ctrl+V its literal-next, and a window-level bind
+                // would take all three away from the terminal permanently.
+                grid: {
+                    "h": "left",
+                    "j": "down",
+                    "k": "up",
+                    "l": "right",
+                    "g": "first",
+                    "G": "last",
+                    "/": "search",
+                    " ": "preview",
+                    ".": "hidden",
+                    "v": "view",
+                    "Ctrl+=": "zoomin",
+                    "Ctrl++": "zoomin",
+                    "Ctrl+-": "zoomout",
+                    "Ctrl+0": "zoomreset",
+                    "y": "copypath",
+                    "-": "parent",
+
+                    "Ctrl+A": "all",
+                    "Ctrl+C": "copy",
+                    "Ctrl+X": "cut",
+                    "Ctrl+V": "paste",
+                    "Ctrl+N": "newfolder",
+                    "Ctrl+Shift+N": "newfile",
+                    "Ctrl+L": "path",
+                    "Ctrl+I": "properties",
+                    "F2": "rename",
+                    "Delete": "trash",
+                    "Shift+Delete": "destroy"
+                }
+            },
             // The bottom-right corner, as a way in. See
             // modules/SettingsCorner.qml.
             //
@@ -1192,6 +1521,170 @@ Singleton {
                 // stutter into doubles.
                 repeatDelay: 500,
                 repeatInterval: 45
+            },
+
+            // THE DRAWING TABLET, and where on the desk it points. See
+            // services/PenMap.qml and modules/pen/.
+            //
+            // NOT `tablet` ABOVE, which is the laptop's HINGE. Two entirely
+            // different devices share one English word, and the shell has a
+            // service for each of them, so the settings are kept as far apart
+            // as the services are: `tablet` is the machine folded over, `pen`
+            // is the Wacom on the desk. Merging them would mean a config file
+            // in which `tablet.height` and `tablet.surface` are facts about
+            // different pieces of hardware.
+            //
+            // EVERYTHING DEVICE-SPECIFIC ABOUT THE TABLET IS HERE, which is
+            // deliberate and is the whole reason this block is as long as it
+            // is. The QML knows about a rectangle, a monitor and two button
+            // codes; it does not know it is a Wacom. Point these keys at
+            // another tablet and the feature follows, with nothing to edit in
+            // services/PenMap.qml at all.
+            pen: {
+                // WHETHER THE SHELL WATCHES THE PAD AT ALL.
+                //
+                // On, because this machine has the tablet. Off is for every
+                // other machine in the fleet: the pad reader is a resident
+                // python process, and a box with no Wacom on it would keep one
+                // alive for the rest of the session to be told every two
+                // seconds that there is still no tablet. Nothing else in the
+                // feature costs anything when it is off, and the mapping
+                // already in the compositor's own config is left alone.
+                enabled: true,
+
+                // THE NAME HYPRLAND KNOWS THE STYLUS BY, which is what
+                // `hl.device` is addressed to and the one string that has to
+                // match exactly. `hyprctl devices` prints it under Tablets.
+                //
+                // Lower case and hyphenated because that is the compositor's
+                // own normalised spelling rather than the product name: the
+                // pen that reports itself as "Wacom Intuos Pro M Pen" is
+                // addressed as `wacom-intuos-pro-m-pen`. A device block naming
+                // a device that does not exist is accepted in silence, so a
+                // typo here does not fail, it simply does nothing.
+                device: "wacom-intuos-pro-m-pen",
+
+                // THE NAME THE KERNEL KNOWS THE PAD BY, which is a different
+                // string for a different device. The stylus and the ExpressKeys
+                // are two evdev nodes on one lump of plastic, the compositor
+                // only forwards the stylus, and scripts/pen-pad.py has to find
+                // the other one itself.
+                //
+                // BY NAME, never by node number: the pad is Bluetooth, and
+                // /dev/input/eventNN is handed out fresh on every reconnect. It
+                // is passed to the script as `--device-name`, so this key is
+                // the only place the name is written down.
+                pad: "Wacom Intuos Pro M Pad",
+
+                // WHETHER THE READER TAKES THE PAD EXCLUSIVELY.
+                //
+                // On, and it is a CRASH FIX rather than a preference. Hyprland
+                // 0.56 sends `zwp_tablet_pad_v2.button` to every client that
+                // bound a tablet seat without first sending the `enter` the
+                // protocol requires, and GTK4 4.22 segfaults answering one. A
+                // single press of a single pad button therefore kills every GTK
+                // window on the machine at once, whether or not it is focused
+                // and whether or not the pen is anywhere near it. Grabbing the
+                // node means libinput never sees the press, so the compositor
+                // has nothing to broadcast and nothing dies.
+                //
+                // WHAT IT COSTS: while the reader holds the grab, the pad's
+                // buttons and ring reach NOTHING except this shell. A pad
+                // button bound in hyprland.conf stops firing. Turn this off to
+                // get that back, and accept that GTK apps die on every press
+                // until the bug is fixed upstream.
+                //
+                // The grab is released when the reader exits, by the kernel, on
+                // every exit path including a kill -9.
+                grabPad: true,
+
+                // THE ACTIVE SURFACE, IN MILLIMETRES. Only the RATIO is ever
+                // used, so the units are arbitrary and are millimetres because
+                // that is what the number printed on the box is, which makes
+                // this a key somebody can fill in without measuring anything.
+                //
+                // WHY THE SHAPE MATTERS AT ALL: a tablet is an ABSOLUTE device.
+                // Its surface maps corner to corner onto whatever region it is
+                // pointed at, so a 224x148 surface stretched across a 5120x1440
+                // panel draws a circle 2.35 times too wide. Mapping it to a
+                // region carrying its own aspect is the fix, and this is where
+                // that aspect comes from.
+                surface: {
+                    width: 224,
+                    height: 148
+                },
+
+                // THE PAD BUTTON THAT OPENS THE EDITOR, and closes it. Press
+                // once and the outline appears, press again and the region
+                // under it is applied.
+                //
+                // A TOGGLE RATHER THAN A HOLD, which is the second answer and
+                // not the first. Holding reads better on paper: the editor is
+                // open exactly while a finger says so, and letting go is a
+                // gesture nobody has to be taught. It relies on the contact
+                // being honest, and on this pad it is not. A key that chatters
+                // reports a release the finger never made, and under a hold
+                // that lands as a commit in the middle of a drag, which is the
+                // rectangle being applied halfway to where it was going. A
+                // toggle spends one more press and stops asking the worst
+                // switch on the device to be right for the length of a gesture.
+                //
+                // An evdev code rather than a name, because the code is what
+                // arrives on the wire: the pad's keys are BTN_0 through BTN_8,
+                // which is 256 through 264, and nothing between the kernel and
+                // here ever spells them out. BTN_0 is the top one on this
+                // tablet, which is the one a thumb finds without looking.
+                toggleButton: 256,
+
+                // THE PAD BUTTON THAT TOGGLES THE SHAPE LOCK, tapped. BTN_1,
+                // the next one down.
+                //
+                // It exists so the toggle is reachable without aiming the pen
+                // at a control: the whole point of this feature is that the
+                // hand never leaves the tablet, and a pill you have to hit with
+                // the stylus is exactly the aiming problem the feature is being
+                // used to fix. The on-screen pill does the same job for the
+                // case where you would rather see the state than remember it.
+                aspectButton: 257,
+
+                // THE PAD BUTTON THAT PUTS THE REGION BACK: the tablet's own
+                // shape, as big as the screen it is on allows, centred on it.
+                // BTN_2, the next one down again.
+                //
+                // A DESTINATION RATHER THAN A DIRECTION, which is why it earns
+                // a button of its own next to two switches. The other two
+                // change what the editor MEANS and leave the rectangle to the
+                // hand; this one is the rectangle nearly every session wants
+                // back, and reaching it by dragging is four corner pulls and an
+                // eye for the middle of a 5120px panel.
+                centreButton: 258,
+
+                // WHETHER THE REGION STARTS OUT SHAPE-LOCKED.
+                //
+                // Locked, because an unlocked region is a region that can be
+                // made the wrong shape, and the wrong shape is the exact defect
+                // this whole feature exists to correct. Locked the region is
+                // one fixed rectangle the user slides around and scales, which
+                // is the entire decision worth making most of the time.
+                //
+                // THIS IS THE DEFAULT AND NOT THE LIVE VALUE. The pad button
+                // above toggles the lock during a session and that choice is
+                // remembered in the state file, so this key decides what a
+                // machine that has never been asked does.
+                aspectLock: true,
+
+                // THE SMALLEST THE REGION MAY BE MADE, in logical pixels, on
+                // whichever axis hits it first.
+                //
+                // Not a limit on precision. A small region is a GOOD thing here
+                // and is most of why anyone would move the mapping: the
+                // smaller the rectangle, the more screen travel one millimetre
+                // of tablet buys. The floor is about the OUTLINE, which has
+                // four corner handles and an interior to drag, and which stops
+                // being grabbable long before the mapping stops being useful. A
+                // region dragged down to nothing would be a mapping the pen can
+                // no longer reach in order to undo.
+                minSize: 160
             },
 
             // The lock screen. See modules/lock/.
@@ -1595,7 +2088,24 @@ Singleton {
     // and keeping the old one silently leaves the new entries undefined. The
     // label ladder growing from three tiers to four did exactly that, and
     // undefined fed straight into a colour.
-    function merge(base: var, over: var): var {
+    // SETTINGS WHOSE KEYS ARE THE USER'S DATA, not a schema to merge into.
+    //
+    // The rule below already knows this shape - an EMPTY default object is data,
+    // because the defaults name no keys. A keymap is the same kind of thing with
+    // one difference: it ships populated, so a fresh install has bindings.
+    //
+    // Merging it key by key makes a REMOVAL IMPOSSIBLE. Rebinding "back" from
+    // Alt+Left to Ctrl+7 writes a map without Alt+Left in it; the merge then
+    // walks the defaults, finds Alt+Left there, and puts it straight back, so
+    // the setting saved correctly and had no effect. Listed here, the user's map
+    // is taken whole, which is what a set means.
+    readonly property var opaque: ["files.keys", "files.grid"]
+
+    function merge(base: var, over: var, path: string): var {
+        // The whole thing, or the default when there is nothing to take.
+        if (root.opaque.includes(path))
+            return over && typeof over === "object" ? over : base;
+
         // An EMPTY default array is a list, not a tuple: there is no shape to
         // have changed, so whatever the user put there is data and survives. A
         // non-empty one is a fixed set of slots (a scale, a ladder) and a
@@ -1613,7 +2123,7 @@ Singleton {
 
         const out = {};
         for (const k in base)
-            out[k] = merge(base[k], over[k]);
+            out[k] = merge(base[k], over[k], path ? `${path}.${k}` : k);
         return out;
     }
 
@@ -1634,7 +2144,7 @@ Singleton {
                 return console.warn(`Config: ${root.path} is not valid JSON, keeping previous values.`, e);
             }
 
-            root.values = root.merge(root.defaults, parsed);
+            root.values = root.merge(root.defaults, parsed, "");
 
             // AND THE FILE IS IN, which is the answer a writer has been waiting
             // for. After `values`, never before it: a listener that writes back

@@ -119,10 +119,35 @@ Singleton {
         readonly property color accent: root.theme[root.cfg.colour.accent]
 
         // The same colour at a fill's job: tinting a surface rather than marking
-        // a glyph. "Which workspace you are on" is the one piece of state in the
-        // sidebar worth a hue, and a tint is how you say it without painting a
-        // saturated block.
+        // a glyph. "Which workspace you are on" is the one piece of state in
+        // the sidebar worth a hue, and a tint is how you say it without
+        // painting a saturated block.
         readonly property color accentFill: Qt.rgba(accent.r, accent.g, accent.b, root.cfg.material.accentFill)
+
+        // The accent's own lightness as a neutral: the desaturation target.
+        readonly property color accentGrey: {
+            const l = accent.r * 0.2126 + accent.g * 0.7152 + accent.b * 0.0722;
+            return Qt.rgba(l, l, l, 1);
+        }
+
+        // THE TONAL'S UNSELECTED READING: the accent desaturated toward its
+        // own grey by config's `accentDull` (quite a bit - the hue
+        // survives), at the same veil weight. It does not darken and it
+        // does not thicken; it only loses saturation. The latched tonal is
+        // the accent itself.
+        readonly property color accentFillDull: {
+            const k = Math.max(0, Math.min(1, root.cfg.material.accentDull));
+            return Qt.rgba(
+                accent.r + (accentGrey.r - accent.r) * k,
+                accent.g + (accentGrey.g - accent.g) * k,
+                accent.b + (accentGrey.b - accent.b) * k,
+                root.cfg.material.accentFill
+            );
+        }
+
+        // The veil weight itself, by its name in this file: the one number
+        // the tonal family's composites are built from.
+        readonly property real veilWeight: root.cfg.material.accentFill
 
         // One step above the accent. Accent means "attention", this means "you
         // are about to lose something", and only a battery running out wears it
@@ -162,6 +187,15 @@ Singleton {
         // position, so a theme is free to have more or fewer stops.
         readonly property var spectrum: [root.theme.dim, root.theme.mid, root.theme.bright]
 
+
+        // THE TERMINAL'S SIXTEEN, straight from config and deliberately not from
+        // the ramp. See Config's note: in a terminal, colour 1 is what `git
+        // diff` means by "removed" and what a compiler means by "error", so it
+        // is carrying meaning rather than identity and must not follow a theme
+        // that has decided everything is green. It is here rather than read
+        // straight off Config only because it is a list of COLOURS, and this is
+        // where the shell keeps those.
+        readonly property var terminalPalette: root.cfg.files.terminal.palette
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour
@@ -250,6 +284,39 @@ Singleton {
         readonly property int normal: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 1))
         readonly property int large: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 2))
         readonly property int huge: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 3))
+    }
+
+    // THE BUTTON'S OWN LADDER: five sizes, straight off the measured spec in
+    // config (heights, padding, icon sizes and gaps), with the label the one
+    // exception - it stays on the pixel font's grid. No button anywhere
+    // holds a literal; a button asks for its size by index.
+    readonly property QtObject button: QtObject {
+        // Any rung of any list, clamped.
+        function at(list: var, i: int): real {
+            return list[Math.max(0, Math.min(i, list.length - 1))];
+        }
+
+        // Label size for size tier i of five (extra small .. extra large).
+        function label(i: int): real {
+            return root.tier(root.cfg.font.base, root.cfg.button.scale, i);
+        }
+
+        function height(i: int): real {
+            return at(root.cfg.button.heights, i);
+        }
+
+        function padX(i: int): real {
+            return at(root.cfg.button.padX, i);
+        }
+
+        function iconSize(i: int): real {
+            return at(root.cfg.button.iconSizes, i);
+        }
+
+        // The mark-to-words space, which the spec also measures per size.
+        function iconGap(i: int): real {
+            return at(root.cfg.button.iconGaps, i);
+        }
     }
 
     readonly property QtObject anim: QtObject {
@@ -378,6 +445,16 @@ Singleton {
         // animation tiers.
         readonly property int wallpaperReveal: root.cfg.wallpaper.reveal
         readonly property int notchTrack: root.cfg.notch.trackWidth
+        // The media scrubber's line, wave and wheel; see modules/media/Scrubber.qml.
+        readonly property int scrubStroke: root.cfg.media.stroke
+        readonly property int scrubWaveLength: root.cfg.media.waveLength
+        readonly property int scrubWaveAmplitude: root.cfg.media.waveAmplitude
+        readonly property real scrubWaveSpeed: root.cfg.media.waveSpeed
+        readonly property real scrubWheelSeek: root.cfg.media.wheelSeek
+        // The floating controller. See modules/media/MediaController.qml.
+        readonly property int mediaPanelWidth: root.cfg.media.panelWidth
+        readonly property real mediaSeekSmall: root.cfg.media.seekSmall
+        readonly property real mediaSeekLarge: root.cfg.media.seekLarge
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone
@@ -423,6 +500,46 @@ Singleton {
         readonly property int settingsHeight: root.cfg.settings.height
         readonly property int settingsPane: root.cfg.settings.pane
 
+
+        // The file browser's window, and the grid inside it. See modules/files/.
+        //
+        // The GEOMETRY is here; what the browser prefers is not. Which way it
+        // sorts, whether it shows dotfiles and what a chord does are read off
+        // Config by the service that owns them, the way the cheatsheet's two
+        // preferences are: they are state the interface keeps, not tokens it is
+        // drawn from, and a keymap in the appearance file would be a keymap
+        // nobody could find.
+        readonly property int filesWidth: root.cfg.files.width
+        readonly property int filesHeight: root.cfg.files.height
+        // The one number the grid scales from: a column count is arithmetic on
+        // this and the room available, never a setting of its own.
+        //
+        // Both this and the text below are the configured value times the zoom,
+        // so Ctrl+= moves the whole grid rather than the type alone.
+        // WITHOUT `root.`, and that is not a style choice. These live inside
+        // this QtObject, so `root.filesZoom` is a property of the Appearance
+        // singleton - which has none, so it read undefined, the tile size came
+        // out NaN, the column count came out zero and the grid laid out nothing
+        // at all while every binding feeding it was correct.
+        readonly property real filesZoom: root.cfg.files.zoom
+        readonly property int filesTile: Math.round(root.cfg.files.tile * filesZoom)
+        readonly property int filesPreview: root.cfg.files.preview
+        // The browser's own body size. See Config's note on why this window
+        // sets a size instead of taking one of the three tiers.
+        readonly property int filesText: Math.round(root.cfg.files.text * filesZoom)
+        readonly property int filesSidebar: root.cfg.files.sidebar
+        // A row in the list view: two lines of the browser's own text, which is
+        // the tightest a row can be and still have air in it.
+        readonly property int filesRow: Math.round(root.cfg.files.text * 2)
+        readonly property int filesThumbnail: root.cfg.files.thumbnail
+        readonly property int filesTextMax: root.cfg.files.textMax
+        // The terminal's height IN ROWS, because that is the unit a terminal is
+        // measured in; the pixels are the line height times this, worked out
+        // where the line height is known.
+        readonly property int filesTerminalRows: root.cfg.files.terminal.rows
+        readonly property int filesScrollback: root.cfg.files.terminal.scrollback
+        // See Config: the shell's pixel font cannot draw a terminal.
+        readonly property string filesTerminalFont: root.cfg.files.terminal.font
         // The bottom-right corner, as a way in. The corner's SIZE is not here:
         // it is derived from this mark in modules/SettingsCorner.qml, because
         // the swell exists to hold the glyph.

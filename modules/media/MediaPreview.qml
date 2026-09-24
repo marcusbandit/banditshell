@@ -27,6 +27,10 @@ Item {
     // How wide the track line may get before it elides.
     property real trackMax: Appearance.sizes.notchTrack
 
+    // Whether anyone can see it. The scrubber's wave is a clock, and the host
+    // is the one that knows if it is out or parked behind an edge.
+    property bool watched: true
+
     // MEASURED, not read off the labels. A label's `implicitWidth` feeding a
     // width that is then bound back onto that label is a loop waiting to be
     // tripped; TextMetrics answers the same question from outside the layout.
@@ -174,20 +178,20 @@ Item {
         }
     }
 
-    // How far in it is. Read-only, and exactly as wide as the block above it
-    // rather than as wide as the host: the artwork, the name and the transport
-    // are one object, and a line that runs past the ends of it belongs to the
-    // notch instead. It also keeps them from disagreeing while the host is still
-    // smoothing its way to a new size. Hidden for anything without a length,
-    // which is every stream: a bar that can never fill is a bar that lies.
-    Slider {
+    // How far in it is, and the way to move it. Exactly as wide as the block
+    // above it rather than as wide as the host: the artwork, the name and the
+    // transport are one object, and a line that runs past the ends of it
+    // belongs to the notch instead. It also keeps them from disagreeing while
+    // the host is still smoothing its way to a new size. Hidden for anything
+    // without a length, which is every stream: a bar that can never fill is a
+    // bar that lies.
+    Scrubber {
         id: progress
 
         anchors.bottom: parent.bottom
         anchors.horizontalCenter: parent.horizontalCenter
         width: block.width
         visible: Media.length > 0
-        value: Media.progress
-        enabled: false
+        watched: root.watched
     }
 }

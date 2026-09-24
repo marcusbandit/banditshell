@@ -22,6 +22,17 @@ Scope {
 
     required property var picker
 
+    // Shared by two of the penmap verbs, so `set` can answer with the same
+    // sentence `status` does rather than inventing a second phrasing for the
+    // same fact.
+    function penmapStatus(): string {
+        const r = PenMap.region;
+        const lock = PenMap.aspectLocked ? "locked" : "free";
+        const pad = PenMap.padConnected ? "pad" : "no pad";
+        const mode = PenMap.followWindow ? ", follow" : "";
+        return `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.x)},${Math.round(r.y)} on ${PenMap.monitorName || "no monitor"} (${lock}, ${pad}${mode})`;
+    }
+
     IpcHandler {
         target: "menu"
 
@@ -321,6 +332,43 @@ Scope {
             for (const win of Shell.windows)
                 win.session.hide();
             return "closed";
+        }
+    }
+
+    // The media controller: Super+M's popup. The panel's own keys (space, the
+    // arrows) do the media; this target only decides whether the card is out,
+    // on the power panel's exact shape - summoned by name, so the toggle goes
+    // through Shell.showing and finds the one already up.
+    IpcHandler {
+        target: "media"
+
+        function toggle(): string {
+            const win = Shell.showing(w => w.media.open);
+            if (!win)
+                return "no shell window";
+            win.media.toggle();
+            return win.media.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Shell.forScreen("")?.media.show();
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.media.hide();
+            return "closed";
+        }
+
+        // What the card would say, without the card: the player it is pointed
+        // at and the state of the card itself. The shell-side half is
+        // session-wide (Media picks one player for the whole session); open is
+        // read off the window holding the card, per the rule at the top of
+        // this file.
+        function status(): string {
+            const win = Shell.showing(w => w.media.open);
+            return `open=${win?.media.open ?? false} player=${Media.app || "none"} playing=${Media.playing} title="${Media.title}"`;
         }
     }
 
@@ -930,6 +978,40 @@ Scope {
         return `${Math.round(target * 100)}%`;
     }
 
+    IpcHandler {
+        target: "files"
+
+        // The browser is a window rather than a panel, so "where" is not a
+        // question here the way it is for the menus: a window is wherever it was
+        // dragged to. What it takes instead is a PATH, because the useful thing
+        // to bind is not "open the browser" but "open the browser here", and a
+        // keybind that carries the directory it was pressed in is the difference
+        // between a file manager and a file manager you actually reach for.
+        function open(path: string): string {
+            Files.show(path);
+            return path ? `files ${path}` : "files";
+        }
+
+        function toggle(path: string): string {
+            Files.toggle(path);
+            return Files.windowOpen ? "open" : "closed";
+        }
+
+        function close(): string {
+            Files.hide();
+            return "closed";
+        }
+
+        // What the browser currently believes, in one line. The same reasoning
+        // as `menu hover`: "the terminal is not responding" and "the terminal
+        // was never started" look identical from a screenshot, and so do "the
+        // grid is empty" and "the listing failed".
+        function status(): string {
+            const shell = Files.term ? `rows=${Files.term.rows} alt=${Files.term.altActive}` : "no session";
+            return `open=${Files.windowOpen} cwd=${Files.cwd} entries=${Files.entries.length} focus=${Files.focus} terminal=[${shell}] error=[${Files.error}]`;
+        }
+    }
+
     // The output volume, driven through the Audio singleton the way settings
     // is driven through its own: sound is one value for the session, not a
     // per-window thing, so there is no window to guard for. No drawing here
@@ -988,6 +1070,128 @@ Scope {
             if (!Audio.ready)
                 return "no audio sink";
             return `volume=${Math.round(Audio.volume * 100)}% muted=${Audio.muted} ceiling=${Math.round(Audio.maxVolume * 100)}%`;
+        }
+    }
+
+    // The reply every verb of the output target gives: the role, AND the device
+    // that role currently means.
+    //
+    // Shared so a role reached by a key and the same role named on a command
+    // line come back in exactly the same words. "headphones" on its own is the
+    // CLI repeating what it was asked rather than saying what happened; the
+    // label after it is the part that shows the shell and the hardware agree
+    // about which box the sound just moved to.
+    function roleLine(role: string): string {
+        const node = Audio.roleNode(role);
+        return node ? `${role} (${Audio.deviceLabel(node)})` : role;
+    }
+
+    // Named-role switching, for `speakers` and `headphones`, which are one verb
+    // called twice rather than two verbs.
+    function goRole(role: string): string {
+        const landed = Audio.setOutputRole(role);
+        return landed ? root.roleLine(landed) : `cannot switch to ${role}: ${Audio.roleProblem(role)}`;
+    }
+
+    // THE OUTPUT, as one key.
+    //
+    // Speakers or headphones is the audio question a keyboard actually gets
+    // asked, and the one the volume keys cannot answer: they can turn the sound
+    // down, not move it. Which sink each name means is a setting, because no
+    // two machines have the same cards in them (config/Config.qml's `audio`
+    // block), so this target is both the switch and the way to wire the switch
+    // up: `list` prints the names, `assign` writes one, `toggle` is the verb to
+    // bind.
+    //
+    // Nothing here draws anything, and nothing needs to. Moving the default
+    // sink changes Audio.volume for the new device, and the volume rail's
+    // linger restarts on any change to it whoever made it, so the switch shows
+    // itself on screen the same way a wheel notch does.
+    IpcHandler {
+        target: "output"
+
+        function toggle(): string {
+            const landed = Audio.toggleOutput();
+            if (landed)
+                return root.roleLine(landed);
+            if (Audio.rolesCollide)
+                return "speakers and headphones name the same device, so there is nowhere to toggle to";
+            // Standing on one of the two, only the OTHER one refused and it is
+            // the only one worth a sentence. Standing on neither, both refused,
+            // and both reasons print: the fix is a different sentence for each,
+            // and a key that reported one of them would send you to plug in a
+            // device that was never the problem.
+            if (Audio.outputRole) {
+                const other = Audio.outputRole === "speakers" ? "headphones" : "speakers";
+                return `cannot switch to ${other}: ${Audio.roleProblem(other)}`;
+            }
+            return `cannot switch: speakers ${Audio.roleProblem("speakers")}; headphones ${Audio.roleProblem("headphones")}`;
+        }
+
+        // Where you asked for, regardless of where you are. The same argument
+        // `volume mute on|off` makes one target up: a toggle is only a switch
+        // when you can see the state it started from, and a script cannot.
+        function speakers(): string {
+            return root.goRole("speakers");
+        }
+
+        function headphones(): string {
+            return root.goRole("headphones");
+        }
+
+        // Which role is playing, and what both of them resolve to right now.
+        //
+        // Both, always, including the one you are on, because the question this
+        // gets asked is "why did the key do nothing" and the answer is nearly
+        // always on the line for the role you are NOT standing on: a name that
+        // was never set, or a device that is set and asleep in a drawer.
+        function status(): string {
+            const say = role => {
+                const name = Audio.roleName(role);
+                if (!name)
+                    return "not assigned";
+                const node = Audio.roleNode(role);
+                return node ? `${Audio.deviceLabel(node)} · ${name}` : `${name} · not connected`;
+            };
+
+            const on = Audio.outputRole || (Audio.sink ? `neither, playing through ${Audio.deviceLabel(Audio.sink)}` : "no output device");
+            const lines = [`playing     ${on}`, `speakers    ${say("speakers")}`, `headphones  ${say("headphones")}`];
+            if (Audio.rolesCollide)
+                lines.push("both roles name one device, so the toggle cannot move the sound");
+            return lines.join("\n");
+        }
+
+        // NAME FIRST, because the name is the string you copy into `assign` and
+        // a list that led with the label would make you hunt for it. What each
+        // one is doing is in brackets after it, since the reason to run this is
+        // usually to find out why a role resolved to nothing.
+        function list(): string {
+            if (!Audio.sinks.length)
+                return "no output devices";
+            return Audio.sinks.map(n => {
+                const marks = [n.name === Audio.sink?.name ? "playing" : "", n.name === Audio.speakersName ? "speakers" : "", n.name === Audio.headphonesName ? "headphones" : ""].filter(m => m);
+                return `${n.name}  ${Audio.deviceLabel(n)}${marks.length ? ` [${marks.join(", ")}]` : ""}`;
+            }).join("\n");
+        }
+
+        // Write the setting. An empty name unassigns, which is the one edit the
+        // settings page and this verb both have to be able to make: a role
+        // pointing at a device that is gone for good is worse than a role
+        // pointing at nothing, because only one of the two says so.
+        //
+        // A NAME THAT MATCHES NO SINK IS STILL WRITTEN, and still reported. It
+        // is how you assign a device that is unplugged this minute, and
+        // refusing it would mean the headphones can only be set up while they
+        // are on. The reply is where a typo shows: the name comes back with a
+        // note that nothing here answers to it.
+        function assign(role: string, name: string): string {
+            if (role !== "speakers" && role !== "headphones")
+                return `assign takes speakers or headphones, not: ${role}`;
+            Config.set(`audio.${role}`, name);
+            if (!name)
+                return `${role} unassigned`;
+            const node = Audio.sinkByName(name);
+            return node ? `${role} = ${Audio.deviceLabel(node)} (${name})` : `${role} = ${name}, which is not a sink that is here right now`;
         }
     }
 
@@ -1983,6 +2187,79 @@ Scope {
             } catch (e) {}
             Config.set(key, parsed);
             return `${key} = ${JSON.stringify(parsed)}`;
+        }
+    }
+
+    // THE TABLET MAPPING, WITHOUT THE TABLET. Everything about PenMap is meant
+    // to be driven from the pad: hold a button, drag with the pen, let go. That
+    // is the whole point of it, and it is also a single point of failure, since
+    // the pad arrives over Bluetooth and a tablet that is asleep, out of
+    // battery or unpaired has no buttons at all. A feature whose only way in is
+    // the device it configures cannot be used to rescue itself.
+    //
+    // So the same verbs are here, reachable from a keybind or a terminal. Not
+    // as the intended route, and deliberately not bound to a key by default,
+    // but so that "the mapper will not open" is a thing the user can work
+    // around in one command rather than a thing that needs the shell restarted.
+    //
+    // `status` prints the region and the monitor it is homed to, which is the
+    // one question worth asking when the pen is landing somewhere unexpected.
+    IpcHandler {
+        target: "penmap"
+
+        function open(): string {
+            PenMap.begin();
+            return "open";
+        }
+
+        function commit(): string {
+            PenMap.commit();
+            return "committed";
+        }
+
+        function cancel(): string {
+            PenMap.cancel();
+            return "cancelled";
+        }
+
+        function aspect(): string {
+            PenMap.toggleAspect();
+            return PenMap.aspectLocked ? "locked" : "free";
+        }
+
+        // The same rectangle the pad's third button states, for the same reason
+        // every other verb here exists: a region small enough to have shed its
+        // controls has no pill to press, and a pad that is asleep has no button.
+        function centre(): string {
+            PenMap.fitAndCentre();
+            return root.penmapStatus();
+        }
+
+        // The window picker, as a verb, for the same reason the rest of this
+        // handler exists: the mode is toggled from a pill drawn inside the
+        // region, and a region small enough to have dropped its controls has no
+        // pill to press. That corner is reachable by snapping to a narrow
+        // window, which is a thing this very mode does.
+        function follow(): string {
+            PenMap.toggleFollowWindow();
+            return PenMap.followWindow ? "following" : "off";
+        }
+
+        // Absolute, in global layout coordinates, because that is the frame the
+        // service thinks in and the frame `hyprctl monitors` prints. The
+        // service clamps and re-homes whatever lands here, so a nonsense
+        // rectangle is corrected rather than rejected.
+        function set(x: string, y: string, w: string, h: string): string {
+            const nums = [x, y, w, h].map(Number);
+            if (nums.some(isNaN))
+                return "four numbers: x y w h";
+            PenMap.proposeRegion(nums[0], nums[1], nums[2], nums[3]);
+            PenMap.commit();
+            return root.penmapStatus();
+        }
+
+        function status(): string {
+            return root.penmapStatus();
         }
     }
 }

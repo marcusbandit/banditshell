@@ -164,7 +164,7 @@ Item {
 
         // THE POINT OF THE WHOLE PANEL, reachable without going back for it.
         // Enter does the same from anywhere on this page.
-        Pill {
+        Button {
             id: useIt
 
             anchors.right: parent.right

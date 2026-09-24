@@ -97,6 +97,19 @@ Text {
         text: root.text
     }
 
-    onResolvedChanged: if (!resolved && name && !root.glyph)
-        console.warn(`Icon: "${name}" is not in ${Appearance.font.icon}; drawing ${fallback} instead.`)
+    // WARNED ON A DELAY, because the first measurement is not a verdict.
+    //
+    // TextMetrics measures with whatever font is available, and during startup
+    // the icon face has not loaded yet - so every icon in the shell looks
+    // missing for a frame and says so. The log then blames a name that is
+    // perfectly fine, which is exactly the sort of false lead that costs an hour
+    // when something else is actually wrong.
+    Timer {
+        id: complaint
+
+        interval: Appearance.anim.slow
+        running: !root.resolved && root.name !== "" && root.glyph === ""
+
+        onTriggered: console.warn(`Icon: "${root.name}" is not in ${Appearance.font.icon}; drawing ${root.fallback} instead.`)
+    }
 }

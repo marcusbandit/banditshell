@@ -80,39 +80,15 @@ Column {
         }
     }
 
-    // Progress. Read-only: seeking is a separate capability MPRIS players
-    // advertise individually, and a scrubber that silently does nothing on half
-    // of them is worse than none.
-    Item {
+    // Progress, and the way to move it. This used to be a read-only bar, on
+    // the argument that seeking is a capability MPRIS players advertise one
+    // by one and a scrubber that silently does nothing on half of them is
+    // worse than none. The scrubber answers that itself: it takes a hand only
+    // while the player says it can seek, and marks the position either way.
+    // The same one the notch's preview draws, with its two times under it.
+    Scrubber {
         width: parent.width
         visible: Media.available && Media.length > 0
-        implicitHeight: bar.height + elapsed.implicitHeight + Appearance.padding.small
-
-        Slider {
-            id: bar
-
-            width: parent.width
-            value: Media.progress
-            enabled: false
-        }
-
-        StyledText {
-            id: elapsed
-
-            anchors.left: parent.left
-            anchors.bottom: parent.bottom
-            text: Media.timeLabel(Media.position)
-            font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.textFaint
-        }
-
-        StyledText {
-            anchors.right: parent.right
-            anchors.bottom: parent.bottom
-            text: Media.timeLabel(Media.length)
-            font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.textFaint
-        }
     }
 
     // Transport. Centred, because it is the one thing in this menu you aim at.

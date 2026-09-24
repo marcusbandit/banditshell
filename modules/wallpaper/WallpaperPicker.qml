@@ -263,26 +263,100 @@ Item {
             return;
         root.shown = true;
 
-        // START WHERE YOU ALREADY ARE, and the filter is not allowed to break
-        // that promise.
+        // ASK THE FOLDER WHAT IS IN IT, rather than answering from the listing
+        // taken when the shell started.
         //
-        // Opening a picker on the first file in the folder rather than on the
-        // wallpaper you are looking at makes the first thing it does an
-        // unasked-for change. A screen wearing a picture the prediction would
-        // hide is exactly the case where that could happen silently: the strip
-        // would open on somebody else's wallpaper with no ring anywhere on it,
-        // which looks like the shell having forgotten what you set. So the
-        // wallpaper you are wearing is a member of the list by definition, and
-        // if the prediction disagrees, the prediction is the thing that gives
-        // way for this opening.
-        const worn = Wallpaper.currentOn(root.screen);
-        root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
+        // services/Wallpaper.qml used to say "wallpapers do not appear on their
+        // own" and list the folder once, at boot. They do appear on their own:
+        // a human puts one there, and that human is usually about to open this
+        // panel to go and look at it. Drop a picture in six minutes after the
+        // shell came up and the strip would keep showing the folder as it was
+        // before, with no way to tell it otherwise short of a restart, which
+        // reads as the shell refusing to see a file that is plainly on disk.
+        // Found exactly that way.
+        //
+        // HERE rather than on a timer, because this is the only moment the
+        // whole list is looked at. A poll would spend a process every few
+        // seconds forever to be ready for a question nobody is asking; this
+        // spends one per opening, against a gesture a hand makes a few times a
+        // day, and it is by definition never stale at the moment it matters.
+        Wallpaper.refresh();
 
-        strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
+        root.settle();
         // DEFERRED, the launcher's reason: focus is only worth taking once the
         // window has actually asked the compositor for the keyboard, and that
         // follows from `shown` in the same pass this is running in.
         Qt.callLater(root.forceActiveFocus);
+    }
+
+    // START WHERE YOU ALREADY ARE, and the filter is not allowed to break
+    // that promise.
+    //
+    // Opening a picker on the first file in the folder rather than on the
+    // wallpaper you are looking at makes the first thing it does an
+    // unasked-for change. A screen wearing a picture the prediction would
+    // hide is exactly the case where that could happen silently: the strip
+    // would open on somebody else's wallpaper with no ring anywhere on it,
+    // which looks like the shell having forgotten what you set. So the
+    // wallpaper you are wearing is a member of the list by definition, and
+    // if the prediction disagrees, the prediction is the thing that gives
+    // way for this opening.
+    //
+    // ITS OWN FUNCTION, BECAUSE THE LIST ARRIVES AFTER THE PANEL DOES. The
+    // refresh above is a process, so `available` changes a beat later, while
+    // the picker is already on screen and already centred. Every index moves
+    // when a picture that sorts earlier joins the list, so a strip settled
+    // against the old listing is settled on the wrong card the instant the new
+    // one lands: the ring would sit on your wallpaper and a different picture
+    // would be in the middle. So the same settling runs again whenever the list
+    // changes underneath an open picker, which is also what makes a wallpaper
+    // added while the panel is open simply show up in it.
+    function settle(): void {
+        const worn = Wallpaper.currentOn(root.screen);
+        root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
+
+        strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
+        root.settled = strip.goal;
+    }
+
+    // WHERE settle() LEFT THE STRIP, so the difference between "nobody has
+    // touched this yet" and "a hand is using it" is a fact rather than a guess.
+    property real settled: -1
+
+    // RE-CENTRE ONLY ON A STRIP NOBODY HAS MOVED.
+    //
+    // The list can change under an open picker for two honest reasons: the
+    // listing this panel asked for on the way up has landed, and the shapes
+    // behind the fit filter have. Either one renumbers `entries`, and a strip
+    // centred against the old numbering is centred on the wrong card, wearing
+    // a ring that belongs to a picture now sitting somewhere else.
+    //
+    // But by then the hand may be scrubbing, and the wallpaper you are looking
+    // for is not the one you are wearing: that is the entire point of the
+    // panel. Yanking the strip home mid-drag would be the shell overruling the
+    // gesture in progress. So the goal settle() set is remembered, and this
+    // gives way the moment it no longer matches, which is the moment anything
+    // at all has moved the strip. Untouched, it re-centres; touched, it is
+    // none of its business.
+    function resettle(): void {
+        if (root.shown && strip.goal === root.settled)
+            root.settle();
+    }
+
+    Connections {
+        target: Wallpaper
+
+        // The folder was re-listed, so a picture may have joined or left.
+        function onAvailableChanged(): void {
+            root.resettle();
+        }
+
+        // The shapes landed, so the fit filter may have changed its mind about
+        // which of them belong on this screen. Measured by an ffprobe per file
+        // and therefore always later than the listing that asked for it.
+        function onShapesChanged(): void {
+            root.resettle();
+        }
     }
 
     // WHAT YOU ARE LOOKING AT IS WHAT YOU GET. Closing the panel KEEPS the
@@ -332,6 +406,30 @@ Item {
     // about the OTHER screens: this one already agreeing says nothing about
     // them.
     function commit(): void {
+        // NOTHING WAS CHOSEN IF NOTHING WAS MOVED.
+        //
+        // Closing this panel keeps the card in the middle, and that is right
+        // exactly while the card in the middle is where a hand put it. Once
+        // anything else can move it the rule quietly inverts, and something
+        // else can: the folder is re-listed on the way up and the shapes behind
+        // the fit filter land after that, so `entries` is renumbered under a
+        // strip that has already centred itself. The picture under the ring
+        // changes with nobody touching the machine, and dismissing the picker
+        // then wrote THAT picture to the config as though it had been picked.
+        // Open the panel, put a file in the folder, close the panel, and your
+        // wallpaper had changed to something you never looked at. Found by
+        // doing precisely that.
+        //
+        // `settled` is where settle() last put the strip, and every other way
+        // the strip moves is a hand on it: an arrow key, the wheel, a drag, a
+        // click on a card. So a strip still sitting on that exact number has
+        // not been scrubbed, and this close is a dismissal rather than a
+        // choice. Dismissals put the wallpaper back and write nothing.
+        if (strip.goal === root.settled) {
+            Wallpaper.clearPreview(root.screen);
+            return;
+        }
+
         const path = strip.currentPath;
         const all = root.everywhere && root.manyScreens;
         if (!path || (!all && path === Wallpaper.currentOn(root.screen))) {
@@ -699,7 +797,7 @@ Item {
             // and on a phone, "this screen" and "all screens" are the same
             // deed, and a control that offers a choice with one outcome is a
             // control that makes you stop and work that out.
-            Pill {
+            Button {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.manyScreens
                 icon: root.everywhere ? "devices" : "monitor"
@@ -707,7 +805,7 @@ Item {
                 // FILL as a state axis, so the mark that means "everywhere" is
                 // the same family solid rather than a third glyph to learn.
                 iconFill: root.everywhere ? 1 : 0
-                colour: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                paint: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.everywhere = !root.everywhere
             }
 
@@ -728,7 +826,7 @@ Item {
             // both lists are the same list; or none of them does, so the strip
             // is already everything there is and the filter has nothing it
             // could hand back.
-            Pill {
+            Button {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
                 // A SCREEN WITH SOMETHING FITTED INTO IT, against a stack of
@@ -739,7 +837,7 @@ Item {
                 // these two glyphs are.
                 icon: root.predicted ? "fit_screen" : "photo_library"
                 iconFill: root.predicted ? 1 : 0
-                colour: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                paint: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.showAll = !root.showAll
             }
 
@@ -747,7 +845,7 @@ Item {
             // is expected to be, so it gets no badge; the three that are not
             // get one, in the accent, because "this one moves" is state worth a
             // colour.
-            Pill {
+            Button {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !!root.badgeFor(strip.currentPath)
                 interactive: false
@@ -755,7 +853,7 @@ Item {
                 // because that badge is saying the opposite thing: the other
                 // three announce a capability and this one admits a limit, and
                 // the shell's colour for state is not the colour for "no".
-                colour: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                paint: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
                 icon: root.badgeFor(strip.currentPath)
                 // SOLID for the three that announce a capability and outlined
                 // for the one that admits a limit, which is the same split the
@@ -1481,14 +1579,14 @@ Item {
                 // can be SCANNED for the ones that are not simply a picture,
                 // which is the one thing a thumbnail genuinely cannot show:
                 // every card is a still, including the cards that are not.
-                Pill {
+                Button {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.margins: Appearance.padding.small
 
                     visible: !!root.badgeFor(card.modelData)
                     interactive: false
-                    colour: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                    paint: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
                     icon: root.badgeFor(card.modelData)
                     iconFill: Wallpaper.isFrozen(card.modelData) ? 0 : 1
                 }

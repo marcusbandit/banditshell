@@ -351,6 +351,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 ```
 banditshell/
 ├── shell.qml                    entry point: Variants -> one set of surfaces per screen
+├── gallery.qml                  the component gallery, in a window of its own
+│                                (`banditshell gallery [WxH]`)
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
@@ -358,6 +360,7 @@ banditshell/
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
+│   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── G2Rect.qml               the ONE rounded-rect primitive; fill and/or outline
 │   ├── G2Image.qml              a picture cut to that same corner, by mask
 │   ├── CornerWedge.qml          a corner's leftover; rounds off the screen corners
@@ -385,6 +388,18 @@ banditshell/
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
 │   │                            the sheet's two questions and the clipboard's tabs
+│   ├── Button.qml                 THE one button: five emphases, two variants,
+│   │                            two shapes, the five-rung size ladder; the
+│   │                            toggle's colour and shape ARE its state
+│   ├── ButtonGroup.qml           several presses joined as ONE plate; a member
+│   │                            lights inside it, the group asks who was pressed
+│   ├── vt.js                    a terminal as a DATA STRUCTURE: the byte stream
+│   │                            a shell speaks, turned back into rows. No QML in
+│   │                            it, the way highlight.js has none
+│   ├── base64.js                the wire codec, because Qt.atob returns a
+│   │                            QString and a terminal stream is not text
+│   ├── TerminalView.qml         that, drawn: one Text per ROW, backgrounds as
+│   │                            rectangles under it, and keys back out as bytes
 │   ├── highlight.js             what language is this, and where are its tokens
 │   ├── CodeBlock.qml            that, coloured from the theme, one delegate per
 │   │                            line so a 60,000-line paste costs 30 of them
@@ -442,6 +457,24 @@ banditshell/
 │   │                            an exclusive zone belongs to a one-edge surface
 │   │                            and the board is drawn in the four-edge one, so
 │   │                            the two ends need one answer between them
+│   ├── PenMap.qml               WHERE THE DRAWING TABLET POINTS, and nothing to
+│   │                            do with Tablet.qml above, which is the hinge.
+│   │                            A tablet is an ABSOLUTE device, so pointed at a
+│   │                            32:9 panel its 224x148mm surface is stretched
+│   │                            2.35x sideways. This owns the rectangle it maps
+│   │                            to instead, in GLOBAL layout coordinates,
+│   │                            because that is the only frame in which "which
+│   │                            monitor is this on" has an answer. Clamps to
+│   │                            that monitor, keeps the tablet's own aspect
+│   │                            unless told not to, and converts to Hyprland's
+│   │                            monitor-relative form on the way out. Applied
+│   │                            with `hyprctl eval` and hl.device, because the
+│   │                            Lua config killed `hyprctl keyword`; eval is
+│   │                            WIPED by a reload, so it re-applies on
+│   │                            configreloaded. Driven from the pad by
+│   │                            scripts/pen-pad.py, and from `banditshell
+│   │                            penmap` when the tablet is asleep and cannot
+│   │                            ask for itself.
 │   ├── Keystrokes.qml           the one service that types OUTWARD, and it needs
 │   │                            TWO transports: wtype for characters (the
 │   │                            compositor never acts on them, so no bind can
@@ -450,6 +483,9 @@ banditshell/
 │   │                            cannot race. NOT named `Keys`, which is QML's
 │   │                            own attached type and would shadow every
 │   │                            Keys.onPressed in the repo
+│   ├── Files.qml                the file browser's whole mind: where it is,
+│   │                            what is there, and the shell session it is
+│   │                            having. THE SHELL OWNS THE DIRECTORY; see 17
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -459,8 +495,13 @@ banditshell/
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
 │   ├── media/
+│   │   ├── MediaController.qml  Super+M's card, floating in the middle:
+│   │   │                        keyboard-driven (space, arrows, shift+arrows),
+│   │   │                        pops in and out; the CheatSheet's kind of
+│   │   │                        object, the power panel's kind of guest
 │   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
-│   │   └── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
+│   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
+│   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
 │   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
@@ -555,6 +596,51 @@ banditshell/
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       └── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
+│   ├── files/                   the file browser, in a window of its own. Four
+│   │   │                        panels, one keyboard, one directory (see 17)
+│   │   ├── FilesWindow.qml      the body: a real window, kept alive, because
+│   │   │                        what is inside it is a shell SESSION
+│   │   ├── FilesFace.qml        the layout, and the ONE place a key is routed
+│   │   ├── FileGrid.qml         the files, in as many columns as fit
+│   │   ├── FileTile.qml         one of them: a target, a picture, a name, and a
+│   │   │                        handle to pick it up by
+│   │   ├── FileMark.qml         what kind of thing it is, as one glyph in one
+│   │   │                        colour - and the hue is COMPUTED from the class's
+│   │   │                        share of the wheel, never listed
+│   │   ├── PathBar.qml          where you are, every step back, a field to type
+│   │   │                        one into, and the `/` search
+│   │   ├── Sidebar.qml          places and mounted drives, down the left, each
+│   │   │                        drive with a bar for how full it is
+│   │   ├── FilesSettings.qml    the browser's OWN settings, inside it, and the
+│   │   │                        one place the keymaps are written down
+│   │   ├── Setting.qml          one row of that: label, meaning, control
+│   │   ├── marks.js             which folder is which: home is a house
+│   │   ├── SplitHandle.qml      the line between two panels, and the way to
+│   │   │                        move it; a separator that is also a control
+│   │   ├── NamePrompt.qml       one line of text, asked for: new, new, rename
+│   │   ├── Properties.qml       everything known ABOUT a file, as opposed to
+│   │   │                        what is in it
+│   │   ├── PreviewPane.qml      the thing itself: picture, sound, or text
+│   │   ├── TerminalPane.qml     the shell along the bottom; its height is in ROWS
+│   │   ├── ChordHints.qml       hold a modifier, see what it does
+│   │   └── HelpersMissing.qml   the one failure it cannot recover from
+│   ├── gallery/                  the component gallery: every component the
+│   │   │                         shell means to own, listed, drawn where it
+│   │   │                         exists, argued with where it does not. The
+│   │   │                         list is ~/material3-components-todo.md;
+│   │   │                         the look is this shell's
+│   │   ├── Gallery.qml           the face: register, stage, knobs
+│   │   ├── Registry.qml          SINGLETON. every component as one entry:
+│   │   │                         key, status (planned/draft/done), the
+│   │   │                         checklist line it answers to. The source
+│   │   │                         of truth; the md mirrors it
+│   │   ├── Knobs.qml             the controls a page's demo answers to;
+│   │   │                         toggle/choice/value, drawn out of the
+│   │   │                         primitives themselves
+│   │   └── pages/                one file per component, by name
+│   │                             (key "icon-buttons" ->
+│   │                             IconButtonsPage.qml); a missing page
+│   │                             draws as a placeholder, not an error
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
 │       ├── Clock.qml            stacked HH / mm / date; the date opens the calendar
@@ -568,6 +654,11 @@ banditshell/
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 ├── scripts/
+│   ├── testbed.sh               A COMPOSITOR TO TEST IN: headless sway on its
+│   │                            own display, so opening a window to check
+│   │                            something never lands on the desktop somebody
+│   │                            is using. grim shoots that display, wtype types
+│   │                            into it, swaymsg moves its pointer
 │   ├── palette.py               a wallpaper's dominant colours
 │   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
 │   │                            that needs an ioctl, so it needs a process.
@@ -575,8 +666,21 @@ banditshell/
 │   │                            that is the correct failure
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
+├── src/                         the parts that need C (section 1), built by
+│   │                            `banditshell build` for the same reason the
+│   │                            shaders are: QML is loaded from a directory and
+│   │                            has nowhere to run a build step
+│   ├── bs-pty.c                 forkpty the user's own $SHELL, with the user's
+│   │                            own config. QML has no pty, and down a pipe a
+│   │                            shell fails isatty(), reads no rc file and has
+│   │                            no line editor
+│   ├── bs-ls.c                  one directory as JSON. QML has no readdir and no
+│   │                            stat, and `ls` is output for a person
+│   └── bs-b64.h                 the wire codec's other half
 ├── bin/
-│   └── banditshell              the CLI (linked into ~/bin)
+│   ├── banditshell              the CLI (linked into ~/bin)
+│   └── bs-pty, bs-ls            build output; NOT committed, unlike the .qsb
+│                                shaders, because they are ELF for one machine
 └── docs/
     └── hyprland-binds.example.conf   the CLI as keybinds: a worked set to copy
 ```
@@ -718,8 +822,13 @@ banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>
 banditshell shot [file]
 banditshell demo <key>             open, screenshot, close
+banditshell files toggle|open [path]|close|status   the browser, in its own window
 banditshell lockpreview            the lock screen's look, without the lock
+banditshell filespreview [dir]     the browser in a plain window; no timeout, because
+                                   a terminal you cannot type into is not a terminal
 banditshell shaders                recompile components/blob/*.frag
+banditshell build                  compile src/*.c into bin/ (bs-pty, bs-ls)
+banditshell test                   node --test over tests/*.test.js
 ```
 
 A CLI open is always a **pinned** open. Nobody driving a terminal has a pointer resting on
@@ -1993,6 +2102,279 @@ other's store) and it is why `clipboard status` reports whether this one is
 actually recording: a history that has quietly stopped growing looks exactly like
 an afternoon in which nothing was copied, and it is the one failure the panel
 itself cannot show.
+
+## 17. The file browser, and the one directory
+
+**Added 2026-08-27.** The first thing in this shell that is an APPLICATION rather
+than a surface: its own window, four panels, a focus, a keymap, and a terminal
+inside it. Everything else here appears in answer to a gesture and goes away
+again; this is a place you sit in for a while.
+
+### The shell owns the directory
+
+The central decision, and everything else follows from it. Clicking a folder does
+not set a path and then tell the terminal about it. It types `cd`, and the
+browser moves when the pty reports that the shell moved.
+
+So there is exactly one answer to "where am I", and the two halves of the window
+cannot drift apart - which is the failure every file-manager-with-a-terminal has:
+two ideas of the current directory that agree right up until the moment one of
+them is used. It also means `cd` typed by hand, `z`, an alias, a script that
+changes directory, and a folder clicked in the grid are all the SAME event as far
+as the code is concerned. None of them is a special case, and nothing had to be
+taught about zsh's jump plugins for any of them to work.
+
+The handshake at birth goes the other way, once: the first directory report from
+a new session moves the SHELL to where the browser is, because at that moment the
+browser knows where the user is and the shell has just been started somewhere.
+Without it, opening the terminal yanked the grid to wherever the shell landed -
+and under an `.zshrc` that attaches to tmux, that is not even the directory the
+process was started in, it is wherever that session was last left.
+
+### A real pty, running the user's own shell
+
+QML can run a process and read a file, and that is the whole of its access to a
+filesystem: no readdir, no stat, no pty. A shell down a pipe fails `isatty()`, so
+it starts non-interactive, reads no rc file, draws no prompt, and has no line
+editor - which means no completion, which is most of what a terminal is for.
+
+So there are two small C programs (section 1 said C is for the parts that need
+it, and this is what that meant). `src/bs-pty.c` forkpty()s `$SHELL` with the
+user's own config and nothing of ours injected into it: their prompt, their
+aliases, their plugins, however slow or strange. `src/bs-ls.c` answers one
+directory as JSON, because that is the one format QML parses with no parser.
+
+Which is also why the working directory is READ rather than asked for. The usual
+route is OSC 7, and the usual way to get OSC 7 is to install a precmd hook -
+which is writing into the user's shell after all. `/proc/<pid>/cwd` needs no
+cooperation and is right for any shell. Except under tmux, where the process on
+our pty is a client holding whatever directory it started in forever, and the
+shell that moves lives under a server we are not related to; there the question
+goes to the server, addressed by our own slave tty.
+
+### Every key goes somewhere, and only one thing can intercept
+
+Three steps, in order, in one file (`modules/files/FilesFace.qml`):
+
+1. **A bound chord.** Read whatever has focus, and the only thing in the window
+   that can take a key away from a panel. Only chords actually in the keymap are
+   taken, which is what leaves `Ctrl+C`, `Ctrl+R` and `Ctrl+D` to the shell - the
+   defaults are Ctrl with a DIGIT for exactly that reason.
+2. **The terminal, if it has focus.** All of it. No exceptions, no "except
+   Escape", no "except the arrows". A terminal that swallows three keys for the
+   convenience of the window around it is a terminal you cannot trust with the
+   fourth.
+3. **The grid otherwise**, where there is no shell waiting and vim's vocabulary
+   is free to mean what it means.
+
+`Ctrl+J` is the one knowing exception: it is the linefeed character, so a shell
+reads it as Return. Intercepting it costs nothing, because Return still submits,
+and it is the chord that has to work from inside the terminal - it is how you get
+back out.
+
+The keymap is config, which is what lets the modifier be the way in: hold Ctrl
+and the chords it starts fade up, read off the SAME map the router uses, so the
+overlay cannot describe a binding that does not exist.
+
+### Colour, rationed differently
+
+A file browser has to be colourful - colour is what lets you find the picture
+among the forty text files without reading a name - and this shell rations colour
+to state that has earned it (section 8). Both are right, and they live together
+by putting the colour on the GLYPH and never on the tile: the material stays the
+shell's, hover and selection stay the shell's fills, and what is coloured is a
+mark the size of a word.
+
+The hues are COMPUTED, not listed. Each class takes the accent's hue turned by
+its own share of the wheel, at a saturation well below the accent's, so the set
+rotates with the palette and a new class costs one line and no colour picking. A
+table of twelve hex values would be twelve decisions that stop agreeing with the
+theme the moment the accent moves.
+
+The one exception is the terminal's sixteen colours, which are config and do NOT
+come from the ramp - the only place in this shell where that is the right answer.
+`git diff` says a removed line is colour 1 and a compiler says an error is colour
+1; colour is carrying MEANING there rather than identity, and a green-family ramp
+would paint deletions green.
+
+### It has to be usable, which is more than browsable
+
+A file browser that can only look at files is a viewer. The working parts, and
+the one decision behind each:
+
+**Selection is a set.** Ctrl-click adds, Shift-click takes a range, a rubber band
+from empty space takes what it crosses, and every action - drag, copy, trash -
+acts on the whole of it. Two states are drawn rather than one: `picked` is what
+an action would act on and `cursored` is where the keyboard is, which stop being
+the same fact the moment there is more than one of them. The set is held as
+NAMES, not indices, because the listing is retaken after anything that might
+have changed it and an index into the previous listing is a different file in the
+next one.
+
+**Right click opens components/ActionSheet.qml**, the same sheet the clipboard
+and the launcher open on a row - so it arrived knowing how to be arrowed through,
+and the actions are handed in as data exactly as they are there.
+
+**Every operation goes through the shell**, which is the whole point of building
+this on a terminal: `mkdir`, `mv` and `rm` land in the history where they can be
+read, repeated, or undone by hand. A file manager that does something to your
+disk and tells you nothing is the thing this is not. Deletion goes to the trash
+through `gio`; permanent deletion is a separate verb that asks you to type the
+word, because it is the one action here that reading the history cannot reverse.
+
+**The path bar takes a path.** The crumbs stay - they go back several steps in one
+press, and they are drop targets - but the strip is a field as well, on Ctrl+L or
+a press on the empty part of it. Both, because they answer different questions
+and a browser you cannot paste a path into is a browser that will be closed in
+favour of the terminal beside it.
+
+**Two views, and a list is a grid with one column.** Icons for a folder of
+pictures, a compact list with size and date columns for a folder of two hundred
+config files. Worth saying that it is one view rather than two: the rubber
+band's arithmetic, the drop hit-test and the keyboard's idea of up and down are
+all written against a column count and a cell height, and every one of them keeps
+working when the count is one and the cell is a row. The tile is one component
+with two layouts for the same reason - two components would be two copies of the
+drag, the clicks and the menu, and the copy nobody was looking at would be the
+one that stopped matching.
+
+**Colour says what permission is, because nothing else can.** A folder's class is
+always "directory", so a folder's class colour is a hue spent saying what the
+icon's shape already says. Permission is the thing about a directory that is
+invisible and that matters, so that is what the colour carries: unreadable stops
+you dead and wears the alarm, world-writable is a thing to be suspicious of,
+root-owned means look but do not touch, and not-writable takes a shade and a lock
+badge - because "which of these greys means read-only" is not a question anybody
+should answer from memory. A file you own and may write is ordinary and keeps its
+type colour, which is what makes the marked ones visible at all. The flags come
+from the kernel via faccessat rather than from the mode bits, which cannot answer
+"may I write this" without knowing your groups.
+
+**Ctrl+= and Ctrl+- scale the grid**, and one number does it: tile and text
+together, because a tile is a picture with a name under it and scaling the
+picture alone gives you a large icon labelled in fine print. It is written back
+to config, so the size you settled on is the size it opens at.
+
+**The sidebar is places and drives**, split the classic way because the split is
+right: places are directories you chose to care about, drives are hardware that
+happens to be mounted, and they change for completely different reasons. Both are
+drop targets, because both are directories.
+
+**A folder's preview is its contents.** Anything else was answering the wrong
+question about the one kind of thing the window is mostly full of.
+
+The editing chords live in the GRID's keymap rather than the window's, and that
+placement is the whole reason they can exist: Ctrl+C is a shell's interrupt,
+Ctrl+X its kill-line and Ctrl+V its literal-next. A window-level bind would take
+all three away from the terminal permanently; read only where the grid has focus,
+they are only ever seen when no shell is waiting for them.
+
+### Drag before click, again
+
+Section 15's rule, applied to files: the drag is the primary gesture and the
+click is what happens when you let go without having moved. A ghost follows the
+pointer by exponential smoothing so the thing in your hand has weight, a folder
+under it outlines itself rather than filling harder (an outline survives being
+covered by the thing you are dropping), and letting go runs a real `mv` through
+the shell, where it lands in history and can be read, repeated or reversed by
+hand. Dragging out of the window hands the gesture to the compositor as a
+`text/uri-list`, after a DWELL rather than instantly: leaving by a pixel on the
+way somewhere else is not a request to give the file to another application.
+
+Four things about Qt's pointer handling were learned the hard way here and are
+worth not learning twice. A GridView is a Flickable and claims the grab for
+scrolling unless a handler is given `grabPermissions` to take it back.
+`onCentroidChanged` is not a per-move signal. `centroid.position` is (0, 0) at
+activation and garbage after the first move; `pressPosition` plus
+`activeTranslation` are the reliable pair. And some pointer moves arrive at
+exactly (0, 0), which is why samples that miss the window by a thousand pixels
+are discarded as the noise they are.
+
+**The settings are in the window, not in the shell's settings page.** This is an
+application; its preferences belong to it, and somebody wondering how to open the
+preview looks in the window they are standing in. Everything lands in the same
+config.json as the rest of the shell - same storage, reached from where it is
+being used.
+
+THE KEYMAPS ARE THE POINT OF IT. Every other row there is a switch that could
+have been found by right-clicking, but a chord written down nowhere is a chord
+that does not exist: the preview panel was on Ctrl+4 and there was no way at all
+to discover that. Both maps are listed in full, sorted by what the action DOES
+rather than by which key does it, and every row rebinds by pressing the chord you
+would rather have.
+
+Which turned up a real bug in the shell's config, not in the browser: `merge`
+walks the DEFAULTS' keys, so removing a binding was impossible - rebinding "back"
+wrote a map without Alt+Left in it, the merge found Alt+Left in the defaults and
+put it straight back, and the setting saved correctly and did nothing. Config now
+has a short list of paths whose keys are the user's DATA rather than a schema,
+and takes those whole. It is the same rule the file already had for empty default
+objects, extended to the ones that ship populated.
+
+**Markdown reads both ways.** It is written to be read as text and as a
+document, and which one you want depends on whether you are reading it or
+editing it - a question the panel cannot answer, so it asks, with a toggle that
+appears only on markdown. Qt renders it natively, so the rendered half is a text
+item with a format set rather than a parser. It is the one place in the shell
+that departs from StyledText on purpose: StyledText pins a line box to the pixel
+font's grid, which is right for interface text and wrong for a document that sets
+its own heading sizes. The three-size rule is about the interface; this is
+content.
+
+### The shell is a shell, not a socket
+
+Three things follow from the terminal being somebody's real shell rather than a
+command channel, and all three were wrong until they were used.
+
+**Its environment must not be this window's.** The shell drawing the browser was
+itself started from a terminal, and on this machine that terminal was inside
+tmux - so TMUX and TERM_PROGRAM were inherited straight through, and an .zshrc
+whose auto-start reads `[[ -z "$TMUX" ]]` correctly did nothing. The config was
+being read perfectly and then declining to do the thing it was being judged on. A
+new terminal window inherits none of that, so neither does this one.
+
+**A line may already have something on it.** Typing a command and then clicking a
+folder produced `swswcd 'folder'`: the browser was appending to a line it could
+not see. zsh's PUSH-LINE is the right primitive - it sets the half-typed line
+aside and gives it back on the prompt after ours has run - so navigating in the
+middle of composing a command now costs nothing at all.
+
+**And something may be RUNNING in it.** `mv` at a prompt uses the shell; `mv`
+into an open vim corrupts a file, and from outside the two are
+indistinguishable unless somebody asks. The helper reports whether the foreground
+process is the shell itself (under tmux, whether the pane's command is), and
+while it is busy commands run beside the session rather than through it.
+
+Navigation is OPTIMISTIC, and that is the difference between the window feeling
+instant and feeling like a remote control. Typing `cd`, waiting for the shell to
+run it, waiting for the next poll to notice and only then listing is up to a
+third of a second of nothing after a double click. The grid moves now and the
+shell catches up behind it; the stale report that follows is recognised and
+ignored, and a `cd` that failed expires and hands authority back to the shell,
+which is where it belongs.
+
+### Three ways to lose the keyboard
+
+All found by pressing keys rather than by reading code, and all the same shape:
+something that looks focused is not.
+
+A **Loader** is an item in the focus chain. The face asks for focus; a Loader
+that has none has none to give, so not one keystroke reached the window while
+every mouse gesture worked perfectly. It never showed in testing because the
+preview harness has the face as a direct child, so the one arrangement exercised
+was the one arrangement not shipped.
+
+**An invisible item cannot take focus.** The rename prompt appeared, correctly
+filled, and swallowed nothing: `visible` was bound to an opacity that a Behavior
+starts at zero, so at the instant `forceActiveFocus()` ran the item was not yet
+visible. Everything typed went to the grid behind it.
+
+**A field that lets go does not hand focus back** - it goes nowhere, and the
+window stops answering keys entirely. Search once and the grid was dead until
+something was clicked, which reads as "Enter does not open folders" and sends you
+looking in the wrong place.
+
+---
 
 ---
 

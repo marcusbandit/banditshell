@@ -869,7 +869,7 @@ Item {
                     // See NotifEntry.pressable.
                     model: root.live ? (root.entry?.pressable(root.notification?.actions) ?? []) : []
 
-                    delegate: Pill {
+                    delegate: Button {
                         required property var modelData
 
                         text: modelData.text

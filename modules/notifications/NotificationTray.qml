@@ -903,7 +903,7 @@ Item {
                             elide: Text.ElideRight
                         }
 
-                        Pill {
+                        Button {
                             id: clearAll
 
                             anchors.right: parent.right

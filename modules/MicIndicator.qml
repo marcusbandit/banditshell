@@ -60,6 +60,19 @@ Item {
     property string phase: "idle"
     property real level: 0
 
+    // The pinned dictation language, straight off the daemon's stream. "auto"
+    // means no choice has been made, so the pill says nothing about it.
+    property string lang: "auto"
+
+    // HOW THE PILL SAYS THE PIN, as the desk reads it: the language you are
+    // speaking, not the tag Whisper codes it with. Auto is the empty string,
+    // which is the whole display rule: no pin, no tag.
+    readonly property string langTag: root.lang === "auto" ? ""
+        : root.lang.startsWith("en") ? "EN"
+        : root.lang.startsWith("da") ? "DK"
+        : root.lang.startsWith("ja") ? "JP"
+        : root.lang.split("-")[0].toUpperCase()
+
     // WHICH SCREEN THIS COPY IS ON, asked of the window rather than handed in,
     // the same way the notification tray asks it and for the same reason: the
     // preview harnesses build this module on windows that are in none of the
@@ -419,6 +432,8 @@ Item {
                     }
                     if (msg.phase !== undefined)
                         root.phase = msg.phase;
+                    if (msg.lang !== undefined)
+                        root.lang = msg.lang;
                     if (msg.level !== undefined) {
                         root.level = msg.level;
                         if (root.phase === "listening")
@@ -545,6 +560,18 @@ Item {
             radius: root.wellRadius
             cornerPower: root.cornerPower
             color: Appearance.colour.fillStronger
+
+            // THE LANGUAGE TAG, a bare watermark centred in the well, BEHIND
+            // the bars: declared first so the waveform paints over it. No
+            // plate, no rim - it is the same light at its faintest tier, the
+            // one reserved for watermarks. Auto pins nothing, so auto says
+            // nothing at all.
+            StyledText {
+                anchors.centerIn: parent
+                visible: root.here && root.langTag !== ""
+                text: root.langTag
+                color: Appearance.colour.textFaint
+            }
 
             Row {
                 anchors.centerIn: parent
