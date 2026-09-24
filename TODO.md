@@ -23,6 +23,12 @@ done-marks go under the item they belong to.
     App name survives as the track's third line. Chords strip also removed
     (cheatsheet carries the binds). Empty card = ghost art, the fact, the
     quip. Nothing else.
+  - Playing-state fix: Firefox/zen reports tracks with no length (and live
+    streams never have one); position/0 clamped to "the end", pip jumped to
+    the far edge, then the scrubber hid entirely. Media.progress is guarded
+    and the Scrubber has a live shape now: full-width travelling wave,
+    elapsed only, no pip/total/drag. Timed tracks unchanged (total shows,
+    pip scrubs). Verified against the real zen-firefox bridge.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
