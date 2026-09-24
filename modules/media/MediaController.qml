@@ -327,14 +327,18 @@ Item {
             // THE TRACK, in the notch preview's Niagara layout at card scale:
             // the art exactly as tall as everything beside it, so the block
             // reads as one object. Same construction, one press of a bigger
-            // paper.
+            // paper. The block grows to its text: a long title wraps to two
+            // lines rather than cutting off mid-thought - the notch elides
+            // because the notch has no room, and the card does.
             Item {
                 width: parent.width
-                height: root.artSize
+                height: Math.max(root.artSize, trackText.height)
                 visible: Media.available
 
                 G2Rect {
                     id: art
+
+                    anchors.verticalCenter: parent.verticalCenter
 
                     width: root.artSize
                     height: width
@@ -357,19 +361,25 @@ Item {
                 }
 
                 Column {
+                    id: trackText
+
+                    anchors.verticalCenter: parent.verticalCenter
                     anchors.left: art.right
                     anchors.leftMargin: root.pad
                     anchors.right: parent.right
-                    anchors.verticalCenter: art.verticalCenter
                     spacing: Appearance.padding.small
 
                     // THE TITLE, the one thing on the card set in the large
-                    // tier: it is the thing the card exists to say.
+                    // tier: it is the thing the card exists to say. Two lines
+                    // before it will elide, and never fewer than the whole
+                    // thought when two lines hold it.
                     StyledText {
                         width: parent.width
                         text: Media.title
                         font.pixelSize: Appearance.font.size.large
+                        wrapMode: Text.Wrap
                         elide: Text.ElideRight
+                        maximumLineCount: 2
                     }
 
                     StyledText {
