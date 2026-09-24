@@ -107,6 +107,12 @@ Item {
         "the radio is between stations",
         "static, but polite",
         "the jukebox wants coins",
+        "no disc inserted",
+        "not playing pigstep",
+        "*cave sounds*",
+        "*eerie cave noise*",
+        "the note blocks are silent",
+        "no mellohi either",
         "the playlist called in sick",
         "your headphones are on strike",
         "the earworm is unfed",
@@ -328,7 +334,10 @@ Item {
                     id: head
 
                     anchors.left: parent.left
-                    text: "NOW PLAYING"
+                    // The header tells the truth in both states: with a
+                    // player it says what the card is doing, without one it
+                    // admits what the card is. The joke stays upstairs.
+                    text: Media.available ? "NOW PLAYING" : "THE JUKEBOX"
                     color: Appearance.colour.textFaint
                 }
 
@@ -511,19 +520,30 @@ Item {
                             }
                         }
 
-                        StyledText {
+                        Column {
                             anchors.verticalCenter: emptyArt.verticalCenter
                             width: root.innerWidth - root.artSize - root.pad
-                            text: "nothing is playing"
-                            font.pixelSize: Appearance.font.size.large
-                        }
-                    }
+                            spacing: Appearance.padding.small
 
-                    StyledText {
-                        width: parent.width
-                        text: `\"${root.quip}\"`
-                        color: Appearance.colour.textFaint
-                        wrapMode: Text.Wrap
+                            // The fact, in the body tier: at the large tier
+                            // Monocraft's letters outrun the slot beside the
+                            // art square, and a fixed phrase may neither elide
+                            // nor wander. The shell carries hierarchy in
+                            // colour, not size (see Appearance), so the bright
+                            // normal line reads as the headline regardless.
+                            StyledText {
+                                width: parent.width
+                                text: "nothing is playing"
+                                wrapMode: Text.Wrap
+                            }
+
+                            StyledText {
+                                width: parent.width
+                                text: `\"${root.quip}\"`
+                                color: Appearance.colour.textFaint
+                                wrapMode: Text.Wrap
+                            }
+                        }
                     }
                 }
             }
