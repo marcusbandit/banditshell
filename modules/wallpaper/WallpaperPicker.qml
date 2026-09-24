@@ -797,7 +797,7 @@ Item {
             // and on a phone, "this screen" and "all screens" are the same
             // deed, and a control that offers a choice with one outcome is a
             // control that makes you stop and work that out.
-            Pill {
+            Button {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.manyScreens
                 icon: root.everywhere ? "devices" : "monitor"
@@ -805,7 +805,7 @@ Item {
                 // FILL as a state axis, so the mark that means "everywhere" is
                 // the same family solid rather than a third glyph to learn.
                 iconFill: root.everywhere ? 1 : 0
-                colour: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                paint: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.everywhere = !root.everywhere
             }
 
@@ -826,7 +826,7 @@ Item {
             // both lists are the same list; or none of them does, so the strip
             // is already everything there is and the filter has nothing it
             // could hand back.
-            Pill {
+            Button {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
                 // A SCREEN WITH SOMETHING FITTED INTO IT, against a stack of
@@ -837,7 +837,7 @@ Item {
                 // these two glyphs are.
                 icon: root.predicted ? "fit_screen" : "photo_library"
                 iconFill: root.predicted ? 1 : 0
-                colour: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
+                paint: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
                 onClicked: root.showAll = !root.showAll
             }
 
@@ -845,7 +845,7 @@ Item {
             // is expected to be, so it gets no badge; the three that are not
             // get one, in the accent, because "this one moves" is state worth a
             // colour.
-            Pill {
+            Button {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: !!root.badgeFor(strip.currentPath)
                 interactive: false
@@ -853,7 +853,7 @@ Item {
                 // because that badge is saying the opposite thing: the other
                 // three announce a capability and this one admits a limit, and
                 // the shell's colour for state is not the colour for "no".
-                colour: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                paint: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
                 icon: root.badgeFor(strip.currentPath)
                 // SOLID for the three that announce a capability and outlined
                 // for the one that admits a limit, which is the same split the
@@ -1579,14 +1579,14 @@ Item {
                 // can be SCANNED for the ones that are not simply a picture,
                 // which is the one thing a thumbnail genuinely cannot show:
                 // every card is a still, including the cards that are not.
-                Pill {
+                Button {
                     anchors.right: parent.right
                     anchors.bottom: parent.bottom
                     anchors.margins: Appearance.padding.small
 
                     visible: !!root.badgeFor(card.modelData)
                     interactive: false
-                    colour: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                    paint: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
                     icon: root.badgeFor(card.modelData)
                     iconFill: Wallpaper.isFrozen(card.modelData) ? 0 : 1
                 }

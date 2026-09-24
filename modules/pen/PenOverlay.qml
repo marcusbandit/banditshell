@@ -920,6 +920,23 @@ PanelWindow {
         // shell has seen before.
         readonly property string followMark: PenMap.followWindow ? "select_window" : "select_window_off"
 
+        // AND THE THIRD ONE NEVER CHANGES ITS WORD, because it is not a switch.
+        // The two pills beside it say what state the editor is in and change
+        // their own label to say it; this one performs a rectangle and has no
+        // state to report, so its label is the same six letters whatever the
+        // mapping is doing. That also makes it the one control on the plate
+        // whose width is a constant, which is why it needs no budget of its own
+        // the way the follow pill does.
+        readonly property string centreWords: "centre"
+
+        // `fit_screen` rather than a crosshair or a target: what the press does
+        // is not "mark the middle", it is "make this the size of that screen and
+        // put it in the middle", and the mark that already means a rectangle
+        // taking the shape of a display is the honest one. No FILL axis on it,
+        // because fill is how the other two say which way they are thrown and
+        // this one is never thrown either way.
+        readonly property string centreMark: "fit_screen"
+
         // HOW MANY CHARACTERS OF A WINDOW'S NAME THE PILL WILL EVER SHOW.
         //
         // A BUDGET RATHER THAN A MEASUREMENT, and that is the entire point of
@@ -947,7 +964,7 @@ PanelWindow {
         // counted by the ladder below, so the fourth control is one entry here
         // rather than an edit in each of the places that would otherwise be
         // counting to three by hand.
-        readonly property var controls: [aspect, follow]
+        readonly property var controls: [aspect, follow, centre]
 
         // A CONTROL'S BOX IN GLOBAL COORDINATES, for the press test upstairs,
         // which is written in global coordinates like every other test in this
@@ -1046,8 +1063,8 @@ PanelWindow {
         // the whole plate, follow pill included, back on screen. That is the way
         // out of the one corner this can paint you into, which is snapping to a
         // window narrower than 168px while the mode is on.
-        readonly property bool full: readout.span([pixels.implicitWidth, monitor.implicitWidth, measure.implicitWidth, followMeasure.implicitWidth]) + readout.chrome <= readout.roomX
-        readonly property bool wordy: readout.span([measure.implicitWidth, followMeasure.implicitWidth]) + readout.chrome <= readout.roomX
+        readonly property bool full: readout.span([pixels.implicitWidth, monitor.implicitWidth, measure.implicitWidth, followMeasure.implicitWidth, centreMeasure.implicitWidth]) + readout.chrome <= readout.roomX
+        readonly property bool wordy: readout.span([measure.implicitWidth, followMeasure.implicitWidth, centreMeasure.implicitWidth]) + readout.chrome <= readout.roomX
         // One circle per control, counted from the controls rather than from a
         // literal two, so the arithmetic is right for however many there are.
         readonly property bool fits: readout.span(readout.controls.map(() => readout.markWidth)) + readout.chrome <= readout.roomX && readout.implicitHeight <= readout.roomY
@@ -1080,7 +1097,7 @@ PanelWindow {
         // ladder weighs a ROW of controls now, and a row measured twice from the
         // same twin is a threshold that is right for whichever of the two happens
         // to carry the longer word and wrong by the difference for the other.
-        Pill {
+        Button {
             id: measure
 
             visible: false
@@ -1089,7 +1106,7 @@ PanelWindow {
             icon: readout.mark
         }
 
-        Pill {
+        Button {
             id: followMeasure
 
             visible: false
@@ -1111,6 +1128,19 @@ PanelWindow {
             // fits.
             text: `follow ${"M".repeat(readout.followBudget)}`
             icon: readout.followMark
+        }
+
+        Button {
+            id: centreMeasure
+
+            visible: false
+            interactive: false
+
+            // Constant by construction, unlike either twin above: this pill's
+            // drawn text is the same string in every state the editor has, so
+            // the twin is not standing in for a worst case, it IS the case.
+            text: readout.centreWords
+            icon: readout.centreMark
         }
 
         G2Rect {
@@ -1163,7 +1193,7 @@ PanelWindow {
             // among, and it would win by being declared later rather than because
             // anyone decided it should. The press comes from `pen` instead, where
             // the corner is tried first.
-            Pill {
+            Button {
                 id: aspect
 
                 anchors.verticalCenter: parent.verticalCenter
@@ -1177,7 +1207,7 @@ PanelWindow {
                 // hover either, so both arrive from where the press does: the
                 // hover through `overControl`, and the press as this signal,
                 // emitted by the handler that decided the press was on this pill.
-                colour: readout.paint(PenMap.aspectLocked, pen.overControl === aspect)
+                paint: readout.paint(PenMap.aspectLocked, pen.overControl === aspect)
                 onClicked: PenMap.toggleAspect()
             }
 
@@ -1198,7 +1228,7 @@ PanelWindow {
             // AND IT IS THE ONLY WAY OUT OF THE MODE from the pen, which is why
             // the press handler keeps the controls live when it is refusing
             // everything else.
-            Pill {
+            Button {
                 id: follow
 
                 anchors.verticalCenter: parent.verticalCenter
@@ -1225,8 +1255,33 @@ PanelWindow {
                 // tells the two apart at the bottom rung of the ladder, where
                 // the words are gone and the mark is the whole of the control.
                 iconFill: PenMap.tracking ? 1 : 0
-                colour: readout.paint(PenMap.followWindow, pen.overControl === follow)
+                paint: readout.paint(PenMap.followWindow, pen.overControl === follow)
                 onClicked: PenMap.toggleFollowWindow()
+            }
+
+            // THE RECTANGLE NEARLY EVERY SESSION WANTS BACK: the tablet's own
+            // shape, as big as this screen allows, in the middle of it. The two
+            // pills to its left change what the editor means and leave the
+            // rectangle to the hand; this one states the rectangle, which is why
+            // it sits at the end of the row rather than among them.
+            //
+            // A BUTTON AND NOT A SWITCH, and the paint is where that is said.
+            // Both of its neighbours pass their own state to `paint` and come up
+            // lit when they are on, because being on is a thing that lasts. This
+            // has nothing that lasts: the press happens, the region moves, and
+            // there is no "centred" for a pill to go on claiming afterwards,
+            // least of all one the next drag would quietly make false. So it is
+            // always painted resting, and the only thing that ever lifts it is
+            // the pen being over it.
+            Button {
+                id: centre
+
+                anchors.verticalCenter: parent.verticalCenter
+                interactive: false
+                text: readout.wordy ? readout.centreWords : ""
+                icon: readout.centreMark
+                paint: readout.paint(false, pen.overControl === centre)
+                onClicked: PenMap.fitAndCentre()
             }
         }
     }

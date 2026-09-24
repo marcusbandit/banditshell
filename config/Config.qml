@@ -131,7 +131,12 @@ Singleton {
                 // colour in it. Kept near a fill's weight on purpose. It goes
                 // over one of them, not instead of it, so the surface reads as
                 // thicker glass with colour in it rather than as a stain.
-                accentFill: 0.2
+                accentFill: 0.2,
+
+                // How much the unselected tonal desaturates: the accent
+                // mixed toward its own grey by this fraction - quite a bit,
+                // but the hue survives (a full 1 would be monochrome).
+                accentDull: 0.65
             },
             // Take rounding, corner smoothing and the edge gap from the running
             // compositor instead of the values below, so the shell agrees with
@@ -186,6 +191,26 @@ Singleton {
                 // happens to look right.
                 base: 6,
                 scale: [1, 2, 4, 6]
+            },
+            button: {
+                // FIVE sizes, not three, measured off Google's own button
+                // spec sheet (the expressive sizes): heights 32 / 40 / 56 /
+                // 96 / 136, horizontal padding 12 / 16 / 24 / 48 / 64, icon
+                // sizes 20 / 20 / 24 / 32 / 40, icon-to-text gaps 4 / 8 /
+                // 8 / 12 / 16. Note the small row's horizontal padding IS
+                // the recommended 16, and the deprecated 24 belongs to
+                // medium - the spec's advice, kept verbatim.
+                //
+                // THE ONE EXCEPTION is the label, because Monocraft has an
+                // opinion the spec does not: text stays on the 9px pixel
+                // grid (integer multiples of the base, nothing below 2x -
+                // see the font block), so the label ladder is the shell's
+                // and everything around it is the spec's.
+                scale: [2, 2, 3, 4, 5],
+                heights: [32, 40, 56, 96, 136],
+                padX: [12, 16, 24, 48, 64],
+                iconSizes: [20, 20, 24, 32, 40],
+                iconGaps: [4, 8, 8, 12, 16]
             },
             anim: {
                 base: 220,
@@ -929,7 +954,18 @@ Singleton {
                 // from across the room, slow enough not to shimmer.
                 waveSpeed: 24,
                 // How far one notch of the wheel moves the track, in seconds.
-                wheelSeek: 5
+                wheelSeek: 5,
+
+                // THE FLOATING CONTROLLER (modules/media/MediaController.qml):
+                // the card that Super+M pops in the middle of the screen.
+                panelWidth: 420,
+                // What one press of the arrow keys moves, in seconds, and what
+                // the same key does with shift held. "A few seconds" and "a
+                // good chunk of the track"; the wheel above shares the small
+                // number, because a notch of the wheel and a tap of the key
+                // are the same request.
+                seekSmall: 5,
+                seekLarge: 30
             },
 
             // WHICH SINK IS "THE SPEAKERS" AND WHICH IS "THE HEADPHONES".
@@ -1540,6 +1576,28 @@ Singleton {
                 // the only place the name is written down.
                 pad: "Wacom Intuos Pro M Pad",
 
+                // WHETHER THE READER TAKES THE PAD EXCLUSIVELY.
+                //
+                // On, and it is a CRASH FIX rather than a preference. Hyprland
+                // 0.56 sends `zwp_tablet_pad_v2.button` to every client that
+                // bound a tablet seat without first sending the `enter` the
+                // protocol requires, and GTK4 4.22 segfaults answering one. A
+                // single press of a single pad button therefore kills every GTK
+                // window on the machine at once, whether or not it is focused
+                // and whether or not the pen is anywhere near it. Grabbing the
+                // node means libinput never sees the press, so the compositor
+                // has nothing to broadcast and nothing dies.
+                //
+                // WHAT IT COSTS: while the reader holds the grab, the pad's
+                // buttons and ring reach NOTHING except this shell. A pad
+                // button bound in hyprland.conf stops firing. Turn this off to
+                // get that back, and accept that GTK apps die on every press
+                // until the bug is fixed upstream.
+                //
+                // The grab is released when the reader exits, by the kernel, on
+                // every exit path including a kill -9.
+                grabPad: true,
+
                 // THE ACTIVE SURFACE, IN MILLIMETRES. Only the RATIO is ever
                 // used, so the units are arbitrary and are millimetres because
                 // that is what the number printed on the box is, which makes
@@ -1588,6 +1646,18 @@ Singleton {
                 // used to fix. The on-screen pill does the same job for the
                 // case where you would rather see the state than remember it.
                 aspectButton: 257,
+
+                // THE PAD BUTTON THAT PUTS THE REGION BACK: the tablet's own
+                // shape, as big as the screen it is on allows, centred on it.
+                // BTN_2, the next one down again.
+                //
+                // A DESTINATION RATHER THAN A DIRECTION, which is why it earns
+                // a button of its own next to two switches. The other two
+                // change what the editor MEANS and leave the rectangle to the
+                // hand; this one is the rectangle nearly every session wants
+                // back, and reaching it by dragging is four corner pulls and an
+                // eye for the middle of a 5120px panel.
+                centreButton: 258,
 
                 // WHETHER THE REGION STARTS OUT SHAPE-LOCKED.
                 //

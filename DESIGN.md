@@ -351,6 +351,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 ```
 banditshell/
 ├── shell.qml                    entry point: Variants -> one set of surfaces per screen
+├── gallery.qml                  the component gallery, in a window of its own
+│                                (`banditshell gallery [WxH]`)
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
@@ -386,6 +388,11 @@ banditshell/
 │   ├── MenuLayer.qml            the rest of a row, folded up under it
 │   ├── Segments.qml             a row of choices of which exactly one is taken;
 │   │                            the sheet's two questions and the clipboard's tabs
+│   ├── Button.qml                 THE one button: five emphases, two variants,
+│   │                            two shapes, the five-rung size ladder; the
+│   │                            toggle's colour and shape ARE its state
+│   ├── ButtonGroup.qml           several presses joined as ONE plate; a member
+│   │                            lights inside it, the group asks who was pressed
 │   ├── vt.js                    a terminal as a DATA STRUCTURE: the byte stream
 │   │                            a shell speaks, turned back into rows. No QML in
 │   │                            it, the way highlight.js has none
@@ -485,6 +492,10 @@ banditshell/
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
 │   ├── media/
+│   │   ├── MediaController.qml  Super+M's card, floating in the middle:
+│   │   │                        keyboard-driven (space, arrows, shift+arrows),
+│   │   │                        pops in and out; the CheatSheet's kind of
+│   │   │                        object, the power panel's kind of guest
 │   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
 │   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
 │   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
@@ -610,6 +621,23 @@ banditshell/
 │   │   ├── TerminalPane.qml     the shell along the bottom; its height is in ROWS
 │   │   ├── ChordHints.qml       hold a modifier, see what it does
 │   │   └── HelpersMissing.qml   the one failure it cannot recover from
+│   ├── gallery/                  the component gallery: every component the
+│   │   │                         shell means to own, listed, drawn where it
+│   │   │                         exists, argued with where it does not. The
+│   │   │                         list is ~/material3-components-todo.md;
+│   │   │                         the look is this shell's
+│   │   ├── Gallery.qml           the face: register, stage, knobs
+│   │   ├── Registry.qml          SINGLETON. every component as one entry:
+│   │   │                         key, status (planned/draft/done), the
+│   │   │                         checklist line it answers to. The source
+│   │   │                         of truth; the md mirrors it
+│   │   ├── Knobs.qml             the controls a page's demo answers to;
+│   │   │                         toggle/choice/value, drawn out of the
+│   │   │                         primitives themselves
+│   │   └── pages/                one file per component, by name
+│   │                             (key "icon-buttons" ->
+│   │                             IconButtonsPage.qml); a missing page
+│   │                             draws as a placeholder, not an error
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
 │       ├── Clock.qml            stacked HH / mm / date; the date opens the calendar

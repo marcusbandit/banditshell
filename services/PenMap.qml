@@ -417,6 +417,69 @@ Singleton {
         }
     }
 
+    // THE TABLET'S OWN SHAPE, AS BIG AS THE SCREEN ALLOWS, IN THE MIDDLE OF IT.
+    // One press, from the pad or from the pill, and the three answers a hand
+    // would otherwise have to give one at a time are given at once.
+    //
+    // IT IS defaultRegion's ARITHMETIC, deliberately, and that is the whole
+    // reason this is four lines rather than a method. What a machine that has
+    // never been asked starts with is also what somebody wants back the moment
+    // the mapping has been dragged somewhere unhelpful, so the same computation
+    // serves both and there is no second copy of it to drift.
+    //
+    // ON THE REGION'S OWN SCREEN, and this is the one place it differs from
+    // defaultRegion, which asks which screen has focus. A mapping being put
+    // back in the middle is a statement about the rectangle that exists, and
+    // the screen that rectangle is on is the screen it is being centred on.
+    // Asking about focus instead would throw the region onto whichever monitor
+    // the mouse happened to be over, which is a different screen from the one
+    // the pen is pointing at often enough to be a bug rather than a surprise.
+    //
+    // AND IT TURNS THE LOCK ON, because half of what was asked for is the
+    // shape. Centred and full size is a statement about a rectangle that has
+    // the tablet's aspect; performed on a free-form one it would centre
+    // whatever distortion was already there and claim to have fixed it.
+    //
+    // ANY BINDING GOES, for commit()'s reason and stated there in full: a hand
+    // that has just pressed a button has said where the mapping goes in the
+    // most direct terms available, and a live binding left standing would drag
+    // it back within a quarter of a second.
+    function fitAndCentre(): void {
+        const mon = root.monitorNamed(root.home) ?? root.monitors.find(m => m.focused) ?? root.monitors[0];
+        if (!mon)
+            return;
+
+        // THE HANDOVER, on the same terms begin() takes it: this is a
+        // deliberate instruction about where the tablet points, so a machine
+        // that has never opened the editor still gets what it asked for rather
+        // than a rectangle applyRegion silently declines to push.
+        root.mapped = true;
+        root.locked = true;
+        root.unbindWindow();
+
+        const aspect = root.surfaceAspect;
+        let w = mon.h * aspect;
+        let h = mon.h;
+        // A screen wider than it is tall usually gives full height. A portrait
+        // one does not, so the other axis binds instead. Which one it is falls
+        // out of the numbers rather than out of a branch on the monitor.
+        if (w > mon.w) {
+            w = mon.w;
+            h = w / aspect;
+        }
+
+        root.home = mon.name;
+        root.proposeRegion(mon.x + (mon.w - w) / 2, mon.y + (mon.h - h) / 2, w, h);
+
+        // toggleAspect's rule: pressed outside an edit it is a decision on its
+        // own and lands at once, pressed inside one it is part of the gesture
+        // and the commit or the cancel that ends it settles everything.
+        if (!root.editing) {
+            root.applyRegion();
+            root.save();
+        }
+    }
+
     // FOLLOW WINDOW ON OR OFF, from the control in the overlay.
     //
     // Written down at once when it is pressed outside an edit and left to the
@@ -2088,7 +2151,21 @@ Singleton {
         // pointing `pen.pad` at a different tablet takes effect the next time
         // the reader restarts, which it does every two seconds when the pad it
         // was given is not there.
-        pad.command = ["python3", Quickshell.shellPath("scripts/pen-pad.py"), "--device-name", String(Config.values.pen.pad ?? "")];
+        // AND `--grab` WHEN THE CONFIG ASKS FOR IT, which on this desk it does.
+        // The flag is a workaround for a compositor bug rather than a feature of
+        // this shell, and scripts/pen-pad.py's docstring carries the whole of
+        // the reasoning; the short version is that Hyprland broadcasts pad
+        // buttons to clients it never sent an `enter` to, and GTK4 segfaults on
+        // one, so the only way to stop a pad press killing every GTK window is
+        // to make sure the compositor never receives the press at all.
+        //
+        // READ AT START like the device name above, and for the same reason: a
+        // Process cannot be re-commanded while it runs. Changing the key takes
+        // effect the next time the reader restarts.
+        const argv = ["python3", Quickshell.shellPath("scripts/pen-pad.py"), "--device-name", String(Config.values.pen.pad ?? "")];
+        if (Config.values.pen.grabPad)
+            argv.push("--grab");
+        pad.command = argv;
         pad.running = true;
     }
 
@@ -2279,6 +2356,14 @@ Singleton {
             // button in every way that matters: its own contact, its own entry
             // in padEdgeAt, its own quiet window.
             root.toggleAspect();
+        } else if (code === cfg.centreButton) {
+            // AND THIS ONE IS NOT A TOGGLE AT ALL, which is the only thing
+            // worth saying about it here: it states a rectangle rather than
+            // flipping a switch, so pressing it twice is pressing it once.
+            // That makes it the one pad button on this device whose chatter
+            // costs nothing, and it is debounced anyway, because a rule with an
+            // exception in it is a rule somebody has to remember.
+            root.fitAndCentre();
         }
     }
 

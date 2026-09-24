@@ -119,10 +119,35 @@ Singleton {
         readonly property color accent: root.theme[root.cfg.colour.accent]
 
         // The same colour at a fill's job: tinting a surface rather than marking
-        // a glyph. "Which workspace you are on" is the one piece of state in the
-        // sidebar worth a hue, and a tint is how you say it without painting a
-        // saturated block.
+        // a glyph. "Which workspace you are on" is the one piece of state in
+        // the sidebar worth a hue, and a tint is how you say it without
+        // painting a saturated block.
         readonly property color accentFill: Qt.rgba(accent.r, accent.g, accent.b, root.cfg.material.accentFill)
+
+        // The accent's own lightness as a neutral: the desaturation target.
+        readonly property color accentGrey: {
+            const l = accent.r * 0.2126 + accent.g * 0.7152 + accent.b * 0.0722;
+            return Qt.rgba(l, l, l, 1);
+        }
+
+        // THE TONAL'S UNSELECTED READING: the accent desaturated toward its
+        // own grey by config's `accentDull` (quite a bit - the hue
+        // survives), at the same veil weight. It does not darken and it
+        // does not thicken; it only loses saturation. The latched tonal is
+        // the accent itself.
+        readonly property color accentFillDull: {
+            const k = Math.max(0, Math.min(1, root.cfg.material.accentDull));
+            return Qt.rgba(
+                accent.r + (accentGrey.r - accent.r) * k,
+                accent.g + (accentGrey.g - accent.g) * k,
+                accent.b + (accentGrey.b - accent.b) * k,
+                root.cfg.material.accentFill
+            );
+        }
+
+        // The veil weight itself, by its name in this file: the one number
+        // the tonal family's composites are built from.
+        readonly property real veilWeight: root.cfg.material.accentFill
 
         // One step above the accent. Accent means "attention", this means "you
         // are about to lose something", and only a battery running out wears it
@@ -261,6 +286,39 @@ Singleton {
         readonly property int huge: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 3))
     }
 
+    // THE BUTTON'S OWN LADDER: five sizes, straight off the measured spec in
+    // config (heights, padding, icon sizes and gaps), with the label the one
+    // exception - it stays on the pixel font's grid. No button anywhere
+    // holds a literal; a button asks for its size by index.
+    readonly property QtObject button: QtObject {
+        // Any rung of any list, clamped.
+        function at(list: var, i: int): real {
+            return list[Math.max(0, Math.min(i, list.length - 1))];
+        }
+
+        // Label size for size tier i of five (extra small .. extra large).
+        function label(i: int): real {
+            return root.tier(root.cfg.font.base, root.cfg.button.scale, i);
+        }
+
+        function height(i: int): real {
+            return at(root.cfg.button.heights, i);
+        }
+
+        function padX(i: int): real {
+            return at(root.cfg.button.padX, i);
+        }
+
+        function iconSize(i: int): real {
+            return at(root.cfg.button.iconSizes, i);
+        }
+
+        // The mark-to-words space, which the spec also measures per size.
+        function iconGap(i: int): real {
+            return at(root.cfg.button.iconGaps, i);
+        }
+    }
+
     readonly property QtObject anim: QtObject {
         readonly property int fast: Math.round(root.tier(root.cfg.anim.base, root.cfg.anim.scale, 0))
         readonly property int normal: Math.round(root.tier(root.cfg.anim.base, root.cfg.anim.scale, 1))
@@ -394,6 +452,10 @@ Singleton {
         readonly property int scrubWaveAmplitude: root.cfg.media.waveAmplitude
         readonly property real scrubWaveSpeed: root.cfg.media.waveSpeed
         readonly property real scrubWheelSeek: root.cfg.media.wheelSeek
+        // The floating controller. See modules/media/MediaController.qml.
+        readonly property int mediaPanelWidth: root.cfg.media.panelWidth
+        readonly property real mediaSeekSmall: root.cfg.media.seekSmall
+        readonly property real mediaSeekLarge: root.cfg.media.seekLarge
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone

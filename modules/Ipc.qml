@@ -335,6 +335,43 @@ Scope {
         }
     }
 
+    // The media controller: Super+M's popup. The panel's own keys (space, the
+    // arrows) do the media; this target only decides whether the card is out,
+    // on the power panel's exact shape - summoned by name, so the toggle goes
+    // through Shell.showing and finds the one already up.
+    IpcHandler {
+        target: "media"
+
+        function toggle(): string {
+            const win = Shell.showing(w => w.media.open);
+            if (!win)
+                return "no shell window";
+            win.media.toggle();
+            return win.media.open ? "open" : "closed";
+        }
+
+        function open(): string {
+            Shell.forScreen("")?.media.show();
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.media.hide();
+            return "closed";
+        }
+
+        // What the card would say, without the card: the player it is pointed
+        // at and the state of the card itself. The shell-side half is
+        // session-wide (Media picks one player for the whole session); open is
+        // read off the window holding the card, per the rule at the top of
+        // this file.
+        function status(): string {
+            const win = Shell.showing(w => w.media.open);
+            return `open=${win?.media.open ?? false} player=${Media.app || "none"} playing=${Media.playing} title="${Media.title}"`;
+        }
+    }
+
     // The calculator, driven exactly like the power panel above and for the same
     // reason: it is summoned by name from wherever you were, so it arrives on the
     // screen you were at when you asked, while `close` reaches every screen
@@ -2188,6 +2225,14 @@ Scope {
         function aspect(): string {
             PenMap.toggleAspect();
             return PenMap.aspectLocked ? "locked" : "free";
+        }
+
+        // The same rectangle the pad's third button states, for the same reason
+        // every other verb here exists: a region small enough to have shed its
+        // controls has no pill to press, and a pad that is asleep has no button.
+        function centre(): string {
+            PenMap.fitAndCentre();
+            return root.penmapStatus();
         }
 
         // The window picker, as a verb, for the same reason the rest of this

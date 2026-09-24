@@ -392,7 +392,7 @@ Column {
         // disabled ghost would be furniture with a memory). Declared after
         // homeTap so its press lands here and not on the heading, though both
         // roads lead to home() anyway.
-        Pill {
+        Button {
             id: todayPill
 
             anchors.right: parent.right

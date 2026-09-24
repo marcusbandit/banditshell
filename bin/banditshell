@@ -15,6 +15,11 @@
 #                                which a history that has quietly stopped growing
 #                                cannot tell you any other way.
 #   banditshell session toggle|open|close
+#   banditshell media toggle|open|close|status
+#                                the media controller, Super+M's card in the
+#                                middle of the screen. The card's own keys do
+#                                the media work - space, arrows, shift+arrows
+#                                - so this target only decides whether it is out
 #   banditshell calculator toggle|open|close|app|panel|status|answer <expression>
 #                                the keypad panel; `answer` evaluates and prints
 #                                without a surface: `calculator answer "2+3*4"`.
@@ -86,6 +91,12 @@
 #   banditshell settingspreview [WxH] [page] [file]
 #                                the settings face in a plain window at that size:
 #                                400x800 is a phone, 800x800 the phone unfolded
+#   banditshell gallery [WxH]    the component gallery: every component the shell
+#                                means to own, listed down the side, drawn where
+#                                it exists, with knobs on the ones that do. A
+#                                workbench, not a preview - it stays up until
+#                                closed, and `scripts/testbed.sh run` drives it
+#                                headless for scripted shots
 #   banditshell files [toggle|open [path]|close]
 #                                the file browser, in its own window
 #   banditshell shaders          recompile every components/**/*.frag to .qsb
@@ -283,6 +294,14 @@ session)
     ipc session "${1:-toggle}"
     ;;
 
+# The media controller. Verbs only, on the session's shape: the card holds the
+# keyboard while it is out, so everything that can be done to the MEDIA is done
+# on the card, and a CLI verb for "seek" would be a second control that cannot
+# see the card. `status` says which player the shell is pointed at.
+media)
+    ipc media "${1:-toggle}"
+    ;;
+
 # THE TABLET MAPPING, and this is the verb you reach for when the tablet cannot
 # speak for itself. PenMap is meant to be driven from the pad: hold a button,
 # drag with the pen, let go. That is the whole design, and it is also the whole
@@ -403,7 +422,7 @@ keyboard | osk)
 close | panic)
     for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
                   "settings close" "notifications close" "notch close" "picker close" \
-                  "calculator close" "keyboard close"; do
+                  "calculator close" "keyboard close" "media close"; do
         # Unquoted on purpose: this is the one place a verb and its argument
         # travel as one string and have to come apart again.
         # shellcheck disable=SC2086
@@ -967,6 +986,33 @@ settingspreview)
     if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
     wait
     echo "$out"
+    ;;
+
+gallery)
+    # THE WORKBENCH. settingspreview's shape with the opposite purpose: the
+    # previews exist to be photographed and killed, so they run on a timeout
+    # and refuse focus. The gallery exists to be USED - flipped, dragged,
+    # compared - so it takes focus, sets no timeout, and stays up until it
+    # is closed. Same window rule as the previews, minus the parts that push
+    # it out of the way: floated, sized, centred, before the window exists.
+    #
+    # SELF-HEALING, because things have already gone wrong here: a reload
+    # that died mid-edit could leave a WINDOWLESS qs husk squatting on the
+    # config path; a second run stacked a second window; and a window on
+    # another workspace looked exactly like "the command did nothing". The
+    # gallery now QUITS on window close (gallery.qml), so husks cannot
+    # accumulate any more; the sweep stays as the janitor for anything older
+    # than that fix, and every run of this command starts a fresh gallery -
+    # more than one is allowed, drag them apart.
+    size="${1:-1280x800}"
+    w="${size%x*}"; h="${size#*x}"
+    for pid in $(pgrep -f "^qs -p $SHELL_DIR/gallery" 2>/dev/null); do
+        kill "$pid" 2>/dev/null && echo "windowless husk $pid put down"
+    done
+    hyprctl eval "hl.window_rule({ name = \"banditshell-gallery\", match = { title = \"^(banditshell-gallery)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1
+    (cd "$HOME" && GALLERY_SIZE="$size" qs -p "$SHELL_DIR/gallery.qml" >/dev/null 2>&1) &
+    echo "gallery up at $size"
     ;;
 
 help | -h | --help) usage ;;

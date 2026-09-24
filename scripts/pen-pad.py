@@ -41,11 +41,31 @@ membership applies at LOGIN, so a fresh grant reads as "no such device" until
 the next log in, which is a case worth naming in the output rather than
 crashing on.
 
-IT DOES NOT GRAB THE DEVICE. An EVIOCGRAB would give this script exclusive
-access and take the pad away from the compositor, which would break any pad
-button the user has bound elsewhere and would make the pad useless the moment
-this script is killed while holding one. Reading a shared node is enough: evdev
-delivers every event to every reader.
+IT DOES NOT GRAB THE DEVICE BY DEFAULT. An EVIOCGRAB gives this script
+exclusive access and takes the pad away from the compositor, which breaks any
+pad button the user has bound elsewhere. Reading a shared node is enough for
+this script's own purposes: evdev delivers every event to every reader.
+
+BUT `--grab` EXISTS, AND IT IS A CRASH FIX RATHER THAN A PREFERENCE. Hyprland
+0.56 sends `zwp_tablet_pad_v2.button` to every client that has bound a tablet
+seat, without ever sending the `enter` that the tablet-v2 protocol says must
+come first and must name the surface the pad is focused on. GTK4 4.22 answers a
+button by looking up that surface, finds nothing there, and segfaults. The
+effect is that one press of one pad button kills every GTK4 window on the
+machine at once, focused or not, which was observed here on five ghostty
+processes including one that had been running for four seconds and had never
+been touched.
+
+Grabbing is the only lever this repo has on that. libinput never sees an event
+the kernel handed exclusively to this process, so the compositor has nothing to
+broadcast and no client can be given the event that kills it. The pad goes on
+working here, because reading it is what this script does.
+
+THE GRAB DIES WITH THE PROCESS. The kernel drops an EVIOCGRAB when the
+descriptor closes, and every exit path closes it, including a kill -9, so there
+is no state in which this script's absence leaves the pad captured. The cost is
+the real one named above: while it is held, the compositor and everything
+downstream of it get no pad buttons and no ring at all.
 """
 
 import argparse
@@ -199,9 +219,10 @@ class PadReader:
     edges are believed.
     """
 
-    def __init__(self, name, verbose):
+    def __init__(self, name, verbose, grab=False):
         self.name = name
         self.verbose = verbose
+        self.grab = grab
         self.held = set()
         # Tri-state on purpose. None means nothing has been said yet, which is
         # what makes the very first `gone` print when the pad is absent at
@@ -422,6 +443,33 @@ class PadReader:
                 self.wait(RETRY_SECONDS)
                 continue
 
+            # BEFORE go_ready AND BEFORE THE FIRST READ, because the window
+            # this is closing is measured in single events: the compositor is
+            # broadcasting every pad button to every GTK4 client, and one that
+            # gets through is a lost terminal. Taken here rather than in
+            # find_pad so that the scan stays a scan and the one call with a
+            # side effect on the rest of the desktop is where the reading
+            # starts.
+            #
+            # A FAILURE HERE IS NOT FATAL, and that is deliberate. Another
+            # process already holding the grab, or a node opened read-only,
+            # comes back as OSError; the honest response is to go on reading
+            # the node shared, which is what this script did before the flag
+            # existed and is still enough for its own job. Said out loud rather
+            # than swallowed, because "the pad works but GTK apps still die" is
+            # otherwise a symptom with no line in the log behind it.
+            if self.grab:
+                try:
+                    dev.grab()
+                    self.log("grabbed: the compositor will not see pad events")
+                except Exception as exc:
+                    self.warn_once(
+                        "grab",
+                        f"could not grab the pad ({exc}). Pad buttons still "
+                        "reach the compositor, which on Hyprland 0.56 with "
+                        "GTK4 means every GTK window dies on the next press.",
+                    )
+
             self.go_ready()
             try:
                 self.pump(dev)
@@ -439,6 +487,17 @@ class PadReader:
                 # again in two seconds. A reopen fixes far more than it breaks.
                 self.log(f"unexpected read failure: {exc!r}")
             finally:
+                # UNGRAB FIRST, and never mind that close() would do it. This
+                # runs on the disconnect path too, where the node has already
+                # been removed under the descriptor and the ungrab fails; the
+                # close after it still has to happen, so the two are separate
+                # statements rather than one block that a raised ENODEV could
+                # skip the tail of.
+                if self.grab:
+                    try:
+                        dev.ungrab()
+                    except Exception:
+                        pass
                 try:
                     dev.close()
                 except Exception:
@@ -460,6 +519,8 @@ def main():
     # already wrong by the next time the tablet wakes up.
     parser.add_argument("--device-name", default=DEFAULT_DEVICE_NAME)
     parser.add_argument("--verbose", action="store_true")
+    # See the module docstring for why this is a crash fix and what it costs.
+    parser.add_argument("--grab", action="store_true")
     args = parser.parse_args()
 
     try:
@@ -475,7 +536,7 @@ def main():
     for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
         signal.signal(sig, _stop)
 
-    reader = PadReader(args.device_name, args.verbose)
+    reader = PadReader(args.device_name, args.verbose, args.grab)
     try:
         reader.run()
     except _Terminated:
