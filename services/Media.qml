@@ -43,7 +43,42 @@ Singleton {
     readonly property string app: active?.identity || ""
     readonly property string artUrl: active?.trackArtUrl || ""
 
-    readonly property real position: active?.position ?? 0
+    // THE CLOCK IS OURS. The player's own position is adopted exactly once
+    // per track and never argued with afterwards: bridges answer a seek with
+    // stale numbers and drop durations mid-flight, and a bar wired straight
+    // to those answers thrashes - pip sliding home and out, end time
+    // blinking, on every press of an arrow. So the shell keeps the clock
+    // itself: it advances while playing, jumps when a seek is asked (the
+    // player is expected to accept the input, and does), and the player's
+    // word is taken again only when the track changes.
+    property real localPosition: 0
+
+    function adopt(): void {
+        root.localPosition = root.active?.position ?? 0;
+    }
+
+    // Adoption asks the player first - position is fetched, not guessed -
+    // and takes the answer when it arrives, exactly once. At boot the last
+    // fetched value is fresh enough.
+    property bool adoptNext: false
+
+    onTrackKeyChanged: {
+        root.adoptNext = true;
+        root.active?.positionChanged();
+    }
+
+    Component.onCompleted: root.adopt()
+
+    // What the shell believes the place in the track to be.
+    readonly property real position: root.localPosition
+    readonly property real playerPosition: active?.position ?? 0
+
+    onPlayerPositionChanged: {
+        if (root.adoptNext) {
+            root.adoptNext = false;
+            root.adopt();
+        }
+    }
 
     // LENGTH, HELD STEADY. A bridge can drop mpris:length for a beat - in
     // the middle of a seek especially - and a length that blinks to zero
@@ -113,30 +148,20 @@ Singleton {
     function seekTo(seconds: real): void {
         if (!active?.canSeek)
             return;
-        active.position = Math.max(0, Math.min(root.length, seconds));
-        reask.restart();
+        root.localPosition = root.length > 0 ? Math.max(0, Math.min(root.length, seconds)) : seconds;
+        active.position = seconds;
     }
 
     // Move by an amount, in seconds, signed.
     function seekBy(offset: real): void {
         if (!active?.canSeek)
             return;
+        root.localPosition = root.length > 0 ? Math.max(0, Math.min(root.length, root.localPosition + offset)) : Math.max(0, root.localPosition + offset);
         active.seek(offset);
-        reask.restart();
     }
 
-    // A seek is a REQUEST. The player answers it with a Seeked signal when it
-    // has moved, and until then the position it reports is the old one, which
-    // matters most for a paused track: nothing else polls a paused player, so
-    // a seek it acknowledged quietly would show the old place until the next
-    // press of play. So the position is asked for again a moment after every
-    // seek, once, whether or not the player already said.
-    Timer {
-        id: reask
-
-        interval: 250
-        onTriggered: root.active?.positionChanged()
-    }
+    // A seek is a REQUEST - sent, not confirmed. The clock above jumped the
+    // moment it was asked; the player catching up is its own business.
 
     // m:ss. Zero is a real answer here, the start of a track, and only a
     // number that is not a time at all gets nothing.
@@ -149,12 +174,18 @@ Singleton {
         return `${m}:${s.toString().padStart(2, "0")}`;
     }
 
-    // Position does not push updates, so it has to be asked. Only while
-    // something is actually playing: a paused track's position does not move.
+    // The local clock, one second to the second while something plays. It
+    // holds at the end of a timed track, and runs free past any known end
+    // for a live one.
     Timer {
         interval: 1000
         repeat: true
         running: root.playing
-        onTriggered: root.active?.positionChanged()
+        onTriggered: {
+            if (root.length > 0)
+                root.localPosition = Math.min(root.length, root.localPosition + 1);
+            else
+                root.localPosition = root.localPosition + 1;
+        }
     }
 }
