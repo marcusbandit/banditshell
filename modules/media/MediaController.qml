@@ -394,10 +394,66 @@ Item {
                 }
             }
 
+            // THE EMPTY CARD. No player registered, so there is no track to
+            // draw and the card says so in the track's own layout: the same
+            // art square and the same two lines a track wears, held in the
+            // ghost tones. An empty card that keeps its shape reads as
+            // "waiting"; a collapsed one with an apology at the bottom reads
+            // as broken.
+            Item {
+                width: parent.width
+                height: emptyTrack.height
+                visible: !Media.available
+
+                Row {
+                    id: emptyTrack
+
+                    spacing: root.pad
+
+                    G2Rect {
+                        width: root.artSize
+                        height: width
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colour.fill
+
+                        Icon {
+                            anchors.centerIn: parent
+                            size: Math.round(root.artSize / 2)
+                            name: "music_note"
+                            color: Appearance.colour.textGhost
+                        }
+                    }
+
+                    Column {
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: root.innerWidth - root.artSize - root.pad
+                        spacing: Appearance.padding.small
+
+                        StyledText {
+                            width: parent.width
+                            text: "nothing is playing"
+                            font.pixelSize: Appearance.font.size.large
+                            wrapMode: Text.Wrap
+                        }
+
+                        StyledText {
+                            width: parent.width
+                            text: "open a player - spotify, mpv, a browser tab"
+                            color: Appearance.colour.textFaint
+                            wrapMode: Text.Wrap
+                        }
+                    }
+                }
+            }
+
             // THE CHORDS, on the card, because a keyboard-driven card should
             // say what its keyboard is. The cheatsheet will also carry these
             // (it reads the compositor's binds, and the bind points here);
             // this strip is what the hands check while the card is up.
+            //
+            // The chords an empty card offers are only the ones that still do
+            // something: play and seek answer to no player, so they are not
+            // promised. Volume and mute do not need one.
             //
             // A FLOW, not a Row: the strip has to survive a card resized in
             // config without either eliding its own advice or overflowing, and
@@ -407,17 +463,32 @@ Item {
                 spacing: root.pad
 
                 StyledText {
+                    visible: Media.available
                     text: "space play"
                     color: Appearance.colour.textGhost
                 }
 
                 StyledText {
+                    visible: Media.available
                     text: "arrows seek"
                     color: Appearance.colour.textGhost
                 }
 
                 StyledText {
+                    visible: Media.available
                     text: "shift arrows jump"
+                    color: Appearance.colour.textGhost
+                }
+
+                StyledText {
+                    visible: !Media.available
+                    text: "up down volume"
+                    color: Appearance.colour.textGhost
+                }
+
+                StyledText {
+                    visible: !Media.available
+                    text: "m mute"
                     color: Appearance.colour.textGhost
                 }
 
@@ -425,13 +496,6 @@ Item {
                     text: "esc close"
                     color: Appearance.colour.textGhost
                 }
-            }
-
-            StyledText {
-                width: parent.width
-                visible: !Media.available
-                text: "nothing is playing"
-                color: Appearance.colour.textFaint
             }
         }
     }
