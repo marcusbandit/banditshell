@@ -29,6 +29,9 @@ done-marks go under the item they belong to.
     and the Scrubber has a live shape now: full-width travelling wave,
     elapsed only, no pip/total/drag. Timed tracks unchanged (total shows,
     pip scrubs). Verified against the real zen-firefox bridge.
+  - Title wraps to two lines (maximumLineCount 2, then elide) and the track
+    block grows to its text — "The Greatest Episode Yet" reads whole now.
+    Notch keeps its elide; it has no room.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
