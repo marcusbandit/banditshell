@@ -36,9 +36,11 @@ done-marks go under the item they belong to.
     rightly — a skip at the edge groups with the edge, not the ring). The
     whole transport group now scales up on the card (zoom 1.4): width spent
     on presence, not distance. Notch/menu keep zoom 1.
-  - Seek thrash fixed: zen bridge drops mpris:length mid-seek and reports
-    stale positions; length now held per track, elapsed label rides the
-    pip's smoothing, so end time and pip hold still through arrow presses.
+  - Position is a LOCAL CLOCK now (user's design, 2026-09-24): adopted from
+    the player once per track, advanced 1s/s while playing, seeks jump it
+    and expect acceptance, clamped at a timed track's end, free-running for
+    live. No polling between adoptions. This killed the arrow-key thrash
+    for good — the pip and end time hold still.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
