@@ -41,6 +41,9 @@ done-marks go under the item they belong to.
     and expect acceptance, clamped at a timed track's end, free-running for
     live. No polling between adoptions. This killed the arrow-key thrash
     for good — the pip and end time hold still.
+  - Length hold made unconditional: the track-key check let a metadata
+    blip mid-seek invalidate the cache, so the total still forgot itself.
+    Last positive length now stands until the next real one.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
