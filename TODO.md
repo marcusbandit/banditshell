@@ -32,6 +32,12 @@ done-marks go under the item they belong to.
   - Title wraps to two lines (maximumLineCount 2, then elide) and the track
     block grows to its text — "The Greatest Episode Yet" reads whole now.
     Notch keeps its elide; it has no room.
+  - Transport spreads to the host width (skips toward the ends, ring dead
+    centre) instead of huddling in the middle of the wide card. User was
+    mid-question about it — may want the huddle back.
+  - Seek thrash fixed: zen bridge drops mpris:length mid-seek and reports
+    stale positions; length now held per track, elapsed label rides the
+    pip's smoothing, so end time and pip hold still through arrow presses.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
