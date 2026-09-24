@@ -187,14 +187,17 @@ Item {
     }
 
     // The two times, under the two ends. The elapsed one follows the hand
-    // while it is on the pip, so a scrub says where it will land before it
-    // lands there.
+    // while it is on the pip, and rides the same smoothing the pip rides
+    // otherwise: a seek reports stale positions for a beat, and a label that
+    // read them raw would tick backwards while the pip moved forwards - the
+    // two under one value, so they cannot disagree. In live mode there is no
+    // fraction to smooth, so the raw position is the only honest number.
     StyledText {
         id: elapsed
 
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        text: Media.timeLabel(pointer.pressed ? root.dragged * Media.length : Media.position)
+        text: Media.timeLabel(root.timed ? (pointer.pressed ? root.dragged : root.shown) * Media.length : Media.position)
         color: Appearance.colour.textDim
     }
 

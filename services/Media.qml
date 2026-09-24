@@ -44,7 +44,26 @@ Singleton {
     readonly property string artUrl: active?.trackArtUrl || ""
 
     readonly property real position: active?.position ?? 0
-    readonly property real length: active?.length ?? 0
+
+    // LENGTH, HELD STEADY. A bridge can drop mpris:length for a beat - in
+    // the middle of a seek especially - and a length that blinks to zero
+    // drags the track's fraction down with it: the pip slides home and back
+    // while the player never moved, and the total time blinks out. So the
+    // last positive length is held, for the current track only; a track
+    // change starts the holding over.
+    readonly property string trackKey: (active?.trackId ?? "") + "/" + (active?.trackTitle ?? "")
+    property real heldLength: 0
+    property string heldKey: ""
+
+    readonly property real length: {
+        const reported = active?.length ?? 0;
+        if (reported > 0) {
+            root.heldLength = reported;
+            root.heldKey = root.trackKey;
+            return reported;
+        }
+        return root.trackKey === root.heldKey ? root.heldLength : 0;
+    }
     // A length of zero is not "at the start": several bridges report no
     // duration until the player tells them, and live streams never do. The
     // division is guarded, because position over zero would otherwise come

@@ -39,7 +39,12 @@ Item {
         id: row
 
         anchors.centerIn: parent
-        spacing: Appearance.padding.large
+        // The card is wider than three buttons, and a transport huddled in
+        // the middle of all that width looks lonesome. So the row spreads to
+        // whatever the host's width leaves: the skips toward the ends, the
+        // ring in the middle where the hand lands. The floor keeps a
+        // notch-sized host from collapsing the three together.
+        spacing: Math.max(Appearance.padding.large, (root.width - root.ring * 3) / 2)
 
         Repeater {
             model: [
