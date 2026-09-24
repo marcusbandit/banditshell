@@ -74,12 +74,92 @@ Item {
     // MediaPreview already keeps, at floating-card scale.
     readonly property real artSize: Math.round(root.innerWidth / 4)
 
+    // WHAT AN EMPTY CARD SAYS. "Nothing is playing" is the fact, but a fact
+    // repeated verbatim every time is a system message, and this card is not a
+    // system message: it is the shell putting on a face while it waits. So it
+    // keeps a book of quips - every one about the same honest nothing, most
+    // borrowed from the music that is not playing - and rolls a fresh one each
+    // time the card is summoned, so the empty state is never the same twice.
+    // The practical line beneath stays practical; the joke is the headline,
+    // not the instructions. No how-to underneath: nobody opens a floating
+    // card to be told which applications play music.
+    readonly property var quips: [
+        "enjoy the silence",
+        "the sound of silence",
+        "silence is golden",
+        "nothing else matters",
+        "the sound of nothing, in hi-fi",
+        "in the key of zzz",
+        "this bar is a whole rest",
+        "a whole rest, every bar",
+        "every note still unplayed",
+        "the beat drops eventually",
+        "a dramatic pause",
+        "the longest intermission",
+        "the longest interval",
+        "the band has gone home",
+        "the stage is dark",
+        "the curtain is down",
+        "the speakers are dreaming",
+        "the subwoofer hibernates",
+        "the metronome is asleep",
+        "the tape ran out",
+        "the radio is between stations",
+        "static, but polite",
+        "the jukebox wants coins",
+        "the playlist called in sick",
+        "your headphones are on strike",
+        "the earworm is unfed",
+        "the needle is up",
+        "the vinyl found its run-out groove",
+        "even the crickets rehearsed more",
+        "*crickets*",
+        "hush",
+        "shh",
+        "hush now",
+        "quiet, please",
+        "the quiet room",
+        "all ears, nothing to hear",
+        "the equalizer is flatlining",
+        "zero decibels, infinite potential",
+        "frequency: none",
+        "amplitude: zero",
+        "no waves on this shore",
+        "the wave was here a minute ago",
+        "fade out complete",
+        "rewind to when it played",
+        "nowhere, fast",
+        "between two songs, forever",
+        "the encore has not started",
+        "tuning up",
+        "the warm-up has not begun",
+        "the mixer board is dark",
+        "nobody is on the mic",
+        "the instruments all rest",
+        "fermata on nothing",
+        "the lullaby is unsung",
+        "white noise, minus the noise",
+        "the quiet storm",
+        "sing it yourself, why don't you",
+        "whistle your own theme",
+        "the melody is on strike",
+        "you could hear a pin drop"
+    ]
+
+    // The line the empty card is wearing this time. Seeded with the plain
+    // fact, and rolled on every show, so two summons in a row can disagree.
+    property string quip: "nothing is playing"
+
     // ---------------------------------------------------------------
     // LIFETIME, on the power panel's shape.
 
     function show(): void {
         if (root.shown)
             return;
+        // A fresh quip per summon: the roll happens on the way in, so the
+        // card never wears the same empty line twice in a row unless the
+        // book itself is that small. (It is not.)
+        root.quip = root.quips[Math.floor(Math.random() * root.quips.length)];
         root.restoreTo = Hypr.focusedOn(root.screenName);
         root.shown = true;
         // DEFERRED: the surface asks the compositor for the keyboard only once
@@ -396,52 +476,54 @@ Item {
 
             // THE EMPTY CARD. No player registered, so there is no track to
             // draw and the card says so in the track's own layout: the same
-            // art square and the same two lines a track wears, held in the
-            // ghost tones. An empty card that keeps its shape reads as
-            // "waiting"; a collapsed one with an apology at the bottom reads
-            // as broken.
+            // art square, the fact as the headline, and the quip of the day
+            // beneath it as a subtitle. An empty card that keeps its shape
+            // reads as "waiting"; a collapsed one with an apology at the
+            // bottom reads as broken. No instructions: nobody summons a
+            // floating card to be told which applications play music.
             Item {
                 width: parent.width
-                height: emptyTrack.height
+                height: emptyColumn.height
                 visible: !Media.available
 
-                Row {
-                    id: emptyTrack
+                Column {
+                    id: emptyColumn
 
-                    spacing: root.pad
+                    width: parent.width
+                    spacing: Appearance.padding.normal
 
-                    G2Rect {
-                        width: root.artSize
-                        height: width
-                        radius: Appearance.rounding.normal
-                        color: Appearance.colour.fill
+                    Row {
+                        spacing: root.pad
 
-                        Icon {
-                            anchors.centerIn: parent
-                            size: Math.round(root.artSize / 2)
-                            name: "music_note"
-                            color: Appearance.colour.textGhost
+                        G2Rect {
+                            id: emptyArt
+
+                            width: root.artSize
+                            height: width
+                            radius: Appearance.rounding.normal
+                            color: Appearance.colour.fill
+
+                            Icon {
+                                anchors.centerIn: parent
+                                size: Math.round(root.artSize / 2)
+                                name: "music_note"
+                                color: Appearance.colour.textGhost
+                            }
+                        }
+
+                        StyledText {
+                            anchors.verticalCenter: emptyArt.verticalCenter
+                            width: root.innerWidth - root.artSize - root.pad
+                            text: "nothing is playing"
+                            font.pixelSize: Appearance.font.size.large
                         }
                     }
 
-                    Column {
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: root.innerWidth - root.artSize - root.pad
-                        spacing: Appearance.padding.small
-
-                        StyledText {
-                            width: parent.width
-                            text: "nothing is playing"
-                            font.pixelSize: Appearance.font.size.large
-                            wrapMode: Text.Wrap
-                        }
-
-                        StyledText {
-                            width: parent.width
-                            text: "open a player - spotify, mpv, a browser tab"
-                            color: Appearance.colour.textFaint
-                            wrapMode: Text.Wrap
-                        }
+                    StyledText {
+                        width: parent.width
+                        text: `\"${root.quip}\"`
+                        color: Appearance.colour.textFaint
+                        wrapMode: Text.Wrap
                     }
                 }
             }

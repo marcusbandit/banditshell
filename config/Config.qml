@@ -957,8 +957,10 @@ Singleton {
                 wheelSeek: 5,
 
                 // THE FLOATING CONTROLLER (modules/media/MediaController.qml):
-                // the card that Super+M pops in the middle of the screen.
-                panelWidth: 420,
+                // the card that Super+M pops in the middle of the screen. Wide
+                // enough that a quip and a title wear as one line each; the
+                // empty card especially should not wrap itself into doggerel.
+                panelWidth: 560,
                 // What one press of the arrow keys moves, in seconds, and what
                 // the same key does with shift held. "A few seconds" and "a
                 // good chunk of the track"; the wheel above shares the small
