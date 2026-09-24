@@ -45,6 +45,10 @@ Singleton {
 
     readonly property real position: active?.position ?? 0
     readonly property real length: active?.length ?? 0
+    // A length of zero is not "at the start": several bridges report no
+    // duration until the player tells them, and live streams never do. The
+    // division is guarded, because position over zero would otherwise come
+    // back infinity and the clamp would call that "the end".
     readonly property real progress: length > 0 ? Math.max(0, Math.min(1, position / length)) : 0
 
     function choose(player: MprisPlayer): void {

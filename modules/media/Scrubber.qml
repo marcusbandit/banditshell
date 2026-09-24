@@ -46,6 +46,15 @@ Item {
     readonly property real wavelength: Appearance.sizes.scrubWaveLength
     readonly property real gap: Appearance.padding.small
 
+    // TIMED VERSUS LIVE. A length is a promise the player does not always
+    // make: bridges report none until the duration is known, and a stream
+    // never does. Without one there is no fraction to scrub to and no total
+    // to print, so the bar goes over to a live shape - the wave travelling
+    // the whole width, the elapsed time ticking under the left end, no pip,
+    // no right-hand time, no drag. Seek by amount still works; seek to a
+    // place cannot be aimed without a length to be a place in.
+    readonly property bool timed: Media.length > 0
+
     // The pip's height, and the row the track lives in. Tall enough that the
     // wave at full swing sits inside it with a stroke to spare above and
     // below, so the pip always overreaches the wave it stops.
@@ -56,7 +65,7 @@ Item {
     // one puts its far edge on the right edge rather than half past it.
     readonly property real travel: Math.max(1, width - root.stroke)
     readonly property real pipX: root.shown * root.travel
-    readonly property real waveEnd: Math.max(0, root.pipX - root.gap)
+    readonly property real waveEnd: root.timed ? Math.max(0, root.pipX - root.gap) : width
 
     readonly property bool active: pointer.pressed || pointer.containsMouse
 
@@ -142,7 +151,8 @@ Item {
 
     // Where you are. Drawn whether or not you can move it, because it marks
     // the position either way; the cursor is what says whether it will answer
-    // a hand.
+    // a hand. In live mode there is no position to mark, so the pip stays
+    // home.
     G2Rect {
         x: root.pipX
         y: 0
@@ -150,6 +160,7 @@ Item {
         height: root.band
         radius: width / 2
         color: Appearance.colour.text
+        visible: root.timed
 
         // Swells to meet the cursor and gives when pushed, exactly as the
         // Slider's bead does.
@@ -163,14 +174,15 @@ Item {
         }
     }
 
-    // The part you have not.
+    // The part you have not. Only a timed bar can say it: a live wave has no
+    // far side.
     G2Rect {
         x: root.pipX + root.stroke + root.gap
         y: root.centre - height / 2
         width: Math.max(0, root.width - x)
         height: root.stroke
         radius: height / 2
-        visible: width > 0
+        visible: root.timed && width > 0
         color: Appearance.colour.fillStrong
     }
 
@@ -191,6 +203,7 @@ Item {
         anchors.bottom: parent.bottom
         text: Media.timeLabel(Media.length)
         color: Appearance.colour.textDim
+        visible: root.timed
     }
 
     MouseArea {
@@ -210,9 +223,9 @@ Item {
         // not the surface it sits on, so nothing else may take the grab. The
         // Slider carries the full argument.
         preventStealing: true
-        // Only when the player says it will answer. A scrubber that takes a
-        // drag and does nothing with it is worse than a bar that never moved.
-        enabled: Media.canSeek
+        // Only when the player says it will answer, and only when there is a
+        // length to be a fraction of. A live bar does not drag.
+        enabled: Media.canSeek && root.timed
         cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
         // Mapped rather than offset by the margins above, for the reason the

@@ -392,10 +392,12 @@ Item {
 
             // Where the track is, and the wheel and the drag to move it: the
             // ONE scrubber, the same the notch and the menu draw. Its wave is
-            // a clock, so it is told when it is being watched.
+            // a clock, so it is told when it is being watched. A track with
+            // no length yet - or a live stream that never has one - shows the
+            // live shape rather than vanishing.
             Scrubber {
                 width: parent.width
-                visible: Media.available && Media.length > 0
+                visible: Media.available && (Media.length > 0 || Media.hasTrack)
                 watched: root.open
             }
 
