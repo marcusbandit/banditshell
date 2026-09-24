@@ -18,11 +18,11 @@ done-marks go under the item they belong to.
   - RULE from the user, standing: no small subtitles that do nothing but
     clutter. Every faint line must earn its place by doing work. Applies to
     the whole shell, not just this card.
-  - Header is honest in both states: "THE JUKEBOX" when empty, "NOW PLAYING"
-    when a player exists. Empty main line sits at the body tier (Monocraft
-    at large outruns the slot beside the art square; hierarchy is carried by
-    colour, not size). Quip book grew Minecraft discs: no disc inserted,
-    not playing pigstep, *cave sounds*, and kin — 66 lines now.
+  - Header is gone entirely (user: "just don't have a header") — the card
+    opens straight onto the track, or onto the empty state's fact + quip.
+    App name survives as the track's third line. Chords strip also removed
+    (cheatsheet carries the binds). Empty card = ghost art, the fact, the
+    quip. Nothing else.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
