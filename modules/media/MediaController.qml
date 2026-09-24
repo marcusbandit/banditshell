@@ -547,58 +547,6 @@ Item {
                     }
                 }
             }
-
-            // THE CHORDS, on the card, because a keyboard-driven card should
-            // say what its keyboard is. The cheatsheet will also carry these
-            // (it reads the compositor's binds, and the bind points here);
-            // this strip is what the hands check while the card is up.
-            //
-            // The chords an empty card offers are only the ones that still do
-            // something: play and seek answer to no player, so they are not
-            // promised. Volume and mute do not need one.
-            //
-            // A FLOW, not a Row: the strip has to survive a card resized in
-            // config without either eliding its own advice or overflowing, and
-            // wrapping is the one behaviour that needs no width of its own.
-            Flow {
-                width: parent.width
-                spacing: root.pad
-
-                StyledText {
-                    visible: Media.available
-                    text: "space play"
-                    color: Appearance.colour.textGhost
-                }
-
-                StyledText {
-                    visible: Media.available
-                    text: "arrows seek"
-                    color: Appearance.colour.textGhost
-                }
-
-                StyledText {
-                    visible: Media.available
-                    text: "shift arrows jump"
-                    color: Appearance.colour.textGhost
-                }
-
-                StyledText {
-                    visible: !Media.available
-                    text: "up down volume"
-                    color: Appearance.colour.textGhost
-                }
-
-                StyledText {
-                    visible: !Media.available
-                    text: "m mute"
-                    color: Appearance.colour.textGhost
-                }
-
-                StyledText {
-                    text: "esc close"
-                    color: Appearance.colour.textGhost
-                }
-            }
         }
     }
 }
