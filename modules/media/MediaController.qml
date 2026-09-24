@@ -324,31 +324,6 @@ Item {
             width: root.innerWidth
             spacing: root.pad
 
-            // WHO IS ANSWERING. One faint line, both ends: what this card is,
-            // and which application it is talking to this time.
-            Item {
-                width: parent.width
-                height: head.implicitHeight
-
-                StyledText {
-                    id: head
-
-                    anchors.left: parent.left
-                    // The header tells the truth in both states: with a
-                    // player it says what the card is doing, without one it
-                    // admits what the card is. The joke stays upstairs.
-                    text: Media.available ? "NOW PLAYING" : "THE JUKEBOX"
-                    color: Appearance.colour.textFaint
-                }
-
-                StyledText {
-                    anchors.right: parent.right
-                    text: Media.app.toUpperCase()
-                    color: Appearance.colour.textFaint
-                    visible: !!Media.app
-                }
-            }
-
             // THE TRACK, in the notch preview's Niagara layout at card scale:
             // the art exactly as tall as everything beside it, so the block
             // reads as one object. Same construction, one press of a bigger
