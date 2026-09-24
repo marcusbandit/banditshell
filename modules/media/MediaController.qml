@@ -412,10 +412,14 @@ Item {
             }
 
             // The transport. The one set of media buttons in the shell, the
-            // ring marking the control you aim at.
+            // ring marking the control you aim at. On the card it is the
+            // hero: scaled up to spend the card's width on presence, held as
+            // one tight group - proximity is what says the three belong
+            // together.
             MediaTransport {
                 width: parent.width
                 visible: Media.available
+                zoom: 1.4
             }
 
             // ---------------------------------------------------------

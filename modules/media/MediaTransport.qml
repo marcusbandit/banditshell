@@ -29,8 +29,15 @@ Item {
     // Every target is the ring's size, drawn or not: a skip button that is only
     // as big as its glyph is a 20px target, and WCAG 2.2 SC 2.5.8 puts the floor
     // at 24. The ring is what you see; the size is what you can hit.
-    readonly property real glyph: Appearance.font.iconSize
-    readonly property real ring: root.glyph + Appearance.padding.normal * 2
+    readonly property real glyph: Appearance.font.iconSize * root.zoom
+    readonly property real ring: (Appearance.font.iconSize + Appearance.padding.normal * 2) * root.zoom
+
+    // PROXIMITY IS THE GROUPING: three controls, one unit, held together. The
+    // row never spreads to its host's width - a skip at the card's edge reads
+    // with the edge, not with the ring, and the transport stops being a
+    // transport. A wide host is answered by scaling the group up instead, so
+    // the extra width is spent on presence, not on distance.
+    property real zoom: 1.0
 
     implicitWidth: row.implicitWidth
     implicitHeight: root.ring
@@ -39,12 +46,7 @@ Item {
         id: row
 
         anchors.centerIn: parent
-        // The card is wider than three buttons, and a transport huddled in
-        // the middle of all that width looks lonesome. So the row spreads to
-        // whatever the host's width leaves: the skips toward the ends, the
-        // ring in the middle where the hand lands. The floor keeps a
-        // notch-sized host from collapsing the three together.
-        spacing: Math.max(Appearance.padding.large, (root.width - root.ring * 3) / 2)
+        spacing: Appearance.padding.large * root.zoom
 
         Repeater {
             model: [
