@@ -55,6 +55,7 @@ Singleton {
 
     function adopt(): void {
         root.localPosition = root.active?.position ?? 0;
+        root.adoptLength();
     }
 
     // Adoption asks the player first - position is fetched, not guessed -
@@ -64,6 +65,8 @@ Singleton {
 
     onTrackKeyChanged: {
         root.adoptNext = true;
+        root.freshTrack = true;
+        freshWindow.restart();
         root.active?.positionChanged();
     }
 
@@ -80,21 +83,30 @@ Singleton {
         }
     }
 
-    // LENGTH, HELD. A bridge can drop mpris:length for a beat - in the
-    // middle of a seek especially - and a length that blinks to zero drags
-    // the track's fraction down with it: the pip slides home and back while
-    // the player never moved, and the total time blinks out. So the last
-    // positive length any player reported is held, whatever the track is
-    // doing; the next track's real length overwrites it when it arrives. A
-    // total that is briefly a track behind is invisible; a total that
-    // forgets itself is not.
+    // LENGTH, ADOPTED LIKE THE CLOCK. Measured on the live bus: the bridge
+    // tells the true duration while paused, says nothing while playing, and
+    // answers a seek with a wrong number while it buffers - a pause the
+    // shell cannot tell from a hand's, which is why every reactive length
+    // eventually believed garbage. So the length is never streamed in: it
+    // is adopted at boot, at a track change, and when playing stops more
+    // than a breath after the last seek - the breath is the buffer's
+    // signature; a hand's pause comes later, or not after a seek at all.
     property real heldLength: 0
+    property real lastSeekAt: 0
 
-    readonly property real length: {
-        const reported = active?.length ?? 0;
-        if (reported > 0)
+    function adoptLength(): void {
+        const reported = root.active?.length ?? 0;
+        // A real track is not shorter than five seconds; anything that small
+        // is the bridge's buffering noise, not a duration.
+        if (reported > 5)
             root.heldLength = reported;
-        return root.heldLength;
+    }
+
+    readonly property real length: root.heldLength
+
+    onPlayingChanged: {
+        if (!root.playing && Date.now() - root.lastSeekAt > 2000)
+            root.adoptLength();
     }
     // A length of zero is not "at the start": several bridges report no
     // duration until the player tells them, and live streams never do. The
@@ -145,6 +157,7 @@ Singleton {
     function seekTo(seconds: real): void {
         if (!active?.canSeek)
             return;
+        root.lastSeekAt = Date.now();
         root.localPosition = root.length > 0 ? Math.max(0, Math.min(root.length, seconds)) : seconds;
         active.position = seconds;
     }
@@ -153,6 +166,7 @@ Singleton {
     function seekBy(offset: real): void {
         if (!active?.canSeek)
             return;
+        root.lastSeekAt = Date.now();
         root.localPosition = root.length > 0 ? Math.max(0, Math.min(root.length, root.localPosition + offset)) : Math.max(0, root.localPosition + offset);
         active.seek(offset);
     }
