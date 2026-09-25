@@ -44,6 +44,13 @@ done-marks go under the item they belong to.
   - Length hold made unconditional: the track-key check let a metadata
     blip mid-seek invalidate the cache, so the total still forgot itself.
     Last positive length now stands until the next real one.
+  - ROOT of the length chaos, measured live on the bus: the zen bridge
+    reports the true duration ONLY while paused, nothing while playing, and
+    a WRONG number while buffering after a seek (a pause indistinguishable
+    from a hand's). Fix: length is adopted, never streamed — boot, track
+    change, or playing-stops->2s-after-a-seek (the buffer's signature).
+    Sub-5s reports rejected as noise. Verified: total holds 4:54 through a
+    seek storm on a real video.
 - [ ] Notifications rehaul
 - [ ] Sidepanel — simplified mode, and expand-mode changes
 - [ ] Keybind previewer rehaul
