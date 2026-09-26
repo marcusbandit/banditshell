@@ -108,18 +108,7 @@ Item {
         onClicked: root.requested(true)
     }
 
-    // One tooltip, for the state words: the glyph says "something", the
-    // tooltip says what. Named, unlike the gauges', because there is no menu
-    // title already saying it - the menu's heading is the branch, not the
-    // state.
-    HoverTip {
-        text: {
-            if (root.state === Update.downloaded)
-                return "update downloaded";
-            if (root.state === Update.idle)
-                return "no update confirmed";
-            return `${Update.behind} new on ${Update.branch}`;
-        }
-        asked: press.containsMouse
-    }
+    // NO TOOLTIP HERE, the gauges' rule: hovering this opens a menu whose
+    // first line is the state in words, so a floating label would only say
+    // the same thing twice.
 }
