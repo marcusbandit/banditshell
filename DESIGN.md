@@ -297,20 +297,21 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
   spacing instead. Portable rule: `~/.claude/rules/type-scale.md`.
-- **Palette: GREENSTEEL, shared with the compositor.** The colours are not invented here. They
-  are taken verbatim from `~/.config/hypr/theme/greensteel.conf` into
-  `config/Appearance.qml`, so the shell and Hyprland's window borders are the same object
-  rather than two things that happen to both be green. Cool anodised-green metal: one hue
-  family climbing near-black to silvery white, with a saturated end (`verdigris` / `lush` /
-  `phosphor`) spent sparingly so a bright stop reads as a specular highlight.
-  - **The Monocraft constraint is load-bearing.** greensteel.conf says it: pixel-font stems are
-    one device pixel, so anti-aliasing has nothing to work with and mid-tones turn text to
-    mush. Pixel text goes `phosphor` or `silver` on `abyss` or `void`. **Never on `body` or
-    `brushed`.** That is why the panel is `abyss` and not a mid moss green.
+- **Palette: the machine's, not the shell's.** The colours are not invented here. `~/.config/theme` is
+  the colour authority: `theme-set` renders one theme into `current/` for every app on the box at
+  once, and `config/Themes.qml` reads this shell's share (`palette.json`) and hands it to
+  `config/Appearance.qml`, so the shell and Hyprland's window borders are the same object rather
+  than two things that happen to match. One hue family climbing near-black to silvery white, with a
+  saturated end (`dim` / `mid` / `bright`) spent sparingly so a bright stop reads as a specular
+  highlight, plus one `alarm` outside the family.
+  - **The Monocraft constraint is load-bearing.** Pixel-font stems are one device pixel, so
+    anti-aliasing has nothing to work with and mid-tones turn text to mush. Pixel text goes a bright
+    stop on a dark one. **Never on a mid tone.** That is why the panel is the darkest ramp stop and
+    not a mid one.
   - Rounding matches too: `Appearance.rounding.normal` is 15, which is Hyprland's
     `rounding = 15`. Hyprland is already drawing superellipse corners there
     (`rounding_power = 4.0`), the same idea as our G2 smoothing.
-  - If greensteel.conf changes, `Appearance.qml` changes to match. Same names, one direction.
+  - If the theme conf changes, the render changes, and the shell follows it. One direction.
 - **Distinctive, not generic.** Never trade a distinctive look for a generic "clean" one.
   Since I'm establishing the style from scratch, commit to an idiom early (the clock sets it)
   and build every later widget in that idiom.

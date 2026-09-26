@@ -169,9 +169,9 @@ Singleton {
     // than borrowing one that answers the opposite question.
     //
     // The switch exists for the user whose hyprland.conf paints borders
-    // deliberately: the greensteel theme conf this shell grew up beside draws a
-    // five-stop specular sweep, and a flat accent is a downgrade to whoever
-    // made that. `?? true` because the push is the behaviour that was asked for
+    // deliberately: the machine's theme conf draws a five-stop specular
+    // sweep, and a flat accent is a downgrade to whoever made that. `?? true`
+    // because the push is the behaviour that was asked for
     // by name; a config.json from before the key existed should mean yes, not
     // a silent no. Turning it OFF does not repaint the file's own colours back,
     // because the shell never knew them; the compositor's next config reload
@@ -193,9 +193,9 @@ Singleton {
     // separator token already says "faint outline" and moves with the theme's
     // material settings. Flattening one over the other reproduces what a faint
     // line on a panel actually looks like, as one opaque colour the compositor
-    // cannot composite wrong. (On greensteel this lands a step away from the
-    // hand-picked inactive stop in the user's own hyprland theme conf, which
-    // is the derivation agreeing with taste.)
+    // cannot composite wrong. (Next to a hand-picked inactive stop in the
+    // user's own hyprland theme conf this lands a step away, which is the
+    // derivation agreeing with taste.)
     readonly property color inactiveBorder: {
         const line = Appearance.colour.separator;
         const ground = Appearance.colour.surfaceSolid;

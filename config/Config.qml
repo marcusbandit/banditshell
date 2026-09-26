@@ -20,7 +20,7 @@ Singleton {
     readonly property string path: `${dir}/config.json`
 
     readonly property var defaults: ({
-            // Name from Themes.qml. Try "greensteel".
+            // Name from Themes.qml. Try "slate".
             theme: "slate",
 
             // DRESS THE SHELL IN THE WALLPAPER'S OWN COLOURS instead of the
@@ -1712,14 +1712,15 @@ Singleton {
                 // THIS FAR DOWN because of the font. Monocraft's stems are one
                 // device pixel, so there is nothing for anti-aliasing to work
                 // with and mid-tones turn the text to mush; DESIGN.md section 6
-                // is blunt about it - pixel text goes on abyss or void, never on
-                // a mid-tone. A wallpaper is a picture with a bright part
-                // somewhere, and the clock has to be legible over whichever part
-                // it lands on, so the ground goes back until it is a ground.
+                // is blunt about it - pixel text goes on a dark ramp stop,
+                // never on a mid-tone. A wallpaper is a picture with a bright
+                // part somewhere, and the clock has to be legible over
+                // whichever part it lands on, so the ground goes back until it
+                // is a ground.
                 dim: 0.8,
 
-                // Pulled toward grey as well as down. The shell is one cool
-                // green hue family and a wallpaper is not: left saturated, the
+                // Pulled toward grey as well as down. The shell is one cool hue
+                // family and a wallpaper is not: left saturated, the
                 // ground argues with the chassis sitting on it instead of
                 // receding behind it. Enough that the picture reads as material,
                 // not so much that it stops being the wallpaper.

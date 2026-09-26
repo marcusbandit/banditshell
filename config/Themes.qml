@@ -14,10 +14,10 @@ import Quickshell.Io
 // derivation layer never knew where the colours came from, only what shape they
 // arrive in.
 //
-// The two literal themes at the bottom are the FLOOR, not the menu. They are
-// what the shell wears while palette.json is missing, unreadable or not a
-// palette, so a renderer that is not there yet costs a wrong colour rather than
-// a black desktop. The moment the file parses, it wins.
+// The one literal theme at the bottom is the FLOOR, not the menu. It is what
+// the shell wears while palette.json is missing, unreadable or not a palette,
+// so a renderer that is not there yet costs a wrong colour rather than a
+// black desktop. The moment the file parses, it wins.
 //
 // A theme is a luminance RAMP plus three saturated ACCENTS and one ALARM. It
 // never names a widget: "which colour is the panel" is a decision for
@@ -40,12 +40,11 @@ Singleton {
     property int retries: 0
     readonly property int rapidRetries: 5
 
-    readonly property string fallback: "greensteel"
+    readonly property string fallback: "slate"
 
     // The literal palettes, reachable by name only while the renderer is not
     // answering, which is the entire job they have left.
     readonly property var literals: ({
-            greensteel: greensteel,
             slate: slate
         })
 
@@ -461,31 +460,14 @@ Singleton {
 
     // ---------------------------------------------------------------- fallback
     //
-    // FROM HERE DOWN IS THE COLD START, and nothing else. These two are what
-    // the shell wears before palette.json has been read and if it never can be.
-    // They are kept literal on purpose: a fallback that had to read a file
-    // would have the same failure as the thing it is covering for.
+    // FROM HERE DOWN IS THE COLD START, and nothing else. This is what the
+    // shell wears before palette.json has been read and if it never can be.
+    // It is kept literal on purpose: a fallback that had to read a file would
+    // have the same failure as the thing it is covering for.
 
-    // Cool anodised-green metal. Kept in step with
-    // ~/.config/hypr/theme/greensteel.conf: same names, same values, so the
-    // shell and the compositor's window borders are one object.
-    readonly property Theme greensteel: Theme {
-        name: "greensteel"
-        //     void      abyss     dark      plate     body      brushed
-        ramp: ["#070c0a", "#0d1512", "#16211c", "#1b2a23", "#22322b", "#33493f",
-            //  edge      lit       pale      silver    chrome
-            "#4c6b5c", "#6e9384", "#9dbdaf", "#c9e2d7", "#eaf6f0"]
-        dim: "#3fbf8f"      // verdigris
-        mid: "#5fd99a"      // lush
-        bright: "#8cffc0"   // phosphor
-        // Orange, not red: red and green are the pair a colour blindness
-        // flattens, and this must never read as the accent.
-        alarm: "#ff6b3d"    // flare
-    }
-
-    // The same metal with the green taken out. Also the shape every rendered
-    // palette is measured against: `normalise` takes its ramp length as the
-    // number of stops a palette owes the shell.
+    // The steel the shell is named for. Also the shape every rendered palette
+    // is measured against: `normalise` takes its ramp length as the number of
+    // stops a palette owes the shell.
     readonly property Theme slate: Theme {
         name: "slate"
         ramp: ["#08090b", "#0f1114", "#181b1f", "#1d2126", "#262b31", "#3a4149",
