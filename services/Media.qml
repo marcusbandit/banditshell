@@ -63,10 +63,12 @@ Singleton {
     // fetched value is fresh enough.
     property bool adoptNext: false
 
+    // WHAT TRACK IS THIS. The player's word is taken again only when this
+    // changes: a track change is the one moment the clock is theirs.
+    readonly property string trackKey: (active?.trackId ?? "") + "/" + (active?.trackTitle ?? "")
+
     onTrackKeyChanged: {
         root.adoptNext = true;
-        root.freshTrack = true;
-        freshWindow.restart();
         root.active?.positionChanged();
     }
 
