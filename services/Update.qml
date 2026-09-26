@@ -68,10 +68,11 @@ Singleton {
     // flag and only the collectors clear it.
     property bool checking: false
 
-    // WHICH BRANCH IS TRACKED, a setting and not a decision of this file's:
-    // main today, dev or release when there is a real split to track. The
-    // binding makes the branch's `changed` signal the re-check's trigger, so
-    // flipping it in the menu asks the new branch's question at once.
+    // WHICH BRANCH IS TRACKED, a setting and not a decision of this file's,
+    // and a CONFIG choice, not a menu one: `updates.branch` in config.json,
+    // main by default. The binding makes the branch's `changed` signal the
+    // re-check's trigger, so editing the file asks the new branch's question
+    // at once, live, like every other setting.
     readonly property string branch: Config.values.updates.branch
     readonly property string remote: Config.values.updates.remote
 
@@ -162,11 +163,11 @@ Singleton {
         onTriggered: root.check()
     }
 
-    // A branch flip re-asks at once. The Timer above carries the schedule; this
-    // carries the menu's promise that picking a branch answers immediately.
-    // Guarded by NAME as well as by `checking`, because the binding also fires
-    // once at startup with the value it was already going to say, and that is
-    // not a flip.
+    // A branch flip re-asks at once. The Timer above carries the schedule;
+    // this carries Config's own promise - edit config.json and the shell
+    // follows live. Guarded by NAME as well as by `checking`, because the
+    // binding also fires once at startup with the value it was already going
+    // to say, and that is not a flip.
     property string checkedBranch: ""
     onBranchChanged: if (root.branch !== root.checkedBranch)
         root.check()

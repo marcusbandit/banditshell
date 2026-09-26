@@ -493,8 +493,8 @@ banditshell/
 │   │                            downloading -> downloaded (blue, and
 │   │                            terminal until a restart). The download is a
 │   │                            fast-forward OR NOTHING, the restart goes
-│   │                            through the CLI, and the branch tracked is a
-│   │                            setting the menu writes
+│   │                            through the CLI, and the branch tracked is
+│   │                            a config choice, never a menu one
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -605,12 +605,11 @@ banditshell/
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
-│   │       └── UpdateMenu.qml   the update's menu: the branch the check was
-│   │                            made against (dev / release, written through
-│   │                            Config), what it found, and the one deed the
-│   │                            state asks for - download in the red state,
-│   │                            restart in the blue one, the same slot
-│   │                            trading deeds
+│   │       └── UpdateMenu.qml   the update's menu: what the check found and
+│   │                            the one deed the state asks for - download
+│   │                            in the red state, restart in the blue one,
+│   │                            search in the quiet one. The branch is
+│   │                            named, not chosen: it is a config choice
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because

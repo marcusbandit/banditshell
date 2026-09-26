@@ -2013,15 +2013,15 @@ Singleton {
 
             // THE SHELL WATCHING ITS OWN PUBLIC REPO for pushes, and saying so
             // above the clock. See services/Update.qml, the sidebar's
-            // UpdateIndicator and the menu behind it.
+            // update marker and the menu behind it.
             updates: {
-                // WHICH BRANCH IS TRACKED. `main`, because that is the branch
-                // development actually pushes to today; the menu offers dev and
-                // release beside it for the day there is a real split, and
-                // changing the choice re-checks at once rather than waiting a
-                // cycle. A branch that does not exist on the remote is not a
-                // broken check: the error is said in the menu and the indicator
-                // stays quiet.
+                // WHICH BRANCH IS TRACKED. A CONFIG-FILE CHOICE and not a menu
+                // one - the menu reports the branch its numbers were counted
+                // against, but does not offer it. main, which is what the
+                // shell actually ships from today; point it at dev or release
+                // here the day there is a real split. A branch that does not
+                // exist on the remote is not a broken check: the error is said
+                // in the menu and the marker stays quiet.
                 branch: "main",
 
                 // WHICH REMOTE to ask. The public GitHub, never `banditbox`:

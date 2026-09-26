@@ -5,21 +5,20 @@ import qs.config
 import qs.components
 import qs.services
 
-// The update menu: which branch is tracked, what the check found, and the one
-// deed the state is asking for.
+// The update menu: what the check found, and the one deed the state is asking
+// for.
 //
 // A SMALL MENU ON PURPOSE. The marker above the clock already carries the
 // alarm; this panel's job is to resolve it in one press, and every row in here
-// exists to serve that: the branch the check was made against, the count it
-// found, and the action - "Download Update" in the red state, "Restart the
-// shell" in the blue one, "Search for update" when nothing is confirmed - the
-// same slot trading deeds as the state moves, because at most one of them can
-// be true at a time.
+// exists to serve that: the count the check found, and the action - "Download
+// Update" in the red state, "Restart the shell" in the blue one, "Search for
+// update" when nothing is confirmed - the same slot trading deeds as the
+// state moves, because at most one of them can be true at a time.
 //
-// The BRANCH CHOICE lives in here rather than in a settings page, for the
-// reason the clock's zones do: a tracker and its question belong together, and
-// "which branch do I follow" is asked exactly when the answer is wanted.
-// Written through Config.set, so the choice survives the session.
+// The BRANCH is deliberately not in here. Which branch is tracked is
+// configuration, not a choice a menu offers: it is `updates.branch` in
+// config.json, and the panel says which one its numbers were counted against
+// so a person reading it always knows the answer they got.
 Column {
     id: root
 
@@ -68,41 +67,6 @@ Column {
         color: Appearance.colour.textFaint
         font.pixelSize: Appearance.font.size.small
         wrapMode: Text.WordWrap
-    }
-
-    Separator {
-        width: parent.width
-    }
-
-    // THE BRANCH, as the choice it is. Three named tracks, exactly one
-    // followed; a Segments and not a switch for the reason Segments' header
-    // spends. Picking one writes the setting and re-checks at once, so the
-    // panel's numbers above are the new branch's numbers by the time you read
-    // them.
-    Column {
-        width: parent.width
-        spacing: 0
-
-        StyledText {
-            leftPadding: Appearance.padding.normal
-            text: "branch"
-            font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.textFaint
-        }
-
-        Segments {
-            id: branchChoice
-
-            // THE THREE NAMES, in the order offered: the channel the shell
-            // actually ships from first. These are branch NAMES, not labels -
-            // what a pick does is point the next check at that ref on GitHub,
-            // and a ref that does not exist yet is said in the panel above
-            // rather than hidden here.
-            options: ["dev", "main", "release"]
-            current: Math.max(0, branchChoice.options.indexOf(Update.branch))
-
-            onPicked: index => Config.set("updates.branch", branchChoice.options[index])
-        }
     }
 
     Separator {
