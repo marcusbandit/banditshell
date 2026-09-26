@@ -746,6 +746,20 @@ PanelWindow {
                 if (!open)
                     menuLayer.hide();
             }
+
+            // THE UPDATE INDICATOR, under the calendar's handlers in this same
+            // block because it is one control's menu too. No hover route and
+            // no pull (UpdateIndicator says why), so there is no release to
+            // forward: the tap is the whole gesture, always deliberate, and
+            // the gauges' toggle applies unchanged - a second tap on a pinned
+            // update menu puts it away.
+            function onUpdateRequested(deliberate: bool): void {
+                if (deliberate && menuLayer.pinned && menuLayer.currentKey === "update") {
+                    menuLayer.hide();
+                    return;
+                }
+                win.openMenu("update", deliberate);
+            }
         }
 
         NotificationTray {

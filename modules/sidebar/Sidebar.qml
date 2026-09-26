@@ -1,6 +1,11 @@
 import QtQuick
 import Quickshell
 import qs.config
+// QUALIFIED, for the same reason Clock.qml below imports it qualified: this
+// directory HAS a Clock, and an unqualified import would put the services
+// singleton of the same name in one scope with it. Only the Update service is
+// read here, so only it needs the module.
+import qs.services as Services
 import qs.modules.menu.content
 
 // What the sidebar contains.
@@ -73,14 +78,20 @@ Item {
     signal clockPulled
     signal clockPullEnded(bool open)
 
+    // AND THE UPDATE INDICATOR'S. No hover route and no pull, so one word
+    // carries it: every open it asks for is deliberate by construction, and a
+    // second tap on a pinned update menu puts it away by the same toggle the
+    // gauges keep.
+    signal updateRequested(bool deliberate)
+
     // Every key that opens a menu, in the order they are down the bar: the
     // tray, then the clock's own two panels, then the gauges. The CLI lists
     // these and opens by name, so both are drivable from a terminal exactly as
     // a tray item or a gauge is.
     //
-    // The clock comes before the calendar because the TIME is drawn above the
-    // DATE, and this list is the bar read top to bottom.
-    readonly property var menuItems: [...tray.items, root.clockEntry, root.calendarEntry, ...status.items]
+    // The update indicator comes before the clock because it stands ABOVE the
+    // clock, and this list is the bar read top to bottom.
+    readonly property var menuItems: [...tray.items, root.updateEntry, root.clockEntry, root.calendarEntry, ...status.items]
     readonly property var menuKeys: root.menuItems.map(i => i.key)
 
     // The calendar's row, in the exact shape the tray and the gauges declare
@@ -108,17 +119,27 @@ Item {
             body: clockMenu
         })
 
+    // The update's row, in the same shape again. Its title is WHAT IS BEING
+    // TRACKED rather than the word "update", because a panel's first line
+    // should answer a question and "update" is not one: "dev" names the branch
+    // the numbers in the panel were counted against.
+    readonly property var updateEntry: ({
+            key: "update",
+            title: `update · ${Services.Update.branch}`,
+            body: updateMenu
+        })
+
     // WHICH GROUP OWNS A KEY, answered here so nothing above the sidebar has to
     // know there is more than one. Asked in the same order the bar is read in;
     // the clock's two keys answer between the two groups because that is where
     // the clock sits, and they are straight comparisons rather than a search
     // because the clock is one control, not a list of them.
     function entryFor(key: string): var {
-        return tray.entryFor(key) ?? (key === "clock" ? root.clockEntry : key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
+        return tray.entryFor(key) ?? (key === "update" ? root.updateEntry : key === "clock" ? root.clockEntry : key === "calendar" ? root.calendarEntry : null) ?? status.entryFor(key);
     }
 
     function iconFor(key: string): Item {
-        return tray.iconFor(key) ?? (key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
+        return tray.iconFor(key) ?? (key === "update" ? update : key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
     // HOW MUCH THE FLOOR HAS RISEN by the time it is `inset` in from the side of
@@ -229,6 +250,21 @@ Item {
 
         spacing: Appearance.padding.large
 
+        // THE UPDATE MARKER, above the clock because that placement IS the
+        // alarm when it has news: it stands in the place the eye already
+        // visits wearing a colour nothing else in the bar wears. Always
+        // present - grey and a size down while nothing is confirmed, the way
+        // in to "search for update" - and red or full-size only when there is
+        // news. See UpdateIndicator.
+        UpdateIndicator {
+            id: update
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            onRequested: deliberate => root.updateRequested(deliberate)
+        }
+
         // FULL WIDTH now, where it used to centre itself: the date became a
         // control aimed at across the whole band, and a target can only be as
         // wide as the thing that was given the width (StatusIcon's lesson,
@@ -279,5 +315,13 @@ Item {
         id: clockMenu
 
         ClockMenu {}
+    }
+
+    // The update panel's body, the same contract: the update is one control
+    // with one menu, named by this file's own entry.
+    Component {
+        id: updateMenu
+
+        UpdateMenu {}
     }
 }

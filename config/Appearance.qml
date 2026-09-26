@@ -196,6 +196,14 @@ Singleton {
         // straight off Config only because it is a list of COLOURS, and this is
         // where the shell keeps those.
         readonly property var terminalPalette: root.cfg.files.terminal.palette
+
+        // THE UPDATE INDICATOR'S TWO, from config's `updates` block and not from
+        // the ramp, for the terminal palette's reason: these carry a meaning the
+        // theme did not choose. Red says a push is waiting on GitHub; blue says
+        // it is downloaded and a restart will apply it.
+        readonly property color updateAvailable: root.cfg.updates.availableColour
+        readonly property color updateReady: root.cfg.updates.readyColour
+
         // The screen-corner frame. Not from the ramp: it is meant to read as the
         // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour

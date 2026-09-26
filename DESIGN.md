@@ -485,6 +485,16 @@ banditshell/
 │   ├── Files.qml                the file browser's whole mind: where it is,
 │   │                            what is there, and the shell session it is
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17
+│   ├── Update.qml               whether the public repo is ahead of this
+│   │                            checkout, found by fetching the tracked
+│   │                            branch at every launch and counting what it
+│   │                            has that HEAD does not. Four states, one
+│   │                            direction: idle -> available (red) ->
+│   │                            downloading -> downloaded (blue, and
+│   │                            terminal until a restart). The download is a
+│   │                            fast-forward OR NOTHING, the restart goes
+│   │                            through the CLI, and the branch tracked is a
+│   │                            setting the menu writes
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -594,7 +604,13 @@ banditshell/
 │   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
-│   │       └── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
+│   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
+│   │       └── UpdateMenu.qml   the update's menu: the branch the check was
+│   │                            made against (dev / release, written through
+│   │                            Config), what it found, and the one deed the
+│   │                            state asks for - download in the red state,
+│   │                            restart in the blue one, the same slot
+│   │                            trading deeds
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because
@@ -650,6 +666,12 @@ banditshell/
 │       ├── WorkspaceBlocks.qml  style: one square per window, on the pixel grid
 │       ├── StatusIcons.qml      the status section, rendered from data
 │       ├── StatusIcon.qml       one indicator, service-agnostic
+│       ├── UpdateIndicator.qml  the update, ABOVE the clock: a grey mark a
+│       │                        size down while nothing is confirmed, red
+│       │                        while a push waits on GitHub, blue once
+│       │                        downloaded. The placement is the alarm - it
+│       │                        stands where the eye already goes, wearing
+│       │                        colours no ramp supplies
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 ├── scripts/

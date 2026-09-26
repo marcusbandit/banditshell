@@ -2009,6 +2009,38 @@ Singleton {
                 // networks nobody could reach. This is a ceiling on how tall a
                 // menu is DRAWN, not on how much it may contain.
                 maxHeight: 1000
+            },
+
+            // THE SHELL WATCHING ITS OWN PUBLIC REPO for pushes, and saying so
+            // above the clock. See services/Update.qml, the sidebar's
+            // UpdateIndicator and the menu behind it.
+            updates: {
+                // WHICH BRANCH IS TRACKED. `main`, because that is the branch
+                // development actually pushes to today; the menu offers dev and
+                // release beside it for the day there is a real split, and
+                // changing the choice re-checks at once rather than waiting a
+                // cycle. A branch that does not exist on the remote is not a
+                // broken check: the error is said in the menu and the indicator
+                // stays quiet.
+                branch: "main",
+
+                // WHICH REMOTE to ask. The public GitHub, never `banditbox`:
+                // the question is what has been PUSHED, not what the LAN copy
+                // happens to hold.
+                remote: "origin",
+
+                // MINUTES BETWEEN CHECKS while the shell is up. The check at
+                // launch is not configurable - it is the whole point - and 0
+                // makes the launch the only automatic one.
+                interval: 30,
+
+                // THE INDICATOR'S TWO, in hex and not on the ramp, for the
+                // terminal palette's reason (see Appearance): red and blue are
+                // the state's own convention - "a push is waiting" and
+                // "downloaded, restart to apply" - and a theme that has decided
+                // everything is green does not get a vote on them.
+                availableColour: "#ff5252",
+                readyColour: "#4da3ff"
             }
         })
 
