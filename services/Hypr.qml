@@ -54,52 +54,73 @@ Singleton {
     // number above from "how many workspaces there are" into "how long one
     // screen's run is".
     //
-    // A monitor owns a CONTIGUOUS BAND: the k-th CONNECTED name in
-    // `sidebar.workspaces.order` owns [k*count + 1 .. k*count + count], so with
-    // a five-slot column the first screen owns 1-5 and the second 6-10. One
-    // number, k, is the whole of a monitor's claim, and both ends of the band
-    // fall out of it and `count` rather than being written down anywhere (see
-    // ~/.claude/rules/math-over-hardcoding.md): lengthen the column and every
-    // band lengthens with it, on every screen, with nothing to keep in step.
+    // A monitor owns a CONTIGUOUS BAND: the k-th band owns
+    // [first .. last], and the shell writes those runs so that a five-slot
+    // column puts the first screen on 1-5 and the second on 6-10. One
+    // number, the band's first, is the whole of a monitor's claim, and both
+    // ends of the band fall out of it and `count` rather than being written
+    // down anywhere (see ~/.claude/rules/math-over-hardcoding.md): lengthen
+    // the column and every band lengthens with it, on every screen, with
+    // nothing to keep in step.
     //
     // CONTIGUOUS, and not interleaved. Odds on one screen and evens on the
     // other would also partition the numbers, and it would be unusable: the
     // workspace numbers are what you type into a keybind, and a run you can
-    // say out loud ("one to five is the laptop") is the only arrangement a hand
-    // can learn. It is also the arrangement `rules.conf` is already written in
-    // on any machine that has thought about this at all, which is what makes
-    // the seed below possible.
+    // say out loud ("one to five is the laptop") is the only arrangement a
+    // hand can learn.
     //
-    // AN ORDER OF NAMES, never anything the compositor numbers. Hyprland hands
-    // out monitor ids in plug order, so pulling one cable renumbers the screens
-    // that are left, and a band keyed to an id would change which workspaces a
-    // screen draws while you were looking at it. Nor anything spatial: where a
-    // monitor sits is something the shell can only guess at from layout
-    // coordinates, and guessing would make the answer move when the desk did.
-    // A name is the one handle on a screen that holds still.
-    readonly property var order: Config.values.sidebar.workspaces.order
+    // WHERE THE BANDS LIVE is the config's managed section, not a setting
+    // here. The user's own Lua emits the workspace rules from it, so the
+    // file is the only representation and there is nothing for this file to
+    // push: an edit in the settings is a splice into that table, and a hand
+    // edit in the file is what the settings show, on the next scan. There
+    // is no seed, no diff and no `hyprctl keyword` push any more -- the
+    // compositor reads the same file the page does, at reload, and one
+    // representation cannot drift from the other because there is no other.
+    readonly property var bands: HyprConfig.bands.filter(b => !b.dynamic && b.path?.[1] === HyprConfig.hostName)
 
-    // THE ORDER WITH THE UNPLUGGED SCREENS TAKEN OUT, which is what bands are
-    // counted off. A screen that is not here cannot hold a band: alone on the
-    // laptop, eDP-1 is first and owns 1-5 however many desk monitors the order
-    // still lists ahead of it, and that is the same rule that gives it 11-15
-    // when they are all plugged in.
+    // THE ORDER OF NAMES the bands spell, plus anything connected that no
+    // band has claimed. Banded outputs come first, sorted by the workspace
+    // each band starts at -- 1-5 on one output and 6-10 on another IS "this
+    // one, then that one", spelled in the one place a desktop ever spells
+    // it -- and an unclaimed screen is appended in the order Quickshell
+    // hands the screens over, because a monitor plugged in next week still
+    // needs a place in every list that indexes a column per screen.
     //
-    // `order` itself is untouched, so plugging the desk back in puts every
-    // screen back on exactly the workspaces it had.
-    readonly property var live: root.order.filter(name => root.outputs.indexOf(name) >= 0)
+    // A band may name a screen that is not plugged in, and that is the
+    // reservation it was: the entry persists in the file, the cable comes
+    // back, and the screen wears the workspaces it wore. Nothing here
+    // removes and nothing here reorders -- this is a VIEW of the managed
+    // section, and the settings page's edits are edits to the section.
+    readonly property var order: {
+        const banded = root.bands.filter(b => !b.invalid).sort((a, b) => a.first - b.first).map(b => b.monitor);
+        const out = banded.slice();
+        for (const s of Quickshell.screens)
+            if (out.indexOf(s.name) < 0)
+                out.push(s.name);
+        return out;
+    }
 
     // THE FIRST WORKSPACE OF A SCREEN'S RUN, which is the only number a
-    // per-screen consumer needs: everything else in its column is this plus an
-    // index, and every id it produces is a real workspace, so `switchTo` and
-    // `clientsIn` go on meaning exactly what they meant.
+    // per-screen consumer needs: everything else in its column is this plus
+    // an index, and every id it produces is a real workspace, so `switchTo`
+    // and `clientsIn` go on meaning exactly what they meant.
     //
-    // A NAME `live` HAS NOT HEARD OF GETS THE FIRST BAND rather than nothing.
-    // That is a monitor in the moment before the seed below catches up with it,
-    // or the whole of a session where the config could not be read, and a
-    // column with no workspaces in it is a column that draws nothing at all.
+    // A SCREEN NO BAND CLAIMS stands past the last band that exists, which
+    // is the fallback the old plug-order arithmetic approximated and the
+    // honest version of it: the next free run is where a new monitor goes,
+    // and assigning it for real is one edit in the settings page -- never a
+    // write this file makes on its own, because a desktop that quietly
+    // rewrites the config at boot is a desktop nobody agreed to.
     function bandFor(screen: string): int {
-        return Math.max(0, root.live.indexOf(screen)) * root.count + 1;
+        const b = root.bands.find(x => x.monitor === screen && !x.invalid);
+        if (b)
+            return b.first;
+        let last = 0;
+        for (const b of root.bands)
+            if (!b.invalid)
+                last = Math.max(last, b.last);
+        return last + 1;
     }
 
     // WHERE EACH MONITOR IS, by monitor name, as a NUMBERED workspace.
@@ -133,255 +154,15 @@ Singleton {
         return root.activeByMonitor[screen] || root.bandFor(screen);
     }
 
-    // WHAT THE COMPOSITOR'S RULES ALREADY SAY, as { "6": "DP-1" }: which output
-    // each numbered workspace is bound to in the config Hyprland has read.
-    //
-    // Asked of `hyprctl workspacerules` rather than read off `rules.conf`,
-    // because the file is the user's to organise however they like and this is
-    // only ever a question about what is in force. Two things are built on it:
-    // the seed, which recovers the band order from it, and the apply, which
-    // diffs against it so that nothing is pushed at a compositor that already
-    // agrees.
-    property var ruleMonitor: ({})
+    // THE WAIT HOME() SITS THROUGH: the bands have to have been read off the
+    // managed section, because until they have, `bandFor` cannot tell the
+    // second screen from the first and the question "are you somewhere your
+    // screen draws" would fire the very switch it exists to not fire. See
+    // Config.loaded for why an unread file and an unset key are the same
+    // emptiness until that flips.
+    readonly property bool settled: HyprConfig.ready && Config.loaded
 
-    // Whether that answer has arrived, which is NOT the same as it being empty.
-    // A machine with no workspace rules at all is a real machine, and both the
-    // seed and `home` below have to be able to tell "there are none" from "we
-    // have not asked yet".
-    property bool banded: false
-
-    // BOTH ANSWERS THE SEED NEEDS, because it writes and a writer cannot go
-    // early. The compositor's rules are one; the config file it would otherwise
-    // be about to overwrite is the other. See Config.loaded for why an unread
-    // file and an unset key are the same emptiness until that flips.
-    readonly property bool settled: root.banded && Config.loaded
-
-    // The outputs Quickshell knows about, by name, as a plain list so that a
-    // monitor arriving or leaving is a value change this file can hear. Reading
-    // `Quickshell.screens` inside `reband` alone would tie the seed to whenever
-    // something else happened to run it.
-    readonly property var outputs: {
-        const out = [];
-        for (const s of Quickshell.screens)
-            out.push(s.name);
-        return out;
-    }
-
-    onSettledChanged: {
-        root.reband();
-        root.home();
-    }
-    onOutputsChanged: root.reband()
-
-    // AND WRITING THE KEY IS THE WHOLE OF REORDERING, which is what makes the
-    // settings page a settings page rather than a second implementation of
-    // this file. Move a name, `Config.set` the list, and the compositor is told
-    // by the handler below; no caller has to remember to also call
-    // `applyBands`, and no caller can forget and leave the shell drawing bands
-    // the desktop does not have.
-    //
-    // It fires more often than it strictly needs to, because `Config.set` deep
-    // copies the whole settings object and hands back a new array every time
-    // ANY setting changes. That costs one comparison per workspace against a
-    // map that already agrees, which is nothing, and the alternative is a
-    // notification this file would have to be told about by hand.
-    onOrderChanged: root.applyBands()
-
-    // Seed, then tell the compositor if the two disagree.
-    //
-    // The apply is skipped when the seed WROTE, because writing the order fires
-    // the handler above and that has already pushed it: asking again a line
-    // later would be the same keywords a second time, at a compositor that
-    // heard them the first time. The other path is the one that needs this
-    // call, and it is the reload: the rules moved under an order that did not.
-    function reband(): void {
-        if (!root.settled)
-            return;
-        if (!root.adopt())
-            root.applyBands();
-    }
-
-    // THE ORDER, SEEDED FROM THE COMPOSITOR AND THEN LEFT ALONE.
-    //
-    // The band model needs a list of names and there is no honest way to invent
-    // one: which screen is "first" is a question about where you sit, and the
-    // shell cannot see the desk. But the compositor has already been told the
-    // answer. `rules.conf` binds workspaces to outputs, so grouping those rules
-    // by monitor and sorting each monitor by the LOWEST workspace it was given
-    // recovers the order the user has already written down. 1-5 on one output
-    // and 6-10 on another IS "this one, then that one", spelled in the one
-    // place a desktop ever spells it.
-    //
-    // Which means the first run reproduces exactly what the machine was already
-    // doing, and nothing moves. That is the whole reason for seeding rather
-    // than defaulting: a shell that picked an order of its own would reshuffle
-    // a working desktop on the day it was installed, and would be right about
-    // it roughly half the time.
-    //
-    // ONCE. After the seed the list belongs to the user, so a rule changed in
-    // `rules.conf` afterwards does not quietly rewrite it: by then the list is
-    // what the settings page reorders and the compositor is what gets told.
-    //
-    // A MONITOR NO RULE MENTIONS IS APPENDED, in the order Quickshell hands the
-    // screens over, and that part is not once: a monitor plugged in next week
-    // needs a band of its own rather than sharing the first one. Appended and
-    // never removed, which is why unplugging a screen leaves its place in the
-    // list and plugging it back in puts it on the same workspaces it had.
-    //
-    // ONLY EVER APPENDS, which is what makes the length a complete test for
-    // "did anything change". Nothing here reorders and nothing drops, so a list
-    // that is the same length is the same list, and the config file is left
-    // alone on every run after the first. That test is also the return value,
-    // for the one caller that has to know whether a write happened.
-    function adopt(): bool {
-        const next = root.order.slice();
-
-        if (!next.length) {
-            const lowest = {};
-            for (const id in root.ruleMonitor) {
-                const mon = root.ruleMonitor[id];
-                const n = parseInt(id, 10);
-                if (!(mon in lowest) || n < lowest[mon])
-                    lowest[mon] = n;
-            }
-            for (const mon of Object.keys(lowest).sort((a, b) => lowest[a] - lowest[b]))
-                next.push(mon);
-        }
-
-        for (const name of root.outputs)
-            if (next.indexOf(name) < 0)
-                next.push(name);
-
-        if (next.length === root.order.length)
-            return false;
-
-        Config.set("sidebar.workspaces.order", next);
-        return true;
-    }
-
-    // WHAT THE ORDER WANTS, in the same { workspace: monitor } shape the rules
-    // come back in, so the two can simply be compared. Every band, every slot
-    // in it, from the count.
-    //
-    // Off `live` for `bandFor`'s reason: binding a workspace to a monitor that
-    // is not plugged in is a rule the compositor cannot honour, and it is the
-    // rule that was stranding 1-5 on an absent screen.
-    function wants(): var {
-        const out = {};
-        for (let k = 0; k < root.live.length; k++)
-            for (let i = 0; i < root.count; i++)
-                out[`${k * root.count + i + 1}`] = root.live[k];
-        return out;
-    }
-
-    // TELL THE COMPOSITOR WHERE THE BANDS ARE, for the workspaces whose answer
-    // has actually changed and for no others.
-    //
-    // A BINDING, AND NOTHING ELSE. `rules.conf` is never rewritten, and the
-    // reason is load-bearing rather than tidy: `workspacerules -j` reports
-    // `workspaceString`, `enabled` and `monitor`, and that is ALL it reports.
-    // A rule carrying `layout:scrolling, layoutopt:direction:down` comes back
-    // looking exactly like one that carries nothing, so a shell that read the
-    // rules and wrote them out again would silently delete every option it
-    // could not see. It can only ever add a binding on top of what is there,
-    // which is precisely what `hyprctl keyword` does.
-    //
-    // AND A KEYWORD IS RUNTIME STATE. It lives until the next `hyprctl reload`,
-    // which puts the file's own rules back over it, so this is re-run on
-    // `configReloaded` and the diff is taken against the FILE's answer rather
-    // than against whatever was pushed last time. That is also why the rules
-    // are re-read there before this runs: a reload is the one moment the file
-    // can have said something new.
-    //
-    // ONE BATCH rather than one process per workspace. Two screens of five is
-    // ten keywords, and ten hyprctl processes to say one thing is nine more
-    // than the compositor needs to hear it.
-    //
-    // NOTHING TO SAY IS SAID BY SAYING NOTHING, which is what keeps this off
-    // the startup path. On any machine whose order was seeded from its own
-    // rules the diff is empty, so the cost at boot is one comparison and no
-    // process at all; it only speaks once somebody has actually moved a band.
-    function applyBands(): void {
-        // Nothing to diff against yet. Pushing here would compare every
-        // workspace against an answer nobody has given and conclude that all of
-        // them have moved, which is the one way this could shove a desktop
-        // around at startup for no reason at all.
-        if (!root.banded)
-            return;
-
-        // ONE PUSH AT A TIME, and the next answer is REMEMBERED rather than
-        // dropped. A Process cannot be re-commanded while it is running, and
-        // two clicks of a reorder button are milliseconds apart where an
-        // hyprctl round trip is several: the second answer would be the true
-        // one and the compositor would be left holding the first. Queued, it
-        // goes out the moment the process is done.
-        if (pusher.running) {
-            root.pushAgain = true;
-            return;
-        }
-
-        const want = root.wants();
-        const cmds = [];
-        for (const id in want)
-            if (root.ruleMonitor[id] !== want[id])
-                cmds.push(`keyword workspace ${id}, monitor:${want[id]}`);
-
-        if (!cmds.length)
-            return;
-
-        pusher.command = ["hyprctl", "--batch", cmds.join(" ; ")];
-        pusher.running = true;
-    }
-
-    property bool pushAgain: false
-
-    Process {
-        id: pusher
-
-        onExited: if (root.pushAgain) {
-            root.pushAgain = false;
-            root.applyBands();
-        }
-    }
-
-    Process {
-        id: ruleScan
-
-        running: true
-        command: ["hyprctl", "-j", "workspacerules"]
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                // Same tolerance the monitor seed below takes: hyprctl can come
-                // back empty or half-written while the compositor is starting,
-                // and a bad read is not worth an exception.
-                let rules = [];
-                try {
-                    rules = JSON.parse(text);
-                } catch (e) {}
-
-                const bound = {};
-                for (const r of rules) {
-                    // NUMBERED WORKSPACES ONLY. A rule can be written against
-                    // `special:music` or `name:build`, and neither is a place
-                    // in a band: a scratchpad is pulled over wherever you
-                    // already are, and a named workspace has no position in a
-                    // run. All digits or it is not a number, because parseInt
-                    // would happily read "10things" as ten and file a rule
-                    // under a workspace nobody wrote.
-                    if (r.monitor && /^\d+$/.test(r.workspaceString ?? ""))
-                        bound[r.workspaceString] = r.monitor;
-                }
-
-                root.ruleMonitor = bound;
-                root.banded = true;
-                // Called rather than left to `settled`, because after the first
-                // time `banded` is already true and a reload's re-read would
-                // change nothing anybody was listening to.
-                root.reband();
-            }
-        }
-    }
+    onSettledChanged: root.home()
 
     // HOME AT BOOT, and only when the shell would otherwise come up looking at
     // a workspace it has nowhere to draw. Where you are is the compositor's
@@ -1364,14 +1145,11 @@ Singleton {
             if (n === "configreloaded") {
                 root.configReloaded();
 
-                // AND THE BANDS ARE PUSHED AGAIN, which is this file taking its
-                // own signal's advice: a reload drops every `hyprctl keyword`
-                // and puts `rules.conf` back over it, so a band the user moved
-                // has just been un-moved underneath them. Re-READ before
-                // re-pushed, because a reload is the one moment the file can
-                // have said something new, and `ruleMonitor` is what the push
-                // diffs against; the scan calls `reband` when it lands.
-                ruleScan.running = true;
+                // AND THE BANDS ARE RE-READ, because a reload is the one moment
+                // the file can have said something new: HyprConfig hears the
+                // same event and rescans, and the bands model above is a view
+                // of that scan. Nothing is pushed anywhere -- the rules the
+                // reload put in force came out of the same file.
             }
 
             if (n === "activewindowv2") {

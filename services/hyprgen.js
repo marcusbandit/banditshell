@@ -127,9 +127,44 @@ function isIdent(c) {
     return /[A-Za-z0-9_]/.test(c);
 }
 
+// One Lua field value, read: { v, literal }. A quoted string or a number is
+// the value it spells; a bare identifier is the file's own named constant,
+// resolved through the alias table readLocal built, and a name the table does
+// not know (or an expression, or a call) is reported unresolved -- literal
+// false -- which is the scanner's way of saying the editor may not write it.
+function resolveLuaValue(raw, aliases) {
+    const t = String(raw ?? "").trim();
+    // No `s` flag here -- the V4 engine QML runs has no dotall -- and no
+    // need: a field value is one line of source, and `.*` reaching to the
+    // last quote on the line is the whole of what is being matched.
+    if (/^".*"$/.test(t) || /^'.*'$/.test(t))
+        return {
+            v: luaUnescape(t.slice(1, -1)),
+            literal: true
+        };
+    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t))
+        return {
+            v: +t,
+            literal: true
+        };
+    if (aliases && aliases[t] !== undefined)
+        return {
+            v: aliases[t],
+            literal: true
+        };
+    return {
+        v: t,
+        literal: false
+    };
+}
+
 function scanLua(src) {
     const s = String(src ?? "");
     const binds = [];
+    const monitors = [];
+    const outputTables = [];
+    const bands = [];
+    const bandTables = [];
     const requires = [];
     const foreign = [];
 
@@ -138,6 +173,21 @@ function scanLua(src) {
     let blockDepth = 0;
     let parenDepth = 0;
 
+    // TABLE AWARENESS, for the monitor entries. Monitor configuration in this
+    // config tree is not only `hl.monitor({...})` calls: lua/monitors.lua
+    // carries a host-keyed table whose `outputs` entries are the real lines,
+    // applied by a loop. Those entries are table literals with an `output`
+    // field, and an editor that can splice a bind can splice one -- the same
+    // raw-text contract, lines kept and replaced as they were read. The
+    // walker therefore tracks table-literal frames on a stack: a `{` pushes
+    // (carrying the field key that named it, if it has one), a `}` pops, and
+    // a frame whose fields include `output` is collected as a monitor entry.
+    // Top-level `local NAME = <string|number>` constants are kept as aliases,
+    // because the entries speak through them (`output = vertical_side`) and
+    // matching an output by name has to see through its own file's names.
+    const aliases = {};
+    const frames = [];
+    let pendingKey = null;
     // Line numbers of offsets, computed on the way out: counting newlines
     // while scanning is one comparison per character either way, but the
     // offsets are what survive edits, so they are the record kept here.
@@ -241,6 +291,23 @@ function scanLua(src) {
                 i = readCall(j);
                 continue;
             }
+            if (word === "local" && parenDepth === 0) {
+                i = readLocal(j);
+                continue;
+            }
+            // A table field key: an identifier followed by `=` inside a table
+            // literal. `for k = 1, n` is excluded by frames being empty at
+            // statement level, and `==` by the second character.
+            if (frames.length) {
+                let k = j;
+                while (s[k] === " " || s[k] === "\t")
+                    k++;
+                if (s[k] === "=" && s[k + 1] !== "=") {
+                    pendingKey = word;
+                    i = readFieldValue(k + 1);
+                    continue;
+                }
+            }
             i = j;
             continue;
         }
@@ -252,6 +319,25 @@ function scanLua(src) {
         }
         if (c === ")") {
             parenDepth = Math.max(0, parenDepth - 1);
+            i++;
+            continue;
+        }
+
+        if (c === "{") {
+            frames.push({
+                open: i,
+                line,
+                key: pendingKey,
+                fields: [],
+                entries: 0,
+                bands: 0
+            });
+            pendingKey = null;
+            i++;
+            continue;
+        }
+        if (c === "}") {
+            closeFrame(i);
             i++;
             continue;
         }
@@ -362,6 +448,265 @@ function scanLua(src) {
 
         line += raw.split("\n").length - 1;
         return callEnd;
+    }
+
+    // `local NAME = <string|number>`, at statement level: the named constants
+    // a file's monitor entries speak through. `local ultrawide = "HDMI-A-1"`
+    // is how lua/monitors.lua avoids repeating an output name, so matching an
+    // entry by output name has to resolve through it. Only string and number
+    // literals are kept -- anything else (a table, an expression) is beyond
+    // what an editor may claim to know -- and only at block depth zero,
+    // because a local inside a function is not a file-level fact. A table
+    // value is NOT consumed: the cursor stops on its `{` for the main loop.
+    function readLocal(pos) {
+        let j = pos;
+        while (s[j] === " " || s[j] === "\t")
+            j++;
+        let k = j;
+        while (k < s.length && isIdent(s[k]))
+            k++;
+        const name = s.slice(j, k);
+        j = k;
+        while (s[j] === " " || s[j] === "\t")
+            j++;
+        // `local function f()` is a BLOCK OPENER wearing a local's clothes:
+        // the word after `local` is the opener, not a name, and swallowing it
+        // here would leave the walker blind to the whole function's depth.
+        // Hand the cursor back and let the main loop read the opener itself.
+        if (OPENERS.includes(name) || CLOSERS.includes(name))
+            return pos;
+        if (!name || s[j] !== "=")
+            return j;
+        j++;
+        while (s[j] === " " || s[j] === "\t")
+            j++;
+        const q = s[j];
+        if (q === "\"" || q === "'") {
+            j++;
+            let v = "";
+            while (j < s.length && s[j] !== q) {
+                if (s[j] === "\\") {
+                    v += luaUnescape(s.slice(j, j + 2));
+                    j += 2;
+                    continue;
+                }
+                v += s[j++];
+            }
+            if (s[j] === q)
+                j++;
+            if (blockDepth === 0)
+                aliases[name] = v;
+            return j;
+        }
+        const num = /^-?(\d+\.?\d*|\.\d+)/.exec(s.slice(j, j + 32));
+        if (num) {
+            if (blockDepth === 0)
+                aliases[name] = +num[0];
+            return j + num[0].length;
+        }
+        // A table value names its frame: `local hosts = {` makes the frame
+        // the table `hosts`, which is how an outputs table's path can carry
+        // the name of the table it hangs off.
+        pendingKey = name;
+        return j;
+    }
+
+    // A FIELD'S VALUE, from just after its `=`. Read to the first top-level
+    // comma (consumed) or closing brace (NOT consumed -- the main loop must
+    // see it to close the frame), string- and comment-aware, with nested
+    // braces and parens carrying their own depth. A value that opens a table
+    // is not read at all: the cursor stops on the `{`, which the main loop
+    // pushes as a frame carrying the key that named it. Whatever was read is
+    // stored VERBATIM on the current frame, because writing an entry back
+    // means preserving the text it did not have to change.
+    function readFieldValue(pos) {
+        let j = pos;
+        while (s[j] === " " || s[j] === "\t")
+            j++;
+        if (s[j] === "{")
+            return j;
+        const start = j;
+        let depth = 0;
+        let end = -1;
+        while (j < s.length) {
+            const ch = s[j];
+            if (ch === "\"" || ch === "'") {
+                const quote = ch;
+                j++;
+                while (j < s.length && s[j] !== quote) {
+                    if (s[j] === "\\")
+                        j++;
+                    if (s[j] === "\n")
+                        line++;
+                    j++;
+                }
+                j++;
+                continue;
+            }
+            if (ch === "-" && s[j + 1] === "-") {
+                while (j < s.length && s[j] !== "\n")
+                    j++;
+                continue;
+            }
+            if (ch === "{" || ch === "(")
+                depth++;
+            else if (ch === "}" || ch === ")") {
+                if (depth === 0)
+                    break;
+                depth--;
+            } else if (ch === "," && depth === 0) {
+                j++;
+                end = j - 1;
+                break;
+            }
+            j++;
+        }
+        if (end < 0)
+            end = j;
+        const raw = s.slice(start, end).trim();
+        if (frames.length && raw)
+            frames[frames.length - 1].fields.push({
+                key: pendingKey,
+                raw
+            });
+        pendingKey = null;
+        line += s.slice(start, end).split("\n").length - 1;
+        return j;
+    }
+
+    // A table's closing brace. Frames without an `output` field (the hosts
+    // table itself, band tables, an `or {}`) pop silently; one with it is a
+    // monitor entry, and its parent -- the `outputs` table it stood in --
+    // counts it, so the append can later find a list worth joining. The same
+    // eye is kept for band entries (`monitor` with `first`/`last`), which is
+    // how the workspace assignment the shell manages is read back.
+    function closeFrame(at) {
+        const f = frames.pop();
+        if (!f)
+            return;
+        const path = frames.filter(x => x.key).map(x => x.key);
+        if (f.fields.some(x => x.key === "output")) {
+            collectMonitor(s.slice(f.open, at + 1), f, at, path);
+            if (frames.length)
+                frames[frames.length - 1].entries++;
+            return;
+        }
+        if (f.fields.some(x => x.key === "monitor") && f.fields.some(x => x.key === "workspaces")) {
+            collectBand(s.slice(f.open, at + 1), f, at, path);
+            if (frames.length)
+                frames[frames.length - 1].bands++;
+            return;
+        }
+        if (f.key === "outputs" && f.entries > 0)
+            outputTables.push({
+                startLine: f.line,
+                endLine: lineOf(at),
+                path: path.concat(f.key)
+            });
+        if (f.bands > 0)
+            bandTables.push({
+                startLine: f.line,
+                endLine: lineOf(at),
+                path: path.concat(f.key)
+            });
+    }
+
+    // One monitor entry, as source text, taken apart enough to be matched by
+    // output name and re-composed. The managed fields are read through the
+    // file's own aliases; an entry whose output or managed values cannot be
+    // resolved (a computed one, one born inside a function) comes back
+    // `dynamic`: shown, located, and read-only, the bind rule restated.
+    function collectMonitor(raw, f, at, path) {
+        const byKey = {};
+        for (const x of f.fields)
+            byKey[x.key] = x.raw;
+
+        const out = resolveLuaValue(byKey.output, aliases);
+        const entry = {
+            output: out.v,
+            dynamic: blockDepth > 0 || !out.literal,
+            raws: f.fields,
+            trailing: entryTrailing(at),
+            // The file's own named constants, carried so a compose can tell
+            // "unchanged" from "changed" without the file at hand.
+            aliases
+        };
+        for (const key of ["mode", "position", "scale", "transform", "vrr"]) {
+            if (byKey[key] === undefined)
+                continue;
+            const r = resolveLuaValue(byKey[key], aliases);
+            entry[key] = r.v;
+            if (!r.literal)
+                entry.dynamic = true;
+        }
+        entry.indent = entryIndent(f);
+        entry.startLine = f.line;
+        entry.endLine = lineOf(at);
+        entry.raw = raw.trim();
+        monitors.push(entry);
+    }
+
+    // One BAND entry, the same contract a monitor entry signs: a table
+    // literal speaking through the file's own names, read back with the
+    // fields the shell manages resolved and everything else kept verbatim.
+    // The workspaces field is the spec TEXT, verbatim -- the list, the
+    // ranges, the user's own punctuation -- and first/last are derived from
+    // it, or `invalid` when the grammar refuses it. An invalid band stays
+    // editable (the field shows the text so it can be fixed); it only stops
+    // feeding the model, because a band with no workspaces in it cannot
+    // answer "which run does this screen own". `path` is the chain of table
+    // keys it hung under (`bs_bands`, `banditbox`), which is how the shell
+    // tells its host's bands from another machine's in a config shared byte
+    // for byte between them.
+    function collectBand(raw, f, at, path) {
+        const byKey = {};
+        for (const x of f.fields)
+            byKey[x.key] = x.raw;
+
+        const mon = resolveLuaValue(byKey.monitor, aliases);
+        const spec = resolveLuaValue(byKey.workspaces, aliases);
+        const parsed = spec.literal ? parseBandSpec(spec.v) : {
+            ok: false
+        };
+        bands.push({
+            monitor: mon.v,
+            workspaces: spec.v,
+            first: parsed.ok ? parsed.first : undefined,
+            last: parsed.ok ? parsed.last : undefined,
+            invalid: !parsed.ok,
+            dynamic: blockDepth > 0 || !mon.literal || !spec.literal,
+            path,
+            raws: f.fields,
+            trailing: entryTrailing(at),
+            indent: entryIndent(f),
+            startLine: f.line,
+            endLine: lineOf(at),
+            raw: raw.trim(),
+            aliases
+        });
+    }
+
+    // WHAT FOLLOWS A FRAME'S CLOSING BRACE, on its own line: a `,` there is
+    // the list separator the enclosing constructor needs between members,
+    // outside the braces by construction. A splice that replaced the entry
+    // without putting it back would write two table constructors with
+    // nothing between them -- valid-looking to this scanner, fatal to the
+    // file. (A separator parked on the NEXT line is not seen; nothing in
+    // this tree writes one there, and an editor that cannot see a comma
+    // must not eat one.)
+    function entryTrailing(at) {
+        let k = at + 1;
+        while (k < s.length && (s[k] === " " || s[k] === "\t"))
+            k++;
+        return s[k] === "," ? "," : "";
+    }
+
+    // THE WHITESPACE AN ENTRY'S OWN `{` WAS WRITTEN UNDER, so a splice can
+    // put the re-composed line back at the same indent instead of breaking
+    // the file's column of entries to the left margin.
+    function entryIndent(f) {
+        const before = s.slice(s.lastIndexOf("\n", f.open) + 1, f.open);
+        return /^\s*$/.test(before) ? before : "";
     }
 
     // One bind call, as source text, taken apart enough to be shown and
@@ -480,7 +825,15 @@ function scanLua(src) {
         return parts;
     }
 
-    return { binds, requires, foreign };
+    return {
+        binds,
+        monitors,
+        outputTables,
+        bands,
+        bandTables,
+        requires,
+        foreign
+    };
 }
 
 // ---------------------------------------------------------------------------
@@ -509,6 +862,104 @@ function composeBind(chord, expr, opts) {
 
     const head = `hl.bind("${luaString(chord)}", ${expr}`;
     return parts.length ? `${head}, { ${parts.join(", ")} })` : `${head})`;
+}
+
+// One band's workspaces field, read: { ok, ids, first, last }. The field
+// speaks a comma list, a dash range, or both in any order and any order of
+// numbers -- "1,2,3,4,5,6,7", "1-10", "1-6, 8-10", "3, 2, 1" -- with spaces
+// after the commas and none inside a range: "1- 10" is not a range with airy
+// typing, it is a typo, and so is anything carrying text where a number is
+// wanted. This is the SAME grammar the managed section's bs_expand speaks in
+// Lua, kept here for the field's live verdict and the first/last the band
+// model hangs off; the file's own copy is what actually expands it, and the
+// spec text is stored verbatim either way.
+function parseBandSpec(spec) {
+    const s = String(spec ?? "").trim();
+    const out = [];
+    for (const raw of s.split(",")) {
+        const part = raw.trim();
+        // An empty part is skipped, not refused: the split of "1," or "1,,2"
+        // yields them, and bs_expand -- whose gmatch skips empty fields the
+        // same way -- is the other end of this grammar and must agree.
+        if (!part)
+            continue;
+        let m = /^(\d+)-(\d+)$/.exec(part);
+        if (m) {
+            const a = +m[1];
+            const b = +m[2];
+            if (b < a || b - a > 512)
+                return {
+                    ok: false,
+                    ids: []
+                };
+            for (let i = a; i <= b; i++)
+                if (!out.includes(i))
+                    out.push(i);
+            continue;
+        }
+        m = /^(\d+)$/.exec(part);
+        if (m) {
+            if (!out.includes(+m[1]))
+                out.push(+m[1]);
+            continue;
+        }
+        return {
+            ok: false,
+            ids: []
+        };
+    }
+    if (!out.length || out.length > 1024)
+        return {
+            ok: false,
+            ids: []
+        };
+    out.sort((a, b) => a - b);
+    return {
+        ok: true,
+        ids: out,
+        first: out[0],
+        last: out[out.length - 1]
+    };
+}
+
+// One table entry (a monitor line or a band), as one line. `changed` carries
+// the fields the edit touched, as plain values; every field it does not touch
+// goes back VERBATIM -- `output = vertical_side` and `scale = ultrawide_scale`
+// are the user's own indirections, and an edit that moved one field must not
+// flatten the others into literals. A touched field whose value equals what
+// the entry already resolves to counts as untouched, so a full-spec apply
+// (the page's only shape) rewrites exactly the fields that moved. With no
+// entry -- an append -- every changed field is written as a literal, because
+// a new line has no source text to preserve.
+function composeEntry(entry, changed) {
+    const parts = [];
+    const seen = {};
+
+    for (const f of entry?.raws ?? []) {
+        seen[f.key] = true;
+        const c = changed?.[f.key];
+        parts.push(`${f.key} = ${c === undefined || entrySame(f.raw, c, entry) ? f.raw : entryLiteral(f.key, c)}`);
+    }
+    for (const key in changed ?? {})
+        if (!seen[key])
+            parts.push(`${key} = ${entryLiteral(key, changed[key])}`);
+
+    if (!parts.length)
+        return null;
+    return `{ ${parts.join(", ")} }`;
+}
+
+// The names composeEntry may quote, for a scanner that reads monitor entries
+// and band entries out of the same walker; everything else is a number.
+const QUOTED_KEYS = ["output", "mode", "position", "monitor", "workspaces"];
+
+function entrySame(raw, value, entry) {
+    const r = resolveLuaValue(raw, entry?.aliases);
+    return r.literal && r.v === value;
+}
+
+function entryLiteral(key, value) {
+    return QUOTED_KEYS.includes(key) ? `"${luaString(value)}"` : String(value);
 }
 
 // Replace lines [startLine, endLine] (1-based, inclusive) with the given

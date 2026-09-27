@@ -4,7 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
-import qs.config
 
 // MONITORS: what the compositor thinks of every output, and the one place that
 // changes it.
@@ -15,34 +14,32 @@ import qs.config
 // modes (every resolution and refresh the panel can be driven at -- Quickshell
 // exposes the current one only), the LAYOUT POSITION (where this output sits
 // relative to the others, the thing the arrangement canvas drags), and the
-// live vrr and transform flags. One process answers all of it, in both parser
-// dialects, because reading is reading.
+// live vrr and transform flags. One process answers all of it.
 //
-// APPLYING is dialect work, and this is the same split Settings.qml's ruler
-// makes: under the Lua parser `keyword` is refused outright, so a monitor
-// line is said as `hyprctl eval` running `hl.monitor({...})` -- the very
-// function the user's own lua/monitors.lua speaks. Under the legacy parser it
-// is `hyprctl keyword monitor ...` in the positional form every example on
-// the internet uses. Both spellings live in one function, adjacent, so they
-// cannot drift.
-//
-// A LINE CARRIES THE WHOLE SPEC, never a delta. A monitor line replaces the
+// A SPEC CARRIES THE WHOLE TRUTH, never a delta. A monitor entry replaces the
 // output's configuration wholesale, and a field left off it falls back to the
-// default -- so a position-only change sent without `vrr` would silently turn
-// VRR off on an output whose config line turned it on. Every apply therefore
-// builds the full current spec and merges the requested fields into it, and
-// the SAME merged spec is what gets persisted.
+// default -- so a position-only change written without `vrr` would silently
+// turn VRR off on an output whose source line turned it on. Every apply
+// therefore builds the full current spec and merges the requested fields into
+// it; which fields the SOURCE EDIT then rewrites is composeMonitor's finer
+// eye, and an unchanged field keeps the line it was read from.
 //
-// PERSISTENCE LIVES IN THE SHELL'S OWN CONFIG, as the `monitors` block: one
-// entry per output the shell has ever been asked to change, each the full
-// spec, re-applied on top of the user's config at startup and after every
-// compositor reload. The division of labour is the one the rest of the shell
-// already practises: lua/monitors.lua is the user's hand-written baseline and
-// stays byte-for-byte theirs, and what the UI changes is an override layer the
-// shell owns, applied after the baseline has had its say. Hand-editing the Lua
-// file still works; the overrides win because they are applied later, and the
-// page says so by always drawing the compositor's live state rather than
-// anything it remembers.
+// PERSISTENCE LIVES IN THE SOURCE, as of the day this file stopped keeping
+// its own. The page's edits are splices into the config tree the user
+// already owns -- lua/monitors.lua's table entries, matched through the
+// output names that file defines -- said through HyprConfig's write chain:
+// splice, verify the whole config parses, reload, rescan. A write that does
+// not verify is put back before the compositor has blinked. There is no
+// override layer to sync and nothing to adopt: the file is the only
+// representation, which is why the page always draws the compositor's live
+// state rather than anything it remembers.
+//
+// An output no source line has ever named is ADDED to the source: joined to
+// the outputs list its file keeps, or said as one literal call at the end of
+// the file when the file keeps no list. Both are edits to the user's config,
+// which is the workflow's own point -- the first one warns, because a
+// desktop that quietly rewrites a hand-commented file is a desktop that
+// gets uninstalled.
 Singleton {
     id: root
 
@@ -55,11 +52,6 @@ Singleton {
     // `selectedOutput` being null, and every consumer handles that case by
     // showing nothing rather than by guessing.
     property string selected: ""
-
-    // The persisted layer, straight from the shell's config. A map the UI
-    // writes whole and reads whole: `Config.set` replaces by key, so per-field
-    // writes would be three saves of one decision.
-    readonly property var overrides: Config.values.monitors ?? ({})
 
     readonly property var selectedOutput: root.outputs.find(m => m.name === root.selected) ?? null
 
@@ -142,8 +134,13 @@ Singleton {
         };
     }
 
-    // THE ONE APPLY, for a full spec. Runtime first, then the persisted layer,
-    // then the compositor is re-asked for the truth it actually settled on.
+    // THE ONE APPLY, for a full spec, and it is a source edit: the entry the
+    // config already keeps for this output is re-composed with the spec's
+    // fields merged in -- its own aliases and unmanaged fields untouched --
+    // or, an output no line has ever named, the spec joins the outputs list
+    // the config keeps. There is no runtime dispatch beside it: the file is
+    // the deed, the chain verifies it before the compositor reloads it, and
+    // the poll brings back the truth that survived.
     function applySpec(spec: var): void {
         if (!spec?.output)
             return;
@@ -152,23 +149,26 @@ Singleton {
             [spec.output]: spec
         });
 
-        const q = JSON.stringify(spec.output);
-
-        if (Hypr.lua)
-            applier.exec(["hyprctl", "eval", `(function() hl.monitor({ output = ${q}, mode = ${JSON.stringify(spec.mode)}, position = ${JSON.stringify(spec.position)}, scale = ${spec.scale}, transform = ${spec.transform}, vrr = ${spec.vrr} }) end)()`]);
+        const entry = HyprConfig.monitors.find(m => !m.dynamic && m.output === spec.output);
+        if (entry)
+            HyprConfig.updateMonitor(entry.id, {
+                mode: spec.mode,
+                position: spec.position,
+                scale: spec.scale,
+                transform: spec.transform,
+                vrr: spec.vrr
+            });
         else
-            applier.exec(["hyprctl", "keyword", "monitor", `${spec.output},${spec.mode},${spec.position},${spec.scale},transform,${spec.transform},vrr,${spec.vrr}`]);
-
-        // The override is the WHOLE spec, written whole: what the shell
-        // re-applies at startup must be exactly what it just applied, not the
-        // fields that happened to change this time.
-        const next = Object.assign({}, root.overrides);
-        next[spec.output] = spec;
-        Config.set("monitors", next);
+            // Where a new entry goes is the config's own shape to answer:
+            // the first outputs list the scan found, or the end of that
+            // file. The scan order is hyprland.lua's own require order, so
+            // "first" is the file the user's config reads first.
+            HyprConfig.addMonitor((HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), spec);
 
         // The compositor may refuse, round, or reposition; the poll is the
-        // page's source of truth, and it runs after the dispatch has had its
-        // exit and again after the mode change has had time to land.
+        // page's source of truth. The write chain's own reload fires
+        // configReloaded, which re-asks after that; the timers catch the
+        // edit whose reload raced them.
         settle.restart();
     }
 
@@ -194,25 +194,6 @@ Singleton {
         root.applySpec(Object.assign({}, base, fields));
     }
 
-    // Startup and reload: the persisted layer, on top of whatever the user's
-    // own config just did. Gated on the parser being KNOWN, not on it being
-    // Lua -- the legacy branch of applySpec is a real answer, and "asking"
-    // is not a reason to send nothing.
-    function applyOverrides(): void {
-        root.overridesLanded = true;
-
-        for (const name in root.overrides) {
-            const spec = root.overrides[name];
-            // Only outputs that are there: a reservation in config.json for a
-            // monitor in a cupboard must not fail the whole sweep, and one
-            // refused line says so in the log without stopping the rest.
-            if (root.outputs.some(m => m.name === name))
-                root.applySpec(Object.assign({}, spec, {
-                    output: name
-                }));
-        }
-    }
-
     // THE POLL. `hyprctl` can come back empty or half-written while the
     // compositor is starting; a failed poll leaves the last truth standing
     // and the next one corrects it, exactly the tolerance Hypr.qml's own
@@ -220,12 +201,6 @@ Singleton {
     function refresh(): void {
         probe.running = true;
     }
-
-    // Once per boot: the first good poll is the trigger for the persisted
-    // layer, because Component.onCompleted has an empty `outputs` to apply
-    // overrides ONTO. After it is true, polls apply nothing -- a poll that
-    // re-applied would be a service fighting the changes it exists to serve.
-    property bool overridesLanded: false
 
     Process {
         id: probe
@@ -276,22 +251,8 @@ Singleton {
                     }
                 }
                 root.pending = still;
-
-                if (!root.overridesLanded) {
-                    root.overridesLanded = true;
-                    root.applyOverrides();
-                }
             }
         }
-    }
-
-    // Applied lines are followed by the truth. Two hops: the first reads what
-    // the dispatch immediately did, the second catches the mode change that
-    // lands a frame or two later.
-    Process {
-        id: applier
-
-        onExited: settle.restart()
     }
 
     Timer {
@@ -323,26 +284,16 @@ Singleton {
         }
     }
 
-    // The user's own config re-ran its monitor lines; the overrides win by
-    // being later, and here is later.
+    // A reload by any hand -- the user's own, the monitors page's write
+    // chain, another tool -- is the file having its say again, and the poll
+    // exists to catch up with exactly that.
     Connections {
         target: Hypr
 
         function onConfigReloaded(): void {
-            root.applyOverrides();
             root.refresh();
         }
     }
 
     Component.onCompleted: root.refresh()
-
-    // And after the parser has answered, for the boot where the overrides
-    // were applied before anyone knew which spelling to say them in.
-    Connections {
-        target: Hypr
-
-        function onParserKnownChanged(): void {
-            root.applyOverrides();
-        }
-    }
 }

@@ -375,50 +375,10 @@ Singleton {
                     specials: [],
 
                     // Slots always shown, even when empty. This is the length
-                    // of ONE MONITOR'S run, not of the desktop: see `order`.
+                    // of ONE MONITOR'S run, not of the desktop: see the bands
+                    // in the config's managed section, which decide who owns
+                    // which run.
                     persistent: 5,
-
-                    // WHICH MONITOR OWNS WHICH RUN OF WORKSPACES, by output
-                    // name, in band order.
-                    //
-                    // Every screen's sidebar draws its own workspaces, and
-                    // which ones those are is a contiguous BAND per monitor:
-                    // the first name here owns 1..persistent, the second the
-                    // `persistent` numbers after that, and so on. Position in
-                    // this list is the whole of the rule, so moving a name
-                    // moves a band and there is nothing else to keep in step.
-                    //
-                    // BY NAME, never by Hyprland's monitor id and never by
-                    // where the screen physically sits. Ids are handed out in
-                    // plug order and shuffle the moment a cable is pulled, so a
-                    // band keyed to one would change which workspaces a screen
-                    // draws while you were looking at it. A name survives a
-                    // cable, which is also why nothing ever REMOVES one: unplug
-                    // a monitor and its place is kept, plug it back in and it
-                    // is on the same workspaces it was.
-                    //
-                    // EMPTY MEANS ASK THE COMPOSITOR, once. `hyprctl
-                    // workspacerules` already says which output each workspace
-                    // is bound to, so the first run groups those rules by
-                    // monitor, sorts each monitor by the lowest workspace it
-                    // was given, and writes the result back here. A machine
-                    // whose rules bind 1-5 to one output and 6-10 to another
-                    // therefore comes up drawing exactly what it was already
-                    // doing, with nothing moved and nothing invented; a shell
-                    // that picked an order of its own would reshuffle a working
-                    // desktop on the day it was installed. Monitors no rule
-                    // mentions are appended as the shell is told about them.
-                    //
-                    // Empty is also the only honest DEFAULT here: merge() reads
-                    // an empty array as a list whose contents are data and keeps
-                    // whatever length it finds, where a non-empty one is a
-                    // fixed set of slots that reverts the day the length moves,
-                    // which for a list of monitors is the day one is plugged in.
-                    // Not settable from the CLI either way, because Quickshell's
-                    // IPC splats a bracketed argument into an argument list (see
-                    // `apps.icons` above); the screens settings page is the way
-                    // in.
-                    order: [],
 
                     slot: 32,
                     // Wider than the gap INSIDE a slot, which is what makes a
@@ -605,31 +565,16 @@ Singleton {
                 audio: false
             },
 
-            monitors: {
-                // MONITOR OVERRIDES, one entry per output the shell has ever
-                // been asked to change: { "HDMI-A-1": { mode, position, scale,
-                // transform, vrr }, ... }.
-                //
-                // EMPTY ON PURPOSE, for the same reason wallpaper.perScreen
-                // is: the keys here are whatever outputs this machine has, no
-                // list of them is declared anywhere, and an empty default is
-                // treated as schema rather than user data. A non-empty default
-                // would name somebody else's monitors.
-                //
-                // EACH ENTRY IS THE WHOLE SPEC, not the fields that changed
-                // last: a monitor line is applied wholesale and a field left
-                // off it falls back to the default, so a position-only line
-                // without `vrr` would silently drop VRR. services/Monitors.qml
-                // builds the line from the compositor's own live state for
-                // exactly that reason, and writes here what it sent.
-                //
-                // THE LAYER ORDER IS: the user's lua/monitors.lua first (it is
-                // theirs, hand-commented, and stays byte-for-byte theirs), the
-                // entries here after -- applied by the shell at startup and
-                // after every compositor reload, when the config's own lines
-                // have had their say. Which is also why hand-editing the Lua
-                // file keeps working: it is the baseline, and the page always
-                // draws the compositor's live answer, never this map.
+            // WHETHER THE SETTINGS PAGES THAT WRITE THE USER'S HYPRLAND CONFIG
+            // have said their warning yet. The monitors page edits
+            // lua/monitors.lua in place -- the user's own file, spliced, not
+            // a layer the shell keeps -- and a desktop must not rewrite a
+            // hand-commented file quietly: the first edit is stopped, told
+            // its nature, and let through on purpose. Once true, never asked
+            // again; the flag is about the WORKFLOW (shared by every page
+            // that learns the same trick), not about any one setting.
+            sourceEdits: {
+                acknowledged: false,
             },
 
             // How the shell's body melts together. See components/blob/blob.frag.

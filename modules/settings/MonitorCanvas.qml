@@ -196,7 +196,9 @@ Item {
             // accent stroke, because the property card beside the canvas has
             // a title and the canvas has to agree with it. Unselected is the
             // surface, quieter, with a faint stroke -- present, not asking.
-            color: isSelected ? Appearance.colour.accentFill : Appearance.colour.surfaceAlt
+            // (It was `surfaceAlt`, a colour no palette has ever had: the
+            // unselected monitors drew as nothing at all.)
+            color: isSelected ? Appearance.colour.accentFill : Appearance.colour.surface
             stroke: isSelected ? Appearance.colour.accent : Appearance.colour.textGhost
             strokeWidth: isSelected ? Appearance.font.stem : 1
 

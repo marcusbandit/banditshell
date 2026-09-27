@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
+import "../../../services/hyprgen.js" as HyprGen
 
 // MONITORS: the layout, the modes, and who owns which workspaces.
 //
@@ -17,18 +18,24 @@ import qs.modules.settings
 // power menu's sliding marker, not a full-width list pretending). Position,
 // resolution, refresh, scale, rotation and VRR are the whole of what a
 // monitor offers short of HDR, and each control applies as it is pressed:
-// the compositor is told in the dialect it speaks (services/Monitors.qml),
-// the change is written to the shell's `monitors` overrides, and the poll
-// brings the page the truth the compositor actually settled on. There is no
-// apply step to forget; the canvas, the rows and the desktop are three views
-// of the same answer.
+// the press is a splice into the user's own Hyprland config
+// (services/HyprConfig.qml's chain), verified before the compositor reloads
+// it, and the poll brings the page the truth that survived. There is no
+// apply step to forget; the canvas, the rows, the file and the desktop are
+// four views of the same answer.
 //
-// THE WORKSPACE BANDS ARE STILL HERE, below, because they are a different
-// axis of the same hardware: the canvas says WHERE an output is, the bands
-// say WHICH WORKSPACES it owns. The band list is also the one place the
-// page names outputs that are NOT connected -- the canvas draws what is
-// plugged in, and a name reserved in the order for a monitor in a cupboard
-// keeps its row here.
+// THE FIRST EDIT IS STOPPED AND TOLD ITS NATURE (SourceEditSheet.qml, below):
+// writing the user's hand-commented config is a deed said once, out loud,
+// before it is ever done -- and never asked again once it has been.
+//
+// THE WORKSPACES A MONITOR OWNS ARE ONE OF ITS PROPERTIES NOW, said in the
+// same card as its resolution: click the monitor in the canvas and the
+// Workspaces row shows the band the config's managed section gives it, with
+// the free runs to move it to one press away. The assignment lives in the
+// user's lua, host-keyed, inside the markers that name it the shell's to
+// write -- data only, the rules it becomes still emitted by the file's own
+// code -- and a band edited by hand in the file is what this page shows on
+// the next scan, because there is no second representation anywhere.
 //
 // THE DRAG IS THE SHELL'S FIRST, and it took the page apart to earn: the old
 // band list's header argued there was no DropArea anywhere and no reason for
@@ -41,7 +48,37 @@ import qs.modules.settings
 Item {
     id: root
 
-    implicitHeight: list.implicitHeight
+    // THE FLEX. The page is as tall as its content wants, and never shorter
+    // than the pane it was put in: a page that fills the view does not
+    // scroll, and what it has to spare goes to the canvas (below), so the
+    // property card borders the bottom the way a display settings page
+    // should -- the picture first, the fine print at its foot. On a pane
+    // too small to hold the natural heights, the natural heights win and
+    // the pane scrolls, which is what it is for.
+    implicitHeight: Math.max(list.implicitHeight, root.viewport)
+
+    // The view the page fills: the pane's height minus the gutter the pane
+    // keeps at its foot, the gutter the face keeps at its head, and the
+    // header the column put above this page (the loader's own y is exactly
+    // that: header plus the spacing that came before it).
+    readonly property real viewport: {
+        const p = root.pane;
+        if (!p)
+            return 0;
+        return Math.max(0, p.height - root.parent.y - Appearance.padding.normal * 2);
+    }
+
+    // THE CANVAS'S OWN DIALS: the smallest picture a two-monitor desk can
+    // still drag in, and the tallest the picture may get before a tall
+    // window stops making it sillier.
+    readonly property real canvasMin: Appearance.sizes.rowHeight * 5
+    readonly property real canvasMax: 560
+
+    // WHAT THE PAGE SPENDS that is not the canvas: the property card (when
+    // there is one to show) and the air between the cards, plus the
+    // arrangement card's own title row. The canvas is what flexes around
+    // it.
+    readonly property real canvasReserve: (propertyCard.visible ? propertyCard.height + list.spacing : 0) + canvas.chrome
 
     // THE FACE THIS PAGE IS DRAWN IN, found by walking up until a property
     // only the face has. The sheet floats over everything the page is in --
@@ -66,7 +103,10 @@ Item {
     }
 
     onPaneChanged: root.wirePane()
-    Component.onCompleted: root.wirePane()
+    Component.onCompleted: {
+        root.wirePane();
+        root.bandDraft = root.bandFileSpec;
+    }
 
     // Connected ONCE per pane, guarded, because Component.onCompleted and the
     // onPaneChanged notification race for which arrives first.
@@ -75,7 +115,10 @@ Item {
         if (!root.pane || root.paneWired)
             return;
         root.paneWired = true;
-        root.pane.positionChanged.connect(() => sheet.close());
+        root.pane.positionChanged.connect(() => {
+            sheet.close();
+            bandHelp.close();
+        });
     }
 
     // THE SELECTED OUTPUT, and the spec the page displays for it: what we
@@ -167,7 +210,7 @@ Item {
                 rates.push(p.hz);
         }
         rates.sort((a, b) => Math.abs(Math.round(a) - Math.round(root.modeHz)) - Math.abs(Math.round(b) - Math.round(root.modeHz)));
-        Monitors.apply(root.selected, {
+        root.edit(root.selected, {
             mode: Monitors.modeString(r.w, r.h, rates[0] ?? root.modeHz)
         });
     }
@@ -175,7 +218,7 @@ Item {
     function setHz(i: int): void {
         if (i < 0 || i >= root.hzList.length)
             return;
-        Monitors.apply(root.selected, {
+        root.edit(root.selected, {
             mode: Monitors.modeString(root.modeW, root.modeH, root.hzList[i])
         });
     }
@@ -183,7 +226,7 @@ Item {
     function setScale(i: int): void {
         if (i < 0 || i >= root.scaleList.length)
             return;
-        Monitors.apply(root.selected, {
+        root.edit(root.selected, {
             scale: root.scaleList[i]
         });
     }
@@ -191,9 +234,79 @@ Item {
     function setTransform(i: int): void {
         if (i < 0 || i >= Monitors.transformChoices.length)
             return;
-        Monitors.apply(root.selected, {
+        root.edit(root.selected, {
             transform: Monitors.transformChoices[i].value
         });
+    }
+
+    // THE DOOR EVERY SOURCE EDIT WALKS THROUGH, and the only one the warning
+    // watches -- monitor specs and band assignments alike, both of which are
+    // splices into the user's config. Once the workflow has been
+    // acknowledged the edit runs as it is; before that, it is held and the
+    // sheet asks -- accept, and the held edit proceeds as the
+    // acknowledgement's first deed, so the press that asked is the press
+    // that lands.
+    property var queued: null
+
+    function sourceEdit(fn: var): void {
+        if (Config.values.sourceEdits?.acknowledged) {
+            fn();
+            return;
+        }
+        root.queued = fn;
+        warn.open();
+    }
+
+    function edit(name: string, fields: var): void {
+        root.sourceEdit(() => Monitors.apply(name, fields));
+    }
+
+    // ------------------------------------------------------------- bands
+
+    // THE SELECTED MONITOR'S BAND, as the file says it: the field shows the
+    // spec text VERBATIM -- the list, the ranges, the user's own punctuation
+    // -- and the write stores what was typed, because the file is the only
+    // representation. The grammar's verdict is live in the field; the
+    // expansion is the file's own business, said by the managed section's
+    // bs_expand, which reads the same formats this field accepts.
+    readonly property var band: Hypr.bands.find(b => b.monitor === root.selected) ?? null
+    readonly property string bandFileSpec: root.band?.workspaces ?? ""
+
+    // THE DRAFT the field edits, kept apart from the file's answer and reset
+    // to it whenever the answer moves -- a rescan, a hand edit in the file,
+    // a selection change -- because the field is a view of the source, not
+    // the source.
+    property string bandDraft: ""
+    onBandFileSpecChanged: root.bandDraft = root.bandFileSpec
+
+    // THE GRAMMAR'S VERDICT on the draft, live, and whether the draft is
+    // saying anything the file does not already say. Both asked of the
+    // TRIMMED draft, because the write trims too: what is judged is what
+    // would land.
+    readonly property bool bandValid: HyprGen.parseBandSpec(root.bandDraft.trim()).ok
+    readonly property bool bandDirty: root.bandDraft.trim() !== "" && root.bandDraft.trim() !== root.bandFileSpec
+
+    function assignBand(spec: string): void {
+        root.sourceEdit(() => {
+            const entry = HyprConfig.bands.find(b => !b.dynamic && b.monitor === root.selected && b.path?.[1] === HyprConfig.hostName);
+            if (entry)
+                HyprConfig.updateBand(entry.id, {
+                    workspaces: spec
+                });
+            else
+                HyprConfig.addBand({
+                    monitor: root.selected,
+                    workspaces: spec
+                });
+        });
+    }
+
+    // A FORMAT ROW'S GIFT: the example becomes the draft, and the cursor
+    // lands in the field to edit it. Nothing is written here -- it is the
+    // field's text now, and Enter or a walk-away is what files it.
+    function takeFormat(spec: string): void {
+        root.bandDraft = spec;
+        input.focus = true;
     }
 
     Column {
@@ -204,15 +317,29 @@ Item {
 
         // ------------------------------------------------------ arrangement
 
+        // THE SPRING, in the flexbox sense: the canvas wants to fill
+        // everything the page has and is content to be capped -- the space
+        // it gets is the view minus what the property card spends, between
+        // a floor a two-monitor desk can still drag in and a ceiling so a
+        // tall window stops making the picture silly. Everything below
+        // borders the bottom because this card ate all the slack above it.
         SettingsCard {
+            id: arrangementCard
+
             title: "Arrangement"
 
             MonitorCanvas {
+                id: canvas
+
+                readonly property real chrome: Appearance.font.size.small * 4 / 3 + Appearance.padding.small
+                readonly property real room: root.viewport - root.canvasReserve
+
                 width: parent.width
+                height: Math.max(root.canvasMin, Math.min(root.canvasMax, room))
                 selected: root.selected
 
                 onPicked: name => Monitors.selected = name
-                onPlaced: (name, x, y) => Monitors.apply(name, {
+                onPlaced: (name, x, y) => root.edit(name, {
                         position: `${x}x${y}`
                     })
             }
@@ -225,14 +352,176 @@ Item {
         // the canvas labels it with, so selection is one fact said twice and
         // never a lookup between them. An output that is unplugged shows a
         // card of nothing: the properties are all facts about hardware that
-        // is present, and an absent monitor's row lives in the bands below.
+        // is present, and a band it is not here to wear keeps itself in the
+        // file, ready for the cable.
         //
         // THE ROWS ARE INERT AND THE BUTTONS ARE THE CONTROLS, the Expander's
         // two-hover-states rule: the button says what is worn, the arrow says
         // more is one press away, and the row's own fill stays out of it.
         SettingsCard {
+            id: propertyCard
+
             visible: !!root.spec
             title: root.selected
+
+            // THE MONITOR'S WORKSPACES, assigned right here, in text: the
+            // field wears the managed section's own spec for this output,
+            // and Enter writes it -- a splice like any other. An invalid
+            // spec is refused in place (the field's border says so) and
+            // never written, so the file cannot learn a spec its own
+            // bs_expand would refuse.
+            SettingsRow {
+                icon: "workspaces"
+                label: "Workspaces"
+                interactive: false
+
+                // THE (i) AND THE FIELD, one trailing item of explicit
+                // size: the slot reads its height off its children's rect,
+                // and a child anchored into that height is a binding loop.
+                Item {
+                    width: info.width + Appearance.padding.small + bandBox.width
+                    height: bandBox.height
+
+                    // THE (i), LEFT OF THE FIELD, because the one thing a
+                    // text format owes its typist is the grammar -- said on
+                    // PRESS, in the page's own sheet, and not as a hover
+                    // pill: a tooltip that big is an overlay over the very
+                    // field it describes. Each format is a row that fills
+                    // the field with itself, so the note is also a way in.
+                    Item {
+                        id: info
+
+                        width: Appearance.font.iconSize + Appearance.padding.small * 2
+                        height: parent.height
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        Icon {
+                            anchors.centerIn: parent
+                            name: "info"
+                            size: Appearance.font.iconSize
+                            color: infoTap.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                        }
+
+                        MouseArea {
+                            id: infoTap
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+
+                            onClicked: {
+                                const at = root.below(info);
+                                bandHelp.popup(at.x, at.y, [{
+                                            icon: "edit_note",
+                                            label: "1,2,3,4,5,6,7 · a list",
+                                            run: () => root.takeFormat("1,2,3,4,5,6,7")
+                                        }, {
+                                            icon: "edit_note",
+                                            label: "1-10 · a range",
+                                            run: () => root.takeFormat("1-10")
+                                        }, {
+                                            icon: "edit_note",
+                                            label: "1-6, 8-10 · ranges, gapped",
+                                            run: () => root.takeFormat("1-6, 8-10")
+                                        }, {
+                                            icon: "edit_note",
+                                            label: "3, 2, 1 · any order",
+                                            run: () => root.takeFormat("3, 2, 1")
+                                        }]);
+                            }
+                        }
+                    }
+
+                    // THE FIELD: the managed section's spec for this output,
+                    // editable as text, red while the grammar refuses the
+                    // draft. Enter writes it -- a splice like any other --
+                    // and an invalid spec is never written, so the file
+                    // cannot learn a spec its own bs_expand would refuse.
+                    Item {
+                        id: bandBox
+
+                        x: info.width + Appearance.padding.small
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        readonly property bool bad: root.bandDirty && !root.bandValid
+
+                        width: 160
+                        height: input.implicitHeight + Appearance.padding.small * 2
+
+                        G2Rect {
+                            anchors.fill: parent
+                            radius: Appearance.rounding.small
+                            color: Appearance.colour.fillStrong
+                            stroke: bandBox.bad ? Appearance.colour.alarm : "transparent"
+                            strokeWidth: Appearance.font.stem
+                        }
+
+                        TextInput {
+                            id: input
+
+                            anchors.fill: parent
+                            anchors.leftMargin: Appearance.padding.normal
+                            anchors.rightMargin: Appearance.padding.normal
+                            verticalAlignment: TextInput.AlignVCenter
+                            clip: true
+
+                            text: root.bandDraft
+                            onTextChanged: root.bandDraft = text
+
+                            font.family: Appearance.font.family
+                            font.pixelSize: Appearance.font.size.small
+                            renderType: Text.NativeRendering
+                            color: Appearance.colour.text
+                            selectionColor: Appearance.colour.accent
+                            selectedTextColor: Appearance.colour.accentText
+
+                            // ENTER WRITES, and only a spec the grammar
+                            // accepts gets as far as the file. The draft is
+                            // trimmed at the edges -- the user's own spaces
+                            // after commas are kept, the ones they typed by
+                            // accident at the ends are not.
+                            onAccepted: {
+                                const spec = root.bandDraft.trim();
+                                if (!root.bandValid)
+                                    return;
+                                root.bandDraft = spec;
+                                root.assignBand(spec);
+                                input.focus = false;
+                            }
+
+                            // ESCAPE PUTS THE FILE BACK in the field: the
+                            // draft was a thought, the file is the answer.
+                            Keys.onEscapePressed: {
+                                root.bandDraft = root.bandFileSpec;
+                                input.focus = false;
+                            }
+
+                            // AND SO IS A FIELD WALKED AWAY FROM: committed
+                            // when the grammar took the draft, reverted when
+                            // it did not -- an invalid spec never becomes the
+                            // file's truth by the door's being opened.
+                            onActiveFocusChanged: if (!activeFocus) {
+                                if (root.bandValid && root.bandDirty) {
+                                    const spec = root.bandDraft.trim();
+                                    root.bandDraft = spec;
+                                    root.assignBand(spec);
+                                } else if (!root.bandValid) {
+                                    root.bandDraft = root.bandFileSpec;
+                                }
+                            }
+
+                            StyledText {
+                                anchors.verticalCenter: parent.verticalCenter
+                                anchors.left: parent.left
+                                anchors.leftMargin: Appearance.padding.normal
+                                visible: !input.text && !input.activeFocus
+                                text: "e.g. 1-5"
+                                color: Appearance.colour.textFaint
+                            }
+                        }
+                    }
+                }
+            }
 
             SettingsRow {
                 icon: "aspect_ratio"
@@ -311,179 +600,19 @@ Item {
             SettingsRow {
                 icon: "autofps_select"
                 label: "Variable refresh rate"
-                onActivated: Monitors.apply(root.selected, {
+                onActivated: root.edit(root.selected, {
                         vrr: root.spec?.vrr ? 0 : 1
                     })
 
                 Toggle {
                     checked: !!root.spec?.vrr
-                    onToggled: Monitors.apply(root.selected, {
+                    onToggled: root.edit(root.selected, {
                         vrr: root.spec?.vrr ? 0 : 1
                     })
                 }
             }
         }
 
-        // ------------------------------------------------------------ bands
-
-        // ONE CARD, and its title carries the count. What the title cannot
-        // say, and what a list of monitors cannot show, is that there is no
-        // apply step: the bands have already moved by the time the row has
-        // finished sliding.
-        SettingsCard {
-            title: `${Hypr.order.length} ${Hypr.order.length === 1 ? "monitor" : "monitors"}, ${Hypr.count} workspaces each`
-
-            Repeater {
-                model: root.screens
-
-                delegate: SettingsRow {
-                    id: monitor
-
-                    required property int index
-                    required property string modelData
-
-                    // The output itself, when there is one. Null IS the answer
-                    // to "is it plugged in", so the lookup does both jobs and
-                    // there is no second test that can disagree with this one.
-                    readonly property var output: Quickshell.screens.find(s => s.name === monitor.modelData) ?? null
-
-                    // Whether the order has actually heard of this name, which
-                    // is not the same question as whether it has a row here:
-                    // the rows are the order plus whatever is connected, and
-                    // the plus is the interesting case.
-                    readonly property bool filed: Hypr.order.indexOf(monitor.modelData) >= 0
-
-                    // ASKED OF THE MODEL, never worked out again from this
-                    // row's index. The two agree for every name the order
-                    // knows, and the disagreement is the whole reason to ask:
-                    // a monitor the order has not filed yet DRAWS the first
-                    // band, because that is what `bandFor` falls back to when
-                    // it cannot find a name, and a row that showed it the band
-                    // it is going to get would be describing the future while
-                    // its sidebar drew the present.
-                    readonly property int band: Hypr.bandFor(monitor.modelData)
-
-                    // A screen that is not there gets the struck-through
-                    // monitor rather than the same glyph as everything else.
-                    icon: monitor.output ? "monitor" : "desktop_access_disabled"
-                    label: monitor.modelData
-
-                    // In the order you would ask it: which workspaces, then
-                    // whether the screen is there at all, then the one thing
-                    // that is only true in the moment before the order catches
-                    // up with a cable. The far end of the band is the near end
-                    // plus the count, so a column lengthened in config.json
-                    // relabels every row here with nothing to keep in step.
-                    detail: {
-                        const bits = [];
-                        // A SCREEN THAT IS NOT THERE CLAIMS NOTHING. Bands are
-                        // counted off the connected screens, so an absent one
-                        // has no run to name, and printing `bandFor`'s
-                        // fallback would have every unplugged row claiming 1-5
-                        // alongside the screen that actually has them.
-                        if (!monitor.output)
-                            bits.push("no workspaces while unplugged");
-                        else if (Hypr.count > 1)
-                            bits.push(`workspaces ${monitor.band}-${monitor.band + Hypr.count - 1}`);
-                        else
-                            bits.push(`workspace ${monitor.band}`);
-
-                        // WHAT IT IS WEARING, and ONLY WHEN THAT IS A CHOICE.
-                        // A wallpaper is per screen and the shape of that is a
-                        // default plus the screens that disagree with it; the
-                        // row says nothing while a screen follows the default
-                        // and names the file the moment it stops. Shown for an
-                        // unplugged screen too: a wallpaper is a RESERVATION
-                        // that survives the cable.
-                        if (Wallpaper.hasOwn(monitor.modelData))
-                            bits.push(Wallpaper.nameOf(Wallpaper.currentOn(monitor.modelData)));
-
-                        // The mode, not the layout size: through the device
-                        // pixel ratio it is the resolution written on the box.
-                        if (monitor.output)
-                            bits.push(`${Math.round(monitor.output.width * monitor.output.devicePixelRatio)} × ${Math.round(monitor.output.height * monitor.output.devicePixelRatio)}`);
-                        else
-                            bits.push("not connected");
-
-                        if (!monitor.filed)
-                            bits.push("not in the order yet");
-
-                        return bits.join(" · ");
-                    }
-
-                    // THE ROW IS A FACT AND THE BUTTONS ARE THE CONTROL. There
-                    // is nothing sensible for a press on the body to do here:
-                    // a monitor is not a setting to flip. Inert also means the
-                    // fill below can only ever mean one thing.
-                    interactive: false
-
-                    // WHICH ONE YOU ARE LOOKING AT: the fill is the shell
-                    // answering "which of these is under my eyes" by lighting
-                    // the row as you look at it.
-                    selected: Hypr.focusedScreen === monitor.modelData
-
-                    Row {
-                        spacing: Appearance.padding.small
-
-                        // HAND THIS SCREEN BACK TO THE DEFAULT wallpaper. Dead
-                        // rather than absent on a screen that already follows
-                        // the default, which is Nudge's own contract at the
-                        // ends of the list.
-                        Nudge {
-                            enabled: Wallpaper.hasOwn(monitor.modelData)
-                            glyph: "settings_backup_restore"
-                            tip: `${monitor.modelData} back to the default wallpaper`
-                            onNudged: Wallpaper.clearOn(monitor.modelData)
-                        }
-
-                        Nudge {
-                            enabled: monitor.index > 0
-                            glyph: "keyboard_arrow_up"
-                            tip: `move ${monitor.modelData} to the band above`
-                            onNudged: root.move(monitor.index, -1)
-                        }
-
-                        Nudge {
-                            enabled: monitor.index < root.screens.length - 1
-                            glyph: "keyboard_arrow_down"
-                            tip: `move ${monitor.modelData} to the band below`
-                            onNudged: root.move(monitor.index, 1)
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // THE ROWS COME FROM THE ORDER, not from the outputs that happen to be
-    // plugged in, and the difference is the whole argument of the band model.
-    // `Hypr.order` is the thing being edited AND the thing `bandFor` indexes.
-    // PLUS ANYTHING CONNECTED THE ORDER HAS NOT HEARD OF, appended, which is
-    // the honest half: a screen you are looking at is a screen this page
-    // would otherwise pretend does not exist until adopt catches up. AND A
-    // NAME WHOSE MONITOR IS GONE KEEPS ITS ROW: the name is a reservation,
-    // and putting the cable back has to give that screen the workspaces it
-    // had.
-    readonly property var screens: {
-        const out = Hypr.order.slice();
-        for (const s of Quickshell.screens)
-            if (out.indexOf(s.name) < 0)
-                out.push(s.name);
-        return out;
-    }
-
-    // A MOVE IS A WHOLE NEW ARRAY, never an edit to the one that is there. QML
-    // notices assignment and nothing else, so splicing `Hypr.order` in place
-    // would move a band and tell nobody at all; see services/Apps.qml for the
-    // same copy-then-assign on a map.
-    function move(from: int, step: int): void {
-        const to = from + step;
-        if (to < 0 || to >= root.screens.length)
-            return;
-
-        const next = root.screens.slice();
-        next.splice(to, 0, next.splice(from, 1)[0]);
-        Config.set("sidebar.workspaces.order", next);
     }
 
     // THE SHEET, at the face's level: outside the pane's clip, over the
@@ -497,5 +626,39 @@ Item {
         parent: root.face
         anchors.fill: parent
         z: 98
+    }
+
+    // THE FORMAT SHEET, the (i)'s answer: the same sheet, the same clamping,
+    // each row a format the field takes -- pressed, the example becomes the
+    // draft. It is the grammar said as choices instead of as a paragraph,
+    // which is the only way a row this narrow was ever going to say it.
+    ActionSheet {
+        id: bandHelp
+
+        parent: root.face
+        anchors.fill: parent
+        z: 98
+    }
+
+    // THE QUESTION, at the face's level beside the sheet and one plate above
+    // it (98): nothing the page floats may draw over the thing asking
+    // whether the page may write the file. Acceptance is remembered in the
+    // shell's own config -- a fact about the workflow, not about a monitor
+    // -- and the edit that asked is the edit that lands.
+    SourceEditSheet {
+        id: warn
+
+        parent: root.face
+        anchors.fill: parent
+        z: 99
+        file: "lua/monitors.lua"
+
+        onAccepted: {
+            Config.set("sourceEdits.acknowledged", true);
+            const q = root.queued;
+            root.queued = null;
+            if (q)
+                q();
+        }
     }
 }
