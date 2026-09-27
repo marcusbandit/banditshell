@@ -40,7 +40,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         SettingsCard {
             title: "Wi-Fi"
@@ -77,15 +77,8 @@ Item {
         // than a panel pasted onto one. Same eyebrow as SettingsCard's title,
         // same material, and a small inset so the menu's own row highlights
         // sit inside the card's corners instead of on them.
-        Column {
-            width: parent.width
-            spacing: Appearance.padding.small
-
-            StyledText {
-                text: "Networks"
-                color: Appearance.colour.textFaint
-                leftPadding: Appearance.padding.small
-            }
+        SettingsGroup {
+            heading: "Networks"
 
             G2Rect {
                 width: parent.width

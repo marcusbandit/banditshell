@@ -24,7 +24,7 @@ import qs.modules.settings
 //
 // Every row is inert. A hostname is not a thing to flip, and a row that lit on
 // hover and swallowed the press would promise something it cannot do; see
-// ScreensPage for the same argument about monitors.
+// MonitorsPage for the same argument about displays.
 //
 // The live numbers are sampled only while the page is on screen. SysInfo and
 // Device both ref-count their watchers, so this page asks on the way in and
@@ -59,7 +59,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         SettingsCard {
             title: "This machine"
@@ -277,7 +277,7 @@ Item {
 
         // Connected outputs in plug order, which is fine here because this
         // page is about the hardware: which screen owns which workspaces is
-        // ScreensPage's question, and its rows come from the order instead.
+        // MonitorsPage's question, and its rows come from the order instead.
         SettingsCard {
             title: "Screens"
 
@@ -306,7 +306,7 @@ Item {
                     label: screen.modelData.name
                     // The mode rather than the logical size: through the
                     // device pixel ratio it is the resolution written on the
-                    // box, see ScreensPage for the same conversion.
+                    // box, see MonitorsPage for the same conversion.
                     value: `${Math.round(screen.modelData.width * screen.modelData.devicePixelRatio)} × ${Math.round(screen.modelData.height * screen.modelData.devicePixelRatio)}`
                     detail: {
                         const bits = [screen.modelData.model || "unknown model"];

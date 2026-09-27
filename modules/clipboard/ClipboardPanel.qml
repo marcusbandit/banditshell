@@ -90,8 +90,7 @@ Item {
     // nowhere useful at all; services/Hypr.qml's `focusedByMonitor` carries the
     // argument in full.
     //
-    // Asked of the window rather than handed down, per
-    // modules/SettingsCorner.qml and modules/sidebar/Sidebar.qml: which surface
+    // Asked of the window rather than handed down, per modules/sidebar/Sidebar.qml: which surface
     // a panel is drawn on is the window's fact, not the panel's.
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 

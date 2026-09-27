@@ -113,7 +113,18 @@ Singleton {
                 // Modelled on macOS dark mode's NSColor label ladder
                 // (0.847 / 0.549 / 0.247 / 0.098), run a little hotter because
                 // this surface is translucent.
-                label: [0.92, 0.58, 0.32, 0.16],
+                //
+                // The tertiary tier moved off Apple's 0.247 onto 0.45: WCAG's
+                // floor for informative text is 4.5:1, which is where 0.45
+                // lands on our surfaces, and tertiary carries settings'
+                // secondary sentences and group headers - real information,
+                // not chrome. Apple's own tertiary is reserved for
+                // placeholders and empty states; ours was carrying reading
+                // text at ~3:1, which is how the research pass (docs/research/
+                // typography-secondary-text.md) found it. Quaternary stays
+                // sub-floor on purpose: it is ghost text, disabled and
+                // decorative only.
+                label: [0.92, 0.58, 0.45, 0.16],
 
                 // Fills: container, hover, selected.
                 //
@@ -180,17 +191,23 @@ Singleton {
                 power: 5.0
             },
             padding: {
-                // 6 / 12 / 24 / 36. The inner two are deliberately unchanged:
-                // they set the space INSIDE a row, and a row's text did not get
-                // bigger. The outer two did change, because the labels BETWEEN
-                // sections doubled and the gaps that used to separate them
-                // stopped being able to.
+                // THE LADDER, REBASED ON 4 (docs/research/spacing-systems.md):
+                // 8 / 12 / 16 / 24 / 32. The old 6 and 36 exist on no published
+                // spacing ladder (Carbon, Atlassian and Polaris all jump
+                // 32 -> 40), and 6 was worse than uncited - it is not a
+                // multiple of the industry's 4px base NOR of this shell's own
+                // 9px glyph grid, so gaps of it landed glyphs between cells.
+                // 12 and 24 were already right and are unchanged; 36 -> 32 is
+                // the citable version of the same break (12:32 is still a
+                // decisive 1:2.7 under proximity's floor of 1:2).
                 //
-                // 24 and 36 are the 18px tier's line box and half again, so a
-                // section break is now an empty line rather than a number that
-                // happens to look right.
-                base: 6,
-                scale: [1, 2, 4, 6]
+                // Bands, per Atlassian's semantics: small is icon-to-text and
+                // label-to-control; normal is blocks within a group; card is
+                // the inside of a boxed thing (Material's 16dp); large is
+                // component padding pairs; huge is the group-to-group break
+                // and the page gutter.
+                base: 4,
+                scale: [2, 3, 4, 6, 8]
             },
             button: {
                 // FIVE sizes, not three, measured off Google's own button
@@ -220,6 +237,12 @@ Singleton {
                 trackSpeed: 14,
                 // Same, for a panel opening or closing.
                 revealSpeed: 18,
+
+                // THE RAIL'S SLIDING MARK, and deliberately the slowest thing
+                // in the shell: the travel is the entire content of the
+                // animation -- a bar walking down to meet the section you
+                // chose -- so it is given time to be read doing it.
+                railSpeed: 7,
                 // Same, for a panel taking the size of content that changed
                 // under it. Deliberately the same rate as trackSpeed by
                 // default: a menu that slides and resizes at once is one
@@ -580,6 +603,33 @@ Singleton {
                 // that has no picture in it, and "play it over black" was one
                 // line more than refusing.
                 audio: false
+            },
+
+            monitors: {
+                // MONITOR OVERRIDES, one entry per output the shell has ever
+                // been asked to change: { "HDMI-A-1": { mode, position, scale,
+                // transform, vrr }, ... }.
+                //
+                // EMPTY ON PURPOSE, for the same reason wallpaper.perScreen
+                // is: the keys here are whatever outputs this machine has, no
+                // list of them is declared anywhere, and an empty default is
+                // treated as schema rather than user data. A non-empty default
+                // would name somebody else's monitors.
+                //
+                // EACH ENTRY IS THE WHOLE SPEC, not the fields that changed
+                // last: a monitor line is applied wholesale and a field left
+                // off it falls back to the default, so a position-only line
+                // without `vrr` would silently drop VRR. services/Monitors.qml
+                // builds the line from the compositor's own live state for
+                // exactly that reason, and writes here what it sent.
+                //
+                // THE LAYER ORDER IS: the user's lua/monitors.lua first (it is
+                // theirs, hand-commented, and stays byte-for-byte theirs), the
+                // entries here after -- applied by the shell at startup and
+                // after every compositor reload, when the config's own lines
+                // have had their say. Which is also why hand-editing the Lua
+                // file keeps working: it is the baseline, and the page always
+                // draws the compositor's live answer, never this map.
             },
 
             // How the shell's body melts together. See components/blob/blob.frag.
@@ -1142,12 +1192,34 @@ Singleton {
             // either way: two sizes would make it a different object the moment
             // it changed hands.
             settings: {
-                // Wide enough to split into the list and a section side by
-                // side (two panes, below), which is the desktop's shape; a
-                // screen that cannot hold this gets the page full-screen
-                // instead (modules/settings/SettingsPanel.qml).
-                width: 900,
-                height: 600,
+                // THE DESKTOP SHAPE: a permanent rail of sections and the
+                // page's content beside it, at every width. Was 900x600,
+                // which read as a phone propped against a monitor.
+                width: 1280,
+                height: 820,
+
+                // The rail's own width: wide enough for a section's name and
+                // its blurb, narrow enough that the content keeps most of
+                // the card.
+                rail: 264,
+
+                // THE RAIL'S ROW PITCH, smaller than the content's rows: the
+                // rail is navigation, not a settings row, and macOS's sidebar
+                // sizes are Apple's precedent for a nav column keeping its
+                // own, tighter pitch (HIG: a sidebar's row height, text and
+                // glyph size depend on its overall size). 36 is 42 minus a
+                // small tier, and it is the number that lets every section
+                // stand in the rail at once - twelve rows and three group
+                // names inside the scroll band with a row to spare - so the
+                // fold at rest falls on nothing. Still three small tiers
+                // clear of the 24px target floor.
+                railRow: 36,
+
+                // THE AIR AROUND A PAGE'S CONTENT, on every side. Not one of
+                // the padding tiers on purpose: a desktop page at 1280 reads
+                // at a half-step past `large`, and inventing a fifth tier for
+                // one page's gutter would let every page drift onto it.
+                gutter: 32,
 
                 // THE NARROWEST A PANE MAY BE, and therefore the one number
                 // that decides the page's shape. The page is a list of
@@ -2034,6 +2106,20 @@ Singleton {
                 // launch is not configurable - it is the whole point - and 0
                 // makes the launch the only automatic one.
                 interval: 30,
+
+                // THE WHAT'S-NEW MARKER: the id of the newest entry in
+                // docs/whats-new.json this user has been SHOWN. The log
+                // travels with the code it describes, so the entries newer
+                // than this marker are exactly the changes that arrived since
+                // the card was last read - through the download flow or a
+                // plain git pull, whichever brought the file in. Written by
+                // the card when the menu has believed it (see
+                // services/WhatsNew.qml), never by the update check: a
+                // download nobody has read yet is not a seen. A marker the
+                // log no longer contains shows everything rather than
+                // nothing, because the failure direction for news is
+                // over-showing.
+                seen: "",
 
                 // THE INDICATOR'S TWO, in hex and not on the ramp, for the
                 // terminal palette's reason (see Appearance): red and blue are

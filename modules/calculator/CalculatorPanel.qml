@@ -202,9 +202,8 @@ Item {
     // WHICH SCREEN THIS PANEL IS DRAWN ON, for the line above.
     //
     // ASKED OF THE WINDOW rather than handed down from ShellWindow, which is the
-    // idiom modules/SettingsCorner.qml established and both
-    // modules/sidebar/Sidebar.qml and modules/notifications/NotificationTray.qml
-    // use: the screen is not a fact about the calculator the way its keypad is,
+    // idiom modules/sidebar/Sidebar.qml and modules/notifications/NotificationTray.qml
+    // established: the screen is not a fact about the calculator the way its keypad is,
     // it is a fact about the surface the calculator happens to be drawn on. It
     // is also free to anything that builds this panel outside the shell's own
     // wiring, which a property threaded down through ShellWindow would not be.

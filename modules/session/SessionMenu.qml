@@ -71,7 +71,7 @@ Item {
     property string restoreTo: ""
 
     // WHICH SCREEN THIS PANEL IS DRAWN ON, for the line above. Asked of the
-    // window, per modules/SettingsCorner.qml and modules/sidebar/Sidebar.qml.
+    // window, per modules/sidebar/Sidebar.qml.
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     readonly property var actions: Power.actions

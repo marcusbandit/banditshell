@@ -37,6 +37,13 @@ Item {
     // answers to it would light two rows the moment you touched the mouse.
     property int selected: 0
 
+    // WHICH ONE IS WORN, and it is not `selected` for the same reason the
+    // dropdowns needed it said twice: the marker follows the pointer, but the
+    // option that IS the current answer keeps the fill and the bright label
+    // and its circle drawn solid whether or not the cursor is somewhere else.
+    // -1 is no worn row, which is every sheet the power menu opens.
+    property int worn: -1
+
     // Where it was asked for, in this item's coordinates.
     property real atX: 0
     property real atY: 0
@@ -45,13 +52,20 @@ Item {
 
     // ---- OPENING AND CLOSING -------------------------------------------
 
-    function popup(x: real, y: real, list: var): void {
+    // `start` is which entry the marker opens ON -- the dropdowns seed it
+    // with the option being worn so the sheet opens where the answer is.
+    // Optional by contract rather than by syntax (QML has no default
+    // parameter values): a caller that omits it hands an undefined over,
+    // and undefined is clamped back to the top the way the old hard zero
+    // was.
+    function popup(x: real, y: real, list: var, start: int): void {
         root.actions = list ?? [];
         if (!root.actions.length)
             return;
         root.atX = x;
         root.atY = y;
-        root.selected = 0;
+        root.worn = start >= 0 ? start : -1;
+        root.selected = Math.max(0, Math.min(root.actions.length - 1, start >= 0 ? start : 0));
         // WHERE IT LEFT OFF IS NOT A "FROM". The marker chases whatever is
         // chosen, so without this it would slide up from the last sheet's
         // choice while this one is still unrolling: two travels at once, and
@@ -147,6 +161,16 @@ Item {
 
     visible: unroll.value > 0.001
 
+    // ESCAPE CLOSES THE SHEET FIRST, from the sheet itself: while it is open
+    // it takes the focus, so the key aimed at "put the menu away" is answered
+    // here before whatever panel underneath can spend it on closing more.
+    // Closing hands the focus back through `closed`, which the panels that
+    // care about such things already catch.
+    onOpenChanged: if (root.open)
+        root.forceActiveFocus()
+
+    Keys.onEscapePressed: root.close()
+
     // ---- THE PARTS -----------------------------------------------------
 
     MouseArea {
@@ -185,7 +209,12 @@ Item {
     Item {
         id: sheet
 
-        width: root.fullWidth * unroll.value
+        // THE WIDTH DOES NOT UNROLL. A sheet caught mid-growth is a sheet
+        // with the panel showing through past its right edge, its own cells
+        // hanging over card rows with nothing of itself behind them -- the
+        // height reveal says "opening" all by itself, and the column's width
+        // is a fact, not an entrance.
+        width: root.fullWidth
         height: root.fullHeight * unroll.value
 
         // Out of the corner nearest the cursor, so it grows from the click
@@ -242,6 +271,7 @@ Item {
                     required property int index
 
                     readonly property bool chosen: root.selected === cell.index
+                    readonly property bool worn: root.worn === cell.index
 
                     width: root.rowWidth
                     height: root.rowHeight
@@ -249,15 +279,16 @@ Item {
                     Icon {
                         id: mark
 
+                        // Faded rather than hidden when the disc wears: the
+                        // disc is anchored to this item's centre, so the item
+                        // must keep its geometry or the disc loses the slot.
+                        opacity: cell.worn ? 0 : 1
+
                         x: root.inset
                         anchors.verticalCenter: parent.verticalCenter
 
                         name: cell.modelData.icon
                         size: Appearance.font.iconSize
-                        // Faded between weights on the same clock the marker
-                        // moves on, so a mark brightens as the marker arrives
-                        // under it rather than the instant the cursor crosses an
-                        // edge the marker has not reached yet.
                         color: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
 
                         Behavior on color {
@@ -267,13 +298,42 @@ Item {
                         }
                     }
 
+                    // THE WORN MARK, DRAWN BY THE SHELL BECAUSE THE SYMBOL
+                    // FONT CANNOT BE TRUSTED WITH IT. "radio_button_unchecked"
+                    // is a stroke circle and its FILL axis does not fill it --
+                    // asking produced a ring at every size. And G2Rect could
+                    // not draw it either: at half-side radius a squircle is
+                    // still a squircle, and a squircle is not a circle. So the
+                    // disc is a PLAIN RECTANGLE at half-side radius, which is
+                    // the one thing in Qt that actually is a circle, wearing
+                    // the accent: the only filled thing on the row.
+                    Rectangle {
+                        visible: cell.worn
+
+                        // Centred on the ring's own slot, and SIZED TO THE
+                        // RING: the glyph draws its circle the full width of
+                        // its em, so the disc is that em wide -- the same
+                        // outer diameter the hollow ones have, measured, not
+                        // guessed. The column of marks reads as one column
+                        // of circles where one of them is filled.
+                        anchors.centerIn: mark
+
+                        width: mark.width
+                        height: width
+                        radius: width / 2
+                        color: Appearance.colour.accent
+                    }
+
                     StyledText {
                         anchors.left: mark.right
                         anchors.leftMargin: root.inset
                         anchors.verticalCenter: parent.verticalCenter
 
                         text: cell.modelData.label
-                        color: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                        // Bright when it is the answer or under the marker,
+                        // dim when it is neither, on the same clock the
+                        // marker moves on.
+                        color: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
 
                         Behavior on color {
                             ColorAnimation {

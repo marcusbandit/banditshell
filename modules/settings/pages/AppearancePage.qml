@@ -12,10 +12,12 @@ import qs.modules.settings
 // because `banditshell set theme slate` proving the live re-dress works is
 // exactly the kind of thing that deserves a surface with no terminal in it.
 //
-// THE WALLPAPER ROWS ARE NOT HERE ANY MORE. What the shell is seen against is
-// its own section now (pages/WallpaperPage.qml, key `wallpaper`), because it
-// grew a picker and a picker is not a row: the two switches went with it so a
-// wallpaper question has one place to be answered.
+// THE WALLPAPER IS A SUB-PAGE of this one (pages/WallpaperPage.qml, key
+// `wallpaper`, parent `appearance`), reached from its own row below, because
+// what the shell is seen against is an appearance question and a top-level
+// section for it left this page with nothing to be. The picker itself grew
+// too big to be a row: the switches that used to live here went with it, so
+// a wallpaper question has one place to be answered.
 //
 // Every other appearance decision already lives in config.json behind
 // Appearance's tokens, so the page grows a control only when a setting earns
@@ -34,7 +36,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         // -------------------------------------------------------- palettes
 
@@ -70,7 +72,7 @@ Item {
                     // greys in an 18px chip read as dirt, and the accents are
                     // where palettes actually differ.
                     Row {
-                        spacing: Appearance.padding.small / 2
+                        spacing: Appearance.padding.small
 
                         Repeater {
                             model: [row.accents.dim, row.accents.mid, row.accents.bright]
@@ -104,9 +106,27 @@ Item {
                 icon: "text_fields"
                 label: "Font"
                 value: Appearance.font.family
-                detail: "the face every word in the shell is set in"
                 chevron: true
                 onActivated: Settings.setPage("font")
+            }
+        }
+
+        // ------------------------------------------------------- wallpaper
+
+        // One row that leads somewhere, for the Type row's reason: the picker
+        // is a page of its own (pages/WallpaperPage.qml, a sub-page of this
+        // one), and this row says what is worn and is the way in. The value
+        // is the focused screen's wallpaper's name, which is the fact a
+        // per-screen wallpaper service can honestly state in one line.
+        SettingsCard {
+            title: "Wallpaper"
+
+            SettingsRow {
+                icon: "wallpaper"
+                label: "Wallpaper"
+                value: Wallpaper.name
+                chevron: true
+                onActivated: Settings.setPage("wallpaper")
             }
         }
 
@@ -128,7 +148,6 @@ Item {
             SettingsRow {
                 icon: "crop_square"
                 label: "Corners and gaps from the compositor"
-                detail: "read rounding, its power and the gap from hyprland rather than config.json"
                 onActivated: Config.set("compositor.follow", !Config.values.compositor.follow)
 
                 Toggle {
@@ -140,7 +159,6 @@ Item {
             SettingsRow {
                 icon: "border_color"
                 label: "Push the theme onto window borders"
-                detail: "the focused window wears the accent; off, hyprland.conf's colours stand"
                 onActivated: Config.set("compositor.pushBorders", !Config.values.compositor.pushBorders)
 
                 Toggle {

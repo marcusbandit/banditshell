@@ -15,11 +15,10 @@ import qs.modules.settings
 // figure in particular sits under a separator at the bottom of it. Here it is
 // the second line.
 //
-// THIS PAGE DOES HAVE A "NO BATTERY" STATE, which the menu pointedly does not.
-// The menu is only reachable through a gauge that exists only on a laptop; a
-// settings page is reachable from a list of pages on every machine, and a page
-// that is simply empty on a desktop reads as broken. One inert row saying why
-// is the difference.
+// THE PAGE IS GATED AT THE REGISTER, not here: Settings.pages filters it out
+// on a machine with no battery, so a section about a cell the machine does
+// not have is never in the list to be opened. A page that is simply empty on
+// a desktop reads as broken; never existing reads as honest.
 //
 // WHAT THE MENU NEEDED TO BE EMBEDDED: only a width. BatteryMenu has no
 // `showing`; UPower and the health log are Battery's, and run whether or not
@@ -33,18 +32,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
-
-        SettingsCard {
-            visible: !Battery.available
-
-            SettingsRow {
-                icon: "battery_unknown"
-                label: "No battery"
-                detail: "this machine runs from the wall"
-                interactive: false
-            }
-        }
+        spacing: Appearance.padding.huge
 
         SettingsCard {
             visible: Battery.available
@@ -81,16 +69,9 @@ Item {
             }
         }
 
-        Column {
+        SettingsGroup {
             visible: Battery.available
-            width: parent.width
-            spacing: Appearance.padding.small
-
-            StyledText {
-                text: "History"
-                color: Appearance.colour.textFaint
-                leftPadding: Appearance.padding.small
-            }
+            heading: "History"
 
             G2Rect {
                 width: parent.width

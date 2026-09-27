@@ -45,18 +45,20 @@ Item {
     // ...and the shell, rather than a window, is currently holding it.
     readonly property bool docked: root.mine && !Settings.floating
 
-    // THE SIZE IT RESTS AT: the configured card, unless the content area
-    // cannot hold that card with a margin of air around it, in which case it
-    // is the content area less that margin in BOTH dimensions. A desktop gets
-    // a card; a phone, whose whole screen is narrower than the card, gets a
-    // page that fills it, which is what a settings app on a phone is. Both
-    // dimensions together rather than each clamped alone, because a card that
-    // had shrunk to fit sideways and kept its height would be a strip, and a
-    // strip is neither of the two things this page knows how to be.
+    // THE SIZE IT RESTS AT: the configured card, each dimension clamped to
+    // the content area minus a margin of air. INDEPENDENTLY, which is the
+    // correction and the audit's finding: the old branch filled the hole
+    // whenever EITHER dimension did not fit, so on a portrait monitor --
+    // 1128 wide, 1900 tall -- a 1280x820 card became a full-hole sheet
+    // brushing the top edge, when the hole had 1080 pixels of spare height
+    // to centre an 820 card in. Each axis answers for itself: too wide, the
+    // card narrows; too short, it shortens; and the old "strip" fear was
+    // the phone's shape talking -- the rail survives a narrow card, and a
+    // hole that cannot fit the card in either dimension is a hole the old
+    // rule filled edge to edge anyway.
     readonly property real air: Appearance.padding.large
-    readonly property bool cramped: root.holeWidth < Settings.homeWidth + root.air * 2 || root.holeHeight < Settings.homeHeight + root.air * 2
-    readonly property real homeWidth: root.cramped ? root.holeWidth - root.air * 2 : Settings.homeWidth
-    readonly property real homeHeight: root.cramped ? root.holeHeight - root.air * 2 : Settings.homeHeight
+    readonly property real homeWidth: Math.min(Settings.homeWidth, root.holeWidth - root.air * 2)
+    readonly property real homeHeight: Math.min(Settings.homeHeight, root.holeHeight - root.air * 2)
     readonly property real homeX: root.holeX + (root.holeWidth - root.homeWidth) / 2
     readonly property real homeY: root.holeY + (root.holeHeight - root.homeHeight) / 2
 
@@ -65,8 +67,7 @@ Item {
     // frame drawing the same thing, and the flight home starts from that.
     readonly property var held: Settings.handoff
 
-    // WHERE THE PAGE COMES OUT OF: the content area's bottom-right corner, which
-    // is the corner the nook that opens it lives in (modules/SettingsCorner.qml).
+    // WHERE THE PAGE COMES OUT OF: the content area's bottom-right corner.
     //
     // A page that fades up in the middle of the screen has no relationship to
     // the thing you pressed to get it. This one grows out of exactly the point
@@ -115,62 +116,14 @@ Item {
     // while you go and look at what you changed, and a page that dies the moment
     // you touch your terminal cannot be left open at all.
     //
-    // So the desktop stays live around it, which is also why the shell asks for
-    // the keyboard on demand rather than exclusively while it is docked (see
-    // ShellWindow). Escape closes it once it has been clicked; the CLI closes it
-    // from anywhere.
+    // So the desktop stays live around it, which is also why the docked card
+    // holds the keyboard only while it is docked (see ShellWindow) -- and why,
+    // while it IS docked, it holds it outright: Escape closes the page however
+    // it was opened, without asking to be clicked first.
     readonly property Item maskItem: card
 
     function hide(): void {
         Settings.hide();
-    }
-
-    // WHETHER THE PRESS UNDER WAY BEGAN ON THE GRIP, decided at the moment it
-    // began and then simply remembered.
-    //
-    // The Pull's `fromX`/`fromY` survive until the next press and are the right
-    // ORIGIN to judge (see the Pull's `onTapped` for why the origin and not the
-    // release point), but a point is only half of a hit test: the other half is
-    // where the grip was when the finger touched it, and the grip is on a card
-    // that is very often moving. `emerge` is mid-flight for the whole of the
-    // opening and closing animation, the fx/fy Follows are mid-flight for the
-    // whole of a flight home from a window, and `armed: root.docked` excludes
-    // none of that, so a press is perfectly free to land while the grip is
-    // travelling. Resolving the stored point at RELEASE asked the geometry
-    // where it is NOW: release a shove at sixty per cent, tap a quiet part of
-    // the page while it finishes opening, and the grip can arrive under the
-    // recorded point in time to close a page you tapped the surface of, which
-    // is exactly the trap the Pull's comment says this must not be. The inverse
-    // is the same bug being polite: a real tap on the grip of a card flying
-    // home maps outside it, and the close does nothing.
-    //
-    // So the answer is taken while the two halves are contemporaneous, and the
-    // release only reads it back.
-    property bool pressedGrip: false
-
-    // Whether a point, in THIS item's coordinates, lands on the face's corner
-    // grip. The Pull records its press origin in its parent's frame, and its
-    // parent is this item (that siblinghood is load-bearing, see the Pull
-    // below), so the origin can be handed straight in here. Mapped INTO the
-    // grip rather than the grip's rect mapped out, because mapFromItem walks
-    // the whole ancestor chain and therefore survives the card's scale
-    // transform; restating the grip's position arithmetic on this side would
-    // be a second copy of geometry SettingsFace already owns, wrong the first
-    // time the grip moved.
-    //
-    // ANSWERED WHEN THE PRESS LANDS, NEVER WHEN IT LIFTS, which is the point of
-    // `pressedGrip` below and the one thing about this function that is not
-    // obvious. Walking the ancestor chain is what makes the scale transform
-    // survivable, and it is also what makes the answer a fact about WHEN it was
-    // asked: the chain it walks is the card's live one, and the card's rect and
-    // scale are driven by `emerge` and by the fx/fy Follows, all of which move.
-    // Asked at release about a point recorded at press, it would be hit-testing
-    // this instant's grip against the last instant's finger.
-    function pressOnGrip(x: real, y: real): bool {
-        const grip = face.gripItem;
-        if (!grip || !grip.visible)
-            return false;
-        return grip.contains(grip.mapFromItem(root, x, y));
     }
 
     // Hand the page to a window, at exactly the rect the card occupies THIS
@@ -345,43 +298,24 @@ Item {
         // compositor for the keyboard once `docked` has propagated, and forcing
         // focus before that gets a focused item that receives nothing.
         Qt.callLater(keys.forceActiveFocus);
+
     }
 
     // The keyboard, on an item of its own rather than on the card: the card is
     // invisible until the reveal has moved off zero, and an invisible item cannot
     // hold focus. See SessionMenu, which learned this the same way.
     //
-    // AND IT IS ONLY HALF OF WHAT ESCAPE NEEDS, which is worth writing down here
-    // rather than being re-derived by the next person who tries it. Focus inside
-    // the window is not the keyboard: the surface is granted the keyboard ON
-    // DEMAND while the page is docked (ShellWindow's keyboardFocus says why, at
-    // length), and on demand means the compositor hands it over when the surface
-    // is CLICKED. Until something on the shell has been clicked, no key event
-    // reaches this window at all and this item, focused or not, hears nothing.
-    // So Escape closes the page from the moment the page, the band, a gauge or
-    // any other part of the shell has been touched, and not before.
+    // The surface asks for the keyboard EXCLUSIVELY while docked (see
+    // ShellWindow), so this item hears keys from the moment the page opens,
+    // clicked or not. It is still only HALF of what Escape needs: focus inside
+    // the page -- the search field -- walks key events up the PARENT chain,
+    // and this item is a sibling of the card, not an ancestor of the field.
+    // The face answers Escape for everything focused inside it; this item is
+    // for the case nothing inside the page holds the focus at all.
     //
-    // The two ways to close that gap were both measured against the paragraph
-    // this file opens with, and both were rejected:
-    //
-    //   ASK EXCLUSIVELY while docked. That is what every other summoned panel
-    //   does, and it is exactly what a settings page must not do: the page is a
-    //   thing you leave open while you go and look at what you changed, and an
-    //   exclusive grab means you cannot type into the thing you opened it to
-    //   change. It would trade a keypress for the page's whole reason to be
-    //   dismissable by click-through in the first place.
-    //
-    //   ASK ON DEMAND ALWAYS, so the click that opens the page is itself the
-    //   click that hands the surface the keyboard. The corner tap lands while
-    //   the surface is still asking for nothing, so it cannot be the one; making
-    //   the shell ask unconditionally would mean every press on a gauge, a
-    //   workspace pip or the bare band took the keyboard off the focused window,
-    //   which is a far larger surprise than the one being fixed, and it would
-    //   break for the CLI and keybind routes anyway, since neither clicks
-    //   anything.
-    //
-    // What is left is honest: the page answers Escape the moment the keyboard
-    // can reach it, and the CLI closes it from anywhere.
+    // The Exclusive grab ends with the dock, so a page pulled out into a
+    // window releases the shell's keyboard to the desktop and the window --
+    // an ordinary toplevel -- answers for itself.
     Item {
         id: keys
 
@@ -415,15 +349,13 @@ Item {
     // round (DESIGN.md 15). Everything in this shell goes back into the edge or
     // corner it came out of, by the gesture that brought it out, reversed.
     //
-    // WITHOUT IT the page had four ways to close and exactly one of them could
-    // be reached without a keyboard: a tap on a 24 by 24 invisible square in the
-    // OPPOSITE corner of the screen from the card, which nothing on the page
-    // mentions and nothing about the card points at. The obvious alternative is
-    // a close button, and that is precisely the small permanent control this
-    // shell is built not to have (DESIGN.md 2.1). A panel you can push needs
-    // nothing drawn on it, and the answer to "how do I get rid of this" is then
-    // the same answer everywhere. SettingsFace draws a corner grip so the page
-    // says which way it goes; that mark takes no clicks, because this does.
+    // WITHOUT IT the page's only keyboard-free close was a tap on a 24 by 24
+    // invisible square in the OPPOSITE corner of the screen from the card,
+    // which nothing on the page mentions and nothing about the card points
+    // at. The obvious alternative is a close button, and that is precisely
+    // the small permanent control this shell is built not to have (DESIGN.md
+    // 2.1). A panel you can push needs nothing drawn on it, and the answer to
+    // "how do I get rid of this" is then the same answer everywhere.
     //
     // A SIBLING OF THE CARD RATHER THAN A CHILD OF IT, wearing the card's own
     // rect, and that is load-bearing rather than tidiness waiting to be undone.
@@ -441,25 +373,17 @@ Item {
     // would quietly break the gesture.
     //
     // BEFORE the card, because declaration order is input order. Everything the
-    // page draws sits on top of this, so SettingsFace's pop-out button keeps the
-    // clicks that belong to it and only the page's empty parts, which take no
-    // mouse at all, fall through to here. That is what a `z: -1` inside the card
-    // would have bought, and out here it comes free.
+    // page draws sits on top of this, so the page's own controls keep the
+    // clicks that belong to them and only the page's empty parts, which take
+    // no mouse at all, fall through to here. That is what a `z: -1` inside
+    // the card would have bought, and out here it comes free.
     //
-    // AND `onTapped` ANSWERS EXACTLY ONE RECTANGLE. A tap on the page's own
-    // surface still does nothing at all: there is no click-away dismissal here
-    // (see `maskItem` above for why a settings page in particular has to
-    // survive being clicked past), and a page that closed when you pressed the
-    // space beside its own title would be that same trap drawn in a smaller
-    // box. The one exception is the corner grip, because the grip is the mark
-    // that already points at the close, and a mark you can see but not press
-    // is a lie about half of itself (SettingsFace says the rest). The handler
-    // lives HERE, on the Pull, rather than as a MouseArea on the grip, because
-    // a press on the grip is ambiguous until it moves: it may be this tap or
-    // the first inch of the shove, and only the Pull can tell a tap from a
-    // pull from a spent press, that arbitration being the whole of what it is.
-    // A MouseArea over the grip would win the press by stacking order and the
-    // shove could never start from the one mark that draws its direction.
+    // AND A TAP ON THE PAGE'S OWN SURFACE DOES NOTHING AT ALL: there is no
+    // click-away dismissal here (see `maskItem` above for why a settings page
+    // in particular has to survive being clicked past), and a page that
+    // closed when you pressed the space beside its own title would be that
+    // same trap drawn in a smaller box. The Pull's `tapped` goes unanswered
+    // on purpose: only a push that moved puts the page away.
     Pull {
         id: shoveBack
 
@@ -490,8 +414,8 @@ Item {
 
         // Down and to the right, back toward the content area's bottom-right
         // corner, which is the point the card grew out of and the point it
-        // collapses to. SettingsCorner's summoning pull is (-1, -1); this is
-        // that vector negated, and that is the entire difference between the way
+        // collapses to. The exit vector is the entry's, negated, and that is the
+        // entire difference between the way
         // in and the way out.
         dirX: 1
         dirY: 1
@@ -530,44 +454,6 @@ Item {
 
         onPulled: fraction => root.pushTo(fraction)
         onFinished: gone => root.pushEnd(gone)
-
-        // THE HIT TEST, TAKEN WHILE THE PRESS IS THE PRESENT TENSE. See
-        // `pressedGrip` for why the answer cannot wait for the release.
-        //
-        // The point is assembled here rather than read off `fromX`/`fromY`,
-        // and it is the same sum: the Pull's press handler stores
-        // `x + mouse.x` for the reason it explains, and `x + mouseX` is that
-        // expression evaluated from the outside. Taking it here removes the
-        // question of whether the Pull's own `onPressed` has run yet, because
-        // MouseArea cannot report itself pressed before it has stored the
-        // position that pressed it: `mouseX` is defined exactly while a button
-        // is down, so the instant this fires is the first instant it is valid.
-        // The alternative, hooking the Pull's `onPressed` from out here, would
-        // have been a second handler on a signal the component already handles
-        // for its own gesture, which is a thing to reach for only when there is
-        // nothing else that answers.
-        //
-        // Unarmed presses are rejected by the Pull and never become a tap, so
-        // an answer recorded for one is simply overwritten by the next press
-        // that counts.
-        onPressedChanged: {
-            if (shoveBack.pressed)
-                root.pressedGrip = root.pressOnGrip(shoveBack.x + shoveBack.mouseX, shoveBack.y + shoveBack.mouseY);
-        }
-
-        // The press that stayed a tap and never set off the wrong way. Gated
-        // to the grip by WHERE IT BEGAN, not where it ended: `pressedGrip` is
-        // the answer about the Pull's own press origin, in this item's frame,
-        // taken when that origin and the grip were the same age. Judging the
-        // release point instead would let a press that wobbled off the grip
-        // within the slack stop counting as the tap it plainly was. A press
-        // that became a shove never reaches this signal, and a press that went
-        // the wrong way is spent and reaches nothing, so the three outcomes
-        // cannot shadow each other.
-        onTapped: {
-            if (root.pressedGrip)
-                root.hide();
-        }
     }
 
     Item {
@@ -621,16 +507,6 @@ Item {
 
             windowed: false
 
-            // The grip's pressed feedback, computed on THIS side of the seam
-            // because only this side can see the press: the Pull owns it (a
-            // hover area's `containsMouse` freezes under somebody else's
-            // grab, so the face cannot sense it honestly). Re-evaluated on
-            // press and release, which are the only edges that matter; the
-            // origin does not move during a drag, so a shove that began on
-            // the grip keeps its ribs lit for the whole ride, which is the
-            // right feedback for a hand that is using the mark as the handle
-            // it draws itself as.
-            gripHeld: shoveBack.pressed && root.pressOnGrip(shoveBack.fromX, shoveBack.fromY)
             onHandover: root.popOut()
         }
     }

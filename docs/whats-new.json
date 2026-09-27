@@ -1,0 +1,26 @@
+{
+    "entries": [
+        {
+            "id": "example",
+            "date": "1970-01-01",
+            "example": true,
+            "changes": [
+                {
+                    "type": "features",
+                    "severity": "minor",
+                    "text": "This entry is an EXAMPLE of the shape. The shell skips it; the first real entry, written at the first push under docs/agents/whats-new.md, replaces it."
+                },
+                {
+                    "type": "config",
+                    "severity": "major",
+                    "text": "A Major change says what the recipient must DO, in one line, because their setup degrades if they do not: a config key was renamed, a file the shell writes changed shape, a keybind now does something else."
+                },
+                {
+                    "type": "ui",
+                    "severity": "minor",
+                    "text": "Everything that is not an action is Minor, however much work it was: features, fixes, polish, visual changes."
+                }
+            ]
+        }
+    ]
+}

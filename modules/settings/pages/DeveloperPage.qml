@@ -45,7 +45,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         // ----------------------------------------------------------- shell
 
@@ -109,7 +109,7 @@ Item {
 
         // ---------------------------------------------------------- status
 
-        // FACTS, not controls, so the rows are inert for ScreensPage's reason:
+        // FACTS, not controls, so the rows are inert for MonitorsPage's reason:
         // a row that lit on hover and swallowed the press would be promising a
         // thing it cannot do. Each answer is the row's `value`, which sits
         // beside its label while it fits so the group reads as a table, and

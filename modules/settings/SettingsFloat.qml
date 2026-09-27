@@ -79,11 +79,23 @@ FloatingWindow {
     // reaches the card's rect. There is nothing to ease, because from the
     // outside nothing happened.
     Item {
+        id: holder
+
         anchors.fill: parent
 
         opacity: Settings.placed ? 1 : 0
 
+        // The face takes the keyboard the frame the window is where it belongs,
+        // so Escape has a focused item to walk up from from the first press: a
+        // window whose focused item is nothing hears no keys at all. Clicking
+        // the search field moves focus INTO the face afterwards, and the face's
+        // own Escape handler catches the walk back up.
+        onOpacityChanged: if (holder.opacity === 1)
+            face.forceActiveFocus()
+
         SettingsFace {
+            id: face
+
             anchors.fill: parent
 
             windowed: true

@@ -121,6 +121,39 @@ PanelWindow {
         return true;
     }
 
+    // THE WHAT'S NEW CARD, SUMMONED ONCE. After an update the shell restarts
+    // into a checkout whose log has entries the user has not been shown; a
+    // manual git pull lands the same way. The update menu is where those
+    // entries live (UpdateMenu hosts the card), and a menu nobody opens is a
+    // card nobody sees, so the launch opens it - once, on the focused screen,
+    // by the same pinned open the CLI uses, because a machine coming up has
+    // no pointer resting anywhere. Thereafter the card is in the menu
+    // whenever it is pending, and the news a launch summons is emptied by
+    // being shown (services/WhatsNew.qml says how a card comes to be marked
+    // seen), so this cannot nag: one panel, through existing machinery, and
+    // no surface of its own (DESIGN.md 2.1).
+    Timer {
+        id: whatsNewSummon
+
+        interval: 2500
+        repeat: false
+        // Armed only when the answer is known - the log read off disk and the
+        // user's own config in. Starting earlier reads an empty `pending`
+        // and skips the summon for the whole session, which is the one
+        // failure this cannot recover from; the beat itself is Update's own
+        // launch-check argument, a little longer, because a panel is a bigger
+        // interruption than a check.
+        running: WhatsNew.ready
+
+        onTriggered: {
+            // ONE WINDOW OF SEVERAL ASKS: the focused screen's, by the same
+            // resolution the CLI's open uses. On one screen this is trivially
+            // the only window; on two, the one in front of the user.
+            if (WhatsNew.pending.length > 0 && Shell.forScreen("") === win)
+                win.openMenu("update", true);
+        }
+    }
+
     anchors {
         top: true
         bottom: true
@@ -158,20 +191,28 @@ PanelWindow {
     // (Menus.needsKeyboard, components/Prompts.qml). Every other term below is
     // already a fact about this window's own panels.
     //
-    // THE SETTINGS PAGE ASKS ON DEMAND, not exclusively, which is the one thing
-    // here that does.
+    // THE SETTINGS PAGE ASKS OUTRIGHT TOO, which it did not use to.
     //
-    // Everything above takes the keyboard outright because it is a thing you are
-    // in the middle of doing and Escape has to work from anywhere. The settings
-    // page is a thing you leave open while you go and look at what you changed,
-    // and a layer surface holding the keyboard for it would mean you could not
-    // type into whatever you opened it to change. On demand means it gets the
-    // keyboard when you click it and gives it back when you click away, which is
-    // exactly how the window it can be pulled out into behaves.
+    // It spent its life on the ON DEMAND side under an argument that sounded
+    // airtight: the page is a thing you leave open while you go and look at
+    // what you changed, and a surface holding the keyboard would mean you
+    // could not type into whatever you opened it to change. All true, and it
+    // still lost, on the rule the pinned surfaces already settled: ESCAPE
+    // CLOSES WHAT IS OPEN, HOWEVER IT WAS OPENED. On demand cannot honour
+    // that. `banditshell settings open` and the corner both summon the page
+    // while the pointer and the focus are somewhere else, and a key event
+    // reaches an on-demand layer only after the surface has been clicked --
+    // which makes Escape a second opening gesture, and the first press do
+    // nothing. Measured, repeatedly, by the one person whose report matters.
     //
-    // Exclusive still wins when both apply: the launcher's search field takes
-    // every printable key, and losing those to a page nobody is typing into
-    // would be the worse failure.
+    // The cost is the cost every exclusive panel here pays, and the page pays
+    // it knowingly: while it is docked it holds the keyboard, and typing goes
+    // to its search field rather than to the window underneath. A page whose
+    // longest stay is a search and a few switches is in the tray's situation,
+    // not the terminal's; and the long stays have a door this file built
+    // anyway -- the page pulls out into a real window ("Full it out"), where
+    // it is an ordinary toplevel and the compositor shares focus the ordinary
+    // way.
     //
     // THE HOTKEY SHEET ASKS OUTRIGHT, on the power panel's argument and one of
     // its own. It has no field and nothing to type into, so it wants exactly
@@ -250,7 +291,7 @@ PanelWindow {
     // it back the moment a window is clicked instead. Escape reaches the menu
     // while the menu is what you are dealing with, the desktop keeps every
     // event it should have had, and neither has to be traded for the other.
-    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.docked ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || settingsLayer.docked || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -460,6 +501,7 @@ PanelWindow {
             intersection: Intersection.Combine
             item: settingsCorner.maskItem
         }
+
     }
 
     // EVERYTHING the shell draws, in one item, so that one watcher can answer

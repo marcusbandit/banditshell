@@ -420,6 +420,26 @@ banditshell/
 │                                that asks its neighbours; needs `qrencode`
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
+│   ├── HyprConfig.qml           the Hyprland config as a model: the tree
+│   │                            (hyprland.lua + everything it requires)
+│   │                            scanned into binds, each carrying the file
+│   │                            and lines it came from. Edits splice those
+│   │                            lines and splice nothing else; every write
+│   │                            is verified (`--verify-config`) before the
+│   │                            compositor reloads, and a failed one is
+│   │                            put back the way it was
+│   ├── hyprgen.js               that model, as text: a Lua-aware scanner
+│   │                            (strings, escapes, long brackets, multi-
+│   │                            line calls, block depth), chord parsing,
+│   │                            line composition and the splice. Binds the
+│   │                            scanner cannot fully own -- loops, submap
+│   │                            functions, concatenation -- come back
+│   │                            `dynamic`, read-only. No QML in it, the
+│   │                            way vt.js has none, tested the same way
+│   ├── whatsnew.js               the What's new log as DATA: entries parsed
+│   │                            tolerantly and accumulated past the
+│   │                            last-shown marker. No QML in it, the way
+│   │                            hyprgen.js has none, tested the same way
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
@@ -496,6 +516,12 @@ banditshell/
 │   │                            fast-forward OR NOTHING, the restart goes
 │   │                            through the CLI, and the branch tracked is
 │   │                            a config choice, never a menu one
+│   ├── WhatsNew.qml              the update's own changelog, read: entries
+│   │                            newer than the marker in the user's config
+│   │                            are what the What's new card shows. The log
+│   │                            is a file IN the checkout, so only a pull
+│   │                            can bring entries in - the available state
+│   │                            cannot announce what it does not have
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -590,6 +616,11 @@ banditshell/
 │   │       ├── BatteryPage.qml  charge and health, and the bar's history
 │   │       ├── DevicePage.qml   the whole machine: board, processor, memory, graphics,
 │   │       │                    storage, software, battery, screens (services/Device.qml)
+│   │       ├── KeysPage.qml      every Hyprland bind, by file and line:
+│   │       │                    the ones the scanner fully owns are edited
+│   │       │                    here (chord, command, options, spliced in
+│   │       │                    place, verified, reloaded); the ones the
+│   │       │                    source generates are shown read-only
 │   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
 │   │       └── AboutPage.qml    banditshell itself: what it is and why, and where to read
 │   ├── notifications/           discrete cards; NOT part of the blob field
@@ -610,7 +641,11 @@ banditshell/
 │   │                            the one deed the state asks for - download
 │   │                            in the red state, restart in the blue one,
 │   │                            search in the quiet one. The branch is
-│   │                            named, not chosen: it is a config choice
+│   │                            named, not chosen: it is a config choice.
+│   │                            The What's new card lives here too, every
+│   │                            entry accumulated past the marker, and it
+│   │                            is marked seen only once the panel
+│   │                            believes it has been read
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because
@@ -703,7 +738,12 @@ banditshell/
 │   └── bs-pty, bs-ls            build output; NOT committed, unlike the .qsb
 │                                shaders, because they are ELF for one machine
 └── docs/
-    └── hyprland-binds.example.conf   the CLI as keybinds: a worked set to copy
+    ├── hyprland-binds.example.conf   the CLI as keybinds: a worked set to copy
+    └── whats-new.json                the What's new log, read out by the
+                                       shell itself: one entry per push,
+                                       newest first, written for the
+                                       recipient. The rule for writing it
+                                       is docs/agents/whats-new.md
 ```
 
 Import paths: Quickshell exposes the config root as the module `qs`, so a directory is
@@ -1583,6 +1623,30 @@ Numbers that were already right, recorded so they do not get "fixed":
   freedesktop icon spec at all.
 - **The metaball chassis.** Apple shipped `GlassEffectContainer` in 2025 to
   "fluidly morph Liquid Glass shapes into each other". Same construction.
+
+**The spacing ladder rebased onto 4** (2026-09-27, from the research pass in
+`docs/research/`): padding is 8 / 12 / 16 / 24 / 32 (`base: 4`, scale `[2,3,4,6,8]`),
+with a semantic band per tier - small is icon-to-text and label-to-control, normal
+is blocks within a group, `card` (new, 16) is the inside of a boxed thing, large is
+component padding pairs, huge is the group-to-group break and the page gutter. The
+old 6 and 36 exist on no published ladder (Carbon, Atlassian, Polaris), and 6 was
+not a multiple of the industry's 4px base or our own 9px glyph grid. 12 within
+groups / 32 between them stays a decisive 1:2.7 under proximity's 1:2 floor.
+
+**Group headers are tracked-caps overlines.** UPPERCASE + one font stem of
+letterspacing (2px ≈ 0.11em at the body tier), at the faint tier. The sources allow
+exactly two header forms - tracked caps or a full-alpha heading - and GNOME/Fluent
+both discourage caps generally; this shell is a terminal's child, so the caps here
+are a deliberate idiom choice. The asymmetry under it is the law: the gap above a
+group is the page's huge tier, the gap from heading to its first child one small
+tier, so a heading always owns what follows. Shared component:
+`modules/settings/SettingsGroup.qml` (pages' hand-rolled label+column pairs were
+folded into it).
+
+**Tertiary label lifted to the WCAG floor: 0.45.** Apple's NSColor tertiary
+(0.247) is for placeholders and empty states; ours was carrying settings' secondary
+sentences and group headers at ~3:1. Informative text now sits at 4.5:1 or above;
+the quaternary tier (0.16) is ghost text, disabled and decorative only.
 
 **Still owed to this list:** Apple's Liquid Glass guidance says a material
 becomes *thicker* as it morphs to a larger size. Our chassis and its menus are

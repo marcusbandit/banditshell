@@ -64,7 +64,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         // What the shell wears now. A fact, not a control: pressing it would
         // choose what is already chosen.

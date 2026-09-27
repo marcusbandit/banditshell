@@ -30,7 +30,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         SettingsCard {
             title: "Bluetooth"
@@ -50,15 +50,8 @@ Item {
             }
         }
 
-        Column {
-            width: parent.width
-            spacing: Appearance.padding.small
-
-            StyledText {
-                text: "Devices"
-                color: Appearance.colour.textFaint
-                leftPadding: Appearance.padding.small
-            }
+        SettingsGroup {
+            heading: "Devices"
 
             G2Rect {
                 width: parent.width

@@ -59,8 +59,7 @@ Item {
     // for the same reason. See SessionMenu.qml.
     property string restoreTo: ""
 
-    // WHICH SCREEN THIS CARD IS ON, asked of the window per
-    // modules/SettingsCorner.qml's idiom: the screen is a fact about the
+    // WHICH SCREEN THIS CARD IS ON, asked of the window, the shell's one idiom for it: the screen is a fact about the
     // surface, not about the card.
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 

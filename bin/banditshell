@@ -443,12 +443,13 @@ settings)
     shift || true
     case "$sub" in
     toggle | close | pull | put | status) ipc settings "$sub" ;;
+    float) ipc settings float ;;
     open) ipc settings open "${1:-}" "${2:-}" ;;
     page)
         [ $# -ge 1 ] || { echo "usage: banditshell settings page <key>" >&2; exit 2; }
         ipc settings page "$1"
         ;;
-    *) echo "usage: banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status" >&2; exit 2 ;;
+    *) echo "usage: banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|float|status" >&2; exit 2 ;;
     esac
     ;;
 

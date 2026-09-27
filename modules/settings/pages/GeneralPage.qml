@@ -37,7 +37,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         // ----------------------------------------------------------- touch
 

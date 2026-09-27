@@ -290,8 +290,10 @@ Singleton {
     readonly property QtObject padding: QtObject {
         readonly property int small: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 0))
         readonly property int normal: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 1))
-        readonly property int large: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 2))
-        readonly property int huge: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 3))
+        // The inside of a boxed thing: Material's 16dp card padding.
+        readonly property int card: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 2))
+        readonly property int large: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 3))
+        readonly property int huge: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 4))
     }
 
     // THE BUTTON'S OWN LADDER: five sizes, straight off the measured spec in
@@ -335,6 +337,7 @@ Singleton {
         // Exponential-smoothing rates (see ~/.claude/rules/animation-smoothing.md).
         readonly property real trackSpeed: root.cfg.anim.trackSpeed
         readonly property real revealSpeed: root.cfg.anim.revealSpeed
+        readonly property real railSpeed: root.cfg.anim.railSpeed
         readonly property real resizeSpeed: root.cfg.anim.resizeSpeed
         readonly property real scrollSpeed: root.cfg.anim.scrollSpeed
 
@@ -506,7 +509,13 @@ Singleton {
         // the handover is that it is the same object either way.
         readonly property int settingsWidth: root.cfg.settings.width
         readonly property int settingsHeight: root.cfg.settings.height
+        readonly property int settingsRail: root.cfg.settings.rail
+        // The rail's own row pitch: nav rows, one small tier under the
+        // content's rows.
+        readonly property int settingsRailRow: root.cfg.settings.railRow
         readonly property int settingsPane: root.cfg.settings.pane
+        // The page's own air, on every side of its content.
+        readonly property int settingsGutter: root.cfg.settings.gutter
 
 
         // The file browser's window, and the grid inside it. See modules/files/.

@@ -129,9 +129,8 @@ Item {
 
     // WHICH SCREEN THIS LAUNCHER IS DRAWN ON, for the line above.
     //
-    // ASKED OF THE WINDOW rather than handed down. modules/SettingsCorner.qml
-    // established the idiom and modules/sidebar/Sidebar.qml and
-    // modules/notifications/NotificationTray.qml both follow it: the screen is
+    // ASKED OF THE WINDOW rather than handed down. modules/sidebar/Sidebar.qml
+    // established the idiom and modules/notifications/NotificationTray.qml follows it: the screen is
     // not a fact about the launcher the way `originX` is, it is a fact about the
     // surface the launcher happens to be drawn on, and this one is built by a
     // Loader inside modules/launcher/Launcher.qml that would otherwise have to

@@ -81,8 +81,16 @@ Singleton {
     //
     // A page with a `parent` is a SUB-PAGE: it is not in the list, it is
     // reached from its parent's own rows, and back from it goes to the parent
-    // rather than to the list. The font picker is one; a page of a hundred
-    // typeface names does not belong in a list of sections.
+    // rather than to the list. The font picker and the wallpaper are ones; a
+    // page of a hundred typeface names does not belong in a list of sections,
+    // and what the shell is seen against is an appearance question.
+    //
+    // THE LIST IS FILTERED, not curated: a machine with no battery has no
+    // battery page, and a section about a cell the machine does not have is a
+    // lie the list would be telling every time it drew. The filter is a
+    // binding rather than a one-off, so a machine that grows a battery grows
+    // the page with it, and every consumer of `pages` -- the rail, the search,
+    // `setPage`'s guard -- inherits the answer from this one place.
     readonly property var pages: [
         {
             key: "wifi",
@@ -111,17 +119,21 @@ Singleton {
         // bracketed argument into an argument list (see config/Config.qml), so
         // there is no CLI spelling of it to fall back on.
         {
-            key: "screens",
-            title: "Screens",
+            key: "monitors",
+            title: "Monitors",
             icon: "monitor",
             group: "Sound and display",
-            blurb: "monitors and their workspace bands"
+            blurb: "displays and their workspace bands"
         },
+        // A SUB-PAGE of Appearance, reached from Appearance's rows rather than
+        // from the list: what the shell is seen against is an appearance
+        // question, and a top-level section for it left Appearance with
+        // nothing to be.
         {
             key: "wallpaper",
             title: "Wallpaper",
             icon: "wallpaper",
-            group: "Sound and display",
+            parent: "appearance",
             blurb: "the picture behind everything"
         },
         {
@@ -160,6 +172,13 @@ Singleton {
             blurb: "the hardware, and how it is doing"
         },
         {
+            key: "keys",
+            title: "Keys",
+            icon: "keyboard",
+            group: "System",
+            blurb: "every Hyprland bind, where it lives, edited in place"
+        },
+        {
             key: "developer",
             title: "Developer",
             icon: "code",
@@ -173,7 +192,7 @@ Singleton {
             group: "About",
             blurb: "what it is, and why it is like this"
         }
-    ]
+    ].filter(p => p.key !== "battery" || Battery.available);
 
     // The groups, in the order the pages first name them, so the list's cards
     // come from the data above rather than from a second list that could
@@ -369,6 +388,17 @@ Singleton {
         root.pending = null;
         root.placed = true;
         root.floating = true;
+
+        // AND THE WINDOW TAKES THE KEYBOARD, because the page inside it wants
+        // Escape to mean something from the first press. A window created
+        // hidden and moved into place is focused by nobody: Hyprland focuses
+        // windows the user can see arriving, and this one arrived unseen. Left
+        // unfocused, the keys keep going to whatever the pointer last honoured
+        // -- Escape included, aimed at the wrong window entirely. The page is
+        // an ordinary toplevel the moment it floats, so it asks for focus the
+        // ordinary way, once, at the handover -- through Hypr's own sender,
+        // which says it in both dialects.
+        Hypr.focusAddress(root.address);
     }
 
     // What `hyprctl -j clients` said, once we have found ourselves in it.

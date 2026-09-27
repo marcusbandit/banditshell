@@ -209,8 +209,7 @@ Item {
     readonly property bool needsKeyboard: root.open && Prompts.activeIn(root.shellWindow)
 
     // The surface this layer is drawn on, and on a second monitor it is one of
-    // several. `QsWindow.window` is how an item names the window it is in;
-    // modules/SettingsCorner.qml reads the same line for the same reason, that
+    // several. `QsWindow.window` is how an item names the window it is in, that
     // being in a window and knowing which one are not the same thing.
     readonly property var shellWindow: QsWindow.window
 

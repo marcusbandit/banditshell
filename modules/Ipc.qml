@@ -22,6 +22,17 @@ Scope {
 
     required property var picker
 
+    // EAGER INSTANTIATION, and the read is the point. QML singletons come
+    // into being on first ACCESS, and HyprConfig's only reader is the
+    // settings page -- which may not open for days. Left lazy, the binds
+    // file is unwatched and the hook unprobed until then, and a hand edit
+    // made at 8am is adopted by nothing. The CLI surface loads at boot and
+    // is the one thing guaranteed to be here; touching the service from it
+    // is the difference between a service and a rumour. (A binding, not
+    // Component.onCompleted: Scope is a QtObject and takes no attached
+    // Component.)
+    readonly property string bootsTheService: HyprConfig.state
+
     // Shared by two of the penmap verbs, so `set` can answer with the same
     // sentence `status` does rather than inventing a second phrasing for the
     // same fact.
@@ -949,6 +960,25 @@ Scope {
             return "put back";
         }
 
+        // FLOAT as a STATE, one word: the same handover pull and put each do
+        // half of, picked by where the page currently is. A keybind or a test
+        // wants "the other one of wherever it is" and does not want to know
+        // the two verbs first; and unlike the two it answers for a closed page
+        // in words rather than in silence.
+        function float(): string {
+            if (!Settings.open)
+                return "closed";
+            if (Settings.floating) {
+                Settings.popIn();
+                return "put back";
+            }
+            const win = Shell.forScreen(Settings.screenName);
+            if (!win)
+                return `no shell window on screen: ${Settings.screenName}`;
+            win.settings.popOut();
+            return "pulled out";
+        }
+
         // Which of the two is holding it, and where. The whole failure mode this
         // feature has is the two halves disagreeing about who is drawing, and
         // from a screenshot that looks identical to nothing being open at all.
@@ -1303,7 +1333,7 @@ Scope {
         // about; the lines under it are the outputs, each saying whether it
         // wears the default or something of its own.
         //
-        // The size is in there for the same reason ScreensPage prints it: `DP-1`
+        // The size is in there for the same reason MonitorsPage prints it: `DP-1`
         // is not how anybody identifies the monitor in front of them, and a
         // resolution is. Through the device pixel ratio, so it is the number
         // written on the box rather than the logical one, and printed as the

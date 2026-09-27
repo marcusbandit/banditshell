@@ -26,7 +26,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         // --------------------------------------------------------- current
 
@@ -34,17 +34,17 @@ Item {
         // a card of rows would give it row corners and a row highlight.
         G2Rect {
             width: parent.width
-            height: current.implicitHeight + Appearance.padding.small * 2
+            height: current.implicitHeight + Appearance.padding.card * 2
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
 
             Column {
                 id: current
 
-                x: Appearance.padding.small
-                y: Appearance.padding.small
-                width: parent.width - Appearance.padding.small * 2
-                spacing: Appearance.padding.small
+                x: Appearance.padding.card
+                y: Appearance.padding.card
+                width: parent.width - Appearance.padding.card * 2
+                spacing: Appearance.padding.normal
 
                 // Widescreen, whatever the picture's own shape: the thumbnail
                 // is a stand-in for a monitor and should be shaped like one.
@@ -153,15 +153,8 @@ Item {
         // in it would be handed the Positioner attached properties meant for a
         // row. So this is the card's look built by hand: the same faint title
         // with the same left padding, then the same fill at the same radius.
-        Column {
-            width: parent.width
-            spacing: Appearance.padding.small
-
-            StyledText {
-                text: `Choose, ${Wallpaper.available.length} in the folder`
-                color: Appearance.colour.textFaint
-                leftPadding: Appearance.padding.small
-            }
+        SettingsGroup {
+            heading: `Choose, ${Wallpaper.available.length} in the folder`
 
             // WHICH FOLDER, and the one setting on this page you have to type
             // rather than press.
@@ -198,7 +191,7 @@ Item {
 
             G2Rect {
                 width: parent.width
-                height: grid.implicitHeight + Appearance.padding.small * 2
+                height: grid.implicitHeight + Appearance.padding.card * 2
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.fill
 
@@ -212,9 +205,9 @@ Item {
 
                     readonly property int cell: Math.floor((width - (columns - 1) * spacing) / columns)
 
-                    x: Appearance.padding.small
-                    y: Appearance.padding.small
-                    width: parent.width - Appearance.padding.small * 2
+                    x: Appearance.padding.card
+                    y: Appearance.padding.card
+                    width: parent.width - Appearance.padding.card * 2
                     columns: Math.max(2, Math.floor(width / (Appearance.sizes.settingsPane / 2)))
                     spacing: Appearance.padding.small
 

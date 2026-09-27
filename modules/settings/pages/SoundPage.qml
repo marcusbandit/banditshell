@@ -45,7 +45,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         SettingsCard {
             title: "Output"
@@ -218,15 +218,8 @@ Item {
             }
         }
 
-        Column {
-            width: parent.width
-            spacing: Appearance.padding.small
-
-            StyledText {
-                text: "Levels and apps"
-                color: Appearance.colour.textFaint
-                leftPadding: Appearance.padding.small
-            }
+        SettingsGroup {
+            heading: "Levels and apps"
 
             G2Rect {
                 width: parent.width

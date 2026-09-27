@@ -14,31 +14,18 @@ import qs.services
 // thing is for it to literally be the same component. Anything that leaked into
 // here about which surface it was on would be the first thing to drift.
 //
-// It also means the page can be dropped into an ordinary window and
-// screenshotted, which is how anything in here gets checked
-// (settingspreview.qml).
-//
-// SHAPED LIKE A PHONE'S SETTINGS APP, because that is the one settings surface
-// everybody already knows how to use and it is also the one that already had
-// to solve this page's problem: the same app is a single column on a phone,
-// two columns on the same phone unfolded, and a window on a desktop. The
-// answer there is a LIST OF SECTIONS and ONE SECTION, and how many of the two
-// are on screen at once is decided by the width and nothing else.
-//
-//   narrow   the list. Tap a section and it slides in over the list from the
-//            right; drag it back to the right, tap the arrow, or press Escape,
-//            and the list is underneath where it was.
-//   wide     the list stands on the left as a pane and the section beside it,
-//            the way the unfolded phone or an iPad lays it out. Nothing slides.
-//
-// The threshold is two of the narrowest pane the config allows (settings.pane),
-// which is what an unfolded phone offers each half; a 560px desktop card is
-// just wide enough to split, a portrait phone is not, and a window dragged
-// narrower by hand becomes a phone.
+// THE DESKTOP SHAPE, and the phone's is gone. The old face was a phone's
+// settings app: a list that stacked over its sections on a narrow card and
+// sat beside them on a wide one. That answered a question a desktop never
+// asks -- "which of the two fits?" -- at the price of a page that was two
+// different objects depending on its width. This face has ONE shape: a rail
+// of sections down the left, always; the page's content beside it, always;
+// a search over every section above the rail. Nothing slides, nothing
+// stacks, and a window dragged narrower is a window dragged narrower, not a
+// phone.
 //
 // WHICH page is showing lives on the Settings singleton, not here, because the
-// face is drawn twice and the two copies must agree. Whether the list is
-// beside it or under it does not: that is a fact about this copy's width.
+// face is drawn twice and the two copies must agree.
 Item {
     id: root
 
@@ -51,58 +38,89 @@ Item {
 
     signal handover
 
-    // THE GRIP, HANDED OUT AS A RECTANGLE. The tap that closes the page lives
-    // on SettingsPanel's Pull, not here (see the grip below for why the grip
-    // cannot own a press), so the panel needs to know where the grip IS.
-    readonly property Item gripItem: grip
-
-    // Lit while the panel's Pull is holding a press that began on the grip;
-    // written by the panel, because the face cannot see that press.
-    property bool gripHeld: false
-
-    readonly property real pad: Appearance.padding.large
-
-    // THE ONE DECISION, from the width alone.
-    readonly property bool split: root.width >= Appearance.sizes.settingsPane * 2
-
-    // The list's share of a split face: the smaller golden section, clamped
-    // so that neither pane is ever narrower than a pane may be. At 560 that
-    // is two equal halves; on a wide window the list settles to about a third
-    // and the section takes the rest.
-    readonly property real listWidth: root.split ? Math.max(Appearance.sizes.settingsPane, Math.min(root.width * (1 - 1 / 1.618), root.width - Appearance.sizes.settingsPane)) : root.width
-
-    // What the section pane is showing: the chosen page, or on a split face
-    // with nothing chosen, the first one, because an empty pane is not a
-    // state worth drawing.
-    readonly property string current: Settings.page || (root.split ? Settings.pages[0].key : "")
-    readonly property var entry: Settings.entry(root.current)
-
-    // Whether the face is showing a section OVER the list, which is the one
-    // case where "back" is a thing this face can do. The panel asks this to
-    // decide what Escape means.
-    readonly property bool deep: !root.split && Settings.page !== ""
-
-    // HOW FAR THE SECTION HAS SLID IN over the list, 0 to 1. The smoother's
-    // number, except while a hand is dragging the section away, when it is the
-    // hand's: a pane that lagged the finger by an easing's worth would be a
-    // switch wearing a picture of a drag. Pinned at 0 on a split face, where
-    // the section does not slide at all.
-    readonly property real shown: root.split ? 0 : section.backing ? 1 - section.backFraction : depth.value
-
-    Follow {
-        id: depth
-
-        target: root.deep ? 1 : 0
-        speed: Appearance.anim.revealSpeed
-        epsilon: 0.005
+    // ESCAPE ESCAPES, from wherever the focus happens to be. The panel's `keys`
+    // item holds the keyboard when nothing inside the page does, but it is a
+    // SIBLING of this face, and a key event walks up the PARENT chain from the
+    // focused item: focus in the search field -- the one place in here that
+    // takes it -- would walk up through the rail and out of reach of that
+    // handler, and Escape would die between them. So the face answers too, as
+    // the ancestor every focused descendant walks up to, and as the holder of
+    // focus in a window, where there is no `keys` item at all.
+    //
+    // "BACK" BEFORE "CLOSE", same contract as the panel's: a sub-page is one
+    // level in and the key that leaves a level leaves that one first; from a
+    // section the first press closes.
+    Keys.onPressed: event => {
+        if (event.key !== Qt.Key_Escape)
+            return;
+        if (root.deep)
+            Settings.back();
+        else
+            Settings.hide();
+        event.accepted = true;
     }
 
-    // Placed, never travelled to: the first layout has no "from", and a face
-    // created while Settings.page rests on a section would otherwise open
-    // mid-glide toward it. A change of shape is the same case: a window
-    // dragged across the threshold reflows, it does not animate.
-    Component.onCompleted: depth.snap()
-    onSplitChanged: depth.snap()
+    // THE PAGE'S OWN TOKENS, snapped: the gutter is config's (32, a half-step
+    // past `large` that belongs to this page alone), the rail keeps the large
+    // tier as its horizontal inset, and every height is the row height
+    // itself -- the search field and the rows share one grid line so the rail
+    // reads as columns of one lattice, not neighbouring sizes.
+    readonly property real gutter: Appearance.sizes.settingsGutter
+    readonly property real pad: Appearance.padding.large
+    readonly property real railWidth: Appearance.sizes.settingsRail
+    // The rail's own pitch: nav rows, a small tier under the content's.
+    readonly property real railRow: Appearance.sizes.settingsRailRow
+
+    // THE RAIL'S FOOT: what the handover row owns below the scrolling band --
+    // its own row, the pad it lifts off the rail's bottom edge, and one small
+    // breath between it and the sections above.
+    readonly property real railFoot: root.railRow + Appearance.padding.large
+
+    // What the content pane is showing, and whether Escape means "back a
+    // level" (a sub-page is open) or "close". The panel asks.
+    readonly property string current: Settings.page || Settings.pages[0].key
+    readonly property var entry: Settings.entry(root.current)
+    readonly property bool deep: !!root.entry?.parent
+
+    // THE SEARCH, over every section the shell has: title, blurb, group, and
+    // any keywords a page declares. While it holds text the rail shows only
+    // the matches, and the first match is one Enter away.
+    property string query: ""
+
+    // THE SLIDING MARK's target: the current row's own y, in the rail's
+    // frame, published by the row that is current. One bar for the whole
+    // rail, chasing its section -- which is why it is a PERSISTENT element
+    // and not each row's ornament: changing pages moves one thing.
+    property real currentRowY: 0
+    property bool currentRowSeen: false
+    readonly property real markHeight: root.railRow * 0.6
+
+    onQueryChanged: railSlide.snap() // a reflowed rail: place, do not travel
+
+    // THE RAIL REVEALS ITS ROW. A rail that scrolls must answer for the row
+    // it is pointing at: if the current row's band is not inside the pane's
+    // view, the pane scrolls just far enough to bring the whole row in - and
+    // otherwise holds still, so a page change among visible rows never
+    // jiggles the rail. Called wherever the row's position is (re)published.
+    function revealRow(y: real): void {
+        if (y < railBody.position)
+            railBody.scrollTo(y - Appearance.padding.small);
+        else if (y + root.railRow > railBody.position + railBody.height)
+            railBody.scrollTo(y + root.railRow - railBody.height + Appearance.padding.small);
+    }
+
+    function matches(p: var): bool {
+        const q = root.query.trim().toLowerCase();
+        if (!q)
+            return true;
+        return p.title.toLowerCase().includes(q)
+            || p.blurb.toLowerCase().includes(q)
+            || (p.group ?? "").toLowerCase().includes(q)
+            || (p.keywords ?? []).some(k => k.toLowerCase().includes(q));
+    }
+
+    // The groups that still have something to show, query applied.
+    readonly property var shownGroups: Settings.groups.filter(g => Settings.pages.some(p => p.group === g && root.matches(p)))
 
     G2Rect {
         anchors.fill: parent
@@ -110,162 +128,291 @@ Item {
         radius: root.windowed ? 0 : Appearance.rounding.large
         color: root.windowed ? Appearance.colour.surfaceSolid : Appearance.colour.surface
 
-        // THE LIST OF SECTIONS. On a narrow face it is the whole page until a
-        // section is opened, and then it is what the section slides over,
-        // creeping a little to the left and dimming as the section covers it,
-        // which is the phone's way of saying the list is still there
-        // underneath rather than gone.
-        SettingsPane {
-            id: index
+        // ------------------------------------------------------------ rail
 
-            x: -root.shown * root.width * 0.3
-            width: root.listWidth
+        Item {
+            id: rail
+
+            x: 0
+            y: 0
+            width: root.railWidth
             height: parent.height
-            // Gone by the time the section has arrived, not merely dimmed:
-            // the card's material is translucent, so a list left under an
-            // opaque-looking section would ghost through it.
-            opacity: 1 - root.shown
-            visible: root.split || root.shown < 0.999
-            inset: root.windowed || root.split ? root.pad : grip.span + root.pad
 
+            // THE RAIL'S HEAD, pinned: the page's name, the close affordance,
+            // and the search. These never scroll; the sections under them do.
+            //
+            // The head wears the page's own gutter above it, so this title and
+            // the content pane's stand on one line across the separator --
+            // anything less and the card reads as if its top were cut off.
             Column {
+            id: railHead
+
+            width: parent.width
+            topPadding: root.gutter
+            spacing: 0
+
+            // The header: the page's name, and nothing else. Escape closes,
+            // the corner opens; a dismiss button beside the title was a
+            // second answer to a question the shell already asks.
+            StyledText {
+                id: titleText
+
                 x: root.pad
-                y: root.pad
-                width: index.width - root.pad * 2
-                spacing: Appearance.padding.normal
+                text: "Settings"
+                font.pixelSize: Appearance.font.size.large
+                color: Appearance.colour.text
+            }
 
-                // The title sits in the pane's own top-left rather than being
-                // centred, because a page is read from its corner and a
-                // dialog is read from its middle, and this is a page.
-                StyledText {
-                    text: "Settings"
-                    font.pixelSize: Appearance.font.size.large
+            // AIR between the header band and the search field.
+            Item {
+                width: parent.width
+                height: Appearance.padding.small
+            }
+
+            // THE SEARCH FIELD: a place to type, PathField's shape in
+            // miniature. Live: the rail filters as the letters land. One row
+            // tall, the rail rows' own height, and inset by the rail's own
+            // pad, so its box lines up with the names under it instead of
+            // running into the rail's edges.
+            Item {
+                x: root.pad
+                width: parent.width - root.pad * 2
+                height: root.railRow
+
+                G2Rect {
+                    anchors.fill: parent
+                    radius: Appearance.rounding.small
+                    color: Appearance.colour.fillStrong
+                }
+
+                TextInput {
+                    id: searchInput
+
+                    anchors.fill: parent
+                    anchors.leftMargin: Appearance.padding.normal
+                    anchors.rightMargin: Appearance.padding.normal
+                    verticalAlignment: TextInput.AlignVCenter
+                    clip: true
+
+                    font.family: Appearance.font.family
+                    font.pixelSize: Appearance.font.size.small
+                    renderType: Text.NativeRendering
                     color: Appearance.colour.text
+                    selectionColor: Appearance.colour.accent
+                    selectedTextColor: Appearance.colour.accentText
+
+                    onTextChanged: root.query = text
+
+                    Keys.onEscapePressed: {
+                        if (text !== "") {
+                            text = "";
+                            root.query = "";
+                        } else
+                            Settings.hide();
+                    }
+
+                    StyledText {
+                        anchors.verticalCenter: parent.verticalCenter
+                        visible: !searchInput.text
+                        text: "search settings"
+                        color: Appearance.colour.textFaint
+                        font.pixelSize: Appearance.font.size.small
+                    }
                 }
+            }
 
-                StyledText {
-                    text: root.windowed ? "a window, for now" : "drawn by the shell"
-                    color: Appearance.colour.textFaint
-                    bottomPadding: Appearance.padding.small
-                }
+            Item {
+                width: parent.width
+                height: Appearance.padding.small
+            }
+            }
 
-                // ONE CARD PER GROUP, the grouped-list idiom every phone's
-                // settings app uses, and the groups come from the pages
-                // themselves (Settings.groups) rather than from a list kept
-                // here. Sub-pages name no group and are not in the list.
-                Repeater {
-                    model: Settings.groups
+            // THE SECTIONS' BAND: the part of the rail that scrolls. A
+            // SettingsPane because that is what one is -- a column that
+            // scrolls -- and the rail has no back gesture to add. Pinned
+            // between the head above and the handover below, so a fourteenth
+            // section turns into scroll rather than into the handover's lap.
+            SettingsPane {
+                id: railBody
 
-                    delegate: SettingsCard {
-                        id: card
+                x: 0
+                y: railHead.height
+                width: rail.width
+                height: rail.height - railHead.height - root.railFoot
 
-                        required property string modelData
-
-                        title: card.modelData
-
-                        Repeater {
-                            model: Settings.pages.filter(p => p.group === card.modelData)
-
-                            delegate: SettingsRow {
-                                id: stop
-
-                                required property var modelData
-
-                                icon: stop.modelData.icon
-                                label: stop.modelData.title
-                                detail: stop.modelData.blurb
-                                chevron: true
-                                // On a split face the section beside the
-                                // list is marked in it (a sub-page marks its
-                                // parent); on a narrow one nothing is,
-                                // because the list is only ever seen with no
-                                // section open.
-                                selected: root.split && Settings.sectionOf(root.current) === stop.modelData.key
-                                onActivated: Settings.setPage(stop.modelData.key)
-                            }
+                // THE FOLD, said honestly: when the sections outrun the band,
+                // the last row fades into the surface instead of stopping
+                // mid-glyph against the handover. A fade is the universal
+                // "there is more below" - a plain clip reads as a rendering
+                // bug, a scrollbar as clutter. It holds no event handlers, so
+                // it never eats a row's press or hover.
+                Rectangle {
+                    z: 1
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+                    anchors.bottom: parent.bottom
+                    height: Appearance.padding.huge
+                    gradient: Gradient {
+                        GradientStop {
+                            position: 0
+                            color: "transparent"
+                        }
+                        GradientStop {
+                            position: 1
+                            color: Appearance.colour.surface
                         }
                     }
                 }
 
-                // THE HANDOVER, as a row of the list rather than a button
-                // beside the title. What it does is change what kind of thing
-                // the page is, which is a decision about the page, so it sits
-                // at the end of it where the decisions go, in a card of its own
-                // because it is not a section.
-                SettingsCard {
-                    SettingsRow {
-                        // Out of the shell and into the desktop, or back in
-                        // again. Two directions of one gesture, so two arrows
-                        // of one drawing.
-                        icon: root.windowed ? "close_fullscreen" : "open_in_new"
-                        label: root.windowed ? "Put it back" : "Pull it out"
-                        detail: root.windowed ? "onto the shell, where a keybind can summon it" : "into a window you can tile, move and leave open"
-                        onActivated: root.handover()
+                Column {
+                id: sections
+
+                width: railBody.width
+                spacing: 0
+
+                // THE SECTIONS, grouped, the groups from the pages themselves.
+                // Filtered live by the search; a group with nothing left to show
+                // is not drawn.
+                Repeater {
+                    model: root.shownGroups
+
+                    delegate: Column {
+                        id: groupCol
+
+                        required property string modelData
+
+                        width: rail.width
+                        spacing: 0
+
+                        StyledText {
+                            x: root.pad
+                            width: rail.width - root.pad * 2
+                            // The rail's group names wear the same
+                            // tracked-caps overline the pages' cards do: the
+                            // idiom is shell-wide, and so is the asymmetry -
+                            // one large tier of air above the label, one small
+                            // tier holding it to its rows.
+                            text: groupCol.modelData.toUpperCase()
+                            color: Appearance.colour.textFaint
+                            font.pixelSize: Appearance.font.size.small
+                            font.letterSpacing: Appearance.font.stem
+                            topPadding: Appearance.padding.large
+                            bottomPadding: Appearance.padding.small
+                        }
+
+                        Repeater {
+                            model: Settings.pages.filter(p => p.group === groupCol.modelData && root.matches(p))
+
+                            delegate: RailRow {}
+                        }
                     }
+                }
+
+                // NOTHING FOUND, said quietly rather than by an empty rail.
+                StyledText {
+                    visible: root.query !== "" && root.shownGroups.length === 0
+                    x: root.pad
+                    width: parent.width - root.pad * 2
+                    text: `nothing matches "${root.query}"`
+                    wrapMode: Text.Wrap
+                    color: Appearance.colour.textFaint
+                    topPadding: Appearance.padding.normal
+                }
+                }
+
+                // THE MARK: the accent, as the rail's own persistent "you are
+                // here". It chases the current row with the house smoother
+                // (Follow, never a Behaviour on a position), snaps when the
+                // panel is revealed or the rail reflows, and hides while the
+                // row it belongs to is filtered out. It lives IN the scrolled
+                // content -- beside its row, riding the same pan -- so scrolling
+                // moves row and mark together and the chase is never spent on
+                // distance the scroller itself covered.
+                G2Rect {
+                    id: slideMark
+
+                    x: 0
+                    y: railSlide.value + (root.railRow - root.markHeight) / 2
+                    width: Appearance.font.stem * 2
+                    height: root.markHeight
+                    radius: Appearance.font.stem
+                    color: Appearance.colour.accent
+                    opacity: root.currentRowSeen ? 1 : 0
+                }
+
+
+                Follow {
+                    id: railSlide
+
+                    target: root.currentRowY
+                    // railSpeed, not revealSpeed: measured at 18 this crossed a
+                    // 290px rail inside two frames and read as a teleport. The
+                    // slide IS the feature; it gets its own clock.
+                    speed: Appearance.anim.railSpeed
+                    epsilon: 0.5
+                }
+
+                Connections {
+                    target: Settings
+
+                    // Revealed, not travelled to: a page changed while the panel
+                    // was away is a PLACEMENT (Follow's own first-layout rule),
+                    // and only a change on a live rail is a journey.
+                    function onOpenChanged(): void {
+                        railSlide.snap();
+                        root.revealRow(root.currentRowY);
+                    }
+                }
+            }
+
+            // THE HANDOVER, pinned to the rail's foot: changing what kind of
+            // thing the page is, which is not a section and does not pretend
+            // to be.
+            Column {
+                width: parent.width
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.pad
+
+                RailRow {
+                    modelData: {
+                        "key": "",
+                        "icon": root.windowed ? "close_fullscreen" : "open_in_new",
+                        "title": root.windowed ? "Put it back" : "Pull it out",
+                        "group": ""
+                    }
+                    onActivated: root.handover()
                 }
             }
         }
 
-        // The rule between the two panes of a split face, one device pixel of
-        // the separator colour, the whole height.
+        // The rule between rail and content, one device pixel, whole height.
         Rectangle {
-            visible: root.split
-            x: root.listWidth
+            x: root.railWidth
             width: Appearance.font.stem
             height: parent.height
             color: Appearance.colour.separator
         }
 
-        // THE SECTION. Beside the list on a split face; over it, slid in from
-        // the right by `shown`, on a narrow one.
+        // -------------------------------------------------------- content
+
         SettingsPane {
-            id: section
+            id: content
 
-            x: root.split ? root.listWidth + Appearance.font.stem : root.width * (1 - root.shown)
-            width: root.split ? root.width - root.listWidth - Appearance.font.stem : root.width
+            x: root.railWidth + Appearance.font.stem
+            width: parent.width - root.railWidth - Appearance.font.stem
             height: parent.height
-            visible: root.split || root.shown > 0.001
-            backable: !root.split
-            inset: root.windowed ? root.pad : grip.span + root.pad
-
-            // The hand let go: give the smoother the depth the drag ended at
-            // so the pane carries on from there, and if it was far or fast
-            // enough, the list is where it lands.
-            onBacked: committed => {
-                depth.value = 1 - section.backFraction;
-                if (committed)
-                    Settings.back();
-            }
-
-            // A section's scroll starts at the top when a new one comes in:
-            // the previous section's depth means nothing here.
-            onPageChanged: section.drag(0)
-
-            readonly property string page: root.current
-
-            // ITS OWN SURFACE while it slides over the list, in the card's
-            // own material so that once it has arrived it is
-            // indistinguishable from the card. On a split face there is
-            // nothing under it and the rule beside it is the only edge.
-            G2Rect {
-                anchors.fill: parent
-                visible: !root.split
-                radius: root.windowed ? 0 : Appearance.rounding.large
-                color: root.windowed ? Appearance.colour.surfaceSolid : Appearance.colour.surface
-            }
+            inset: root.gutter
 
             Column {
-                x: root.pad
-                y: root.pad
-                width: section.width - root.pad * 2
+                x: root.gutter
+                y: root.gutter
+                width: content.width - root.gutter * 2
                 spacing: Appearance.padding.normal
 
-                // THE HEADER: the way back, and the section's name at the
-                // title's size. The arrow exists where there is somewhere to
-                // go back to that is not already in view: the list, on a
-                // narrow face, or a sub-page's parent on any face.
+                // THE HEADER: the way back, for a sub-page, and the section's
+                // name at the title's size.
                 Item {
-                    readonly property bool arrow: !root.split || !!root.entry?.parent
+                    readonly property bool arrow: !!root.entry?.parent
 
                     width: parent.width
                     height: name.implicitHeight
@@ -285,7 +432,7 @@ Item {
                             height: back.slot
                             radius: Appearance.rounding.normal
                             color: Appearance.colour.fill
-                            opacity: tap.containsMouse ? 1 : 0
+                            opacity: backTap.containsMouse ? 1 : 0
 
                             Behavior on opacity {
                                 NumberAnimation {
@@ -298,11 +445,11 @@ Item {
                             x: (back.slot - width) / 2
                             anchors.verticalCenter: parent.verticalCenter
                             name: "arrow_back"
-                            color: tap.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+                            color: backTap.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
                         }
 
                         MouseArea {
-                            id: tap
+                            id: backTap
 
                             width: back.slot
                             height: back.slot
@@ -321,15 +468,12 @@ Item {
                         text: root.entry?.title ?? ""
                         font.pixelSize: Appearance.font.size.large
                         color: Appearance.colour.text
-                        // Wrapped, never cut: a title that ends in "..." on
-                        // the one screen narrow enough to need it is the page
-                        // failing at its own name.
                         wrapMode: Text.Wrap
                     }
                 }
 
                 Loader {
-                    id: content
+                    id: pageLoader
 
                     width: parent.width
 
@@ -339,14 +483,13 @@ Item {
                     // one never adds a case here.
                     source: root.current ? `pages/${root.current.charAt(0).toUpperCase() + root.current.slice(1)}Page.qml` : ""
 
-                    // A new section fades up rather than cutting in, on the
-                    // split face where nothing slides to mark the change.
+                    // A new section fades up rather than cutting in.
                     onLoaded: arrive.restart()
 
                     NumberAnimation {
                         id: arrive
 
-                        target: content
+                        target: pageLoader
                         property: "opacity"
                         from: 0
                         to: 1
@@ -354,82 +497,104 @@ Item {
                     }
                 }
             }
+
+            // A page change starts its scroll at the top: the previous
+            // page's depth means nothing here.
+            onPageChanged: content.drag(0)
+            readonly property string page: root.current
+        }
+    }
+
+    // One row of the rail: mark, name, and the highlight that says "here".
+    component RailRow: Item {
+        id: railRow
+
+        // Supplied by the sections' Repeater as the page entry; the handover
+        // row declares its own.
+        required property var modelData
+
+        signal activated
+
+        readonly property bool isCurrent: modelData.key !== "" && Settings.sectionOf(root.current) === modelData.key
+
+        width: rail.width
+        height: root.railRow
+
+        // THE MARK'S TARGET, published up while this row is current: its own
+        // y in the rail's frame, through the group Columns between. The
+        // Deferred is Config.qml's FileView lesson generalised: a Column's
+        // children are placed during polish, so the position is read on the
+        // NEXT pass, not inside the one that moved it.
+        onIsCurrentChanged: publish()
+        onYChanged: publish()
+        // A panel that was opened with its page already chosen never flipped
+        // isCurrent while visible: the publish that ran did so against an
+        // unrealized, hidden layout, and the mark inherited a position from
+        // geometry that was never on the screen. Becoming visible is itself
+        // news about position, so publish again -- and through the same
+        // double hop the map uses, since a single callLater can still land
+        // inside the polish it is waiting on.
+        onVisibleChanged: if (isCurrent)
+            Qt.callLater(publish)
+
+        Component.onCompleted: publish()
+
+        function publish(): void {
+            if (!isCurrent)
+                return;
+            root.currentRowSeen = visible;
+            Qt.callLater(() => {
+                root.currentRowY = railRow.mapToItem(sections, 0, 0).y;
+                root.revealRow(root.currentRowY);
+            });
         }
 
-        // WHICH CORNER THE PAGE GOES BACK INTO, said as a mark rather than as a
-        // control. The page is closed by pushing it down and right into the
-        // corner it grew out of (SettingsPanel's Pull), and a gesture nobody
-        // can discover is no better than the keyboard shortcut nobody can
-        // press. A CORNER GRIP is the one mark that says a diagonal. Only
-        // while the shell draws it: in a window the page cannot be pushed
-        // anywhere.
-        //
-        // IT TAKES NO PRESSES OF ITS OWN, AND YET IT IS THE PAGE'S ONE TAP
-        // TARGET: a press here is ambiguous until it moves (the tap that
-        // closes, or the first inch of the shove that closes by dragging), and
-        // only the Pull behind the card can tell those apart. So the press
-        // falls through to SettingsPanel's Pull, and the panel answers the
-        // Pull's `tapped` gated to this rectangle.
-        Item {
-            id: grip
+        G2Rect {
+            anchors.fill: parent
+            anchors.leftMargin: Appearance.padding.normal
+            anchors.rightMargin: Appearance.padding.normal
+            radius: Appearance.rounding.small
+            color: Appearance.colour.fill
+            opacity: railRow.isCurrent || rowTap.containsMouse ? 1 : 0
 
-            // SIZED FROM THE RIBS, never the ribs from the size, floored at the
-            // minimum target so the whole thing is never smaller than
-            // something you could aim at.
-            readonly property int ribs: 3
-            readonly property real pitch: Appearance.padding.small
-            readonly property real span: Math.max(Appearance.sizes.minTarget, grip.pitch * Math.SQRT2 * (grip.ribs + 1))
-
-            x: parent.width - grip.span - root.pad
-            y: parent.height - grip.span - root.pad
-            width: grip.span
-            height: grip.span
-
-            visible: !root.windowed
-
-            // Qt.NoButton is the entire trick: the press is never taken and
-            // falls through to the Pull, while hover and the cursor shape
-            // still work. This area is a sign, not a control.
-            MouseArea {
-                id: feel
-
-                anchors.fill: parent
-                acceptedButtons: Qt.NoButton
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-            }
-
-            Repeater {
-                model: grip.ribs
-
-                G2Rect {
-                    id: rib
-
-                    required property int index
-
-                    // How far this rib is from the corner along the push's own
-                    // diagonal; everything else follows from that one number.
-                    // A chord across a square corner at perpendicular distance
-                    // d is exactly 2d long, so the ribs widen as the corner
-                    // opens out.
-                    readonly property real reach: (rib.index + 1) / (grip.ribs + 1) * grip.span / Math.SQRT2
-
-                    width: rib.reach * 2
-                    height: Appearance.font.stem
-                    radius: rib.height / 2
-
-                    x: grip.span - rib.reach / Math.SQRT2 - rib.width / 2
-                    y: grip.span - rib.reach / Math.SQRT2 - rib.height / 2
-                    rotation: -45
-
-                    color: root.gripHeld ? Appearance.colour.text : feel.containsMouse ? Appearance.colour.textDim : Appearance.colour.textFaint
-
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.anim.fast
-                        }
-                    }
+            Behavior on opacity {
+                NumberAnimation {
+                    duration: Appearance.anim.fast
                 }
+            }
+        }
+
+        // (The per-row accent is GONE, deliberately: the rail's one sliding
+        // mark below owns "you are here" now. Two bars -- one teleporting
+        // per row, one sliding for the rail -- were exactly the bug this
+        // edit removed; the row keeps only the plate and the highlight.)
+
+        Icon {
+            x: root.pad
+            anchors.verticalCenter: parent.verticalCenter
+            name: railRow.modelData.icon
+            color: railRow.isCurrent ? Appearance.colour.text : Appearance.colour.textDim
+        }
+
+        StyledText {
+            x: root.pad + Appearance.font.iconSize + root.pad
+            anchors.verticalCenter: parent.verticalCenter
+            width: parent.width - x - root.pad
+            text: railRow.modelData.title
+            color: railRow.isCurrent ? Appearance.colour.text : Appearance.colour.textDim
+        }
+
+        MouseArea {
+            id: rowTap
+
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                root.query = "";
+                searchInput.text = "";
+                Settings.setPage(railRow.modelData.key);
+                railRow.activated();
             }
         }
     }

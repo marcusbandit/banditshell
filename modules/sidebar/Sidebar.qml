@@ -46,9 +46,7 @@ Item {
     // ASKED OF THE SURFACE ITSELF rather than handed down like `pullSpan`
     // above, and the difference is what kind of fact it is. The diagonal is a
     // measurement, and only the window has the numbers; the screen is the
-    // window's IDENTITY, and Quickshell attaches that to every item inside it
-    // (modules/SettingsCorner.qml asks the same question the same way, for the
-    // same reason). Nothing above has to remember to pass it, and it cannot be
+    // window's IDENTITY, and Quickshell attaches that to every item inside it. Nothing above has to remember to pass it, and it cannot be
     // passed wrong.
     //
     // Empty for the frame before the item is in a window, which the column

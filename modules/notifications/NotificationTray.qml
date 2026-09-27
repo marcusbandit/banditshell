@@ -262,8 +262,7 @@ Item {
     // ASKED OF THE WINDOW rather than handed down like every other property up
     // here. The screen is not a fact about the tray the way its insets are, it is
     // a fact about the surface the tray happens to be drawn on, and QsWindow is
-    // how anything in this shell asks that (modules/SettingsCorner.qml:222 asks
-    // the same way for the same reason). It also costs the preview harness
+    // how anything in this shell asks that. It also costs the preview harness
     // nothing: notifpreview.qml builds this tray on a FloatingWindow that is in
     // none of the shell's wiring and could not be handed a name.
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
@@ -441,8 +440,7 @@ Item {
     // HOW BIG THE THING YOU HAVE TO HIT IS, which is not how big the arms that
     // notice a cursor are.
     //
-    // Same derivation and the same reasoning as modules/SettingsCorner.qml:46-52
-    // (and LaunchEdge's `grab` before it): a target cannot be conditional on
+    // Same derivation as LaunchEdge's `grab` before it: a target cannot be conditional on
     // having already been hit. The arms above are exactly the band's thickness,
     // ten pixels or so, which is plenty for a cursor thrown at a corner that
     // cannot be overshot and useless for a fingertip, which has no edges to

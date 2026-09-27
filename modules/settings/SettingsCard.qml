@@ -22,10 +22,18 @@ Column {
     width: parent ? parent.width : 0
     spacing: Appearance.padding.small
 
+    // The group's name, as a tracked-caps overline: one font stem of
+    // letterspacing, the faint tier it shares with the secondary text it
+    // names. The caps are an idiom choice, recorded in SettingsGroup and
+    // DESIGN.md; the spacing under it is one small tier, the page's own huge
+    // tier the break above - the asymmetry that gives the heading to the box
+    // below and not the group before it.
     StyledText {
         visible: !!root.title
-        text: root.title
+        text: root.title.toUpperCase()
         color: Appearance.colour.textFaint
+        font.pixelSize: Appearance.font.size.small
+        font.letterSpacing: Appearance.font.stem
         leftPadding: Appearance.padding.small
     }
 

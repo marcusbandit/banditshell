@@ -10,25 +10,26 @@ import qs.modules.settings
 
 // ABOUT: the shell itself.
 //
-// What it is, why it is built the way it is, and where to read the rest. The
-// machine underneath is DevicePage's subject and the compositor, the type and
-// the file paths of the running checkout are DeveloperPage's; this page repeats
-// none of them. It is the one page that is allowed to say what the shell is FOR,
-// in the words DESIGN.md uses, because a settings app that only ever lists
-// switches never says what the switches are attached to.
+// A masthead, what it runs on, and where to read the rest. The machine
+// underneath is DevicePage's subject and the compositor, the type and
+// the file paths of the running checkout are DeveloperPage's; this page
+// repeats none of them. It used to also SAY what the shell is for, a card of
+// paragraphs; nobody asked for that, and a settings page that explains itself
+// uninvited is a manifesto, so the rows that remain are the ones that state a
+// fact or DO something.
 //
 // The name and version are a masthead rather than a card. A row is a mark, a
 // name and a detail about something else, and "banditshell" is not a fact
 // about something else, it is the thing the page is about; the large size and a
 // mark of its own beside it is how the page says so.
 //
-// The "Read more" rows are the only ones that DO anything, and what they do is
-// hand a path to xdg-open: which editor, which file manager and which viewer
-// are the desktop's decisions, not the shell's. One Process for all of them,
-// because `exec` replaces the command each time and three idle processes for
-// three rows would be three of something for no reason. The hotkeys row is the
-// exception, opening a panel of the shell's own on the screen that holds this
-// page.
+// The "Read more" rows are the ones that DO something: they hand a path to
+// xdg-open -- which editor, which file manager and which viewer are the
+// desktop's decisions, not the shell's. One Process for all of them, because
+// `exec` replaces the command each time and three idle processes for three
+// rows would be three of something for no reason. The hotkeys row is the
+// exception, opening a panel of the shell's own on the screen that holds
+// this page; the Keys page, not this one, is where binds are edited.
 //
 // WIDTH COMES FROM THE FACE, like every page here: fill what the pager hands
 // you and ask only for height.
@@ -45,7 +46,7 @@ Item {
         id: list
 
         width: parent.width
-        spacing: Appearance.padding.large
+        spacing: Appearance.padding.huge
 
         // -------------------------------------------------------- masthead
 
@@ -129,47 +130,48 @@ Item {
             }
         }
 
-        // ------------------------------------------------------ what it is
+        // ------------------------------------------------------- running on
 
-        // Inert rows whose detail is a paragraph each, which is what a
-        // SettingsRow is for: nothing here is a control, and a claim about the
-        // shell that had to fit on one line would be a slogan. Every one of
-        // them is a sentence DESIGN.md already makes, shortened, not a new one.
+        // WHAT THE SHELL IS RUNNING ON, and what that means it can do. The
+        // machine underneath is DevicePage's subject, so the rows here name
+        // only what bears on SUPPORT: which compositor this is, and which
+        // config language it speaks. The same compositor name appears on
+        // DevicePage; the fact there is hardware, the fact here is a
+        // capability, and a settings app that kept them apart only by page
+        // would be keeping them apart by accident.
+        //
+        // NOT HYPRLAND IS ONE QUIET ROW. It is a flag, not a warning: for as
+        // long as Hyprland is the only compositor this shell integrates
+        // with, running anything else means some things do not work, and
+        // saying that once, inertly, is the whole of the announcement.
         SettingsCard {
-            title: "What it is"
+            title: "Running on"
 
             SettingsRow {
-                icon: "architecture"
-                label: "Built from scratch, on Quickshell"
-                detail: "every widget is written here, so the whole mental model is owned rather than borrowed; caelestia stays on disk as the reference for the hard parts"
+                icon: "desktop_windows"
+                label: "Compositor"
+                value: [Compositor.name, Device.compositorVersion].filter(p => p).join(" ")
                 interactive: false
             }
 
+            // Hyprland only, because the dialect is nobody else's question.
+            // Three-way, for the reason DeveloperPage's identical row gives:
+            // "legacy" before the probe comes back would be a guess stated
+            // as a fact.
             SettingsRow {
-                icon: "gesture"
-                label: "Every surface is a gesture"
-                detail: "at rest the screen is empty: no bar, no clock, nothing served before it is asked for. Edges and corners are pulled, and the interaction is the request"
+                visible: Compositor.isHyprland
+                icon: "code"
+                label: "Config dialect"
+                value: !Hypr.parserKnown ? "asking" : Hypr.lua ? "lua" : "legacy"
                 interactive: false
             }
 
+            // The quiet flag. One row, no exclamation: not Hyprland.
             SettingsRow {
-                icon: "blur_on"
-                label: "One material"
-                detail: "panels are a translucent material the compositor blurs, and everything on them is the palette's light end at an opacity tier; depth comes from layering, never from bevels or gradients"
-                interactive: false
-            }
-
-            SettingsRow {
-                icon: "rounded_corner"
-                label: "G2 corners everywhere"
-                detail: "every rounded shape is a squircle drawn by one primitive, at the compositor's own rounding, so a panel corner and the window beside it agree"
-                interactive: false
-            }
-
-            SettingsRow {
-                icon: "terminal"
-                label: "Everything has a verb"
-                detail: "every menu and panel opens from `banditshell <thing>`; hover cannot be scripted, so that is how each one is checked"
+                visible: !Compositor.isHyprland
+                icon: "info"
+                label: "Hyprland-only features are off"
+                detail: "the shell runs, and everything that speaks to the compositor waits for Hyprland"
                 interactive: false
             }
         }
@@ -209,19 +211,6 @@ Item {
                 label: "Hotkeys"
                 detail: "every bind the compositor knows, drawn live"
                 onActivated: Shell.forScreen(Settings.screenName)?.hotkeys.show()
-            }
-        }
-
-        // --------------------------------------------------------- made by
-
-        SettingsCard {
-            title: "Made by"
-
-            SettingsRow {
-                icon: "person"
-                label: "Marcus Rosado"
-                detail: "with Claude writing the code and Marcus owning the structure (DESIGN.md section 0)"
-                interactive: false
             }
         }
     }

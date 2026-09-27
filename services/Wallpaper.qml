@@ -433,7 +433,7 @@ done`, "sh", ...fresh];
     // COPY THEN ASSIGN, never an edit in place: QML notices assignment to
     // `previews` and nothing about the object it points at, so a mutated map
     // would change the desktop and tell no binding about it. Same rule as
-    // services/Apps.qml's map and ScreensPage's array.
+    // services/Apps.qml's map and MonitorsPage's array.
     function setPreview(screen: string, path: string): void {
         if (!screen || root.previews[screen] === path)
             return;

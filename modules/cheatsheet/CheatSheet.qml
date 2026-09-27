@@ -99,7 +99,7 @@ Item {
     property string restoreTo: ""
 
     // WHICH SCREEN THIS SHEET IS DRAWN ON, for the line above. Asked of the
-    // window, per modules/SettingsCorner.qml and modules/sidebar/Sidebar.qml,
+    // window, per modules/sidebar/Sidebar.qml,
     // rather than threaded down through ShellWindow: the screen is a fact about
     // the surface, not about the document on it.
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
@@ -426,7 +426,11 @@ Item {
         // the compositor cannot tell you what by", which is the truth; `__lua
         // 37` reads as an answer.
         if (dispatcher === "__lua")
-            return "";
+            // The compositor will not say what its Lua binds do; the config
+            // scan does. "" only when the scan has nothing on that chord,
+            // which is the "key is taken, ask the source" case this used to
+            // be for every bind on the machine.
+            return HyprConfig.actionFor(bind.modmask ?? 0, bind.key ?? "");
 
         if (dispatcher === "exec")
             return root.humaniseExec(arg);
@@ -450,6 +454,8 @@ Item {
     // up for no visible reason. `__lua 37` at least says the bind comes from the
     // Lua config, which is where you would go to give it a description.
     function machinery(bind: var): string {
+        if ((bind.dispatcher ?? "").trim() === "__lua")
+            return HyprConfig.actionFor(bind.modmask ?? 0, bind.key ?? "") || "a bind from the Lua config";
         const dispatcher = (bind.dispatcher ?? "").trim();
         const arg = (bind.arg ?? "").trim();
         return arg ? `${dispatcher} ${arg}` : dispatcher;
