@@ -14,7 +14,7 @@ import qs.config
 // has that the local HEAD does not. A quiet interval re-check keeps an
 // up-for-days session honest about pushes that landed after the boot.
 //
-// THE STATE MACHINE, four states and one direction through them:
+// THE STATE MACHINE, five states and one direction through them:
 //
 //   idle        the checkout is current, or nothing is confirmed yet. The
 //               marker is quiet: grey, a size down, still there - it is the
@@ -22,11 +22,21 @@ import qs.config
 //   available   the remote is ahead. RED, full size, above the clock.
 //   downloading  the pull is running.
 //   downloaded  the pull landed. BLUE, and a restart applies it.
+//   failed      the pull tried and did not land. AMBER, wearing a glyph of
+//               its own - because "a push is waiting" and "the pull hit
+//               something" are different facts, and a failed pull wearing
+//               the waiting red would ask for a download that will not land
+//               any better on a second press.
 //
 // A downloaded state is TERMINAL until the restart: a later re-check finds the
 // checkout current (the pull already landed) and would happily flip the blue
 // back to nothing, taking the restart prompt with it. So a check may raise
-// idle -> available but is never allowed to lower downloaded.
+// idle -> available but is never allowed to lower downloaded. A FAILED state
+// is the opposite of terminal: it is an alarm about a reason, and a later
+// check that comes back clean - or still merely counts commits - is the
+// reason gone, and resolves the amber to whatever the checkout's real state
+// is. Idle does not carry stale alarms; that is what the menu's error line is
+// for.
 //
 // The WORK is git against Quickshell.shellDir, the folder this shell was
 // loaded from. When the shell came up from the last-known-good snapshot
@@ -37,11 +47,12 @@ import qs.config
 Singleton {
     id: root
 
-    // The four states, named so no call site spells a string.
+    // The five states, named so no call site spells a string.
     readonly property string idle: "idle"
     readonly property string available: "available"
     readonly property string downloading: "downloading"
     readonly property string downloaded: "downloaded"
+    readonly property string failed: "failed"
 
     property string state: root.idle
 
@@ -188,7 +199,7 @@ Singleton {
                 return;
             root.checking = false;
             if (root.state === root.downloading) {
-                root.state = root.available;
+                root.state = root.failed;
                 root.error = "git gave up halfway";
             }
         }
@@ -225,12 +236,14 @@ Singleton {
                 root.checking = false;
                 watchdog.stop();
 
-                // The one direction the state machine moves on a check: idle
-                // up to available. Never down from downloaded - see the class
-                // comment.
+                // The directions a check moves the state: idle up to
+                // available, and a FAILED state resolved - the alarm's reason
+                // is a pull that would not land, and a check that comes back
+                // with an ordinary answer is that reason gone. Never down
+                // from downloaded - see the class comment.
                 if (root.behind > 0)
                     root.state = root.available;
-                else if (root.state === root.available)
+                else if (root.state === root.available || root.state === root.failed)
                     root.state = root.idle;
             }
         }
@@ -256,7 +269,11 @@ Singleton {
 
                 if (failure !== "") {
                     root.error = failure;
-                    root.state = root.available;
+                    // FAILED, not available: the red state says "a press will
+                    // get it", and that would be a lie the second time
+                    // running. Amber says what happened, and the menu says
+                    // git's own complaint.
+                    root.state = root.failed;
                 } else {
                     root.behind = 0;
                     root.state = root.downloaded;

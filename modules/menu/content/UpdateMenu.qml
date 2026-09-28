@@ -11,9 +11,10 @@ import qs.services
 // A SMALL MENU ON PURPOSE. The marker above the clock already carries the
 // alarm; this panel's job is to resolve it in one press, and every row in here
 // exists to serve that: the count the check found, and the action - "Download
-// Update" in the red state, "Restart the shell" in the blue one, "Search for
-// update" when nothing is confirmed - the same slot trading deeds as the
-// state moves, because at most one of them can be true at a time.
+// Update" in the red state, "Retry download" in the amber one, "Restart the
+// shell" in the blue one, "Search for update" when nothing is confirmed - the
+// same slot trading deeds as the state moves, because at most one of them can
+// be true at a time.
 //
 // The BRANCH is deliberately not in here. Which branch is tracked is
 // configuration, not a choice a menu offers: it is `updates.branch` in
@@ -83,6 +84,8 @@ Column {
                 return "Downloaded - restart to apply";
             if (Update.state === Update.downloading)
                 return "Downloading from GitHub...";
+            if (Update.state === Update.failed)
+                return "Pull failed - the checkout is unchanged";
             if (Update.behind > 0)
                 return `${Update.behind} new commit${Update.behind === 1 ? "" : "s"} on ${Update.branch}`;
             if (Update.checkedAt.getTime() === 0)
@@ -196,15 +199,19 @@ Column {
         color: Appearance.colour.textFaint
     }
 
-    // WHAT WENT WRONG, if anything: offline, a branch that does not exist yet,
-    // or the shell running from the snapshot (which has no .git to ask). Said
-    // here rather than blinked on the bar.
+    // WHAT WENT WRONG, if anything: offline, a branch that does not exist
+    // yet, or the shell running from the snapshot (which has no .git to
+    // ask). A CHECK's trouble stays quiet on the bar - an offline machine is
+    // not an emergency, and the next check clears it - but a PULL's failure
+    // is the marker's amber state, and this row is where git's own complaint
+    // is spelled out, in the amber it shares with the marker so the two read
+    // as one report.
     StyledText {
         width: parent.width
         leftPadding: Appearance.padding.normal
         visible: !!Update.error
         text: Update.error
-        color: Appearance.colour.textFaint
+        color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.textFaint
         font.pixelSize: Appearance.font.size.small
         wrapMode: Text.WordWrap
     }
@@ -224,6 +231,8 @@ Column {
                 return "Restart the shell";
             if (Update.state === Update.downloading)
                 return "Downloading...";
+            if (Update.state === Update.failed)
+                return "Retry download";
             if (Update.behind > 0)
                 return "Download Update";
             return "Search for update";
@@ -233,11 +242,13 @@ Column {
                 return "restart_alt";
             if (Update.state === Update.downloading)
                 return "cloud_download";
+            if (Update.state === Update.failed)
+                return "refresh";
             if (Update.behind > 0)
                 return "download";
             return "sync";
         }
-        style: Update.behind > 0 || Update.state === Update.downloaded ? "filled" : "tonal"
+        style: Update.behind > 0 || Update.state === Update.downloaded || Update.state === Update.failed ? "filled" : "tonal"
         interactive: Update.state !== Update.downloading
 
         onClicked: {
