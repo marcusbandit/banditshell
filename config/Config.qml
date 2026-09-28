@@ -915,15 +915,15 @@ Singleton {
                 // top-right corner. Only as thick as the band, because a screen
                 // corner cannot be overshot.
                 //
-                // SHORT, and deliberately not the 120 it was. The arms are the
-                // biggest invisible zone on the shell, and at 120 they took in
-                // a quarter of both edges: every trip to a browser tab or a
-                // window's close button summoned the tray on the way past. Half
-                // of that still catches a cursor thrown at the corner -- the
-                // edges do the aiming, which is the whole of Fitts's law -- and
-                // the approach corridor stays quiet. The dwell (anim.dwell)
-                // does the rest.
-                cornerZone: 60
+                // BACK TO 120, which is where it started. It was cut to 60 when
+                // the arms had no dwell: at 120 they took in a quarter of both
+                // edges, and every trip to a browser tab or a window's close
+                // button summoned the tray on the way past. The arms dwell now
+                // (see NotificationTray) -- a crossing is a frame and never
+                // fires, a stop is deliberate -- so the long arms no longer
+                // cost anything, and the edges do the aiming again, which is
+                // the whole of Fitts's law.
+                cornerZone: 120
             },
 
             // The notch: the time, and under it whatever is playing.
