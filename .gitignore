@@ -5,12 +5,14 @@
 .claude/*
 !.claude/skills/
 
-# Compiled helpers. Unlike the .qsb shaders beside them, these are ELF for one
-# architecture and would be wrong on any other machine that cloned this, so they
-# are built rather than committed: `banditshell build`. The browser says so
-# itself when they are missing, rather than failing quietly.
-bin/bs-pty
-bin/bs-ls
+# EVERYTHING IN bin/ STAYS LOCAL. The compiled helpers (bs-pty, bs-ls) are
+# ELF for one architecture and would be wrong on any other machine that
+# cloned this, so they are built rather than committed: `banditshell build`.
+# The CLI script beside them is machine state too - it is edited in place
+# here and must never again hold a pull hostage with "local changes would be
+# overwritten". A fresh clone gets the CLI from install.sh, not from git.
+# The browser says the helpers are missing rather than failing quietly.
+bin/
 
 # Python bytecode, from running the scripts/ helpers directly.
 __pycache__/
