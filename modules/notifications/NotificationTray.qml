@@ -119,8 +119,29 @@ Item {
     // tray's own hover is for is KEEPING it out once it is, which is a different
     // claim, and the split below is that difference: `resting` is a term of
     // `attended` and never of `opening`.
-    readonly property bool summoned: cornerTop.containsMouse || cornerSide.containsMouse
+    //
+    // AND THE SUMMONS DWELLS. The arms are the biggest invisible zone on the
+    // shell, and a cursor merely passing through the corner used to summon the
+    // tray on the frame it crossed. Now the arms have to be HELD for the dwell:
+    // a crossing is a frame or two and never fires, a stop is deliberate and
+    // answers within a beat. The tap on the corner below keeps its instant open
+    // -- a press is a decision and is not asked to wait.
+    readonly property bool armsHovered: cornerTop.containsMouse || cornerSide.containsMouse
+    property bool dwellMet: false
+
+    onArmsHoveredChanged: if (!root.armsHovered)
+        root.dwellMet = false
+
+    readonly property bool summoned: root.armsHovered && root.dwellMet
     readonly property bool resting: trayHover.hovered
+
+    Timer {
+        id: armsDwell
+
+        interval: Appearance.anim.dwell
+        running: root.armsHovered
+        onTriggered: root.dwellMet = true
+    }
 
     // WHAT CAN OPEN IT, and what can merely KEEP it. Two questions, and the
     // whole shape of this file's presence rests on them being separate.
@@ -401,7 +422,16 @@ Item {
                 y: 0,
                 w: tray.width,
                 h: tray.y + tray.height,
-                radius: Appearance.rounding.large
+                radius: Appearance.rounding.large,
+                // The melt rides the FOLDING height, not the blob's own: the
+                // blob never gets small (its top is the screen's edge), but its
+                // bottom edge comes down onto the chassis exactly as the tray
+                // folds, and an unclamped melt kept a fillet most of the way to
+                // ten pixels tall on that edge for as long as the slot existed.
+                // Dropping the slot at height zero then removed it in one
+                // frame. Half the folding height lets the bulge deflate to
+                // nothing before the slot ever drops.
+                smooth: Math.min(Appearance.sizes.melt, tray.height / 2)
             }
         ];
     }

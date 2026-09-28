@@ -874,8 +874,7 @@ Scope {
 
     // The settings page. Driven off the singleton rather than off a window,
     // unlike everything above it: the page is ONE page for the whole session,
-    // which screen draws it is its own business, and half the time no shell
-    // window is drawing it at all because it has been pulled out into a window.
+    // in a real window of its own, and no shell window is ever drawing it.
     IpcHandler {
         target: "settings"
 
@@ -892,19 +891,13 @@ Scope {
         // as well: show carries the page for the summon, and setPage covers
         // the panel that was open all along, which show leaves untouched.
         //
-        // `screen` is optional too and names where the summon lands, the same
-        // way `menu open` takes one: a gesture opens things under the cursor,
-        // but IPC has no cursor, and this used to hand show a hardcoded ""
-        // so a script could only ever summon the panel onto the focused
-        // screen. That made the panel impossible to photograph whenever the
-        // focused screen was busy (a fullscreen window draws over every layer
-        // surface), which is exactly the kind of untestability this file
-        // exists to remove. Validated for the page's reason: show accepts any
-        // string and would assign the panel to a screen that does not exist,
-        // drawing it nowhere while this function reports "open". Only the
-        // SUMMON is steered; a panel already up stays on its screen, matching
-        // how show treats the argument, because teleporting a panel someone
-        // is looking at is a stranger outcome than ignoring the request.
+        // `screen` is optional and names where the request came FROM, the
+        // same way `menu open` takes one: it is recorded so that pages inside
+        // settings which open other shell surfaces (the hotkey sheet) aim
+        // them at the monitor the summon named. Validated for the page's
+        // reason: a screen name that no shell window answers to is a typo,
+        // and a typo recorded as the origin would send those panels to a
+        // monitor that does not exist.
         function open(page: string, screen: string): string {
             if (page && !Settings.pages.some(p => p.key === page))
                 return `no such page: ${page} (have: ${Settings.pages.map(p => p.key).join(", ")})`;
@@ -936,54 +929,11 @@ Scope {
             return `page ${key}`;
         }
 
-        // The two halves of the handover, by name rather than as a flag, for the
-        // same reason the picker has four verbs: a keybind is a string, and a
-        // flag in a keybind is a thing to get wrong once and never notice.
-        //
-        // `pull` needs a rect and takes none: it uses the one the card is
-        // actually occupying, which is the only rect that makes the handover
-        // invisible and is not something a caller could know.
-        function pull(): string {
-            const win = Shell.forScreen(Settings.screenName);
-            if (!Settings.open || Settings.floating)
-                return "not on the shell";
-            if (!win)
-                return `no shell window on screen: ${Settings.screenName}`;
-            win.settings.popOut();
-            return "pulled out";
-        }
-
-        function put(): string {
-            if (!Settings.floating)
-                return "not in a window";
-            Settings.popIn();
-            return "put back";
-        }
-
-        // FLOAT as a STATE, one word: the same handover pull and put each do
-        // half of, picked by where the page currently is. A keybind or a test
-        // wants "the other one of wherever it is" and does not want to know
-        // the two verbs first; and unlike the two it answers for a closed page
-        // in words rather than in silence.
-        function float(): string {
-            if (!Settings.open)
-                return "closed";
-            if (Settings.floating) {
-                Settings.popIn();
-                return "put back";
-            }
-            const win = Shell.forScreen(Settings.screenName);
-            if (!win)
-                return `no shell window on screen: ${Settings.screenName}`;
-            win.settings.popOut();
-            return "pulled out";
-        }
-
-        // Which of the two is holding it, and where. The whole failure mode this
-        // feature has is the two halves disagreeing about who is drawing, and
-        // from a screenshot that looks identical to nothing being open at all.
+        // Which of the two is holding it, and where. The whole failure mode the
+        // old handover had was the two halves disagreeing about who was drawing;
+        // there is one half now, so this reads back the state and the page.
         function status(): string {
-            return [`open       ${Settings.open}`, `page       ${Settings.page || "-"}`, `held by    ${Settings.floating ? "a window" : "the shell"}`, `screen     ${Settings.screenName || "-"}`, `window     ${Settings.windowOpen ? Settings.address || "opening" : "none"}`, `placed     ${Settings.placed}`, `handoff    ${Settings.handoff ? `${Settings.handoff.x},${Settings.handoff.y} ${Settings.handoff.w}x${Settings.handoff.h}` : "-"}`].join("\n");
+            return [`open       ${Settings.open}`, `page       ${Settings.page || "-"}`, `screen     ${Settings.screenName || "-"}`].join("\n");
         }
     }
 

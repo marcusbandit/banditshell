@@ -120,7 +120,34 @@ Item {
         visible: !Files.searching && !root.editing
         spacing: 0
 
+        // THE ROOM, AUDITED. A deep directory used to lay its crumbs out past
+        // this row's right edge -- under the search glass -- and the crumb
+        // pushed out first was the last one, the one that says where you are.
+        // Crowded is the natural widths against the room; when the answer is
+        // over, every crumb takes an equal share and elides, so the row always
+        // fits and the current directory is always on it.
+        readonly property bool crowded: {
+            let sum = 0;
+            for (let i = 0; i < list.count; ++i)
+                sum += list.itemAt(i)?.naturalWidth ?? 0;
+            return sum > width;
+        }
+
+        // What the non-last crumbs ended up taking, so the last one can claim
+        // the room they left: the others are capped at an equal share, and
+        // whatever a short ancestor did not spend of its share is the current
+        // crumb's to use. Depends on their FINAL widths, never on the last
+        // one's -- the loop stops at count - 1, so nothing binds to itself.
+        readonly property real usedBeforeLast: {
+            let sum = 0;
+            for (let i = 0; i < list.count - 1; ++i)
+                sum += list.itemAt(i)?.width ?? 0;
+            return sum;
+        }
+
         Repeater {
+            id: list
+
             model: Files.crumbs
 
             delegate: Item {
@@ -130,8 +157,9 @@ Item {
                 required property var modelData
 
                 readonly property bool last: crumb.index === Files.crumbs.length - 1
+                readonly property real naturalWidth: label.implicitWidth + Appearance.padding.normal * 2
 
-                implicitWidth: label.implicitWidth + Appearance.padding.normal * 2
+                implicitWidth: Math.min(naturalWidth, crumbs.crowded ? (crumb.last ? crumbs.width - crumbs.usedBeforeLast : crumbs.width / Files.crumbs.length) : naturalWidth)
                 implicitHeight: label.implicitHeight + Appearance.padding.small * 2
 
                 G2Rect {
@@ -147,7 +175,9 @@ Item {
                     id: label
 
                     anchors.centerIn: parent
+                    width: crumb.implicitWidth - Appearance.padding.normal * 2
 
+                    elide: Text.ElideMiddle
                     text: crumb.modelData.name
                     font.pixelSize: Appearance.sizes.filesText
                     // THE LAST CRUMB IS WHERE YOU ARE; the rest are where you
@@ -157,8 +187,19 @@ Item {
                     color: crumb.last ? Appearance.colour.text : Appearance.colour.textFaint
                 }
 
+                // A NAME CUT SHORT FINISHES ITS SENTENCE, the MenuRow's rule:
+                // the tip appears exactly where an elide did, and says the path
+                // the label was trimmed from.
+                HoverTip {
+                    host: crumb
+                    asked: hover.hovered
+                    text: hover.hovered && label.truncated ? crumb.modelData.path : ""
+                }
+
                 HoverHandler {
                     id: hover
+
+                    cursorShape: Qt.PointingHandCursor
                 }
 
                 TapHandler {
@@ -217,6 +258,9 @@ Item {
             selectedTextColor: Appearance.colour.accentText
             selectByMouse: true
             renderType: Text.NativeRendering
+            // A paste longer than the pill paints past it until the caret
+            // scrolls: the field owns its own edges.
+            clip: true
 
             // A PATH IS A PATH, whatever spelling you have. `~` is the one
             // abbreviation everybody types and no directory is called, and a
@@ -296,6 +340,7 @@ Item {
             selectionColor: Appearance.colour.accent
             selectedTextColor: Appearance.colour.accentText
             renderType: Text.NativeRendering
+            clip: true
 
             text: Files.search
             onTextChanged: Files.setSearch(text)

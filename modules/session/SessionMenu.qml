@@ -364,6 +364,10 @@ Item {
                         MouseArea {
                             anchors.fill: parent
                             hoverEnabled: true
+                            // Icon-only cells by design, so the cursor is the
+                            // one affordance a cell has; every other pressable
+                            // in the shell answers the hand.
+                            cursorShape: Qt.PointingHandCursor
 
                             onEntered: root.choose(cell.index)
                             onClicked: {

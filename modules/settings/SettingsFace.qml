@@ -8,11 +8,10 @@ import qs.services
 // The settings page itself: everything you can see of it, and nothing about
 // where it is being drawn.
 //
-// A PLAIN Item, the way LockFace is, and for the same reason. The page is drawn
-// twice in this shell - once by the shell's own surface and once by a real
-// window - and the only way two surfaces can be trusted to be showing the same
-// thing is for it to literally be the same component. Anything that leaked into
-// here about which surface it was on would be the first thing to drift.
+// A PLAIN Item, the way LockFace is. The page lives in a real window
+// (SettingsFloat) and in the preview harness (settingspreview.qml), and the
+// face is what both of them fill: nothing here may know which of them it is
+// on.
 //
 // THE DESKTOP SHAPE, and the phone's is gone. The old face was a phone's
 // settings app: a list that stacked over its sections on a narrow card and
@@ -24,32 +23,22 @@ import qs.services
 // stacks, and a window dragged narrower is a window dragged narrower, not a
 // phone.
 //
-// WHICH page is showing lives on the Settings singleton, not here, because the
-// face is drawn twice and the two copies must agree.
+// WHICH page is showing lives on the Settings singleton, not here, so that
+// the CLI, a keybind and the face all answer the same question.
 Item {
     id: root
 
-    // WHICH SIDE OF THE HANDOVER THIS COPY IS ON. What the handover row offers
-    // differs, and so does the boundary of the page, and only the boundary: a
-    // card on the shell's blurred band owns its own edge, a window does not
-    // (the compositor draws a border, a corner and a shadow around it), so in
-    // a window the page fills its frame, opaque and square.
-    property bool windowed: false
-
-    signal handover
-
-    // ESCAPE ESCAPES, from wherever the focus happens to be. The panel's `keys`
-    // item holds the keyboard when nothing inside the page does, but it is a
-    // SIBLING of this face, and a key event walks up the PARENT chain from the
-    // focused item: focus in the search field -- the one place in here that
-    // takes it -- would walk up through the rail and out of reach of that
-    // handler, and Escape would die between them. So the face answers too, as
-    // the ancestor every focused descendant walks up to, and as the holder of
-    // focus in a window, where there is no `keys` item at all.
+    // ESCAPE ESCAPES, from wherever the focus happens to be. The window's item
+    // holds the keyboard (SettingsFloat asks for it on every open), and a key
+    // event walks up the PARENT chain from the focused item: focus in the
+    // search field -- the one place in here that takes it -- would walk up
+    // through the rail and out of reach of anything that did not sit above
+    // it. So the face answers, as the ancestor every focused descendant walks
+    // up to.
     //
-    // "BACK" BEFORE "CLOSE", same contract as the panel's: a sub-page is one
-    // level in and the key that leaves a level leaves that one first; from a
-    // section the first press closes.
+    // "BACK" BEFORE "CLOSE": a sub-page is one level in and the key that
+    // leaves a level leaves that one first; from a section the first press
+    // closes.
     Keys.onPressed: event => {
         if (event.key !== Qt.Key_Escape)
             return;
@@ -71,13 +60,12 @@ Item {
     // The rail's own pitch: nav rows, a small tier under the content's.
     readonly property real railRow: Appearance.sizes.settingsRailRow
 
-    // THE RAIL'S FOOT: what the handover row owns below the scrolling band --
-    // its own row, the pad it lifts off the rail's bottom edge, and one small
-    // breath between it and the sections above.
-    readonly property real railFoot: root.railRow + Appearance.padding.large
+    // THE RAIL'S FOOT: one pad of air below the scrolling band, so the last
+    // section never sits on the window's own edge.
+    readonly property real railFoot: Appearance.padding.large
 
     // What the content pane is showing, and whether Escape means "back a
-    // level" (a sub-page is open) or "close". The panel asks.
+    // level" (a sub-page is open) or "close". The Escape handler above asks.
     readonly property string current: Settings.page || Settings.pages[0].key
     readonly property var entry: Settings.entry(root.current)
     readonly property bool deep: !!root.entry?.parent
@@ -125,8 +113,11 @@ Item {
     G2Rect {
         anchors.fill: parent
 
-        radius: root.windowed ? 0 : Appearance.rounding.large
-        color: root.windowed ? Appearance.colour.surfaceSolid : Appearance.colour.surface
+        // SQUARE and opaque: the face fills a real window's frame, and the
+        // compositor draws the border, the corner and the shadow around it.
+        // Rounding here would be a card's edge drawn inside the window's own.
+        radius: 0
+        color: Appearance.colour.surfaceSolid
 
         // ------------------------------------------------------------ rail
 
@@ -230,8 +221,8 @@ Item {
             // THE SECTIONS' BAND: the part of the rail that scrolls. A
             // SettingsPane because that is what one is -- a column that
             // scrolls -- and the rail has no back gesture to add. Pinned
-            // between the head above and the handover below, so a fourteenth
-            // section turns into scroll rather than into the handover's lap.
+            // between the head above and the rail's foot of air below, so a
+            // fourteenth section turns into scroll rather than off the edge.
             SettingsPane {
                 id: railBody
 
@@ -242,7 +233,7 @@ Item {
 
                 // THE FOLD, said honestly: when the sections outrun the band,
                 // the last row fades into the surface instead of stopping
-                // mid-glyph against the handover. A fade is the universal
+                // mid-glyph against the window's edge. A fade is the universal
                 // "there is more below" - a plain clip reads as a rendering
                 // bug, a scrollbar as clutter. It holds no event handlers, so
                 // it never eats a row's press or hover.
@@ -362,25 +353,6 @@ Item {
                         railSlide.snap();
                         root.revealRow(root.currentRowY);
                     }
-                }
-            }
-
-            // THE HANDOVER, pinned to the rail's foot: changing what kind of
-            // thing the page is, which is not a section and does not pretend
-            // to be.
-            Column {
-                width: parent.width
-                anchors.bottom: parent.bottom
-                anchors.bottomMargin: root.pad
-
-                RailRow {
-                    modelData: {
-                        "key": "",
-                        "icon": root.windowed ? "close_fullscreen" : "open_in_new",
-                        "title": root.windowed ? "Put it back" : "Pull it out",
-                        "group": ""
-                    }
-                    onActivated: root.handover()
                 }
             }
         }
@@ -509,13 +481,12 @@ Item {
     component RailRow: Item {
         id: railRow
 
-        // Supplied by the sections' Repeater as the page entry; the handover
-        // row declares its own.
+        // Supplied by the sections' Repeater as the page entry.
         required property var modelData
 
         signal activated
 
-        readonly property bool isCurrent: modelData.key !== "" && Settings.sectionOf(root.current) === modelData.key
+        readonly property bool isCurrent: Settings.sectionOf(root.current) === modelData.key
 
         width: rail.width
         height: root.railRow

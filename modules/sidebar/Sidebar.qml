@@ -29,6 +29,11 @@ Item {
     property alias status: status
     property alias tray: tray
 
+    // WHETHER A MENU IS ALREADY ON SCREEN, read by both groups' menubar gate:
+    // hover may switch between menus but may not open the first one. Bound from
+    // the window, which owns the layer.
+    property bool menusShown: false
+
     // What a full summoning pull measures against, bound by whoever owns the
     // surface (the window knows its own size; this file cannot) and passed
     // straight down to the clock's date. Zero until wired, which is safe: the
@@ -191,6 +196,7 @@ Item {
 
         onRequested: key => root.requested(key)
         onReleased: root.released()
+        menusShown: root.menusShown
     }
 
     // Full width, unlike everything else in here: the workspace ruler is drawn
@@ -293,6 +299,7 @@ Item {
 
             onRequested: key => root.requested(key)
             onReleased: root.released()
+            menusShown: root.menusShown
         }
     }
 

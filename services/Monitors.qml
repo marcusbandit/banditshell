@@ -141,9 +141,53 @@ Singleton {
     // the config keeps. There is no runtime dispatch beside it: the file is
     // the deed, the chain verifies it before the compositor reloads it, and
     // the poll brings back the truth that survived.
+    //
+    // QUEUED WHILE THE CHAIN IS BUSY. A commit is a verify, a reload and a
+    // rescan -- well over a second -- and a slider re-fires inside that. The
+    // old answer was to refuse ("a write is still in flight"), which is a
+    // silent drop the page keeps displaying as pending; and an apply landing
+    // in a rescan's window found the model mid-rebuild and, entryless, took
+    // the add branch -- a second entry in the user's file for an output that
+    // already had one. So a spec that arrives while the chain is mid-write
+    // or the scan is mid-walk waits here, one per output (a spec is the
+    // whole truth, so the newest for an output is the only one worth
+    // keeping), and the scan's ready flip brings them out one at a time:
+    // each flush runs through applySpec below, which re-finds the entry in
+    // the model as the file now has it.
+    property var queued: ({})
+
+    function flushQueued(): void {
+        const name = Object.keys(root.queued)[0];
+        if (!name)
+            return;
+        const spec = root.queued[name];
+        const rest = Object.assign({}, root.queued);
+        delete rest[name];
+        root.queued = rest;
+        root.applySpec(spec);
+    }
+
+    Connections {
+        target: HyprConfig
+
+        // One spec per flip: the first flush starts a chain of its own, and
+        // the rest ride the flips that chain's rescan ends with.
+        function onReadyChanged(): void {
+            if (HyprConfig.ready)
+                root.flushQueued();
+        }
+    }
+
     function applySpec(spec: var): void {
         if (!spec?.output)
             return;
+
+        if (HyprConfig.applying || !HyprConfig.ready) {
+            root.queued = Object.assign({}, root.queued, {
+                [spec.output]: spec
+            });
+            return;
+        }
 
         root.pending = Object.assign({}, root.pending, {
             [spec.output]: spec
@@ -259,12 +303,20 @@ Singleton {
         id: settle
 
         interval: 400
-        onTriggered: root.refresh()
+        onTriggered: {
+            root.refresh();
+            // The catch-up, scheduled here rather than bound to `settle.running`:
+            // that binding stopped this timer the moment settle fired, with most
+            // of the interval still on its clock, and a poll that cannot fire
+            // catches nothing.
+            late.restart();
+        }
     }
 
     Timer {
-        interval: 1200
-        running: settle.running
+        id: late
+
+        interval: 800
         onTriggered: root.refresh()
     }
 

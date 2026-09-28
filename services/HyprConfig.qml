@@ -72,7 +72,15 @@ Singleton {
     readonly property string hostnamePath: "/etc/hostname"
 
     property bool scanned: false
-    readonly property bool ready: root.scanned
+    // READY AWAITS THE HOSTNAME TOO. hostName above starts at the environment's
+    // word, which some shells never set, and /etc/hostname corrects it a read
+    // later -- a read that races the scan and usually loses. Until it lands the
+    // bands filter by the wrong host and come up empty, so "the model is in"
+    // has to mean both: the files are read AND the machine is named. A machine
+    // with no readable /etc/hostname is named by the environment and no more
+    // waited for than that.
+    property bool hostRead: false
+    readonly property bool ready: root.scanned && root.hostRead
 
     // The text of every file the scan read, kept so an edit splices the
     // text the scan read rather than a re-read that may have moved.
@@ -95,7 +103,7 @@ Singleton {
     }
 
     function pathOf(name: string): string {
-        return name.startsWith("lua/") ? `${root.hyprDir}/${name}` : `${root.hyprDir}/${name}`;
+        return `${root.hyprDir}/${name}`;
     }
 
     // THE SCAN: hyprland.lua, then everything it requires, depth-first, once
@@ -128,7 +136,7 @@ Singleton {
         root.bandTables = [];
         root.scanned = false;
         root.queue = [root.configPath];
-        console.warn("HyprConfig: rescanning from", root.configPath);
+        console.info("HyprConfig: rescanning from", root.configPath);
         root.nextFile();
     }
 
@@ -139,12 +147,12 @@ Singleton {
         if (root.visited[p])
             return root.nextFile();
         root.visited[p] = true;
-        console.warn("HyprConfig: reading", p);
+        console.info("HyprConfig: reading", p);
         reader.path = p;
     }
 
     function fileScanned(): void {
-        console.warn("HyprConfig: scanned", reader.path);
+        console.info("HyprConfig: scanned", reader.path);
         const name = root.shortName(reader.path);
         const r = HyprGen.scanLua(reader.text());
         const file = {
@@ -221,7 +229,7 @@ Singleton {
     }
 
     function finishScan(): void {
-        console.warn("HyprConfig: scan done,", root.binds.length, "binds in", root.files.length, "files");
+        console.info("HyprConfig: scan done,", root.binds.length, "binds in", root.files.length, "files");
         root.scanned = true;
     }
 
@@ -239,7 +247,12 @@ Singleton {
             const name = String(text() ?? "").trim();
             if (name)
                 root.hostName = name;
+            root.hostRead = true;
         }
+
+        // The environment's word is the answer then; a shell that hangs ready
+        // on a file that was never there would never come up at all.
+        onLoadFailed: root.hostRead = true
     }
 
     // ------------------------------------------------------- the three edits

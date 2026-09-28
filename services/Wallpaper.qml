@@ -67,8 +67,13 @@ Singleton {
     // through it. A tilde reaches config.json because a human typed it there,
     // and an Image handed `~/Pictures/x.png` fails to load with no message at
     // all, which is a black desktop and nothing to read about why.
+    //
+    // ANCHORED, for the same reason: `replace("~", ...)` swaps the first tilde
+    // it meets anywhere, so a file the picker legitimately lists -- an editor's
+    // `backup~2.png`, a versioned `photo~` -- had its name eaten and became a
+    // path under the home directory. Only a LEADING tilde means home.
     function expand(path: string): string {
-        return path ? path.replace("~", Quickshell.env("HOME")) : "";
+        return path ? path.replace(/^~(?=\/|$)/, Quickshell.env("HOME")) : "";
     }
 
     readonly property string dir: root.expand(Config.values.wallpaper.dir)

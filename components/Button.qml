@@ -84,7 +84,7 @@ Item {
                         // rendered over the surface.
                         bg: Appearance.blend(
                             Appearance.colour.surfaceSolid,
-                            Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, Appearance.button.veilWeight),
+                            Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, Appearance.colour.veilWeight),
                             0.5),
                         fg: Appearance.colour.text,
                         ring: "transparent",

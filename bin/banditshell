@@ -36,8 +36,8 @@
 #                                the on-screen board, for when the real keyboard
 #                                is face down on the table. Comes up by itself
 #                                on a fold unless tablet.autoKeyboard is off
-#   banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|status
-#                                pull = shell -> window, put = window -> shell
+#   banditshell settings toggle|open [page] [screen]|close|page <key>|status
+#                                the page, always in a window of its own
 #   banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]
 #   banditshell notch toggle [screen]|open [screen]|close|status [screen]
 #   banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]
@@ -215,7 +215,21 @@ ipc_quiet() {
     return 1
 }
 
-running() { pgrep -x qs >/dev/null 2>&1; }
+# IS A SHELL RUNNING -- and not just any qs. A preview instance (gallery,
+# lockpreview, settingspreview) is a qs process too, answers no IPC and is
+# not the desktop, but a bare `pgrep -x qs` cannot tell the difference: it
+# made `start` answer "already running" to a gallery. The test is the same
+# one resolve_target asks -- a process whose config path is a shell.qml.
+running() {
+    qs list --all 2>/dev/null | awk '
+        /^[[:space:]]*Config path:/ {
+            p = $0
+            sub(/^[[:space:]]*Config path:[[:space:]]*/, "", p)
+            if (p ~ /\/shell\.qml$/) found = 1
+        }
+        END { exit found ? 0 : 1 }
+    '
+}
 
 # Print the header comment block, however long it happens to be. A hardcoded
 # line range silently starts printing the code once the header changes length.
@@ -237,7 +251,14 @@ stop)
     ;;
 restart)
     pkill -x qs || true
-    sleep 0.5
+    # POLL for the death rather than hoping 0.5s was enough: the new instance
+    # needs the old one's IPC name gone, and on a busy machine the old one can
+    # still be dying a second in. Give up waiting after two seconds and start
+    # anyway -- if the name is still taken, qs says so itself.
+    for _ in $(seq 1 40); do
+        pgrep -x qs >/dev/null 2>&1 || break
+        sleep 0.05
+    done
     qs_ -d
     ;;
 run)
@@ -442,14 +463,13 @@ settings)
     sub="${1:-toggle}"
     shift || true
     case "$sub" in
-    toggle | close | pull | put | status) ipc settings "$sub" ;;
-    float) ipc settings float ;;
+    toggle | close | status) ipc settings "$sub" ;;
     open) ipc settings open "${1:-}" "${2:-}" ;;
     page)
         [ $# -ge 1 ] || { echo "usage: banditshell settings page <key>" >&2; exit 2; }
         ipc settings page "$1"
         ;;
-    *) echo "usage: banditshell settings toggle|open [page] [screen]|close|page <key>|pull|put|float|status" >&2; exit 2 ;;
+    *) echo "usage: banditshell settings toggle|open [page] [screen]|close|page <key>|status" >&2; exit 2 ;;
     esac
     ;;
 
@@ -806,7 +826,13 @@ wallpapers)
 status) ipc shell status ;;
 themes) ipc shell themes ;;
 theme)
-    [ $# -ge 1 ] && ipc shell set theme "\"$1\"" || ipc shell get theme
+    # if/else, not `&& .. || ..`: a set that FAILS (shell down, refused key)
+    # used to fall into the get and print a second, contradictory answer.
+    if [ $# -ge 1 ]; then
+        ipc shell set theme "\"$1\""
+    else
+        ipc shell get theme
+    fi
     ;;
 get)
     [ $# -ge 1 ] || { echo "usage: banditshell get <key>" >&2; exit 2; }

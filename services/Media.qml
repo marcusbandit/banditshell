@@ -190,15 +190,31 @@ Singleton {
     // The local clock, one second to the second while something plays. It
     // holds at the end of a timed track, and runs free past any known end
     // for a live one.
+    //
+    // ANCHORED TO THE WALL, not to the tick. Qt coalesces timers, so a tick
+    // is a bit MORE than a second and "+1 per tick" creeps behind what you
+    // hear over the length of an album; anchoring the advance to the real
+    // gap between fires keeps the pip honest, and a suspend between ticks
+    // -- where a +1 would lose whole minutes -- lands exactly where the
+    // wall clock says the music kept going.
+    property real clockAt: 0
+
     Timer {
         interval: 1000
         repeat: true
         running: root.playing
+
+        onRunningChanged: if (running)
+            root.clockAt = Date.now()
+
         onTriggered: {
+            const now = Date.now();
+            const step = (now - root.clockAt) / 1000;
+            root.clockAt = now;
             if (root.length > 0)
-                root.localPosition = Math.min(root.length, root.localPosition + 1);
+                root.localPosition = Math.min(root.length, root.localPosition + step);
             else
-                root.localPosition = root.localPosition + 1;
+                root.localPosition = root.localPosition + step;
         }
     }
 }

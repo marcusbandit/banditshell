@@ -23,17 +23,12 @@ import qs.components
 // the corner region itself, at any point in it, whether or not the glyph is
 // under the cursor when you press.
 //
-// AND THERE IS A SECOND WAY IN, because all of the above is an argument about a
-// cursor. A corner is only the cheapest target there is if something can be
-// thrown at it; a finger has no hover at all, so on a touchscreen everything the
-// swell does happens after the press and none of it can be read before. So the
-// corner also answers a PUSH away from itself, along its own diagonal: press
-// anywhere in it and drag inward, and the page comes out with the gesture, as
-// far as the gesture has gone. Reverse before letting go and it goes back where
-// it came from, which is the whole reason to prefer a drag to a click here (see
-// DESIGN.md section 15). components/Pull.qml has the mechanics: what counts as
-// a pull rather than the wobble inside a press, which directions are the wrong
-// way out of a corner, and what a release decides.
+// AND THERE WAS A SECOND WAY IN, a push away from the corner along its own
+// diagonal, which pulled the page out with the gesture. That gesture belonged
+// to the page the shell drew in its corner, and the page is a real window now:
+// there is nothing in the corner for a drag to pull out of, and a gesture with
+// nothing to show for its whole length would be a mislead, not a way in. The
+// corner answers a press and a click, on a cursor or a finger alike.
 //
 // It comes out DIAGONALLY, parked a full melt-distance clear of both edges when
 // closed, for the reason SessionMenu records: a blob that merely shrinks in
@@ -48,11 +43,6 @@ Item {
     required property real border
 
     signal activated
-
-    // How far the page has been pulled out of the corner, 0 to 1.
-    signal dragged(real fraction)
-    // Let go: true carries on, false puts it back.
-    signal finished(bool open)
 
     // WHAT THE CORNER BECOMES, and the only number here that is set rather than
     // derived. The swell exists to hold this, so it is sized from the glyph
@@ -80,17 +70,20 @@ Item {
 
     // OUT WHILE POINTED AT, WHILE HELD, and for the grace period after either.
     //
-    // The `pressed` term is not redundant with `containsMouse`. A pull leaves the
-    // grab square inside its first few pixels, by construction: the square is
-    // barely bigger than the minimum target and the gesture's whole job is to
-    // travel inward away from it. Hover goes false the instant it does, so
-    // without this the swell the gesture started from would collapse under the
-    // finger at exactly the moment the gesture became one, and the corner would
-    // look like it had let go of something you are still holding. `pressed` is
-    // true for the whole of the implicit grab, so the corner stays out until the
-    // release actually happens.
+    // The `pressed` term is not redundant with `containsMouse`. A press travels
+    // the grab square's own few pixels and then some - a finger lands where it
+    // lands - and hover is under no obligation to survive the landing. Without
+    // this the swell would collapse under the finger at exactly the moment the
+    // press became one, and the corner would look like it had let go of
+    // something you are still holding. `pressed` is true for the whole of the
+    // grab, so the corner stays out until the release actually happens.
     //
-    // AND `containsMouse` IS A CLAIM, NOT A FACT, which is what the `hoverLost`
+    // AND THE HOVER DWELLS. The corner is the shell's easiest target and a
+    // cursor going somewhere else passes through it; the swell that used to rise
+    // on the frame of passage now wants the cursor to STOP a beat first. The
+    // press keeps its instant: a press is a decision.
+    //
+    // `containsMouse` IS A CLAIM, NOT A FACT, which is what the `hoverLost`
     // veto is about. On a Wayland layer surface the leave event that would take
     // it down can simply never arrive: cross from the masked corner into the
     // click-through content hole and the pointer walks out of the surface's
@@ -100,7 +93,21 @@ Item {
     // the compositor for the truth while the claim stands, and its veto is what
     // lets a provably wrong claim be overruled without touching the two honest
     // terms beside it.
-    readonly property bool open: (zone.containsMouse && !root.hoverLost) || zone.pressed || linger.running
+    readonly property bool hovered: zone.containsMouse && !root.hoverLost
+    property bool dwellMet: false
+
+    onHoveredChanged: if (!root.hovered)
+        root.dwellMet = false
+
+    readonly property bool open: (root.hovered && root.dwellMet) || zone.pressed || linger.running
+
+    Timer {
+        id: hoverDwell
+
+        interval: Appearance.anim.dwell
+        running: root.hovered
+        onTriggered: root.dwellMet = true
+    }
 
     // The corner patch always, and the whole swell while it is out. Both are
     // anchored to the same corner, so their union is one rectangle and the
@@ -178,11 +185,12 @@ Item {
     // exec and a socket round trip five and a half times a second, for hours,
     // for a cursor that is doing nothing at all. See `patience` for the bound.
     //
-    // WHY NOT WHILE PRESSED. During a pull the cursor legitimately walks out
-    // of this zone while the swell must stay out; that is the entire point of
-    // the `pressed` term in `open`. A poll running through the gesture would
-    // prove the cursor "elsewhere" and yank the swell closed under a held
-    // finger, which is precisely the collapse that term exists to prevent.
+    // WHY NOT WHILE PRESSED. While the button is down the cursor may
+    // legitimately walk out of this zone - onto a fingertip's worth of drift -
+    // and the swell must stay out; that is the entire point of the `pressed`
+    // term in `open`. A poll running through the press would prove the cursor
+    // "elsewhere" and yank the swell closed under a held finger, which is
+    // precisely the collapse that term exists to prevent.
     property bool hoverLost: false
 
     // HOW MANY GRACES THE NEXT CHECK WAITS. Doubled every time the compositor
@@ -329,7 +337,7 @@ Item {
         root.hoverLost = true;
     }
 
-    Pull {
+    MouseArea {
         id: zone
 
         anchors.right: parent.right
@@ -341,29 +349,6 @@ Item {
         // thing it just summoned.
         width: Math.max(root.grab, root.width - root.padX)
         height: Math.max(root.grab, root.height - root.padY)
-
-        // WHICH WAY THE GESTURE GOES, and the only two numbers in the file that
-        // say so: the inward diagonal, written as a vector. Bottom-right, so
-        // inward is leftward and upward, hence both components negative.
-        // Everything else about the gesture is derived from this one vector:
-        // which way the pull is measured, which directions reject the press
-        // outright, and which way a reversal has to run to put the page back.
-        // Move this item to another corner and turning the vector round is the
-        // whole of the change.
-        dirX: -1
-        dirY: -1
-
-        // A SUMMONING pull, so it is measured against the surface rather than
-        // against the thing being summoned: the page is not on screen yet, so it
-        // has no size to be a fraction of. The diagonal of the surface the
-        // corner belongs to, which for this item is the screen's, because it
-        // fills the screen.
-        //
-        // Taken from `root` rather than from the zone on purpose: the zone is
-        // only the grab square, and measuring a screen-sized gesture against a
-        // patch of corner would count the first inch of the pull as the whole
-        // of it.
-        travel: Math.hypot(root.width, root.height) * Appearance.sizes.pullTravel
 
         hoverEnabled: true
 
@@ -389,9 +374,7 @@ Item {
         // never fires; what does arrive is hover motion inside the zone, which
         // is the same proof of a live cursor from the same authority. Motion
         // only reaches this item while the pointer is really inside its
-        // rectangle, so there is no spurious clearing to pay for it. This
-        // handler runs alongside Pull's own `onPositionChanged` rather than
-        // replacing it; QML connects both.
+        // rectangle, so there is no spurious clearing to pay for it.
         //
         // AND IT IS WHAT WINDS THE WATCHDOG BACK UP. Motion is the only thing
         // that can make a standing claim wrong, so motion is where the poll's
@@ -407,18 +390,7 @@ Item {
 
         // ANY point in the corner, not the glyph. See the header: the glyph is
         // what the corner looks like, not what you have to hit.
-        //
-        // `tapped` rather than `clicked`, which is not interchangeable here.
-        // `clicked` still fires for a press that wandered off in a direction the
-        // pull rejects and then came back to where it started, and that is the
-        // one press in this corner that has to do nothing at all: the gesture
-        // said "not that way", and answering it by opening the page anyway would
-        // make the rejection meaningless. `tapped` is the press that never became
-        // a pull AND never went the wrong way.
-        onTapped: root.activated()
-
-        onPulled: fraction => root.dragged(fraction)
-        onFinished: open => root.finished(open)
+        onClicked: root.activated()
     }
 
     // The mark, riding in with the shape rather than being revealed inside a

@@ -335,13 +335,24 @@ Item {
     // What the chassis needs to melt this panel into the shell's body. A closed
     // panel has zero width, which the field skips, so it costs nothing rather
     // than leaving a stub behind.
+    //
+    // The melt travels with the panel's own size, half its lesser dimension,
+    // because the smooth minimum keeps a fillet alive for as long as the slot
+    // exists: at the end of a close the panel's edge is a few pixels inside the
+    // chassis and the only thing of it still on screen is that fillet, a bulge
+    // the better part of ten pixels tall. Dropping the slot at width zero
+    // then removed it in one frame - the collapse read as a snap for its last
+    // ten units. Shrinking the melt with the panel lets the bulge deflate to
+    // nothing before the slot ever drops. (VolumeRail reports the same clamp
+    // and always has; this panel is the one that never picked it up.)
     readonly property var blobs: panel.width > 0 ? [
         {
             x: panel.x,
             y: panel.y,
             w: panel.width,
             h: panel.height,
-            radius: panel.cornerRadius
+            radius: panel.cornerRadius,
+            smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
         }
     ] : []
 

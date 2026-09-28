@@ -903,10 +903,10 @@ Singleton {
     //
     // WHICH IS REACHABLE RATHER THAN THEORETICAL. Panels are per screen and are
     // summoned BY NAME: `Settings.toggle(win.screen.name)` in
-    // modules/ShellWindow.qml and `Settings.show(root.screen.name)` in
-    // modules/settings/SettingsPanel.qml both open the panel on the monitor the
-    // gesture happened on, which is precisely the monitor that need not be the
-    // focused one. An edge zone is under a hand, not under the keyboard.
+    // modules/ShellWindow.qml, and the session menu's `screenName` taken from
+    // the window it is drawn in, both open the panel on the monitor the gesture
+    // happened on, which is precisely the monitor that need not be the focused
+    // one. An edge zone is under a hand, not under the keyboard.
     //
     // AND WORSE THAN MERELY WRONG, because `restoreFocus` deliberately leaves
     // the POINTER where it is. Under follow_mouse the handback to the other

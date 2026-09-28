@@ -128,6 +128,7 @@ Item {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
                     anchors.margins: Appearance.padding.normal
+                    clip: true
 
                     font.family: Appearance.font.family
                     font.pixelSize: Appearance.font.size.small

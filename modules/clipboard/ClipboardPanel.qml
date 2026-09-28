@@ -102,7 +102,11 @@ Item {
             y: panel.y,
             w: panel.width,
             h: panel.height,
-            radius: Appearance.rounding.large
+            radius: Appearance.rounding.large,
+            // Melt riding the panel's own size (VolumeRail's clamp), so the
+            // fillet is gone before the slot drops at height zero rather than
+            // being snapped off the collapsing edge in one frame.
+            smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
         }
     ]
 
@@ -904,7 +908,7 @@ Item {
                         if (!root.speech)
                             return "Nothing has been copied yet.";
                         if (!Dictation.present)
-                            return "The dictation daemon is not running.\nStart it with  voice up";
+                            return "The dictation daemon is not running.\n`voice up` starts it.";
                         return "Nothing has been dictated yet.\nSUPER + R starts.";
                     }
                 }

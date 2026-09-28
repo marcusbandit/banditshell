@@ -46,6 +46,12 @@ Item {
     // would otherwise undo the open the enter just did.
     property string hoveredKey: ""
 
+    // THE MENUBAR RULE, StatusIcons' gate carried here: a menu is never OPENED
+    // by a passing hover, only SWITCHED to while something else is already on
+    // screen. Marking the item is still unconditional -- the marker is a look,
+    // not an open.
+    property bool menusShown: false
+
     // Hover only, so never deliberate. A deliberate open does not come through
     // here at all: it goes straight out from the delegate, because routing it
     // through `hoveredKey` would lose it whenever the pointer was already on the
@@ -57,9 +63,10 @@ Item {
     onHoveredKeyChanged: {
         root.markItem(root.hoveredKey);
 
-        if (root.hoveredKey)
-            root.requested(root.hoveredKey, false);
-        else
+        if (root.hoveredKey) {
+            if (root.menusShown)
+                root.requested(root.hoveredKey, false);
+        } else
             root.released();
     }
 

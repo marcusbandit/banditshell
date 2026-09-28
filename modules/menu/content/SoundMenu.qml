@@ -251,10 +251,11 @@ Column {
     }
 
     Repeater {
-        // Capped, because the panel clips where it runs out of screen rather
-        // than scrolling: a cap is the difference between a long list and a list
-        // whose last row is cut in half.
-        model: Audio.playing.slice(0, Appearance.sizes.streamListMax)
+        // UNCAPPED. The cap predates the panel's viewport: MenuPanel puts every
+        // menu body in a Flickable that enables itself on overflow, so the
+        // twelfth stream scrolls instead of vanishing -- and a cap that hides
+        // the sixth stream's slider with no word of it was a hole either way.
+        model: Audio.playing
 
         delegate: Channel {
             required property var modelData
@@ -293,7 +294,7 @@ Column {
     }
 
     Repeater {
-        model: Audio.recording.slice(0, Appearance.sizes.streamListMax)
+        model: Audio.recording
 
         delegate: Channel {
             required property var modelData

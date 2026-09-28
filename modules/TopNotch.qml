@@ -76,8 +76,29 @@ Item {
     // left. Every fix for that is the same fix: check the other three before
     // writing, at which point the flag is no longer the answer, it is a cache of
     // the answer. A union has no ordering to get wrong.
-    readonly property bool active: zone.containsMouse || notchZone.containsMouse || root.pinned || root.pulling
+    //
+    // AND THE STRIP DWELLS. It spans the whole top edge, so every trip to a
+    // window's own top corners -- a browser tab, a close button -- used to drop
+    // the notch on the way past. The summon term now wants the cursor to STAY a
+    // beat (the crossing is a frame; it never fires), while the notch's own body
+    // keeps its instant hold: once it is out, a cursor moving strip-to-body
+    // cannot be allowed to flicker the hold while the two hover claims swap.
+    readonly property bool stripHovered: zone.containsMouse
+    property bool stripDwelt: false
+
+    onStripHoveredChanged: if (!root.stripHovered)
+        root.stripDwelt = false
+
+    readonly property bool active: (root.stripHovered && root.stripDwelt) || notchZone.containsMouse || root.pinned || root.pulling
     readonly property Item maskItem: notchZone
+
+    Timer {
+        id: stripDwell
+
+        interval: Appearance.anim.dwell
+        running: root.stripHovered
+        onTriggered: root.stripDwelt = true
+    }
 
     // WHETHER ESCAPE HAS TO REACH THE NOTCH, for the window to read: a layer
     // surface is handed no key events at all unless its window asks the

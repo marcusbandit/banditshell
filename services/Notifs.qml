@@ -509,7 +509,18 @@ Singleton {
             if (notification.transient)
                 root.history = root.history.filter(e => e !== entry);
 
-            root.popups = [entry, ...root.popups].slice(0, root.maxPopups);
+            // The cap is a real sentence too: whatever the screen had no room
+            // for walks the same door a timeout opens, because the two are the
+            // same event -- a popup that ran out of its welcome. expire()
+            // routes it through beginLeave and the sweep's drop() gives it the
+            // history-or-teardown answer it deserves; the bare slice this
+            // replaces let a transient overflow entry fall out of both lists
+            // for good, stranding its tracked notification and its cached
+            // picture for the life of the shell.
+            const shown = [entry, ...root.popups];
+            root.popups = shown.slice(0, root.maxPopups);
+            for (const old of shown.slice(root.maxPopups))
+                root.expire(old);
             // The countdown lives on the card, not here: it has to be a
             // reactive value so the card can draw it, and it has to pause while
             // the cursor is on the card, which only the card knows.

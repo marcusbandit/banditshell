@@ -342,11 +342,11 @@ Singleton {
         readonly property real scrollSpeed: root.cfg.anim.scrollSpeed
 
         readonly property int grace: root.cfg.anim.grace
+        readonly property int dwell: root.cfg.anim.dwell
         readonly property int tooltip: root.cfg.anim.tooltip
         // How long a menu has to be on screen before what is inside it is
         // believed to be worth doing; see MenuPanel's page delegate.
         readonly property int settle: root.cfg.anim.settle
-        readonly property int handover: root.cfg.anim.handover
     }
 
     readonly property QtObject sizes: QtObject {
@@ -397,7 +397,6 @@ Singleton {
         // the service that sorts on them; see Config's note on why it is one
         // number rather than two that agree until they don't.
         readonly property int signalBands: root.cfg.control.signalBands
-        readonly property int streamListMax: root.cfg.control.streamListMax
         readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget
         readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction
@@ -504,9 +503,8 @@ Singleton {
 
         // The settings page, at rest. See modules/settings/.
         //
-        // ONE size for both halves of its life: the page is drawn by the shell
-        // or by a window depending on which you last asked for, and the point of
-        // the handover is that it is the same object either way.
+        // The window's size at birth: a hint the compositor takes on every
+        // open, and the user is allowed to drag its corner afterwards.
         readonly property int settingsWidth: root.cfg.settings.width
         readonly property int settingsHeight: root.cfg.settings.height
         readonly property int settingsRail: root.cfg.settings.rail

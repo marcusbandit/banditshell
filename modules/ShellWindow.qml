@@ -13,7 +13,6 @@ import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
 import qs.modules.session
-import qs.modules.settings
 import qs.modules.sidebar
 import qs.modules.wallpaper
 import qs.modules.windows
@@ -55,7 +54,6 @@ PanelWindow {
     // is the one surface that must not hold the keyboard, because it types
     // through it. See modules/keyboard/OnScreenKeyboard.qml.
     readonly property OnScreenKeyboard keyboard: keyboardLayer
-    readonly property SettingsPanel settings: settingsLayer
     // NAMED FOR THE IPC TARGET, not for the type, like every line above it:
     // modules/Ipc.qml reaches this as `win.hotkeys` and `hotkeys status` reads
     // `rows`, `unnamed` and `sections` off it. The sheet is the one panel here
@@ -191,29 +189,6 @@ PanelWindow {
     // (Menus.needsKeyboard, components/Prompts.qml). Every other term below is
     // already a fact about this window's own panels.
     //
-    // THE SETTINGS PAGE ASKS OUTRIGHT TOO, which it did not use to.
-    //
-    // It spent its life on the ON DEMAND side under an argument that sounded
-    // airtight: the page is a thing you leave open while you go and look at
-    // what you changed, and a surface holding the keyboard would mean you
-    // could not type into whatever you opened it to change. All true, and it
-    // still lost, on the rule the pinned surfaces already settled: ESCAPE
-    // CLOSES WHAT IS OPEN, HOWEVER IT WAS OPENED. On demand cannot honour
-    // that. `banditshell settings open` and the corner both summon the page
-    // while the pointer and the focus are somewhere else, and a key event
-    // reaches an on-demand layer only after the surface has been clicked --
-    // which makes Escape a second opening gesture, and the first press do
-    // nothing. Measured, repeatedly, by the one person whose report matters.
-    //
-    // The cost is the cost every exclusive panel here pays, and the page pays
-    // it knowingly: while it is docked it holds the keyboard, and typing goes
-    // to its search field rather than to the window underneath. A page whose
-    // longest stay is a search and a few switches is in the tray's situation,
-    // not the terminal's; and the long stays have a door this file built
-    // anyway -- the page pulls out into a real window ("Full it out"), where
-    // it is an ordinary toplevel and the compositor shares focus the ordinary
-    // way.
-    //
     // THE HOTKEY SHEET ASKS OUTRIGHT, on the power panel's argument and one of
     // its own. It has no field and nothing to type into, so it wants exactly
     // one key, but that key is Escape and it has to work from wherever the
@@ -291,7 +266,7 @@ PanelWindow {
     // it back the moment a window is clicked instead. Escape reaches the menu
     // while the menu is what you are dealing with, the desktop keeps every
     // event it should have had, and neither has to be traded for the other.
-    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || settingsLayer.docked || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -383,15 +358,6 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: cheatLayer.open ? cheatLayer.maskItem : null
-        }
-
-        // The card, and only while the shell is the one drawing it: the moment a
-        // window takes the page over, a shell surface still claiming that
-        // rectangle would be swallowing every click meant for the window
-        // standing in exactly the same place.
-        Region {
-            intersection: Intersection.Combine
-            item: settingsLayer.docked ? settingsLayer.maskItem : null
         }
 
         // THE WHOLE SCREEN WHILE THE MEDIA CONTROLLER IS OUT, on the power
@@ -567,7 +533,6 @@ PanelWindow {
         // middle of doing (the three are mutually exclusive, so at most one of
         // them is up). Then the pinned menu, which is the only one of the rest
         // that also holds the POINTER, since its catcher covers the screen. Then
-        // the settings page, which is a document you left open on purpose. Then
         // the notch and the tray, which are readouts hanging off an edge and are
         // the least in anybody's way. Those last two cannot overlap on screen, so
         // the order between them decides nothing except which of two presses
@@ -600,8 +565,6 @@ PanelWindow {
                 mediaLayer.hide();
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
-            else if (settingsLayer.docked)
-                settingsLayer.hide();
             else if (topNotch.wantsEscape)
                 topNotch.pinned = false;
             else if (popups.wantsEscape)
@@ -656,6 +619,11 @@ PanelWindow {
             anchors.topMargin: win.border
             anchors.bottomMargin: win.border
             width: chassis.barWidth
+
+            // The menubar gate's view of the layer: while a menu is up, a
+            // hover may carry the open across to a neighbour; with nothing
+            // showing, a hover only ever lights the icon it is on.
+            menusShown: menuLayer.open
 
             // What the clock's summoning pull measures against: the surface's
             // diagonal, the same scale the notification tray's summon uses. A
@@ -828,10 +796,7 @@ PanelWindow {
             //
             // THE SAME TERMS keyboardFocus's first half names, because it is the
             // same question: who wants EVERY key. A menu holding a live prompt is
-            // one of them however little it looks like a panel. The settings page
-            // is deliberately not: it asks on demand and answers only Escape, so
-            // a pin taking the focus from it costs one extra press through the
-            // fallback above rather than a field that has gone deaf.
+            // one of them however little it looks like a panel.
             //
             // Handed down rather than looked up, like every other property on
             // these layers: this file is the one place that can see all of them
@@ -931,18 +896,11 @@ PanelWindow {
             id: wallpaperLayer
 
             anchors.fill: parent
-            originX: chassis.barWidth
-            inset: win.border
             // WHICH MONITOR IT IS CHOOSING FOR. A wallpaper is per screen now
             // (services/Wallpaper.qml), and this picker is the one standing on
             // that screen: it previews there, marks the card that screen wears,
             // and opens its reveal out of a point on it.
             screen: win.screen?.name ?? ""
-            // Whatever the live launcher concept is actually as wide as, with a
-            // floor for the moment before its loader has built one: a zero
-            // would size the picker off its own minimum for one frame and it
-            // would visibly settle.
-            launcherSpan: Math.max(launcherLayer.panelWidth, Appearance.sizes.launcherWidth)
 
             onOpenChanged: if (open) {
                 launcherLayer.hide();
@@ -1048,8 +1006,8 @@ PanelWindow {
         // NOTHING IS PASSED DOWN TO IT. It reads the same band and sidebar
         // tokens the chassis derives its hole from, so it centres in the
         // content area on its own; if Chassis's formula ever changes, the
-        // honest fix is to hand it the hole the way the settings page is handed
-        // one, and there is a note in the file saying so.
+        // honest fix is to hand it the hole. There is a note in the file
+        // saying so.
         //
         // IT CONTRIBUTES NO BLOB and must not be added to `chassis.panels`. The
         // field is for things that GROW OUT of the shell's body, where the
@@ -1071,32 +1029,19 @@ PanelWindow {
             // and a central arbiter would be one more thing to keep in step
             // with the list.
             //
-            // AND THE SETTINGS PAGE, which the other two deliberately leave
-            // alone. Its own note below says why and it stands: a page you left
-            // open while you went to look at what you changed should survive
-            // somebody reaching for the launcher. This panel is the one
-            // exception because it is the one that STANDS IN THE SAME
-            // RECTANGLE. Both centre themselves in the chassis's hole; the page
-            // is declared after this one, so it draws and takes input ON TOP of
-            // the sheet; and this panel takes the keyboard the instant it opens,
-            // which pulls focus off the page and leaves its Escape dead. What
-            // that added up to was a settings card sitting opaque over the
-            // middle of the sheet, hiding the rows and swallowing the presses
-            // aimed at them, dismissable by neither key nor click. Two
-            // documents cannot share one hole, so the one just asked for wins.
-            //
-            // Only while the SHELL is drawing it. A page a window has taken over
-            // is a window like any other, standing wherever its owner put it and
-            // nowhere near this rectangle, and closing it from here would be a
-            // layer surface reaching outside itself.
+            // NOT the settings page, which used to be the exception here: it
+            // was the only other panel that centred itself in the chassis's
+            // hole, so the two were drawn one on top of the other in the same
+            // rectangle and the one just asked for had to win. The page is a
+            // real window now, standing wherever its owner put it and nowhere
+            // near this rectangle, and a layer surface has no business
+            // reaching outside itself to close one.
             onOpenChanged: if (open) {
                 launcherLayer.hide();
                 clipLayer.hide();
                 sessionLayer.hide();
                 calcLayer.hide();
                 mediaLayer.hide();
-                if (settingsLayer.docked)
-                    settingsLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -1170,8 +1115,6 @@ PanelWindow {
                 sessionLayer.hide();
                 cheatLayer.hide();
                 calcLayer.hide();
-                if (settingsLayer.docked)
-                    settingsLayer.hide();
                 if (menuLayer.needsKeyboard)
                     menuLayer.hide();
             }
@@ -1197,67 +1140,6 @@ PanelWindow {
             function onValuesChanged(): void {
                 cheatLayer.board = Config.get("cheatsheet.board");
                 cheatLayer.symbols = Config.get("cheatsheet.symbols");
-            }
-        }
-
-        // The settings page, in the middle of the content area. The one panel
-        // here that can stop being drawn without being closed: pull it out and a
-        // real window holds it instead. See modules/settings/.
-        SettingsPanel {
-            id: settingsLayer
-
-            anchors.fill: parent
-            screen: win.screen
-
-            // The chassis's hole, not the screen. The sidebar makes those two
-            // different, and a page centred on the second sits visibly right of
-            // the space it is actually in.
-            holeX: chassis.holeX
-            holeY: chassis.holeY
-            holeWidth: chassis.holeWidth
-            holeHeight: chassis.holeHeight
-
-            // NOT mutually exclusive with the launcher and the power panel,
-            // unlike those two with each other. They exclude one another because
-            // they both take the keyboard outright; this one does not take it at
-            // all unless you click it, so there is nothing to fight over, and
-            // closing somebody's settings page because they reached for the
-            // launcher would be a surprise with no reason behind it.
-            //
-            // THE HOTKEY SHEET IS THE EXCEPTION, and about geometry rather than
-            // about the keyboard: it is the only other panel that centres itself
-            // in the chassis's hole, so the two are drawn one on top of the
-            // other in the same rectangle. Its declaration above carries that
-            // argument; the block below is the other half of it, because an
-            // exclusion stated in one direction is only half an exclusion.
-        }
-
-        // THE SHEET GIVES WAY TO THE PAGE, the way the page gives way to the
-        // sheet. Both are reachable while the other is up: the settings corner
-        // is declared after the sheet and so sits above its catcher, and
-        // `banditshell settings` and any keybind for it work from anywhere. The
-        // sheet is what goes, because the page is what was just asked for and
-        // the sheet is one keypress from being back.
-        //
-        // A Connections RATHER THAN AN `onDockedChanged` WRITTEN ON THE PANEL
-        // ABOVE, and that is load-bearing rather than a style choice.
-        // SettingsPanel declares its own `onDockedChanged` (it snaps the card's
-        // four followers so an opening page is placed rather than flown to, and
-        // takes focus there), and a handler written at the usage site is an
-        // assignment to that same slot: it would REPLACE the panel's own
-        // instead of running beside it, and the page would animate in from
-        // wherever it last happened to be with no keyboard. Connections adds a
-        // second receiver and leaves the first alone. The three panels above can
-        // safely write their handlers inline only because none of them declares
-        // one internally.
-        Connections {
-            target: settingsLayer
-
-            function onDockedChanged(): void {
-                if (settingsLayer.docked) {
-                    cheatLayer.hide();
-                    mediaLayer.hide();
-                }
             }
         }
 
@@ -1414,7 +1296,7 @@ PanelWindow {
             // screen, because its catcher covers everything and a tap anywhere
             // off it is how it is dismissed. The notification tray does not:
             // it hangs in the top corner and has never owned this edge.
-            blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open || settingsLayer.docked
+            blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
         }
 
         TopNotch {
@@ -1472,10 +1354,9 @@ PanelWindow {
         }
 
         // The bottom-right corner, as a way in: rest the cursor there and the
-        // corner becomes a settings mark, a click anywhere in the corner is the
-        // press, and a push away from it along its own diagonal pulls the page
-        // out with the gesture. See modules/SettingsCorner.qml for why there is
-        // no button in it.
+        // corner becomes a settings mark, and a click anywhere in the corner is
+        // the press. See modules/SettingsCorner.qml for why there is no button
+        // in it.
         SettingsCorner {
             id: settingsCorner
 
@@ -1486,19 +1367,6 @@ PanelWindow {
             // corner you pressed is on a particular monitor and the page belongs
             // where you are looking.
             onActivated: Settings.toggle(win.screen.name)
-
-            // THE PULL GOES TO THE PANEL, not to the service, and that is the
-            // whole difference between the two ways in.
-            //
-            // `Settings.open` is a switch: it can say that the page exists and
-            // on which screen, and it has nowhere to put "seven tenths of the
-            // way out of the corner". A drag needs a position on every frame, so
-            // it is handed to the thing that draws the page, and the service is
-            // only told once the gesture has committed. See SettingsPanel's
-            // dragTo/dragEnd, which is the same contract the launch edge has
-            // with the launcher.
-            onDragged: fraction => settingsLayer.dragTo(fraction)
-            onFinished: open => settingsLayer.dragEnd(open)
         }
 
         // LAST, so its label draws over the panels it explains. It has no input

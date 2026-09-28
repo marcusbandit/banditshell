@@ -51,6 +51,18 @@ Item {
     // to that: a leave only clears the key if it is still that icon's.
     property string hoveredKey: ""
 
+    // THE MENUBAR RULE: hover OPENS NOTHING. A cursor passing across the column
+    // -- to reach the clock, to leave the screen, to get out of the way -- used
+    // to fire a menu at every gauge it crossed, and the grace timer then kept
+    // the last one up long after the hand was gone. So an incidental open now
+    // requires that a menu already be on screen: hover SWITCHES (the menubar's
+    // one good trick -- sweep to the neighbour once something is open), a press
+    // OPENS, and with nothing showing the pointer only moves the marker, which
+    // is a look and never an open. A finger has no hover and never came through
+    // here anyway; a deliberate press arrives at ShellWindow directly, not by
+    // this gate.
+    property bool menusShown: false
+
     // The pointer arriving on an icon is an INCIDENTAL open: it asks for the
     // menu and goes on holding it, so it must not latch.
     //
@@ -62,9 +74,10 @@ Item {
     onHoveredKeyChanged: {
         root.markGauge(root.hoveredKey);
 
-        if (root.hoveredKey)
-            root.requested(root.hoveredKey, false);
-        else
+        if (root.hoveredKey) {
+            if (root.menusShown)
+                root.requested(root.hoveredKey, false);
+        } else
             root.released();
     }
 

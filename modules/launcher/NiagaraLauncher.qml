@@ -100,14 +100,18 @@ Item {
     readonly property Item maskItem: catcher
 
     // The blob the chassis melts in. This concept draws no background of its
-    // own, exactly like every other panel in the shell.
+    // own, exactly like every other panel in the shell. The melt rides the
+    // panel's own size (VolumeRail's clamp): unclamped, the fillet outlived the
+    // visible panel on the way down and the slot's drop at height zero snapped
+    // it away in one frame.
     readonly property var blobs: panel.height <= 0 ? [] : [
         {
             x: panel.x,
             y: panel.y,
             w: panel.width,
             h: panel.height,
-            radius: Appearance.rounding.large
+            radius: Appearance.rounding.large,
+            smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
         }
     ]
 

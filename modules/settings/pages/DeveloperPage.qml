@@ -138,7 +138,7 @@ Item {
             SettingsRow {
                 icon: "web_asset"
                 label: "This page is held by"
-                value: (Settings.floating ? "a window" : "the shell") + (Settings.screenName ? ` on ${Settings.screenName}` : "")
+                value: "a window" + (Settings.screenName ? ` (summoned on ${Settings.screenName})` : "")
                 interactive: false
             }
 

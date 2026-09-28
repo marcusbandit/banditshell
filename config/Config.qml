@@ -258,6 +258,15 @@ Singleton {
                 // Hover is a sloppy input; without this, crossing a boundary
                 // dismisses what you were reaching for.
                 grace: 180,
+                // How long a hover has to STAY on a summon zone before the zone
+                // believes it. The tooltip dwell's question asked of the things
+                // that open surfaces rather than of labels: a cursor in transit
+                // crosses even a big invisible zone inside a frame or two, so a
+                // crossing never summons, and a cursor that stops in a corner
+                // gets its answer inside a beat. Below the tooltip on purpose --
+                // a tooltip is an interruption and can afford more doubt; a
+                // summon was asked for by arriving.
+                dwell: 250,
                 // How long the cursor has to STAY on something before it gets
                 // told what the something is. Long enough that crossing a column
                 // of icons says nothing, short enough that stopping on one feels
@@ -274,15 +283,7 @@ Singleton {
                 // Shorter than the tooltip, because a tooltip interrupts and
                 // this does not: the cost of being wrong here is a scan that
                 // started for nothing, not a label in your way.
-                settle: 250,
-                // How long two surfaces both draw the settings page while it
-                // changes hands between the shell and a window. See
-                // modules/settings/. Two frames at 60Hz.
-                //
-                // A gap here is a black flash; an overlap is nothing at all,
-                // because both are drawing the same card in the same place. So
-                // it errs long.
-                handover: 32
+                settle: 250
             },
 
             // Which stop of the theme's ramp each role uses. The ramp runs 0
@@ -913,7 +914,16 @@ Singleton {
                 // How far the summon zone runs along each edge from the
                 // top-right corner. Only as thick as the band, because a screen
                 // corner cannot be overshot.
-                cornerZone: 120
+                //
+                // SHORT, and deliberately not the 120 it was. The arms are the
+                // biggest invisible zone on the shell, and at 120 they took in
+                // a quarter of both edges: every trip to a browser tab or a
+                // window's close button summoned the tray on the way past. Half
+                // of that still catches a cursor thrown at the corner -- the
+                // edges do the aiming, which is the whole of Fitts's law -- and
+                // the approach corridor stays quiet. The dwell (anim.dwell)
+                // does the rest.
+                cornerZone: 60
             },
 
             // The notch: the time, and under it whatever is playing.
@@ -1131,11 +1141,9 @@ Singleton {
 
             // The settings page. See modules/settings/.
             //
-            // ONE size for both halves of its life. The page is drawn by the
-            // shell or by a window depending on which you last asked for, and
-            // the whole point of the handover is that it is the same object
-            // either way: two sizes would make it a different object the moment
-            // it changed hands.
+            // THE WINDOW'S SIZE AT BIRTH. A hint, not a binding: the compositor
+            // re-applies the rule on every open, and the user is allowed to drag
+            // the corner afterwards.
             settings: {
                 // THE DESKTOP SHAPE: a permanent rail of sections and the
                 // page's content beside it, at every width. Was 900x600,
@@ -1881,11 +1889,6 @@ Singleton {
                 // the meter actually draws, the order can only change when the
                 // picture does.
                 signalBands: 4,
-                // App rows the mixer shows before it stops counting. The panel
-                // clips where it runs out of screen rather than scrolling, so
-                // this is the difference between a long list and a list with its
-                // last row cut in half.
-                streamListMax: 5,
                 deviceListMax: 7,
                 // 40 was Sequoia's measured Control Center row pitch (at 34 a
                 // two-line row's 36px of line boxes overflowed its own height

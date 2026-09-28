@@ -94,14 +94,19 @@ Item {
     // pixel of row height is one fewer result you can see at a glance.
     readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
 
-    // The blob the chassis melts in.
+    // The blob the chassis melts in. The melt rides the panel's own size (half
+    // the lesser dimension, VolumeRail's clamp): an unclamped melt kept a
+    // fillet alive on the collapsing edge for as long as the slot existed, so
+    // dropping the slot at height zero removed what was still on screen of it
+    // in one frame - the close snapped for its last few units.
     readonly property var blobs: panel.height <= 0 ? [] : [
         {
             x: panel.x,
             y: panel.y,
             w: panel.width,
             h: panel.height,
-            radius: Appearance.rounding.large
+            radius: Appearance.rounding.large,
+            smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
         }
     ]
 

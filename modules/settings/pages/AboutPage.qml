@@ -29,7 +29,7 @@ import qs.modules.settings
 // `exec` replaces the command each time and three idle processes for three
 // rows would be three of something for no reason. The hotkeys row is the
 // exception, opening a panel of the shell's own on the screen that holds
-// this page; the Keys page, not this one, is where binds are edited.
+// this page; the Keybinds page, not this one, is where binds are edited.
 //
 // WIDTH COMES FROM THE FACE, like every page here: fill what the pager hands
 // you and ask only for height.

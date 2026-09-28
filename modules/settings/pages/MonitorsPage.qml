@@ -86,7 +86,7 @@ Item {
     // drawn at the face's level and clamped in the face's coordinates.
     readonly property Item face: {
         let p = root.parent;
-        while (p && p.windowed === undefined)
+        while (p && p.railFoot === undefined)
             p = p.parent;
         return p;
     }

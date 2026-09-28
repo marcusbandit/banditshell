@@ -458,7 +458,8 @@ banditshell/
 │   ├── Clipboard.qml            what has been copied, and what each of them IS;
 │   │                            runs its own wl-paste watcher, because the type
 │   │                            list is the only place "file" differs from "text"
-│   ├── Settings.qml             the settings page's state, and its handover
+│   ├── Settings.qml             the settings page's state: one real window,
+│   │                            kept alive, hidden between uses
 │   ├── Power.qml                the ways a session can end, and how each is done
 │   ├── Calc.qml                 arithmetic, once: how a number is written, what an
 │   │                            operator does, and what a TYPED expression means.
@@ -540,7 +541,7 @@ banditshell/
 │   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
 │   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
-│   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press, or pull
+│   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots
 │   │                            that cross-fade, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
@@ -587,20 +588,19 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
-│   │   └── WallpaperPicker.qml  a strip of big cards you throw; the centred one
-│   │                            is on the real desktop while you decide about it
+│   │   └── WallpaperPicker.qml  no panel at all: the wallpaper you are on as a
+│   │                            half-monitor hero, the rest stacked off the
+│   │                            right edge, the hero live on the real desktop
 │   ├── picker/                  screenshot: hover a window or drag a region
-│   ├── settings/                the page that is a shell surface OR a window, shaped
+│   ├── settings/                the page, always a real window of its own, shaped
 │   │   │                        like a phone's settings app: a list of sections and
 │   │   │                        one section, side by side when wide, stacked when not
-│   │   ├── SettingsFace.qml     the card; a plain Item, drawn by both of the below
+│   │   ├── SettingsFace.qml     the page itself; a plain Item, filled into the window
 │   │   ├── SettingsPane.qml     one scrolling column of it, with drag-right as "back"
 │   │   ├── SettingsCard.qml     a titled box of rows: the grouped-list idiom
 │   │   ├── SettingsRow.qml      one row of a card; wraps, never elides, and its
 │   │   │                        highlight takes the card's own corners
-│   │   ├── SettingsPanel.qml    the shell's copy, in ShellWindow, centred in the hole;
-│   │   │                        fills the hole on a screen too small for the card
-│   │   ├── SettingsFloat.qml    the window's copy; shell-wide, hidden until pulled out
+│   │   ├── SettingsFloat.qml    the window; shell-wide, kept alive, hidden between uses
 │   │   └── pages/               one file per page; Settings.pages is the register,
 │   │       │                    and key "general" loads GeneralPage.qml by convention.
 │   │       │                    Grouped the way a phone groups them; a page with a
@@ -616,11 +616,13 @@ banditshell/
 │   │       ├── BatteryPage.qml  charge and health, and the bar's history
 │   │       ├── DevicePage.qml   the whole machine: board, processor, memory, graphics,
 │   │       │                    storage, software, battery, screens (services/Device.qml)
-│   │       ├── KeysPage.qml      every Hyprland bind, by file and line:
-│   │       │                    the ones the scanner fully owns are edited
-│   │       │                    here (chord, command, options, spliced in
-│   │       │                    place, verified, reloaded); the ones the
-│   │       │                    source generates are shown read-only
+│   │       ├── KeybindsPage.qml  every Hyprland bind: the chord as key
+│   │       │                    plates, the command it runs under them,
+│   │       │                    and a record mode that takes the
+│   │       │                    keyboard over (shortcut inhibitor) so a
+│   │       │                    chord is pressed, not typed; edits splice
+│   │       │                    in place, verify, reload; binds the source
+│   │       │                    generates are shown read-only
 │   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
 │   │       └── AboutPage.qml    banditshell itself: what it is and why, and where to read
 │   ├── notifications/           discrete cards; NOT part of the blob field

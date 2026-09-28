@@ -3,11 +3,9 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.config
-import qs.components
 import qs.services
 
-// The other half of the settings page: the card, while a real window is holding
-// it.
+// The settings page: the whole of it, in a real window.
 //
 // SHELL-WIDE, one of them, outside Variants. A window is not a per-screen
 // surface; it is on whichever monitor it has been dragged to, and asking each
@@ -15,14 +13,14 @@ import qs.services
 // plugged in.
 //
 // KEPT ALIVE, hidden, rather than destroyed between uses. The page is a page,
-// not a dialog, and rebuilding it every time it was pulled out would throw away
+// not a dialog, and rebuilding it every time it was opened would throw away
 // whatever state it had accumulated - which, once this has more in it than a
 // button, is the entire point of it being a settings page.
 //
 // It is an ORDINARY WINDOW, and it is supposed to look like one: the compositor
 // gives it the same border, corner and shadow it gives everything else on the
-// desktop, and the page fills what is inside that. The shell asks for none of it
-// back. A page that suppressed all of it and drew its own instead read as a
+// desktop, and the page fills what is inside that. The shell asks for none of
+// it back. A page that suppressed all of it and drew its own instead read as a
 // translucent hole in the desktop with the wallpaper coming through - the one
 // window on screen that did not look like a window. See Settings.rules.
 FloatingWindow {
@@ -38,18 +36,17 @@ FloatingWindow {
     // A HINT, not a binding on `width`. The compositor is what actually decides
     // how big a window is, and the user is allowed to drag its corner; a binding
     // on the real size would be broken by the first resize and would be lying
-    // about who is in charge until then. The exact size at birth is set by
-    // Settings, in the compositor's own terms, where it belongs.
-    implicitWidth: Settings.windowWidth
-    implicitHeight: Settings.windowHeight
+    // about who is in charge until then.
+    implicitWidth: Settings.homeWidth
+    implicitHeight: Settings.homeHeight
 
     visible: false
 
     Connections {
         target: Settings
 
-        function onWindowOpenChanged(): void {
-            win.visible = Settings.windowOpen;
+        function onOpenChanged(): void {
+            win.visible = Settings.open;
         }
     }
 
@@ -60,46 +57,27 @@ FloatingWindow {
     // nowhere.
     //
     // It is also why `visible` above is assigned rather than bound: a binding
-    // that Qt overwrites is a binding that is gone, and the next pull-out would
+    // that Qt overwrites is a binding that is gone, and the next open would
     // have opened nothing.
+    //
+    // AND THE KEYBOARD HAS TO BE ASKED FOR AGAIN ON EVERY OPEN, the way
+    // FilesWindow asks. The window is hidden rather than destroyed between
+    // uses, a hidden window's item loses active focus, and showing it again
+    // does not hand it back; without this, Escape and the search field are
+    // dead from the second open on.
     onVisibleChanged: {
-        if (!win.visible && Settings.windowOpen)
+        if (!win.visible && Settings.open) {
             Settings.hide();
+            return;
+        }
+
+        if (win.visible)
+            face.forceActiveFocus();
     }
 
-    // INVISIBLE UNTIL IT IS WHERE IT BELONGS.
-    //
-    // A new floating window lands wherever the compositor felt like putting it,
-    // and that is never where the card was standing. The shell keeps drawing the
-    // card until this has been moved onto it, so for those few milliseconds
-    // there are two copies of the page and only one of them may be seen. This is
-    // the one that may not, yet.
-    //
-    // Not a fade: opacity goes 0 to 1 in one step, on the frame the window
-    // reaches the card's rect. There is nothing to ease, because from the
-    // outside nothing happened.
-    Item {
-        id: holder
+    SettingsFace {
+        id: face
 
         anchors.fill: parent
-
-        opacity: Settings.placed ? 1 : 0
-
-        // The face takes the keyboard the frame the window is where it belongs,
-        // so Escape has a focused item to walk up from from the first press: a
-        // window whose focused item is nothing hears no keys at all. Clicking
-        // the search field moves focus INTO the face afterwards, and the face's
-        // own Escape handler catches the walk back up.
-        onOpacityChanged: if (holder.opacity === 1)
-            face.forceActiveFocus()
-
-        SettingsFace {
-            id: face
-
-            anchors.fill: parent
-
-            windowed: true
-            onHandover: Settings.popIn()
-        }
     }
 }

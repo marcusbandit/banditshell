@@ -127,13 +127,20 @@ Item {
     // Let go: true carries on up, false puts it back.
     signal finished(bool open)
 
+    // Melt riding the blob's own size (VolumeRail's clamp), for the same
+    // reason every collapsing panel here clamps: unclamped, the fillet stayed
+    // proud of the band after the swell had gone and the slot's drop snapped
+    // it away in one frame. At rest the blob is the band itself, so a clamped
+    // melt also leaves the band with no influence of its own at all, which is
+    // what the at-rest note below promises.
     readonly property var blobs: swell.value <= 0.01 ? [] : [
         {
             x: (root.width - root.span) / 2,
             y: root.height - (root.border + swell.value),
             w: root.span,
             h: root.border + swell.value,
-            radius: Appearance.sizes.windowRadius
+            radius: Appearance.sizes.windowRadius,
+            smooth: Math.min(Appearance.sizes.melt, (root.border + swell.value) / 2)
         }
     ]
 
