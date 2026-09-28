@@ -223,13 +223,15 @@ Item {
         return classes.every(c => c === classes[0]) ? classes[0] : "";
     }
 
-    // The mark's spec, asked for as BRAND whatever the column is set to: the
-    // category glyph is the one mode that cannot say which application this is,
-    // and that is the only thing a bar has to say. Empty when the bar is holding
-    // more than one application, so the glyph below is what gets drawn.
+    // The mark's spec, asked for AS THE COLUMN'S MODE. Every mode but `glyph`
+    // says which application this is in its own language - the coloured icon,
+    // the drawn mark, the brand glyph - and the bar's single mark has to say
+    // which application it is, so `glyph` is the one mode the bar never asks
+    // for itself. Empty when the bar is holding more than one application, so
+    // the glyph below is what gets drawn.
     function barSpec(entry: var): string {
         const cls = root.barClass(entry);
-        return cls ? AppIcons.markFor(cls, "brand") : "";
+        return cls ? AppIcons.markFor(cls, root.iconMode) : "";
     }
 
     function barGlyph(entry: var): string {
@@ -1126,7 +1128,7 @@ Item {
                         AppMark {
                             anchors.centerIn: parent
                             size: root.iconSize
-                            spec: AppIcons.markFor(row.appClass, "")
+                            spec: AppIcons.markFor(row.appClass, root.iconMode)
                             fallback: Apps.iconFor(row.appClass)
 
                             // The focused window is the only thing in the column
@@ -1399,10 +1401,11 @@ Item {
                         x: Math.round((pad.width - mark.markSize) / 2)
                         y: pad.reach(Math.round((root.barH - mark.markSize) / 2), root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
                         size: Math.round(mark.markSize)
-                        // BRAND, like the bar it came out of: the rack is a rack of
-                        // applications, and which one this is stays the question
-                        // whether it is folded into a lozenge or opened on a card.
-                        spec: AppIcons.markFor(Hypr.classOf(mark.modelData), "brand")
+                        // THE COLUMN'S MODE, like the bar it came out of: the
+                        // rack is a rack of applications, and which one this is
+                        // stays the question whether it is folded into a
+                        // lozenge or opened on a card.
+                        spec: AppIcons.markFor(Hypr.classOf(mark.modelData), root.iconMode)
                         fallback: Apps.iconFor(Hypr.classOf(mark.modelData))
                         color: Hypr.isFocused(mark.modelData) ? Appearance.colour.text : Appearance.colour.textDim
                     }

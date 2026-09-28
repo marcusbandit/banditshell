@@ -338,21 +338,24 @@ Singleton {
                     //            on the pixel grid
                     style: "plates",
 
-                    // WHAT A WINDOW IS DRAWN AS.
+                    // WHAT A WINDOW IS DRAWN AS, and the toggle the bar's
+                    // column answers to. Default is `colour`: the application's
+                    // own icon exactly as the icon theme ships it, brand
+                    // palette and all - the column reads as YOUR applications
+                    // rather than as the shell's opinion of them. The other
+                    // two answers:
                     //
                     //   brand    the Nerd Fonts mark for the application
                     //            itself: a line glyph from one set, in the
                     //            shell's colour, so Telegram looks like
                     //            Telegram and like it belongs here
-                    //   colour   the application's own icon exactly as the icon
-                    //            theme ships it, brand palette and all
                     //   glyph    what KIND of thing it is, and nothing about
                     //            which one: the Material Symbol for its
                     //            freedesktop category
                     //
                     // An override in `apps.icons` beats all three, and the
                     // category glyph is what any of them falls back to.
-                    iconMode: "glyph",
+                    iconMode: "colour",
                     // How much bigger a window's mark is here than an icon
                     // anywhere else in the shell. The sidebar is scanned at a
                     // glance and from the corner of the eye, which is not what

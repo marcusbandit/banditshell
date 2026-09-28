@@ -191,24 +191,40 @@ Singleton {
         if (named)
             return `symbol:${named}`;
 
-        // WHAT THIS SHELL DRAWS FOR IT, which beats every automatic answer
-        // below and loses to both hand-picked ones above. It is artwork made for
-        // this application in this palette (Apps.drawnMarks), so the only things
-        // that should outrank it are the two places a person said otherwise.
-        const drawn = Apps.drawnFor(cls);
-        if (drawn)
-            return `draw:${drawn}`;
-
+        // A PERSON'S PICK in settings outranks the mode; the mode is the
+        // default answer and this is the exception to it. What the mode asks,
+        // in the mode's own order:
+        //
+        //   colour  the application's OWN icon first - the shipped artwork,
+        //           brand palette and all - because that is the whole point of
+        //           the mode. The drawn mark is the fallback for an
+        //           application the icon theme has nothing for: it is drawn
+        //           in the shell's palette, which is exactly what colour mode
+        //           is here to get away from.
+        //   brand   the shell's colour either way, so the drawn mark - made
+        //           for this application in this palette - outranks the
+        //           generic Nerd Fonts glyph, which is the second resort.
+        //   glyph   what KIND of thing it is, and nothing about which one, so
+        //           neither the drawn mark (which says which one) nor any
+        //           artwork applies: the empty spec is the category glyph.
         const mode = want || Appearance.sizes.wsIconMode;
-        if (mode === "brand") {
-            const glyph = Apps.brandFor(cls);
-            if (glyph)
-                return `glyph:${glyph.codePointAt(0).toString(16)}`;
-        }
+
         if (mode === "colour") {
             const art = Apps.iconSourceFor([cls]);
             if (art)
                 return `image:${art}`;
+        }
+
+        if (mode === "brand" || mode === "colour") {
+            const drawn = Apps.drawnFor(cls);
+            if (drawn)
+                return `draw:${drawn}`;
+        }
+
+        if (mode === "brand") {
+            const glyph = Apps.brandFor(cls);
+            if (glyph)
+                return `glyph:${glyph.codePointAt(0).toString(16)}`;
         }
         return "";
     }
