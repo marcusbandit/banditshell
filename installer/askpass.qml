@@ -400,7 +400,7 @@ ShellRoot {
                             // taken before that lands is focus in a surface with no
                             // keys to give, so it is taken again the moment the
                             // surface actually becomes active. This is the same trap
-                            // components/PasswordField.qml documents, and the same
+                            // components/SecretField.qml documents, and the same
                             // fix. A password field that silently swallows the first
                             // few characters is the worst possible bug to ship here.
                             readonly property bool surfaceActive: field.Window.active

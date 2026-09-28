@@ -9,6 +9,7 @@ import qs.modules.cheatsheet
 import qs.modules.clipboard
 import qs.modules.keyboard
 import qs.modules.media
+import qs.modules.keyring
 import qs.modules.menu
 import qs.modules.launcher
 import qs.modules.notifications
@@ -54,6 +55,13 @@ PanelWindow {
     // is the one surface that must not hold the keyboard, because it types
     // through it. See modules/keyboard/OnScreenKeyboard.qml.
     readonly property OnScreenKeyboard keyboard: keyboardLayer
+    // THE KEYRING'S QUESTION, which is the one panel here that nobody asked
+    // for: it is opened by an application wanting a secret rather than by a
+    // gesture or a keybind. Registered like the rest so `banditshell keyring`
+    // can report on it and refuse it from a terminal, which for this panel is
+    // not merely a second way in - it is the way out of a question whose owner
+    // has stopped listening. See modules/keyring/KeyringPrompt.qml.
+    readonly property KeyringPrompt keyring: keyringLayer
     // NAMED FOR THE IPC TARGET, not for the type, like every line above it:
     // modules/Ipc.qml reaches this as `win.hotkeys` and `hotkeys status` reads
     // `rows`, `unnamed` and `sections` off it. The sheet is the one panel here
@@ -266,7 +274,7 @@ PanelWindow {
     // it back the moment a window is clicked instead. Escape reaches the menu
     // while the menu is what you are dealing with, the desktop keeps every
     // event it should have had, and neither has to be traded for the other.
-    WlrLayershell.keyboardFocus: launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: keyringLayer.needsKeyboard || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     // The compositor blurs this surface by name. Without that the chassis is a
     // flat translucent wash; with it, it is a material. See the banditshell
@@ -430,6 +438,16 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: popups.grabItem
+        }
+
+        // The whole screen while the keyring is asking, so a click anywhere off
+        // the card is an answer. Every other screen-filling catcher in this list
+        // is there so a click DISMISSES a panel; this one is there so a click
+        // REFUSES a question, which is the same rectangle serving a stronger
+        // purpose. See the note over KeyringPrompt.
+        Region {
+            intersection: Intersection.Combine
+            item: keyringLayer.open ? keyringLayer.maskItem : null
         }
 
         // Only while it is out. Unlike the launch edge, the rail itself never
@@ -847,6 +865,7 @@ PanelWindow {
             // holding a live prompt is one of those things however little it
             // looks like a panel.
             onOpenChanged: if (open) {
+                Keyring.refuse();
                 sessionLayer.hide();
                 cheatLayer.hide();
                 wallpaperLayer.hide();
@@ -875,6 +894,7 @@ PanelWindow {
             inset: win.border
 
             onOpenChanged: if (open) {
+                Keyring.refuse();
                 launcherLayer.hide();
                 wallpaperLayer.hide();
                 sessionLayer.hide();
@@ -903,6 +923,7 @@ PanelWindow {
             screen: win.screen?.name ?? ""
 
             onOpenChanged: if (open) {
+                Keyring.refuse();
                 launcherLayer.hide();
                 clipLayer.hide();
                 mediaLayer.hide();
@@ -940,6 +961,7 @@ PanelWindow {
             // the audio menu somebody left up because they reached for the
             // launcher.
             onOpenChanged: if (open) {
+                Keyring.refuse();
                 launcherLayer.hide();
                 clipLayer.hide();
                 cheatLayer.hide();
@@ -966,6 +988,7 @@ PanelWindow {
             originX: chassis.barWidth
 
             onOpenChanged: if (open) {
+                Keyring.refuse();
                 launcherLayer.hide();
                 clipLayer.hide();
                 wallpaperLayer.hide();
@@ -1037,6 +1060,7 @@ PanelWindow {
             // near this rectangle, and a layer surface has no business
             // reaching outside itself to close one.
             onOpenChanged: if (open) {
+                Keyring.refuse();
                 launcherLayer.hide();
                 clipLayer.hide();
                 sessionLayer.hide();
@@ -1367,6 +1391,40 @@ PanelWindow {
             // corner you pressed is on a particular monitor and the page belongs
             // where you are looking.
             onActivated: Settings.toggle(win.screen.name)
+        }
+
+        // THE KEYRING'S QUESTION, and it is declared here, after every panel,
+        // because it is the only thing on this surface that something else is
+        // BLOCKED on. An application asked for a secret and is sitting on the
+        // bus waiting for the answer; whatever else is open, the question is
+        // what has to be dealt with, so it draws on top and its catcher takes
+        // the presses.
+        //
+        // THE OTHER PANELS ANSWER IT RATHER THAN COVERING IT. Every panel above
+        // that takes the keyboard calls `Keyring.refuse()` when it opens, one
+        // line in each of their existing exclusion blocks, and the argument is
+        // the one SessionMenu already makes about a menu holding a live prompt:
+        // a panel opening takes the keyboard and calls forceActiveFocus on its
+        // own key item, which takes the caret out of the field, and a card left
+        // on screen that can no longer be typed into is a question pretending to
+        // listen. Refusing is honest, it is exactly what closing gcr's dialog
+        // did, and the application is free to ask again.
+        //
+        // IT CONTRIBUTES NO BLOB and must not be added to `chassis.panels`. It
+        // is a card floating clear of every band, like the hotkey sheet and the
+        // settings page, and a melt reaching that far would claim a connection
+        // that is not there.
+        KeyringPrompt {
+            id: keyringLayer
+
+            anchors.fill: parent
+
+            // The chassis's hole, not the screen: the card belongs in the space
+            // windows live in, the way the settings page and the sheet do.
+            holeX: chassis.holeX
+            holeY: chassis.holeY
+            holeWidth: chassis.holeWidth
+            holeHeight: chassis.holeHeight
         }
 
         // LAST, so its label draws over the panels it explains. It has no input

@@ -72,24 +72,15 @@ ShaderEffect {
     property real outlineWidth: 0
     property color outlineColour: Appearance.colour.accent
 
-    // A BORDER ON THE SHELL'S INNER EDGE. TEMPORARY, on trial.
+    // A BORDER ON THE SHELL'S INNER EDGE. It went in on trial and it stayed, so
+    // it is a token now rather than a pair of numbers here: the argument for the
+    // colour and for the two pixels is in Appearance's `colour.seam` and
+    // `sizes.seam`, where the panels that draw the same line can reach it.
     //
-    // Set sheenWidth to 0 to remove it; nothing else depends on it. Here rather
-    // than in Config because it is being looked at, not lived with: if it stays
-    // it becomes an Appearance token like everything else, and if it goes it
-    // goes in one line.
-    // AN ETCHED SEAM, NOT A HIGHLIGHT, and the alpha is measured rather than
-    // chosen. Taken off the reference: the line there is RGB(29,29,29) on a
-    // background of RGB(12,12,12), which is +17 absolute, and white over that
-    // background at 7% is what puts it there. It reads as a panel gap catching
-    // one degree of light, which is the machined look, where anything an order
-    // brighter reads as a drawn outline around the shell.
-    //
-    // Two pixels wide, not one: the band is feathered by about a pixel on each
-    // side, so a 1px line spends all of itself on the antialiasing and comes out
-    // uneven along a curve. At this alpha the extra width costs nothing.
-    property real sheenWidth: 2.0
-    property color sheenColour: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.08)
+    // Set sheenWidth to 0 to remove it from the chassis alone; nothing else
+    // depends on it.
+    property real sheenWidth: Appearance.sizes.seam
+    property color sheenColour: Appearance.colour.seam
     property real pad2: 0
     property real pad3: 0
 

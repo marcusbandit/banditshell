@@ -404,7 +404,22 @@ banditshell/
 │   ├── CodeBlock.qml            that, coloured from the theme, one delegate per
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
-│   ├── PasswordField.qml        inline secret entry: the string a whole room shares
+│   ├── SecretField.qml          THE field you type a secret into: the lock
+│   │                            screen's, the keyring's, and the wifi row's.
+│   │                            One mark per character rather than an
+│   │                            asterisk, each a different shape from
+│   │                            lobes.js, and only the NEW one ever moves.
+│   │                            The secret leaves through `accepted` and by
+│   │                            no other door: there is no readable text
+│   │                            property, on purpose
+│   ├── lobes.js                 the mark family, as maths: one polar curve,
+│   │                            r = 1 - depth*cos(lobes*t), at six settings.
+│   │                            Shape comes from the POSITION and never from
+│   │                            the character, which would be the password
+│   │                            written on screen in a code
+│   ├── BalancedText.qml         a paragraph that breaks on purpose: same line
+│   │                            count as greedy wrap, evened out, so a string
+│   │                            somebody else wrote does not leave an orphan
 │   ├── IdentityField.qml        the same slot for a network that wants to know WHO
 │   │                            you are: a username, a password, and the method
 │   │                            the two of them travel in (802.1X)
@@ -466,6 +481,16 @@ banditshell/
 │   │                            Two inputs onto one question, so they cannot
 │   │                            disagree; the keypad's own state is not here
 │   ├── Lock.qml                 whether the screen is locked, and what decides it
+│   ├── Keyring.qml              the KEYRING'S question, once the shell is the one
+│   │                            asking it. gnome-keyring draws nothing: it asks
+│   │                            whoever owns org.gnome.keyring.SystemPrompter,
+│   │                            and with nobody there D-Bus activates gcr's GTK
+│   │                            box. scripts/keyring-prompter.py owns the name
+│   │                            instead and talks to this over its pipes. The
+│   │                            second file here that knows a password, and it
+│   │                            holds one for less time than Lock does: the
+│   │                            secret goes straight down the helper's stdin and
+│   │                            is never stored
 │   ├── Tablet.qml               whether the machine is FOLDED OVER. The changes
 │   │                            come from the compositor (a switch bind execs
 │   │                            the CLI); the state at startup comes from
@@ -569,6 +594,12 @@ banditshell/
 │   │                            takes the keyboard and the number row drives it.
 │   │                            NOT a fifth gauge; a gauge answers a glance
 │   ├── lock/                    the lock: one compositor surface per screen, one face
+│   ├── keyring/KeyringPrompt.qml the keyring's password question, as a card. The
+│   │                            one panel nobody asks for: an application wants
+│   │                            a secret and is BLOCKED on the answer, so it
+│   │                            draws over everything, a click off it is a NO
+│   │                            rather than a dismissal, and every panel that
+│   │                            takes the keyboard refuses it on the way in
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
@@ -608,7 +639,8 @@ banditshell/
 │   │       ├── WifiPage.qml     the bar's network menu, with room, and the port
 │   │       ├── BluetoothPage.qml  the adapter switch and the bar's device list
 │   │       ├── SoundPage.qml    output, input, and the bar's mixer
-│   │       ├── ScreensPage.qml  which monitor owns which workspace band
+│   │       ├── MonitorsPage.qml  the monitors, drawn as a canvas; each one's
+│   │       │                    workspace band is edited on the picture itself
 │   │       ├── WallpaperPage.qml  the current picture, its two switches, the folder
 │   │       ├── AppearancePage.qml  palette, the font row, the compositor switches
 │   │       ├── FontPage.qml     every installed family, each drawn in itself (sub-page)
@@ -623,6 +655,9 @@ banditshell/
 │   │       │                    chord is pressed, not typed; edits splice
 │   │       │                    in place, verify, reload; binds the source
 │   │       │                    generates are shown read-only
+│   │       ├── CliPage.qml      the OTHER face of the shell: `banditshell`, and the
+│   │       │                    one thing about it that has to be installed rather
+│   │       │                    than used, which is tab completion
 │   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
 │   │       └── AboutPage.qml    banditshell itself: what it is and why, and where to read
 │   ├── notifications/           discrete cards; NOT part of the blob field
@@ -717,11 +752,22 @@ banditshell/
 │   │                            something never lands on the desktop somebody
 │   │                            is using. grim shoots that display, wtype types
 │   │                            into it, swaymsg moves its pointer
+│   ├── zsh-completion.sh        the CLI's tab completion, GENERATED by parsing
+│   │                            bin/banditshell's own `--help` block, so there is
+│   │                            no second list of verbs to fall out of date
 │   ├── palette.py               a wallpaper's dominant colours
 │   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and
 │   │                            that is the correct failure
+│   ├── keyring-prompter.py      the keyring's prompter: owns the bus name gcr's
+│   │                            GTK dialog would have been activated for, and
+│   │                            reimplements gcr's `sx-aes-1` secret exchange
+│   │                            (DH over the 1536-bit IKE group, HKDF-SHA256,
+│   │                            AES-128-CBC) because gnome-keyring will not take
+│   │                            a password as a plain string over the bus.
+│   │                            `--selftest` holds a conversation with libgcr
+│   │                            itself rather than with a memory of the spec
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
 ├── src/                         the parts that need C (section 1), built by
@@ -877,12 +923,19 @@ banditshell hotkeys toggle|open|close|status
 banditshell calendar               sugar for `menu toggle calendar`
 banditshell volume up|down [n]|set <pct>|mute [on|off]|status
 banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
+banditshell keyring status|refuse|demo
+                                   the keyring's question. `status` says whether the shell is
+                                   actually the prompter, which nothing on screen can; `demo`
+                                   draws a made-up one, because this panel cannot be summoned
+                                   by any gesture at all. No verb answers one: a password on a
+                                   command line is a password in the shell history
 banditshell picker open|freeze|clip|freezeclip|close
 banditshell wallpaper toggle|on|off|next|prev|status
 banditshell wallpapers toggle|open|close|status   the picker; the edge's second swipe
 banditshell status                 what the shell thinks the compositor said
 banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>
+banditshell completions install|print|status|remove   tab completion, in zsh
 banditshell shot [file]
 banditshell demo <key>             open, screenshot, close
 banditshell files toggle|open [path]|close|status   the browser, in its own window
@@ -893,6 +946,22 @@ banditshell shaders                recompile components/blob/*.frag
 banditshell build                  compile src/*.c into bin/ (bs-pty, bs-ls)
 banditshell test                   node --test over tests/*.test.js
 ```
+
+**Tab completion is generated, not written.** `scripts/zsh-completion.sh` parses the comment
+block at the top of `bin/banditshell` (the same block `banditshell help` prints) and emits the
+zsh function from what it finds, so there is no second list of verbs anywhere and no way for
+one to drift from the other. The header's shape is therefore a contract, spelled out at the
+bottom of it: two spaces, `banditshell`, the verb, alternatives separated by `|`, and a
+description starting at column 31. The structure is entirely derived; the only hand-written
+part is a small table saying what a *value* is, because no amount of parsing prose separates
+`menu open <key>` from `set <key>`.
+
+It also **maintains itself**. The generated function stats its sources on the first Tab of a
+shell and rebuilds when any of them is newer, so a verb added to the CLI is complete-able on
+the next Tab with nothing run and nothing clicked. `banditshell completions install` and the
+row on the settings page's Terminal page exist for the first time, and for a machine where the
+file cannot be rewritten in place. The same script is a row in `install.sh`'s table, which is
+why a fresh install arrives with it already working.
 
 A CLI open is always a **pinned** open. Nobody driving a terminal has a pointer resting on
 anything, so an unpinned menu opened from here would be taken away by the grace timer a fifth

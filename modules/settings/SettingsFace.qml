@@ -289,6 +289,22 @@ Item {
                             font.letterSpacing: Appearance.font.stem
                             topPadding: Appearance.padding.large
                             bottomPadding: Appearance.padding.small
+||||||| 62a75e1
+                        width: pager.extent
+                        height: pager.height
+
+                        // The page's own vertical scroll: a target chased by a
+                        // Follow, which is the glide idiom GlideList uses,
+                        // carried here because a page is arbitrary content
+                        // rather than a uniform ListView. Wheel notches and
+                        // the drag above both move the target; the content
+                        // follows.
+                        property real target: 0
+                        readonly property real position: flow.value
+                        readonly property real limit: Math.max(0, content.implicitHeight - view.height)
+
+                        function scrollTo(y: real): void {
+                            view.target = Math.max(0, Math.min(y, view.limit));
                         }
 
                         Repeater {

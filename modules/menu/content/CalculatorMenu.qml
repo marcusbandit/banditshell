@@ -9,7 +9,7 @@ import qs.services
 //
 // A KEYPAD RATHER THAN A FIELD, and that is not a stylistic choice. A layer
 // surface is handed no key events at all until its window asks the compositor
-// for them (ClockMenu's Field and PasswordField both say so), and asking means
+// for them (ClockMenu's Field and SecretField both say so), and asking means
 // every key in the shell stops reaching the desktop for as long as the panel is
 // up. A calculator is a thing you reach for WHILE doing something else, which is
 // exactly the case that must not take the keyboard away from what you were
