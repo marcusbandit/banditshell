@@ -13,12 +13,16 @@ import qs.services
 // a popup is to stand in the place the eye already visits (the clock is the
 // thing this bar is mostly looked at for) wearing a colour nothing else wears.
 //
-// THREE DRESSINGS, ONE PLACE. Idle it is a quiet grey mark, a size down, so a
+// FOUR DRESSINGS, ONE PLACE. Idle it is a quiet grey mark, a size down, so a
 // state of "nothing confirmed" still has a home to be asked from without
 // competing with the clock above it (DESIGN.md 2.1: it is furniture-sized
 // presence, not information). A push waiting turns it RED and full size; a
-// download landed turns it BLUE. Neither of those is on the ramp, for the
-// terminal palette's reason - the colour IS the meaning.
+// download landed turns it BLUE; a pull that hit something turns it AMBER,
+// wearing sync_problem - a different glyph as well as a different colour,
+// because a red mark here promises "one press gets it", and a failed pull
+// would be making that promise on a press that will fail the same way twice.
+// None of those is on the ramp, for the terminal palette's reason - the
+// colour IS the meaning.
 Item {
     id: root
 
@@ -33,7 +37,9 @@ Item {
 
     // What the glyph says, per state. The two waiting states share the
     // download question and take the download's marks; idle holds the sync
-    // mark, which is the menu's "search" verb drawn as a glyph.
+    // mark, which is the menu's "search" verb drawn as a glyph; a failed
+    // pull holds sync_problem, which is the sync mark with the trouble on
+    // it - the same verb, interrupted.
     readonly property string glyph: {
         if (root.state === Update.idle)
             return "sync";
@@ -41,6 +47,8 @@ Item {
             return "download_done";
         if (root.state === Update.downloading)
             return "cloud_download";
+        if (root.state === Update.failed)
+            return "sync_problem";
         // system_update_ALT: the plain name is not in the installed face, and
         // a name the font does not have renders as its own question mark
         // (Icon's whole reason for checking).
@@ -54,14 +62,16 @@ Item {
     readonly property real markSize: root.state === Update.idle ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
 
     // The colour IS the state: quiet grey until something is confirmed, red
-    // while it waits, blue once it is down. The grey lifts on hover, because
-    // a marker that stays grey under the hand reads as dead rather than
-    // quiet.
+    // while it waits, amber when a pull has failed, blue once it is down. The
+    // grey lifts on hover, because a marker that stays grey under the hand
+    // reads as dead rather than quiet.
     readonly property color tint: {
         if (root.state === Update.idle)
             return press.containsMouse ? Appearance.colour.text : Appearance.colour.textDim;
         if (root.state === Update.downloaded)
             return Appearance.colour.updateReady;
+        if (root.state === Update.failed)
+            return Appearance.colour.updateFailed;
         return Appearance.colour.updateAvailable;
     }
 

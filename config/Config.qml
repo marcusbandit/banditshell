@@ -2066,12 +2066,14 @@ Singleton {
                 // over-showing.
                 seen: "",
 
-                // THE INDICATOR'S TWO, in hex and not on the ramp, for the
-                // terminal palette's reason (see Appearance): red and blue are
-                // the state's own convention - "a push is waiting" and
-                // "downloaded, restart to apply" - and a theme that has decided
-                // everything is green does not get a vote on them.
+                // THE INDICATOR'S THREE, in hex and not on the ramp, for the
+                // terminal palette's reason (see Appearance): red, amber and
+                // blue are the state's own convention - "a push is waiting",
+                // "the pull hit something", and "downloaded, restart to
+                // apply" - and a theme that has decided everything is green
+                // does not get a vote on them.
                 availableColour: "#ff5252",
+                failedColour: "#ffb454",
                 readyColour: "#4da3ff"
             }
         })
