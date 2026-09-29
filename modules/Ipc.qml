@@ -1383,11 +1383,17 @@ Scope {
             if (!where)
                 return `no such screen: ${screen}`;
 
+            // "all" is UNCONDITIONAL, and the reason is the bug this guard
+            // used to be: the map can hold entries while the default agrees
+            // with the verb, and an early "already" return left them standing
+            // - `on all` answered "already on" over a map full of hidden
+            // screens, and nothing came back. setAll is idempotent; the honest
+            // check is every screen's RESOLVED state, and the honest answer is
+            // the state after the verb.
             if (where === "all") {
-                if (!SidebarState.enabled)
-                    return "all screens already off";
+                const was = Quickshell.screens.every(s => !SidebarState.visibleOn(s.name));
                 SidebarState.setAll(false);
-                return "all screens: off";
+                return was ? "all screens: off (was already)" : "all screens: off";
             }
             if (!SidebarState.visibleOn(where))
                 return `${where} already off`;
@@ -1401,10 +1407,9 @@ Scope {
                 return `no such screen: ${screen}`;
 
             if (where === "all") {
-                if (SidebarState.enabled)
-                    return "all screens already on";
+                const was = Quickshell.screens.every(s => SidebarState.visibleOn(s.name));
                 SidebarState.setAll(true);
-                return "all screens: on";
+                return was ? "all screens: on (was already)" : "all screens: on";
             }
             if (SidebarState.visibleOn(where))
                 return `${where} already on`;
