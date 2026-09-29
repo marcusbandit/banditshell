@@ -918,12 +918,23 @@ what its name says.
 chassis draws nothing on any screen (a full-window hole, zero inset, zero radius, no
 screen-corner frame, because corner pieces are border by another name), `FrameExclusions`
 reserves nothing, and the six always-on edge grabs drop out of the mask. That last part is
-functional, not tidy: with the compositor's gaps flipped to zero the windows sit flush, and a
-live edge strip would be invisible pixels stealing clicks from window scrollbars. The shell
-owns exactly half of the switch, on purpose: `banditshell border toggle` is the chrome, and
-the compositor's `gaps_out` stays the user's own config, flipped to zero by the keybind's
-second command (`hyprctl keyword`, or the Lua parser's `hl.config` eval, kept in a script
-beside `hypr-layout-toggle`) reading its restore value from the file that set it. The pair is
+functional, not tidy: with the windows flush against the screen edge, a live edge strip would
+be invisible pixels stealing clicks from window scrollbars.
+
+**The shell owns the compositor's half too.** Bare squares the WINDOWS (`decoration:rounding`
+to 0, which empirically takes the windowrule-rounded ones with it - the rule caps against the
+global, so the global at zero squares everything) and takes `gaps_out` to zero, in one
+`hl.config` eval, the dialect the border colours already speak. The way BACK is `hyprctl
+reload`, deliberately: the user's lua owns those numbers (look.lua's gap, theme's bezel, the
+global-rounding rule), and a reload is the one operation that returns all of it to the file's
+truth at once and re-triangulates every open window with it. Values stashed at bare time
+would go stale the day the file moved, and a shell that started bare never saw them at all.
+
+**PERSISTED, and held rather than set and forgotten.** The flag lives in config.json, so a
+machine that reboots bare boots bare; and because a reload at any moment - the user's hand,
+HyprConfig's write chain - re-applies the file's values, every reload while bare is answered
+with the zeros again, the same contract `pushBorders` runs on. There is no half-applied state
+to fall out of: the toggle, the boot and the reload all land in the same place. The pair is
 bound (`SUPER + SHIFT + K`; the on-screen keyboard took its `SUPER + SHIFT + Z`). Bare is
 persisted like `wallpaper.enabled`: a shell turned
 off on purpose is off when it comes back. The lock face follows the chassis and so goes bare

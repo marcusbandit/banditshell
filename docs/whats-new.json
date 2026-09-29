@@ -1,6 +1,17 @@
 {
     "entries": [
         {
+            "id": "2026-09-29-3",
+            "date": "2026-09-29",
+            "changes": [
+                {
+                    "type": "features",
+                    "severity": "minor",
+                    "text": "Bare mode now squares the windows too (decoration:rounding joins the gaps at zero), and the shell applies the compositor half itself: on the toggle, on every boot, and again after every compositor reload while bare, so the state comes back from a reboot whole instead of half-applied. Toggling back reloads the compositor, which returns your config's gaps and rounding to every open window at once."
+                }
+            ]
+        },
+        {
             "id": "2026-09-29-2",
             "date": "2026-09-29",
             "changes": [

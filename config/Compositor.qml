@@ -59,6 +59,10 @@ Singleton {
         // this singleton loaded; when it has not, onParserKnownChanged below is
         // what pushes. The same pair Settings keeps for its window rules.
         pushBorderColours();
+        // And the same pair boots bare: if the flag is already on and the
+        // parser already known, nothing else would fire.
+        if (root.bare)
+            root.applyBare();
     }
 
     // Hyprland ------------------------------------------------------------
@@ -262,17 +266,72 @@ Singleton {
 
         // A config reload re-applies the user's own file over anything set by
         // keyword or hl.config, the borders included, so the theme has to say
-        // itself again. Same contract as Settings' window rules.
+        // itself again. Same contract as Settings' window rules. And while
+        // bare the reload also brought the gaps and the rounding back, so the
+        // zeros go straight back out with the borders.
         function onConfigReloaded(): void {
             root.pushBorderColours();
+            if (root.bare)
+                root.applyBare();
         }
 
         // The compositor has just said which language it speaks. The colours
         // were known long before it did; this is the last thing the push was
-        // waiting on.
+        // waiting on. The same moment is the boot path for bare: the flag
+        // landed with the shell's config before the parser had a name, and
+        // this is where a machine booted bare finally gets squared and
+        // flushed.
         function onParserKnownChanged(): void {
             root.pushBorderColours();
+            if (root.bare)
+                root.applyBare();
         }
+    }
+
+    // BARE, the compositor's half of the shell's master switch.
+    //
+    // `edge.bare` takes the chrome down, and the windows have to go with it:
+    // flush to the screen edge (gaps_out 0) and square (rounding 0, which
+    // empirically squares the windowrule-rounded ones too - the rule caps
+    // against the global, so zeroing the global takes every window with it).
+    // One eval, the same hl.config dialect the border colours speak, because
+    // this machine's Lua parser refuses `keyword` outright; the legacy
+    // spelling is kept for a machine that still speaks it.
+    //
+    // The way BACK is a reload, and deliberately not an eval of remembered
+    // numbers: the user's lua owns gaps and rounding (look.lua's gap,
+    // theme's bezel, the global-rounding window rule on top of that), and a
+    // reload is the one operation that returns ALL of it to the file's truth
+    // at once and re-triangulates every open window with it. Values stashed
+    // at bare time go stale the day the file moves, and a shell that STARTED
+    // bare never saw them at all - which is the reboot case, and the reason
+    // this is applied here rather than in the bind: the flag lives in
+    // config.json, the shell re-applies it on every boot and after every
+    // reload, and bare survives a reboot half-applied no more.
+    //
+    // HELD, NOT SET AND FORGOTTEN: a reload at any moment - the user's hand,
+    // HyprConfig's write chain - re-applies the file's values, so while bare
+    // every reload is answered with the zeros again, the same contract
+    // pushBorders runs on. The eval answers nothing back, so the hook fires
+    // once per reload and there is no loop.
+    readonly property bool bare: Appearance.bare
+
+    function applyBare(): void {
+        if (!root.isHyprland || !Hypr.parserKnown)
+            return;
+        if (Hypr.lua)
+            pusher.exec(["hyprctl", "eval", "hl.config({ general = { gaps_out = 0 }, decoration = { rounding = 0 } })"]);
+        else
+            pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword decoration:rounding 0"]);
+    }
+
+    onBareChanged: {
+        if (!root.isHyprland)
+            return;
+        if (root.bare)
+            root.applyBare();
+        else
+            pusher.exec(["hyprctl", "reload"]);
     }
 
     Process {
