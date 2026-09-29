@@ -908,7 +908,8 @@ promised: the chassis's left edge becomes the band the other three edges wear, t
 reservation (`FrameExclusions`) gives the width back to the windows, the column draws nothing
 and takes no presses, and the lock face draws the same band-only shape because it instantiates
 the same `Chassis`. `sidebar toggle` flips the monitor the keyboard is on, and it is bound
-(`SUPER + Z`, the bar toggle's old seat). Two things are still honest scaffolding: the change
+(`SUPER + K`, taking the calculator panel's old seat, which fell back to `SUPER + Z`). Two
+things are still honest scaffolding: the change
 is instant rather than the promised slide behind the left edge, which is still to come, and an
 entry that agrees with the default is deleted rather than kept, so `sidebar.perScreen` stays
 what its name says.
@@ -921,8 +922,10 @@ functional, not tidy: with the compositor's gaps flipped to zero the windows sit
 live edge strip would be invisible pixels stealing clicks from window scrollbars. The shell
 owns exactly half of the switch, on purpose: `banditshell border toggle` is the chrome, and
 the compositor's `gaps_out` stays the user's own config, flipped to zero by the keybind's
-second command (`hyprctl keyword`, or the Lua parser's `hl.config` eval) reading its restore
-value from the file that set it. Bare is persisted like `wallpaper.enabled`: a shell turned
+second command (`hyprctl keyword`, or the Lua parser's `hl.config` eval, kept in a script
+beside `hypr-layout-toggle`) reading its restore value from the file that set it. The pair is
+bound (`SUPER + SHIFT + K`; the on-screen keyboard took its `SUPER + SHIFT + Z`). Bare is
+persisted like `wallpaper.enabled`: a shell turned
 off on purpose is off when it comes back. The lock face follows the chassis and so goes bare
 with the desktop; a shell reduced to a wallpaper runner is still the machine looking like
 itself.

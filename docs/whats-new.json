@@ -7,7 +7,7 @@
                 {
                     "type": "features",
                     "severity": "minor",
-                    "text": "Bare mode: the whole chrome can go off at once, every screen. Band, sidebar, reserved space and the invisible edge grabs all stand down, leaving the wallpaper and your windows; the shell still answers every keybind. Super+Shift+Z toggles it, and runs the compositor's gap flip beside it so the windows sit flush."
+                    "text": "Bare mode: the whole chrome can go off at once, every screen. Band, sidebar, reserved space and the invisible edge grabs all stand down, leaving the wallpaper and your windows; the shell still answers every keybind. Super+Shift+K toggles it, and runs the compositor's gap flip beside it so the windows sit flush."
                 },
                 {
                     "type": "config",
@@ -23,7 +23,7 @@
                 {
                     "type": "features",
                     "severity": "minor",
-                    "text": "The sidebar can now be hidden on individual monitors. The Monitors page has a Sidebar switch for the selected one, and Super+Z toggles the column on the monitor you are on; hidden means fully, with the windows taking the width back."
+                    "text": "The sidebar can now be hidden on individual monitors. The Monitors page has a Sidebar switch for the selected one, and Super+K toggles the column on the monitor you are on; hidden means fully, with the windows taking the width back."
                 },
                 {
                     "type": "config",
