@@ -331,9 +331,9 @@ Singleton {
         if (!root.isHyprland || !Hypr.parserKnown)
             return;
         if (Hypr.lua)
-            pusher.exec(["hyprctl", "eval", "hl.config({ general = { gaps_out = 0 }, decoration = { rounding = 0 } })"]);
+            pusher.exec(["hyprctl", "eval", "hl.config({ general = { gaps_out = 0, gaps_in = 0 }, decoration = { rounding = 0 } })"]);
         else
-            pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword decoration:rounding 0"]);
+            pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword general:gaps_in 0 ; keyword decoration:rounding 0"]);
     }
 
     // NOT on `bare` changing. A toggle writes the flag, the write hot-reloads
