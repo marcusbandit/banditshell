@@ -81,6 +81,13 @@ Item {
     property real listY: 0
     property real boardY: 0
 
+    // THE CHASSIS'S HOLE, handed in. See the room note below for why this is
+    // given rather than derived.
+    property real holeX: 0
+    property real holeY: 0
+    property real holeWidth: 0
+    property real holeHeight: 0
+
     // The WHOLE screen while it is up, so a tap anywhere off the sheet puts it
     // away. Same shape, and the same argument, as the power panel's catcher: a
     // panel summoned by name has nothing else to dismiss it.
@@ -579,11 +586,14 @@ Item {
     // THE ROOM THE SHEET HAS: the content area, which is the screen less the
     // chassis band and the sidebar.
     //
-    // Derived from the same tokens Chassis derives its own hole from rather than
-    // being handed the hole, so this panel needs nothing wired to it but
-    // `anchors.fill` and the integrator's line stays one line. The two can only
-    // drift if Chassis changes its formula, and if it ever does, the honest fix
-    // is to pass the rect in.
+    // Read off the chassis's HOLE, which ShellWindow hands in. This used to be
+    // derived from the same tokens Chassis derives its hole from, and the note
+    // said the honest fix, were the formula ever to change, was to pass the rect
+    // in: the formula has changed, because the sidebar is now hideable per
+    // screen and the hole's left edge moves with it. Rather than restate the
+    // new sum here (and chase it again the next time the shape moves), the sheet
+    // takes the hole like KeyringPrompt and WindowEdge already do, and is
+    // correct on every screen by construction.
     //
     // It is centred in the CONTENT AREA and not on the screen, for the settings
     // page's reason: the sidebar makes those two different, and a sheet centred
@@ -620,10 +630,10 @@ Item {
     // that can be the whole screen. What this buys is the air: the cut now has a
     // padding tier and then a gap under it instead of a padding tier and then
     // the chassis.
-    readonly property real areaX: Appearance.sizes.band + Appearance.sizes.gap + Appearance.sizes.sidebarWidth
-    readonly property real areaY: Appearance.sizes.band + Appearance.sizes.gap
-    readonly property real areaWidth: root.width - root.areaX - Appearance.sizes.band - Appearance.sizes.gap
-    readonly property real areaHeight: root.height - (Appearance.sizes.band + Appearance.sizes.gap) * 2
+    readonly property real areaX: root.holeX + Appearance.sizes.gap
+    readonly property real areaY: root.holeY + Appearance.sizes.gap
+    readonly property real areaWidth: root.holeWidth - Appearance.sizes.gap * 2
+    readonly property real areaHeight: root.holeHeight - Appearance.sizes.gap * 2
 
     // The gap between the chord and what it does. A padding tier rather than a
     // measured column gap: it is the space between two columns of type, which is

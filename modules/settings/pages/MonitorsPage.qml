@@ -611,6 +611,28 @@ Item {
                     })
                 }
             }
+
+            // THE SIDEBAR, ON THAT MONITOR. The one row here that is not the
+            // compositor's answer about hardware: it is the shell's own shape,
+            // and it is this card's business because the shell has one per
+            // screen. Written through services/SidebarState.qml, so this row
+            // and `banditshell sidebar hide` are two hands on the one setting
+            // and the monitors page is where a hidden column says why it is
+            // gone.
+            //
+            // Untouched by `root.edit`: that writes the user's Hyprland config
+            // through the source-edit door, and the sidebar is not a line in
+            // that file. It is config.json, like the wallpaper per screen.
+            SettingsRow {
+                icon: "view_sidebar"
+                label: "Sidebar"
+                onActivated: SidebarState.setOn(root.selected, !SidebarState.visibleOn(root.selected))
+
+                Toggle {
+                    checked: SidebarState.visibleOn(root.selected)
+                    onToggled: SidebarState.setOn(root.selected, !SidebarState.visibleOn(root.selected))
+                }
+            }
         }
 
     }

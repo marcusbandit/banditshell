@@ -1,6 +1,8 @@
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components.blob
+import qs.services
 
 // The shell's body: the band around the screen, the sidebar slab, and every open
 // panel, as ONE field.
@@ -22,15 +24,43 @@ import qs.components.blob
 Item {
     id: root
 
-    // The band, and the sidebar's width beyond it.
+    // WHICH DISPLAY THIS CHASSIS IS ON, by output name, and WHETHER THE SIDEBAR
+    // IS PART OF THE SHAPE THERE.
+    //
+    // Asked of the surface itself rather than handed down like `panels` below,
+    // and the difference is what kind of fact the screen is: the screen is the
+    // window's IDENTITY, and Quickshell attaches that to every item inside it
+    // (modules/sidebar/Sidebar.qml makes this same argument at length). Nothing
+    // above has to remember to pass it, and it cannot be passed wrong - which
+    // is also why the LOCK gets this for free: LockFace instantiates this very
+    // component on its own surface, and a monitor whose sidebar is hidden is
+    // drawn that way with the machine locked too, because the machine still
+    // looks like itself.
+    //
+    // Empty for the frame before the item is in a window (a preview harness),
+    // and empty resolves to the default, which is the sidebar on.
+    readonly property string screen: QsWindow.window?.screen?.name ?? ""
+    readonly property bool sidebar: SidebarState.visibleOn(root.screen)
+
+    // The band, and the sidebar's width beyond it. WITHOUT the sidebar the left
+    // edge is the other three edges: the band alone, and the hole starting one
+    // band in. Everything downstream of `barWidth` - the hole below, every
+    // panel's `originX` in ShellWindow, the lock face's centring - moves with
+    // it, because none of them restate the sum.
     readonly property real band: Appearance.sizes.border
-    readonly property real barWidth: band + Appearance.sizes.sidebarWidth
+    readonly property real barWidth: root.sidebar ? root.band + Appearance.sizes.sidebarWidth : root.band
 
     // The content area: what the shell is drawn around.
     readonly property real holeX: barWidth
     readonly property real holeY: band
     readonly property real holeWidth: width - barWidth - band
     readonly property real holeHeight: height - band * 2
+
+    // THE RADIUS THE LEFT INNER CURVE ENDS UP AT: the sidebar's flare while the
+    // sidebar is part of the shape, and the window's own radius when it is not,
+    // which is what makes the hidden case the right edge's twin. Read as the
+    // radius the OFFSET should end up at, per the note on `baseRadius` below.
+    readonly property real leftFlare: root.sidebar ? Appearance.sizes.sidebarFlare : Appearance.sizes.windowRadius
 
     // Open panels, as blobs. Fed in from outside, so this file does not need to
     // know what a menu is.
@@ -51,6 +81,9 @@ Item {
         //
         // The left pair has no window behind it, only the sidebar, so the flare
         // is a design choice: given as the radius the OFFSET should end up at.
-        baseRadius: Qt.vector4d(Appearance.sizes.windowRadius, Appearance.sizes.windowRadius, Math.max(0, Appearance.sizes.sidebarFlare - Appearance.sizes.gap), Math.max(0, Appearance.sizes.sidebarFlare - Appearance.sizes.gap))
+        // With the sidebar away there is nothing for a flare to be about, and
+        // the left edge becomes the right edge's twin - the window's own radius,
+        // the same offset, cupping nothing.
+        baseRadius: Qt.vector4d(Appearance.sizes.windowRadius, Appearance.sizes.windowRadius, Math.max(0, root.leftFlare - Appearance.sizes.gap), Math.max(0, root.leftFlare - Appearance.sizes.gap))
     }
 }

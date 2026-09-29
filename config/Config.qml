@@ -321,6 +321,47 @@ Singleton {
                 // narrow: it is peripheral, and width is the main thing that
                 // makes one feel heavy.
                 width: 52,
+
+                // WHETHER THE SIDEBAR IS THERE AT ALL, on a screen where nothing
+                // else says otherwise. Off is not "width zero": the chassis's
+                // left edge becomes the band the other three edges already
+                // wear, the left reservation hands the width back to the
+                // windows, and nothing in the column draws or takes a press.
+                // The choice survives the hiding, exactly as wallpaper.enabled
+                // keeps its path, so turning it back on is a return rather
+                // than a rebuild.
+                enabled: true,
+
+                // ONE MAP OF DISAGREEMENTS, by output name: { "DP-1": false }.
+                //
+                // The same shape wallpaper.perScreen wears and for the same
+                // reason: most machines' screens want the same answer, so the
+                // default above is what every screen follows and this map
+                // holds only the monitors that differ. A MISSING KEY IS NOT A
+                // FALSE ONE - absent means "follow the default", which is the
+                // state every screen starts in, so per-screen hiding costs
+                // nothing until one is set.
+                //
+                // AN ENTRY THAT AGREES WITH THE DEFAULT DOES NOT KEEP THE
+                // ENTRY. Hide DP-1's sidebar and later hide it everywhere, and
+                // a stale "false" on DP-1 would go on disagreeing the day the
+                // default came back. So choosing the default's answer removes
+                // the key, and the map stays what its name says it is: the
+                // screens that disagree. services/Sidebar.qml owns that rule.
+                //
+                // Empty on purpose, like wallpaper.perScreen: merge() treats an
+                // empty default OBJECT as user data rather than a schema to
+                // walk (see its note), so the keys here are whatever monitors
+                // this machine has, and no list of them has to be declared
+                // anywhere. A monitor named here and later unplugged keeps its
+                // entry, and the cable back is the sidebar back.
+                //
+                // Not settable from the CLI as a whole (an object cannot be
+                // typed into `banditshell set`), which is why `sidebar hide`
+                // and `sidebar show` take a screen name and write one key at a
+                // time.
+                perScreen: {},
+
                 // Rounding tier used for the concave corners that meet the
                 // frame's inner edge.
                 flareTier: 2,

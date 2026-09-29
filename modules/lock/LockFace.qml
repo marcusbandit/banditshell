@@ -153,7 +153,14 @@ Item {
     // the shell having failed rather than as the shell being shut. One mark,
     // faint, centred in the slab: enough to say the bar is still there and is
     // deliberately holding nothing.
+    //
+    // AND GONE WHERE THE SIDEBAR IS GONE, on the chassis's own authority: a
+    // monitor whose sidebar is hidden draws the band-only chassis above, and a
+    // glyph centred for a slab that is not there would hang in ten pixels of
+    // band and spill into the hole. The machine still looks like itself; on
+    // this screen itself is a shell with no column.
     Icon {
+        visible: chassis.sidebar
         x: (chassis.barWidth - width) / 2
         anchors.verticalCenter: parent.verticalCenter
 

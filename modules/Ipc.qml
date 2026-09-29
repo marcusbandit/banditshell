@@ -1232,7 +1232,7 @@ Scope {
             if (!path)
                 return "usage: wallpaper set <path> [screen|all]";
 
-            const where = root.wallpaperScreen(screen);
+            const where = root.resolveScreen(screen);
             if (!where)
                 return `no such screen: ${screen}`;
 
@@ -1249,7 +1249,7 @@ Scope {
         // goes, so the screen follows the default from here on rather than
         // being pinned to today's value of it. See services/Wallpaper.qml.
         function clear(screen: string): string {
-            const where = root.wallpaperScreen(screen);
+            const where = root.resolveScreen(screen);
             if (!where)
                 return `no such screen: ${screen}`;
 
@@ -1351,6 +1351,105 @@ Scope {
 
             const kept = rows.filter(r => r[1] === "fits").length;
             const head = `${name} ${aspect.toFixed(2)} · ${kept} of ${rows.length} fit · tolerance ${Config.values.wallpaper.fit}`;
+            return rows.length ? `${head}\n${root.columns(rows)}` : head;
+        }
+    }
+
+    // THE SIDEBAR'S PRESENCE, per screen: off, on, and where things stand.
+    //
+    // A config fact with CLI verbs (services/SidebarState.qml owns the fact),
+    // and the verbs exist for the reason `wallpaper set` does: the per-screen
+    // map is keyed by output name and `banditshell set` cannot type an object,
+    // so without these there would be no way to say "that monitor" at all.
+    //
+    // ON AND OFF, AND NOT HIDE AND SHOW, and the rejected pair is named because
+    // it looks equally good until it is called: `show` is one of qs's own IPC
+    // subcommands (the introspection one), and `qs ipc call sidebar show all`
+    // dies in the CLI's parser before the shell ever hears of it, while `hide`
+    // works and the asymmetry reads as a bug in the argument. The wallpaper
+    // handler has answered yes-or-no questions with on/off for exactly this
+    // reason since before either of these verbs existed.
+    IpcHandler {
+        target: "sidebar"
+
+        // NO SCREEN MEANS THE FOCUSED ONE, because "hide the sidebar" said with
+        // the hands on one monitor means that monitor, and `all` means the
+        // whole desk as ONE decision: the default moves and the map empties,
+        // rather than N entries that will go stale together the day one screen
+        // is shown again. Both readings are resolveScreen's, which is why the
+        // same two words fit every per-screen verb this file has.
+        function off(screen: string): string {
+            const where = root.resolveScreen(screen);
+            if (!where)
+                return `no such screen: ${screen}`;
+
+            if (where === "all") {
+                if (!SidebarState.enabled)
+                    return "all screens already off";
+                SidebarState.setAll(false);
+                return "all screens: off";
+            }
+            if (!SidebarState.visibleOn(where))
+                return `${where} already off`;
+            SidebarState.setOn(where, false);
+            return `${where}: off`;
+        }
+
+        function on(screen: string): string {
+            const where = root.resolveScreen(screen);
+            if (!where)
+                return `no such screen: ${screen}`;
+
+            if (where === "all") {
+                if (SidebarState.enabled)
+                    return "all screens already on";
+                SidebarState.setAll(true);
+                return "all screens: on";
+            }
+            if (SidebarState.visibleOn(where))
+                return `${where} already on`;
+            SidebarState.setOn(where, true);
+            return `${where}: on`;
+        }
+
+        // THE KEYBIND'S VERB, and the reason it exists is the sentence every
+        // toggle in this file shares: the opposite of a value you have not read
+        // cannot be asked for by hand. A key has no eyes on the screen, so
+        // `toggle` reads the screen's own state and flips it, on THAT monitor:
+        // Super+Z with the hands on the laptop means the laptop's column, and
+        // the second press is the same question asked again, which is why it
+        // puts the column back. It answers with the state it landed on, the way
+        // every verb here does.
+        //
+        // `all` flips the DEFAULT rather than collecting N entries, so a desk
+        // toggled together comes back together.
+        function toggle(screen: string): string {
+            const where = root.resolveScreen(screen);
+            if (!where)
+                return `no such screen: ${screen}`;
+
+            if (where === "all") {
+                const next = !SidebarState.enabled;
+                SidebarState.setAll(next);
+                return `all screens: ${next ? "on" : "off"}`;
+            }
+            const next = !SidebarState.visibleOn(where);
+            SidebarState.setOn(where, next);
+            return `${where}: ${next ? "on" : "off"}`;
+        }
+
+        // The default's state first, then one row per output saying whether it
+        // follows or disagrees - the wallpaper status line's shape, because a
+        // per-screen setting deserves a per-screen answer and `DP-1` alone is
+        // not how anybody identifies the monitor in front of them.
+        function status(): string {
+            const head = `${SidebarState.enabled ? "on" : "off"} default`;
+            const rows = Quickshell.screens.map(s => [
+                    s.name === Hypr.focusedScreen ? "*" : " ",
+                    s.name,
+                    SidebarState.visibleOn(s.name) ? "on" : "off",
+                    s.name in SidebarState.perScreen ? "own" : "default"
+                ]);
             return rows.length ? `${head}\n${root.columns(rows)}` : head;
         }
     }
@@ -1659,7 +1758,7 @@ Scope {
     //           at length for the twenty verbs that go through it
     //   "DP-1"  that one, exactly, or "" for the caller to turn into an error.
     //           A name that quietly resolved to some other monitor would report
-    //           success while repainting the wrong screen
+    //           success while acting on the wrong screen
     //   "all"   every screen, as one decision
     //
     // `all` is a screen NAME rather than a second parameter or a flag, because
@@ -1672,14 +1771,14 @@ Scope {
     //
     // ASKED OF Quickshell.screens rather than of Shell.windows: this is a
     // question about monitors, and a monitor the shell has not built a window
-    // on yet still has a wallpaper surface and still has a wallpaper.
+    // on yet still has the surfaces and the settings a verb wants to act on.
     //
     // NOT the same helper as `Shell.forScreen`, deliberately. That one answers
     // with a shell WINDOW, and half of these verbs act on a screen that has no
     // window: `wallpaper set DP-3 ...` for a monitor whose surfaces are still
     // being built is a perfectly good thing to ask for, and the config takes it.
     // These two are the same rule about the empty string over different nouns.
-    function wallpaperScreen(screen: string): string {
+    function resolveScreen(screen: string): string {
         if (screen === "all")
             return "all";
         if (screen)
@@ -1704,7 +1803,7 @@ Scope {
         if (!Wallpaper.available.length)
             return "nothing to step to";
 
-        const where = root.wallpaperScreen(screen);
+        const where = root.resolveScreen(screen);
         if (!where)
             return `no such screen: ${screen}`;
 

@@ -900,6 +900,19 @@ contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Togg
 later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
 the left edge the way `TopNotch` already does at the top.
 
+**Status 2026-09-29: the hiding is here, per screen; the animation is not.** `sidebar.enabled`
+is the default every monitor follows and `sidebar.perScreen` holds the ones that disagree,
+keyed by output name exactly like `wallpaper.perScreen` (`{ "DP-1": false }`), and
+`services/SidebarState.qml` owns the answer. Hidden means FULLY, in the shape this section
+promised: the chassis's left edge becomes the band the other three edges wear, the left
+reservation (`FrameExclusions`) gives the width back to the windows, the column draws nothing
+and takes no presses, and the lock face draws the same band-only shape because it instantiates
+the same `Chassis`. `sidebar toggle` flips the monitor the keyboard is on, and it is bound
+(`SUPER + Z`, the bar toggle's old seat). Two things are still honest scaffolding: the change
+is instant rather than the promised slide behind the left edge, which is still to come, and an
+entry that agrees with the default is deleted rather than kept, so `sidebar.perScreen` stays
+what its name says.
+
 ## 9. Driving it from a terminal
 
 `bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`.
@@ -932,6 +945,7 @@ banditshell keyring status|refuse|demo
 banditshell picker open|freeze|clip|freezeclip|close
 banditshell wallpaper toggle|on|off|next|prev|status
 banditshell wallpapers toggle|open|close|status   the picker; the edge's second swipe
+banditshell sidebar off [screen|all]|on [screen|all]|toggle [screen|all]|status   the column, per monitor
 banditshell status                 what the shell thinks the compositor said
 banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>
@@ -1017,6 +1031,11 @@ Choosing the same picture everywhere **clears** the map rather than writing the 
 times, and that is the part worth stating: a map that agreed with the default in every entry
 would go on agreeing with the OLD default the moment the default moved. The map holds
 disagreements, and there is no such thing as an entry that agrees.
+
+**This shape is the shell's answer to per-monitor settings generally.** The sidebar's hide,
+added 2026-09-29, is the second use: `sidebar.enabled` plus `sidebar.perScreen`, same
+reasoning, same "an entry that agrees is not kept" rule, owned by `services/SidebarState.qml`. A
+third per-monitor setting should start here rather than invent a fourth shape.
 
 Three shell-wide slots stopped being one slot, all of them the same mistake the multi-monitor
 spec names six times. **The preview** was the worst: the picker is a per-screen surface, so

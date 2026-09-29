@@ -605,14 +605,20 @@ PanelWindow {
         // coordinates and this is where that becomes the window's. Read off the
         // item rather than restated as `win.border`, so it stays right the day
         // the bar is anchored somewhere else.
-        readonly property var barBlobs: sidebar.blobs.map(b => ({
+        //
+        // AND NOTHING, on a screen whose sidebar is hidden. The layout keeps
+        // running behind `visible: false` (anchors do not consult visibility),
+        // so an ungated map would go on publishing shapes into the field, and
+        // the field would draw matter over the very strip the chassis has just
+        // given back to the desktop.
+        readonly property var barBlobs: chassis.sidebar ? sidebar.blobs.map(b => ({
                     x: b.x + sidebar.x,
                     y: b.y + sidebar.y,
                     w: b.w,
                     h: b.h,
                     radius: b.radius,
                     smooth: b.smooth
-                }))
+                })) : []
 
         Chassis {
             id: chassis
@@ -628,6 +634,13 @@ PanelWindow {
         // Sidebar contents, laid out in the chassis's left band. The band is one
         // material, so the content centres in the whole of it rather than in some
         // inner rectangle.
+        //
+        // GONE on a screen whose sidebar is hidden: not shrunk, not emptied -
+        // not there. `visible` takes the column out of both the paint and the
+        // input, and the chassis's hole (which starts one band in on this
+        // screen) takes the strip's clicks back to the windows underneath. The
+        // mask needs no entry of its own for that, because the mask already
+        // subtracts the hole.
         Sidebar {
             id: sidebar
 
@@ -637,6 +650,7 @@ PanelWindow {
             anchors.topMargin: win.border
             anchors.bottomMargin: win.border
             width: chassis.barWidth
+            visible: chassis.sidebar
 
             // The menubar gate's view of the layer: while a menu is up, a
             // hover may carry the open across to a neighbour; with nothing
@@ -1026,11 +1040,12 @@ PanelWindow {
         // the sheet is what you open after changing a bind, so a cached one is
         // wrong at the moment it is consulted. See modules/cheatsheet/.
         //
-        // NOTHING IS PASSED DOWN TO IT. It reads the same band and sidebar
-        // tokens the chassis derives its hole from, so it centres in the
-        // content area on its own; if Chassis's formula ever changes, the
-        // honest fix is to hand it the hole. There is a note in the file
-        // saying so.
+        // HANDED THE CHASSIS'S HOLE, where it used to derive the same rectangle
+        // from the tokens. Its own note made the promise ("if Chassis's formula
+        // ever changes, the honest fix is to hand it the hole") and the formula
+        // changed when the sidebar became hideable per screen: the hole's left
+        // edge is a per-screen fact now, and a sheet that restated it would be
+        // right on one monitor and wrong on the next.
         //
         // IT CONTRIBUTES NO BLOB and must not be added to `chassis.panels`. The
         // field is for things that GROW OUT of the shell's body, where the
@@ -1042,6 +1057,10 @@ PanelWindow {
             id: cheatLayer
 
             anchors.fill: parent
+            holeX: chassis.holeX
+            holeY: chassis.holeY
+            holeWidth: chassis.holeWidth
+            holeHeight: chassis.holeHeight
 
             // The third panel that takes the keyboard outright, so it excludes
             // the other two and both of them exclude it, and a menu holding a
