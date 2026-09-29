@@ -282,8 +282,11 @@ Singleton {
         function onConfigReloaded(): void {
             root.refresh();
             root.pushBorderColours();
+            // A reload we did not cause just re-triangulated every window
+            // with the file's values; the zeros go back over them. Eval-only:
+            // the reload already happened, and another one here would recurse.
             if (root.bare)
-                root.applyBare();
+                root.reassertBare();
         }
 
         // The compositor has just said which language it speaks. The colours
@@ -327,7 +330,31 @@ Singleton {
     // once per reload and there is no loop.
     readonly property bool bare: Appearance.bare
 
+    // TWO SPELLINGS, for two moments. MEASURED, and the difference is the
+    // whole point: changing the rounding/gaps OPTION does not re-triangulate
+    // windows that are already laid out - the visible workspace's windows
+    // re-render, and every OTHER workspace keeps its old rounding until
+    // something touches it. A RELOAD, on the other hand, re-triangulates
+    // EVERY window on EVERY workspace - and the zeros eval'd straight after
+    // it land everywhere. So:
+    //
+    // applyBare - the toggle and the boot: reload FIRST (the file's truth,
+    // re-triangulated), then the zeros over it. The batch is sequential, one
+    // process.
+    //
+    // reassertBare - AFTER a reload we did not cause (the hook below): the
+    // windows are freshly triangulated already, and the zeros alone land.
+    // Eval-only, because another reload here would recurse.
     function applyBare(): void {
+        if (!root.isHyprland || !Hypr.parserKnown)
+            return;
+        if (Hypr.lua)
+            pusher.exec(["hyprctl", "--batch", "reload ; eval hl.config({ general = { gaps_out = 0, gaps_in = 0 }, decoration = { rounding = 0 } })"]);
+        else
+            pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword general:gaps_in 0 ; keyword decoration:rounding 0"]);
+    }
+
+    function reassertBare(): void {
         if (!root.isHyprland || !Hypr.parserKnown)
             return;
         if (Hypr.lua)
