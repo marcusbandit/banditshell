@@ -325,14 +325,12 @@ Singleton {
             pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword decoration:rounding 0"]);
     }
 
-    onBareChanged: {
-        if (!root.isHyprland)
-            return;
-        if (root.bare)
-            root.applyBare();
-        else
-            pusher.exec(["hyprctl", "reload"]);
-    }
+    // NOT on `bare` changing. A toggle writes the flag, the write hot-reloads
+    // this tree, and the teardown eats this generation's in-flight eval -
+    // measured as chrome down with the windows still rounded. The toggle's
+    // compositor half therefore runs in the CLI wrapper, a plain process no
+    // reload can kill; the call sites left here are the stable ones: boot,
+    // parser known, and the reload-reassert below.
 
     Process {
         id: pusher

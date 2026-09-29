@@ -921,14 +921,24 @@ reserves nothing, and the six always-on edge grabs drop out of the mask. That la
 functional, not tidy: with the windows flush against the screen edge, a live edge strip would
 be invisible pixels stealing clicks from window scrollbars.
 
-**The shell owns the compositor's half too.** Bare squares the WINDOWS (`decoration:rounding`
-to 0, which empirically takes the windowrule-rounded ones with it - the rule caps against the
-global, so the global at zero squares everything) and takes `gaps_out` to zero, in one
-`hl.config` eval, the dialect the border colours already speak. The way BACK is `hyprctl
-reload`, deliberately: the user's lua owns those numbers (look.lua's gap, theme's bezel, the
-global-rounding rule), and a reload is the one operation that returns all of it to the file's
-truth at once and re-triangulates every open window with it. Values stashed at bare time
-would go stale the day the file moved, and a shell that started bare never saw them at all.
+**The shell owns the compositor's half too - WITH ONE CAVEAT ABOUT LIFETIMES.** Bare squares
+the WINDOWS (`decoration:rounding` to 0, which empirically takes the windowrule-rounded ones
+with it - the rule caps against the global, so the global at zero squares everything) and
+takes `gaps_out` to zero, in one `hl.config` eval, the dialect the border colours already
+speak. The way BACK is `hyprctl reload`, deliberately: the user's lua owns those numbers
+(look.lua's gap, theme's bezel, the global-rounding rule), and a reload is the one operation
+that returns all of it to the file's truth at once and re-triangulates every open window with
+it. Values stashed at bare time would go stale the day the file moved, and a shell that
+started bare never saw them at all.
+
+**BUT THE TOGGLE'S OWN HALF CANNOT RUN IN THE SHELL.** A toggle writes the flag, the write
+hot-reloads the shell, and the teardown eats that generation's in-flight eval - measured as
+chrome down with the windows still rounded, which is exactly what a bare mode must not be.
+So the compositor half of a TOGGLE runs in the CLI wrapper: a plain process after the IPC
+call, applying the zeros on the way in and the reload on the way out, where nothing can kill
+it. The shell's `applyBare` keeps the moments that are stable: boot (the flag says bare, the
+compositor comes up dressed by the file, the shell squares it), parser-known, and the
+reload-reassert below.
 
 **PERSISTED, and held rather than set and forgotten.** The flag lives in config.json, so a
 machine that reboots bare boots bare; and because a reload at any moment - the user's hand,
