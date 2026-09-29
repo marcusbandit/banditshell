@@ -22,7 +22,15 @@ Singleton {
     // When asked to follow the compositor, geometry that the compositor also has
     // an opinion about comes from it rather than from config.json, so the shell
     // and the windows can never disagree. Falls back the moment it can't be read.
-    readonly property bool follows: cfg.compositor.follow && Compositor.available
+    //
+    // AND NOT WHILE BARE, which is not a courtesy but a correctness: bare
+    // zeroes the compositor's rounding and gaps ON PURPOSE (the windows go
+    // flush and square), and a follow that ran during bare would read those
+    // zeros into every tier, flare and radius the shell owns - the whole
+    // shell's rounding stuck at zero long after the windows came back,
+    // because the cache has no other reason to re-read. Bare is the shell
+    // wearing its OWN config while the compositor wears zeros.
+    readonly property bool follows: root.cfg.compositor.follow && Compositor.available && !root.cfg.edge.bare
 
     // BARE, the chrome's master switch: true and the chassis draws nothing,
     // reserves nothing and takes no input on any screen. Read beside `follows`

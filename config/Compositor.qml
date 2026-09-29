@@ -269,7 +269,18 @@ Singleton {
         // itself again. Same contract as Settings' window rules. And while
         // bare the reload also brought the gaps and the rounding back, so the
         // zeros go straight back out with the borders.
+        //
+        // AND REFRESH, which is the half this connection was missing: the
+        // cache in here is read ONCE at boot and followed by every radius in
+        // the shell, so a reload that changed the compositor's numbers - the
+        // un-bare one, or the user's own hand in look.lua - left this file
+        // agreeing with a world that no longer existed. Measured as every
+        // tier in the shell stuck at zero after the first bare cycle: bare
+        // wrote zeros, a hot reload read them, and nothing ever read again.
+        // refresh() on reload is what makes following a living thing instead
+        // of a boot-time photograph.
         function onConfigReloaded(): void {
+            root.refresh();
             root.pushBorderColours();
             if (root.bare)
                 root.applyBare();
