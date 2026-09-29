@@ -1454,6 +1454,55 @@ Scope {
         }
     }
 
+    // THE BORDER, as one switch: the whole chrome or none of it.
+    //
+    // `sidebar` decides one monitor's column; this decides whether the SHELL
+    // is on the desk at all - band, sidebar, reservations and the edge grabs
+    // together, on every screen (config/Config.qml's `edge.bare`). It is
+    // deliberately the shell's half ONLY: the compositor's own gaps_out is
+    // the user's Hyprland config and this verb does not touch it, which is
+    // why a keybind that wants windows flush runs the gap keywords beside
+    // this command rather than this command doing it.
+    //
+    // on/off rather than wear/bare for the same reason the sidebar's are:
+    // `show` is the qs CLI's own word and `hide` is its uneven twin.
+    IpcHandler {
+        target: "border"
+
+        // Idempotent on purpose, like the sidebar pair: a keybind pressed
+        // twice in doubt says so instead of writing the file again, and the
+        // answer is the state after the verb, the way every verb here
+        // answers.
+        function off(): string {
+            if (!Config.values.edge.bare) {
+                Config.set("edge.bare", true);
+                return "border: off";
+            }
+            return "border already off";
+        }
+
+        function on(): string {
+            if (Config.values.edge.bare) {
+                Config.set("edge.bare", false);
+                return "border: on";
+            }
+            return "border already on";
+        }
+
+        function toggle(): string {
+            const next = !Config.values.edge.bare;
+            Config.set("edge.bare", next);
+            // `next` is the BARE flag, so true answers "off": the verb answers
+            // with the state of the border it left behind, and bare means
+            // there isn't one.
+            return `border: ${next ? "off" : "on"}`;
+        }
+
+        function status(): string {
+            return Config.values.edge.bare ? "off (bare)" : "on";
+        }
+    }
+
     // THE PICKER, which is a SURFACE and therefore its own target rather than
     // another verb on the one above.
     //

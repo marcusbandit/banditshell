@@ -1,6 +1,22 @@
 {
     "entries": [
         {
+            "id": "2026-09-29-2",
+            "date": "2026-09-29",
+            "changes": [
+                {
+                    "type": "features",
+                    "severity": "minor",
+                    "text": "Bare mode: the whole chrome can go off at once, every screen. Band, sidebar, reserved space and the invisible edge grabs all stand down, leaving the wallpaper and your windows; the shell still answers every keybind. Super+Shift+Z toggles it, and runs the compositor's gap flip beside it so the windows sit flush."
+                },
+                {
+                    "type": "config",
+                    "severity": "minor",
+                    "text": "One new config.json key, edge.bare, holds the switch. It is off by default and your config gains it by itself; nothing to do."
+                }
+            ]
+        },
+        {
             "id": "2026-09-29",
             "date": "2026-09-29",
             "changes": [

@@ -35,19 +35,21 @@ Scope {
     readonly property int keyboard: root.win?.keyboard?.open && Tablet.docked ? root.win.keyboard.reserveHeight : 0
 
     // Edge -> how much it reserves. The left edge carries the sidebar as well as
-    // the band, and asks services/Sidebar.qml which screens mean that: on one
+    // the band, and asks services/SidebarState.qml which screens mean that: on one
     // whose sidebar is hidden it carries the band alone, and the sidebar's width
     // goes back to the windows the moment the config says so.
     //
-    // The bottom is a MAX rather than a sum: the board is drawn flush to the
-    // screen's bottom edge, so it already covers the band's own strip. Adding
-    // them would reserve that strip twice and leave a gap the width of the band
-    // between the windows and the caps.
+    // BARE reserves nothing at all (the keyboard excepted, because a docked
+    // board is an input surface and not chrome): every edge drops to zero and
+    // the windows take the whole screen. The keyboard keeps its room on the
+    // same line as the band's MAX, which in bare collapses to the keyboard
+    // alone.
+    readonly property bool bare: Appearance.bare
     readonly property var reserve: ({
-            top: Appearance.sizes.border,
-            right: Appearance.sizes.border,
-            bottom: Math.max(Appearance.sizes.border, root.keyboard),
-            left: Appearance.sizes.border + (SidebarState.visibleOn(root.screen?.name ?? "") ? Appearance.sizes.sidebarWidth : 0)
+            top: root.bare ? 0 : Appearance.sizes.border,
+            right: root.bare ? 0 : Appearance.sizes.border,
+            bottom: root.bare ? root.keyboard : Math.max(Appearance.sizes.border, root.keyboard),
+            left: root.bare ? 0 : Appearance.sizes.border + (SidebarState.visibleOn(root.screen?.name ?? "") ? Appearance.sizes.sidebarWidth : 0)
         })
 
     Variants {

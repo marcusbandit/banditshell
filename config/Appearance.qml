@@ -24,6 +24,13 @@ Singleton {
     // and the windows can never disagree. Falls back the moment it can't be read.
     readonly property bool follows: cfg.compositor.follow && Compositor.available
 
+    // BARE, the chrome's master switch: true and the chassis draws nothing,
+    // reserves nothing and takes no input on any screen. Read beside `follows`
+    // because it overrides everything that switch governs, not because it is
+    // the same kind of question: follows decides WHOSE numbers the chrome
+    // wears, bare decides whether there is any chrome to wear them.
+    readonly property bool bare: root.cfg.edge.bare
+
     function tier(base: real, scale: var, i: int): real {
         return base * scale[Math.max(0, Math.min(i, scale.length - 1))];
     }

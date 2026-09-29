@@ -303,6 +303,21 @@ Singleton {
                 // compositor.follow is finding gaps_out.
                 border: 10,
 
+                // BARE: the whole chrome off, band and sidebar and every
+                // reservation with it. The chassis draws nothing, the edge
+                // strips stop taking input, and the desktop is the wallpaper
+                // with windows on it; the shell is reachable by keybind and
+                // by the panels already open, and by nothing else. This is
+                // the shell's half only: the compositor's own gaps_out is a
+                // separate concern and stays whatever the user's Hyprland
+                // config last made it, so a keybind that wants windows flush
+                // runs the keyword flip beside this toggle.
+                //
+                // Persisted, like wallpaper.enabled: a shell turned off on
+                // purpose is off when it comes back, not a state to rediscover
+                // after every reboot.
+                bare: false,
+
                 // Draw the frame: a band around the whole screen as thick as the
                 // compositor's outer gap, plus black pieces rounding off the
                 // physical screen corners.

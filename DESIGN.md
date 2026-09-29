@@ -913,6 +913,20 @@ is instant rather than the promised slide behind the left edge, which is still t
 entry that agrees with the default is deleted rather than kept, so `sidebar.perScreen` stays
 what its name says.
 
+**BARE, same day, the rest of the promise.** `edge.bare` is the chrome's master switch: the
+chassis draws nothing on any screen (a full-window hole, zero inset, zero radius, no
+screen-corner frame, because corner pieces are border by another name), `FrameExclusions`
+reserves nothing, and the six always-on edge grabs drop out of the mask. That last part is
+functional, not tidy: with the compositor's gaps flipped to zero the windows sit flush, and a
+live edge strip would be invisible pixels stealing clicks from window scrollbars. The shell
+owns exactly half of the switch, on purpose: `banditshell border toggle` is the chrome, and
+the compositor's `gaps_out` stays the user's own config, flipped to zero by the keybind's
+second command (`hyprctl keyword`, or the Lua parser's `hl.config` eval) reading its restore
+value from the file that set it. Bare is persisted like `wallpaper.enabled`: a shell turned
+off on purpose is off when it comes back. The lock face follows the chassis and so goes bare
+with the desktop; a shell reduced to a wallpaper runner is still the machine looking like
+itself.
+
 ## 9. Driving it from a terminal
 
 `bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`.
@@ -946,6 +960,7 @@ banditshell picker open|freeze|clip|freezeclip|close
 banditshell wallpaper toggle|on|off|next|prev|status
 banditshell wallpapers toggle|open|close|status   the picker; the edge's second swipe
 banditshell sidebar off [screen|all]|on [screen|all]|toggle [screen|all]|status   the column, per monitor
+banditshell border toggle|on|off|status           the whole chrome, bare mode
 banditshell status                 what the shell thinks the compositor said
 banditshell theme [name] | themes
 banditshell get <key> | set <key> <value>

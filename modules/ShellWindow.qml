@@ -381,9 +381,18 @@ PanelWindow {
         // which the chassis already covers, so this costs nothing; while swollen
         // it reaches a few pixels past the band, and without it those would be
         // the only part of the swell the cursor could not reach.
+        //
+        // BARE DROPS IT, and the same gate drops every always-on entry below.
+        // Bare is "the shell is reachable by hotkey and by nothing else", said
+        // in the config; and it is not only aesthetic, because with the
+        // compositor's gaps flipped to zero beside it the windows sit FLUSH
+        // against the screen's edges, and a live edge strip here would be ten
+        // invisible pixels stealing the clicks and scrolls aimed at window
+        // scrollbars and window edges. A panel that is OPEN keeps its entry:
+        // only the standing offers close.
         Region {
             intersection: Intersection.Combine
-            item: launchEdge.maskItem
+            item: Appearance.bare ? null : launchEdge.maskItem
         }
 
         // The window edge's strip, ALWAYS, on the launch edge's argument above
@@ -391,10 +400,11 @@ PanelWindow {
         // entry adds NOTHING, because the strip is exactly the band and the
         // chassis already claims that. It exists so that raising `windows.grab`
         // widens the region along with the target, rather than widening a target
-        // the compositor still refuses to deliver into.
+        // the compositor still refuses to deliver into. The bare gate is the
+        // same sentence with the band gone: nothing standing, nothing offered.
         Region {
             intersection: Intersection.Combine
-            item: windowEdge.maskItem
+            item: Appearance.bare ? null : windowEdge.maskItem
         }
 
         // THE WHOLE SCREEN WHILE A WINDOW IS IN THE AIR, which is the one thing
@@ -417,10 +427,10 @@ PanelWindow {
         // conditional entry would only ever open after the thing it was meant to
         // let you open. Same sentence as the launch edge and the settings
         // corner, and while `touchEdges` is off the strip is exactly the band
-        // and this costs nothing at all.
+        // and this costs nothing at all. Bare drops it, like the two above.
         Region {
             intersection: Intersection.Combine
-            item: topNotch.grabItem
+            item: Appearance.bare ? null : topNotch.grabItem
         }
 
         Region {
@@ -434,10 +444,11 @@ PanelWindow {
         // exists once it has been hit is not a target. The entry above has to
         // be conditional because an empty tray has no rectangle to offer; this
         // one must not be, because an empty tray is exactly when the corner is
-        // the only way to ask whether anything was missed.
+        // the only way to ask whether anything was missed. Bare drops it: a
+        // corner square over a flush window's corner is a stolen click.
         Region {
             intersection: Intersection.Combine
-            item: popups.grabItem
+            item: Appearance.bare ? null : popups.grabItem
         }
 
         // The whole screen while the keyring is asking, so a click anywhere off
@@ -472,18 +483,22 @@ PanelWindow {
         // other two thirds went back to the windows when the rail became a
         // segment. That trade is the whole reason `touchEdges` exists rather
         // than the widening simply being done; see Config. Off, this collapses
-        // to the band the chassis already owns.
+        // to the band the chassis already owns. Bare drops it, and with the
+        // gaps flipped to zero it is the most load-bearing of the drops: the
+        // rail's third of the right edge is where every window scrollbar
+        // lives.
         Region {
             intersection: Intersection.Combine
-            item: volumeRail.grabItem
+            item: Appearance.bare ? null : volumeRail.grabItem
         }
 
         // ALWAYS, for the launch edge's reason: at rest the corner's grab square
         // is the only thing there is, and a target that only exists once it has
-        // been hit is not a target.
+        // been hit is not a target. Bare drops it, with the floor that
+        // SettingsCorner keeps for touch targets and all.
         Region {
             intersection: Intersection.Combine
-            item: settingsCorner.maskItem
+            item: Appearance.bare ? null : settingsCorner.maskItem
         }
 
     }
