@@ -1,5 +1,5 @@
 module qs.modules.sidebar
-Clock 1.0 Clock.qml
+SidebarClock 1.0 SidebarClock.qml
 Sidebar 1.0 Sidebar.qml
 StatusIcon 1.0 StatusIcon.qml
 StatusIcons 1.0 StatusIcons.qml

@@ -1,7 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.config
-import qs.services
+import qs.services as Services
 
 import qs.modules.menu.content
 
@@ -47,7 +47,7 @@ Item {
 
     readonly property var updateEntry: ({
             key: "update",
-            title: `update · ${Update.branch}`,
+            title: "update · " + Services.Update.branch,
             body: updateMenu
         })
 
@@ -122,7 +122,7 @@ Item {
             onRequested: deliberate => root.updateRequested(deliberate)
         }
 
-        Clock {
+        SidebarClock {
             id: clock
 
             anchors.left: parent.left
