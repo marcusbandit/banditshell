@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.config
 import qs.components.blob
 import qs.components
@@ -147,7 +146,7 @@ MouseArea {
         width: implicitWidth
         height: implicitHeight
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
 

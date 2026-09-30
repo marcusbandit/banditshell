@@ -1,6 +1,5 @@
 import QtQuick
 import Quickshell
-import qs.config
 import qs.services
 import qs.modules.notifications
 
@@ -18,13 +17,13 @@ ShellRoot {
         },
         {
             name: "dismiss the middle popup",
-            run: () => Notifs.dismiss(Notifs.popups[1])
+            run: () => Notifications.dismiss(Notifications.popups[1])
         },
         {
             name: "pin the first, then dismiss it",
             run: () => {
-                Notifs.popups[0].pinned = true;
-                Notifs.dismiss(Notifs.popups[0]);
+                Notifications.popups[0].pinned = true;
+                Notifications.dismiss(Notifications.popups[0]);
             }
         },
         {
@@ -38,17 +37,17 @@ ShellRoot {
         },
         {
             name: "unfold it: all of it, brackets and all",
-            run: () => Notifs.history[0].unfolded = true
+            run: () => Notifications.history[0].unfolded = true
         },
         {
             name: "fold it back",
-            run: () => Notifs.history[0].unfolded = false
+            run: () => Notifications.history[0].unfolded = false
         },
         {
             name: "forget everything left in the hub",
             run: () => {
-                for (const e of [...Notifs.history])
-                    Notifs.forget(e);
+                for (const e of [...Notifications.history])
+                    Notifications.forget(e);
             }
         },
         {
@@ -70,8 +69,8 @@ ShellRoot {
                 timeout: 0,
                 live: true
             }));
-        Notifs.popups = made;
-        Notifs.history = made;
+        Notifications.popups = made;
+        Notifications.history = made;
     }
 
     function seedQbit(): void {
@@ -83,19 +82,19 @@ ShellRoot {
             timeout: 0,
             live: true
         });
-        Notifs.history = [entry, ...Notifs.history];
+        Notifications.history = [entry, ...Notifications.history];
     }
 
     function report(label: string): void {
         const t = tray.maskItem;
-        const top = Notifs.history[0];
-        console.log(`${label} | popups=${Notifs.popups.length} history=${Notifs.history.length} pinned=${Notifs.history.filter(e => e.pinned).length} | expanded=${tray.expanded} rows=${tray.items.length} trayVisible=${t.visible} trayHeight=${Math.round(t.height)} | unfolded=${top?.unfolded ?? "-"} brief="${top?.brief ?? ""}"`);
+        const top = Notifications.history[0];
+        console.log(`${label} | popups=${Notifications.popups.length} history=${Notifications.history.length} pinned=${Notifications.history.filter(e => e.pinned).length} | expanded=${tray.expanded} rows=${tray.items.length} trayVisible=${t.visible} trayHeight=${Math.round(t.height)} | unfolded=${top?.unfolded ?? "-"} brief="${top?.brief ?? ""}"`);
     }
 
     Component {
         id: entryComponent
 
-        NotifEntry {}
+        NotificationEntry {}
     }
 
     FloatingWindow {

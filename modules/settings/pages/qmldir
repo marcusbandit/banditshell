@@ -1,0 +1,15 @@
+module qs.modules.settings.pages
+AboutPage 1.0 AboutPage.qml
+AppearancePage 1.0 AppearancePage.qml
+BatteryPage 1.0 BatteryPage.qml
+BluetoothPage 1.0 BluetoothPage.qml
+CliPage 1.0 CliPage.qml
+DeveloperPage 1.0 DeveloperPage.qml
+DevicePage 1.0 DevicePage.qml
+FontPage 1.0 FontPage.qml
+GeneralPage 1.0 GeneralPage.qml
+KeybindsPage 1.0 KeybindsPage.qml
+MonitorsPage 1.0 MonitorsPage.qml
+SoundPage 1.0 SoundPage.qml
+WallpaperPage 1.0 WallpaperPage.qml
+WifiPage 1.0 WifiPage.qml

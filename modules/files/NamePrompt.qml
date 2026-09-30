@@ -66,7 +66,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.centerIn: parent
 
         implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 420)
@@ -92,7 +92,7 @@ Item {
                 elide: Text.ElideRight
             }
 
-            G2Rect {
+            SquircleRect {
                 width: parent.width
                 implicitHeight: field.implicitHeight + Appearance.padding.normal * 2
 

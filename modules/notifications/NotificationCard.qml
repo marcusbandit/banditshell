@@ -108,7 +108,7 @@ Item {
         target: root
         property: "leave"
         to: 1
-        duration: Notifs.exitMs
+        duration: Notifications.exitMs
 
         easing.type: Easing.OutCubic
     }
@@ -140,7 +140,7 @@ Item {
 
     readonly property real radius: Math.max(Appearance.rounding.small, Appearance.rounding.large - Appearance.padding.normal)
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: root.radius
 
@@ -153,7 +153,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         id: spine
 
         anchors.left: parent.left
@@ -192,7 +192,7 @@ Item {
             width: Appearance.sizes.notificationBadge * (badge.pictured ? 2 : 1)
             height: width
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.small
                 color: Appearance.colour.fillStrong
@@ -208,7 +208,7 @@ Item {
                 color: root.urgent ? Appearance.colour.accent : Appearance.colour.textDim
             }
 
-            G2Image {
+            SquircleImage {
                 id: sign
 
                 anchors.left: parent.left
@@ -223,7 +223,7 @@ Item {
                 visible: !badge.pictured
             }
 
-            G2Image {
+            SquircleImage {
                 id: art
 
                 anchors.left: parent.left

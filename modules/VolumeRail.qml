@@ -123,7 +123,7 @@ Item {
             height: root.contentHeight
             opacity: reveal.value
 
-            G2Rect {
+            SquircleRect {
                 id: track
 
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -133,7 +133,7 @@ Item {
                 radius: width / 2
                 color: Appearance.colour.fillStronger
 
-                G2Rect {
+                SquircleRect {
                     anchors.bottom: parent.bottom
                     width: parent.width
                     height: Math.max(0, Math.min(1, level.value / root.ceiling)) * parent.height

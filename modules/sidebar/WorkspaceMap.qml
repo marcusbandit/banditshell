@@ -67,7 +67,7 @@ Item {
                 onClicked: Hypr.switchTo(slotItem.info.id)
             }
 
-            G2Rect {
+            SquircleRect {
                 visible: !slotItem.isOccupied
                 x: 0
                 width: Math.round(root.span * root.floor)
@@ -89,7 +89,7 @@ Item {
                     values: slotItem.info.windows
                 }
 
-                delegate: G2Rect {
+                delegate: SquircleRect {
                     id: windowBar
 
                     required property var modelData

@@ -58,7 +58,7 @@ Item {
         epsilon: 0.001
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.verticalCenter: parent.verticalCenter
 
         width: parent.width
@@ -66,7 +66,7 @@ Item {
         radius: height / 2
         color: Appearance.colour.fill
 
-        G2Rect {
+        SquircleRect {
             width: root.beadCentre
             height: parent.height
             radius: height / 2
@@ -74,7 +74,7 @@ Item {
             opacity: 0.55
         }
 
-        G2Rect {
+        SquircleRect {
             visible: root.warnAbove > root.from && root.warnAbove < root.to
             x: root.beadSize / 2 + ((root.warnAbove - root.from) / Math.max(0.0001, root.to - root.from)) * root.travel - width / 2
             width: Math.max(2, Math.round(root.rail / 3))
@@ -85,7 +85,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         visible: root.enabled
 
         x: root.beadCentre - width / 2

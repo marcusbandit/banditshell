@@ -1,0 +1,13 @@
+module qs.modules.sidebar
+Clock 1.0 Clock.qml
+Sidebar 1.0 Sidebar.qml
+StatusIcon 1.0 StatusIcon.qml
+StatusIcons 1.0 StatusIcons.qml
+TrayIcon 1.0 TrayIcon.qml
+TrayIcons 1.0 TrayIcons.qml
+UpdateIndicator 1.0 UpdateIndicator.qml
+WorkspaceBlocks 1.0 WorkspaceBlocks.qml
+WorkspaceMap 1.0 WorkspaceMap.qml
+WorkspaceModel 1.0 WorkspaceModel.qml
+WorkspacePlates 1.0 WorkspacePlates.qml
+Workspaces 1.0 Workspaces.qml

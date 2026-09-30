@@ -1,0 +1,17 @@
+module qs.modules.files
+ChordHints 1.0 ChordHints.qml
+FileGrid 1.0 FileGrid.qml
+FileMark 1.0 FileMark.qml
+FilesFace 1.0 FilesFace.qml
+FilesSettings 1.0 FilesSettings.qml
+FilesWindow 1.0 FilesWindow.qml
+FileTile 1.0 FileTile.qml
+HelpersMissing 1.0 HelpersMissing.qml
+NamePrompt 1.0 NamePrompt.qml
+PathBar 1.0 PathBar.qml
+PreviewPane 1.0 PreviewPane.qml
+Properties 1.0 Properties.qml
+Setting 1.0 Setting.qml
+Sidebar 1.0 Sidebar.qml
+SplitHandle 1.0 SplitHandle.qml
+TerminalPane 1.0 TerminalPane.qml

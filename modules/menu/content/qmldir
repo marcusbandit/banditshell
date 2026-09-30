@@ -1,0 +1,15 @@
+module qs.modules.menu.content
+BatteryMenu 1.0 BatteryMenu.qml
+BluetoothMenu 1.0 BluetoothMenu.qml
+CalculatorMenu 1.0 CalculatorMenu.qml
+CalendarMenu 1.0 CalendarMenu.qml
+ClockMenu 1.0 ClockMenu.qml
+MediaMenu 1.0 MediaMenu.qml
+NetworkMenu 1.0 NetworkMenu.qml
+NotificationMenu 1.0 NotificationMenu.qml
+PowerMenu 1.0 PowerMenu.qml
+SoundMenu 1.0 SoundMenu.qml
+SystemMenu 1.0 SystemMenu.qml
+TrayEntries 1.0 TrayEntries.qml
+TrayMenu 1.0 TrayMenu.qml
+UpdateMenu 1.0 UpdateMenu.qml

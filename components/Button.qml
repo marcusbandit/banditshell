@@ -263,7 +263,7 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
-    G2Rect {
+    SquircleRect {
         id: cast
 
         visible: false
@@ -298,7 +298,7 @@ Item {
         shadowVerticalOffset: Math.max(2, Math.round(root.height / 10))
     }
 
-    G2Rect {
+    SquircleRect {
         id: plate
 
         anchors.fill: parent
@@ -329,7 +329,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: root.targetRadius
         cornerPower: root.platePower

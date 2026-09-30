@@ -16,7 +16,7 @@ ShellRoot {
         id: picker
     }
 
-    Ipc {
+    Cli {
         picker: picker
     }
 

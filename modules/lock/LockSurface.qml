@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell.Wayland
-import qs.config
 
 WlSessionLockSurface {
     id: surface

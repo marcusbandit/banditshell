@@ -60,7 +60,7 @@ Item {
                 implicitWidth: Appearance.sizes.minTarget
                 implicitHeight: Appearance.sizes.minTarget
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     anchors.margins: Appearance.padding.small / 2
 
@@ -136,7 +136,7 @@ Item {
                 implicitWidth: Math.min(naturalWidth, crumbs.crowded ? (crumb.last ? crumbs.width - crumbs.usedBeforeLast : crumbs.width / Files.crumbs.length) : naturalWidth)
                 implicitHeight: label.implicitHeight + Appearance.padding.small * 2
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
 
                     radius: Appearance.rounding.small
@@ -191,7 +191,7 @@ Item {
         onClicked: root.edit()
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.left: buttons.right
         anchors.leftMargin: Appearance.padding.small
         anchors.right: search.left
@@ -253,7 +253,7 @@ Item {
         implicitWidth: Files.searching ? root.width * 0.4 : glass.implicitWidth + Appearance.padding.normal
         implicitHeight: field.implicitHeight + Appearance.padding.small * 2
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             visible: Files.searching
 

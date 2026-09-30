@@ -329,7 +329,7 @@ Item {
         onWheel: wheel => layout.scrubWheel(wheel)
     }
 
-    G2Rect {
+    SquircleRect {
         x: root.lane
         y: markY.value
         width: root.slot
@@ -338,7 +338,7 @@ Item {
         color: Appearance.colour.fillStrong
         opacity: markShown.value
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: root.radius
             color: Appearance.colour.accentFill
@@ -352,7 +352,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         x: Math.round((root.width - width) / 2)
         y: hoverY.value
         width: hoverW.value
@@ -366,7 +366,7 @@ Item {
 
         model: root.deck.length
 
-        delegate: G2Rect {
+        delegate: SquircleRect {
             id: bar
 
             required property int index
@@ -395,7 +395,7 @@ Item {
                 }
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: root.radius
                 color: Appearance.colour.accentFill
@@ -540,7 +540,7 @@ Item {
                 }
             }
 
-            G2Rect {
+            SquircleRect {
                 id: cell
 
                 readonly property bool solid: root.slotSolid(slotItem.info)
@@ -618,7 +618,7 @@ Item {
     Repeater {
         model: root.tags
 
-        delegate: G2Rect {
+        delegate: SquircleRect {
             id: tag
 
             required property var modelData
@@ -634,13 +634,13 @@ Item {
             radius: root.radius
             color: Appearance.colour.fill
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: root.radius
                 color: Appearance.colour.fillStrong
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: root.radius
                 color: Appearance.colour.accentFill
@@ -727,7 +727,7 @@ Item {
                 shadowVerticalOffset: Math.round(Appearance.padding.small / 3)
             }
 
-            G2Rect {
+            SquircleRect {
                 id: card
 
                 anchors.fill: parent
@@ -740,13 +740,13 @@ Item {
 
                 color: Appearance.colour.surface
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     radius: root.radius
                     color: Appearance.colour.fillStronger
                 }
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     radius: root.radius
                     color: Appearance.colour.accentFill

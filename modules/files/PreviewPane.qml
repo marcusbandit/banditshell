@@ -144,7 +144,7 @@ Item {
                 implicitWidth: Appearance.sizes.minTarget
                 implicitHeight: Appearance.sizes.minTarget
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     anchors.margins: Appearance.padding.small / 2
 
@@ -207,7 +207,7 @@ Item {
         anchors.bottom: parent.bottom
         anchors.topMargin: Appearance.padding.normal
 
-        G2Image {
+        SquircleImage {
             anchors.fill: parent
             visible: root.isImage
 
@@ -248,7 +248,7 @@ Item {
                     }
                 }
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
 
                     radius: width / 2

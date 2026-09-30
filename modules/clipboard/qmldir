@@ -1,0 +1,4 @@
+module qs.modules.clipboard
+ClipboardPanel 1.0 ClipboardPanel.qml
+ClipDetail 1.0 ClipDetail.qml
+ClipRow 1.0 ClipRow.qml

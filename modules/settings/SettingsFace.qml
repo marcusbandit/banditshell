@@ -57,7 +57,7 @@ Item {
 
     readonly property var shownGroups: Settings.groups.filter(g => Settings.pages.some(p => p.group === g && root.matches(p)))
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
 
         radius: 0
@@ -97,7 +97,7 @@ Item {
                 width: parent.width - root.pad * 2
                 height: root.railRow
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.small
                     color: Appearance.colour.fillStrong
@@ -219,7 +219,7 @@ Item {
                 }
                 }
 
-                G2Rect {
+                SquircleRect {
                     id: slideMark
 
                     x: 0
@@ -288,7 +288,7 @@ Item {
                         height: back.slot
                         visible: parent.arrow
 
-                        G2Rect {
+                        SquircleRect {
                             width: back.slot
                             height: back.slot
                             radius: Appearance.rounding.normal
@@ -389,7 +389,7 @@ Item {
             });
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             anchors.leftMargin: Appearance.padding.normal
             anchors.rightMargin: Appearance.padding.normal

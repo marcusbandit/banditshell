@@ -405,7 +405,7 @@ Item {
         width: parent ? parent.width : 0
         height: blockH + Appearance.padding.normal * 2
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.small
             color: row.recordingThis || rowTap.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
@@ -441,7 +441,7 @@ Item {
                         width: plateText.implicitWidth + Appearance.padding.normal * 2
                         height: row.plateH
 
-                        G2Rect {
+                        SquircleRect {
                             anchors.fill: parent
                             radius: Appearance.rounding.small
                             color: row.recordingThis ? Appearance.colour.accentFill : plateTap.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
@@ -661,7 +661,7 @@ Item {
             color: Appearance.colour.textFaint
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.top: fieldLabel.bottom
             anchors.topMargin: Appearance.font.stem
             anchors.left: parent.left

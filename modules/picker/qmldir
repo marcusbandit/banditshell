@@ -1,0 +1,4 @@
+module qs.modules.picker
+Picker 1.0 Picker.qml
+PickerState 1.0 PickerState.qml
+PickerWindow 1.0 PickerWindow.qml

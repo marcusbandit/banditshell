@@ -64,7 +64,7 @@ Item {
 
                         height: place.usage ? Appearance.sizes.filesRow * 1.5 : Appearance.sizes.filesRow
 
-                        G2Rect {
+                        SquircleRect {
                             anchors.fill: parent
                             anchors.rightMargin: Appearance.padding.small
 
@@ -124,14 +124,14 @@ Item {
 
                             implicitHeight: Appearance.font.stem * 2
 
-                            G2Rect {
+                            SquircleRect {
                                 anchors.fill: parent
 
                                 radius: height / 2
                                 color: Appearance.colour.fill
                             }
 
-                            G2Rect {
+                            SquircleRect {
                                 width: Math.max(parent.height, parent.width * (place.usage ? place.usage.fraction : 0))
                                 height: parent.height
 

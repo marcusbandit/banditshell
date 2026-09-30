@@ -68,7 +68,7 @@ Item {
         epsilon: 0.005
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
 
         radius: Appearance.rounding.normal
@@ -258,7 +258,7 @@ Item {
             height: parent.height
         }
 
-        G2Rect {
+        SquircleRect {
             x: strip.x + root.caretAt(field.cursorPosition) - width / 2
             anchors.verticalCenter: parent.verticalCenter
 

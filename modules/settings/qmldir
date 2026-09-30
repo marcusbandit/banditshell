@@ -1,0 +1,9 @@
+module qs.modules.settings
+MonitorCanvas 1.0 MonitorCanvas.qml
+SettingsCard 1.0 SettingsCard.qml
+SettingsFace 1.0 SettingsFace.qml
+SettingsFloat 1.0 SettingsFloat.qml
+SettingsGroup 1.0 SettingsGroup.qml
+SettingsPane 1.0 SettingsPane.qml
+SettingsRow 1.0 SettingsRow.qml
+SourceEditSheet 1.0 SourceEditSheet.qml

@@ -172,7 +172,7 @@ Singleton {
     Component {
         id: entryComponent
 
-        NotifEntry {}
+        NotificationEntry {}
     }
 
     Timer {

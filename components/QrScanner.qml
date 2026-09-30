@@ -128,7 +128,7 @@ Item {
 
             height: Math.round(width * 3 / 4)
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.fillStrong
@@ -149,7 +149,7 @@ Item {
                 visible: false
             }
 
-            G2Rect {
+            SquircleRect {
                 id: mask
 
                 anchors.fill: parent

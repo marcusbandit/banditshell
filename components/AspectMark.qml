@@ -25,7 +25,7 @@ Item {
         return a >= 1 ? box / a : box;
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.centerIn: parent
         width: root.reference > 0 ? root.spanW(root.reference, root.size) : root.size
         height: root.reference > 0 ? root.spanH(root.reference, root.size) : root.size
@@ -35,7 +35,7 @@ Item {
         strokeWidth: Appearance.font.stem
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.centerIn: parent
         visible: root.aspect > 0
         width: root.spanW(root.aspect, root.inner)

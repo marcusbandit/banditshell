@@ -40,7 +40,7 @@ PanelWindow {
     readonly property MediaController media: mediaLayer
 
     readonly property NotificationTray notifications: popups
-    readonly property TopNotch notch: topNotch
+    readonly property SummonZone notch: topNotch
 
     readonly property var statusItems: sidebar.menuItems
     readonly property var statusKeys: sidebar.menuKeys
@@ -593,7 +593,7 @@ PanelWindow {
             blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
         }
 
-        TopNotch {
+        SummonZone {
             id: topNotch
 
             anchors.fill: parent

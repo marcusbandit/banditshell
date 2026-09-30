@@ -43,7 +43,7 @@ Item {
         width: root.implicitWidth
         height: root.artSize
 
-        G2Rect {
+        SquircleRect {
             id: art
 
             width: root.artSize
@@ -51,7 +51,7 @@ Item {
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
 
-            G2Image {
+            SquircleImage {
                 id: cover
 
                 anchors.fill: parent
@@ -68,7 +68,7 @@ Item {
                 color: Appearance.colour.textFaint
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 visible: Media.canRaise
                 radius: art.radius

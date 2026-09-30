@@ -113,7 +113,7 @@ ShellRoot {
             active: true
         }
 
-        G2Rect {
+        SquircleRect {
             id: card
 
             x: win.fingerX - width / 2

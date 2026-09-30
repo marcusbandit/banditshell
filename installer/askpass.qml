@@ -136,7 +136,7 @@ ShellRoot {
                 Component.onCompleted: value = 0
             }
 
-            G2Rect {
+            SquircleRect {
                 id: card
 
                 anchors.horizontalCenter: parent.horizontalCenter
@@ -200,7 +200,7 @@ ShellRoot {
                             speed: 12
                         }
 
-                        G2Rect {
+                        SquircleRect {
                             id: container
 
                             anchors.fill: parent
@@ -211,7 +211,7 @@ ShellRoot {
                             bottomRightRadius: 0
                             color: Theme.fill
 
-                            G2Rect {
+                            SquircleRect {
                                 anchors.fill: parent
                                 topLeftRadius: Theme.rNormal
                                 topRightRadius: Theme.rNormal
@@ -312,7 +312,7 @@ ShellRoot {
                             }
                         }
 
-                        G2Rect {
+                        SquircleRect {
                             anchors.bottom: parent.bottom
                             anchors.left: parent.left
                             anchors.right: parent.right
@@ -341,7 +341,7 @@ ShellRoot {
                         anchors.right: parent.right
                         spacing: Theme.padNormal
 
-                        G2Rect {
+                        SquircleRect {
                             width: cancelLabel.implicitWidth + Theme.padLarge * 2
                             height: 52
                             radius: Theme.rNormal
@@ -368,7 +368,7 @@ ShellRoot {
                             }
                         }
 
-                        G2Rect {
+                        SquircleRect {
                             id: submit
 
                             readonly property bool ready: root.secret.length > 0

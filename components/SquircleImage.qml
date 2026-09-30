@@ -38,7 +38,7 @@ Item {
         visible: false
     }
 
-    G2Rect {
+    SquircleRect {
         id: mask
 
         anchors.centerIn: parent

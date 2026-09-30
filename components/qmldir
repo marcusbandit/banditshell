@@ -1,0 +1,41 @@
+module qs.components
+ActionSheet 1.0 ActionSheet.qml
+AppMark 1.0 AppMark.qml
+AspectMark 1.0 AspectMark.qml
+BalancedText 1.0 BalancedText.qml
+BatteryMeter 1.0 BatteryMeter.qml
+BatteryTank 1.0 BatteryTank.qml
+ButtonGroup 1.0 ButtonGroup.qml
+Button 1.0 Button.qml
+CodeBlock 1.0 CodeBlock.qml
+Expander 1.0 Expander.qml
+FittedImage 1.0 FittedImage.qml
+FoldedText 1.0 FoldedText.qml
+Follow 1.0 Follow.qml
+Gauge 1.0 Gauge.qml
+GlideList 1.0 GlideList.qml
+HoverTip 1.0 HoverTip.qml
+Icon 1.0 Icon.qml
+IdentityField 1.0 IdentityField.qml
+MenuLayer 1.0 MenuLayer.qml
+MenuRow 1.0 MenuRow.qml
+Nudge 1.0 Nudge.qml
+PathField 1.0 PathField.qml
+singleton Prompts 1.0 Prompts.qml
+Pull 1.0 Pull.qml
+QrCode 1.0 QrCode.qml
+QrScanner 1.0 QrScanner.qml
+RevealMask 1.0 RevealMask.qml
+ScrollGesture 1.0 ScrollGesture.qml
+SecretField 1.0 SecretField.qml
+Segments 1.0 Segments.qml
+Separator 1.0 Separator.qml
+SignalBars 1.0 SignalBars.qml
+Slider 1.0 Slider.qml
+SquircleImage 1.0 SquircleImage.qml
+SquircleRect 1.0 SquircleRect.qml
+StyledText 1.0 StyledText.qml
+TerminalView 1.0 TerminalView.qml
+Toggle 1.0 Toggle.qml
+singleton Tooltips 1.0 Tooltips.qml
+WallpaperSource 1.0 WallpaperSource.qml

@@ -78,7 +78,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         id: track
 
         width: root.width - root.capWidth
@@ -88,7 +88,7 @@ Item {
 
         readonly property real span: width - root.inset * 2
 
-        G2Rect {
+        SquircleRect {
             x: root.inset
             y: root.inset
             width: track.span * charge.value
@@ -97,7 +97,7 @@ Item {
             color: root.colour
         }
 
-        G2Rect {
+        SquircleRect {
             visible: root.charging
             x: root.inset + track.span * charge.value
             y: root.inset
@@ -125,7 +125,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         x: root.width - root.capWidth
         y: (root.height - height) / 2
         width: root.capWidth

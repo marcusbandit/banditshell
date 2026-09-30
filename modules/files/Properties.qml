@@ -80,7 +80,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.centerIn: parent
 
         implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 520)

@@ -11,6 +11,18 @@ the next block does. This was a hard-won correction: the codebase had filled
 with comment prose until it was stripped clean on 2026-09-30. If something is
 genuinely non-obvious, the fix is clearer naming or structure, not a comment.
 
+## Layout
+
+Four buckets: `config/` (singletons backing config.json and the theme),
+`services/` (state that outlives any widget), `components/` (reusable, know
+nothing about the shell), `modules/` (actual UI, one subfolder per feature).
+Standalone windows live in `previews/`, reached through the `preview.qml`
+router at the root with `BANDITSHELL_PREVIEW=<Name>`; `shell.qml` and
+`preview.qml` are the only QML files at the root. Names are full words a
+person would search for - no abbreviations, no product-name jokes. Every QML
+folder carries a `qmldir`; after adding, moving or renaming a file run
+`scripts/qmldirs.sh`, or the LSP stops resolving `qs.*` imports.
+
 ## Agent skills
 
 ### Issue tracker

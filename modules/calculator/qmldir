@@ -1,0 +1,2 @@
+module qs.modules.calculator
+CalculatorPanel 1.0 CalculatorPanel.qml

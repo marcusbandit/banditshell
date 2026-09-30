@@ -331,7 +331,7 @@ Singleton {
             section: "Feedback",
             blurb: "one line of aftermath, briefly",
             checklist: "Snackbar",
-            ref: "services/NotifBrief.qml",
+            ref: "services/NotificationBrief.qml",
             status: "planned"
         },
         {

@@ -1,0 +1,3 @@
+module qs.modules.menu
+MenuPanel 1.0 MenuPanel.qml
+Menus 1.0 Menus.qml

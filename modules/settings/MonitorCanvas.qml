@@ -106,7 +106,7 @@ Item {
     Repeater {
         model: root.rects
 
-        delegate: G2Rect {
+        delegate: SquircleRect {
             id: rect
 
             required property var modelData

@@ -95,7 +95,7 @@ Item {
     readonly property real sideGap: (width - (root.boxed ? fill.width : Appearance.sizes.traySlot)) / 2
     readonly property real overhang: root.boxed ? Appearance.padding.small : 0
 
-    G2Rect {
+    SquircleRect {
         id: fill
 
         anchors.horizontalCenter: parent.horizontalCenter
@@ -109,7 +109,7 @@ Item {
         color: "transparent"
     }
 
-    G2Rect {
+    SquircleRect {
         x: column.x + (column.width - width) / 2
         y: column.y + slide.value
         width: Appearance.sizes.traySlot

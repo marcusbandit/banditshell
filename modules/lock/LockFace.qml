@@ -116,7 +116,7 @@ Item {
                 height: Appearance.padding.huge
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 width: Appearance.sizes.lockField

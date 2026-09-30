@@ -277,21 +277,21 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   - Because it's a pixel font, all text goes through `components/StyledText.qml`, which sets
     `renderType: Text.NativeRendering`. Qt's default distance-field renderer smears pixel-font
     stems into grey mush; native rendering keeps them on the pixel grid.
-- **Corners are G2, never circular.** Every rounded shape goes through `components/G2Rect.qml`
+- **Corners are G2, never circular.** Every rounded shape goes through `components/SquircleRect.qml`
   (a squircle drawn with `QtQuick.Shapes`). `Rectangle.radius` is banned in this project: it's
   a circular arc, so curvature jumps at the corner and the eye reads a pinch.
   Portable rule: `~/.claude/rules/g2-corners.md`.
   - **Where a panel meets a screen edge, the corner is CONCAVE** (a negative radius in
-    `G2Rect`). A convex corner there curls the panel away from the edge and leaves a notch of
+    `SquircleRect`). A convex corner there curls the panel away from the edge and leaves a notch of
     dead space, which is wrong: nothing is floating, the panel is part of the edge. Concave
     makes the panel's free edge sweep outward and arrive tangent to the screen edge. Convex is
     for things that genuinely float.
   - **A PICTURE cannot go through the primitive, so it is masked by one.** An image is a
     texture, not a path, so album art or a notification's thumbnail dropped into a rounded
     plate keeps its own square corners over the plate's curve, a pixel away from a G2 corner
-    for comparison. `components/G2Image.qml` renders the picture to a texture and lets a
-    G2Rect of the same size eat it. Same shape, applied differently.
-  - **An OUTLINE is allowed on a control, never on the body.** `G2Rect` grew a stroke for the
+    for comparison. `components/SquircleImage.qml` renders the picture to a texture and lets a
+    SquircleRect of the same size eat it. Same shape, applied differently.
+  - **An OUTLINE is allowed on a control, never on the body.** `SquircleRect` grew a stroke for the
     transport's play ring. The old "fill only" rule was about the chassis: a hairline on a
     contour that joins another shape reads as a seam through one object. A ring around a
     button joins nothing, and it is how to give a control a boundary without a solid fill.
@@ -354,8 +354,26 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
 ```
 banditshell/
 ├── shell.qml                    entry point: Variants -> one set of surfaces per screen
-├── gallery.qml                  the component gallery, in a window of its own
-│                                (`banditshell gallery [WxH]`)
+├── preview.qml                  the preview router: BANDITSHELL_PREVIEW names the
+│                                file in previews/ to open in its place
+├── previews/                    the shell's pieces, opened alone in a window of
+│                                their own - battery, calculator, files, the lock
+│                                face, notifications, qr, settings, the terminal
+│                                workbench, windows, the gallery (`banditshell
+│                                gallery`, `banditshell lockpreview`, ...). They
+│                                sit in a folder so the root stays just the two
+│                                entry points, and the folder holds because a
+│                                quickshell import path may point here: the `qs`
+│                                symlink in ~/.config/quickshell is this checkout
+├── .qmllint.ini                 which qmllint warnings the LSP may raise; the
+│                                code keeps ImportFailure, DuplicatePropertyBinding,
+│                                UnusedImports and RequiredProperty honest and
+│                                turns the categories that cannot see through the
+│                                singletons down to off
+├── */qmldir                     one per QML folder, naming the module (qs.config,
+│                                qs.services, ...) and every type in it; what lets
+│                                the LSP resolve `import qs.config`. Regenerate
+│                                with scripts/qmldirs.sh after adding files
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
@@ -364,8 +382,8 @@ banditshell/
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
-│   ├── G2Rect.qml               the ONE rounded-rect primitive; fill and/or outline
-│   ├── G2Image.qml              a picture cut to that same corner, by mask
+│   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline
+│   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`
@@ -464,11 +482,11 @@ banditshell/
 │   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
 │   ├── Media.qml                MPRIS, with a stable choice of player
-│   ├── SysInfo.qml              /proc and /sys: cpu, memory, temperature
+│   ├── SystemInfo.qml            /proc and /sys: cpu, memory, temperature
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, and a poster frame per video
-│   ├── Notifs.qml               the notification DAEMON (a server, not a reader)
-│   ├── AppNotifs.qml            the index over it: which application each one
+│   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
+│   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
@@ -478,7 +496,7 @@ banditshell/
 │   ├── Settings.qml             the settings page's state: one real window,
 │   │                            kept alive, hidden between uses
 │   ├── Power.qml                the ways a session can end, and how each is done
-│   ├── Calc.qml                 arithmetic, once: how a number is written, what an
+│   ├── Calculator.qml            arithmetic, once: how a number is written, what an
 │   │                            operator does, and what a TYPED expression means.
 │   │                            Two inputs onto one question, so they cannot
 │   │                            disagree; the keypad's own state is not here
@@ -555,15 +573,15 @@ banditshell/
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
 │   ├── Chassis.qml              the band + sidebar as ONE shape
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
-│   ├── Ipc.qml                  the control surface the CLI talks to
+│   ├── Cli.qml                   the control surface the CLI talks to
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
-│   ├── TopNotch.qml             summon zone: cursor to top-centre -> the time descends
+│   ├── SummonZone.qml            summon zone: cursor to top-centre -> the time descends
 │   ├── media/
 │   │   ├── MediaController.qml  Super+M's card, floating in the middle:
 │   │   │                        keyboard-driven (space, arrows, shift+arrows),
 │   │   │                        pops in and out; the CheatSheet's kind of
 │   │   │                        object, the power panel's kind of guest
-│   │   ├── MediaPreview.qml     what is playing, Niagara's block, under the time
+│   │   ├── MediaPreview.qml     what is playing, the launcher's block, under the time
 │   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
 │   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
 │   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
@@ -574,7 +592,7 @@ banditshell/
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field over everything installed
-│   │   ├── NiagaraLauncher.qml  text before icons; the alphabet on a rail.
+│   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
 │   │   │                        across one clears them or opens the folder
@@ -605,7 +623,7 @@ banditshell/
 │   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
-│   │   ├── KeyBoard.qml         the same binds, on the keys your hands know
+│   │   ├── Keyboard.qml          the same binds, on the keys your hands know
 │   │   ├── KeyCap.qml           one key: a width in units, a legend, a state
 │   │   └── Chord.qml            one chord, in whichever vocabulary is being spoken
 │   ├── keyboard/                the board for when the machine is folded over
@@ -749,6 +767,9 @@ banditshell/
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 ├── scripts/
+│   ├── qmldirs.sh               regenerates every */qmldir after a QML file
+│   │                            is added, moved or renamed; run it, the LSP
+│   │                            reads what it writes
 │   ├── testbed.sh               A COMPOSITOR TO TEST IN: headless sway on its
 │   │                            own display, so opening a window to check
 │   │                            something never lands on the desktop somebody
@@ -900,7 +921,7 @@ no single contour to round. Cutting one shape makes all three impossible rather 
 **Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
 contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes
 later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
-the left edge the way `TopNotch` already does at the top.
+the left edge the way `SummonZone` already does at the top.
 
 **Status 2026-09-29: the hiding is here, per screen; the animation is not.** `sidebar.enabled`
 is the default every monitor follows and `sidebar.perScreen` holds the ones that disagree,
@@ -932,6 +953,20 @@ speak. The way BACK is `hyprctl reload`, deliberately: the user's lua owns those
 that returns all of it to the file's truth at once and re-triangulates every open window with
 it. Values stashed at bare time would go stale the day the file moved, and a shell that
 started bare never saw them at all.
+
+**REVERSED 2026-09-30. The shell owns NONE of the compositor's half.** The reasoning above was
+right about the numbers and wrong about who applies them: the user's Hyprland config owns
+gaps and rounding outright, and the shell does not write them - not on the toggle, not on
+boot, not after a reload. `applyBare` and `reassertBare` are gone from Compositor.qml, and
+the CLI's border verb is the chrome half only. The zeros and the reload live in the user's
+own Lua bind (Hyprland 0.56's config Lua runs `hl.config` at keypress time as a dynamic call,
+and `hl.exec_cmd("hyprctl reload")` takes the way back), which reads the flag out of
+config.json and drives the shell's idempotent `border on`/`border off` beside it - the flag
+is the pair's ONE authority and the compositor's numbers only follow, so a drifted pair
+converges on the next press instead of flipping over together and staying inverted forever. The cost is said plainly: a machine that reboots bare boots with
+look.lua's gaps and rounding and the chrome still down, because the flag was only ever the
+chrome's and the numbers were never the shell's to remember. `border status` still reads the
+compositor live, so the two halves can be compared when they disagree.
 
 **BUT THE TOGGLE'S OWN HALF CANNOT RUN IN THE SHELL.** A toggle writes the flag, the write
 hot-reloads the shell, and the teardown eats that generation's in-flight eval - measured as
@@ -1686,7 +1721,7 @@ somewhere, and bluetooth discovery is visible to other people as well.
 sender, and a sender that quits takes its object with it, so a card bound
 straight to the live handle loses its summary, its body and its icon the moment
 the app that sent it closes: what is left in the history is a bare bell over an
-empty line. `services/NotifEntry.qml` copies the content at arrival and re-copies
+empty line. `services/NotificationEntry.qml` copies the content at arrival and re-copies
 it whenever the live object changes, keeping the handle itself only for talking
 back to the sender, so a notification whose sender dies simply stops updating.
 **A sender's death is not the shell's amnesia.**
@@ -2020,7 +2055,7 @@ does nothing on that child, and the scroll moves the panel the child is sitting
 on. So the second rule above is not only about surfaces that refuse a drag.
 **Anything that owns a press over a gesture owns the wheel as well**, to answer
 it, to eat it, or to hand it on deliberately, and a surface that owns a whole
-drag of its own owns it twice over. The Niagara launcher's alphabet rail was the
+drag of its own owns it twice over. The alphabet launcher's alphabet rail was the
 live instance and now eats it; `MenuRow` and the launcher's search field are the
 remaining ones, named below.
 

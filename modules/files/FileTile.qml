@@ -31,7 +31,7 @@ Item {
     signal dragged(point position)
     signal dropped(point position)
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
 
         radius: Appearance.rounding.normal
@@ -57,7 +57,7 @@ Item {
             width: parent.width
             height: root.height * 0.52
 
-            G2Image {
+            SquircleImage {
                 id: thumb
 
                 anchors.centerIn: parent

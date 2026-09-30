@@ -118,7 +118,7 @@ Item {
             interactive: !root.busy
             onActivated: root.act("install")
 
-            G2Rect {
+            SquircleRect {
                 width: Appearance.font.size.small
                 height: width
                 radius: width / 2

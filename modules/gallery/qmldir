@@ -1,0 +1,4 @@
+module qs.modules.gallery
+Gallery 1.0 Gallery.qml
+Knobs 1.0 Knobs.qml
+singleton Registry 1.0 Registry.qml

@@ -264,7 +264,7 @@ PanelWindow {
         epsilon: 0.005
     }
 
-    G2Rect {
+    SquircleRect {
         id: highlight
 
         readonly property bool shown: PenMap.followWindow && PenMap.hoveredWindow.width > 0 && PenMap.hoveredWindow.height > 0
@@ -305,7 +305,7 @@ PanelWindow {
             width: implicitWidth
             height: implicitHeight
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.surface
@@ -360,7 +360,7 @@ PanelWindow {
         speed: win.mine ? Appearance.anim.trackSpeed : 0
     }
 
-    G2Rect {
+    SquircleRect {
         id: outline
 
         visible: win.mine
@@ -391,7 +391,7 @@ PanelWindow {
     Repeater {
         model: win.corners.length
 
-        delegate: G2Rect {
+        delegate: SquircleRect {
             id: grip
 
             required property int index
@@ -503,7 +503,7 @@ PanelWindow {
             icon: readout.centreMark
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
             color: Appearance.colour.surface

@@ -55,7 +55,7 @@ Item {
 
         opacity: root.thrown < 0 ? 1 - root.throwFraction * 0.7 : 1
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
 
             radius: Appearance.rounding.normal
@@ -69,7 +69,7 @@ Item {
             }
         }
 
-        G2Rect {
+        SquircleRect {
             x: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
             width: Appearance.font.stem
@@ -94,7 +94,7 @@ Item {
             width: root.isImage ? Math.round(height * aspect) : Appearance.sizes.clipboardIcon
             height: root.isImage ? parent.height - Appearance.padding.normal * 2 : Appearance.sizes.clipboardIcon
 
-            G2Image {
+            SquircleImage {
                 id: thumb
 
                 anchors.fill: parent
@@ -118,7 +118,7 @@ Item {
                 color: Appearance.colour.textFaint
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.centerIn: parent
                 width: Appearance.font.iconSize
                 height: width

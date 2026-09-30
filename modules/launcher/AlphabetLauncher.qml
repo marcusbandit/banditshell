@@ -309,7 +309,7 @@ Item {
             root.show();
     }
 
-    readonly property var answer: Calc.answer(query.text)
+    readonly property var answer: Calculator.answer(query.text)
     property bool answerHolds: false
 
     onAnswerChanged: root.answerHolds = !!root.answer
@@ -739,7 +739,7 @@ Item {
                 }
             }
 
-            G2Rect {
+            SquircleRect {
                 id: disc
 
                 readonly property string glyph: root.keyIcon(root.marked)
@@ -950,7 +950,7 @@ Item {
                     anchors.fill: list
                     clip: true
 
-                    G2Rect {
+                    SquircleRect {
                         id: plateShape
 
                         x: root.gutter - Appearance.padding.small
@@ -1047,8 +1047,8 @@ Item {
                         readonly property bool away: !!entry && Apps.isHidden(entry)
                         readonly property color ring: Appearance.colour.accent
 
-                        readonly property int unread: row.folder ? AppNotifs.countForAll(row.inside) : row.entry ? AppNotifs.countFor(row.entry) : 0
-                        readonly property var newest: row.entry ? AppNotifs.newestFor(row.entry) : null
+                        readonly property int unread: row.folder ? AppNotifications.countForAll(row.inside) : row.entry ? AppNotifications.countFor(row.entry) : 0
+                        readonly property var newest: row.entry ? AppNotifications.newestFor(row.entry) : null
 
                         readonly property bool canOpen: !!row.folder
                         readonly property bool canClear: row.unread > 0
@@ -1090,9 +1090,9 @@ Item {
 
                         function clear(): void {
                             if (row.folder)
-                                AppNotifs.dismissForAll(row.inside);
+                                AppNotifications.dismissForAll(row.inside);
                             else
-                                AppNotifs.dismissFor(row.entry);
+                                AppNotifications.dismissFor(row.entry);
                         }
 
                         width: list.width
@@ -1322,7 +1322,7 @@ Item {
                                 }
                             }
 
-                            G2Rect {
+                            SquircleRect {
                                 id: badge
 
                                 anchors.left: parent.left
@@ -1412,7 +1412,7 @@ Item {
                                     color: Appearance.colour.textDim
                                 }
 
-                                G2Rect {
+                                SquircleRect {
                                     id: unread
 
                                     x: badge.width - width * 0.78

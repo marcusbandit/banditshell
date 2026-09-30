@@ -1,5 +1,4 @@
 import QtQuick
-import qs.config
 
 ShaderEffect {
     id: root

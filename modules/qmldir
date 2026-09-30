@@ -1,0 +1,12 @@
+module qs.modules
+Chassis 1.0 Chassis.qml
+Cli 1.0 Cli.qml
+FrameExclusions 1.0 FrameExclusions.qml
+LaunchNotice 1.0 LaunchNotice.qml
+MicIndicator 1.0 MicIndicator.qml
+SettingsCorner 1.0 SettingsCorner.qml
+ShellWindow 1.0 ShellWindow.qml
+SummonZone 1.0 SummonZone.qml
+Tooltip 1.0 Tooltip.qml
+VolumeRail 1.0 VolumeRail.qml
+WallpaperWindow 1.0 WallpaperWindow.qml

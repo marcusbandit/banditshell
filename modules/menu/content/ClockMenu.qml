@@ -312,7 +312,7 @@ Column {
             height: card.height
             opacity: card.fade
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.fill
@@ -351,7 +351,7 @@ Column {
                     }
                 }
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     radius: height / 2
                     color: discPress.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
@@ -420,7 +420,7 @@ Column {
                 field.moved(field.fold(field.value + units));
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
@@ -514,7 +514,7 @@ Column {
             }
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: height / 2
             color: pill.on ? Appearance.colour.fillStronger : press.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
@@ -597,7 +597,7 @@ Column {
         onSeedChanged: if (!input.activeFocus)
             input.text = entry.seed
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             anchors.topMargin: Appearance.padding.small
             anchors.bottomMargin: Appearance.padding.small
@@ -655,7 +655,7 @@ Column {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         id: ringing
 
         readonly property var alarm: Clock.ringing
@@ -970,7 +970,7 @@ Column {
                 font.pixelSize: Appearance.font.size.small
             }
 
-            G2Rect {
+            SquircleRect {
                 id: track
 
                 anchors.left: parent.left
@@ -982,7 +982,7 @@ Column {
                 radius: height / 2
                 color: Appearance.colour.fill
 
-                G2Rect {
+                SquircleRect {
                     width: drain.value
                     height: parent.height
                     radius: height / 2

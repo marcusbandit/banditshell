@@ -94,7 +94,7 @@ Column {
         width: parent.width
         height: Math.max(Appearance.sizes.minTarget, monthName.implicitHeight)
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
@@ -379,7 +379,7 @@ Column {
                                 width: root.cell - Appearance.padding.small
                                 height: tile.width
 
-                                sourceComponent: G2Rect {
+                                sourceComponent: SquircleRect {
                                     radius: Appearance.rounding.normal
                                     color: cellText.onAccent ? Appearance.colour.accent : root.usageTones[cellText.level - 1]
 

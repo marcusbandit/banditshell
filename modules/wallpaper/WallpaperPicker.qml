@@ -409,13 +409,13 @@ Item {
                 scale: card.PathView.cardScale ?? root.farScale
                 z: card.PathView.cardZ ?? 0
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
                     color: Appearance.colour.fill
                 }
 
-                G2Image {
+                SquircleImage {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
                     source: Wallpaper.faceOf(card.modelData)
@@ -434,7 +434,7 @@ Item {
                     iconFill: Wallpaper.isFrozen(card.modelData) ? 0 : 1
                 }
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
                     color: "transparent"

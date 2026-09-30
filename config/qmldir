@@ -1,0 +1,5 @@
+module qs.config
+singleton Appearance 1.0 Appearance.qml
+singleton Compositor 1.0 Compositor.qml
+singleton Config 1.0 Config.qml
+singleton Themes 1.0 Themes.qml

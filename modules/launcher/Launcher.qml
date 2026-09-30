@@ -69,7 +69,7 @@ Item {
     Component {
         id: niagara
 
-        NiagaraLauncher {
+        AlphabetLauncher {
             originX: root.originX
             inset: root.inset
         }

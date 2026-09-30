@@ -62,7 +62,7 @@ Item {
                 onClicked: Hypr.switchTo(slotItem.info.id)
             }
 
-            G2Rect {
+            SquircleRect {
                 visible: !slotItem.isOccupied
                 x: 0
                 y: (root.block - root.block / 2) / 2
@@ -83,7 +83,7 @@ Item {
                     values: slotItem.info.marks
                 }
 
-                delegate: G2Rect {
+                delegate: SquircleRect {
                     id: cell
 
                     required property var modelData

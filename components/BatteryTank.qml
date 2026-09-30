@@ -126,7 +126,7 @@ Item {
 
         anchors.fill: parent
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: root.radius
             color: parent.shade

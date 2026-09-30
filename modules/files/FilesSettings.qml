@@ -184,7 +184,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.centerIn: parent
 
         implicitWidth: Math.min(root.width - Appearance.padding.huge * 2, 640)
@@ -357,7 +357,7 @@ Item {
                                 width: group.width
                                 height: Appearance.sizes.filesRow * 1.2
 
-                                G2Rect {
+                                SquircleRect {
                                     anchors.fill: parent
 
                                     radius: Appearance.rounding.small

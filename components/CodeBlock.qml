@@ -171,7 +171,7 @@ Item {
             view.reset();
     }
 
-    G2Rect {
+    SquircleRect {
         id: notice
 
         anchors.left: parent.left

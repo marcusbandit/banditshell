@@ -15,7 +15,7 @@ Item {
     implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
     implicitHeight: implicitWidth
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: height / 2
         color: Appearance.colour.fill

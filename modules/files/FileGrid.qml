@@ -138,7 +138,7 @@ Item {
         return out;
     }
 
-    G2Rect {
+    SquircleRect {
         id: band
 
         visible: empty.banding

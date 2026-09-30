@@ -3,7 +3,6 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import qs.config
-import qs.components
 import qs.services
 import qs.modules.settings
 
@@ -17,12 +16,12 @@ Item {
     }
 
     Component.onCompleted: {
-        SysInfo.watch(true);
+        SystemInfo.watch(true);
         Device.watch(true);
     }
 
     Component.onDestruction: {
-        SysInfo.watch(false);
+        SystemInfo.watch(false);
         Device.watch(false);
     }
 
@@ -77,15 +76,15 @@ Item {
             SettingsRow {
                 icon: "speed"
                 label: "Load"
-                value: `${Math.round(SysInfo.cpu * 100)}%`
+                value: `${Math.round(SystemInfo.cpu * 100)}%`
                 interactive: false
             }
 
             SettingsRow {
-                visible: SysInfo.temperature > 0
+                visible: SystemInfo.temperature > 0
                 icon: "device_thermostat"
                 label: "Temperature"
-                value: `${Math.round(SysInfo.temperature)} °C`
+                value: `${Math.round(SystemInfo.temperature)} °C`
                 interactive: false
             }
 
@@ -111,7 +110,7 @@ Item {
             SettingsRow {
                 icon: "memory_alt"
                 label: "In use"
-                value: `${SysInfo.memoryUsedGb.toFixed(1)} GB (${Math.round(SysInfo.memory * 100)}%)`
+                value: `${SystemInfo.memoryUsedGb.toFixed(1)} GB (${Math.round(SystemInfo.memory * 100)}%)`
                 interactive: false
             }
 

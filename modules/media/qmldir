@@ -1,0 +1,5 @@
+module qs.modules.media
+MediaController 1.0 MediaController.qml
+MediaPreview 1.0 MediaPreview.qml
+MediaTransport 1.0 MediaTransport.qml
+Scrubber 1.0 Scrubber.qml

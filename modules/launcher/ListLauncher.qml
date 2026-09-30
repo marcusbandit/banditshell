@@ -28,7 +28,7 @@ Item {
     readonly property var results: Apps.search(query.text)
     property int selected: 0
 
-    readonly property var answer: Calc.answer(query.text)
+    readonly property var answer: Calculator.answer(query.text)
 
     property bool answerHolds: false
 

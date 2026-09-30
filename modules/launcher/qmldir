@@ -1,0 +1,6 @@
+module qs.modules.launcher
+AlphabetLauncher 1.0 AlphabetLauncher.qml
+AnswerRow 1.0 AnswerRow.qml
+LaunchEdge 1.0 LaunchEdge.qml
+Launcher 1.0 Launcher.qml
+ListLauncher 1.0 ListLauncher.qml

@@ -84,18 +84,18 @@ Item {
 
     readonly property bool mine: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
 
-    readonly property var items: root.expanded ? Notifs.history : (root.mine ? Notifs.popups : [])
+    readonly property var items: root.expanded ? Notifications.history : (root.mine ? Notifications.popups : [])
 
     readonly property bool any: root.items.length > 0 || root.expanded
 
     onExpandedChanged: {
         if (root.expanded)
-            Notifs.pause(root);
+            Notifications.pause(root);
         else
-            Notifs.resume(root);
+            Notifications.resume(root);
     }
 
-    Component.onDestruction: Notifs.resume(root)
+    Component.onDestruction: Notifications.resume(root)
 
     readonly property Item maskItem: tray
 
@@ -297,7 +297,7 @@ Item {
                             anchors.rightMargin: Appearance.padding.normal
                             anchors.verticalCenter: parent.verticalCenter
 
-                            text: Notifs.count > 0 ? `${Notifs.count} unread` : "Nothing unread"
+                            text: Notifications.count > 0 ? `${Notifications.count} unread` : "Nothing unread"
                             font.pixelSize: Appearance.font.size.small
                             color: Appearance.colour.textFaint
                             elide: Text.ElideRight
@@ -309,10 +309,10 @@ Item {
                             anchors.right: parent.right
                             anchors.verticalCenter: parent.verticalCenter
 
-                            visible: Notifs.count > 0
+                            visible: Notifications.count > 0
                             text: "Clear"
 
-                            onClicked: Notifs.clear()
+                            onClicked: Notifications.clear()
                         }
                     }
                 }
@@ -339,7 +339,7 @@ Item {
 
                             roomy: root.expanded
 
-                            onDismissed: root.expanded ? Notifs.forget(row.modelData) : Notifs.dismiss(row.modelData)
+                            onDismissed: root.expanded ? Notifications.forget(row.modelData) : Notifications.dismiss(row.modelData)
                         }
                     }
                 }

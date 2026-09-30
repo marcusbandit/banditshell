@@ -38,7 +38,7 @@ Item {
     width: root.units * root.pitch - root.seam
     height: root.rowPitch - root.seam
 
-    G2Rect {
+    SquircleRect {
         id: cap
 
         anchors.fill: parent

@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
@@ -780,7 +779,7 @@ Item {
         opacity: 0.85
         z: 100
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
 
             radius: Appearance.rounding.normal

@@ -224,7 +224,7 @@ Item {
 
         opacity: Math.min(1, reveal.value * 1.6)
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.large
             color: Appearance.colour.surface
@@ -243,7 +243,7 @@ Item {
                 height: Math.max(root.artSize, trackText.height)
                 visible: Media.available
 
-                G2Rect {
+                SquircleRect {
                     id: art
 
                     anchors.verticalCenter: parent.verticalCenter
@@ -253,7 +253,7 @@ Item {
                     radius: Appearance.rounding.normal
                     color: Appearance.colour.fill
 
-                    G2Image {
+                    SquircleImage {
                         anchors.fill: parent
                         source: Media.artUrl
                         radius: art.radius
@@ -372,7 +372,7 @@ Item {
                     Row {
                         spacing: root.pad
 
-                        G2Rect {
+                        SquircleRect {
                             id: emptyArt
 
                             width: root.artSize

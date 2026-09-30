@@ -110,7 +110,7 @@ Item {
         transformOrigin: Item.Center
         scale: 1 - (1 - reveal.value) / 12
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
 
             radius: Appearance.rounding.large
@@ -209,7 +209,7 @@ Item {
                     anchors.right: parent.right
                     spacing: Appearance.padding.normal
 
-                    G2Rect {
+                    SquircleRect {
                         width: stopMark.implicitWidth + Appearance.padding.large * 2
                         height: em.height * 2
                         radius: Appearance.rounding.normal
@@ -236,7 +236,7 @@ Item {
                         }
                     }
 
-                    G2Rect {
+                    SquircleRect {
                         id: go
 
                         readonly property bool ready: !root.asksForSecret || !field.empty

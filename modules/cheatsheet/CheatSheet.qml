@@ -521,7 +521,7 @@ Item {
 
         opacity: root.presence
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
 
             radius: Appearance.rounding.large
@@ -614,7 +614,7 @@ Item {
                         sheet: root
                     }
 
-                    KeyBoard {
+                    Keyboard {
                         id: keyboard
 
                         width: view.width

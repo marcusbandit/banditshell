@@ -10,30 +10,30 @@ Column {
 
     spacing: Appearance.padding.normal
 
-    Component.onCompleted: SysInfo.watch(true)
-    Component.onDestruction: SysInfo.watch(false)
+    Component.onCompleted: SystemInfo.watch(true)
+    Component.onDestruction: SystemInfo.watch(false)
 
     Repeater {
         model: [
             {
                 icon: "speed",
                 label: "CPU",
-                value: SysInfo.cpu,
-                detail: `${Math.round(SysInfo.cpu * 100)}%`
+                value: SystemInfo.cpu,
+                detail: `${Math.round(SystemInfo.cpu * 100)}%`
             },
             {
                 icon: "memory",
                 label: "Memory",
-                value: SysInfo.memory,
-                detail: `${SysInfo.memoryUsedGb.toFixed(1)} of ${SysInfo.memoryTotalGb.toFixed(1)} GB`
+                value: SystemInfo.memory,
+                detail: `${SystemInfo.memoryUsedGb.toFixed(1)} of ${SystemInfo.memoryTotalGb.toFixed(1)} GB`
             },
             {
                 icon: "thermostat",
                 label: "Temperature",
 
-                value: Math.min(1, SysInfo.temperature / 100),
-                detail: SysInfo.temperature > 0 ? `${Math.round(SysInfo.temperature)} C` : "unavailable",
-                warn: SysInfo.temperature >= 80
+                value: Math.min(1, SystemInfo.temperature / 100),
+                detail: SystemInfo.temperature > 0 ? `${Math.round(SystemInfo.temperature)} C` : "unavailable",
+                warn: SystemInfo.temperature >= 80
             }
         ]
 
@@ -88,15 +88,15 @@ Column {
 
     Separator {
         width: parent.width
-        visible: SysInfo.swap > 0
+        visible: SystemInfo.swap > 0
     }
 
     MenuRow {
         width: root.width
-        visible: SysInfo.swap > 0
+        visible: SystemInfo.swap > 0
         interactive: false
         icon: "swap_horiz"
         label: "Swap"
-        detail: `${Math.round(SysInfo.swap * 100)}% used`
+        detail: `${Math.round(SystemInfo.swap * 100)}% used`
     }
 }

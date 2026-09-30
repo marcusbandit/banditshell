@@ -32,7 +32,7 @@ Item {
     width: root.units * root.pitch - root.seam
     height: (root.foot > 0 ? 2 * root.pitch : root.pitch) - root.seam
 
-    G2Rect {
+    SquircleRect {
         id: head
 
         width: parent.width
@@ -86,7 +86,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         id: leg
 
         x: parent.width - width

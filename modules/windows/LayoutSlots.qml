@@ -298,16 +298,6 @@ Item {
                         }
                     }
 
-            opacity: (slot.aimed ? 1 : 0.62) + (1 - (slot.aimed ? 1 : 0.62)) * land.value
-
-            Behavior on opacity {
-                enabled: !root.landed
-
-                NumberAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-
                     readonly property rect spot: root.place(root.planned(slot.modelData))
 
                     readonly property rect home: root.liveRect(slot.modelData.addr, slot.modelData)
@@ -354,7 +344,7 @@ Item {
                         }
                     }
 
-                    G2Rect {
+                    SquircleRect {
                         anchors.fill: parent
                         visible: slot.modelData.held
 
@@ -365,7 +355,7 @@ Item {
                         opacity: 1 - land.value
                     }
 
-                    G2Rect {
+                    SquircleRect {
                         anchors.fill: parent
                         visible: !slot.modelData.held
 

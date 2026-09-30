@@ -269,7 +269,7 @@ Item {
         y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - root.rim
         opacity: drop.value
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: root.wellRadius
             cornerPower: root.cornerPower
@@ -294,7 +294,14 @@ Item {
                     Rectangle {
                         required property int index
 
-                        readonly property real fraction: (root.history, root.phase, flow.t, fill.value, writer.position, root.barFraction(index))
+                        readonly property real fraction: {
+                            root.history
+                            root.phase
+                            flow.t
+                            fill.value
+                            writer.position
+                            root.barFraction(index)
+                        }
 
                         readonly property bool liquid: root.phase === "processing"
 

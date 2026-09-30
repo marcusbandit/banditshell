@@ -11,7 +11,7 @@ Item {
     implicitWidth: Appearance.sizes.toggleWidth
     implicitHeight: Appearance.sizes.toggleHeight
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: height / 2
         color: root.checked ? Appearance.colour.accent : Appearance.colour.fillStrong
@@ -23,7 +23,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         readonly property real inset: Math.max(2, Math.round(root.height / 9))
 
         y: inset

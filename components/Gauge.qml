@@ -18,13 +18,13 @@ Item {
 
     readonly property real fraction: Math.max(0, Math.min(1, root.value))
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: root.height / 2
         color: root.track
     }
 
-    G2Rect {
+    SquircleRect {
 
         width: Math.max(root.height, root.width * root.fraction)
         height: root.height

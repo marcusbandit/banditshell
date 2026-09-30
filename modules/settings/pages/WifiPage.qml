@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -49,7 +48,7 @@ Item {
         SettingsGroup {
             heading: "Networks"
 
-            G2Rect {
+            SquircleRect {
                 width: parent.width
                 height: menu.implicitHeight + Appearance.padding.small * 2
                 radius: Appearance.rounding.normal

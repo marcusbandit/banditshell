@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -294,7 +293,7 @@ Item {
                         width: 160
                         height: input.implicitHeight + Appearance.padding.small * 2
 
-                        G2Rect {
+                        SquircleRect {
                             anchors.fill: parent
                             radius: Appearance.rounding.small
                             color: Appearance.colour.fillStrong

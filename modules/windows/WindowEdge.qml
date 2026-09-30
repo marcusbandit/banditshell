@@ -532,7 +532,7 @@ Item {
         onTriggered: root.flipped = false
     }
 
-    G2Rect {
+    SquircleRect {
         id: card
 
         visible: root.showing

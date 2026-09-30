@@ -98,7 +98,7 @@ Column {
         implicitWidth: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
         implicitHeight: implicitWidth
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: height / 2
             color: tool.on ? Appearance.colour.accentFill : Appearance.colour.fill
@@ -161,7 +161,7 @@ Column {
         implicitWidth: parent ? parent.width : 0
         implicitHeight: line.implicitHeight
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
             color: Appearance.colour.accentFill

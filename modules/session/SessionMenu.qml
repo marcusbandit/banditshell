@@ -171,7 +171,7 @@ Item {
         visible: reveal.value > 0.001
         enabled: root.open
 
-        G2Rect {
+        SquircleRect {
             x: root.pad
             anchors.verticalCenter: parent.verticalCenter
             width: root.groupWidth
@@ -179,7 +179,7 @@ Item {
             radius: root.groupRadius
             color: Appearance.colour.fill
 
-            G2Rect {
+            SquircleRect {
                 x: root.gap
                 y: root.gap + marker.value
                 width: root.button

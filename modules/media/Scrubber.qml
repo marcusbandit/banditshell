@@ -92,7 +92,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         x: root.pipX
         y: 0
         width: root.stroke
@@ -111,7 +111,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         x: root.pipX + root.stroke + root.gap
         y: root.centre - height / 2
         width: Math.max(0, root.width - x)

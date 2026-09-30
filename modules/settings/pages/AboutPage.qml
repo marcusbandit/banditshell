@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.components
@@ -27,7 +26,7 @@ Item {
             width: list.width
             spacing: Appearance.padding.normal
 
-            G2Rect {
+            SquircleRect {
                 id: mark
 
                 readonly property int ribs: 3
@@ -44,7 +43,7 @@ Item {
                 Repeater {
                     model: mark.ribs
 
-                    G2Rect {
+                    SquircleRect {
                         id: rib
 
                         required property int index

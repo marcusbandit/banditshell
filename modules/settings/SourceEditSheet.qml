@@ -1,7 +1,6 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
-import Quickshell
 import qs.config
 import qs.components
 
@@ -37,7 +36,7 @@ Item {
         onClicked: root.close()
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.centerIn: parent
         width: Math.min(parent.width - Appearance.padding.huge * 2, 560)
         height: body.implicitHeight + Appearance.padding.normal * 2

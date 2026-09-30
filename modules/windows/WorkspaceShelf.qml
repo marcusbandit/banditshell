@@ -135,7 +135,7 @@ Item {
                 }
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
 
                 radius: Appearance.rounding.normal

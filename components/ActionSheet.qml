@@ -132,7 +132,7 @@ Item {
 
         clip: true
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: root.groupRadius
             color: Appearance.colour.surfaceSolid
@@ -140,7 +140,7 @@ Item {
             strokeWidth: Appearance.font.stem
         }
 
-        G2Rect {
+        SquircleRect {
             x: root.gap
             y: root.gap + marker.value
             width: root.rowWidth

@@ -40,7 +40,7 @@ Item {
                         Repeater {
                             model: [row.accents.dim, row.accents.mid, row.accents.bright]
 
-                            delegate: G2Rect {
+                            delegate: SquircleRect {
                                 required property color modelData
 
                                 width: Appearance.font.size.small
@@ -124,7 +124,7 @@ Item {
                         Repeater {
                             model: Wallpaper.palette
 
-                            delegate: G2Rect {
+                            delegate: SquircleRect {
                                 required property var modelData
 
                                 readonly property real swatch: Appearance.font.size.normal

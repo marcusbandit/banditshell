@@ -46,13 +46,13 @@ Item {
 
     Component.onCompleted: slide.snap()
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: height / 2
         color: Appearance.colour.fillStrong
     }
 
-    G2Rect {
+    SquircleRect {
         x: slide.value
         width: root.segment
         height: parent.height

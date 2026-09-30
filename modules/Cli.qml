@@ -302,7 +302,7 @@ Scope {
         }
 
         function answer(expression: string): string {
-            const result = Calc.evaluate(expression);
+            const result = Calculator.evaluate(expression);
             return result ? result.text : `not an expression: ${expression}`;
         }
     }
@@ -445,7 +445,7 @@ Scope {
         }
 
         function clear(): string {
-            Notifs.clear();
+            Notifications.clear();
             return "cleared";
         }
 
@@ -453,7 +453,7 @@ Scope {
             const win = Shell.forScreen(screen);
             if (!win)
                 return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            return `count=${Notifs.count} pinned=${win.notifications.pinned} expanded=${win.notifications.expanded}`;
+            return `count=${Notifications.count} pinned=${win.notifications.pinned} expanded=${win.notifications.expanded}`;
         }
 
         function held(app: string): string {
@@ -461,7 +461,7 @@ Scope {
                 return "0";
             const key = app.toLowerCase();
             const attended = e => e?.held && (e.appName ?? "").toLowerCase() === key;
-            return Notifs.popups.some(attended) || Notifs.history.some(attended) ? "1" : "0";
+            return Notifications.popups.some(attended) || Notifications.history.some(attended) ? "1" : "0";
         }
     }
 

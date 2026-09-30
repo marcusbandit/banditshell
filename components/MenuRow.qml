@@ -35,7 +35,7 @@ Item {
 
     implicitHeight: Math.max(root.rowHeight, stack.implicitHeight + Appearance.padding.small * 2, trailingSlot.childrenRect.height + Appearance.padding.small * 2)
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colour.fill

@@ -191,10 +191,10 @@ Column {
         const a = root.acc;
         const o = root.op;
         const b = root.value();
-        const r = Calc.apply(a, o, b);
+        const r = Calculator.apply(a, o, b);
 
-        root.history = `${Calc.format(a)} ${o} ${Calc.format(b)} = ${Calc.format(r)}`;
-        root.entry = Calc.format(r);
+        root.history = `${Calculator.format(a)} ${o} ${Calculator.format(b)} = ${Calculator.format(r)}`;
+        root.entry = Calculator.format(r);
         root.acc = r;
         root.op = "";
         root.typed = false;
@@ -291,7 +291,7 @@ Column {
             return true;
         }
 
-        const o = Calc.operators[c];
+        const o = Calculator.operators[c];
         if (o !== undefined) {
             root.press({
                 tag: "op",
@@ -306,7 +306,7 @@ Column {
     readonly property string working: {
         if (root.op === "")
             return root.history;
-        const left = `${Calc.format(root.acc)} ${root.op}`;
+        const left = `${Calculator.format(root.acc)} ${root.op}`;
         return root.typed ? `${left} ${root.entry}` : left;
     }
 
@@ -355,7 +355,7 @@ Column {
             }
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
 
@@ -432,7 +432,7 @@ Column {
                 }
             }
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: Appearance.rounding.normal
                 color: grab.containsMouse || grab.pressed ? Appearance.colour.fillStrong : "transparent"

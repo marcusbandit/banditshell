@@ -17,7 +17,7 @@ Item {
         width: parent.width
         spacing: Appearance.padding.huge
 
-        G2Rect {
+        SquircleRect {
             width: parent.width
             height: current.implicitHeight + Appearance.padding.card * 2
             radius: Appearance.rounding.normal
@@ -31,7 +31,7 @@ Item {
                 width: parent.width - Appearance.padding.card * 2
                 spacing: Appearance.padding.normal
 
-                G2Image {
+                SquircleImage {
                     id: picture
 
                     visible: picture.ready
@@ -42,7 +42,7 @@ Item {
                     source: Wallpaper.faceOf(Wallpaper.current)
                 }
 
-                G2Rect {
+                SquircleRect {
                     visible: !picture.ready
                     width: parent.width
                     height: width * 9 / 16
@@ -122,7 +122,7 @@ Item {
                 onCommitted: path => Config.set("wallpaper.dir", path)
             }
 
-            G2Rect {
+            SquircleRect {
                 width: parent.width
                 height: grid.implicitHeight + Appearance.padding.card * 2
                 radius: Appearance.rounding.normal
@@ -152,14 +152,14 @@ Item {
                             width: grid.cell
                             height: grid.cell * 9 / 16
 
-                            G2Image {
+                            SquircleImage {
                                 anchors.fill: parent
                                 radius: Appearance.rounding.small
                                 fillMode: Image.PreserveAspectCrop
                                 source: Wallpaper.faceOf(tile.modelData)
                             }
 
-                            G2Rect {
+                            SquircleRect {
                                 anchors.fill: parent
                                 visible: tile.current
                                 radius: Appearance.rounding.small

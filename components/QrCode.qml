@@ -2,7 +2,6 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Shapes
-import Quickshell
 import Quickshell.Io
 import qs.config
 import "squircle.js" as Squircle
@@ -200,7 +199,7 @@ Item {
         width: root.side
         height: root.side + root.hem
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.large
             color: root.plate

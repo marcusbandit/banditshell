@@ -21,7 +21,7 @@ Item {
         width: Appearance.sizes.minTarget
         height: width
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             radius: marker.square ? Appearance.rounding.normal : height / 2
             cornerPower: marker.square ? Appearance.rounding.power : 2

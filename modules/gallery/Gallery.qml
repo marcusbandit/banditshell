@@ -134,7 +134,7 @@ Item {
                                 width: navCol.width
                                 height: Appearance.sizes.minTarget + Appearance.padding.small
 
-                                G2Rect {
+                                SquircleRect {
                                     anchors.fill: parent
                                     radius: Appearance.rounding.normal
                                     color: Appearance.colour.fill
@@ -165,7 +165,7 @@ Item {
                                     }
                                 }
 
-                                G2Rect {
+                                SquircleRect {
                                     anchors.right: parent.right
                                     anchors.rightMargin: Appearance.padding.small
                                     anchors.verticalCenter: parent.verticalCenter
@@ -219,7 +219,7 @@ Item {
                     font.pixelSize: Appearance.font.size.large
                 }
 
-                G2Rect {
+                SquircleRect {
                     anchors.verticalCenter: parent.verticalCenter
 
                     width: 8
@@ -250,7 +250,7 @@ Item {
             }
         }
 
-        G2Rect {
+        SquircleRect {
             id: stage
 
             anchors.top: head.bottom

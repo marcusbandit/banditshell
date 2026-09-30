@@ -59,7 +59,7 @@ Item {
 
         implicitHeight: box.implicitHeight + Appearance.padding.normal * 2
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             anchors.topMargin: Appearance.padding.small
             anchors.bottomMargin: Appearance.padding.small

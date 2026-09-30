@@ -1,7 +1,6 @@
 import QtQuick
 import qs.config
 import qs.components
-import qs.services
 
 Item {
     id: root
@@ -37,7 +36,7 @@ Item {
             wrapMode: Text.Wrap
         }
 
-        G2Rect {
+        SquircleRect {
             anchors.horizontalCenter: parent.horizontalCenter
 
             implicitWidth: command.implicitWidth + Appearance.padding.large * 2

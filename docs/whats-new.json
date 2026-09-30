@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-09-30-2",
+      "date": "2026-09-30",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The source tree is reorganised around how you would look for things: the preview windows moved out of the repo root into previews/ behind a small router, and the jargon names became the words you would actually search for - Notifications, Calculator, SystemInfo, SummonZone, the alphabet launcher, SquircleRect. Nothing about how the shell looks or behaves moved with them."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The shell is now fully legible to the QML language server: every folder carries a qmldir and the LSP's import path is wired up, so code completion finds your own singletons and the editor's warning floor went from thousands to the few that can be kept honest. If you add a QML file, run scripts/qmldirs.sh once."
+        }
+      ]
+    },
+    {
       "id": "2026-09-30",
       "date": "2026-09-30",
       "changes": [

@@ -21,7 +21,7 @@ Column {
         leftPadding: Appearance.padding.small
     }
 
-    G2Rect {
+    SquircleRect {
         width: parent.width
         height: body.implicitHeight
         radius: Appearance.rounding.normal

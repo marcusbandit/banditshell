@@ -73,7 +73,7 @@ Item {
         }
     }
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         anchors.topMargin: handle.height
 

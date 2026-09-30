@@ -16,7 +16,7 @@ Column {
         implicitHeight: Math.max(art.height, info.implicitHeight)
         visible: Media.available
 
-        G2Rect {
+        SquircleRect {
             id: art
 
             width: Appearance.sizes.rowHeight * 1.6

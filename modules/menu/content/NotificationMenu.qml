@@ -20,14 +20,14 @@ Column {
 
             anchors.left: parent.left
             anchors.verticalCenter: parent.verticalCenter
-            text: Notifs.count ? `${Notifs.count} notification${Notifs.count === 1 ? "" : "s"}` : "nothing waiting"
+            text: Notifications.count ? `${Notifications.count} notification${Notifications.count === 1 ? "" : "s"}` : "nothing waiting"
             color: Appearance.colour.textDim
         }
 
         StyledText {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
-            visible: Notifs.any
+            visible: Notifications.any
             text: "clear all"
             font.pixelSize: Appearance.font.size.small
             color: clearPress.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
@@ -39,18 +39,18 @@ Column {
                 anchors.margins: -Appearance.padding.small
                 hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
-                onClicked: Notifs.clear()
+                onClicked: Notifications.clear()
             }
         }
     }
 
     Separator {
         width: parent.width
-        visible: Notifs.any
+        visible: Notifications.any
     }
 
     Repeater {
-        model: Notifs.history
+        model: Notifications.history
 
         delegate: MenuRow {
             id: row
@@ -60,13 +60,13 @@ Column {
             readonly property bool urgent: modelData?.urgency === NotificationUrgency.Critical
 
             width: root.width
-            icon: Notifs.icon(modelData)
+            icon: Notifications.icon(modelData)
             label: modelData?.summary ?? ""
 
             detail: [modelData?.appName, modelData?.brief || modelData?.body].filter(s => s).join(" - ")
             selected: row.urgent
 
-            onActivated: Notifs.forget(modelData)
+            onActivated: Notifications.forget(modelData)
         }
     }
 }

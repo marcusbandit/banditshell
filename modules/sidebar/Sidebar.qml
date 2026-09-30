@@ -1,8 +1,8 @@
 import QtQuick
 import Quickshell
 import qs.config
+import qs.services
 
-import qs.services as Services
 import qs.modules.menu.content
 
 Item {
@@ -47,7 +47,7 @@ Item {
 
     readonly property var updateEntry: ({
             key: "update",
-            title: `update · ${Services.Update.branch}`,
+            title: `update · ${Update.branch}`,
             body: updateMenu
         })
 

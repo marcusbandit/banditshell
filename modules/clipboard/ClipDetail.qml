@@ -46,7 +46,7 @@ Item {
             width: Math.max(Appearance.sizes.minTarget, Appearance.font.iconSize + Appearance.padding.small * 2)
             height: width
 
-            G2Rect {
+            SquircleRect {
                 anchors.fill: parent
                 radius: height / 2
                 color: Appearance.colour.fill
@@ -157,7 +157,7 @@ Item {
         height: Math.max(0, parent.height - y - Appearance.padding.large)
         clip: true
 
-        G2Image {
+        SquircleImage {
             anchors.fill: parent
             visible: root.isImage
             source: root.isImage ? `file://${root.entry.file}` : ""
@@ -172,7 +172,7 @@ Item {
             anchors.fill: parent
             visible: root.isColour
 
-            G2Rect {
+            SquircleRect {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: 0
                 width: Math.min(parent.width, parent.height * 0.6)

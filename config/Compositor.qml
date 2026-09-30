@@ -36,9 +36,6 @@ Singleton {
         refresh();
 
         pushBorderColours();
-
-        if (root.bare)
-            root.applyBare();
     }
 
     Process {
@@ -149,36 +146,11 @@ Singleton {
         function onConfigReloaded(): void {
             root.refresh();
             root.pushBorderColours();
-
-            if (root.bare)
-                root.reassertBare();
         }
 
         function onParserKnownChanged(): void {
             root.pushBorderColours();
-            if (root.bare)
-                root.applyBare();
         }
-    }
-
-    readonly property bool bare: Appearance.bare
-
-    function applyBare(): void {
-        if (!root.isHyprland || !Hypr.parserKnown)
-            return;
-        if (Hypr.lua)
-            pusher.exec(["hyprctl", "--batch", "reload ; eval hl.config({ general = { gaps_out = 0, gaps_in = 0 }, decoration = { rounding = 0 } })"]);
-        else
-            pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword general:gaps_in 0 ; keyword decoration:rounding 0"]);
-    }
-
-    function reassertBare(): void {
-        if (!root.isHyprland || !Hypr.parserKnown)
-            return;
-        if (Hypr.lua)
-            pusher.exec(["hyprctl", "eval", "hl.config({ general = { gaps_out = 0, gaps_in = 0 }, decoration = { rounding = 0 } })"]);
-        else
-            pusher.exec(["hyprctl", "--batch", "keyword general:gaps_out 0 ; keyword general:gaps_in 0 ; keyword decoration:rounding 0"]);
     }
 
     Process {

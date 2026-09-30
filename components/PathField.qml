@@ -61,7 +61,7 @@ Item {
         height: Appearance.sizes.rowHeight
         visible: root.editing
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
             anchors.topMargin: Appearance.padding.small
             anchors.bottomMargin: Appearance.padding.small

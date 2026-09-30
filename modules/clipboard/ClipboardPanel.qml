@@ -503,7 +503,7 @@ Item {
                         }
                     }
 
-                    G2Rect {
+                    SquircleRect {
                         anchors.fill: parent
                         radius: height / 2
                         color: Appearance.colour.fill

@@ -21,7 +21,7 @@ Item {
     Repeater {
         model: root.steps
 
-        delegate: G2Rect {
+        delegate: SquircleRect {
             required property int index
 
             width: root.barWidth

@@ -8,7 +8,7 @@ Singleton {
 
     readonly property var byApp: {
         const out = {};
-        for (const entry of Notifs.history) {
+        for (const entry of Notifications.history) {
             if (entry.leaving)
                 continue;
             const id = root.appIdFor(entry);
@@ -54,7 +54,7 @@ Singleton {
 
     function dismissFor(entry: var): void {
         for (const notif of root.forEntry(entry).slice())
-            Notifs.dismiss(notif);
+            Notifications.dismiss(notif);
     }
 
     function countForAll(entries: var): int {
@@ -67,6 +67,6 @@ Singleton {
     function dismissForAll(entries: var): void {
         for (const id of new Set(entries.map(e => e?.id ?? "")))
             for (const notif of root.forId(id).slice())
-                Notifs.dismiss(notif);
+                Notifications.dismiss(notif);
     }
 }

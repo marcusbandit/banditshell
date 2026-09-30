@@ -91,7 +91,7 @@ QtObject {
         return Apps.iconSourceFor(names);
     }
 
-    readonly property string brief: NotifBrief.briefFor(root)
+    readonly property string brief: NotificationBrief.briefFor(root)
 
     property bool unfolded: false
 

@@ -40,7 +40,7 @@ Item {
     implicitWidth: parent ? parent.width : 0
     implicitHeight: Math.max(Appearance.sizes.rowHeight, body.implicitHeight + root.gap * 2 + (root.stacked ? trailingSlot.childrenRect.height + root.gap : 0), root.stacked ? 0 : trailingSlot.childrenRect.height + root.gap * 2)
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         topLeftRadius: root.first ? radius : 0

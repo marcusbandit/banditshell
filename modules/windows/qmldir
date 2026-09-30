@@ -1,0 +1,5 @@
+module qs.modules.windows
+LayoutSlots 1.0 LayoutSlots.qml
+WindowEdge 1.0 WindowEdge.qml
+WindowView 1.0 WindowView.qml
+WorkspaceShelf 1.0 WorkspaceShelf.qml

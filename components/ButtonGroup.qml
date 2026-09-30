@@ -20,7 +20,7 @@ Item {
 
     opacity: root.interactive ? 1 : 0.45
 
-    G2Rect {
+    SquircleRect {
         anchors.fill: parent
         radius: height / 2
         color: Appearance.colour.fillStrong
@@ -56,7 +56,7 @@ Item {
                 width: (member.hasText ? Math.ceil(ink.width) : 0) + member.markSpan + Appearance.padding.normal * 2
                 height: root.height
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     visible: member.hovered || member.pressed
                     radius: height / 2

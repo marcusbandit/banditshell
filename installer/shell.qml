@@ -207,7 +207,7 @@ ShellRoot {
                 anchors.verticalCenter: parent.verticalCenter
                 opacity: railIn.value
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
 
                     topLeftRadius: 0
@@ -255,7 +255,7 @@ ShellRoot {
                             speed: 11
                         }
 
-                        G2Rect {
+                        SquircleRect {
                             anchors.centerIn: parent
                             width: parent.width * (0.55 + 0.45 * lit.value)
                             height: parent.height
@@ -293,7 +293,7 @@ ShellRoot {
                     }
                 ]
 
-                delegate: G2Rect {
+                delegate: SquircleRect {
                     id: wedge
 
                     required property var modelData
@@ -321,7 +321,7 @@ ShellRoot {
                 speed: 7
             }
 
-            G2Rect {
+            SquircleRect {
                 id: notch
 
                 readonly property real full: 44
@@ -356,7 +356,7 @@ ShellRoot {
                 speed: 7
             }
 
-            G2Rect {
+            SquircleRect {
                 id: bar
 
                 readonly property real full: 48
@@ -446,7 +446,7 @@ ShellRoot {
                     height: Theme.padNormal
                 }
 
-                G2Rect {
+                SquircleRect {
                     id: track
 
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -455,7 +455,7 @@ ShellRoot {
                     radius: Theme.rSmall
                     color: Theme.fill
 
-                    G2Rect {
+                    SquircleRect {
 
                         width: Math.max(0, track.width * fill.value)
                         height: parent.height

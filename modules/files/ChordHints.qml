@@ -54,7 +54,7 @@ Item {
         implicitWidth: list.implicitWidth + Appearance.padding.large * 2
         implicitHeight: list.implicitHeight + Appearance.padding.normal * 2
 
-        G2Rect {
+        SquircleRect {
             anchors.fill: parent
 
             radius: Appearance.rounding.large

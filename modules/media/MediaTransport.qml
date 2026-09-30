@@ -59,7 +59,7 @@ Item {
                     }
                 }
 
-                G2Rect {
+                SquircleRect {
                     anchors.fill: parent
                     visible: !!button.modelData.primary
                     radius: width / 2
