@@ -6,44 +6,15 @@ import qs.config
 import qs.components
 import qs.services
 
-// WHAT YOU COPIED, and getting it back.
-//
-// Built as the launcher's twin rather than as a new idiom: it rises out of the
-// bottom band, it takes the keyboard outright while it is up, a click anywhere
-// off it puts it away, and a push back down into the band it came from does the
-// same. Two lists reached by one gesture should not be two different objects,
-// and the one thing that genuinely differs is what a row is made of.
-//
-// THE SEARCH IS NOT ALWAYS THERE, which is the one place this deliberately
-// parts company with the launcher. A launcher has nothing to show until you have
-// typed, so its field is the whole interface and holding the keyboard is what it
-// is for. A clipboard's list is the answer the moment it opens: the thing you
-// want is nearly always the first or second row, and a field with a caret in it
-// would make every one of those cases begin by pressing Escape. So the list has
-// the keys, `/` asks for the field, and Escape hands them back rather than
-// closing. That is the vim bargain and it is why the letters stay free: `p`
-// keeps a row and `x` throws one away without a modifier anywhere.
 Item {
     id: root
 
-    // Where the chassis's inner edge is, so the panel is centred in the space
-    // the desktop actually has rather than in the screen.
     required property real originX
     required property real inset
 
     readonly property bool open: root.shown
     property bool shown: false
 
-    // WHICH LIST. The clipboard proper, and the transcription clipboard: what
-    // was copied, and what was said. Two histories of the same act, which is
-    // "something I want back", so they are one panel and one gesture rather
-    // than two.
-    //
-    // The tabs differ in what ACCEPTING a row means, and only in that. Tab 0
-    // puts the entry on the clipboard, ready for a paste. Tab 1 loads it into
-    // the slot SUPER+SHIFT+R types from, ready for that key. Both leave the
-    // thing you picked one keystroke from the window you were in, which is why
-    // neither of them types anything itself.
     property int tab: 0
     readonly property var tabs: ["Clipboard", "Transcription"]
 
@@ -51,47 +22,15 @@ Item {
 
     property bool searching: false
     property int selected: 0
-    // Which row the POINTER is over, which is a different question from which
-    // row the keyboard is on. NiagaraLauncher's note: hover cannot move the
-    // selection, because the pointer is not the only thing that moves. Type a
-    // letter and the list under a perfectly still cursor is a different list.
+
     property int hovered: -1
 
-    // WHICH ENTRY THE FULL VIEW IS SHOWING, held separately from `selected`.
-    //
-    // Not derived from the selection, because the two stop agreeing the moment
-    // the list changes underneath: something copied while you are reading pushes
-    // a new row to the top and moves every index down one, and a view bound to
-    // an index would silently start showing its neighbour. An entry is a thing;
-    // an index is a position, and positions here are not stable.
-    //
-    // Null is the whole of "not reading anything", so there is no second flag to
-    // keep in step with it.
     property var reading: null
 
     readonly property bool expanded: !!root.reading
 
-    // What had the keyboard before this took it, so it can have it back.
-    //
-    // This matters more here than it does for the launcher, and in the opposite
-    // direction: a launcher's whole purpose is that something NEW ends up
-    // focused, so it cancels the handback and claims the window it opened. A
-    // clipboard is the other way round. You are putting something back on the
-    // clipboard in order to paste it into the window you were already in, so
-    // that window must have the keyboard again by the time this is gone, and
-    // nothing else may claim it.
     property string restoreTo: ""
 
-    // WHICH SCREEN THIS PANEL IS DRAWN ON, so the line above is a question about
-    // the right one: the window you are going to paste into is the window that
-    // was in front of you HERE, and there is one clipboard panel per monitor.
-    // Reading the shell-wide focus instead meant a panel opened on the screen
-    // without the keyboard remembered a window on the other one and pasted
-    // nowhere useful at all; services/Hypr.qml's `focusedByMonitor` carries the
-    // argument in full.
-    //
-    // Asked of the window rather than handed down, per modules/sidebar/Sidebar.qml: which surface
-    // a panel is drawn on is the window's fact, not the panel's.
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     readonly property real panelWidth: Math.min(Appearance.sizes.clipboardWidth, root.width - root.originX - root.inset * 2)
@@ -103,24 +42,16 @@ Item {
             w: panel.width,
             h: panel.height,
             radius: Appearance.rounding.large,
-            // Melt riding the panel's own size (VolumeRail's clamp), so the
-            // fillet is gone before the slot drops at height zero rather than
-            // being snapped off the collapsing edge in one frame.
+
             smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
         }
     ]
 
     readonly property Item maskItem: catcher
 
-    // WHAT THE LIST IS SHOWING. The tab decides which question is asked; the
-    // query narrows the answer. Both sources are searched the same way, because
-    // Dictation.search defers to Clipboard's own matcher rather than scoring
-    // matches a second way.
     readonly property var results: root.speech ? Dictation.search(query.text) : Clipboard.search(query.text)
 
     readonly property var entry: root.results[root.selected] ?? null
-
-    // ------------------------------------------------------------------
 
     function show(): void {
         if (root.shown)
@@ -129,15 +60,11 @@ Item {
         root.shown = true;
         root.selected = 0;
         root.hovered = -1;
-        // ALWAYS ON THE LIST. The full view is a place you went, not a place you
-        // live: reopening onto whatever was last read would be the panel
-        // answering a question nobody asked this time.
+
         root.reading = null;
         root.stopSearch();
         list.reset();
-        // DEFERRED: the surface only asks the compositor for the keyboard once
-        // `open` has propagated to ShellWindow's keyboardFocus, and focus taken
-        // before that lands on an item that receives nothing.
+
         Qt.callLater(keys.forceActiveFocus);
     }
 
@@ -149,9 +76,7 @@ Item {
         sheet.close();
         root.stopSearch();
         keys.focus = false;
-        // The window you were in gets the keyboard back, because pasting is what
-        // happens next and it has to happen there. No claimNextWindow: nothing
-        // is being opened.
+
         Hypr.restoreFocus(root.restoreTo);
         root.restoreTo = "";
     }
@@ -163,20 +88,11 @@ Item {
             root.show();
     }
 
-    // ON BOTH TABS. It used to refuse on tab 1 because there was nothing behind
-    // it to search; now there is, and a dictation history is the list that needs
-    // it MOST. A paragraph you said an hour ago is not something you find by
-    // scrolling, and it is the one kind of entry you can reliably remember a
-    // word from.
     function startSearch(): void {
         root.searching = true;
         Qt.callLater(query.forceActiveFocus);
     }
 
-    // BACK TO THE LIST, and the query goes with it. A field left holding text it
-    // is no longer showing would make the next `/` open onto somebody else's
-    // search, and the list under it would already be narrowed by a word nothing
-    // on screen is displaying.
     function stopSearch(): void {
         root.searching = false;
         query.text = "";
@@ -188,8 +104,7 @@ Item {
         const n = root.results.length;
         if (n <= 0)
             return;
-        // Wrapping, like the launcher's: getting stuck at the end of a list is a
-        // small papercut with no argument for it.
+
         root.moveTo((root.selected + delta + n) % n);
     }
 
@@ -201,17 +116,11 @@ Item {
         list.reveal(root.selected);
     }
 
-    // INTO A THING. Reads the entry, not the index; see `reading`.
-    // Transcriptions expand too, and are the better argument for the full view
-    // than anything on the clipboard: a row shows one line and a dictated
-    // paragraph is twenty, so the list can only ever show you enough to guess
-    // with. The tab test that used to be here was guarding an empty tab.
     function expand(): void {
         const e = root.entry;
         if (!e)
             return;
-        // The sheet belongs to a row in the list, so it does not travel to the
-        // page that slides over it.
+
         sheet.close();
         root.reading = e;
     }
@@ -220,25 +129,11 @@ Item {
         if (!root.expanded)
             return;
         root.reading = null;
-        // The keyboard comes back to the list rather than staying wherever the
-        // full view left it, so the arrows work immediately on return. Deferred
-        // for the reason every focus call in this file is: the item has to be
-        // there to take it.
+
         if (root.shown && !root.searching)
             Qt.callLater(keys.forceActiveFocus);
     }
 
-    // TAKE IT, from either page, and always the thing being looked at. On the
-    // list that is the selected row; in the full view it is the entry on screen,
-    // which is not necessarily the same row any more.
-    //
-    // WHAT "TAKE" MEANS IS THE TAB'S ONE DIFFERENCE. A clipboard entry goes on
-    // the clipboard, ready for a paste. A transcription goes into the slot
-    // SUPER+SHIFT+R types from, ready for that key. Neither types anything here:
-    // this runs with the panel still up and the keyboard held by the shell, so
-    // anything typed now would land in the panel or in whatever catches focus on
-    // the way out. Both leave the thing you picked one keystroke away, in the
-    // window you were already in.
     function accept(): void {
         const e = root.expanded ? root.reading : root.entry;
         if (e) {
@@ -250,20 +145,9 @@ Item {
         root.hide();
     }
 
-    // KEEP IT, AND KEEP LOOKING AT IT.
-    //
-    // Pinning re-sorts the list, because pinned entries are shown first, so the
-    // row that was under the cursor is now somewhere else and the index that was
-    // selected belongs to a different entry. Left alone, pressing `p` moves the
-    // highlight onto a neighbour, which reads as the key having done something
-    // to the wrong row. So the ENTRY is followed rather than the index: the
-    // selection lands wherever the thing you just kept ended up.
     function pinCurrent(): void {
         const e = root.entry;
-        // NOTHING PINS A TRANSCRIPTION. That list is time-ordered and the daemon
-        // caps it, so a pin would be a promise this shell cannot keep: the entry
-        // would still fall off the end. Silently doing nothing is right here,
-        // because `p` is a list key and the list is still a list.
+
         if (!e || root.speech)
             return;
         Clipboard.setPinned(e, !e.pinned);
@@ -286,15 +170,10 @@ Item {
             Dictation.drop(e);
         else
             Clipboard.remove(e);
-        // Held where it was rather than reset, so throwing four things away in a
-        // row is four presses in one place. Clamped, because the list is one
-        // shorter than the index was chosen against.
+
         root.selected = Math.max(0, Math.min(root.selected, root.results.length - 1));
     }
 
-    // EVERYTHING A ROW CAN DO, as the sheet's list. Assembled here rather than
-    // in the sheet because what a row means is the panel's business: the first
-    // action is the tab's own verb, and the path is only there when there is one.
     function actionsFor(e: var): var {
         if (!e)
             return [];
@@ -313,9 +192,6 @@ Item {
             }
         ];
 
-        // WHERE IT IS, for the pictures and the copied files. The thing a
-        // screenshot could never tell you: it is a picture on the clipboard and
-        // a path nowhere, and half of what you want it for is the path.
         const paths = Clipboard.pathsOf(e);
         if (paths.length)
             acts.push({
@@ -327,7 +203,6 @@ Item {
                 }
             });
 
-        // Nothing pins a transcription; see pinCurrent.
         if (!root.speech)
             acts.push({
                 icon: "keep",
@@ -358,18 +233,13 @@ Item {
             return;
         root.tab = Math.max(0, Math.min(index, root.tabs.length - 1));
         sheet.close();
-        // The full view belongs to the list it was opened from, so changing
-        // which list is showing closes it rather than leaving it over a tab it
-        // has nothing to do with.
+
         root.reading = null;
         root.stopSearch();
         root.selected = 0;
         list.reset();
     }
 
-    // The keys that mean the same thing whichever half of the panel is holding
-    // them, so the list's handler and the field's handler cannot drift apart.
-    // Returns whether it took the key.
     function commonKey(event: var): bool {
         const page = Math.max(1, Math.floor(list.height / Math.max(1, list.pitch)) - 1);
 
@@ -378,21 +248,14 @@ Item {
         case Qt.Key_Enter:
             root.accept();
             return true;
-        // RIGHT GOES IN, LEFT COMES BACK, on every page and on both halves of
-        // the panel, which is the whole reason the tab strip lost the arrows: a
-        // direction that meant "next tab" here and "open this" there would be
-        // the same motion asking two questions depending on where you happened
-        // to be looking. Tab still changes the tab, and it is the key with the
-        // control's own name on it.
+
         case Qt.Key_Right:
             root.expand();
             return true;
         case Qt.Key_Left:
             root.collapse();
             return true;
-        // THE FULL VIEW SCROLLS ITSELF. Up and down belong to the list, and
-        // handing them to it while a document is open would walk the selection
-        // behind the page you are reading, so the reader keeps them.
+
         case Qt.Key_Down:
             if (root.expanded)
                 return false;
@@ -409,11 +272,7 @@ Item {
         case Qt.Key_PageUp:
             root.moveTo(root.selected - page);
             return true;
-        // TAB CHANGES THE TAB, which is the one key this shell's other panels
-        // give to moving down a list. Here there is a tab strip on screen with
-        // the word on it, and no other panel has one; a key that visibly matches
-        // a control the user is looking at beats consistency with a list that is
-        // already walked by the arrows and by j and k.
+
         case Qt.Key_Tab:
             root.setTab((root.tab + 1) % root.tabs.length);
             return true;
@@ -424,11 +283,6 @@ Item {
         return false;
     }
 
-    // ------------------------------------------------------------------
-
-    // DECLARED FIRST so it sits UNDER the panel. Declaration order is input
-    // order in QML and there is no z anywhere in this shell: a catch-all that
-    // comes last swallows every click meant for the thing it is behind.
     MouseArea {
         id: catcher
 
@@ -438,23 +292,11 @@ Item {
         onClicked: root.hide()
     }
 
-    // THE KEYBOARD, on an item of its own rather than on the panel. The panel is
-    // invisible until the reveal has moved off zero and an invisible item cannot
-    // hold focus, so focusing it on the way up would silently do nothing and the
-    // first Escape would go to the desktop. This has no size and is always
-    // visible, so it is always focusable. The cheatsheet's, unchanged.
     Item {
         id: keys
 
-        // ONE handler testing the key, never the named Keys.onUpPressed signals.
-        // Those were measured not firing on items reached this way in three
-        // separate files here, and testing the key is also the only form that
-        // can accept the event.
         Keys.onPressed: event => {
-            // THE SHEET TAKES EVERYTHING WHILE IT IS UP, including the keys it
-            // does not use. It is a question standing over the list, and arrows
-            // that walked the selection behind it would move the row the answer
-            // is about.
+
             if (sheet.open) {
                 switch (event.key) {
                 case Qt.Key_Down:
@@ -483,17 +325,14 @@ Item {
             }
 
             switch (event.key) {
-            // ESCAPE COMES BACK BEFORE IT CLOSES, which is the same bargain the
-            // search field makes one layer along: two states, two presses, and
-            // no single key that can lose more than one of them at a time.
+
             case Qt.Key_Escape:
                 if (root.expanded)
                     root.collapse();
                 else
                     root.hide();
                 break;
-            // THE WAY IN TO SEARCHING, and the reason the letters below are free
-            // to mean anything at all.
+
             case Qt.Key_Slash:
                 root.startSearch();
                 break;
@@ -505,7 +344,7 @@ Item {
                 if (!root.expanded)
                     root.move(-1);
                 break;
-            // L and H, the other half of the vim pair the arrows already answer.
+
             case Qt.Key_L:
                 root.expand();
                 break;
@@ -532,16 +371,6 @@ Item {
         }
     }
 
-    // THE WAY BACK: a push down into the band it came out of, which is the
-    // summoning gesture reversed.
-    //
-    // A SIBLING of the panel wearing the panel's rectangle, and declared BEFORE
-    // it. Pull keeps its press anchor in its PARENT's frame, which survives this
-    // item moving inside a still parent and does not survive the parent moving,
-    // and moving the panel is this gesture's whole job. Declared first so it only
-    // sees presses the rows and the field did not take, and so a press on the
-    // panel's own padding is a pull rather than falling through to the catcher
-    // and dismissing the thing under the finger.
     Pull {
         id: putAway
 
@@ -556,19 +385,13 @@ Item {
         dirY: 1
         angle: Appearance.sizes.pullAngleEdge
 
-        // The SETTLED height, never the live one: a travel that shrank as the
-        // panel was pushed would make the panel accelerate away from the finger.
         travel: panel.fullHeight
 
         onPulled: fraction => root.pushTo(fraction)
         onFinished: gone => root.pushEnd(gone)
-        // onTapped is deliberately unwired. A tap on the frame missed something
-        // and should do nothing; dismissing belongs to the catcher.
+
     }
 
-    // How far the push has taken it, as a fraction, and the one subtraction made
-    // here so `revealed` below goes on meaning what it meant when the reveal was
-    // the only thing writing it.
     property bool pushing: false
     property real pushOut: 0
 
@@ -582,21 +405,17 @@ Item {
     }
 
     function pushEnd(gone: bool): void {
-        // A release always arrives and a push does not always precede it.
+
         if (!root.pushing)
             return;
         root.pushing = false;
-        // Hand the smoother the depth the hand let go at, so it carries on from
-        // there rather than starting the journey again.
+
         rise.value = root.pushOut;
         root.pushOut = 0;
         if (gone)
             root.hide();
     }
 
-    // WHICH PAGE, as a fraction rather than as an index, so the strip can be
-    // anywhere between the two and a gesture can be halfway through changing its
-    // mind. 0 is the list, 1 is the full view.
     Follow {
         id: turn
 
@@ -610,9 +429,7 @@ Item {
 
         speed: Appearance.anim.revealSpeed
         target: root.shown ? 1 : 0
-        // A 0-to-1 fraction, not a pixel count: the default quarter-pixel
-        // epsilon would leave a closed panel permanently a quarter open, and
-        // every `if (open)` downstream silently true.
+
         epsilon: 0.005
     }
 
@@ -625,29 +442,17 @@ Item {
         x: root.originX + (root.width - root.originX - root.panelWidth) / 2
         width: root.panelWidth
 
-        // Grows out of the bottom edge: at rest a zero-height sliver in the
-        // band, and opening carries it up to where it belongs.
         height: fullHeight * root.revealed
         y: bandY - height
 
         visible: height > 0
 
-        // Clipped, so the reveal is a wipe rather than the contents sliding
-        // around inside a box that is the wrong size for them.
         Item {
             id: viewport
 
             anchors.fill: parent
             clip: true
 
-            // TWO PAGES ON ONE STRIP, slid rather than swapped.
-            //
-            // A Loader that replaced one with the other would be a cut, and a
-            // cut cannot say which way you went: arriving and leaving would look
-            // identical, and the direction is the whole vocabulary here (right
-            // goes in, left comes back, on the arrows and on the fingers alike).
-            // On a strip the motion IS the answer, and a gesture can be halfway
-            // through it and change its mind, which a cut also cannot offer.
             Item {
                 id: pages
 
@@ -680,12 +485,6 @@ Item {
                     onPicked: index => root.setTab(index)
                 }
 
-                // THE SEARCH, which is not here until it is asked for.
-                //
-                // It takes the header's right-hand side rather than replacing
-                // the tabs, so the thing you were looking at does not move when
-                // you start typing: a control that jumps as the caret arrives
-                // makes you re-find the list you were already reading.
                 Item {
                     id: field
 
@@ -744,20 +543,11 @@ Item {
                                 return;
                             }
 
-                            // ESCAPE GOES BACK TO THE LIST, and does not close.
-                            // Two states, two presses: the first undoes the `/`,
-                            // the second closes the panel. A single Escape that
-                            // did both would make an abandoned search cost the
-                            // whole panel.
                             if (event.key === Qt.Key_Escape) {
                                 root.stopSearch();
                                 event.accepted = true;
                             }
 
-                            // Everything else, including the arrows this handler
-                            // did not claim, falls through to the field: Left and
-                            // Right are the caret's while there is a caret, and
-                            // the tabs are still reachable on Tab.
                         }
 
                         StyledText {
@@ -769,9 +559,6 @@ Item {
                     }
                 }
 
-                // THE PROMPT, where the field will be. It is the only place the
-                // one non-obvious key in this panel can be said, and it costs a
-                // line of the quietest colour there is.
                 StyledText {
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
@@ -793,13 +580,6 @@ Item {
             GlideList {
                 id: list
 
-                // The row pitch, computed HERE and handed down rather than read
-                // back off the list's own contentHeight, which is a binding cycle
-                // (panel height <- contentHeight <- list height <- panel height).
-                // Rows here are not uniform: a picture is taller than a line of
-                // text. So this is the pitch `reveal` and the page keys reason
-                // with, and it is the smallest a row can be, which keeps a page
-                // conservative rather than wrong.
                 readonly property real pitch: Appearance.sizes.rowHeight + Appearance.padding.small
 
                 anchors.top: rule.bottom
@@ -809,25 +589,13 @@ Item {
                 height: Math.max(0, panel.fullHeight - y - Appearance.padding.large)
                 clip: true
 
-                // A ScriptModel, so a keystroke that narrows the results keeps
-                // the delegates of everything that survived it rather than
-                // rebuilding the whole list under the cursor.
                 model: ScriptModel {
                     values: root.results
                 }
 
-                // FALSE, because the rows animate. A recycled delegate gets new
-                // content while its removal is still running and draws two
-                // entries on one line.
                 reuseItems: false
                 cacheBuffer: list.pitch * 6
 
-                // `index` is NOT redeclared here. ClipRow requires one, and a
-                // view injects a required property called `index` into the
-                // delegate root itself; declaring a second one shadows the
-                // injected value and leaves ClipRow's own required property
-                // never initialised, which is a delegate that cannot be built at
-                // all rather than one that merely numbers its rows wrong.
                 delegate: ClipRow {
                     required property var modelData
 
@@ -839,12 +607,10 @@ Item {
                         root.selected = index;
                         root.accept();
                     }
-                    // Routed by tab for the same reason accept() is: the row is
-                    // the same row, and what these mean to it is not.
+
                     onPinned: if (!root.speech)
                         Clipboard.setPinned(modelData, !modelData.pinned)
-                    // The selection follows the row that was asked about, so the
-                    // keyboard is on the thing the menu is over.
+
                     onMenu: (mx, my) => {
                         root.selected = index;
                         const at = mapToItem(panel, mx, my);
@@ -856,19 +622,12 @@ Item {
                         else
                             Clipboard.remove(modelData);
                     }
-                    // The selection follows the row that was thrown open, so
-                    // coming back leaves the keyboard on the thing you were just
-                    // reading rather than wherever it was before you reached for
-                    // the mouse.
+
                     onExpanded: {
                         root.selected = index;
                         root.reading = modelData;
                     }
-                    // Cleared by the row that leaves, which is only safe because
-                    // nothing resizes on hover any more: a row can no longer move
-                    // itself out from under the pointer, so it can no longer take
-                    // its own hover away. It was latched in this file while it
-                    // could. See ClipRow's note.
+
                     onEntered: root.hovered = index
                     onExited: if (root.hovered === index)
                         root.hovered = -1
@@ -896,12 +655,7 @@ Item {
                     visible: !root.results.length
                     horizontalAlignment: Text.AlignHCenter
                     color: Appearance.colour.textFaint
-                    // FOUR DIFFERENT EMPTIES, because they are four different
-                    // facts and only one of them is a bug. A search that matched
-                    // nothing, a history nothing has been put in yet, and a
-                    // dictation daemon that is not running at all: telling the
-                    // last one apart matters most, since it is the only one you
-                    // can do something about.
+
                     text: {
                         if (query.text)
                             return "Nothing matches.";
@@ -914,36 +668,13 @@ Item {
                 }
             }
 
-            // TWO FINGERS ACROSS GO IN AND COME BACK.
-            //
-            // This used to change the TAB, and the full view took the gesture off
-            // it: a horizontal swipe now means the same thing everywhere in this
-            // panel (right goes into a thing, left comes back out), on a row's
-            // drag, on the arrow keys and here. A tab strip is a control you can
-            // see and press, and it kept the key that names it; a hidden
-            // horizontal gesture that ALSO changed tabs would have made the same
-            // motion mean two different things depending on which page you were
-            // looking at.
-            //
-            // Declared AFTER the list, which is what puts it on top for a wheel:
-            // a wheel goes to the topmost item under the pointer and stops at the
-            // first thing that accepts. That is the only way to see the event
-            // before GlideList, which accepts every scroll it is given. It hands
-            // back everything that is not predominantly horizontal, so the list
-            // scrolls exactly as it always did and only the axis it has no use
-            // for is taken.
-            //
-            // It handles no buttons, so nothing about clicking a row changes.
             WheelHandler {
                 id: pager
 
                 property bool spent: false
 
                 onWheel: event => {
-                    // A MOUSE WHEEL IS NEVER A SWIPE. It reports an angle and no
-                    // pixels, it has one axis, and there is no motion in it to
-                    // track. Handed straight back so it falls through to the
-                    // list, where a notch has always meant scroll.
+
                     if (event.pixelDelta.x === 0 && event.pixelDelta.y === 0) {
                         event.accepted = false;
                         return;
@@ -967,19 +698,14 @@ Item {
                 onBegan: pager.spent = false
 
                 onMoved: (dx, dy) => {
-                    // ONE CROSSING PER GESTURE. The primitive hands out the TOTAL
-                    // travel, so without a latch a long swipe would keep clearing
-                    // the threshold and toggle the page on every event after the
-                    // first.
+
                     if (pager.spent)
                         return;
                     const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
                     if (Math.abs(dx) < step)
                         return;
                     pager.spent = true;
-                    // Natural scrolling is already resolved by the primitive, so
-                    // this reads as the content following the fingers: push the
-                    // page left and what was off the right edge arrives.
+
                     if (dx < 0)
                         root.expand();
                     else
@@ -988,15 +714,6 @@ Item {
             }
                 }
 
-                // THE FULL VIEW, parked off the right edge until it is asked for.
-                //
-                // Built rather than loaded on demand, and it costs nothing to do
-                // so: it holds one entry, the entry is null until something is
-                // opened, and every heavy thing inside it (the picture, the
-                // highlighted lines) is bound to that entry and so builds
-                // nothing while there is none. A Loader here would buy the same
-                // emptiness and pay for it with a rebuild on every open, which
-                // is the frame the slide is happening in.
                 ClipDetail {
                     id: detail
 
@@ -1012,18 +729,11 @@ Item {
             }
         }
 
-        // WHAT ELSE A ROW CAN DO, over the list rather than in it.
-        //
-        // OUTSIDE the viewport, so it is not clipped by the reveal and not
-        // carried off by the page slide, and AFTER it, so it takes the click
-        // before the rows underneath do.
         ActionSheet {
             id: sheet
 
             anchors.fill: parent
 
-            // A list that moves takes the row out from under the sheet, and a
-            // menu pointing at nothing is worse than no menu.
             Connections {
                 target: list
 

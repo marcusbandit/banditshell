@@ -6,27 +6,6 @@ import qs.components
 import qs.services
 import qs.modules.settings
 
-// APPEARANCE: what the shell wears.
-//
-// The theme picker first, because it is the one people actually swap, and
-// because `banditshell set theme slate` proving the live re-dress works is
-// exactly the kind of thing that deserves a surface with no terminal in it.
-//
-// THE WALLPAPER IS A SUB-PAGE of this one (pages/WallpaperPage.qml, key
-// `wallpaper`, parent `appearance`), reached from its own row below, because
-// what the shell is seen against is an appearance question and a top-level
-// section for it left this page with nothing to be. The picker itself grew
-// too big to be a row: the switches that used to live here went with it, so
-// a wallpaper question has one place to be answered.
-//
-// Every other appearance decision already lives in config.json behind
-// Appearance's tokens, so the page grows a control only when a setting earns
-// one.
-//
-// Rows come FROM Themes.availableNames, which is every theme the machine's
-// renderer can build, so a theme dropped into ~/.config/theme/themes appears
-// here without this file changing: the page renders data, it does not keep a
-// second list of what the data contains.
 Item {
     id: root
 
@@ -38,13 +17,6 @@ Item {
         width: parent.width
         spacing: Appearance.padding.huge
 
-        // -------------------------------------------------------- palettes
-
-        // WORN IMMEDIATELY, AND NOT ONLY HERE. There is no apply step: the
-        // press runs `theme-set`, which re-renders the colours for every app
-        // on the machine and reloads them, so the shell re-binds in the same
-        // breath as the terminal and the window borders. That is the one thing
-        // a picker cannot show, and the reason a row here is the whole gesture.
         SettingsCard {
             title: "Palette"
 
@@ -62,15 +34,6 @@ Item {
                     selected: Themes.activeName === row.modelData
                     onActivated: Themes.apply(row.modelData)
 
-                    // WHAT THE THEME LOOKS LIKE, said in its own saturated
-                    // end: dim, mid, bright, the three accents a theme
-                    // supplies, and ITS OWN whether or not it is the one being
-                    // worn, so the row shows what pressing it would do rather
-                    // than what is already true. Drawn from the theme's data
-                    // rather than listed by hand, so it cannot lie here. The
-                    // ramp is deliberately not swatched: eleven near-neighbour
-                    // greys in an 18px chip read as dirt, and the accents are
-                    // where palettes actually differ.
                     Row {
                         spacing: Appearance.padding.small
 
@@ -80,9 +43,6 @@ Item {
                             delegate: G2Rect {
                                 required property color modelData
 
-                                // Sized from the type it sits beside rather
-                                // than a number of its own: a swatch here is
-                                // punctuation next to the name, not an exhibit.
                                 width: Appearance.font.size.small
                                 height: width
                                 radius: Appearance.rounding.small
@@ -94,11 +54,6 @@ Item {
             }
         }
 
-        // ------------------------------------------------------------ type
-
-        // One row that leads somewhere. The families a machine has are a list
-        // hundreds long and a page of their own (pages/FontPage.qml); this row
-        // says which one is worn and is the way in.
         SettingsCard {
             title: "Type"
 
@@ -111,13 +66,6 @@ Item {
             }
         }
 
-        // ------------------------------------------------------- wallpaper
-
-        // One row that leads somewhere, for the Type row's reason: the picker
-        // is a page of its own (pages/WallpaperPage.qml, a sub-page of this
-        // one), and this row says what is worn and is the way in. The value
-        // is the focused screen's wallpaper's name, which is the fact a
-        // per-screen wallpaper service can honestly state in one line.
         SettingsCard {
             title: "Wallpaper"
 
@@ -130,18 +78,6 @@ Item {
             }
         }
 
-        // ------------------------------------------------------ compositor
-
-        // WHAT FLOWS BETWEEN THE SHELL AND HYPRLAND, in both directions, and
-        // an appearance question because both switches are about what the
-        // desktop looks like: whose corners the panels wear, and whose colour
-        // the focused window's border does. Two switches rather than one
-        // because they answer opposite questions; config/Compositor.qml owns
-        // the argument, and the `compositor` block in config/Config.qml owns
-        // the reason `pushBorders` had to be declared before it could be set.
-        //
-        // The row itself flips it as well as the toggle on it: the whole line
-        // is the target, because the switch alone is 34px of it.
         SettingsCard {
             title: "Compositor"
 
@@ -168,25 +104,6 @@ Item {
             }
         }
 
-        // ---------------------------------------------- theme from wallpaper
-
-        // THE SWITCH THAT DOES NOT WORK YET, and the thing that makes it worth
-        // having on the page anyway.
-        //
-        // The measurement is real: the wallpaper's dominant colours are pulled
-        // out of it on every change (scripts/palette.py) and drawn in this row
-        // as the swatches it WOULD wear. What is not built is everything after
-        // that, which is which of six colours is a surface and which is an
-        // accent, and what a shell does when a photograph offers no pair that
-        // clears the contrast this one holds itself to. See config/Config.qml.
-        //
-        // So the row says so. A setting that lies about being wired up is worse
-        // than one that is missing, and a row that shows you the answer it has
-        // and admits it cannot use it yet is neither.
-        //
-        // Shown only when there is a measurement to show: with no wallpaper
-        // there are no colours, and a switch with nothing on its right would
-        // be a promise with no evidence.
         SettingsCard {
             title: "Theme from wallpaper"
             visible: Wallpaper.palette.length > 0
@@ -197,21 +114,9 @@ Item {
                 detail: "not worn yet"
                 onActivated: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
 
-                // If the swatches and the switch together outgrow the line,
-                // SettingsRow drops them under the text on its own.
                 Row {
                     spacing: Appearance.padding.normal
 
-                    // WHAT IT FOUND, in the order it found it, biggest share
-                    // first.
-                    //
-                    // Sized by SHARE rather than all alike, because that is
-                    // the one fact a row of equal chips throws away: these are
-                    // not six colours the wallpaper contains, they are six
-                    // colours it is made of in wildly different amounts, and a
-                    // picture that is four fifths one blue should say so. The
-                    // width runs between a stem and a full swatch, so even the
-                    // smallest is still a colour rather than a line.
                     Row {
                         anchors.verticalCenter: parent.verticalCenter
                         spacing: Appearance.font.stem

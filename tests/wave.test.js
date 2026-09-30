@@ -1,18 +1,8 @@
-// components/wave.js: the scrubber's wave is fixed at its START.
-//
-// Every case here is about the anchor. The polyline exists so the pip can
-// uncover more of one wave without moving what is already drawn, so the
-// property worth checking is not "does it look like a sine" but "does a point
-// at a given x stay put while everything about the length changes".
-
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-// The source is a QML .js import: no exports, so it is read and evaluated, and
-// the names it declares are handed back by the trailing return. The `.pragma`
-// line is QML's, not JavaScript's, so it goes before the evaluation.
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "components/wave.js"), "utf8").replace(/^\.pragma .*$/m, "");
 const Wave = new Function(src + "\nreturn { points };")();

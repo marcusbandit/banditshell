@@ -4,8 +4,6 @@ import Quickshell.Wayland
 import qs.config
 import qs.modules.menu.content
 
-// Temporary: the calculator at page width, on a plain surface, so the keypad can
-// be driven by hand without opening the shell.
 ShellRoot {
     PanelWindow {
         anchors {

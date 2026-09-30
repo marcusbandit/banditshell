@@ -5,16 +5,6 @@ import qs.config
 import qs.components
 import qs.services
 
-// Power, as a menu: the same choices the right-edge panel offers, in the shape a
-// menu takes. Parked for the dashboard; the panel is what a keybind opens.
-//
-// Every entry asks first. Not a modal, not an "are you sure" that trains people
-// to click yes: the row itself becomes the confirmation, in place, and anything
-// else you do cancels it. A power menu that acts on the first click is one
-// mis-hover away from ending your session, and this one opens on hover.
-//
-// WHICH actions exist, and what each one runs, is in services/Power.qml. This
-// file decides only what asking looks like here.
 Column {
     id: root
 
@@ -24,7 +14,6 @@ Column {
 
     spacing: Appearance.padding.small
 
-    // Disarm as soon as attention moves elsewhere.
     Component.onDestruction: root.arming = ""
 
     function activate(entry: var): void {

@@ -1,5 +1,3 @@
-//@ pragma DefaultEnv QS_NO_RELOAD_POPUP=1
-
 pragma ComponentBehavior: Bound
 
 import Quickshell
@@ -10,28 +8,10 @@ import qs.modules.pen
 import qs.modules.picker
 import qs.modules.settings
 
-// banditshell.
-//
-// Variants instantiates its child once per item in `model`, so plugging in a
-// monitor creates the shell surfaces on it and unplugging destroys them, with no
-// screen-counting code anywhere.
-//
-// Three surfaces per screen, with completely separate jobs:
-//   WallpaperWindow - the background layer, below every window.
-//   ShellWindow     - everything the shell draws, and all the input. One field,
-//                     one mask, no stacking.
-//   FrameExclusions - invisible; reserves the room the chassis occupies.
-//
-// Ipc is shell-wide rather than per-screen: it finds windows through the
-// registry they put themselves in, so nothing has to be wired up here.
 ShellRoot {
-    // The file browser, like the settings page and the lock: shell-wide, because
-    // a window is on whichever monitor it was dragged to rather than on all of
-    // them. Hidden until asked for, and kept alive afterwards - there is a live
-    // shell session inside it.
+
     FilesWindow {}
 
-    // The picker's state is shell-wide; its surfaces are per screen.
     PickerState {
         id: picker
     }
@@ -40,14 +20,8 @@ ShellRoot {
         picker: picker
     }
 
-    // The lock, like Ipc, is shell-wide rather than per-screen: ext-session-lock
-    // is one lock over the session, and it grows its own surface on each output.
     LockScreen {}
 
-    // The settings page's OTHER body: a real window, for when you want the page
-    // to sit beside the thing it is changing. Shell-wide and hidden until asked
-    // for, because a window is on whichever monitor it has been dragged to
-    // rather than on all of them. The shell-drawn half is in ShellWindow.
     SettingsFloat {}
 
     Variants {
@@ -75,10 +49,6 @@ ShellRoot {
                 state: picker
             }
 
-            // Where the drawing tablet maps. Its own surface for the picker's
-            // reason: it has to be above a fullscreen window, and the shell's
-            // own surface deliberately is not. Unmapped unless the pad button
-            // is being held, so the rest of the time the pen draws through it.
             PenOverlay {
                 screen: scope.modelData
             }

@@ -4,26 +4,6 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// The ways a session can end, and how each one is actually done.
-//
-// Here rather than inside either thing that draws it. The panel on the right
-// edge and the power menu parked for the dashboard offer the same four choices,
-// and a list of ways to lose your work that exists in two files is a list that
-// will eventually disagree with itself about which one reboots.
-//
-// Suspend is not on it. Both surfaces are reached deliberately, and an entry
-// nobody presses is an entry the cursor still has to travel past.
-//
-// `safe` is the whole safety model: it marks the actions that cost nothing to
-// get wrong. Everything else is expected to ask first, and it is the caller that
-// asks, because what a confirmation looks like belongs to the thing being
-// clicked, not to this table.
-//
-// ORDERED MOST FINAL FIRST, because Shut down is the one you come here to press
-// and hunting for it at the bottom of a list of things you did not want is the
-// whole complaint. The rest follow it down the same gradient, so the list reads
-// as one scale rather than an arbitrary order with the popular entry lifted out
-// of it. Everything above Lock still asks twice; position is not permission.
 Singleton {
     id: root
 
@@ -54,7 +34,7 @@ Singleton {
             icon: "lock",
             label: "Lock",
             detail: "",
-            // Locking is harmless and instant, so it is the one that does not ask.
+
             safe: true,
             command: ["loginctl", "lock-session"]
         }
@@ -62,8 +42,7 @@ Singleton {
 
     function run(entry: var): void {
         const cmd = entry.command.slice();
-        // terminate-user needs the actual user, and hardcoding a name in a
-        // config file is how a power menu ends up logging out someone else.
+
         if (entry.key === "logout")
             cmd[2] = Quickshell.env("USER");
         runner.command = cmd;

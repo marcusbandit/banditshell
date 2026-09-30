@@ -1,21 +1,3 @@
-// One directory, as JSON, for a QML file browser that cannot call stat().
-//
-// QML can read a file (FileView) and run a process (Process), and that is the
-// whole of its access to a filesystem: there is no readdir, no stat, no way to
-// ask whether a thing is a directory. `ls` almost answers it and is the wrong
-// tool anyway - its output is for a person, its columns move under -l, and
-// nothing it prints survives a filename with a newline in it.
-//
-// So the shape of the answer is decided here, once, and it is JSON because that
-// is the one format the far end can parse with no parser at all.
-//
-// WHAT THIS DOES NOT DO IS SNIFF. A class comes off the extension, plus the
-// executable bit, and nothing here opens a file to look inside it: a directory
-// of forty thousand entries would be forty thousand opens to decide which icon
-// to draw, and the icon is a guess either way. --stat is where sniffing lives,
-// because that is one file, chosen deliberately, and the question there is
-// "should the preview panel try to show this as text", which the extension
-// genuinely cannot answer.
 #define _GNU_SOURCE
 
 #include <dirent.h>
@@ -29,9 +11,6 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-// How much of a file to look at before deciding it is text. A page: enough for
-// any BOM, any shebang, any header magic, and enough of a body that a binary
-// with a text-looking header still gives itself away.
 #define SNIFF 4096
 
 struct classing {
@@ -39,10 +18,6 @@ struct classing {
     const char *cls;
 };
 
-// The classes are the browser's own vocabulary, not MIME's: they are what
-// decides an icon and a colour, so "an image" is one thing whether it arrived as
-// a PNG or a camera raw. Ordered by nothing; looked up linearly, over a list
-// this size, once per entry.
 static const struct classing EXTENSIONS[] = {
     {"png", "image"}, {"jpg", "image"}, {"jpeg", "image"}, {"jpe", "image"},
     {"gif", "image"}, {"bmp", "image"}, {"webp", "image"}, {"tif", "image"},
@@ -108,8 +83,6 @@ static const struct classing EXTENSIONS[] = {
     {"pyc", "binary"}, {"wasm", "binary"}, {"db", "binary"}, {"sqlite", "binary"},
 };
 
-// The extension, lowercased, or "" when there is none. A leading dot is a hidden
-// file rather than an extension: ".zshrc" has no type, it has a name.
 static void extension(const char *name, char *out, size_t cap) {
     out[0] = '\0';
     const char *dot = strrchr(name, '.');
@@ -131,15 +104,6 @@ static const char *class_of(const char *ext) {
     return "unknown";
 }
 
-// A JSON string, from bytes that are not promised to be anything.
-//
-// A filename is a bag of bytes: the kernel forbids '/' and NUL and permits every
-// other arrangement, including sequences that are not UTF-8. JSON is defined
-// over text, and JSON.parse on the far end throws on the first invalid byte -
-// which would mean one undecodable name in a directory taking the whole listing
-// down. So invalid sequences are replaced, not passed through, and the file is
-// still shown under a name with a replacement character in it, which is exactly
-// what every other file manager does.
 static void json_string(const char *in) {
     static const char *HEX = "0123456789abcdef";
     putchar('"');
@@ -165,7 +129,6 @@ static void json_string(const char *in) {
             continue;
         }
 
-        // How long this sequence claims to be, and whether it delivers.
         int len = (c & 0xe0) == 0xc0 ? 2 : (c & 0xf0) == 0xe0 ? 3 : (c & 0xf8) == 0xf0 ? 4 : 0;
         int ok = len > 0;
         for (int i = 1; ok && i < len; i++)
@@ -228,9 +191,6 @@ static void list(const char *path) {
         if (fstatat(fd, e->d_name, &ls, AT_SYMLINK_NOFOLLOW) != 0)
             continue;
 
-        // A LINK IS SHOWN AS WHAT IT POINTS AT, and says that it is a link.
-        // Anything else means a symlinked folder does not open and a symlinked
-        // picture draws no thumbnail, which is not what the link is for.
         struct stat st = ls;
         int link = S_ISLNK(ls.st_mode);
         int broken = 0;
@@ -243,8 +203,7 @@ static void list(const char *path) {
         extension(e->d_name, ext, sizeof ext);
         const char *cls = S_ISDIR(st.st_mode) ? "directory" : class_of(ext);
         int exec = !S_ISDIR(st.st_mode) && (st.st_mode & (S_IXUSR | S_IXGRP | S_IXOTH));
-        // An executable with nothing else to say about it is a PROGRAM, which
-        // is worth its own mark. An executable .sh is still a script.
+
         if (exec && strcmp(cls, "unknown") == 0)
             cls = "program";
 
@@ -259,18 +218,7 @@ static void list(const char *path) {
         json_string(cls);
         printf(",\"ext\":");
         json_string(ext);
-        // WHAT YOU MAY DO WITH IT, and WHOSE IT IS.
-        //
-        // Asked of the kernel rather than worked out from the mode bits, because
-        // the mode alone cannot answer it: whether you may write to a file
-        // depends on which of the three triads applies to you, which depends on
-        // your uid and your groups - all of which faccessat already knows and
-        // gets right for the cases (supplementary groups, ACLs) that a triad
-        // test would quietly get wrong.
-        //
-        // `root` and `mine` are about OWNERSHIP rather than access, and they are
-        // a different question worth answering separately: a root-owned file you
-        // happen to be able to read is still a file that is not yours.
+
         printf(",\"size\":%lld,\"mtime\":%lld,\"mode\":%u,\"link\":%s,\"broken\":%s,\"exec\":%s,\"hidden\":%s,\"read\":%s,\"write\":%s,\"root\":%s,\"mine\":%s,\"world\":%s",
                (long long)st.st_size, (long long)st.st_mtime,
                (unsigned)(st.st_mode & 07777),
@@ -284,9 +232,6 @@ static void list(const char *path) {
                st.st_uid == getuid() ? "true" : "false",
                (st.st_mode & S_IWOTH) ? "true" : "false");
 
-        // WHETHER YOU CAN GO IN, asked only of directories: reading a directory
-        // and entering it are two different permissions, and a folder you may
-        // list but not enter is a folder the tile should not offer to open.
         if (S_ISDIR(st.st_mode))
             printf(",\"open\":%s", faccessat(fd, e->d_name, R_OK | X_OK, 0) == 0 ? "true" : "false");
 
@@ -297,14 +242,6 @@ static void list(const char *path) {
     closedir(dir);
 }
 
-// IS THIS TEXT? The one question a preview panel has to get right, and the one
-// the extension cannot answer: the files worth previewing most are the ones
-// with no extension at all (README, Makefile, a dotfile, a script).
-//
-// A NUL is the tell. No text encoding this shell will meet puts one in a
-// document, and every binary format has them early. Beyond that, count the bytes
-// that are neither printable nor ordinary whitespace: a few is a file with a
-// stray control character, a lot is a binary that happened to start with words.
 static int sniffs_text(const char *path, long long *bytes) {
     FILE *f = fopen(path, "rb");
     if (!f)
@@ -356,9 +293,7 @@ static void stat_one(const char *path) {
 
     long long sniffed = 0;
     int text = !S_ISDIR(st.st_mode) && !broken && sniffs_text(path, &sniffed);
-    // Only the classes that were a guess get overruled. A .png that sniffs as
-    // text is a broken .png, not a text file, and calling it one would put
-    // mojibake in the preview panel instead of a broken-image mark.
+
     if (text && (strcmp(cls, "unknown") == 0 || strcmp(cls, "program") == 0))
         cls = "text";
 

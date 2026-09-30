@@ -3,51 +3,20 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// The resolved design tokens. Widgets read ONLY this.
-//
-// There is not a single literal value in here. Everything is Config (the
-// user's JSON) applied to Themes (the named palettes), so every number and
-// colour in the shell is reachable from one file the user owns. Change
-// config.json and this re-resolves live; widgets just re-bind.
-//
-// Tiers are computed, never listed: a scale is a base times a list of
-// multipliers, so "small / normal / large" are indices 0/1/2 into data rather
-// than three hardcoded numbers.
 Singleton {
     id: root
 
     readonly property var cfg: Config.values
     readonly property var theme: Themes.get(cfg.theme)
 
-    // When asked to follow the compositor, geometry that the compositor also has
-    // an opinion about comes from it rather than from config.json, so the shell
-    // and the windows can never disagree. Falls back the moment it can't be read.
-    //
-    // AND NOT WHILE BARE, which is not a courtesy but a correctness: bare
-    // zeroes the compositor's rounding and gaps ON PURPOSE (the windows go
-    // flush and square), and a follow that ran during bare would read those
-    // zeros into every tier, flare and radius the shell owns - the whole
-    // shell's rounding stuck at zero long after the windows came back,
-    // because the cache has no other reason to re-read. Bare is the shell
-    // wearing its OWN config while the compositor wears zeros.
     readonly property bool follows: root.cfg.compositor.follow && Compositor.available && !root.cfg.edge.bare
 
-    // BARE, the chrome's master switch: true and the chassis draws nothing,
-    // reserves nothing and takes no input on any screen. Read beside `follows`
-    // because it overrides everything that switch governs, not because it is
-    // the same kind of question: follows decides WHOSE numbers the chrome
-    // wears, bare decides whether there is any chrome to wear them.
     readonly property bool bare: root.cfg.edge.bare
 
     function tier(base: real, scale: var, i: int): real {
         return base * scale[Math.max(0, Math.min(i, scale.length - 1))];
     }
 
-    // A point anywhere ALONG the theme's ramp, including between stops.
-    //
-    // This is what makes depth portable. "Raised" is not a hex value, it is
-    // "0.45 of a step further up the ramp than the surface it sits on", so a
-    // lighting effect survives a palette swap intact.
     function rampAt(i: real, alpha: real): color {
         const r = root.theme.ramp;
         const c = Math.max(0, Math.min(i, r.length - 1));
@@ -56,23 +25,11 @@ Singleton {
         return mix(r[lo], r[hi], c - lo, alpha);
     }
 
-    // TWO COLOURS, MIXED. `mix` below takes the ramp's hex STRINGS, which is
-    // what a theme's ramp is made of; this takes colours, which is what
-    // everything downstream of `colour` holds. Same operation, different end of
-    // the pipe, and neither can be written in terms of the other without one of
-    // them lying about its argument type.
     function blend(a: color, b: color, t: real): color {
         const k = Math.max(0, Math.min(1, t));
         return Qt.rgba(a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k, a.a + (b.a - a.a) * k);
     }
 
-    // ANY COLOUR AT A LABEL TIER'S WEIGHT.
-    //
-    // The tiers in `colour` are the shell's own light veiled over a panel, which
-    // is right for everything drawn ON the material and useless for anything
-    // that is its own object with its own ink. A card's second line still has to
-    // be quieter than its first by the same amount the shell's is, so it takes
-    // the same weights applied to a different colour.
     function shade(c: color, tier: int): color {
         const w = root.cfg.material.label;
         return Qt.rgba(c.r, c.g, c.b, w[Math.max(0, Math.min(tier, w.length - 1))]);
@@ -89,10 +46,6 @@ Singleton {
         return Qt.rgba(lerp(16), lerp(8), lerp(0), alpha);
     }
 
-    // Everything drawn ON a panel is one colour, the light end of the ramp, at
-    // different opacities. That is the whole hierarchy. It is why a translucent
-    // interface stays coherent over any wallpaper: the tiers keep their relative
-    // weight no matter what shows through.
     readonly property color tint: theme.ramp[theme.ramp.length - 1]
 
     function veil(alpha: real): color {
@@ -100,56 +53,32 @@ Singleton {
     }
 
     readonly property QtObject colour: QtObject {
-        // A translucent material. What you mostly see through it is the
-        // compositor's blur of whatever is behind, which is where the depth
-        // actually comes from.
+
         readonly property color surface: root.rampAt(root.cfg.colour.surface, root.cfg.material.surfaceAlpha)
 
-        // THE SAME MATERIAL WITH NOTHING BEHIND IT.
-        //
-        // Same point on the ramp, no alpha. For the one thing in this shell that
-        // is not a shell surface: a real window, which the compositor frames and
-        // does not blur the way it blurs a layer. Translucency there is not depth,
-        // it is the wallpaper coming through the page.
         readonly property color surfaceSolid: root.rampAt(root.cfg.colour.surface, 1)
 
-        // Label tiers.
         readonly property color text: root.veil(root.cfg.material.label[0])
         readonly property color textDim: root.veil(root.cfg.material.label[1])
         readonly property color textFaint: root.veil(root.cfg.material.label[2])
-        // Watermarks, placeholders, genuinely inactive text. Without it,
-        // textFaint was doing two jobs at one weight.
+
         readonly property color textGhost: root.veil(root.cfg.material.label[3])
 
-        // Fills. `fill` is a hover, `fillStrong` is a selection. Neither is a
-        // colour: they are the same light, turned up.
         readonly property color fill: root.veil(root.cfg.material.fill[0])
         readonly property color fillStrong: root.veil(root.cfg.material.fill[1])
         readonly property color fillStronger: root.veil(root.cfg.material.fill[2])
 
         readonly property color separator: root.veil(root.cfg.material.separator)
 
-        // The saturated end of the theme. Reserved for state that is genuinely
-        // worth a colour, never for decoration or for filling a shape.
         readonly property color accent: root.theme[root.cfg.colour.accent]
 
-        // The same colour at a fill's job: tinting a surface rather than marking
-        // a glyph. "Which workspace you are on" is the one piece of state in
-        // the sidebar worth a hue, and a tint is how you say it without
-        // painting a saturated block.
         readonly property color accentFill: Qt.rgba(accent.r, accent.g, accent.b, root.cfg.material.accentFill)
 
-        // The accent's own lightness as a neutral: the desaturation target.
         readonly property color accentGrey: {
             const l = accent.r * 0.2126 + accent.g * 0.7152 + accent.b * 0.0722;
             return Qt.rgba(l, l, l, 1);
         }
 
-        // THE TONAL'S UNSELECTED READING: the accent desaturated toward its
-        // own grey by config's `accentDull` (quite a bit - the hue
-        // survives), at the same veil weight. It does not darken and it
-        // does not thicken; it only loses saturation. The latched tonal is
-        // the accent itself.
         readonly property color accentFillDull: {
             const k = Math.max(0, Math.min(1, root.cfg.material.accentDull));
             return Qt.rgba(
@@ -160,91 +89,27 @@ Singleton {
             );
         }
 
-        // The veil weight itself, by its name in this file: the one number
-        // the tonal family's composites are built from.
         readonly property real veilWeight: root.cfg.material.accentFill
 
-        // One step above the accent. Accent means "attention", this means "you
-        // are about to lose something", and only a battery running out wears it
-        // today. No `alarmFill` beside `accentFill` on purpose: the one thing
-        // tinting a surface with it (BatteryMeter's well) breathes the alpha.
         readonly property color alarm: root.theme.alarm
 
-        // What goes ON the accent: a switch's knob, selected text behind it.
-        // The accent is a bright saturated green, so this is the dark end of the
-        // ramp rather than a label tier, which would be translucent and let the
-        // green show through whatever sits on it.
         readonly property color accentText: root.rampAt(1, 1)
 
-        // THE TWO ENDS OF THE RAMP, opaque, which is the most contrast this
-        // theme owns. Everything else here is one light at different strengths
-        // and is meant to sit ON the material; this pair is for the rare object
-        // that has to be read by something other than a person looking at it.
-        //
-        // A QR code is the case that made them exist. A camera has none of the
-        // context a reader has: it thresholds a picture, and a translucent label
-        // tier over a blurred wallpaper has no threshold. So the code is drawn
-        // as ink on paper, and "black on white" is spelled in the theme's own
-        // darkest and lightest rather than in #000 and #fff, which belong to no
-        // palette and would read as a hole cut in the shell.
-        //
-        // Indexed off the ramp's LENGTH rather than off 10, so a theme with a
-        // different number of stops still lands on its own extremes.
         readonly property color ink: root.rampAt(0, 1)
         readonly property color paper: root.rampAt(root.theme.ramp.length - 1, 1)
 
-        // THE SATURATED END, all three of it, quietest to brightest.
-        //
-        // `accent` above is whichever ONE of these config picked, and it is
-        // rationed: state worth a colour, never decoration. This is the ramp
-        // itself, and it exists for the one object in the shell that spends
-        // colour AS colour rather than as a mark. Read it as a ramp, by
-        // position, so a theme is free to have more or fewer stops.
         readonly property var spectrum: [root.theme.dim, root.theme.mid, root.theme.bright]
 
-
-        // THE TERMINAL'S SIXTEEN, straight from config and deliberately not from
-        // the ramp. See Config's note: in a terminal, colour 1 is what `git
-        // diff` means by "removed" and what a compiler means by "error", so it
-        // is carrying meaning rather than identity and must not follow a theme
-        // that has decided everything is green. It is here rather than read
-        // straight off Config only because it is a list of COLOURS, and this is
-        // where the shell keeps those.
         readonly property var terminalPalette: root.cfg.files.terminal.palette
 
-        // THE UPDATE INDICATOR'S THREE, from config's `updates` block and not
-        // from the ramp, for the terminal palette's reason: these carry a
-        // meaning the theme did not choose. Red says a push is waiting on
-        // GitHub; amber says a pull tried and did not land; blue says it is
-        // downloaded and a restart will apply it.
         readonly property color updateAvailable: root.cfg.updates.availableColour
         readonly property color updateFailed: root.cfg.updates.failedColour
         readonly property color updateReady: root.cfg.updates.readyColour
 
-        // The screen-corner frame. Not from the ramp: it is meant to read as the
-        // absence of screen, not as part of the palette.
         readonly property color frame: root.cfg.edge.outerColour
 
-        // What dims everything outside a selection. Dark rather than tinted: it
-        // sits over arbitrary content that has to stay recognisable through it.
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)
 
-        // THE ETCHED SEAM: the hairline along the shell's own inner edge, and
-        // along anything else this shell draws as a piece of the machine.
-        //
-        // The alpha is MEASURED rather than chosen, and the measurement is worth
-        // keeping: on the reference the line is RGB(29,29,29) over a background
-        // of RGB(12,12,12), which is +17 absolute, and paper at 8% over that
-        // ground is what puts it there. It reads as a panel gap catching one
-        // degree of light, which is the machined look; anything an order
-        // brighter reads as a drawn outline around the shell.
-        //
-        // IT LIVES HERE RATHER THAN IN THE SHADER because it now has two users.
-        // components/blob/BlobField.qml drew it first, on the chassis, with a
-        // note saying it would become a token if it stayed. It stayed, and the
-        // keyring card asked for the same line, so this is that promotion: one
-        // seam, one colour, and no chance of the panel's differing from the
-        // edge's by a percent nobody can see but everybody can feel.
         readonly property color seam: Qt.rgba(root.colour.paper.r, root.colour.paper.g, root.colour.paper.b, 0.08)
     }
 
@@ -253,70 +118,27 @@ Singleton {
         readonly property string icon: root.cfg.font.icon
         readonly property string brand: root.cfg.font.brand
 
-        // THREE SIZES, shell-wide. Hierarchy is carried by colour, spacing and
-        // fills instead (see ~/.claude/rules/type-scale.md).
         readonly property QtObject size: QtObject {
             readonly property int small: Math.round(root.tier(root.cfg.font.base, root.cfg.font.scale, 0))
             readonly property int normal: Math.round(root.tier(root.cfg.font.base, root.cfg.font.scale, 1))
             readonly property int large: Math.round(root.tier(root.cfg.font.base, root.cfg.font.scale, 2))
         }
 
-        // Icons are glyphs, not type: they carry no hierarchy, so they sit
-        // outside the three tiers rather than eating one.
-        //
-        // Sized from the tier they sit BESIDE, not from the raw base. Deriving
-        // from the base coupled them to the pixel grid, and when that moved to
-        // 9 every icon in the shell shrank to 10px along with it. An icon next
-        // to body text should match body text whatever the grid says.
-        //
-        // That tier is `small`. Body text is `small` now: the grid has no step
-        // between 9 and 18, so the bottom of the ladder had to become the
-        // workhorse rather than the quiet one. Reading `normal` here would size
-        // every icon from a tier nothing is set in, and 30px icons do not fit
-        // the 28px status slot they sit in.
         readonly property int iconSize: Math.round(size.small * root.cfg.font.iconScale)
 
-        // THE PIXEL FONT'S OWN DEVICE PIXEL, and therefore what a line drawn
-        // beside it should weigh.
-        //
-        // Monocraft's design pixel is the base (see Config's font block), so a
-        // tier is that many device pixels per design pixel: at base 9 with the
-        // body tier at 2x, a stem is 2px wide. A rule, a ring or an outline at
-        // any other width reads as a different material sitting next to type
-        // made of stems that thick, which is the same reason the sizes have to
-        // be whole multiples in the first place.
         readonly property int stem: Math.max(1, Math.round(size.small / root.cfg.font.base))
     }
 
     readonly property QtObject rounding: QtObject {
-        // Hyprland's `rounding`, or config.json's, depending on `follows`.
+
         readonly property real base: root.follows ? Compositor.rounding : root.cfg.rounding.base
 
         readonly property real small: at(0)
         readonly property real normal: at(1)
         readonly property real large: at(2)
 
-        // THE CORNER, for the whole shell: |x|^n + |y|^n = r^n. 2 is a plain
-        // circular arc, and every step up hugs the vertex more closely while
-        // ramping the curvature into the straight edge instead of jumping.
-        //
-        // ONE NUMBER, and it used to be two. The chassis field took this and the
-        // vector primitive took a separate Figma "smoothing", which is a
-        // different construction that cannot draw this curve at all, so a panel
-        // and the melt around it were never the same shape. components/squircle.js
-        // draws the superellipse now, so both ends read the same setting.
-        //
-        // FOLLOWED, where it used to be pinned to 2 with a comment saying
-        // Hyprland renders circular whatever it reports. It does not: measured
-        // off the render, on rays from the corner centre, this window's edge sits
-        // 17.9% further out along the diagonal than along the axes, which is
-        // n = 3.8 against a reported `rounding_power` of 4. The earlier
-        // measurement had found the SHADOW, which is blurred and does measure
-        // round. Pinning it at 2 gave every panel a squarer corner than the
-        // window beside it.
         readonly property real power: root.follows ? Compositor.roundingPower : root.cfg.rounding.power
 
-        // Any tier by index, for things that take the tier as a setting.
         function at(i: int): real {
             return root.tier(base, root.cfg.rounding.scale, i);
         }
@@ -325,23 +147,18 @@ Singleton {
     readonly property QtObject padding: QtObject {
         readonly property int small: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 0))
         readonly property int normal: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 1))
-        // The inside of a boxed thing: Material's 16dp card padding.
+
         readonly property int card: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 2))
         readonly property int large: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 3))
         readonly property int huge: Math.round(root.tier(root.cfg.padding.base, root.cfg.padding.scale, 4))
     }
 
-    // THE BUTTON'S OWN LADDER: five sizes, straight off the measured spec in
-    // config (heights, padding, icon sizes and gaps), with the label the one
-    // exception - it stays on the pixel font's grid. No button anywhere
-    // holds a literal; a button asks for its size by index.
     readonly property QtObject button: QtObject {
-        // Any rung of any list, clamped.
+
         function at(list: var, i: int): real {
             return list[Math.max(0, Math.min(i, list.length - 1))];
         }
 
-        // Label size for size tier i of five (extra small .. extra large).
         function label(i: int): real {
             return root.tier(root.cfg.font.base, root.cfg.button.scale, i);
         }
@@ -358,7 +175,6 @@ Singleton {
             return at(root.cfg.button.iconSizes, i);
         }
 
-        // The mark-to-words space, which the spec also measures per size.
         function iconGap(i: int): real {
             return at(root.cfg.button.iconGaps, i);
         }
@@ -369,7 +185,6 @@ Singleton {
         readonly property int normal: Math.round(root.tier(root.cfg.anim.base, root.cfg.anim.scale, 1))
         readonly property int slow: Math.round(root.tier(root.cfg.anim.base, root.cfg.anim.scale, 2))
 
-        // Exponential-smoothing rates (see ~/.claude/rules/animation-smoothing.md).
         readonly property real trackSpeed: root.cfg.anim.trackSpeed
         readonly property real revealSpeed: root.cfg.anim.revealSpeed
         readonly property real railSpeed: root.cfg.anim.railSpeed
@@ -379,33 +194,25 @@ Singleton {
         readonly property int grace: root.cfg.anim.grace
         readonly property int dwell: root.cfg.anim.dwell
         readonly property int tooltip: root.cfg.anim.tooltip
-        // How long a menu has to be on screen before what is inside it is
-        // believed to be worth doing; see MenuPanel's page delegate.
+
         readonly property int settle: root.cfg.anim.settle
     }
 
     readonly property QtObject sizes: QtObject {
-        // The invisible ring is exactly the compositor's outer gap, so it sits in
-        // the dead space between windows and the screen edge rather than over
-        // anything.
+
         readonly property int border: root.follows ? Compositor.gapsOut : root.cfg.edge.border
         readonly property int sidebarWidth: root.cfg.sidebar.width
         readonly property real sidebarFlare: root.rounding.at(root.cfg.sidebar.flareTier)
         readonly property int wsSlot: root.cfg.sidebar.workspaces.slot
         readonly property int wsGap: root.cfg.sidebar.workspaces.gap
         readonly property int wsPersistent: root.cfg.sidebar.workspaces.persistent
-        // The scratchpad rack's pinned order, by name. A list, not a size, but
-        // it belongs with the rest of what the workspace column is told.
+
         readonly property var wsSpecials: root.cfg.sidebar.workspaces.specials
-        // The row pitch of stacked window icons. Derived from the icon size
-        // rather than set in pixels, so the stack keeps its proportions when
-        // the icons change size.
-        // A window's mark here, and the row it sits in. Both derive from the
-        // shell's icon size, so the sidebar keeps its proportions when that moves.
+
         readonly property int wsIcon: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.iconScale)
         readonly property int wsWindowPitch: Math.round(wsIcon * root.cfg.sidebar.workspaces.windowPitch)
         readonly property string wsIconMode: root.cfg.sidebar.workspaces.iconMode
-        // The ruler down the screen's edge. See modules/sidebar/Workspaces.qml.
+
         readonly property string wsStyle: root.cfg.sidebar.workspaces.style
         readonly property int wsMapBar: root.cfg.sidebar.workspaces.mapBar
         readonly property int wsMapGap: root.cfg.sidebar.workspaces.mapGap
@@ -417,9 +224,6 @@ Singleton {
         readonly property int statusSlot: root.cfg.sidebar.status.slot
         readonly property int statusGap: root.cfg.sidebar.status.gap
 
-        // The tray, at the top of the bar. See modules/sidebar/TrayIcons.qml.
-        // Its mark derives from the shell's icon size like every other mark, so
-        // the whole bar rescales from one number.
         readonly property int traySlot: root.cfg.sidebar.tray.slot
         readonly property int trayGap: root.cfg.sidebar.tray.gap
         readonly property int trayIcon: Math.round(root.font.iconSize * root.cfg.sidebar.tray.iconScale)
@@ -428,20 +232,13 @@ Singleton {
         readonly property real melt: root.cfg.blob.melt
         readonly property real meltFeather: root.cfg.blob.feather
 
-        // The signal meter's steps, read by the meter that draws them and by
-        // the service that sorts on them; see Config's note on why it is one
-        // number rather than two that agree until they don't.
         readonly property int signalBands: root.cfg.control.signalBands
         readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget
         readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction
         readonly property real dragResistance: root.cfg.control.dragResistance
         readonly property int dragThreshold: root.cfg.control.dragThreshold
-        // The pull gesture's direction gate, one tolerance for a corner and one
-        // for an edge, and its full-pull distance; see components/Pull.qml.
-        // The feel tokens: recognition, commitment, reversal and the throw.
-        // See Config's note; a gesture is a feel, and these are the rules that
-        // create it.
+
         readonly property int pullSlack: root.cfg.control.pullSlack
         readonly property real pullCommit: root.cfg.control.pullCommit
         readonly property real pullReversal: root.cfg.control.pullReversal
@@ -449,12 +246,9 @@ Singleton {
         readonly property int pullAngleCorner: root.cfg.control.pullAngleCorner
         readonly property int pullAngleEdge: root.cfg.control.pullAngleEdge
         readonly property real pullTravel: root.cfg.control.pullTravel
-        // Whether the screen-edge gestures are sized for a finger or for a
-        // cursor; see the note in Config.qml, it is a trade rather than a taste.
+
         readonly property bool touchEdges: root.cfg.control.touchEdges
-        // The bottom edge as a handle on the window above it: what a finger has
-        // to do to lift one, to throw it away, and to put it somewhere else.
-        // See modules/windows/.
+
         readonly property bool windowEdge: root.cfg.windows.edge
         readonly property int windowGrab: root.cfg.windows.grab
         readonly property int windowSettle: root.cfg.windows.settle
@@ -477,26 +271,21 @@ Singleton {
         readonly property int launcherWidth: root.cfg.launcher.width
         readonly property int launcherIcon: root.cfg.launcher.iconSize
 
-        // What was copied. See modules/clipboard/.
         readonly property int clipboardWidth: root.cfg.clipboard.width
         readonly property int clipboardPreview: root.cfg.clipboard.preview
         readonly property int clipboardLines: root.cfg.clipboard.previewLines
-        // A row's mark, sized like every other mark in the shell rather than in
-        // pixels of its own, so the whole thing rescales from the one number.
+
         readonly property int clipboardIcon: Math.round(root.font.iconSize * root.cfg.clipboard.iconScale)
-        // How long a new wallpaper takes to open over the old one. A duration
-        // among the sizes because that is where every other configured number
-        // the shell reads lands; see Config's note on why it is not one of the
-        // animation tiers.
+
         readonly property int wallpaperReveal: root.cfg.wallpaper.reveal
         readonly property int notchTrack: root.cfg.notch.trackWidth
-        // The media scrubber's line, wave and wheel; see modules/media/Scrubber.qml.
+
         readonly property int scrubStroke: root.cfg.media.stroke
         readonly property int scrubWaveLength: root.cfg.media.waveLength
         readonly property int scrubWaveAmplitude: root.cfg.media.waveAmplitude
         readonly property real scrubWaveSpeed: root.cfg.media.waveSpeed
         readonly property real scrubWheelSeek: root.cfg.media.wheelSeek
-        // The floating controller. See modules/media/MediaController.qml.
+
         readonly property int mediaPanelWidth: root.cfg.media.panelWidth
         readonly property real mediaSeekSmall: root.cfg.media.seekSmall
         readonly property real mediaSeekLarge: root.cfg.media.seekLarge
@@ -504,104 +293,51 @@ Singleton {
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone
 
-        // The right edge, as a volume rail. See modules/VolumeRail.qml.
         readonly property real volumeStep: root.cfg.volume.step
-        // The meter's THICKNESS, and no length beside it: the readout is three
-        // of its own glyphs tall and derives that from the icon it stands under,
-        // so the length is arithmetic in the rail rather than a token here. See
-        // the note over `railWidth` in Config for what used to be here.
+
         readonly property int volumeRailWidth: root.cfg.volume.railWidth
-        // The meter's length, in glyphs of the icon under it. Read by
-        // modules/VolumeRail.qml, and it was read there before it was declared
-        // anywhere: see the note in Config, and the NaN that reached the blob.
+
         readonly property int volumeMeterGlyphs: root.cfg.volume.meterGlyphs
         readonly property int volumeLinger: root.cfg.volume.linger
         readonly property real volumeGrabFraction: root.cfg.volume.grabFraction
-        // What a full day-bar means on the calendar; see services/Usage.qml.
+
         readonly property int usageCapHours: root.cfg.usage.capHours
 
-        // WHICH MONTH A RIGHTWARD SWIPE ASKS THE CALENDAR FOR. True is the
-        // gesture going forward in time with the hand, false is the strip of
-        // months behaving like paper under it; Config carries the whole
-        // argument, which is a real one in both directions.
-        //
-        // A token here rather than a read straight off Config the way the
-        // cheatsheet's two preferences are, because it is not an answer the UI
-        // stored for itself: it decides what a gesture MEANS, which is the job
-        // `touchEdges`, `dragThreshold` and the pull tolerances above already
-        // have, and it belongs with them.
         readonly property bool calendarRightGoesForward: root.cfg.calendar.rightGoesForward
 
-        // The power panel, on the right edge. See modules/session/SessionMenu.qml.
         readonly property int sessionButton: root.cfg.session.button
         readonly property int sessionIcon: Math.round(root.font.iconSize * root.cfg.session.iconScale)
 
-        // The settings page, at rest. See modules/settings/.
-        //
-        // The window's size at birth: a hint the compositor takes on every
-        // open, and the user is allowed to drag its corner afterwards.
         readonly property int settingsWidth: root.cfg.settings.width
         readonly property int settingsHeight: root.cfg.settings.height
         readonly property int settingsRail: root.cfg.settings.rail
-        // The rail's own row pitch: nav rows, one small tier under the
-        // content's rows.
+
         readonly property int settingsRailRow: root.cfg.settings.railRow
         readonly property int settingsPane: root.cfg.settings.pane
-        // The page's own air, on every side of its content.
+
         readonly property int settingsGutter: root.cfg.settings.gutter
 
-
-        // The file browser's window, and the grid inside it. See modules/files/.
-        //
-        // The GEOMETRY is here; what the browser prefers is not. Which way it
-        // sorts, whether it shows dotfiles and what a chord does are read off
-        // Config by the service that owns them, the way the cheatsheet's two
-        // preferences are: they are state the interface keeps, not tokens it is
-        // drawn from, and a keymap in the appearance file would be a keymap
-        // nobody could find.
         readonly property int filesWidth: root.cfg.files.width
         readonly property int filesHeight: root.cfg.files.height
-        // The one number the grid scales from: a column count is arithmetic on
-        // this and the room available, never a setting of its own.
-        //
-        // Both this and the text below are the configured value times the zoom,
-        // so Ctrl+= moves the whole grid rather than the type alone.
-        // WITHOUT `root.`, and that is not a style choice. These live inside
-        // this QtObject, so `root.filesZoom` is a property of the Appearance
-        // singleton - which has none, so it read undefined, the tile size came
-        // out NaN, the column count came out zero and the grid laid out nothing
-        // at all while every binding feeding it was correct.
+
         readonly property real filesZoom: root.cfg.files.zoom
         readonly property int filesTile: Math.round(root.cfg.files.tile * filesZoom)
         readonly property int filesPreview: root.cfg.files.preview
-        // The browser's own body size. See Config's note on why this window
-        // sets a size instead of taking one of the three tiers.
+
         readonly property int filesText: Math.round(root.cfg.files.text * filesZoom)
         readonly property int filesSidebar: root.cfg.files.sidebar
-        // A row in the list view: two lines of the browser's own text, which is
-        // the tightest a row can be and still have air in it.
+
         readonly property int filesRow: Math.round(root.cfg.files.text * 2)
         readonly property int filesThumbnail: root.cfg.files.thumbnail
         readonly property int filesTextMax: root.cfg.files.textMax
-        // The terminal's height IN ROWS, because that is the unit a terminal is
-        // measured in; the pixels are the line height times this, worked out
-        // where the line height is known.
+
         readonly property int filesTerminalRows: root.cfg.files.terminal.rows
         readonly property int filesScrollback: root.cfg.files.terminal.scrollback
-        // See Config: the shell's pixel font cannot draw a terminal.
+
         readonly property string filesTerminalFont: root.cfg.files.terminal.font
-        // The bottom-right corner, as a way in. The corner's SIZE is not here:
-        // it is derived from this mark in modules/SettingsCorner.qml, because
-        // the swell exists to hold the glyph.
+
         readonly property int cornerIcon: Math.round(root.font.iconSize * root.cfg.corner.iconScale)
 
-        // The lock screen. See modules/lock/LockSurface.qml.
-        //
-        // The field's height is DERIVED, not configured: it is one line of the
-        // body size in its own box, and the one number that decides how tall a
-        // line is here is StyledText's fixed 4/3 line box. Configuring it
-        // separately would let the two disagree the first time the type scale
-        // moved.
         readonly property int lockField: root.cfg.lock.fieldWidth
         readonly property real lockFieldHeight: Math.round(root.font.size.small * 4 / 3) + root.padding.normal * 2
         readonly property real lockBlur: root.cfg.lock.blur
@@ -609,12 +345,6 @@ Singleton {
         readonly property real lockDesaturate: root.cfg.lock.desaturate
         readonly property int lockDot: Math.round(root.font.iconSize * root.cfg.lock.dotScale)
 
-        // How thick the etched seam is, for the panels that draw it as a stroke.
-        //
-        // TWO PIXELS, NOT ONE, and that is not a rounding of "thin". The band is
-        // feathered by about a pixel on each side, so a 1px line spends all of
-        // itself on the antialiasing and comes out uneven along a curve. At this
-        // alpha the extra width costs nothing. See colour.seam.
         readonly property real seam: 2
         readonly property real lockReveal: root.cfg.lock.revealSpeed
 
@@ -624,25 +354,6 @@ Singleton {
 
         readonly property bool roundOuter: root.cfg.edge.roundOuter
 
-        // THE ROUNDING VOCABULARY. There is ONE radius in this shell and two
-        // distances; everything else is a name for an offset of the same curve.
-        //
-        //   windowRadius   the compositor's `rounding` plus its `border_size`:
-        //                  the outer edge of a window, and the only radius here
-        //   gap            the compositor's `gaps_out`
-        //   band           how thick the chassis band is, which is the gap
-        //
-        // and then, all offsets of the window's curve, never radii of their own:
-        //
-        //   the content area   windowRadius offset out by `gap`
-        //   the screen's edge  offset again by `band`
-        //
-        // Saying "the content radius is windowRadius + gap" is the trap. It is
-        // true for circles and false for every other superellipse: at the
-        // compositor's exponent of 4 it opens a 19% wider gap along the diagonal
-        // than along the edges, which is a visible wedge at each corner. The
-        // shader offsets the distance field instead, so the chassis cups a
-        // window corner at a constant distance whatever the exponent is.
         readonly property real windowRadius: root.rounding.base + (root.follows ? Compositor.borderSize : 0) + root.cfg.edge.outerExtra
         readonly property real gap: border
         readonly property real band: border

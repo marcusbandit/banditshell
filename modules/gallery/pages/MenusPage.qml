@@ -1,10 +1,5 @@
 import QtQuick
 
-// Menus. From the list: "Menus".
-//
-// PLACEHOLDER: not drawn yet. The gallery shows its own note on the stage
-// until this page declares `drawn: true` and puts the component in here;
-// `knobs` below is what its demo will answer to once there is one.
 Item {
     id: page
 

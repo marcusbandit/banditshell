@@ -4,11 +4,6 @@ import QtQuick
 import qs.config
 import qs.components
 
-// ONE SETTING: what it is called, what it means, and the control that changes it.
-//
-// The control goes in as a child, so this file knows nothing about switches or
-// segments and every row lines up with every other one regardless of what is on
-// its right.
 Item {
     id: root
 

@@ -3,6 +3,14 @@
 Repo-level guidance for agents working in banditshell. `DESIGN.md` carries the
 visual and architectural intent; read it before changing anything the user sees.
 
+## Comments
+
+The code carries close to no comments. Do not add any unless the user asks for
+one, and never add file-header essays, section banners, or narration of what
+the next block does. This was a hard-won correction: the codebase had filled
+with comment prose until it was stripped clean on 2026-09-30. If something is
+genuinely non-obvious, the fix is clearer naming or structure, not a comment.
+
 ## Agent skills
 
 ### Issue tracker

@@ -1,5 +1,3 @@
-//@ pragma DefaultEnv QS_NO_RELOAD_POPUP=1
-
 pragma ComponentBehavior: Bound
 
 import QtQuick
@@ -8,34 +6,9 @@ import Quickshell.Io
 import Quickshell.Wayland
 import "theme.js" as Theme
 
-// The installer's face: banditshell assembling itself out of the download.
-//
-// This runs BEFORE the shell it is installing exists, so it imports nothing from
-// qs.modules, qs.services or qs.components. Everything it needs is either in this
-// directory or copied into it. That constraint is the whole reason the directory
-// looks slightly redundant next to components/: it has to be able to run on a
-// machine where components/ has no dependencies to run against.
-//
-// What it draws is not decoration. install.sh works through a table of
-// dependencies and appends one json object per event to a file; this reads that
-// file and gives each dependency a piece of the shell's own chassis. The rail
-// grows, its pips light one per dependency, the corners sweep into the screen
-// edges, the notch drops out of the top and the bar rises out of the bottom. By
-// the last package the progress display has turned into the thing that was being
-// installed, which is the only joke this program tells.
-//
-// It is also entirely optional. install.sh checks that this came up and falls
-// back to a terminal bar if it did not, so nothing here can stop a machine
-// getting its dependencies.
 ShellRoot {
     id: root
 
-    // ---------------------------------------------------------------- data --
-
-    // Every step the run will take, in table order, each carrying the last state
-    // seen for it. Rebuilt wholesale on every read rather than patched in place:
-    // the file is a few hundred bytes and a whole-array assignment is the one
-    // shape QML reliably notices.
     property var steps: []
     property int total: 0
     property bool finished: false
@@ -44,8 +17,6 @@ ShellRoot {
     property int tallySkipped: 0
     property int tallyFailed: 0
 
-    // How far through the table the run is: every step that has reached a
-    // terminal state, whether it installed something or found it already there.
     readonly property real progress: root.total > 0 ? root.resolved / root.total : 0
 
     readonly property int resolved: {
@@ -63,15 +34,6 @@ ShellRoot {
         return null;
     }
 
-    // -- THE CHASSIS, and when each piece of it arrives ----------------------
-    //
-    // Four pieces, and the schedule is computed from how many there are rather
-    // than written down as four percentages. Piece k lands at (k + 1) / (P + 1),
-    // which spreads them evenly through the run and leaves room at both ends: the
-    // first piece is not already there when the first package starts, and the
-    // last one still has some run left after it. Add a fifth piece to the list
-    // and the other four re-space themselves.
-    // See ~/.claude/rules/math-over-hardcoding.md.
     readonly property var pieces: ["rail", "corners", "notch", "bar"]
 
     function pieceDue(k: int): real {
@@ -82,8 +44,6 @@ ShellRoot {
         const k = root.pieces.indexOf(name);
         return k >= 0 && root.progress >= root.pieceDue(k);
     }
-
-    // ------------------------------------------------------------- the log --
 
     readonly property string logPath: Quickshell.env("BANDITSHELL_INSTALL_LOG") || `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/banditshell-install.jsonl`
 
@@ -106,8 +66,7 @@ ShellRoot {
             try {
                 ev = JSON.parse(t);
             } catch (e) {
-                // A half written last line is normal: the file is being appended
-                // to while this reads it. Skip it; the next read gets it whole.
+
                 continue;
             }
 
@@ -139,9 +98,6 @@ ShellRoot {
             };
         }
 
-        // Steps the log has not mentioned yet still occupy a slot, so the rail
-        // has its full height from the first frame and nothing jumps when a late
-        // step first appears.
         for (let i = 0; i < seenTotal; i++)
             if (!rows[i])
                 rows[i] = {
@@ -173,17 +129,12 @@ ShellRoot {
         onLoaded: root.absorb(text())
     }
 
-    // The watch is inotify and the file is being appended to in bursts by a shell
-    // script. A slow poll beside it costs nothing on a file this size and means a
-    // missed notification shows up a fifth of a second later rather than never.
     Timer {
         interval: 200
         repeat: true
         running: !root.finished
         onTriggered: logFile.reload()
     }
-
-    // --------------------------------------------------------- the surfaces --
 
     Variants {
         model: Quickshell.screens
@@ -196,9 +147,6 @@ ShellRoot {
             screen: win.modelData
             color: Theme.void_
 
-            // Over everything, reserving nothing, and taking no keyboard. A
-            // progress display that stole the keyboard from the terminal running
-            // the install would be a hard thing to explain.
             WlrLayershell.layer: WlrLayer.Overlay
             WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
             WlrLayershell.namespace: "banditshell-installer"
@@ -211,19 +159,11 @@ ShellRoot {
                 right: true
             }
 
-            // -- the ground it all sits on ------------------------------------
-            //
-            // A wash toward the accent behind the middle of the screen, so the
-            // void is not a flat black rectangle. It brightens as the run
-            // advances, which is the one thing on screen that moves continuously
-            // rather than in steps.
             Item {
                 anchors.fill: parent
 
                 Rectangle {
-                    // A true 90 degree corner: this is the full bleed ground, it
-                    // has no rounded corner to get wrong. Every SHAPE in this
-                    // file goes through G2Rect.
+
                     anchors.fill: parent
                     gradient: Gradient {
                         GradientStop {
@@ -249,12 +189,6 @@ ShellRoot {
                 speed: 4
             }
 
-            // -- the rail ------------------------------------------------------
-            //
-            // The first piece to arrive, and the one that carries the data: one
-            // pip per dependency, placed by the formula rather than by a list of
-            // positions, so the column re-spaces itself when the table changes
-            // length.
             Smooth {
                 id: railIn
                 target: root.pieceIn("rail") ? 1 : 0
@@ -275,8 +209,7 @@ ShellRoot {
 
                 G2Rect {
                     anchors.fill: parent
-                    // Square where it meets the screen edge, curved where it
-                    // faces the room: the shape a panel makes against an edge.
+
                     topLeftRadius: 0
                     bottomLeftRadius: 0
                     topRightRadius: Theme.rLarge
@@ -284,9 +217,6 @@ ShellRoot {
                     color: Theme.body
                 }
 
-                // One pip per step. Position is ((i + 1) / (N + 1)) of the
-                // column's height: evenly distributed, no slot anywhere in the
-                // source, correct for any N.
                 Repeater {
                     model: root.total
 
@@ -313,7 +243,6 @@ ShellRoot {
                             }
                         }
 
-                        // THE FORMULA. Nothing here knows what N is.
                         y: ((pip.index + 1) / (root.total + 1)) * rail.height - height / 2
                         x: (rail.w - width) / 2
                         width: rail.w * 0.42
@@ -321,9 +250,7 @@ ShellRoot {
 
                         Smooth {
                             id: lit
-                            // A step in flight is wider and brighter than one
-                            // that is merely finished: the eye should be able to
-                            // find the live one without reading anything.
+
                             target: pip.state === "start" ? 1 : (pip.state === "pending" ? 0 : 0.55)
                             speed: 11
                         }
@@ -340,13 +267,6 @@ ShellRoot {
                 }
             }
 
-            // -- the corners ---------------------------------------------------
-            //
-            // Concave, which is what a negative radius means to G2Rect: the side
-            // pulls in and flares back out to the bounding box tangent to the
-            // perpendicular edge, so the corner sweeps into the screen edge
-            // instead of stopping short of it. Four of them, generated, because
-            // four hand-placed corners is four chances to get one wrong.
             Smooth {
                 id: cornersIn
                 target: root.pieceIn("corners") ? 1 : 0
@@ -388,9 +308,6 @@ ShellRoot {
                     x: wedge.modelData.h === "left" ? 0 : win.width - width
                     y: wedge.modelData.v === "top" ? 0 : win.height - height
 
-                    // The one corner that faces INTO the screen is the concave
-                    // one; the three that sit on the edges are square, because
-                    // they are the edges.
                     topLeftRadius: (wedge.modelData.h === "right" && wedge.modelData.v === "bottom") ? -wedge.reach : 0
                     topRightRadius: (wedge.modelData.h === "left" && wedge.modelData.v === "bottom") ? -wedge.reach : 0
                     bottomRightRadius: (wedge.modelData.h === "left" && wedge.modelData.v === "top") ? -wedge.reach : 0
@@ -398,7 +315,6 @@ ShellRoot {
                 }
             }
 
-            // -- the notch -----------------------------------------------------
             Smooth {
                 id: notchIn
                 target: root.pieceIn("notch") ? 1 : 0
@@ -428,14 +344,12 @@ ShellRoot {
                     anchors.centerIn: parent
                     text: root.dryRun ? "dry run" : (root.finished ? "installed" : "installing")
                     color: Theme.textDim
-                    // Uppercase and tracked out, which is how a label says it is a
-                    // label without asking for a size of its own.
+
                     font.capitalization: Font.AllUppercase
                     font.letterSpacing: 3
                 }
             }
 
-            // -- the bar -------------------------------------------------------
             Smooth {
                 id: barIn
                 target: root.pieceIn("bar") ? 1 : 0
@@ -488,7 +402,7 @@ ShellRoot {
                             required property var modelData
 
                             spacing: Theme.padSmall
-                            // Only worth showing once there are numbers to show.
+
                             opacity: root.finished ? 1 : 0.25
 
                             BsText {
@@ -507,13 +421,11 @@ ShellRoot {
                 }
             }
 
-            // -- the middle: what is actually happening ------------------------
             Column {
                 anchors.centerIn: parent
                 anchors.horizontalCenterOffset: rail.w / 2
                 spacing: Theme.padLarge
 
-                // The name, in the one large size the whole surface gets.
                 BsText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "banditshell"
@@ -534,7 +446,6 @@ ShellRoot {
                     height: Theme.padNormal
                 }
 
-                // -- the meter --------------------------------------------------
                 G2Rect {
                     id: track
 
@@ -545,10 +456,7 @@ ShellRoot {
                     color: Theme.fill
 
                     G2Rect {
-                        // Exponentially smoothed, so the fill glides between
-                        // packages instead of stepping. The corner stays a
-                        // squircle at every width because the primitive clamps
-                        // the radius to what the box can spend.
+
                         width: Math.max(0, track.width * fill.value)
                         height: parent.height
                         radius: Theme.rSmall
@@ -562,7 +470,6 @@ ShellRoot {
                     speed: 6
                 }
 
-                // -- the caption ------------------------------------------------
                 Column {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: Theme.padSmall

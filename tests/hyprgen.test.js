@@ -1,13 +1,3 @@
-// services/hyprgen.js: the Hyprland config, scanned, composed, spliced.
-//
-// Everything tested here is the behaviour that breaks SILENTLY. A scanner
-// that misreads a long-bracket string does not throw; it hands the editor a
-// bind that is not there, and the editor writes garbage into the one file
-// the user cannot afford to lose. A splice with the wrong bounds does not
-// fail either; it eats a comment. Neither has a runtime error to catch,
-// which is why they are caught here -- with the real shapes from a real
-// binds.lua: multi-line binds, loops, submap functions, escapes.
-
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
@@ -17,8 +7,6 @@ const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprgen.js"), "utf8");
 const HyprGen = new Function(src
     + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines };")();
-
-// ------------------------------------------------------------------ chords
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprGen.parseChord("SUPER + SHIFT + Slash"), {
@@ -30,13 +18,11 @@ test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprGen.parseChord("SUPER + grave"), {
         mods: ["SUPER"], key: "grave", mask: 64
     });
-    // A repeated modifier counts once.
+
     assert.strictEqual(HyprGen.parseChord("SUPER + SUPER + A").mask, 64);
-    // No key means the chord does not parse, which the editor refuses.
+
     assert.strictEqual(HyprGen.parseChord("").key, "");
 });
-
-// ------------------------------------------------------------- lua strings
 
 test("lua strings escape everything that could end the string", () => {
     assert.strictEqual(HyprGen.luaString('say "hi"'), 'say \\"hi\\"');
@@ -50,8 +36,6 @@ test("luaUnescape is luaString's inverse, both ways", () => {
     assert.strictEqual(HyprGen.luaUnescape(HyprGen.luaString(nasty)), nasty);
     assert.strictEqual(HyprGen.luaUnescape('a\\"b'), 'a"b');
 });
-
-// ---------------------------------------------------------------- scanning
 
 test("a plain bind scans to chord, expression and options", () => {
     const r = HyprGen.scanLua('hl.bind("SUPER + SPACE", hl.dsp.exec_cmd("banditshell launcher toggle"), { description = "Launcher" })');
@@ -73,8 +57,7 @@ test("a bind wrapped across lines scans as one bind", () => {
 });
 
 test("a long-bracket command with parentheses inside does not end the string", () => {
-    // The OCR bind, verbatim in shape: parens INSIDE the [[ ]] must not
-    // close the call early.
+
     const r = HyprGen.scanLua('hl.bind("SUPER + SHIFT + T", hl.dsp.exec_cmd([[grim -g "$(slurp)" | tesseract /tmp/x.png stdout]]))');
     assert.strictEqual(r.binds.length, 1);
     assert.ok(r.binds[0].expr.includes("tesseract"), "the body was cut at the first paren");
@@ -107,11 +90,11 @@ test("binds born in loops and functions are dynamic; block depth survives the lo
         "end)"
     ].join("\n"));
     assert.strictEqual(r.binds.length, 3);
-    // Loop bind: computed chord, read-only.
+
     assert.strictEqual(r.binds[0].dynamic, true);
-    // The bind AFTER the loop: writable again.
+
     assert.strictEqual(r.binds[1].dynamic, false);
-    // A bind inside a submap function: read-only, forever.
+
     assert.strictEqual(r.binds[2].dynamic, true);
 });
 
@@ -132,8 +115,6 @@ test("other hl.* calls are counted, not parsed as binds", () => {
     assert.strictEqual(r.foreign.length, 1);
 });
 
-// ------------------------------------------------------- compose and splice
-
 test("composeBind renders the same line the scanner reads back", () => {
     const line = HyprGen.composeBind("SUPER + X", 'hl.dsp.exec_cmd("banditshell exec")', {
         locked: true, repeating: false, description: 'the "whole" thing'
@@ -150,7 +131,7 @@ test("composeBind renders the same line the scanner reads back", () => {
 test("composeBind without options takes the two-argument form", () => {
     const line = HyprGen.composeBind("SUPER + X", 'hl.dsp.exec_cmd("x")', {});
     assert.strictEqual(line, 'hl.bind("SUPER + X", hl.dsp.exec_cmd("x"))');
-    // And an incomplete one renders as nothing, not as broken Lua.
+
     assert.strictEqual(HyprGen.composeBind("", "x", {}), null);
     assert.strictEqual(HyprGen.composeBind("SUPER + X", "", {}), null);
 });
@@ -210,19 +191,10 @@ test("an edit round-trips: scan, edit, splice, rescan", () => {
     assert.strictEqual(second.binds.length, 2);
     assert.strictEqual(second.binds[0].chord, "SUPER + B");
     assert.strictEqual(second.binds[0].description, "Clipboard");
-    // The neighbour never moved.
+
     assert.strictEqual(second.binds[1].chord, "CTRL + ALT + V");
     assert.strictEqual(second.binds[1].description, "");
 });
-
-// ------------------------------------------------------------- monitors
-//
-// lua/monitors.lua is a PROGRAM: output names are locals, the per-host
-// monitor lines are table entries a loop applies, and one entry carries
-// fields the editor does not manage (bitdepth, cm). Every test here is a
-// shape from that real file, because the failure modes are the silent ones:
-// an entry matched to the wrong output, an alias flattened into a literal,
-// a commented-out HDR line brought back from the dead.
 
 const MONITORS_LUA = [
     "-- MONITORS AND WORKSPACE ASSIGNMENT",
@@ -286,9 +258,9 @@ test("the commented-out HDR entry stays a comment, and the loop's call stays for
     const r = HyprGen.scanLua(MONITORS_LUA);
 
     assert.strictEqual(r.monitors.filter(m => m.output === "HDMI-A-1").length, 1);
-    // The catch-all is a literal table: collected, output "" matches nothing.
+
     assert.ok(r.monitors.some(m => m.output === ""), "catch-all collected");
-    // hl.monitor(monitor) has no table: it is the loop's business, foreign.
+
     assert.ok(r.foreign.some(f => f.text === "hl.monitor(...)"));
     assert.strictEqual(r.monitors.length, 3);
 });
@@ -311,7 +283,7 @@ test("an entry is never collected from inside a function", () => {
     ].join("\n");
 
     const r = HyprGen.scanLua(file);
-    // Inside `function` the block depth is > 0: shown, located, read-only.
+
     assert.strictEqual(r.monitors.length, 1);
     assert.strictEqual(r.monitors[0].dynamic, true);
 });
@@ -373,16 +345,14 @@ test("an entry carries the indent it was written under, and an edit keeps it", (
     const side = r.monitors.find(m => m.output === "DP-1");
 
     assert.strictEqual(side.indent, "            ");
-    // A list member's separator rides after the closing brace, outside the
-    // frame: an edit that spliced without it would write two constructors
-    // with nothing between them.
+
     assert.strictEqual(side.trailing, ",");
     const line = HyprGen.composeEntry(side, { position: "480x0" });
     assert.ok(line.includes("output = vertical_side"));
     const edited = HyprGen.spliceLines(MONITORS_LUA, side.startLine, side.endLine, [side.indent + line + side.trailing]);
     const second = HyprGen.scanLua(edited);
     assert.strictEqual(second.monitors.find(m => m.output === "DP-1").startLine, side.startLine, "the entry is one line now, at the indent it wore");
-    // And the file still parses as Lua, separator and all.
+
     assert.ok(/transform = 1 \},/.test(edited), "the separator survived the splice");
 });
 
@@ -400,16 +370,9 @@ test("an edit round-trips: scan, edit, splice, rescan", () => {
     assert.strictEqual(wide2.position, "1200x172");
     assert.strictEqual(wide2.scale, 1);
     assert.strictEqual(second.monitors.find(m => m.output === "DP-1").position, "0x0", "the neighbour never moved");
-    // The comment between the entries survives a splice that never claimed it.
+
     assert.ok(edited.includes("-- The ultrawide, default (SDR) mode."));
 });
-
-// ----------------------------------------------------------------- bands
-//
-// The workspace assignment lives in the user's config inside a comment-
-// delimited "managed by banditshell" section: a host-keyed table the shell
-// writes and the file's own code reads. Data only -- no hl.* call is ever
-// written by the shell, so the emission stays in the user's section.
 
 const BANDS_LUA = [
     "local host = require(\"lua.host\")",
@@ -511,19 +474,12 @@ test("a band round-trip: scan, edit, splice, rescan", () => {
     assert.strictEqual(second.bands.find(b => b.monitor === "HDMI-A-1").first, 1, "the neighbour never moved");
 });
 
-// --------------------------------------------------------- the spec grammar
-//
-// The workspaces field's formats, both ends of the wire: what the field's
-// live verdict says and what bs_expand reads out of the file must agree,
-// because a spec the shell writes and a spec the file refuses would leave
-// the settings showing bands the desktop does not have.
-
 test("the workspaces grammar: lists, ranges, both, any order", () => {
     assert.deepStrictEqual(HyprGen.parseBandSpec("1,2,3,4,5,6,7").ids, [1, 2, 3, 4, 5, 6, 7]);
     assert.deepStrictEqual(HyprGen.parseBandSpec("1-10").ids, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     assert.deepStrictEqual(HyprGen.parseBandSpec("1-6, 8-10").ids, [1, 2, 3, 4, 5, 6, 8, 9, 10], "a gap is a real gap");
     assert.deepStrictEqual(HyprGen.parseBandSpec("3, 2, 1").ids, [1, 2, 3], "the order of the typing is not the order of the numbers");
-    // Mixed, and repeated numbers counting once.
+
     assert.deepStrictEqual(HyprGen.parseBandSpec("1-3, 3, 5").ids, [1, 2, 3, 5]);
     assert.deepStrictEqual(HyprGen.parseBandSpec("1,").ids, [1], "a trailing comma is a residue, not a refusal");
     assert.deepStrictEqual(HyprGen.parseBandSpec("1,,2").ids, [1, 2], "an empty part is skipped, matching bs_expand's gmatch");

@@ -2,66 +2,16 @@ import QtQuick
 import QtQuick.Shapes
 import qs.config
 
-// KITTY, DRAWN IN OUR COLOURS.
-//
-// The icon theme ships kitty's real artwork and it is a photograph next to
-// everything else in this bar: an orange cat on a black terminal, in a band made
-// of one grey and one accent. Tinting it flat (`mono:`) does not work either,
-// because the logo IS its parts, and a silhouette of a cat behind a terminal
-// window is a blob.
-//
-// So this is the official mark (kovidgoyal/kitty, logo/kitty.svg), taken apart
-// and put back together in the shell's palette. THE WHOLE MARK: the cat looking
-// over the terminal window, which is what kitty's logo is. Cropping it to the
-// face was tried and it was just a cat.
-//
-// WHAT EACH PART IS MADE OF, and the rule is that only the eyes are a colour:
-//
-//   the face      the ink it is handed, full strength. It is the part that
-//                 identifies the application, so it is the part that reads.
-//   the window    the same ink, held back, so the face is in front of it
-//                 without either of them needing an outline. This shell does
-//                 not draw borders (see Chassis.qml); one plane in front of
-//                 another is said with weight.
-//   the paws      between the two, because that is where they are.
-//   the prompt    NOTHING. The `>` and the `_` are holes in the window's path,
-//                 so what shows through them is whatever the mark is standing
-//                 on: a plain cell, the hover marker, the accent sheet of the
-//                 workspace you are on. The drawing is right on all of them
-//                 without knowing about any of them, and it is why the prompt
-//                 still reads at 25px where a painted one would have to guess
-//                 at the colour behind it.
-//   the eyes      the theme's accent, and the whites are holes like the prompt.
-//                 Two pixels of it at mark size, which is all a face needs.
-//
-// THE WHISKERS ARE GONE, and they are the only thing that is. Four sprays of
-// hairline strokes come out at a pixel and a half in the sidebar and read as
-// dirt around the face rather than as whiskers. Everything else survives the
-// size.
-//
-// The path data is the official file's, untouched. The box below is the drawing's
-// own bounding box with the whiskers out of it, so the mark fills the size it is
-// given instead of sitting in the middle of the empty margin the file has.
 Item {
     id: root
 
-    // THE INK, handed in by whatever is drawing the mark, exactly as a status
-    // gauge's mark takes its colour from the gauge it sits in. The accent is
-    // taken from the theme directly: it is the one part of this that is not the
-    // ink and never follows it.
     property color colour: Appearance.colour.text
 
     property real size: Appearance.font.iconSize
 
-    // How far back the window and the paws sit from the face, as a fraction of
-    // the ink. Two planes and a half, which at this size is the difference
-    // between a cat in front of a terminal and a smudge.
     readonly property real behind: 0.7
     readonly property real between: 0.85
 
-    // THE DRAWING'S OWN BOX, in the logo's units, measured off the official file
-    // with the whiskers excluded: x 24.75 to 215.25, and y 22.5 to 217.5 once the
-    // file's own translate(0 -812.362) is undone.
     readonly property real artX: 24.75
     readonly property real artY: 834.862
     readonly property real artW: 190.5
@@ -78,9 +28,7 @@ Item {
         scale: root.size / root.artH
 
         Shape {
-            // Big enough to hold the path's own coordinates, which live where
-            // the file put them; the offset above is what brings the drawing into
-            // this box. Nothing clips, so the size is only the node's bounds.
+
             width: 240
             height: 240
             x: -root.artX
@@ -88,9 +36,6 @@ Item {
 
             preferredRendererType: Shape.CurveRenderer
 
-            // THE TERMINAL, with the prompt as holes. Even-odd, because the `>`
-            // and the `_` are subpaths inside the window's own outline and this
-            // is what makes them holes rather than two more filled shapes.
             ShapePath {
                 fillColor: Qt.rgba(root.colour.r, root.colour.g, root.colour.b, root.colour.a * root.behind)
                 fillRule: ShapePath.OddEvenFill
@@ -101,9 +46,6 @@ Item {
                 }
             }
 
-            // THE FACE, with the eyes as holes: the file draws them as subpaths
-            // of the head under an even-odd rule, so they have to be filled the
-            // same way here or the cat comes out blind.
             ShapePath {
                 fillColor: root.colour
                 fillRule: ShapePath.OddEvenFill
@@ -114,8 +56,6 @@ Item {
                 }
             }
 
-            // THE PAWS, over the window's top edge, which is where a cat looking
-            // over something puts them.
             ShapePath {
                 fillColor: Qt.rgba(root.colour.r, root.colour.g, root.colour.b, root.colour.a * root.between)
                 fillRule: ShapePath.OddEvenFill
@@ -126,8 +66,6 @@ Item {
                 }
             }
 
-            // THE EYES. The one saturated thing in the mark, and the reason the
-            // face reads as a face at four pixels an eye.
             ShapePath {
                 fillColor: Appearance.colour.accent
                 strokeColor: "transparent"

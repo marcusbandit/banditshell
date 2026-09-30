@@ -1,13 +1,3 @@
-// services/whatsnew.js: the What's new log, as data.
-//
-// Everything tested here is the behaviour that breaks SILENTLY. An
-// accumulation that walks past the marker reshows a card the user has
-// already read, every launch, forever; one that stops short never announces
-// a push at all. A parser that trusts the log's shape is worse still: the
-// file is written by hand at push time, on whatever machine pushed, and a
-// malformed entry must cost that entry, not the whole card. None of these
-// throw, which is why they are caught here.
-
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
@@ -18,15 +8,11 @@ const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
     + "\nreturn { parse, accumulated, severityOf, TYPES };")();
 
-// Three pushes, newest first, as the file is written. `skipped` is the one a
-// recipient who missed two pushes would be marked as having seen.
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
     { id: "skipped", date: "2026-09-02", changes: [{ type: "ui", severity: "minor", text: "Moved the other thing." }] },
     { id: "first", date: "2026-09-01", changes: [{ type: "features", severity: "major", text: "Added the thing; run the migration." }] }
 ];
-
-// ------------------------------------------------------------------- parse
 
 test("the shipped log parses and is well formed", () => {
     const file = fs.readFileSync(path.join(ROOT, "docs/whats-new.json"), "utf8");
@@ -84,8 +70,6 @@ test("an unknown severity reads Minor and an unknown type is kept", () => {
     assert.strictEqual(parsed[0].changes[0].severity, "minor");
 });
 
-// ------------------------------------------------------------- accumulated
-
 test("an empty marker accumulates everything", () => {
     assert.deepStrictEqual(WhatsNew.accumulated(log, ""), log);
     assert.deepStrictEqual(WhatsNew.accumulated(log, null), log);
@@ -102,9 +86,7 @@ test("a marker naming the newest entry accumulates nothing", () => {
 });
 
 test("a marker the log no longer contains shows everything", () => {
-    // Trimmed entries are the oldest, so everything still in the file is
-    // newer than a marker that names one of them: the whole log is genuinely
-    // unseen.
+
     assert.deepStrictEqual(WhatsNew.accumulated(log, "trimmed-away"), log);
 });
 
@@ -120,9 +102,7 @@ test("examples never surface and never stop the walk", () => {
 });
 
 test("entries with nothing to show are skipped but do not eat the marker", () => {
-    // A changeless entry is a push with nothing said. It cannot be shown, so
-    // it cannot be seen - but the marker may name it, and then everything
-    // after it is still due.
+
     const silent = [{ id: "silent", date: "2026-09-04", changes: [] }, ...log];
     assert.deepStrictEqual(WhatsNew.accumulated(silent, ""), log);
     assert.deepStrictEqual(WhatsNew.accumulated(silent, "silent").map(e => e.id), ["third", "skipped", "first"]);
@@ -132,8 +112,6 @@ test("an empty log accumulates nothing", () => {
     assert.deepStrictEqual(WhatsNew.accumulated([], ""), []);
     assert.deepStrictEqual(WhatsNew.accumulated(WhatsNew.parse("{}"), ""), []);
 });
-
-// ---------------------------------------------------------------- severity
 
 test("an entry is Major when any change in it is", () => {
     assert.strictEqual(WhatsNew.severityOf(log[0]), "minor");

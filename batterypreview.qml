@@ -5,9 +5,6 @@ import qs.config
 import qs.components
 import qs.modules.menu.content
 
-// Temporary: the battery menu at page width, plus the sidebar meter at native
-// size and blown up, charging and not, so the bolt can be judged at the size it
-// is actually drawn.
 ShellRoot {
     PanelWindow {
         anchors {
@@ -38,7 +35,6 @@ ShellRoot {
                 width: Appearance.sizes.menuWidth - Appearance.padding.large * 2
             }
 
-            // Native size, the row as the sidebar draws it.
             Row {
                 spacing: 16
 
@@ -79,9 +75,6 @@ ShellRoot {
                 }
             }
 
-            // The same row at 5x. `alert` is the worst case for a green bolt: a
-            // low battery on the charger, where StatusIcon turns the fill accent
-            // too and the bolt is sitting on its own colour.
             Row {
                 spacing: 40
 

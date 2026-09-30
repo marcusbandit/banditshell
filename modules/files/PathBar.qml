@@ -5,20 +5,9 @@ import qs.config
 import qs.components
 import qs.services
 
-// WHERE YOU ARE, every step of the way back, and a place to type one.
-//
-// The crumbs do the thing a field cannot - go back several steps in one press,
-// and be a drop target while you do. The FIELD does the thing crumbs cannot:
-// take a path you already know, or one you pasted, and go straight there. Both,
-// because they are answers to different questions and a browser that offered
-// only the first is a browser you cannot paste a path into.
-//
-// Typing a path here is still `cd` in the end (see services/Files.qml): the
-// shell owns the directory, and this is one more way of asking it to move.
 Item {
     id: root
 
-    // The crumb something is currently being dragged over, or -1.
     property int receiving: -1
     property bool editing: false
 
@@ -36,10 +25,6 @@ Item {
         Files.focus = "grid";
     }
 
-    // BACK, FORWARD, UP. The three that every file browser has, in the order
-    // every file browser has them, because this is not the place to be
-    // interesting. Dimmed rather than hidden when there is nowhere to go: a
-    // control that disappears moves everything beside it.
     Row {
         id: buttons
 
@@ -120,12 +105,6 @@ Item {
         visible: !Files.searching && !root.editing
         spacing: 0
 
-        // THE ROOM, AUDITED. A deep directory used to lay its crumbs out past
-        // this row's right edge -- under the search glass -- and the crumb
-        // pushed out first was the last one, the one that says where you are.
-        // Crowded is the natural widths against the room; when the answer is
-        // over, every crumb takes an equal share and elides, so the row always
-        // fits and the current directory is always on it.
         readonly property bool crowded: {
             let sum = 0;
             for (let i = 0; i < list.count; ++i)
@@ -133,11 +112,6 @@ Item {
             return sum > width;
         }
 
-        // What the non-last crumbs ended up taking, so the last one can claim
-        // the room they left: the others are capped at an equal share, and
-        // whatever a short ancestor did not spend of its share is the current
-        // crumb's to use. Depends on their FINAL widths, never on the last
-        // one's -- the loop stops at count - 1, so nothing binds to itself.
         readonly property real usedBeforeLast: {
             let sum = 0;
             for (let i = 0; i < list.count - 1; ++i)
@@ -180,16 +154,10 @@ Item {
                     elide: Text.ElideMiddle
                     text: crumb.modelData.name
                     font.pixelSize: Appearance.sizes.filesText
-                    // THE LAST CRUMB IS WHERE YOU ARE; the rest are where you
-                    // have been. Weight rather than size carries that, which is
-                    // the whole reason the type scale can stay at three
-                    // (~/.claude/rules/type-scale.md).
+
                     color: crumb.last ? Appearance.colour.text : Appearance.colour.textFaint
                 }
 
-                // A NAME CUT SHORT FINISHES ITS SENTENCE, the MenuRow's rule:
-                // the tip appears exactly where an elide did, and says the path
-                // the label was trimmed from.
                 HoverTip {
                     host: crumb
                     asked: hover.hovered
@@ -209,10 +177,6 @@ Item {
         }
     }
 
-    // THE REST OF THE STRIP IS A WAY IN. Pressing the empty space to the right
-    // of the crumbs turns the line into a field, which is where a pasted path
-    // goes. Ctrl+L does the same thing from the keyboard, because that is the
-    // chord every browser and every file manager has agreed on.
     MouseArea {
         anchors.left: crumbs.left
         anchors.right: crumbs.right
@@ -221,8 +185,7 @@ Item {
 
         visible: !root.editing
         acceptedButtons: Qt.LeftButton
-        // Not over the crumbs themselves: those have their own press, and this
-        // sits under them so it only ever sees what they did not take.
+
         z: -1
 
         onClicked: root.edit()
@@ -258,13 +221,9 @@ Item {
             selectedTextColor: Appearance.colour.accentText
             selectByMouse: true
             renderType: Text.NativeRendering
-            // A paste longer than the pill paints past it until the caret
-            // scrolls: the field owns its own edges.
+
             clip: true
 
-            // A PATH IS A PATH, whatever spelling you have. `~` is the one
-            // abbreviation everybody types and no directory is called, and a
-            // trailing slash is what a completion leaves behind.
             function resolve(text: string): string {
                 let out = text.trim();
                 if (out.startsWith("~"))
@@ -285,9 +244,6 @@ Item {
         }
     }
 
-    // The search, when it is asked for. Not present otherwise: a field sitting
-    // empty in the corner of every window is a field advertising itself, and
-    // this shell's whole argument is that things appear when they are asked for.
     Item {
         id: search
 
@@ -296,7 +252,6 @@ Item {
 
         implicitWidth: Files.searching ? root.width * 0.4 : glass.implicitWidth + Appearance.padding.normal
         implicitHeight: field.implicitHeight + Appearance.padding.small * 2
-
 
         G2Rect {
             anchors.fill: parent
@@ -327,10 +282,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             visible: Files.searching
-            // THE FIELDS ARE THE ONE PLACE IN THIS WINDOW THAT TAKE KEYS FOR
-            // THEMSELVES. Everything else routes through the face's own handler;
-            // a text field that did that would need the face to reimplement
-            // editing, selection and the cursor.
+
             focus: Files.searching
             activeFocusOnTab: false
 
@@ -345,9 +297,6 @@ Item {
             text: Files.search
             onTextChanged: Files.setSearch(text)
 
-            // Both ways out land on the grid, and differ in what they leave
-            // behind: Return keeps the filter and hands the keys back, Escape
-            // takes the filter off as well.
             Keys.onReturnPressed: {
                 Files.setSearching(false);
                 Files.focus = "grid";
@@ -368,13 +317,6 @@ Item {
         }
     }
 
-    // WHICH CRUMB IS UNDER A POINT, asked of the row rather than of each crumb:
-    // during a drag the ghost is under the cursor and takes every hover with it,
-    // so a crumb cannot know on its own that it is the one being aimed at.
-    //
-    // One function answers it for both the highlight and the drop, because those
-    // two disagreeing is a file landing somewhere other than where the outline
-    // said it would.
     function crumbAt(position: point): int {
         if (Files.searching || root.editing)
             return -1;

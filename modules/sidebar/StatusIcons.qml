@@ -6,71 +6,16 @@ import qs.components
 import qs.services
 import qs.modules.menu.content
 
-// The system status section, and the menus behind it.
-//
-// Rendered FROM DATA: adding an indicator is a row in `gauges`, and connecting
-// one is filling in that row's bindings.
-//
-// What is NOT here matters as much as what is. This row is for the four things
-// you reach for while doing something else: how loud, which network, which
-// headphones, how much charge. Notifications have their own tray, and media,
-// performance and power are going to the dashboard, where there is room to READ
-// them instead of squinting at a 28px slot. A bar that carries everything is a
-// bar you stop looking at.
-//
-// Sound and microphone are one gauge for the same reason: they are one question,
-// which is whether you can hear and whether you can be heard. A muted microphone
-// raises that gauge's alert rather than costing a slot of its own.
 Item {
     id: root
 
-    // WHICH MENU, and WHETHER IT WAS ASKED FOR.
-    //
-    // The second argument is the difference between an open that something is
-    // holding and an open that has to hold itself. A hover is incidental: it
-    // says the pointer is here right now, it will say so again next frame, and
-    // the menu it opened is closed by the same input going away. A tap is
-    // deliberate and it is an INSTANT: it says nothing at all about the frame
-    // after it, so a menu opened by one has nothing continuous behind it and
-    // needs the latch at the other end (Menus.pinned).
-    //
-    // Both still arrive on ONE signal rather than two. Which menu is wanted is
-    // the same question either way, and the answer goes to the same place; the
-    // flag is a fact ABOUT the request, not a different kind of request. A
-    // second signal would mean every consumer wiring up both and getting the
-    // ordering between them wrong on the tap, which fires both in one gesture.
     signal requested(string key, bool deliberate)
     signal released
 
-    // Which icon the cursor is on, "" for none.
-    //
-    // This is ONE source of truth on purpose. Letting each icon fire its own
-    // enter and leave means that sliding from one to the next produces both, in
-    // an order Qt does not promise, and the leave can undo the open that the
-    // enter just did. Tracking the state and reacting to it changing is immune
-    // to that: a leave only clears the key if it is still that icon's.
     property string hoveredKey: ""
 
-    // THE MENUBAR RULE: hover OPENS NOTHING. A cursor passing across the column
-    // -- to reach the clock, to leave the screen, to get out of the way -- used
-    // to fire a menu at every gauge it crossed, and the grace timer then kept
-    // the last one up long after the hand was gone. So an incidental open now
-    // requires that a menu already be on screen: hover SWITCHES (the menubar's
-    // one good trick -- sweep to the neighbour once something is open), a press
-    // OPENS, and with nothing showing the pointer only moves the marker, which
-    // is a look and never an open. A finger has no hover and never came through
-    // here anyway; a deliberate press arrives at ShellWindow directly, not by
-    // this gate.
     property bool menusShown: false
 
-    // The pointer arriving on an icon is an INCIDENTAL open: it asks for the
-    // menu and goes on holding it, so it must not latch.
-    //
-    // The marker is moved from the same handler rather than from a binding of
-    // its own, because where it goes is not a function of the hovered key: a
-    // key of "" leaves it exactly where it was and fades it out, and only a real
-    // key moves it. A binding cannot say "hold", and one written to try reads
-    // its own value back and loops.
     onHoveredKeyChanged: {
         root.markGauge(root.hoveredKey);
 
@@ -81,13 +26,8 @@ Item {
             root.released();
     }
 
-    // WHICH SLOT THE MARKER IS AIMED AT. Not the hovered index: see above.
     property int markedIndex: 0
 
-    // One slot to the next, which is the pitch the Column below is laying the
-    // gauges out on. Written once here because the marker and the column have to
-    // agree about it exactly, and a marker a pixel out per slot is a marker that
-    // drifts off the last gauge in the group.
     readonly property real pitch: Appearance.sizes.statusSlot + Appearance.sizes.statusGap
 
     function markGauge(key: string): void {
@@ -95,23 +35,12 @@ Item {
         if (i < 0)
             return;
 
-        // ARRIVING COLD, LAND ON IT. A marker that is not on screen has nothing
-        // to travel from: flying in from wherever the cursor left it a minute
-        // ago is motion across gauges nobody touched, and it reads as the
-        // highlight coming off a control rather than onto one. Sampled from the
-        // reveal's live value, not from the key, so a cursor that leaves and
-        // comes back mid-fade still travels.
         const cold = lit.value < 0.01;
         root.markedIndex = i;
         if (cold)
             slide.snap();
     }
 
-    // WHERE THE MARKER IS, chasing where it should be, and HOW LIT it is. Two
-    // chases rather than one: they answer different questions (which gauge, and
-    // whether the cursor is in the group at all) and they run at different
-    // speeds, because travel is a movement you follow and a fade is a state
-    // changing. See components/Follow.qml.
     Follow {
         id: slide
 
@@ -127,18 +56,13 @@ Item {
         epsilon: 0.005
     }
 
-    // THE DRAWN COLUMN, top to bottom. An entry that carries a `body` has a
-    // menu; the registry of menus below is derived from that, so the column
-    // and the registry cannot drift apart.
     readonly property var gauges: [
         {
             key: "audio",
             title: "Sound",
             icon: Audio.icon(Audio.volume, Audio.muted),
             active: !Audio.muted && Audio.volume > 0,
-            // The one state in this pair worth interrupting you for: a muted
-            // output you hear immediately, a muted input you find out about a
-            // minute into talking to nobody.
+
             alert: Audio.sourceMuted,
             body: soundMenu
         },
@@ -146,18 +70,10 @@ Item {
             key: "network",
             title: "Network",
             icon: Network.icon(),
-            // A METER ONLY WHILE THE RADIO IS THE THING CARRYING. Signal
-            // strength is a property of a wireless link and of nothing else: on
-            // a cabled machine there is no level to draw, and drawing the idle
-            // radio's level instead would meter the one part of the network
-            // that is not in use. The glyph covers every state that is not a
-            // level, which now includes the wire.
+
             mark: Network.carrier === "wifi" ? signalMark : null,
             active: Network.linked,
-            // The radio being switched off is worth saying, right up until
-            // something else is carrying: a desktop on a cable with its wifi
-            // deliberately off is not a machine with a problem, and a bar that
-            // lights an accent over it is crying wolf about a choice.
+
             alert: (Network.available && !Network.enabled && !Network.wiredConnected) || Network.stranded,
             available: Network.available || Network.wiredAvailable,
             body: networkMenu
@@ -170,71 +86,24 @@ Item {
             available: Bluetooth.available,
             body: bluetoothMenu
         },
-        // THERE IS NO SETTINGS GAUGE HERE, AND THERE MUST NOT BE ONE AGAIN.
-        //
-        // It was removed on purpose, and the reason is what the four remaining
-        // gauges have in common: each answers a GLANCE. How loud, which
-        // network, is it connected, how much charge, all of it a menu's worth
-        // of state that a hover can hold open and a look can finish. What lived
-        // behind the settings gauge grew into PAGES of the settings panel, and
-        // a place is not a glance: it is somewhere you go and stay. A door
-        // standing in a row of gauges reads as a fifth gauge, so a hand goes to
-        // it expecting the same kind of answer and gets a whole panel instead.
-        //
-        // Settings has three ways in that are all better than a slot in this
-        // column: the bottom-right corner (its own place, and the page grows
-        // out of exactly the point you pressed), `banditshell settings`, and
-        // therefore any keybind. Nothing was lost by taking the slot back; the
-        // bar got shorter, which is the point of a bar that shows nothing at a
-        // glance.
+
         {
             key: "battery",
             title: "Battery",
             icon: Battery.icon(),
-            // Drawn, so the level is the level rather than the nearest of six
-            // names the font happens to have, and so charging can be shown as
-            // motion instead of as one more static picture.
+
             mark: batteryMark,
             active: Battery.charging,
-            // Alarm, not alert, and the only one in the column: every other
-            // gauge reports something you can put right when you notice it.
+
             alarm: Battery.low,
-            // NOT DIMMED ON A DESKTOP: GONE. See `present` below.
+
             present: Battery.available,
             body: batteryMenu
         }
     ].filter(g => g.present ?? true)
 
-    // WHAT `present` MEANS, AND WHY IT IS NOT `available`.
-    //
-    // `available` is a gauge that this machine could have and this machine's
-    // copy of is not there: no bluetooth adapter, no wifi card. It stays in the
-    // column, drawn faint, because the absence is news. Pointing at it opens a
-    // menu that says what is missing and, for most of them, offers the switch
-    // that would bring it back.
-    //
-    // A desktop's battery is not that. It is not missing, it was never a
-    // question: the machine runs on mains and it will still be running on mains
-    // tomorrow. A gauge for it was a slot in the bar, a hover target, a menu
-    // page, a key in the CLI and a page kept warm in memory, all spent saying
-    // "there is no battery" to somebody who has known that since they bought
-    // the thing. So the row is filtered out of the list entirely, and because
-    // the menu registry, the sidebar's item list and the IPC keys are all
-    // derived from this same array, every one of those disappears with it
-    // rather than needing to be told separately.
-
-
-    // THE MENU REGISTRY: what the sidebar folds into menuItems, what the CLI
-    // lists, and the only keys openMenu can resolve. DERIVED, not written out
-    // a second time: an entry is a menu entry exactly when it has a menu, so
-    // the settings gauge falls out of here by the same fact that makes its
-    // hover silent, and adding a gauge can never update one list and forget
-    // the other.
     readonly property var items: root.gauges.filter(g => g.body !== undefined)
 
-    // The icon item for a key, so whoever positions a menu can ask where the
-    // icon actually ended up rather than recomputing a layout only this file
-    // knows.
     function iconFor(key: string): Item {
         for (let i = 0; i < repeater.count; i++) {
             const item = repeater.itemAt(i);
@@ -248,45 +117,13 @@ Item {
         return root.items.find(i => i.key === key) ?? null;
     }
 
-    // THE WIDTH IS GIVEN, the height is asked for. The sidebar hands this group
-    // the whole band so that each gauge's target can span it (StatusIcon's
-    // MouseArea is the whole of why), and taking `column.implicitWidth` instead
-    // would put it back to one slot and leave seventeen dead pixels either side
-    // of every gauge. Height is the group's own business: it is however tall the
-    // column of gauges came out.
     implicitWidth: Appearance.sizes.statusSlot
     implicitHeight: column.implicitHeight
 
-    // WHERE THE DRAWN BOX ACTUALLY IS, since it is not this item's rectangle:
-    // how far inside the item's sides it sits, and how far past its ends it
-    // hangs. The bar reads both to stand the group off the screen's edge by the
-    // same distance it stands off the bar's, which is a thing only the box's own
-    // geometry knows and the sidebar would otherwise have to restate in numbers
-    // that drift the moment a slot or a padding tier moves.
-    //
-    // WHICH BOX depends on which one is painted, and that is a question about
-    // colour rather than about layout. With the container filled, the edge you
-    // see is the container's and the slot inside it is furniture. With the
-    // container drawn in nothing, the container is not an edge at all: what you
-    // see is the marker under the cursor, and measuring the air off a rectangle
-    // 6px bigger than it stands the marker 6px further off the screen's bottom
-    // than off the bar's sides - which is exactly what it looked like.
-    //
-    // Asked of the fill's own alpha so the two cannot disagree while the
-    // container is on trial: paint it and the air goes back to being the
-    // container's, in the same line that paints it.
     readonly property bool boxed: fill.color.a > 0
     readonly property real sideGap: (width - (root.boxed ? fill.width : Appearance.sizes.statusSlot)) / 2
     readonly property real overhang: root.boxed ? Appearance.padding.small : 0
 
-    // A quiet container, so the indicators read as one control rather than a
-    // column of loose glyphs.
-    //
-    // AROUND THE GAUGES, not around the item, which are no longer the same
-    // rectangle. Filling the item would draw this fill the full width of the
-    // band, so the bar would wear a stripe down its bottom third instead of a
-    // pill around a column of icons. Pinned to the column, it is exactly the
-    // shape it always was: the drawn slot plus a small padding on every side.
     G2Rect {
         id: fill
 
@@ -297,31 +134,10 @@ Item {
         anchors.bottomMargin: -root.overhang
         width: Appearance.sizes.statusSlot + Appearance.padding.small * 2
         radius: Appearance.rounding.normal
-        // ON TRIAL, being looked at: the container drawn in nothing, so the
-        // gauges sit straight on the band. The shape stays exactly where it was
-        // (the group's `sideGap` and `overhang` are measured off it, and the
-        // bar's end margins off those), so this is only whether it is PAINTED.
-        // Transparent rather than the band's own colour: the band is a
-        // translucent material over a blur, and a solid copy of its colour would
-        // read as a patch on it rather than as nothing.
+
         color: "transparent"
     }
 
-    // THE MARKER: the hover fill, as ONE shape that travels between the gauges.
-    //
-    // Declared before the column so it sits UNDER the icons: it is the surface a
-    // gauge is standing on while the cursor is there, not a pane over it.
-    //
-    // It used to be a fill per gauge, each fading in on its own hover, and four
-    // fills in a fixed column is exactly the case where that reads as a flicker:
-    // nothing travels, so dragging down the bar is four unrelated appearances
-    // and the eye has to re-find the mark after every one. One shape carries
-    // your attention with it, which is the argument the power menu's marker is
-    // built on and the same chase everything else in this shell tracks with.
-    //
-    // Laid out against the COLUMN rather than this item, and on the column's own
-    // pitch, so the marker and the gauge it is under are positioned by one set
-    // of numbers.
     G2Rect {
         x: column.x + (column.width - width) / 2
         y: column.y + slide.value
@@ -332,10 +148,6 @@ Item {
         opacity: lit.value
     }
 
-    // FULL WIDTH, so that the delegates in it have a full width to take. The
-    // column is not what you see: what you see is a slot-wide square inside each
-    // delegate, drawn where it always was because this is centred on the same
-    // line the old one-slot column stood on.
     Column {
         id: column
 
@@ -354,22 +166,8 @@ Item {
 
                 readonly property string key: modelData.key
 
-
-                // Whether anything answers a hover here. Every gauge in the
-                // column says yes today, the one that did not having been
-                // removed, and this stays because it is a fact about the
-                // ENTRY's shape rather than about the list's current contents:
-                // an entry is a menu entry exactly when it has a menu, and the
-                // registry above is filtered by the same test. A gauge added
-                // tomorrow without a body is silent on hover by construction
-                // rather than by somebody remembering.
                 readonly property bool hasMenu: modelData.body !== undefined
 
-                // A Column positions its children and never resizes them, so a
-                // delegate left to itself would be one slot wide inside a
-                // full-width column and the dead lanes would still be there.
-                // Taken from the column rather than from `parent` so the
-                // reference is a typed one.
                 width: column.width
 
                 icon: modelData.icon
@@ -379,16 +177,6 @@ Item {
                 alarm: modelData.alarm ?? false
                 available: modelData.available ?? true
 
-                // Hover IS the request. Clicking is the same intent, and matters
-                // for touch and for keyboard-driven opens later.
-                //
-                // Only for a gauge with a menu to hold: a bodyless entry never
-                // enters `hoveredKey` at all, rather than entering it and
-                // having the request fail downstream, because `hoveredKey`
-                // means "the icon whose menu the pointer is holding open" and
-                // a key that can never resolve to a menu would make that a
-                // lie. Leaving is unguarded on purpose; it can only clear a
-                // key this gauge set.
                 onHoveredChanged: {
                     if (hovered) {
                         if (hasMenu)
@@ -398,19 +186,8 @@ Item {
                     }
                 }
 
-                // A PRESS IS DELIBERATE, and on a touchscreen a press is all
-                // there is: the hover above fires there too, because Qt
-                // synthesises a mouse from the touch, but it is gone the instant
-                // the finger lifts and it was never holding anything. This is
-                // the one that says the menu was actually asked for.
                 onActivated: root.requested(key, true)
 
-                // The gauges refuse a tooltip (StatusIcon's closing note):
-                // hovering one opens a menu whose first line is its name, so a
-                // label would say the same word twice. That argument needs the
-                // menu, so it is asked of the entry rather than assumed: a
-                // bodyless gauge opens nothing on hover, which makes it a bare
-                // mark, and a bare mark has to say its own name somehow.
                 HoverTip {
                     text: hasMenu ? "" : modelData.title
                     asked: hovered
@@ -419,8 +196,6 @@ Item {
         }
     }
 
-    // The drawn marks. Each takes `colour` from the indicator it sits in, which
-    // is the whole contract StatusIcon asks of a mark.
     Component {
         id: signalMark
 
@@ -438,8 +213,7 @@ Item {
         BatteryMeter {
             level: Battery.percentage
             charging: Battery.charging
-            // The colour arrives through `colour` like every mark's does; this
-            // is the cue to wear it on the well and breathe. See BatteryMeter.
+
             low: Battery.low
         }
     }

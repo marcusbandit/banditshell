@@ -4,36 +4,13 @@ import QtQuick
 import qs.components
 import qs.config
 
-// Buttons, by TABS and SECTIONS - the layout is Google's; the look is this
-// shell's.
-//
-// The COLOR tab: the whole emphasis system on one grid, three columns by
-// five rows. Long words label the cells themselves; the legend beside it
-// spells the markers out.
-//
-// The STATES tab: a test grid for the state colour sets - five columns
-// (enabled, disabled, hovered, focused, pressed) by three rows (the default
-// look, the selected toggle, the unselected toggle). Disabled is the one set
-// that exists so far beyond enabled: sad colours, same shapes - and a
-// disabled latched toggle keeps its square. The hovered, focused and pressed
-// cells show the enabled look until their sets are specced.
-//
-// Every toggle cell is LIVE: press it and it walks its own reading - filled
-// walks tonal<->filled; the outlined row fills with its own ring colour and
-// drops the ring; the elevated row is shadowed both ways; on dark glass the
-// tonal row loses its colour when off and is the tonal colour itself, no
-// variation, when on. The text row has no toggle cells: text has nothing
-// quieter to fall back to.
 Item {
     id: page
 
     property bool drawn: true
 
-    // Which tab is up.
     property string tab: "color"
 
-    // A marker disc: one character in one colour; the label beside it takes
-    // the same.
     component Marker: Item {
         id: marker
 
@@ -60,7 +37,6 @@ Item {
         }
     }
 
-    // One legend row: a marker and the word it stands for, in the marker's colour.
     component LegendRow: Row {
         id: leg
 
@@ -84,8 +60,6 @@ Item {
         }
     }
 
-    // A live latched cell: it owns the one bit of state the button refuses
-    // to, and says which reading it is in.
     component StateCell: Item {
         id: cell
 
@@ -114,8 +88,6 @@ Item {
         anchors.centerIn: parent
         spacing: Appearance.padding.normal
 
-        // ---- the tab switch ----
-
         Segments {
             anchors.horizontalCenter: parent.horizontalCenter
             options: ["color", "states"]
@@ -123,8 +95,6 @@ Item {
 
             onPicked: index => page.tab = ["color", "states"][index]
         }
-
-        // ---- the color tab ----
 
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
@@ -138,7 +108,6 @@ Item {
                 color: Appearance.colour.textFaint
             }
 
-            // The legend: two vertical lists, side by side.
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Appearance.padding.huge
@@ -192,7 +161,6 @@ Item {
                 }
             }
 
-            // The grid: five emphases by three configurations.
             Grid {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: 4
@@ -317,8 +285,6 @@ Item {
             }
         }
 
-        // ---- the states tab ----
-
         Column {
             anchors.horizontalCenter: parent.horizontalCenter
             visible: page.tab === "states"
@@ -331,7 +297,6 @@ Item {
                 color: Appearance.colour.textFaint
             }
 
-            // The legend: the rows (letters) and the columns (numbers).
             Row {
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: Appearance.padding.huge
@@ -382,7 +347,6 @@ Item {
                 }
             }
 
-            // The grid: five states by three variant rows.
             Grid {
                 anchors.horizontalCenter: parent.horizontalCenter
                 columns: 6

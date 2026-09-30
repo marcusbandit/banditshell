@@ -1,12 +1,3 @@
-// components/vt.js: the terminal, as a data structure.
-//
-// A parser is testable and a delegate is not, which is the reason the file has
-// no QML in it; this is the other half of that bargain. What is checked here is
-// the behaviour that breaks SILENTLY: a colour that resolves to the wrong hex,
-// an erase that forgets the background it was told to use, a character split
-// across two reads. None of those throw, and all of them look like the terminal
-// is simply wrong.
-
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
@@ -17,8 +8,6 @@ const src = fs.readFileSync(path.join(ROOT, "components/vt.js"), "utf8");
 const Vt = new Function(src
     + "\nreturn { create, keySequence, textSequence, pasteSequence, charWidth };")();
 
-// The view's own defaults are what reverse video swaps against, so the tests
-// name them rather than letting the constructor pick black on white.
 const FG = "#eeeeee";
 const BG = "#111111";
 
@@ -26,8 +15,6 @@ function term(cols, rows, opts) {
     return Vt.create(cols || 20, rows || 4, Object.assign({foreground: FG, background: BG}, opts));
 }
 
-// A row as plain text, trailing blanks dropped. Wide glyphs leave an empty
-// second cell, which joins to nothing and keeps the string readable.
 function row(t, y) {
     return t.screen.lines[y].map(c => c.c).join("").replace(/ +$/, "");
 }
@@ -36,7 +23,6 @@ function rows(t) {
     return t.screen.lines.map((_, y) => row(t, y));
 }
 
-// The bytes as they come off the pty: one character per byte.
 function bytes(s) {
     return Buffer.from(s, "utf8").toString("latin1");
 }
@@ -102,8 +88,7 @@ test.describe("vt: text into the grid", () => {
 });
 
 test.describe("vt: colour", () => {
-    // The markup is where a colour becomes visible, so that is where it is
-    // checked: an index in a cell means nothing until renderLine resolves it.
+
     function markup(t, y) {
         return t.renderLine(t.screen.lines[y === undefined ? 0 : y]).markup;
     }
@@ -133,7 +118,7 @@ test.describe("vt: colour", () => {
 
     test.it("computes the 6x6x6 cube rather than looking it up", () => {
         const t = term();
-        // 196 is the corner of the cube: full red, no green, no blue.
+
         t.write("\x1b[38;5;196mx");
         assert.strictEqual(markup(t), "<font color=\"#ff0000\">x</font>");
     });
@@ -209,9 +194,7 @@ test.describe("vt: colour", () => {
 });
 
 test.describe("vt: reverse video", () => {
-    // Reverse is why the terminal has to KNOW its defaults: swapping two nulls
-    // is still two nulls, and the run would draw ordinary text on an ordinary
-    // background, which is the one thing reverse means it is not.
+
     test.it("swaps against the configured defaults when nothing was set", () => {
         const t = term();
         t.write("\x1b[7mrev");
@@ -324,8 +307,7 @@ test.describe("vt: scrolling and history", () => {
     });
 
     test.it("does not call a partial scroll region history", () => {
-        // A line pushed out of a two-row region in the middle of the display is
-        // a redraw, not something that happened and scrolled away.
+
         const t = term(10, 4);
         t.write("\x1b[2;3r");
         t.write("aa\r\nbb\r\ncc\r\ndd");
@@ -408,9 +390,7 @@ test.describe("vt: the alt screen", () => {
 
 test.describe("vt: wrapping", () => {
     test.it("waits at the last column instead of wrapping straight away", () => {
-        // The pending wrap: the cursor sits ON the last column until another
-        // character arrives, so a line that exactly fills the width does not
-        // leave the cursor a row down before anything is there.
+
         const t = term(5, 3);
         t.write("abcde");
         assert.strictEqual(t.screen.x, 4);
@@ -468,8 +448,7 @@ test.describe("vt: UTF-8", () => {
     });
 
     test.it("survives a character split across two writes", () => {
-        // A chunk boundary off the pty is not a character boundary, and half a
-        // sequence decoded on its own is a replacement character mid-word.
+
         const t = term();
         const b = bytes("é");
         assert.strictEqual(b.length, 2);
@@ -585,15 +564,6 @@ test.describe("vt: resize", () => {
         assert.strictEqual(row(t, 0), "keep");
     });
 
-    // BUG (not fixed, reported): the comment above the shrink loop in resize()
-    // GROWING APPENDS BLANK ROWS and does not pull history back, which every
-    // other terminal does and this one cannot. The reason is a trade made
-    // deliberately: the scrollback holds RENDERED LINES rather than cells,
-    // because keeping half a million live cell objects to represent history
-    // costs far more than the strings do - and a rendered line cannot be put
-    // back into a live screen made of cells. Pinned so that a future change to
-    // the scrollback's representation shows up here as a decision rather than as
-    // a surprise.
     test.it("appends blank rows when the window is made taller, keeping history where it is", () => {
         const t = term(10, 3);
         t.write("one\r\ntwo\r\nthree\r\nfour");
@@ -613,7 +583,7 @@ test.describe("vt: the DEC special graphics set", () => {
 
     test.it("keeps two slots and switches between them with SO and SI", () => {
         const t = term(20, 3);
-        // G0 is graphics, G1 is left as ASCII: SO selects G1, SI comes back.
+
         t.write("\x1b(0\x0eq\x0fq");
         assert.strictEqual(rows(t)[0], "q\u2500");
     });
@@ -621,7 +591,7 @@ test.describe("vt: the DEC special graphics set", () => {
     test.it("puts the translated character in the cell, not just on the screen", () => {
         const t = term(20, 3);
         t.write("\x1b(0q");
-        // A search or a copy over the grid should find the box character.
+
         assert.strictEqual(t.screen.lines[0][0].c, "\u2500");
     });
 
@@ -648,9 +618,9 @@ test.describe("vt: the mouse", () => {
     test.it("adds the modifiers the way xterm does", () => {
         const t = term(80, 24);
         t.write("\x1b[?1000h\x1b[?1006h");
-        // right button 2, plus ctrl 16
+
         assert.strictEqual(t.mouseSequence(2, 10, 5, true, {ctrl: true}, false), "\x1b[<18;11;6M");
-        // shift 4 plus alt 8
+
         assert.strictEqual(t.mouseSequence(0, 0, 0, true, {shift: true, alt: true}, false), "\x1b[<12;1;1M");
     });
 
@@ -662,7 +632,7 @@ test.describe("vt: the mouse", () => {
         const drag = term(80, 24);
         drag.write("\x1b[?1002h\x1b[?1006h");
         assert.strictEqual(drag.mouseSequence(0, 4, 2, true, {}, true), "\x1b[<32;5;3M");
-        // 1002 is drag only: no button means no report
+
         assert.strictEqual(drag.mouseSequence(-1, 4, 2, true, {}, true), "");
 
         const any = term(80, 24);
@@ -681,9 +651,9 @@ test.describe("vt: the mouse", () => {
         const t = term(300, 24);
         t.write("\x1b[?1002h");
         assert.strictEqual(t.mouseSequence(0, 4, 2, true, {}, false), "\x1b[M" + String.fromCharCode(32, 37, 35));
-        // a release cannot say which button it was
+
         assert.strictEqual(t.mouseSequence(2, 4, 2, false, {}, false), "\x1b[M" + String.fromCharCode(35, 37, 35));
-        // and a column past 223 cannot be expressed, so it is not guessed at
+
         assert.strictEqual(t.mouseSequence(0, 250, 2, true, {}, false), "");
     });
 });
@@ -715,8 +685,7 @@ test.describe("vt: the answers an application waits for", () => {
     });
 
     test.it("answers a colour query in X11's own spelling", () => {
-        // "#rrggbb" is simply not understood by the thing asking; the reply has
-        // to be sixteen bits a channel.
+
         const t = term(20, 4, {foreground: "#ff8000", background: "#112233"});
         t.write("\x1b]10;?\x07");
         assert.strictEqual(t.takeReply(), "\x1b]10;rgb:ffff/8080/0000\x1b\\");
@@ -804,16 +773,14 @@ test.describe("vt: strings and modes", () => {
 
 test.describe("vt: the keyboard", () => {
     test.it("sends CARRIAGE RETURN for Return, not a newline", () => {
-        // The single most load-bearing line in the file: the tty is in raw mode
-        // whenever a line editor is running, so \n is echoed and the command is
-        // never accepted.
+
         assert.strictEqual(Vt.keySequence("return", false, false, false, false), "\r");
         assert.strictEqual(Vt.keySequence("enter", false, false, false, false), "\r");
         assert.notStrictEqual(Vt.keySequence("return", false, false, false, false), "\n");
     });
 
     test.it("sends DEL for Backspace, not BS", () => {
-        // 0x08 arrives as ^H and deletes in the wrong direction or not at all.
+
         assert.strictEqual(Vt.keySequence("backspace", false, false, false, false), "\x7f");
         assert.strictEqual(Vt.keySequence("backspace", false, false, false, false).charCodeAt(0), 0x7f);
         assert.strictEqual(Vt.keySequence("backspace", false, false, true, false), "\x08");

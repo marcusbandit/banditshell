@@ -5,24 +5,9 @@ import Quickshell
 import qs.config
 import qs.components
 
-// THE FIRST EDIT'S WARNING, said once and meant.
-//
-// The monitors page's edits are source edits: each one splices the user's
-// own Hyprland config, the file they hand-commented and share across
-// machines. That is the workflow's point -- the file is the only
-// representation, so nothing the shell owns can drift from it -- but it is
-// also a deed a desktop must not do quietly. The first edit any page wants
-// to make is stopped here, told where it is about to write, and let through
-// on purpose; the acknowledgement is remembered and the door stops asking.
-//
-// The construction is ActionSheet's -- a catcher under a card that floats
-// over the face -- stood still and centred, because this is not a menu that
-// belongs to a row: it is a question that belongs to the page.
 Item {
     id: root
 
-    // The file the edits land in, named in the body. A path, not a sentence:
-    // the sentence is the deed, the path is where it will happen.
     property string file: ""
 
     signal accepted
@@ -40,8 +25,6 @@ Item {
 
     Keys.onEscapePressed: root.close()
 
-    // THE CATCHER: a press anywhere else is "no", and dims the page behind
-    // the question so the question reads as the only thing awake.
     MouseArea {
         anchors.fill: parent
         enabled: root.visible

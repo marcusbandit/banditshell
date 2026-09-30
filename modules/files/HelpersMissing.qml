@@ -3,13 +3,6 @@ import qs.config
 import qs.components
 import qs.services
 
-// The one thing this window cannot do without.
-//
-// bin/bs-ls and bin/bs-pty are compiled from src/ and deliberately not committed
-// (they are ELF for one architecture; see .gitignore), so a fresh clone has
-// neither and the browser can neither list a directory nor open a shell. Saying
-// so, with the command that fixes it, is the difference between a bug and a
-// setup step.
 Item {
     id: root
 

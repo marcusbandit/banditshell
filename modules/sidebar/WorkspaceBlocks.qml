@@ -6,34 +6,16 @@ import qs.config
 import qs.components
 import qs.services
 
-// STYLE: blocks. One square per window, one row per workspace, on the grid.
-//
-// The shell's face is a pixel font whose every metric sits on a 120-unit lattice,
-// and this is that idea taken literally: no glyphs, no plates, no curves. A
-// workspace is a row of blocks, a window is a block, and where you are is the row
-// that is lit. It is the smallest the column can be and still say everything the
-// other styles say.
-//
-// TRUE 90 DEGREE CORNERS, which is the one case where a square corner is right
-// rather than lazy (see ~/.claude/rules/g2-corners.md): at 8px a radius is a
-// rounding error with an opinion, and the whole point is the grid.
 Item {
     id: root
 
-    // WHICH SCREEN THIS COLUMN IS ON, by output name, handed straight to the
-    // model: a style draws what the model says, and which workspaces those are
-    // is the model's question. See WorkspaceModel.screen.
     required property string screen
 
     readonly property int block: Appearance.sizes.wsBlock
     readonly property int step: block + Appearance.sizes.wsBlockGap
 
-    // How many squares fit across the band. The gap only falls BETWEEN blocks,
-    // so the last one in a line does not have to pay for one.
     readonly property int perRow: Math.max(1, Math.floor((root.width + Appearance.sizes.wsBlockGap) / root.step))
 
-    // Rows are a single line of blocks, so a slot is one block tall whatever it
-    // holds: the count runs sideways, not down.
     property int hovered: -1
 
     implicitHeight: layout.total
@@ -43,12 +25,7 @@ Item {
 
         screen: root.screen
         base: root.block
-        // A LINE of blocks, not a row of one: nothing is capped any more, so a
-        // workspace with more windows than the band is wide wraps onto another
-        // line rather than running out over the desktop. The pitch is what a
-        // line costs, and how many fit is arithmetic off the band and the grid
-        // (~/.claude/rules/math-over-hardcoding.md), which is the whole of what
-        // the model needs to turn a count of windows into a height.
+
         pitch: root.step
         perRow: root.perRow
         gap: Appearance.sizes.wsBlockGap * 2
@@ -67,8 +44,7 @@ Item {
                     marks: []
                 })
             readonly property var geom: layout.at(index)
-            // The MODEL'S active workspace, which is this screen's own rather
-            // than the focused one's.
+
             readonly property bool isActive: layout.active === slotItem.info.id
             readonly property bool isOccupied: slotItem.info.windows.length > 0
 
@@ -86,9 +62,6 @@ Item {
                 onClicked: Hypr.switchTo(slotItem.info.id)
             }
 
-            // An empty workspace: a quarter block, still on the grid, still in the
-            // row it belongs to. A place you can go, said as quietly as the grid
-            // allows.
             G2Rect {
                 visible: !slotItem.isOccupied
                 x: 0
@@ -117,9 +90,6 @@ Item {
                     required property int index
                     readonly property bool focused: Hypr.isFocused(cell.modelData.client)
 
-                    // On the grid the model put it on, which is a line and a
-                    // place along it once there are more windows than fit across
-                    // the band.
                     x: (cell.modelData.col ?? cell.index) * root.step
                     y: (cell.modelData.row ?? 0) * root.step
                     width: root.block
@@ -148,11 +118,6 @@ Item {
                 }
             }
 
-            // THERE IS NO CAP ANY MORE, and so no half block after the last
-            // one. The model stopped truncating (see WorkspaceModel.slots): a
-            // workspace with twenty windows draws twenty blocks, which is what a
-            // row of one block per window is for. A row can outgrow the band on a
-            // very busy workspace, and that is the honest picture of one.
         }
     }
 }

@@ -5,43 +5,15 @@ import qs.config
 import qs.components
 import qs.services
 
-// THE WAIT BETWEEN PRESSING RETURN AND A WINDOW APPEARING.
-//
-// You asked for something, the launcher went back into the bottom band, and
-// until the window maps there is nothing on screen that says the key registered.
-// This is what stands in that gap: the icon of what you asked for, its name, and
-// a bar filled against how long THIS application took last time (see
-// services/Launching.qml). It leaves when the window lands, and it says so
-// instead of quietly vanishing when nothing ever comes.
-//
-//   rows        one pill per launch in flight, oldest at the top of the stack
-//   rise        the whole stack coming out of the bottom band and going back
-//   bar         progress, against the app's own measured start-up time
-//
-// A blob in the shell's distance field, like the notch and the mic indicator, so
-// it melts out of the same edge the launcher just went into rather than being
-// drawn on top of the shell.
 Item {
     id: root
 
     property int border: Appearance.sizes.border
 
-    // Nothing is drawn until an application has had its grace period, so the
-    // things that open instantly never flash a pill.
-    //
-    // CAPPED, because every pill costs a slot in the shell's distance field and
-    // there are twelve for the whole shell (see BlobField.capacity). The NEWEST
-    // are kept: the one you just asked for is the one you are waiting on.
     readonly property int stackMax: 3
     readonly property var rows: Launching.shown.slice(-root.stackMax)
     readonly property bool out: root.rows.length > 0
 
-    // ------------------------------------------------------------------
-    // WHAT A PILL SAYS
-    //
-    // One sentence shape in all three states, so only the verb in front of the
-    // name changes. The width arithmetic below measures THIS table rather than a
-    // number typed beside it: reword a verb and the pill still fits it.
     readonly property var verbs: ({
             waiting: "Opening",
             here: "Opened",
@@ -52,18 +24,8 @@ Item {
         return state === "lost" ? Appearance.colour.alarm : Appearance.colour.accent;
     }
 
-    // ------------------------------------------------------------------
-    // SIZE KNOBS
-
-    // The launcher's own icon size: this is its echo, so it uses its scale.
     readonly property real markSize: Appearance.sizes.launcherIcon
 
-    // TEXT WIDTH IN CHARACTERS, which Monocraft being monospaced makes exact
-    // rather than a guess: the pill is as wide as the longest sentence it could
-    // ever say about THIS application, so it fits its name and still cannot
-    // resize (and reflow the chassis) when the verb in front of it changes.
-    //
-    // The ceiling is where a name starts being elided instead.
     readonly property int maxChars: 40
     readonly property int verbChars: Math.max(...Object.values(root.verbs).map(v => v.length))
 
@@ -84,8 +46,6 @@ Item {
     readonly property real lineHeight: em.height
     readonly property real contentHeight: Math.max(root.markSize, root.lineHeight + Appearance.padding.small + root.barHeight)
 
-    // The bottom `border` of the pill is inside the band, which is what makes it
-    // read as something the edge produced rather than a card sitting on it.
     readonly property real pillHeight: Appearance.padding.large * 2 + root.contentHeight + root.border
 
     readonly property real stackGap: Appearance.padding.small
@@ -98,19 +58,10 @@ Item {
         text: "0"
     }
 
-    // ------------------------------------------------------------------
-    // WHERE EACH PILL SITS
-    //
-    // Slot 0 is against the band; the stack grows upward, oldest at the top. A
-    // pill leaving from the middle of a stack reflows the ones above it in one
-    // frame, which is a jump nobody has yet seen: launches come one at a time.
     function slotY(slot: int): real {
         return root.height - root.pillHeight - slot * (root.pillHeight + root.stackGap);
     }
 
-    // Off the bottom by a full melt distance when retracted, for the reason the
-    // mic indicator states: a blob that merely shrinks in place still drags the
-    // band toward it and leaves a permanent bulge.
     function rowY(slot: int): real {
         const settled = root.slotY(slot);
         return settled + (root.height + Appearance.sizes.melt - settled) * (1 - rise.value);
@@ -171,8 +122,7 @@ Item {
                     spec: pill.modelData.mark
                     size: root.markSize
                     fallback: Apps.genericIcon
-                    // A lost launch is still the application you asked for, so
-                    // the artwork stays: which one failed is the useful half.
+
                     opacity: pill.modelData.state === "lost" ? 0.5 : 1
                 }
 
@@ -200,9 +150,6 @@ Item {
                         }
                     }
 
-                    // THE BAR. Square ends on purpose: it is a rule drawn beside
-                    // pixel type, not a capsule (see the G2 corner rule - the
-                    // only radius allowed here would be a plain circular one).
                     Item {
                         width: pill.textWidth
                         height: root.barHeight

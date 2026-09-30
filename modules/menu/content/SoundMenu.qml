@@ -5,34 +5,11 @@ import qs.config
 import qs.components
 import qs.services
 
-// Sound, all of it. This one is real.
-//
-// It is built in two blocks, out and in, and each block is the same three
-// things in the same order: the master level, then the individual apps feeding
-// it, then which device it uses. Output and input are ONE menu because they are
-// one question, whether you can hear and whether you can be heard, and the
-// blocks answer it the same way twice rather than making you learn two shapes.
-//
-// The APPS are the part that makes this a sound panel rather than a volume
-// knob. "Turn the browser down" is the thing people actually want from a mixer,
-// and it cannot be done from a master level at all: every stream PipeWire has
-// gets its own row, its own bead and its own mute, and the row disappears when
-// the app stops making noise. Recording streams get the same treatment under
-// input, which doubles as the answer to "what is listening to me right now".
-//
-// Everything here is bound to PipeWire and pushes back through Audio's setters,
-// so anything else that changes a level moves it: a media key, another app, the
-// far end of a call.
-//
-// What is playing sits at the bottom as ONE row, so that "turn this down" and
-// "shut this up" are the same reach. Art, scrubber, transport and which-player
-// belong to the dashboard, which will have room to show them properly.
 Column {
     id: root
 
     spacing: Appearance.padding.normal
 
-    // A master level: the glyph that mutes it, the bead you drag, the number.
     component Level: Item {
         id: level
 
@@ -40,9 +17,7 @@ Column {
         required property real value
         required property bool muted
         property real max: 1
-        // Muting THIS is worth the accent. True for the microphone, where the
-        // failure mode is a minute of talking to nobody, and false for the
-        // speakers, where you find out immediately.
+
         property bool urgent: false
 
         signal requested(real v)
@@ -89,10 +64,6 @@ Column {
             anchors.right: parent.right
             anchors.verticalCenter: parent.verticalCenter
 
-            // Actually fixed, at the width of the widest thing it can say.
-            // `width: implicitWidth` is Text's own default and is not fixed at
-            // all, so the slider's right anchor jumped whenever the readout went
-            // from two digits to three, or to "muted".
             width: metrics.width
             horizontalAlignment: Text.AlignRight
             text: level.muted ? "muted" : `${Math.round(level.value * 100)}%`
@@ -109,9 +80,6 @@ Column {
         }
     }
 
-    // One app's channel. Two lines rather than one: a name and a level both want
-    // the width, and a name squeezed into a third of the row elides to
-    // "Firef..." exactly when knowing which app it is matters most.
     component Channel: Item {
         id: channel
 
@@ -123,9 +91,6 @@ Column {
 
         implicitHeight: name.implicitHeight + Appearance.padding.small + bar.implicitHeight
 
-        // The app's OWN icon, which is how an app is recognised without being
-        // read. The category glyph stands in when nothing resolves, so an
-        // unrecognised stream still gets a mark rather than a hole.
         Item {
             id: art
 
@@ -160,9 +125,6 @@ Column {
                 color: Appearance.colour.textDim
             }
 
-            // The icon is the mute, the same as the glyph on a master level is.
-            // A row of its own for a mute button would double the height of
-            // every channel to hold a control that is off for all of them.
             MouseArea {
                 anchors.fill: parent
                 anchors.margins: -Appearance.padding.small
@@ -230,11 +192,6 @@ Column {
     Level {
         width: parent.width
 
-        // WHAT YOU ARE LISTENING THROUGH, not a picture of a loudspeaker. The
-        // glyph is the sink's own kind, so the top of the panel answers "am I on
-        // the headphones or the laptop" before you have read anything. Muted is
-        // the one state that overrides it, because a muted control has to say so
-        // louder than it says what it is.
         glyph: Audio.muted ? "no_sound" : Audio.deviceIcon(Audio.sink)
         value: Audio.volume
         muted: Audio.muted
@@ -251,10 +208,7 @@ Column {
     }
 
     Repeater {
-        // UNCAPPED. The cap predates the panel's viewport: MenuPanel puts every
-        // menu body in a Flickable that enables itself on overflow, so the
-        // twelfth stream scrolls instead of vanishing -- and a cap that hides
-        // the sixth stream's slider with no word of it was a hole either way.
+
         model: Audio.playing
 
         delegate: Channel {
@@ -314,13 +268,6 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
-    // THE LEADING SLOT SAYS WHAT IT IS; the trailing one says which is on.
-    //
-    // A tick in the icon slot spent the one strong position in the row saying
-    // something the row's own highlight already said, and left the actual
-    // question, which of these is the headphones, to be worked out from a name
-    // like "ALC257 Analog". Kind on the left, name, where it plugs in
-    // underneath, tick on the right.
     Repeater {
         model: Audio.sinks
 
@@ -378,8 +325,6 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
-    // The bonus. Present only while something is playing, so an idle machine
-    // does not carry a row that says nothing.
     Separator {
         width: parent.width
         visible: Media.available

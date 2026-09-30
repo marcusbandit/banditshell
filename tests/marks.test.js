@@ -1,9 +1,3 @@
-// modules/files/marks.js: what a particular folder IS.
-//
-// The rule the file states is match by path first, then by name, so the tests
-// that matter are the ones where a name in the right place and the same name in
-// the wrong place have to come out differently.
-
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
@@ -64,17 +58,11 @@ test.describe("marks: under $HOME", () => {
     });
 
     test.it("does not take a home-shaped prefix for the home directory", () => {
-        // "/home/banditbox" starts with "/home/bandit" as a STRING but is not
-        // inside it, which is why the test is for "/home/bandit/" with the
-        // separator on the end.
+
         assert.strictEqual(dir("/home/banditbox"), "");
         assert.strictEqual(Marks.iconFor("/home/banditbox/Pictures", "Pictures", true, HOME), "");
     });
 
-    // The rule this pins is the file's own: an XDG name means the XDG thing at
-    // the top of $HOME and nowhere else. It failed when FOLDERS also carried a
-    // generic lowercase "downloads", which the name fallback found wherever the
-    // folder was.
     test.it("gives a Downloads outside $HOME no XDG mark", () => {
         assert.strictEqual(dir("/somewhere/else/Downloads"), "");
     });
@@ -102,10 +90,7 @@ test.describe("marks: folders that mean the same thing anywhere", () => {
     });
 
     test.it("prefers the path over the name", () => {
-        // "/etc" is SYSTEM; a folder called "config" is FOLDERS. Both land on
-        // "tune", so the ordering is checked where the two disagree: ".config"
-        // in the home directory is not an XDG name, so it falls through to
-        // FOLDERS rather than being swallowed by the home branch.
+
         assert.strictEqual(dir(HOME + "/.config"), "tune");
         assert.strictEqual(dir("/x/config"), "tune");
     });

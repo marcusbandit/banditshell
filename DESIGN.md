@@ -28,8 +28,10 @@ from *authorship* to *architecture*:
   what talks to what. Section 8 is the living map of that and must be kept current.
 - **Explain the structure as it changes.** When a file is added, moved, or a boundary shifts,
   say so and say why. Don't let the tree drift ahead of my mental model.
-- Code should be written to be *read*: comments explain the non-obvious *why* (why a separate
-  window, why a mask and not opacity), not the obvious *what*.
+- Code should be written to be *read*: **no comments, or close to it.** The rule
+  was once "comments explain the non-obvious *why*"; that allowance inflated
+  into essays in every file and was stripped on 2026-09-30. Now: no comments
+  unless asked. If code needs explaining, rename or restructure it instead.
 
 Original rejected alternative: assistant-as-tutor-only (explain, never write). It made the
 project stall, which is the exact failure mode section 5 warns about.

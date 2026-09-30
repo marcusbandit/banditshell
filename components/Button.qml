@@ -4,8 +4,6 @@ import QtQuick
 import QtQuick.Effects
 import qs.config
 
-// The button: the states of a button (enabled/disabled now; hovered, pressed and focused as
-// they are specced), each holding tiers of skins - every entry a colour answer and a shape.
 Item {
     id: root
 
@@ -36,9 +34,6 @@ Item {
 
     opacity: root.interactive ? 1 : 0.45
 
-    // The skins: enabled is what a button is; disabled is the same shapes with sad colours -
-    // monochrome, quiet, almost unseen - except outlined and text, which gain a fill so they
-    // stay visible at all. A disabled toggle keeps the shape of its state.
     readonly property var skins: ({
             enabled: {
                 "default": {
@@ -80,8 +75,7 @@ Item {
                 },
                 unselected: {
                     filled: {
-                        // Halfway between the elevated plate and the tonal plate, both as
-                        // rendered over the surface.
+
                         bg: Appearance.blend(
                             Appearance.colour.surfaceSolid,
                             Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, Appearance.colour.veilWeight),
@@ -136,7 +130,7 @@ Item {
                         shape: "square"
                     },
                     outlined: {
-                        // The outline's own colour becomes the body; the ring is gone.
+
                         bg: Appearance.colour.fillStrong,
                         fg: Appearance.colour.text,
                         ring: "transparent",
@@ -246,14 +240,12 @@ Item {
             }
         })
 
-    // The assignment: state tier by interactive, variant tier by checked, column by style.
     readonly property var stateTier: !root.interactive ? skins.disabled : skins.enabled
     readonly property var skin: {
         const tier = root.checkable ? (root.checked ? stateTier.selected : stateTier.unselected) : stateTier["default"];
         return tier[root.style] ?? stateTier["default"][root.style] ?? skins.enabled.tonal;
     }
 
-    // The one escape hatch: a caller that paints the plate by state (the pen's readouts).
     property var paint
     readonly property color bg: root.paint ?? root.skin.bg
 
@@ -261,11 +253,9 @@ Item {
     readonly property color ring: root.skin.ring
     readonly property real ringW: root.skin.ringW
 
-    // The corners, from the skin's shape; pressed pulls one step toward the other shape.
     readonly property string skinShape: root.skin.shape ?? "round"
     readonly property real targetRadius: root.pressed ? (skinShape === "round" ? Appearance.rounding.normal : Appearance.rounding.large) : skinShape === "round" ? height / 2 : Appearance.rounding.normal
 
-    // A fully round end is a circular arc (power 2); the square keeps the shell's G2 exponent.
     readonly property real platePower: skinShape === "round" ? 2 : Appearance.rounding.power
 
     implicitWidth: root.hasText ? label.implicitWidth + markSpan + padX * 2 : implicitHeight
@@ -273,7 +263,6 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
-    // The shadow, for the elevated style alone; the cast is invisible and only sampled.
     G2Rect {
         id: cast
 
@@ -301,7 +290,7 @@ Item {
     MultiEffect {
         source: cast
         anchors.fill: cast
-        // Only rendered while the shadow is: the effect would draw the black cast otherwise.
+
         visible: root.style === "elevated"
         shadowEnabled: root.style === "elevated"
         shadowColor: Appearance.colour.scrim
@@ -309,7 +298,6 @@ Item {
         shadowVerticalOffset: Math.max(2, Math.round(root.height / 10))
     }
 
-    // The body: one shape, fill and/or ring.
     G2Rect {
         id: plate
 
@@ -341,7 +329,6 @@ Item {
         }
     }
 
-    // The hover: one light over every emphasis.
     G2Rect {
         anchors.fill: parent
         radius: root.targetRadius
@@ -364,7 +351,6 @@ Item {
         }
     }
 
-    // Pressed INTO the plate: a button moves when pressed.
     scale: root.pressed ? 0.96 : 1
 
     Behavior on scale {

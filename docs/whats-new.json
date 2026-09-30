@@ -1,47 +1,58 @@
 {
-    "entries": [
+  "entries": [
+    {
+      "id": "2026-09-30",
+      "date": "2026-09-30",
+      "changes": [
         {
-            "id": "2026-09-29-3",
-            "date": "2026-09-29",
-            "changes": [
-                {
-                    "type": "features",
-                    "severity": "minor",
-                    "text": "Bare mode now squares the windows too (rounding and both gaps, outer and inner, go to zero), and the shell applies the compositor half itself: on the toggle, on every boot, and again after every compositor reload while bare, so the state comes back from a reboot whole instead of half-applied. Toggling back reloads the compositor, which returns your config's gaps and rounding to every open window at once."
-                }
-            ]
-        },
-        {
-            "id": "2026-09-29-2",
-            "date": "2026-09-29",
-            "changes": [
-                {
-                    "type": "features",
-                    "severity": "minor",
-                    "text": "Bare mode: the whole chrome can go off at once, every screen. Band, sidebar, reserved space and the invisible edge grabs all stand down, leaving the wallpaper and your windows; the shell still answers every keybind. Super+Shift+K toggles it, and runs the compositor's gap flip beside it so the windows sit flush."
-                },
-                {
-                    "type": "config",
-                    "severity": "minor",
-                    "text": "One new config.json key, edge.bare, holds the switch. It is off by default and your config gains it by itself; nothing to do."
-                }
-            ]
-        },
-        {
-            "id": "2026-09-29",
-            "date": "2026-09-29",
-            "changes": [
-                {
-                    "type": "features",
-                    "severity": "minor",
-                    "text": "The sidebar can now be hidden on individual monitors. The Monitors page has a Sidebar switch for the selected one, and Super+K toggles the column on the monitor you are on; hidden means fully, with the windows taking the width back."
-                },
-                {
-                    "type": "config",
-                    "severity": "minor",
-                    "text": "Two new config.json keys hold the same setting: sidebar.enabled, the default every screen follows, and sidebar.perScreen, which holds only the monitors that disagree. Your config gains them by itself; nothing to do."
-                }
-            ]
+          "type": "config",
+          "severity": "minor",
+          "text": "Internal: the source code shed its comment essays, cut to bare minimum, with no change to anything the shell does. Your config and setup are untouched; anyone reading the code can read it again."
         }
-    ]
+      ]
+    },
+    {
+      "id": "2026-09-29-3",
+      "date": "2026-09-29",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Bare mode now squares the windows too (rounding and both gaps, outer and inner, go to zero), and the shell applies the compositor half itself: on the toggle, on every boot, and again after every compositor reload while bare, so the state comes back from a reboot whole instead of half-applied. Toggling back reloads the compositor, which returns your config's gaps and rounding to every open window at once."
+        }
+      ]
+    },
+    {
+      "id": "2026-09-29-2",
+      "date": "2026-09-29",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Bare mode: the whole chrome can go off at once, every screen. Band, sidebar, reserved space and the invisible edge grabs all stand down, leaving the wallpaper and your windows; the shell still answers every keybind. Super+Shift+K toggles it, and runs the compositor's gap flip beside it so the windows sit flush."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "One new config.json key, edge.bare, holds the switch. It is off by default and your config gains it by itself; nothing to do."
+        }
+      ]
+    },
+    {
+      "id": "2026-09-29",
+      "date": "2026-09-29",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The sidebar can now be hidden on individual monitors. The Monitors page has a Sidebar switch for the selected one, and Super+K toggles the column on the monitor you are on; hidden means fully, with the windows taking the width back."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "Two new config.json keys hold the same setting: sidebar.enabled, the default every screen follows, and sidebar.perScreen, which holds only the monitors that disagree. Your config gains them by itself; nothing to do."
+        }
+      ]
+    }
+  ]
 }

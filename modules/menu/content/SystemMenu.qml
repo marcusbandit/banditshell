@@ -5,10 +5,6 @@ import qs.config
 import qs.components
 import qs.services
 
-// CPU, memory, temperature. This one is real.
-//
-// Sampling is tied to this component's lifetime, so the shell reads /proc only
-// while someone is looking at the numbers.
 Column {
     id: root
 
@@ -34,8 +30,7 @@ Column {
             {
                 icon: "thermostat",
                 label: "Temperature",
-                // No absolute scale exists for "hot", so this is against a
-                // plausible ceiling rather than pretending to be a percentage.
+
                 value: Math.min(1, SysInfo.temperature / 100),
                 detail: SysInfo.temperature > 0 ? `${Math.round(SysInfo.temperature)} C` : "unavailable",
                 warn: SysInfo.temperature >= 80
@@ -85,7 +80,7 @@ Column {
                 anchors.bottom: parent.bottom
                 enabled: false
                 value: gauge.modelData.value
-                // Reuse the accent's "past normal" behaviour for a hot chip.
+
                 warnAbove: gauge.modelData.warn ? 0 : 1
             }
         }

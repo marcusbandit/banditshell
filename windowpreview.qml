@@ -7,18 +7,9 @@ import qs.components
 import qs.modules.windows
 import qs.services
 
-// Temporary: the window-edge gesture's held state, frozen.
-//
-// The gesture is touch-only and cannot be made with a mouse, so this is the only
-// way to look at what it draws. It alternates between the two answers a hold
-// offers: the finger down among the windows (rearrange) and the finger up at the
-// top (send elsewhere). See modules/windows/.
 ShellRoot {
     id: shell
 
-    // The model only fills `lastIpcObject` when something asks it to, and in the
-    // real shell an event does that every few seconds. A preview process has no
-    // events, so it asks once.
     Component.onCompleted: Hyprland.refreshToplevels()
 
     PanelWindow {
@@ -42,8 +33,6 @@ ShellRoot {
             height: 0
         }
 
-        // The chassis's hole, spelled out here rather than imported: this is a
-        // preview, not the shell.
         readonly property real band: Appearance.sizes.border
         readonly property real bar: band + Appearance.sizes.sidebarWidth
         readonly property real holeX: bar
@@ -51,7 +40,6 @@ ShellRoot {
         readonly property real holeWidth: win.width - bar - band
         readonly property real holeHeight: win.height - band * 2
 
-        // Whichever window is furthest right stands in for the one in the hand.
         readonly property var carried: {
             let best = null;
             for (const c of Hypr.clientsOn(win.screen)) {
@@ -72,7 +60,6 @@ ShellRoot {
         readonly property real cardW: win.carried ? win.carried.lastIpcObject.size[0] * slots.mapScale : 400
         readonly property real cardH: win.carried ? win.carried.lastIpcObject.size[1] * slots.mapScale : 250
 
-        // 0: the hand down among the windows. 1: the hand up at the top.
         property int phase: 0
 
         Timer {
@@ -126,7 +113,6 @@ ShellRoot {
             active: true
         }
 
-        // The card, at the size the lift ends at, hanging off the finger.
         G2Rect {
             id: card
 

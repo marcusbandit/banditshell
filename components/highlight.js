@@ -1,60 +1,5 @@
 .pragma library
 
-// SYNTAX COLOUR AS DATA. Never as markup, and never as a colour.
-//
-// This returns spans: a kind and the literal characters it covers. What a
-// `keyword` looks like is decided in the view, because the only file in this
-// shell allowed to know a colour is config/Appearance.qml, and a highlighter
-// that emitted <font color="#..."> would be a second palette hiding in
-// components/. See DESIGN.md 8: components may read config and nothing else,
-// and this file sits below even that, so it reads nothing at all.
-//
-// THE ROUND-TRIP CONTRACT, which is the entire correctness story:
-//
-//     tokenize(t, lang).map(l => l.map(s => s.s).join("")).join("\n") === t
-//     tokenize(t, lang).length === t.split("\n").length
-//
-// Concatenating every span of every line reproduces the input EXACTLY, and there
-// is one line out per line in. Nothing is rewritten, nothing is dropped, nothing
-// is inserted, not even a space. A highlighter that breaks that does not
-// mis-colour a document, it silently corrupts one, and the reader has no way to
-// notice: the text on screen simply is not the text that was copied. So it is
-// structural rather than tested-for. `Lex.emit` is the only way a span is ever
-// created, it takes OFFSETS rather than strings, and it fills the gap since the
-// last token with `plain` before it writes anything. Coverage is therefore total
-// by construction, and the harness in the commit message checks it anyway.
-//
-// ONE PASS OVER THE WHOLE TEXT, split at the newlines afterwards. Tokenizing
-// line by line is the obvious first shape and it cannot be made right: a block
-// comment, a template literal and a Python docstring are all states that outlive
-// the line that opened them, so a per-line lexer either forgets them at every
-// newline or carries a state vector between lines, which is the whole-text scan
-// again with extra bookkeeping and one more thing to get wrong.
-//
-// A HAND-WRITTEN CHARACTER SCANNER, not a table of regexes. A regex big enough
-// to describe a string literal with escapes is also big enough to backtrack
-// catastrophically, and the input here is arbitrary: whatever was on the
-// clipboard. A scanner that only ever moves forward cannot hang, and an
-// unterminated quote or comment at the end of the buffer runs to the end and
-// stops instead of throwing. The regexes that remain are in detect(), are
-// anchored, and are matched against one line at a time.
-
-// ------------------------------------------------------------------ the kinds
-//
-// plain keyword string number comment key punct operator boolean null type
-// function added removed
-//
-// `key` is an object or map key, which is the one distinction JSON actually
-// needs: "name" before a colon is the index into the document and "name"
-// anywhere else is its content, and a highlighter that paints both the same has
-// thrown away the only structure JSON has.
-
-// ------------------------------------------------------------------- the sets
-//
-// Object.create(null) rather than {}. A plain object inherits from
-// Object.prototype, so `words["constructor"]`, `words["toString"]` and
-// `words["__proto__"]` are all truthy in a set that contains none of them, and
-// `constructor` is a perfectly ordinary word to find in JavaScript.
 function set(words) {
     const out = Object.create(null);
     const list = words.split(" ");
@@ -73,9 +18,6 @@ function quote(open, close, multi, escape) {
     };
 }
 
-// A quote list is tried IN ORDER, so the long delimiters come first: """ has to
-// be recognised before ", or every Python docstring is an empty string followed
-// by the docstring as code.
 const PY_QUOTES = [quote('"""', '"""', true, true), quote("'''", "'''", true, true), quote('"', '"', false, true), quote("'", "'", false, true)];
 const JS_QUOTES = [quote("`", "`", true, true), quote('"', '"', false, true), quote("'", "'", false, true)];
 const SH_QUOTES = [quote("'", "'", true, false), quote('"', '"', true, true), quote("`", "`", true, true)];
@@ -83,26 +25,6 @@ const SH_QUOTES = [quote("'", "'", true, false), quote('"', '"', true, true), qu
 const PUNCT = "{}[](),;:";
 const OPERATOR = "+-*/%<>=!&|^~?.@#";
 
-// One language is one row of data. The scanner below is the same for all of
-// them; every difference between C and YAML that matters here is a field.
-//
-//   line/block   comment delimiters
-//   quotes       string delimiters, longest first, and whether they may span lines
-//   keyChar      what turns a name into a KEY: ":" for JSON and YAML, "=" for TOML
-//   keyRule      strict = the name must also FOLLOW a "{" or a ","  (JSON, JS)
-//                loose  = the trailing keyChar is enough        (QML, YAML, CSS)
-//                none   = this language has no map keys         (C, shell, SQL)
-//   call         a name followed by "(" is a function
-//   fold         lower-case a word before looking it up (SQL, where SELECT and
-//                select are the same keyword)
-//   preproc      "#" at the head of a line begins a directive (C)
-//   sections     "[...]" at the head of a line is a section header (TOML)
-//   spacedHash   "#" only opens a comment at a line head or after a space, so a
-//                URL fragment in a YAML value does not comment out the rest
-//   hashColour   "#abc" is a colour literal rather than anything else (CSS)
-//   dash         a hyphen is part of a name (see isName)
-//   signed       a leading "-" belongs to the number after it, which is true of
-//                a data format and false of anything with subtraction in it
 const SPECS = Object.create(null);
 
 function spec(id, fields) {
@@ -253,14 +175,10 @@ spec("toml", {
     operator: "=+-.:"
 });
 
-// ------------------------------------------------------------------ the lexer
-
 function Lex(text) {
     this.text = text;
     this.n = text.length;
-    // Where the pending `plain` run started. Everything between `mark` and the
-    // next token is unclaimed text, and emit() hands it over before it writes
-    // the token, which is what makes coverage total without anyone counting.
+
     this.mark = 0;
     this.spans = [];
 }
@@ -289,8 +207,6 @@ Lex.prototype.done = function () {
     return this.spans;
 };
 
-// ------------------------------------------------------------- character work
-
 function isDigit(c) {
     return c >= "0" && c <= "9";
 }
@@ -303,23 +219,14 @@ function isSpace(c) {
     return c === " " || c === "\t" || c === "\r" || c === "\n";
 }
 
-// Anything above ASCII counts as a letter. Guessing which of the several
-// thousand unicode identifier characters a language allows is not this file's
-// job, and treating an accented name as three tokens looks broken in a way that
-// treating a stray glyph as a name does not.
 function isNameStart(c) {
     return c === "_" || c === "$" || (c >= "a" && c <= "z") || (c >= "A" && c <= "Z") || (c !== undefined && c > "\u007f");
 }
 
-// The hyphen is a language's CHOICE, not a fact about names. `background-color`
-// and `my-key` are one name each in CSS, YAML and TOML; `a - b` is a subtraction
-// everywhere else, and folding the hyphen in there loses the operator and welds
-// two identifiers into one that exists nowhere.
 function isName(c, dash) {
     return isNameStart(c) || isDigit(c) || (dash === true && c === "-");
 }
 
-// The first of `list` that the text starts with at i, or "".
 function matchAt(text, i, list) {
     for (let j = 0; j < list.length; j++)
         if (text.startsWith(list[j], i))
@@ -341,9 +248,6 @@ function matchQuote(text, i, quotes) {
     return null;
 }
 
-// The nearest non-blank character BEFORE i, skipping newlines too: a key in a
-// pretty-printed document is on its own line and the "{" that proves it is a key
-// is on the line above.
 function prevSolid(text, i) {
     let j = i - 1;
     while (j >= 0 && isSpace(text[j]))
@@ -351,10 +255,6 @@ function prevSolid(text, i) {
     return j >= 0 ? text[j] : "";
 }
 
-// The nearest character after i, skipping spaces and tabs but NOT newlines. A
-// colon that makes a name a key always sits on the same line as the name; going
-// past the newline would make the first word of every paragraph a key the moment
-// a colon appeared anywhere below it.
 function nextSolid(text, i) {
     let j = i;
     while (j < text.length && (text[j] === " " || text[j] === "\t"))
@@ -369,11 +269,6 @@ function atLineHead(text, i) {
     return j < 0 || text[j] === "\n";
 }
 
-// Where a string ends. Three ways out, and the last two are why a truncated
-// paste cannot hang or swallow the rest of the file:
-//   the closing delimiter,
-//   the end of the line, for a quote that is not allowed to span lines,
-//   the end of the buffer.
 function endOfString(text, i, q) {
     const n = text.length;
     let j = i + q.open.length;
@@ -392,10 +287,6 @@ function endOfString(text, i, q) {
     return n;
 }
 
-// Numbers, generously: hex, binary and octal prefixes, digit separators, a
-// fraction, an exponent, and whatever suffix the language puts on the end (10px,
-// 0xFFul, 100n). Being greedy about the suffix costs nothing, because a suffix
-// is glued to the digits and a real name never starts with one.
 function endOfNumber(text, i) {
     const n = text.length;
     let j = i;
@@ -430,9 +321,6 @@ function endOfNumber(text, i) {
     return j;
 }
 
-// Is this quoted run a KEY or a value? Both tests are needed and each kills a
-// different mistake. The trailing colon alone reads the "x" in `cond ? "x" : "y"`
-// as a key; the leading brace alone reads every element of ["a", "b"] as one.
 function quotedKind(text, from, to, s) {
     if (s.keyRule === "none" || s.keyChar === "")
         return "string";
@@ -472,8 +360,6 @@ function nameKind(text, from, to, word, s) {
     return "plain";
 }
 
-// --------------------------------------------------------- the generic pass
-
 function scanGeneric(lex, s) {
     const t = lex.text;
     const n = lex.n;
@@ -487,9 +373,6 @@ function scanGeneric(lex, s) {
             continue;
         }
 
-        // A comment to the end of the line. `spacedHash` is YAML's rule: a "#"
-        // glued to the end of a word is part of the word, so a URL fragment in a
-        // value does not comment out the rest of the line.
         const lc = matchAt(t, i, s.line);
         if (lc !== "" && (!s.spacedHash || i === 0 || isSpace(t[i - 1]))) {
             let j = t.indexOf("\n", i);
@@ -500,7 +383,6 @@ function scanGeneric(lex, s) {
             continue;
         }
 
-        // A comment that runs until it is closed, or until the buffer ends.
         const bc = matchPair(t, i, s.block);
         if (bc) {
             let j = t.indexOf(bc[1], i + bc[0].length);
@@ -518,8 +400,6 @@ function scanGeneric(lex, s) {
             continue;
         }
 
-        // A preprocessor directive is the "#" and the word after it, not the
-        // whole line: `#define WIDTH 40` still has a name and a number in it.
         if (s.preproc && c === "#" && atLineHead(t, i)) {
             let j = i + 1;
             while (j < n && isNameStart(t[j]))
@@ -529,8 +409,6 @@ function scanGeneric(lex, s) {
             continue;
         }
 
-        // A TOML table header. The whole bracketed run, because [tool.uv.sources]
-        // is one name with dots in it rather than three names and two dots.
         if (s.sections && c === "[" && atLineHead(t, i)) {
             let j = t.indexOf("]", i);
             const nl = t.indexOf("\n", i);
@@ -541,10 +419,6 @@ function scanGeneric(lex, s) {
             }
         }
 
-        // A CSS colour, and ONLY a colour: three, four, six or eight hex digits
-        // and then something that is not a name character. Without the length
-        // test `#bar` becomes the number `#ba` followed by the letter r, because
-        // b and a are perfectly good hex digits.
         if (s.hashColour && c === "#" && isHexDigit(t[i + 1])) {
             let j = i + 1;
             while (j < n && isHexDigit(t[j]))
@@ -557,8 +431,6 @@ function scanGeneric(lex, s) {
             }
         }
 
-        // A sign belongs to the literal in a data format and to the expression
-        // in a language, so `signed` decides rather than the scanner.
         const signed = s.signed && (c === "-" || c === "+") && isDigit(t[i + 1]) && !isName(t[i - 1], s.dash);
 
         if (isDigit(c) || signed || (c === "." && isDigit(t[i + 1]) && !isName(t[i - 1], s.dash))) {
@@ -592,19 +464,12 @@ function scanGeneric(lex, s) {
             continue;
         }
 
-        // Unclaimed. It stays plain, and emit() will pick it up with whatever
-        // else was skipped before the next token.
         i++;
     }
 
     return lex.done();
 }
 
-// ------------------------------------------------------------------- markup
-
-// Markup is a shape, not a grammar, so it gets its own pass rather than a spec:
-// what a character means here depends on where it is on the line, which is the
-// one thing the generic scanner deliberately does not look at.
 function scanHtml(lex) {
     const t = lex.text;
     const n = lex.n;
@@ -624,7 +489,6 @@ function scanHtml(lex) {
             continue;
         }
 
-        // A doctype or a processing instruction: one declaration, one colour.
         if (t.startsWith("<!", i) || t.startsWith("<?", i)) {
             let j = t.indexOf(">", i);
             j = j < 0 ? n : j + 1;
@@ -648,7 +512,6 @@ function scanHtml(lex) {
         lex.emit("type", j, k);
         i = k;
 
-        // Attributes, until the tag closes or the buffer runs out.
         while (i < n && t[i] !== ">") {
             const c = t[i];
             if (isSpace(c)) {
@@ -681,12 +544,6 @@ function scanHtml(lex) {
     return lex.done();
 }
 
-// ------------------------------------------------------- line-shaped formats
-
-// Walk the text a line at a time WITHOUT splitting it. `fn` is handed the
-// absolute offsets of one line's contents, so every span it emits is still a
-// slice of the original buffer at its original position and the contract holds
-// for free.
 function eachLine(lex, fn) {
     const t = lex.text;
     const n = lex.n;
@@ -703,9 +560,6 @@ function eachLine(lex, fn) {
     return lex.done();
 }
 
-// A diff is the one format where the FIRST CHARACTER of a line is the whole
-// meaning, so nothing inside a line is tokenized at all: colouring the contents
-// of a removed line would fight the one thing the reader is here to see.
 function scanDiff(lex) {
     const t = lex.text;
     return eachLine(lex, (from, to) => {
@@ -726,11 +580,6 @@ function scanDiff(lex) {
     });
 }
 
-// Enough Markdown to read a pasted README by shape: headings, fences, quotes,
-// list markers and inline code. Emphasis is deliberately left alone. A single
-// asterisk is ambiguous without a full inline parser, and getting it wrong
-// swallows the rest of a paragraph into a colour, which is far worse than
-// leaving bold text the same weight as the rest of the prose.
 function scanMarkdown(lex) {
     const t = lex.text;
     let fenced = false;
@@ -761,8 +610,6 @@ function scanMarkdown(lex) {
             return;
         }
 
-        // A list marker, and only a marker: "- " and "1. " count, a hyphen with a
-        // word stuck to it does not.
         if ((t[i] === "-" || t[i] === "*" || t[i] === "+") && t[i + 1] === " ") {
             lex.emit("punct", i, i + 1);
             i++;
@@ -776,8 +623,6 @@ function scanMarkdown(lex) {
             }
         }
 
-        // Inline code, which is the one inline form a backtick cannot be
-        // mistaken about.
         while (i < to) {
             if (t[i] === "`") {
                 let j = t.indexOf("`", i + 1);
@@ -791,8 +636,6 @@ function scanMarkdown(lex) {
         }
     });
 }
-
-// ---------------------------------------------------------------- the front
 
 function toLines(text, spans) {
     const lines = [[]];
@@ -812,11 +655,6 @@ function toLines(text, spans) {
     return lines;
 }
 
-// text -> an array of LINES, each an array of {k, s} spans.
-//
-// An unknown or empty language is not an error and does not throw: it returns
-// the text as one plain span per line, which is exactly what a viewer wants for
-// something it could not identify.
 function tokenize(text, language) {
     if (typeof text !== "string")
         return [[]];
@@ -837,17 +675,6 @@ function tokenize(text, language) {
 
     return toLines(text, spans);
 }
-
-// ------------------------------------------------------------------- detect
-
-// WHAT IT IS, and "" when it is not sure.
-//
-// Conservative on purpose. A wrong guess is worse than no guess: unhighlighted
-// text reads as text, whereas prose lexed as C has half its words in the keyword
-// colour and the reader is left doing the parsing the highlighter was there to
-// do. So every rule here is either a signal nothing else produces (a shebang, a
-// doctype, an #include, a diff hunk header, a document that JSON.parse accepts)
-// or it needs two independent witnesses before it will answer.
 
 const SAMPLE = 65536;
 const HEAD_LINES = 400;
@@ -875,9 +702,6 @@ function score(text, tests) {
     return hits;
 }
 
-// The whole document, not the sample: JSON is the one language with a decider
-// rather than a heuristic, and a decider that only reads the first 64k would
-// call a truncated object valid.
 function looksLikeJson(text) {
     const trimmed = text.trim();
     if (trimmed.length < 2)
@@ -903,8 +727,6 @@ function detect(text) {
     const lines = all.length > HEAD_LINES ? all.slice(0, HEAD_LINES) : all;
     const lead = head.replace(/^\s+/, "");
 
-    // 1. A shebang says it outright, and says it about the file rather than
-    //    about a line of it.
     const bang = /^#!.*?\b(bash|zsh|sh|dash|ksh|python[0-9.]*|node|deno)\b/.exec(lines[0] || "");
     if (bang) {
         const who = bang[1];
@@ -915,32 +737,24 @@ function detect(text) {
         return "shell";
     }
 
-    // 2. A declaration at the very top of the document.
     if (/^<\?xml\b/i.test(lead) || /^<!doctype\s+html\b/i.test(lead) || /^<html\b/i.test(lead))
         return "html";
 
-    // 3. A diff carries its own frame.
     if (anyLine(lines, /^diff --git /) || anyLine(lines, /^@@ .* @@/) || (anyLine(lines, /^--- /) && anyLine(lines, /^\+\+\+ /)))
         return "diff";
 
-    // 4. The only test in here that is a proof rather than a guess.
     if (text.length <= 4 * 1024 * 1024 && looksLikeJson(text))
         return "json";
 
-    // 5. QML announces itself in its first two lines, and its imports are not
-    //    shaped like anyone else's.
     if (anyLine(lines, /^\s*import Qt[A-Za-z.]*\s*$/) || anyLine(lines, /^pragma (Singleton|ComponentBehavior)\b/))
         return "qml";
 
     if (anyLine(lines, /^\s*#include\s*[<"]/))
         return "c";
 
-    // 6. A def or a class with a colon on the end of the line is not a shape any
-    //    of the others make.
     if (anyLine(lines, /^\s*(def|class)\s+\w+.*:\s*$/) || anyLine(lines, /^\s*from\s+[\w.]+\s+import\s/) || anyLine(lines, /^\s*if\s+__name__\s*==/))
         return "python";
 
-    // 7. Two witnesses from here down.
     const cssRule = countLines(lines, /^\s*[\w.#\[:*>&-][^{};]*\{\s*$/);
     const cssDecl = countLines(lines, /^\s*[-\w]+\s*:\s*[^;{}]+;\s*$/);
     if (cssRule >= 1 && cssDecl >= 2 && anyLine(lines, /^\s*\}\s*$/))
@@ -963,10 +777,6 @@ function detect(text) {
     if ((tomlSection >= 1 && tomlPair >= 1) || (tomlPair >= 3 && !/[{};]/.test(head)))
         return "toml";
 
-    // 8. YAML has no delimiters to find, so the test is that MOST of the
-    //    document is shaped like YAML rather than that some of it is. Two keys
-    //    alone would call an HTTP header dump, an ini file and half the prose in
-    //    the world a config.
     const solid = lines.filter(l => l.trim().length > 0);
     if (solid.length >= 2) {
         const yamlish = countLines(solid, /^\s*(#|-\s|-$|---|\.\.\.|[\w.$/\\'"-]+\s*:(\s|$))/);

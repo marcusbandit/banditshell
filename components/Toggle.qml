@@ -1,11 +1,6 @@
 import QtQuick
 import qs.config
 
-// A switch.
-//
-// Like Slider, it does not own its state: `checked` is bound to the thing it
-// controls and `toggled` asks for a change. A switch that flips itself and then
-// finds out the change failed is worse than one that waits.
 Item {
     id: root
 
@@ -28,9 +23,6 @@ Item {
         }
     }
 
-    // An explicit inset, not a derived one. `y` from `height`, `height` from
-    // `width` and `width` from `y` is a binding cycle: Qt reports a loop and
-    // picks an order, which is not a thing to leave to chance.
     G2Rect {
         readonly property real inset: Math.max(2, Math.round(root.height / 9))
 

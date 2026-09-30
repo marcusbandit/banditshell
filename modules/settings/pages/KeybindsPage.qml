@@ -9,39 +9,11 @@ import qs.services
 import qs.modules.settings
 import "../../../services/hyprgen.js" as HyprGen
 
-// KEYBINDS: every bind the Hyprland config makes, and the ones banditshell may
-// edit.
-//
-// THE ROW IS TWO THINGS. The chord is a row of plates -- one per key, SUPER
-// SHIFT A -- and the plates are the record button: click one and the page
-// takes the keyboard over, presses whatever keys the new chord is, and lets
-// go. The line under the plates is the command the bind actually runs,
-// verbatim, and nothing else: no sentence invented for it, no file and line
-// decorated onto it. What you can run is what you can read; the file it came
-// from is the heading of the section it sits in.
-//
-// RECORDING. While a row records, the page holds the compositor's shortcut
-// inhibitor (keyboard-shortcuts-inhibit-v1), so Hyprland's own binds stand
-// down and every key -- Super+Q included -- arrives here instead of doing
-// what it would do on the desktop. The recording ends the way a chord does:
-// press and hold the chord, and the moment nothing is held any more it is
-// set. Escape alone cancels; Escape inside a chord records. Only a chord the
-// config can name commits -- a key with no name says so and keeps waiting
-// rather than writing a bind the compositor cannot parse.
-//
-// EDITABLE means a literal bind: a plain chord, a plain expression, options
-// this file speaks. Anything else -- binds born in a loop or a submap
-// function, chords built by concatenation -- is shown where it stands and
-// read-only, because an editor that half-understands a line must never write
-// it. The compositor still runs every one of them; the hotkey sheet shows
-// the resolved truth.
 Item {
     id: root
 
     implicitHeight: list.implicitHeight
 
-    // The bind being edited, by id; "" for none; "add:<file>" opens the
-    // editor in ADD mode for that file.
     property string editing: ""
 
     onEditingChanged: {
@@ -53,17 +25,8 @@ Item {
 
     Component.onDestruction: Prompts.release(root)
 
-    // THE SEARCH. Live, over everything the scan read: the chord -- typed the
-    // way you would say it, "super a", no plus -- and the command and the
-    // expression and any description the config itself carries. While it
-    // holds text the page is one list of matches across every file -- the
-    // files are the filing, and a search ignores the filing.
     property string filter: ""
 
-    // Chords compare with every separator stripped from both sides, so the
-    // query "super a" finds "SUPER + A" and "super+a" finds it too. The rest
-    // of the row matches verbatim: a command is a command, and "exec" should
-    // find the execs.
     function bare(s: string): string {
         return s.toLowerCase().replace(/[^a-z0-9]/g, "");
     }
@@ -80,22 +43,12 @@ Item {
             || b.expr.toLowerCase().includes(f);
     }
 
-    // ------------------------------------------------------------ recording
-
-    // Which bind is recording, by id; "" for none. Recording is ONE at a
-    // time and the whole page's business, not a row's: the keyboard it
-    // takes over is the window's.
     property string recording: ""
 
-    // The chord as it stands, mid-recording: the mods held right now, and
-    // the one non-modifier key the chord has come down to.
     property var held: ({})
     property var capMods: []
     property string capKey: ""
 
-    // A key this editor has no name for. The recording keeps waiting -- a
-    // second key may still be the chord -- but the row says what happened
-    // rather than silently ignoring the press.
     property bool unnamed: false
 
     readonly property bool recordArmed: grab.active
@@ -139,9 +92,6 @@ Item {
         });
     }
 
-    // The page's Escape walks up to the face; recording hands the keyboard
-    // back there when it ends, so Escape closes the page from the next
-    // press rather than dying on an item that no longer holds focus.
     readonly property Item face: {
         let p = root.parent;
         while (p && p.railFoot === undefined)
@@ -169,9 +119,6 @@ Item {
             || key === Qt.Key_Hyper_L || key === Qt.Key_Hyper_R;
     }
 
-    // A Qt key as the config names it: the vocabulary binds.lua already
-    // speaks, then the xkb keysym words for the punctuation row, then the
-    // character itself. Empty means this editor has no name for the key.
     function keyName(key: int, text: string): string {
         const named = {
             [Qt.Key_Return]: "RETURN",
@@ -224,10 +171,6 @@ Item {
         return "";
     }
 
-    // THE TAKEOVER. Enabled while a row records; the compositor then hands
-    // this window every key instead of acting on its own binds. `active` is
-    // the compositor's own answer -- a grab it has not granted is not
-    // assumed, and keys are only captured once it says so.
     ShortcutInhibitor {
         id: grab
 
@@ -236,9 +179,6 @@ Item {
         onCancelled: root.cancelRecord()
     }
 
-    // Not armed within a beat of asking: the compositor refused the
-    // inhibitor (or the window never got focus). Give up rather than sit
-    // recording nothing -- the keys are going to the desktop either way.
     Timer {
         interval: 2000
         running: root.recording !== "" && !grab.active
@@ -248,11 +188,6 @@ Item {
         }
     }
 
-    // THE CAPTURE ITEM. Focus lands here while a row records, and every key
-    // the window receives is answered here and accepted here, so nothing
-    // walks up to the face's Escape and closes the page mid-chord. The
-    // chord is read off the PRESS state: mods and key as they come down, and
-    // the moment everything is back up with a key captured, it is set.
     Item {
         id: capture
 
@@ -284,9 +219,7 @@ Item {
             delete root.held[event.key];
             if (Object.keys(root.held).length > 0)
                 return;
-            // Everything is up. A chord with a key in it is set; letting go
-            // of a modifier alone is not a chord, so the recording keeps
-            // waiting for one.
+
             if (root.capKey !== "")
                 root.commitRecord();
             else {
@@ -295,9 +228,6 @@ Item {
         }
     }
 
-    // One section of the page: a heading, and the buttons under it. The
-    // shell-wide SettingsGroup carries the anatomy; this alias only keeps the
-    // page's own name for it.
     component Section: SettingsGroup {}
 
     Column {
@@ -305,8 +235,6 @@ Item {
 
         width: parent.width
         spacing: Appearance.padding.huge
-
-        // ------------------------------------------------------------- search
 
         Section {
             heading: "Search"
@@ -337,8 +265,6 @@ Item {
             }
         }
 
-        // ------------------------------------------------------------ matches
-
         Section {
             visible: root.filter !== ""
             heading: `${HyprConfig.binds.filter(root.matches).length} binds matching`
@@ -367,8 +293,6 @@ Item {
                 }
             }
         }
-
-        // -------------------------------------------------------------- files
 
         Repeater {
             visible: root.filter === ""
@@ -407,8 +331,6 @@ Item {
             }
         }
 
-        // ---------------------------------------------------------- add a bind
-
         Section {
             visible: root.filter === ""
             heading: "Add a bind"
@@ -439,27 +361,19 @@ Item {
         }
     }
 
-    // THE ROW. The chord as plates -- one per key, and the plates are the
-    // record button -- with the command the bind runs, verbatim, under
-    // them. The rest of the row is the editor's way in.
     component BindRow: Item {
         id: row
 
         required property var modelData
 
-        // Direct clicks (the Clear row) that are not a bind at all.
         signal clicked
 
         property string icon: modelData?.dynamic ? "auto_awesome" : "keyboard"
         property string chord: modelData?.chord || "(no chord)"
-        // THE COMMAND, and nothing else: what an exec runs, or the Lua call
-        // any other bind makes, and for a dynamic bind the source line that
-        // generates it. The sentence dictionary and the file:line decoration
-        // are gone -- this line is what the machine does.
+
         property string sub: !modelData ? "" : modelData.dynamic ? modelData.raw : (modelData.cmd || modelData.expr)
         readonly property bool editable: !!modelData && !modelData.dynamic
 
-        // Recording THIS row: the plates become the chord as it stands, live.
         readonly property bool recordingThis: root.recording === row.modelData?.id
 
         readonly property var plateTokens: {
@@ -491,15 +405,12 @@ Item {
         width: parent ? parent.width : 0
         height: blockH + Appearance.padding.normal * 2
 
-        // The plate, always drawn: a button is a thing you can see before
-        // you hover it. Hover and press turn the light up, never on.
         G2Rect {
             anchors.fill: parent
             radius: Appearance.rounding.small
             color: row.recordingThis || rowTap.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
         }
 
-        // THE MARK: the height of the two lines COMBINED, centred on them.
         Icon {
             x: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
@@ -516,10 +427,6 @@ Item {
             width: parent.width - x - Appearance.padding.normal
             spacing: Appearance.font.stem
 
-            // THE CHORD AS PLATES, one per key -- clickable, and clicking one
-            // is how the row is re-recorded. A dynamic bind's chord is source
-            // text, not a chord, and a direct row (clear, new) is prose: both
-            // stay plain text.
             Row {
                 spacing: Appearance.padding.small
 
@@ -562,7 +469,6 @@ Item {
                     }
                 }
 
-                // The prose rows and the dynamic ones keep their chord as text.
                 StyledText {
                     visible: !(row.editable || row.recordingThis)
                     anchors.verticalCenter: parent.verticalCenter
@@ -595,22 +501,14 @@ Item {
         }
     }
 
-    // THE EDITOR. Opened under the row that was clicked -- for real, where
-    // the user can find it. One column of fields in the row's place; Save
-    // splices the line, Remove deletes it, Escape or Cancel touch nothing.
     component BindEditor: Item {
         id: editor
 
-        // The bind, as a COPY and not a reference: an edit abandoned
-        // halfway leaves nothing behind, and Save is the only way back.
         property var bind: null
         property string file: ""
 
         readonly property bool isAdd: bind === null
 
-        // The COMMAND field is the inner string of an exec; a non-exec
-        // expression edits as raw Lua, verbatim, so what is saved is what
-        // was seen.
         readonly property bool isExec: !isAdd && /^hl\.dsp\.exec_cmd\(/.test(bind.expr)
 
         implicitHeight: column.implicitHeight
@@ -618,8 +516,7 @@ Item {
         function save(): void {
             const fields = {
                 chord: chordInput.text.trim(),
-                // The action goes back in the shape it came from: an exec's
-                // command re-quoted, anything else written as the Lua it is.
+
                 expr: isExec ? `hl.dsp.exec_cmd("${HyprGen.luaString(actionInput.text)}")` : actionInput.text,
                 locked: lockedToggle.checked,
                 repeating: repeatToggle.checked,
@@ -734,15 +631,9 @@ Item {
             }
         }
 
-        // Created only when opened (the Loader), so creation IS the opening:
-        // the first field takes the keyboard.
         Component.onCompleted: chordInput.take()
     }
 
-    // THE FIELD, PathField's shape without the row: a labelled line of
-    // text. Committing hands focus to the next field, and the last one
-    // saves. (A page-level component: QML does not nest inline components,
-    // which is the error the first draft died of.)
     component EditorField: Item {
         id: fieldRoot
 

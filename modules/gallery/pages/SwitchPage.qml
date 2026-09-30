@@ -4,12 +4,6 @@ import QtQuick
 import qs.components
 import qs.config
 
-// Switch. One thing, on or off.
-//
-// Wraps components/Toggle.qml, which exists and is used - this page is where
-// its look is argued with, not where it is invented. The knob on the right
-// writes `checked` from outside, which is exactly the contract Toggle asks
-// for: it never owns its state, and flips only when told.
 Item {
     id: page
 

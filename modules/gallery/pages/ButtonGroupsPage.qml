@@ -4,27 +4,13 @@ import QtQuick
 import qs.components
 import qs.config
 
-// Button groups. Related presses held together as one shape.
-//
-// Wraps components/ButtonGroup.qml - one plate, flush members, a press asked
-// for and answered. The page exists to argue the two questions this shell
-// has about that: what the members carry, and how many of them there can be
-// before "one object with parts" stops being true. The disabled knob is the
-// whole-group answer; a per-member disabled is a decision this page has not
-// made yet.
-//
-// The line under the group says which member was pressed last, because a
-// group is for pressing and a demo that only restyles itself cannot show the
-// press going anywhere.
 Item {
     id: page
 
     property bool drawn: true
 
-    // What was pressed last, as { index, label }, or null.
     property var last: null
 
-    // The values the knobs write.
     property string carries: "words"
     property string members: "three"
     property bool disabled: false
@@ -52,9 +38,6 @@ Item {
         }
     ]
 
-    // The presses, scaled by the members knob. Words and marks are two
-    // spellings of the same four actions, so both come from one table and
-    // cannot disagree about what member three is.
     readonly property var table: [
         {
             text: "Cut",

@@ -6,7 +6,6 @@ import qs.components
 import qs.modules.media
 import qs.services
 
-// Whatever is playing. This one is real.
 Column {
     id: root
 
@@ -17,8 +16,6 @@ Column {
         implicitHeight: Math.max(art.height, info.implicitHeight)
         visible: Media.available
 
-        // Album art when there is any, and a placeholder shaped like album art
-        // when there is not, so the row does not change height per track.
         G2Rect {
             id: art
 
@@ -80,31 +77,17 @@ Column {
         }
     }
 
-    // Progress, and the way to move it. This used to be a read-only bar, on
-    // the argument that seeking is a capability MPRIS players advertise one
-    // by one and a scrubber that silently does nothing on half of them is
-    // worse than none. The scrubber answers that itself: it takes a hand only
-    // while the player says it can seek, and marks the position either way.
-    // The same one the notch's preview draws, with its two times under it.
     Scrubber {
         width: parent.width
         visible: Media.available && Media.length > 0
     }
 
-    // Transport. Centred, because it is the one thing in this menu you aim at.
-    //
-    // The same component the notch's preview uses, so there is ONE set of media
-    // buttons in the shell rather than two that drift. It used to be a filled
-    // disc and two bare glyphs; the ring is Niagara's, and it is the better
-    // answer for a translucent material anyway (see MediaTransport.qml).
     MediaTransport {
         anchors.horizontalCenter: parent.horizontalCenter
         visible: Media.available
         width: parent.width
     }
 
-    // More than one player is common (a browser registers one per tab), so say
-    // which this is controlling and let it be changed.
     Separator {
         width: parent.width
         visible: Media.players.length > 1

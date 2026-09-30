@@ -5,55 +5,19 @@ import qs.config
 import qs.components
 import qs.services
 
-// Bluetooth. This one is real, and it is all of it.
-//
-// Everything bluez will let you do to an adapter or a device is here: power,
-// scanning, being findable, accepting pairing; and per device connect, pair,
-// cancel a pairing, forget, trust, block, and whether it may wake the machine.
-//
-// IN TWO LAYERS, because that list is much longer than what anyone came here
-// for. The surface is the list you actually use: turn it on, tap the headphones.
-// Everything else unrolls out of the row it belongs to, one at a time, and rolls
-// back up when you open another. A menu that shows every switch at once is a
-// menu you have to read; a menu that shows one row per device is a menu you can
-// aim at.
-//
-// Discovery runs while this menu is open and stops when it closes. Unlike wifi
-// scanning it is also visible to other people's devices, so leaving it on in the
-// background would be rude as well as wasteful.
 Column {
     id: root
 
     spacing: Appearance.padding.small
 
-    // Which layer is unrolled: a device address, "adapter", or nothing. ONE at a
-    // time, which is what keeps the menu a menu rather than a settings page, and
-    // what keeps its height bounded no matter how many devices are paired.
     property string opened: ""
 
     function toggleLayer(key: string): void {
         root.opened = root.opened === key ? "" : key;
     }
 
-    // SCANNING IS A THING YOU ASK FOR, not the price of opening the menu.
-    //
-    // It used to run the whole time this was open, which put a list of every
-    // television and doorbell in the building above the four devices you own,
-    // reordering itself every few seconds under the cursor. Discovery now runs
-    // only while the pairing layer is open, which also means the machine is only
-    // broadcasting while you are actually pairing something.
-    //
-    // AND ONLY WHILE SOMEBODY IS LOOKING AT IT, which used to be answered by
-    // this menu not existing. It is built once and kept now (MenuPanel.warm),
-    // so closing it destroys nothing and the panel has to say so instead.
-    //
-    // DEFAULT FALSE, so a menu being incubated at startup cannot broadcast for
-    // the frames between being built and being told where it is.
     property bool showing: false
 
-    // ONE FACT, not a handler that has to remember to ask both halves. Rolling
-    // the layer up on the way out is then only about the UI, and the switch
-    // that actually stops the radio falls out of it either way.
     readonly property bool discovering: root.showing && root.opened === "pair"
 
     onDiscoveringChanged: Bluetooth.setDiscovering(root.discovering)
@@ -63,14 +27,6 @@ Column {
 
     Component.onDestruction: Bluetooth.setDiscovering(false)
 
-    // One switch inside a layer. The whole row is the target, not the switch:
-    // a 34px toggle is a bad thing to ask anyone to hit, and the label says what
-    // it does, so tapping the label doing nothing would be the surprise.
-    //
-    // NO ICONS in here, unlike the rows outside. Out there a glyph answers "what
-    // is this thing"; in here every row is a sentence about the same device, so a
-    // column of glyphs would only push the sentences right and make the ones
-    // without a glyph look misaligned.
     component Choice: MenuRow {
         id: choice
 
@@ -86,22 +42,8 @@ Column {
         }
     }
 
-    // Something that HAPPENS, rather than something that is on or off.
-    //
-    // It used to carry an arrow, on the theory that an arrow reads as "do this"
-    // where a switch reads as "set this". It does not: a chevron pointing right
-    // means "there is more through here", and on "Forget it" there is nothing
-    // through there, only the deed, done on press. The layer read as a list of
-    // submenus that turned out to be buttons.
-    //
-    // The switch's ABSENCE is the distinction now. The right edge stays a column
-    // and the toggles are the only things in it, so a row with nothing there is
-    // a row that acts. The hover fill says pressable, the verb says what it
-    // does, and the tip says what it costs.
     component Act: MenuRow {}
 
-    // A line of fact, not a control. Address, adapter, the things you go looking
-    // for once a year and need exactly then.
     component Fact: StyledText {
         leftPadding: Appearance.padding.normal
         topPadding: Appearance.padding.small
@@ -173,9 +115,7 @@ Column {
     }
 
     Repeater {
-        // YOURS ONLY. What is merely nearby lives behind "Pair new device",
-        // because a device you have never met is not something you do anything
-        // with except pair it.
+
         model: Bluetooth.enabled ? Bluetooth.known.slice(0, Appearance.sizes.deviceListMax) : []
 
         delegate: Column {
@@ -196,8 +136,6 @@ Column {
                 detail: Bluetooth.stateLabel(entry.modelData)
                 selected: entry.modelData.connected
 
-                // The tap is the thing you came for: connect it, or pair it if
-                // you never have. Everything else is in the layer.
                 onActivated: Bluetooth.toggleDevice(entry.modelData)
 
                 Expander {
@@ -232,7 +170,6 @@ Column {
                     onFlipped: Bluetooth.setBlocked(entry.modelData, !entry.modelData.blocked)
                 }
 
-                // Last, because it undoes everything above it.
                 Act {
                     label: "Forget it"
                     onActivated: {
@@ -256,9 +193,6 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
-    // THE DOOR TO EVERYTHING ELSE. Behind it: the radio actually scanning, and
-    // whatever is broadcasting nearby. Closed, none of that exists and none of
-    // it costs anything.
     MenuRow {
         width: root.width
         visible: Bluetooth.enabled
@@ -295,10 +229,6 @@ Column {
                 label: modelData.name || modelData.address
                 detail: Bluetooth.stateLabel(modelData)
 
-                // Tap to pair, tap again to give up on it. Pairing can hang for
-                // a minute on a device that has wandered out of range, and a row
-                // you cannot take back is a row you have to close the menu to
-                // escape.
                 onActivated: modelData.pairing ? Bluetooth.cancelPair(modelData) : Bluetooth.toggleDevice(modelData)
             }
         }

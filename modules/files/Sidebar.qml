@@ -5,18 +5,6 @@ import qs.config
 import qs.components
 import qs.services
 
-// WHERE YOU KEEP GOING, down the left.
-//
-// Two lists, and the split between them is the classic one because it is the
-// right one: PLACES are directories you chose to care about, DRIVES are hardware
-// that happens to be mounted. One is about your work and the other is about the
-// machine, and they change for completely different reasons - a place is there
-// every day, a drive appears when you plug it in.
-//
-// Nothing here is user-editable yet. The places are the XDG directories, which
-// is what every file manager starts with, and the drives are whatever is
-// mounted; pinning an arbitrary folder is the obvious next thing and is
-// deliberately not guessed at here.
 Item {
     id: root
 
@@ -25,8 +13,6 @@ Item {
         {title: "Drives", rows: Files.drives}
     ]
 
-    // The row something is being dragged over, as a path, or "". A place is a
-    // directory like any other, so dropping files on it moves them there.
     property string receiving: ""
 
     Column {
@@ -47,15 +33,11 @@ Item {
 
                 width: parent.width
                 spacing: 0
-                // A HEADING OVER NOTHING IS NOISE. An empty Drives section on a
-                // laptop with nothing plugged in is a permanent reminder that
-                // nothing is plugged in.
+
                 visible: section.modelData.rows.length > 0
 
                 StyledText {
-                    // The section's name, at the quiet weight and in capitals,
-                    // which is how this shell says "label" without spending a
-                    // font size on it (~/.claude/rules/type-scale.md).
+
                     text: section.modelData.title.toUpperCase()
                     font.pixelSize: Appearance.sizes.filesText
                     font.letterSpacing: Appearance.sizes.filesText * 0.12
@@ -79,10 +61,7 @@ Item {
                         readonly property var usage: place.modelData.usage ?? null
 
                         width: section.width
-                        // A DRIVE IS A TALLER ROW, because it has a bar under
-                        // it. Derived from whether there is a bar rather than
-                        // set per section, so a place and a drive that both had
-                        // one would both get the room.
+
                         height: place.usage ? Appearance.sizes.filesRow * 1.5 : Appearance.sizes.filesRow
 
                         G2Rect {
@@ -129,25 +108,11 @@ Item {
                             anchors.rightMargin: Appearance.padding.normal
                             anchors.verticalCenter: glyph.verticalCenter
 
-                            // The size of a drive, and nothing at all for a
-                            // place: "how big is Downloads" is not a question
-                            // this row is answering.
                             text: place.modelData.detail ?? ""
                             font.pixelSize: Appearance.sizes.filesText
                             color: Appearance.colour.textGhost
                         }
 
-                        // HOW FULL IT IS, as a bar rather than a percentage.
-                        //
-                        // A number is a thing to read and compare; a bar is a
-                        // thing you see without reading, which is what you
-                        // actually want from a sidebar you are glancing at on
-                        // the way somewhere else. The figures are there on hover
-                        // for when the answer matters.
-                        //
-                        // It goes ACCENT when the drive is nearly full, which is
-                        // the one state worth a colour here: a disk at 96% is
-                        // about to become somebody's afternoon.
                         Item {
                             visible: !!place.usage
 
@@ -175,9 +140,6 @@ Item {
                             }
                         }
 
-                        // HoverTip IS the hover handler - it is a HoverHandler
-                        // with a label on it - so there is only one here rather
-                        // than one for the tip and one for the highlight.
                         HoverTip {
                             id: hover
 
@@ -193,13 +155,6 @@ Item {
         }
     }
 
-    // WHICH ROW IS UNDER A POINT, for the same reason the path bar has one:
-    // during a drag the ghost is under the cursor and takes every hover with it,
-    // so a row cannot know on its own that it is the one being aimed at.
-    //
-    // Worked out by walking the sections in the order they are drawn rather than
-    // by hit-testing items, because that IS the layout - there is no second copy
-    // of where things are, so this cannot disagree with what is on screen.
     function pathAt(position: point): string {
         if (position.x < 0 || position.x > root.width || position.y < 0)
             return "";

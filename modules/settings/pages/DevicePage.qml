@@ -7,40 +7,11 @@ import qs.components
 import qs.services
 import qs.modules.settings
 
-// DEVICE: the machine the shell is running on.
-//
-// NOTHING ON THIS PAGE IS A SETTING. It is the page a phone calls "About
-// phone", split off from About so that About can be about the shell: what
-// version is running and where its files are is one subject, what board is
-// under it and how warm the processor is are another, and a page that mixed
-// the two would have the firmware date sitting between a git hash and a
-// config path.
-//
-// EVERYTHING, IN CARDS, NOTHING FOLDED AWAY. A summary with a "more" behind it
-// is the right shape for a hover menu and the wrong one here: the reason to
-// open this page is to read the one line you came for, and a page that made
-// you guess which card hides it has failed at the only thing it does. So one
-// card per subject, one row per fact, every row saying its whole sentence.
-//
-// Every row is inert. A hostname is not a thing to flip, and a row that lit on
-// hover and swallowed the press would promise something it cannot do; see
-// MonitorsPage for the same argument about displays.
-//
-// The live numbers are sampled only while the page is on screen. SysInfo and
-// Device both ref-count their watchers, so this page asks on the way in and
-// lets go on the way out, and a settings window left open on another page
-// costs nothing per second.
-//
-// WIDTH COMES FROM THE FACE, like every page here: fill what the pager hands
-// you and ask only for height.
 Item {
     id: root
 
     implicitHeight: list.implicitHeight
 
-    // A fact not yet known, or not knowable on this machine, is said so. An
-    // empty value cell reads as the page having broken, and "unknown" reads
-    // as the machine not saying, which is the truth.
     function say(v: string): string {
         return v || "unknown";
     }
@@ -64,9 +35,6 @@ Item {
         SettingsCard {
             title: "This machine"
 
-            // The hostname is the label rather than a value: it is the name
-            // of the thing this whole page describes. The make and model sit
-            // under it because that is what a person would say next.
             SettingsRow {
                 icon: "computer"
                 label: Device.hostname || "this machine"
@@ -92,8 +60,6 @@ Item {
         SettingsCard {
             title: "Processor"
 
-            // A processor's marketing name is a sentence; SettingsRow puts a
-            // long value under the label on its own.
             SettingsRow {
                 icon: "memory"
                 label: "Model"
@@ -115,8 +81,6 @@ Item {
                 interactive: false
             }
 
-            // SysInfo reports 0 when no thermal zone made sense, and "0 °C"
-            // is a reading nobody should be shown.
             SettingsRow {
                 visible: SysInfo.temperature > 0
                 icon: "device_thermostat"
@@ -151,8 +115,6 @@ Item {
                 interactive: false
             }
 
-            // A machine without swap has nothing to say here, and "0.0 GB"
-            // would read as a swap that is full.
             SettingsRow {
                 visible: Device.swapTotalGb > 0
                 icon: "swap_horiz"
@@ -162,9 +124,6 @@ Item {
             }
         }
 
-        // One row per adapter, so a laptop with two shows two. The card goes
-        // with them: no lspci means no rows, and a heading over nothing is
-        // worse than no heading.
         SettingsCard {
             title: "Graphics"
             visible: Device.gpus.length > 0
@@ -185,10 +144,6 @@ Item {
         SettingsCard {
             title: "Storage"
 
-            // The model is the name a person knows the disk by and the device
-            // node is how the system does; a disk with no model (a USB bridge
-            // that hides it) falls back to the node so the row still has a
-            // label.
             Repeater {
                 model: Device.disks
 
@@ -250,8 +205,6 @@ Item {
             }
         }
 
-        // The card and its rows hide together, so a desktop does not get a
-        // heading with nothing under it.
         SettingsCard {
             title: "Battery"
             visible: Battery.available
@@ -263,8 +216,6 @@ Item {
                 interactive: false
             }
 
-            // Health is what it charges to now over what it charged to new;
-            // Battery explains where the number comes from.
             SettingsRow {
                 visible: Battery.healthKnown
                 icon: "favorite"
@@ -275,9 +226,6 @@ Item {
             }
         }
 
-        // Connected outputs in plug order, which is fine here because this
-        // page is about the hardware: which screen owns which workspaces is
-        // MonitorsPage's question, and its rows come from the order instead.
         SettingsCard {
             title: "Screens"
 
@@ -289,14 +237,6 @@ Item {
 
                     required property var modelData
 
-                    // A diagonal is the one size anybody quotes a monitor by.
-                    // ShellScreen does not hand over the panel's millimetres,
-                    // only `physicalPixelDensity`, which Qt works out as the
-                    // LOGICAL size over the EDID's physical size, so the edges
-                    // come back out of it by dividing the logical size, not
-                    // the mode. A screen whose EDID said nothing reports a
-                    // density Qt made up, so zero is the guard and the row
-                    // just leaves the inches out.
                     readonly property real density: screen.modelData.physicalPixelDensity ?? 0
                     readonly property real mmW: screen.density > 0 ? screen.modelData.width / screen.density : 0
                     readonly property real mmH: screen.density > 0 ? screen.modelData.height / screen.density : 0
@@ -304,9 +244,7 @@ Item {
 
                     icon: "monitor"
                     label: screen.modelData.name
-                    // The mode rather than the logical size: through the
-                    // device pixel ratio it is the resolution written on the
-                    // box, see MonitorsPage for the same conversion.
+
                     value: `${Math.round(screen.modelData.width * screen.modelData.devicePixelRatio)} × ${Math.round(screen.modelData.height * screen.modelData.devicePixelRatio)}`
                     detail: {
                         const bits = [screen.modelData.model || "unknown model"];

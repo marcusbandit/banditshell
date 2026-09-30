@@ -5,81 +5,38 @@ import qs.config
 import qs.components
 import qs.services
 
-// ONE THING THAT WAS COPIED.
-//
-// A launcher row is a NAME: short, and recognised before it is read. This is a
-// fragment of whatever you were doing, and the only thing that tells one of them
-// from the three others copied out of the same file is how much of it you can
-// see. So the row is generous, the picture is a picture rather than a caption
-// saying there is one, and the kind is a mark you can find by shape before you
-// have read any of the text.
-//
-// THROWN AWAY RATHER THAN DISMISSED (DESIGN.md 15). The row follows the hand and
-// fades as it goes, so the gesture says what it will do before it is finished,
-// and dragging back cancels. Clicking still copies, because a mouse user who
-// expects that should not be told they are holding it wrong.
 Item {
     id: root
 
     required property var entry
     required property int index
 
-    // WHICH ROW THE KEYBOARD IS ON, and separately which one the pointer is
-    // over. Two questions, and NiagaraLauncher's note says why they must not be
-    // one: hover used to move the selection, and it cannot, because the pointer
-    // is not the only thing that moves. Type a letter and the list under a
-    // perfectly still cursor is a different list. So hover is only a look.
     property bool selected: false
 
     signal activated
     signal pinned
     signal discarded
-    // Asked what else can be done with it: a right click, or a press held down.
-    // Carries where it was asked, in this row's coordinates.
+
     signal menu(real mx, real my)
-    // Asked to be looked at properly: the full view, formatted.
+
     signal expanded
-    // What the pointer is doing, reported up so the list can hold one hovered
-    // index rather than each row holding its own opinion.
+
     signal entered
     signal exited
 
     readonly property bool isImage: root.entry.kind === "image" && !!root.entry.file
     readonly property bool hovered: hover.hovered
 
-    // How far the hand has thrown it, in pixels, and which way. Signed, because
-    // a row can be thrown to either side and the fade is the same on both.
     property real thrown: 0
     property bool throwing: false
 
     readonly property real throwFull: Math.max(1, root.width * Appearance.sizes.dragDismissFraction)
     readonly property real throwFraction: Math.min(1, Math.abs(root.thrown) / root.throwFull)
 
-    // A ROW NEVER CHANGES SIZE, and that is the whole of why it is steady.
-    //
-    // It used to grow when it was hovered or selected, and a growing row is a
-    // reflowing list: the rows below it move under a pointer that has not
-    // moved, the pointer lands somewhere else, the row shrinks, everything goes
-    // back, and the pointer is on it again. That is a loop with a frame of delay
-    // in it, so it does not settle, it strobes. It was patched once by latching
-    // the hover in the list so a row could not un-hover itself, which stopped
-    // the worst of it and left the row still resizing under the hand.
-    //
-    // The patch is gone with the cause. Hovering is a LOOK now, a fill and
-    // nothing else, and nothing about pointing at a row changes any geometry
-    // anywhere. Getting a bigger picture is a thing you ASK for, with a right
-    // arrow or a swipe, and what answers is the full view, where the picture is
-    // fitted whole to the panel rather than to a slightly taller row. That is a
-    // better answer to "let me see it" than any row-sized version could be, and
-    // it cannot flicker because a page does not reflow a list.
     readonly property bool focused: root.selected || root.hovered
 
     implicitHeight: (root.isImage ? Appearance.sizes.clipboardPreview : Math.max(Appearance.sizes.rowHeight, body.implicitHeight + Appearance.padding.normal * 2)) + Appearance.padding.small
 
-    // WHERE THE ROW IS, which is where the hand left it or where it is returning
-    // from. A Follow rather than a Behavior: the throw ends at whatever distance
-    // the hand happened to reach, and a fixed duration over a variable distance
-    // is a different speed every time.
     Follow {
         id: slide
 
@@ -87,9 +44,6 @@ Item {
         target: root.throwing ? root.thrown : 0
     }
 
-    // Resisted, so the row reads as attached to the list rather than loose on
-    // it: it moves with the hand and less far than the hand, which is what says
-    // "this will come back" right up until it does not.
     readonly property real offset: slide.value * Appearance.sizes.dragResistance
 
     Item {
@@ -98,22 +52,12 @@ Item {
         x: root.offset
         width: root.width
         height: root.height - Appearance.padding.small
-        // Fades as it goes, so the gesture states its outcome before the release
-        // decides it. Never all the way to nothing while the hand is still on
-        // it: an invisible row that could still be dragged back would be a
-        // gesture with nothing to reverse.
-        //
-        // ONLY GOING LEFT. Fading is how the row says it is about to be lost,
-        // and a rightward throw loses nothing: it opens the full view and the
-        // row stays exactly where it is. Fading both ways would promise a
-        // deletion in the one direction that does not delete.
+
         opacity: root.thrown < 0 ? 1 - root.throwFraction * 0.7 : 1
 
         G2Rect {
             anchors.fill: parent
-            // The full radius, not the small one. MenuRow's note: at 9px on a
-            // 48px row the G2 ramp has no budget left and renders as the plain
-            // circular arc it exists to replace.
+
             radius: Appearance.rounding.normal
             color: root.selected ? Appearance.colour.fillStrong : Appearance.colour.fill
             opacity: root.focused ? 1 : 0
@@ -125,12 +69,6 @@ Item {
             }
         }
 
-        // WHAT IS ON THE CLIPBOARD RIGHT NOW, marked by a rule down the leading
-        // edge rather than by a fill. A fill is already saying two other things
-        // here (hover, and where the keyboard is), and a third weight of the
-        // same light would be indistinguishable from both. A rule at the accent
-        // is the one piece of state in this list worth a hue: which of these you
-        // would get by pasting without opening this at all.
         G2Rect {
             x: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
@@ -141,53 +79,20 @@ Item {
             visible: Clipboard.current === root.entry.id
         }
 
-        // THE MARK: what kind of thing this is, found by shape before it is
-        // read. A picture is its own mark, because a thumbnail answers "which
-        // screenshot" and the word "image" never does.
         Item {
             id: markSlot
 
             x: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
 
-            // A THUMBNAIL KEEPS THE PICTURE'S OWN PROPORTIONS, which is the
-            // whole of why it is worth showing. The plate is as tall as the row
-            // and as wide as that height and the aspect say, so a wide
-            // screenshot is a wide plate and a phone screenshot is a narrow one,
-            // and the SHAPE is already half the recognition before any of the
-            // content is.
-            //
-            // Clamped at both ends, because neither extreme is recognisable: a
-            // panorama would take the row and leave no room for anything else,
-            // and a single tall column would come out a sliver too narrow to
-            // show what it is of. The clamps are ratios rather than pixels, so
-            // they hold at any preview size.
             readonly property real minAspect: 0.5
             readonly property real maxAspect: 2.5
 
-            // TAKEN FROM THE ENTRY, not from the live decode, and never gated on
-            // `ready`. Both of those were the flicker.
-            //
-            // Reading the loaded image's aspect makes the width depend on a
-            // decode whose size depends on the width, which does not settle; and
-            // falling back to 1 whenever `ready` went false meant every reload
-            // that loop caused also snapped the plate back to square, so the
-            // thumbnail pulsed between square and its real shape indefinitely.
-            // The service remembers each picture's size the first time anything
-            // measures it, so the shape is known before the file is opened, on
-            // every appearance after the first, and across restarts.
-            // The true pixels first, the measured ratio second, square only
-            // while neither is known yet.
             readonly property real known: root.entry.w > 0 && root.entry.h > 0 ? root.entry.w / root.entry.h : root.entry.aspect > 0 ? root.entry.aspect : 0
             readonly property real aspect: known > 0 ? Math.max(minAspect, Math.min(known, maxAspect)) : 1
 
             width: root.isImage ? Math.round(height * aspect) : Appearance.sizes.clipboardIcon
             height: root.isImage ? parent.height - Appearance.padding.normal * 2 : Appearance.sizes.clipboardIcon
-
-            // No Behavior on width. An animation here was smoothing over the
-            // oscillation rather than a real transition: with the size known up
-            // front the plate is simply the right shape when it is built, and a
-            // width that animates on creation would be motion answering nothing.
 
             G2Image {
                 id: thumb
@@ -198,30 +103,13 @@ Item {
                 radius: Appearance.rounding.small
                 fillMode: Image.PreserveAspectCrop
 
-                // THE DECODE IS PINNED TO THE HEIGHT, which is the row's and owes
-                // nothing to the picture. Left at the item's own size it would
-                // follow the width, and the width follows the aspect: see this
-                // property's note in G2Image.
                 decodeWidth: 0
                 decodeHeight: markSlot.height
 
-                // Measured once, then written down. On the STATUS, not on the
-                // implicit width: the width settles before the delegate's entry
-                // is bound, so a handler on it fired once with no entry to
-                // report against and never again, and every picture stayed
-                // square. Ready is the moment both facts exist.
-                //
-                // Reported on every load, because a rebuilt delegate has no
-                // memory of its own; the service drops what it already knows.
                 onStatusChanged: if (thumb.status === Image.Ready && thumb.implicitSourceHeight > 0)
                     Clipboard.noteAspect(root.entry.id, thumb.implicitSourceWidth / thumb.implicitSourceHeight)
             }
 
-            // A PICTURE THAT IS NOT THERE, which is not hypothetical: an entry
-            // imported from clipse points at a file clipse's own `-clean` may
-            // since have reaped, and the copy this shell takes at import can
-            // fail on a full disk. Saying so is better than an empty plate that
-            // reads as a picture still loading.
             Icon {
                 anchors.centerIn: parent
                 visible: root.isImage && thumb.status === Image.Error
@@ -230,9 +118,6 @@ Item {
                 color: Appearance.colour.textFaint
             }
 
-            // A SWATCH, for the one kind that is a colour rather than about one.
-            // Six characters of hex say nothing about which green they are, and
-            // this says it without being read at all.
             G2Rect {
                 anchors.centerIn: parent
                 width: Appearance.font.iconSize
@@ -273,11 +158,7 @@ Item {
                 width: parent.width
                 text: root.title
                 color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
-                // Wrapped rather than run off, and capped: a paste is not a
-                // paragraph you read here, it is one you recognise. Beyond the
-                // cap the row would be showing content at the expense of the
-                // rows around it, which is the only thing that makes this list
-                // scannable.
+
                 maximumLineCount: root.isImage ? 1 : Appearance.sizes.clipboardLines
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
@@ -289,9 +170,6 @@ Item {
                 }
             }
 
-            // WHAT IT IS AND WHEN, in the quietest tier there is. Hierarchy by
-            // colour rather than by size: there are three sizes in this shell
-            // and a timestamp is not what a view is about.
             StyledText {
                 width: parent.width
                 text: root.detail
@@ -308,9 +186,6 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             spacing: Appearance.padding.small
 
-            // KEPT. Shown always when it is on, and on hover when it is not, so
-            // the way to pin a thing is discoverable by pointing at it and the
-            // fact that a thing IS pinned never depends on pointing at it.
             Item {
                 width: Appearance.sizes.minTarget
                 height: Appearance.sizes.minTarget
@@ -347,31 +222,15 @@ Item {
         }
     }
 
-    // WHAT THE ROW IS CALLED.
-    //
-    // A PICTURE IS NOT CALLED ANYTHING, and pretending otherwise was the first
-    // version's mistake: entries recorded here are named by content hash, so the
-    // row read "7863a832a145258e88df11e15f59896d.png", which is a filename that
-    // exists only so two identical screenshots share one file and which tells a
-    // person nothing whatsoever. The thumbnail is the identifier. What the line
-    // beside it can usefully add is the one thing the thumbnail cannot show at
-    // that size, which is how big the picture actually is.
     readonly property string title: {
         if (!root.isImage)
             return Clipboard.summarise(root.entry);
-        // THE RECORDED size, read off the file's own header when it was
-        // captured, so the caption is right on the frame the row is built rather
-        // than changing under the eye a moment later. Never the decode's: that
-        // reports the size of the copy asked for, which is the row's height, and
-        // captioning a screenshot with the size of its thumbnail would be a
-        // measurement the interface did not make.
+
         if (root.entry.w > 0)
             return `${root.entry.w} × ${root.entry.h}`;
         return thumb.status === Image.Error ? "Picture (missing)" : "Picture";
     }
 
-    // WHAT KIND, AND WHEN. Assembled here rather than in the service because it
-    // is a sentence for a person to read and the service's job is the fact.
     readonly property string detail: {
         const parts = [];
         parts.push(root.entry.kind);
@@ -387,23 +246,12 @@ Item {
         return parts.join("  ·  ");
     }
 
-    // A colour entry's actual colour, guarded: the text passed a shape test, not
-    // a parse, and Qt turns an unparseable string into an error on the console
-    // plus whatever it felt like drawing.
     readonly property color swatch: {
         const t = (root.entry.text ?? "").trim();
         const hex = t.startsWith("#") ? t : `#${t}`;
         return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(hex) ? hex : Appearance.colour.textFaint;
     }
 
-    // A HANDLER, not a MouseArea, so it composes: Qt hands hover to the topmost
-    // MouseArea only, and the pin button above is one. With a MouseArea here the
-    // row would go un-hovered the moment the pointer reached its own controls,
-    // which is exactly when the controls need to be visible.
-    //
-    // It is also the only thing that reports hover: a MouseArea's press calls
-    // setHovered itself, so on a touchscreen a tap would light the row up as
-    // though a cursor were resting on it and leave it lit after the finger left.
     HoverHandler {
         id: hover
 
@@ -415,25 +263,12 @@ Item {
         }
     }
 
-    // THE PRESS, and the throw.
-    //
-    // Hand-rolled on a MouseArea, and DELIBERATELY WITHOUT ScrollGesture, which
-    // is the one place in this shell a drag does not also answer two fingers.
-    // The reason is that the motion is already spoken for on both axes: two
-    // fingers up and down is the list scrolling, and two fingers across is the
-    // panel changing tabs. A row that also claimed the horizontal stream would
-    // take the first event of every tab swipe made over a row, which is every
-    // tab swipe. The gesture is not lost to anyone: a finger on a screen and a
-    // press-drag on a touchpad both arrive here as a press, which is what a
-    // throw is on every input this shell runs on.
     MouseArea {
         id: press
 
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: Qt.PointingHandCursor
-        // No hoverEnabled: the handler above owns hover, and a MouseArea that
-        // enabled it would take hover away from the pin button it sits under.
 
         property real fromX: 0
         property real fromY: 0
@@ -462,19 +297,9 @@ Item {
             const dx = mouse.x - press.fromX;
             const dy = mouse.y - press.fromY;
 
-            // The recognition distance, and the shell's own rather than Qt's:
-            // 6px, because a touchpad flick covers less ground than a finger and
-            // should still commit (DESIGN.md 15).
             if (!press.moved && Math.hypot(dx, dy) < Appearance.sizes.dragThreshold)
                 return;
 
-            // WHICH WAY IT SET OFF, decided ONCE and never revisited, which is
-            // Pull's rule and is here for Pull's reason: a gesture that could
-            // change its mind about what it IS partway through would let a
-            // wandering hand start scrolling the list and finish by throwing a
-            // row away. A press that set off downward is the list being dragged
-            // and this row has no business capturing it, so it is spent for the
-            // rest of this press rather than merely ignored this frame.
             if (!press.moved) {
                 if (Math.abs(dx) <= Math.abs(dy)) {
                     press.spent = true;
@@ -498,14 +323,7 @@ Item {
             press.preventStealing = false;
 
             if (!press.moved) {
-                // A press that went the wrong way is not a tap. It was a gesture
-                // aimed at the list, and answering it by copying would paste
-                // something because somebody scrolled.
-                //
-                // THE LEFT BUTTON ONLY. `released` arrives before `clicked` and
-                // says nothing about which button it was, so without this test
-                // the right button copied the entry and put the panel away on
-                // the way to opening its menu.
+
                 if (!press.held && !press.spent && mouse.button === Qt.LeftButton)
                     root.activated();
                 press.spent = false;
@@ -513,37 +331,18 @@ Item {
                 return;
             }
 
-            // COMMITTED BY MOMENTUM, not by position, which is what makes a
-            // flick work and a slow deliberate push equally work. Away and still
-            // moving away goes; far enough and not coming back goes; anything
-            // else returns. `flickVelocity` is in pixels per millisecond here,
-            // the same unit the velocity above is smoothed in.
             const away = Math.sign(root.thrown) === Math.sign(press.velocity) && Math.abs(press.velocity) > Appearance.sizes.flickVelocity;
             const far = root.throwFraction >= 1 && Math.abs(press.velocity) < Appearance.sizes.pullReversal;
 
             if (away || far) {
-                // THE TWO DIRECTIONS MEAN DIFFERENT THINGS, and this is the one
-                // place in the row that reads the sign.
-                //
-                // LEFT throws it away, RIGHT opens it in full. Right used to be
-                // the discard as well, on the theory that either way was "off
-                // the list", and that had to go the moment the full view existed:
-                // a swipe right is now the natural gesture for going INTO
-                // something, it matches the right arrow that does the same, and
-                // it matches the direction the view itself arrives from. Leaving
-                // both directions on delete would have made the obvious gesture
-                // for "show me this" the gesture for "lose this".
+
                 if (root.thrown < 0) {
-                    // Sent the rest of the way rather than vanishing, so the row
-                    // leaves in the direction it was thrown instead of blinking
-                    // out from wherever the hand let go.
+
                     root.thrown = -root.width;
                     root.discarded();
                     return;
                 }
 
-                // Nothing leaves on a rightward throw, so the row goes back where
-                // it was and the view opens over it.
                 root.throwing = false;
                 root.thrown = 0;
                 root.expanded();
@@ -555,8 +354,7 @@ Item {
         }
 
         onCanceled: {
-            // A cancel is not a release: the grab was taken away, nobody decided
-            // anything, and the row goes back.
+
             press.preventStealing = false;
             press.moved = false;
             press.spent = false;
@@ -564,15 +362,6 @@ Item {
             root.thrown = 0;
         }
 
-        // A press held down is the touch equivalent of the right button, and
-        // both land on the same thing: the menu of everything this row can do.
-        // The latch stops the release above from also reading as a tap and
-        // copying the entry the hold was meant to ask a question about.
-        //
-        // Both used to pin outright. Pinning is still one press away, in the
-        // menu, on the keep button in the row, and on `p`; what it was in the
-        // way of is every other answer, and "where is that picture" is the one
-        // this row could not give at all.
         onPressAndHold: mouse => {
             press.held = true;
             root.menu(mouse.x, mouse.y);

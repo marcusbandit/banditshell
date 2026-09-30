@@ -1,22 +1,12 @@
-// components/base64.js, checked against the codec everybody else agrees on.
-//
-// The whole point of the hand-written codec is that the bytes survive the trip;
-// node's Buffer is a second implementation that already knows the right answer,
-// so every case here is "what does Buffer say" rather than a table of expected
-// strings somebody typed out once.
-
 const test = require("node:test");
 const assert = require("node:assert");
 const fs = require("node:fs");
 const path = require("node:path");
 
-// The source is a QML .js import: no exports, so it is read and evaluated, and
-// the names it declares are handed back by the trailing return.
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "components/base64.js"), "utf8");
 const B64 = new Function(src + "\nreturn { encode, decode, utf8 };")();
 
-// One character per byte, which is the representation the whole file deals in.
 function bytesToString(arr) {
     return Buffer.from(arr).toString("latin1");
 }
@@ -63,8 +53,7 @@ test.describe("base64", () => {
     });
 
     test.it("skips characters outside the alphabet rather than refusing the frame", () => {
-        // A frame with a stray newline or a dropped byte in it still carries
-        // its payload; see the comment in decode().
+
         const clean = Buffer.from("hello", "latin1").toString("base64");
         assert.strictEqual(B64.decode(clean.slice(0, 4) + "\n" + clean.slice(4)), "hello");
         assert.strictEqual(B64.decode(clean + "\r\n"), "hello");
@@ -83,8 +72,7 @@ test.describe("base64", () => {
 });
 
 test.describe("base64 utf8", () => {
-    // The encoder's output is one character per byte, which is exactly what
-    // Buffer calls latin1, so the two can be compared directly.
+
     function expected(s) {
         return Buffer.from(s, "utf8").toString("latin1");
     }
@@ -123,8 +111,7 @@ test.describe("base64 utf8", () => {
     });
 
     test.it("agrees with Buffer across the whole BMP", () => {
-        // Sampled rather than exhaustive: one in every 37 code points, skipping
-        // the surrogate range, which has no meaning on its own.
+
         for (let cp = 0; cp < 0x10000; cp += 37) {
             if (cp >= 0xd800 && cp <= 0xdfff)
                 continue;

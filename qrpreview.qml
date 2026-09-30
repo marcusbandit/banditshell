@@ -4,8 +4,6 @@ import Quickshell.Wayland
 import qs.config
 import qs.modules.menu.content
 
-// Temporary: the network menu at page width, driven straight into the states a
-// cursor would have to reach.
 ShellRoot {
     PanelWindow {
         anchors {
@@ -45,7 +43,6 @@ ShellRoot {
             text: `menu height ${Math.round(menu.implicitHeight)}`
         }
 
-        // Turn it over once it has settled, so one run shows both faces.
         Timer {
             interval: 4000
             running: true

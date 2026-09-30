@@ -7,22 +7,6 @@ import qs.components
 import qs.services
 import qs.modules.settings
 
-// BATTERY: the battery menu, with room to breathe.
-//
-// Above the menu, the two numbers a settings page is opened for, as rows that
-// can be read without decoding a tank: how full, and how worn. The menu draws
-// the same facts, but it draws them for a glance at a gauge, and the health
-// figure in particular sits under a separator at the bottom of it. Here it is
-// the second line.
-//
-// THE PAGE IS GATED AT THE REGISTER, not here: Settings.pages filters it out
-// on a machine with no battery, so a section about a cell the machine does
-// not have is never in the list to be opened. A page that is simply empty on
-// a desktop reads as broken; never existing reads as honest.
-//
-// WHAT THE MENU NEEDED TO BE EMBEDDED: only a width. BatteryMenu has no
-// `showing`; UPower and the health log are Battery's, and run whether or not
-// anything is drawing them.
 Item {
     id: root
 
@@ -42,17 +26,13 @@ Item {
                 icon: Battery.icon()
                 label: "Charge"
                 value: `${Battery.percent}%`
-                // The state, then the estimate when there is one. timeLabel
-                // already says "2h 10m left" or "to full" and stays quiet while
-                // the estimate is not there yet, so it is not reformatted here.
+
                 detail: Battery.timeLabel() ? `${Battery.state}, ${Battery.timeLabel()}` : Battery.state
                 interactive: false
             }
 
             SettingsRow {
-                // Hidden rather than "0%" when there is no design figure to
-                // measure against; a health number with nothing behind it is
-                // worse than none.
+
                 visible: Battery.healthKnown
                 icon: "monitor_heart"
                 label: "Health"
@@ -79,8 +59,6 @@ Item {
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.fill
 
-                // BY FILE, the way MenuPanel loads it: modules/menu/content is a
-                // folder of pages the panel picks by name, not a module.
                 Loader {
                     id: menu
 

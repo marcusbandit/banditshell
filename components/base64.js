@@ -1,18 +1,3 @@
-// Base64, in JavaScript, because the bytes on the wire are not text.
-//
-// The pty helper frames every payload as base64 on one line (see src/bs-pty.c
-// for why), so both ends need a codec. QML has Qt.atob and Qt.btoa, and they are
-// not usable here: they hand back a QString, which means the decoded bytes have
-// been run through a text codec on the way, and a terminal stream is full of
-// bytes that are not valid UTF-8 on their own - the second byte of any accented
-// character, every C1 control, the middle of any escape sequence that got split
-// across two reads. Anything that does not survive that trip comes out as a
-// replacement character, and a replacement character in an escape sequence is a
-// sequence that no longer parses.
-//
-// So it is done by hand, over a string in which one character IS one byte, which
-// is the representation components/vt.js consumes and produces.
-
 var ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
 var LOOKUP = (function () {
@@ -22,7 +7,6 @@ var LOOKUP = (function () {
     return t;
 })();
 
-// Base64 in, one-char-per-byte string out.
 function decode(text) {
     var out = "";
     var acc = 0;
@@ -30,10 +14,7 @@ function decode(text) {
 
     for (var i = 0; i < text.length; i++) {
         var v = LOOKUP[text.charAt(i)];
-        // Padding and anything else that is not in the alphabet. Skipped rather
-        // than refused: a frame with a stray character in it still carries its
-        // payload, and refusing would throw away a screenful of output over one
-        // byte.
+
         if (v === undefined)
             continue;
         acc = acc << 6 | v;
@@ -47,7 +28,6 @@ function decode(text) {
     return out;
 }
 
-// One-char-per-byte string in, base64 out.
 function encode(bytes) {
     var out = "";
     var i = 0;
@@ -67,19 +47,12 @@ function encode(bytes) {
     return out;
 }
 
-// A JavaScript string, as the UTF-8 BYTES that a terminal expects.
-//
-// Everything above deals in bytes; a keystroke arrives from Qt as text, and "ö"
-// is one character there and two bytes on the wire. Without this, typing a
-// non-ASCII character sends its code point as a single byte and the shell
-// receives something else entirely.
 function utf8(text) {
     var out = "";
 
     for (var i = 0; i < text.length; i++) {
         var cp = text.charCodeAt(i);
 
-        // A surrogate pair is one code point written as two units.
         if (cp >= 0xd800 && cp <= 0xdbff && i + 1 < text.length) {
             var low = text.charCodeAt(i + 1);
             if (low >= 0xdc00 && low <= 0xdfff) {

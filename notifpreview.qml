@@ -4,24 +4,9 @@ import qs.config
 import qs.services
 import qs.modules.notifications
 
-// Temporary: the notification tray on a plain surface, fed entries by hand, so
-// the dismissal and pin paths can be driven without waiting for an application
-// to send anything.
-//
-// A FloatingWindow rather than a PanelWindow, so it runs under
-// QT_QPA_PLATFORM=offscreen as well as on the desktop: the point is to see the
-// tray's geometry and the service's bookkeeping answer a scripted sequence, and
-// neither of those needs a layer surface.
-//
-//     QT_QPA_PLATFORM=offscreen quickshell -p ./notifpreview.qml
-//
-// It writes Notifs.popups and Notifs.history directly, which nothing else in the
-// shell does and nothing else should: the server owns them. Here it is the only
-// way to have notifications without a sender.
 ShellRoot {
     id: preview
 
-    // Each step, and what it should leave behind. Run in order, one per tick.
     readonly property var steps: [
         {
             name: "arrive: three popups, tray collapsed",
@@ -46,11 +31,7 @@ ShellRoot {
             name: "expand the tray",
             run: () => tray.pinned = true
         },
-        // THE FOLD, which is the one part of a card that cannot be driven from
-        // the service side: it is a control on the card and its whole point is
-        // that the row changes height when it is used. Driven here through the
-        // entry, which is where the state lives (see NotifEntry.unfolded), so
-        // the height in the report below is the card answering it.
+
         {
             name: "a qBittorrent release name arrives",
             run: () => preview.seedQbit()
@@ -85,8 +66,7 @@ ShellRoot {
                 appName: `App ${i}`,
                 summary: `Summary ${i}`,
                 body: `The body of notification ${i}.`,
-                // No countdown, so the sequence below is the only thing that
-                // moves anything.
+
                 timeout: 0,
                 live: true
             }));
@@ -94,9 +74,6 @@ ShellRoot {
         Notifs.history = made;
     }
 
-    // One notification with a real release name in it, which is the shape the
-    // fold was written for: four bracketed groups around the one phrase anybody
-    // wants to read.
     function seedQbit(): void {
         const entry = entryComponent.createObject(preview, {
             appName: "qBittorrent",

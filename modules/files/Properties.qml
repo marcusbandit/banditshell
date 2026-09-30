@@ -6,13 +6,6 @@ import qs.config
 import qs.components
 import qs.services
 
-// EVERYTHING KNOWN ABOUT ONE FILE, on request.
-//
-// The preview panel says what is IN a file; this says what it IS - where, how
-// big, who owns it, what the mode bits are, what it points at. The two are
-// deliberately different questions: one is glanced at constantly and the other
-// is asked for once in a while, and putting the second in the panel would make
-// every selection carry a block of numbers nobody was reading.
 Item {
     id: root
 
@@ -55,9 +48,6 @@ Item {
         }
     }
 
-    // The rows, as data. A field with nothing in it is not drawn at all rather
-    // than drawn empty: a symlink has a target and a regular file does not, and
-    // a blank "Points at" line is a question the card cannot answer.
     readonly property var rows: {
         const s = root.stat;
         if (!s)
@@ -147,10 +137,7 @@ Item {
                     spacing: Appearance.padding.normal
 
                     StyledText {
-                        // A LABEL COLUMN THAT LINES UP, in characters rather
-                        // than pixels: Monocraft is monospaced, so the widest
-                        // label plus a space IS the column, and it stays right
-                        // at any type size.
+
                         width: Appearance.font.size.small * 0.6 * 10
 
                         text: line.modelData.label

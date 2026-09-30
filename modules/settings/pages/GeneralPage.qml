@@ -7,27 +7,6 @@ import qs.components
 import qs.services
 import qs.modules.settings
 
-// GENERAL: the switches that are about how the shell behaves rather than how
-// it looks.
-//
-// A switch lands here when flipping it changes what the shell DOES and not
-// what it wears. Whether the edges are a finger wide, whether the bottom edge
-// lifts windows, whether the fold brings the keyboard up: none of those is an
-// appearance, and putting them beside the palettes would make the appearance
-// page a list of everything, which is the same as no page at all.
-//
-// EVERY ROW HERE IS ALSO A TERMINAL COMMAND. Each one reads and writes one key
-// of config.json through Config, so `banditshell shell set <key> <value>` and
-// the toggle on the row are the same deed by two hands; the row is the key
-// given a sentence. That is why the page holds nothing that is not a key:
-// anything a row did that the CLI could not would be a second way of doing
-// things, and config/Config.qml is careful that there is one.
-//
-// GROUPED BY THE PART OF THE SHELL THEY BELONG TO, one card each, because a
-// General page is scanned by heading first: nobody reads ten switches top to
-// bottom looking for the wifi one, they look for the word "Network" and then
-// read three. A phone's General page is the same shape for the same reason.
-// Inside a card the rows are in the order you would ask the questions.
 Item {
     id: root
 
@@ -39,14 +18,6 @@ Item {
         width: parent.width
         spacing: Appearance.padding.huge
 
-        // ----------------------------------------------------------- touch
-
-        // The one setting in `control` that is a trade rather than a taste,
-        // which is why it is the only one of that block on a page: ten pixels
-        // of edge is plenty for a cursor and a miss for a fingertip, and the
-        // wider band is claimed from the windows underneath. The detail says
-        // the cost, because a switch that only names the benefit is a switch
-        // you find out about later.
         SettingsCard {
             title: "Touch"
 
@@ -63,14 +34,6 @@ Item {
             }
         }
 
-        // --------------------------------------------------------- windows
-
-        // The bottom-edge window drag, a finger only, never the mouse; the
-        // long argument for it is on the `windows` block in config/Config.qml
-        // and in modules/windows/. Three questions in the order they arise:
-        // whether the edge does it at all, what happens when the window lands
-        // on another, and whether you go with it when it lands on a different
-        // workspace.
         SettingsCard {
             title: "Windows"
 
@@ -86,21 +49,6 @@ Item {
                 }
             }
 
-            // A SEGMENTED CONTROL, not a switch, for Segments' own reason:
-            // "swap" is not "not move". Both are named things a drop can do,
-            // and a switch labelled with one of them would be asking you to
-            // read its off state as the other. The row is inert because there
-            // is no sensible thing for a press on the body to do: a two-way
-            // choice flipped by a click on the label would be the switch this
-            // control exists not to be. Too wide to share the line on a
-            // narrow face, so the row stacks it under the text; that is the
-            // row's decision, made from the width, not this page's.
-            //
-            // The key is a string and the control speaks indices, so the two
-            // are translated at the edge, both ways, off the same list: the
-            // option array is the model and the map in one, so a third mode
-            // added to it would appear here and be written correctly without
-            // a branch.
             SettingsRow {
                 icon: "swap_horiz"
                 label: "Dropping on another window"
@@ -129,11 +77,6 @@ Item {
             }
         }
 
-        // ---------------------------------------------------------- tablet
-
-        // The fold: the machine folded over, and the on-screen keyboard that
-        // replaces the one now facing the table. See the `tablet` block in
-        // config/Config.qml for why docked is the default despite the reflow.
         SettingsCard {
             title: "Tablet"
 
@@ -162,12 +105,6 @@ Item {
             }
         }
 
-        // --------------------------------------------------------- network
-
-        // The two questions NetworkManager will not answer unasked. Both are
-        // session-long on purpose: the second one costs a second and a half of
-        // frozen shell each time it changes, which is why it is a setting made
-        // once here and not a thing a menu guesses at while you look at it.
         SettingsCard {
             title: "Network"
 
@@ -196,12 +133,6 @@ Item {
             }
         }
 
-        // ---------------------------------------------------------- hotkeys
-
-        // The sheet asks these two itself, as Segments in its header, and they
-        // are here as well because the sheet is a thing you open to look
-        // something up and close, not a place you go to change how it opens.
-        // Same keys, so the two agree the instant either is touched.
         SettingsCard {
             title: "Hotkey sheet"
 

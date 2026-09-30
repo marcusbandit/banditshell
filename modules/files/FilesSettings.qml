@@ -5,19 +5,6 @@ import qs.config
 import qs.components
 import qs.services
 
-// THE BROWSER'S OWN SETTINGS, inside the browser.
-//
-// Not a page in the shell's settings: this window is an application, its
-// preferences belong to it, and a person looking for "how do I open the preview"
-// looks in the window they are standing in rather than in a different one. The
-// values all land in the same config.json as everything else - it is the same
-// storage, reached from where it is being used.
-//
-// THE KEYS ARE THE POINT. Everything else here is a switch that could have been
-// found by right-clicking, but a chord that is not written down anywhere is a
-// chord that does not exist: it was possible to have the preview panel bound to
-// Ctrl+4 and no way at all to discover that. So the keymaps are listed in full,
-// every row rebindable by pressing the chord you would rather have.
 Item {
     id: root
 
@@ -42,11 +29,7 @@ Item {
     opacity: 0
     focus: root.up
 
-    // WHICH ROW IS WAITING FOR A CHORD, as "map:key", or "" when none is. One at
-    // a time: two rows both listening would both take the next keystroke.
     property string rebinding: ""
-
-    // ---- what a chord is called, both ways round ------------------------
 
     readonly property var keyNames: ({
             [Qt.Key_Left]: "Left",
@@ -90,9 +73,7 @@ Item {
         let label = root.keyNames[event.key];
         if (!label && (event.key >= Qt.Key_A && event.key <= Qt.Key_Z || event.key >= Qt.Key_0 && event.key <= Qt.Key_9))
             label = String.fromCharCode(event.key);
-        // A bare printable character, which is what the grid's vim layer is made
-        // of: `j`, `/`, `.`. Taken from the text rather than the key, because
-        // that is the thing the keymap is written in.
+
         if (!label && parts.length === 0 && event.text && event.text.length === 1 && event.text.charCodeAt(0) >= 0x20)
             label = event.text;
         if (!label)
@@ -102,8 +83,6 @@ Item {
         return parts.join("+");
     }
 
-    // What each action is called, for a person. An action with no entry falls
-    // back to its own name, so a binding added by hand still reads.
     readonly property var labels: ({
             terminal: "Show or hide the terminal",
             preview: "Show or hide the preview panel",
@@ -147,14 +126,10 @@ Item {
         const out = [];
         for (const chord in map)
             out.push({chord: chord, action: map[chord]});
-        // Sorted by what they DO rather than by which key does it: you come here
-        // looking for an action and wanting to know its chord, not the reverse.
+
         return out.sort((a, b) => (root.labels[a.action] ?? a.action).localeCompare(root.labels[b.action] ?? b.action));
     }
 
-    // Rebinding is one write: the old spelling out, the new one in. Done on the
-    // whole map rather than key by key, because Config.set takes a value and a
-    // map with one key removed is a different value.
     function rebind(which: string, from: string, to: string): void {
         if (!to || to === from)
             return;
@@ -170,7 +145,7 @@ Item {
 
     Keys.onPressed: event => {
         if (root.rebinding) {
-            // A modifier on its own is not a chord, it is the start of one.
+
             if (event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Shift || event.key === Qt.Key_Meta)
                 return;
             event.accepted = true;
@@ -269,8 +244,6 @@ Item {
                 width: parent.width
                 spacing: Appearance.padding.large
 
-                // ---- the switches ---------------------------------------
-
                 Setting {
                     width: body.width
                     label: "View"
@@ -333,8 +306,6 @@ Item {
                         onPicked: index => Config.set("files.markdown", index === 1 ? "raw" : "rendered")
                     }
                 }
-
-                // ---- the keys -------------------------------------------
 
                 Repeater {
                     model: [

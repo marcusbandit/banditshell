@@ -5,144 +5,34 @@ import qs.config
 import qs.components
 import qs.services
 
-// The network. Both of them, when the machine has both.
-//
-// The wire leads, because on a machine that has one it is almost always what
-// the traffic is on: NetworkManager gives it the lower metric, so an associated
-// radio beside a live cable is a spare. The radio used to be the whole of this
-// menu, which meant a cabled desktop opened it and read "not connected" about
-// the one device that was not carrying anything, with nothing on screen about
-// the one that was. A row it never occurred to the shell to draw is worse than
-// a wrong one: there is nothing to correct.
-//
-// EACH ROW IS ONLY ABOUT ITSELF. There is exactly one connectivity answer for
-// the machine and two rows it could be written on, so it goes on the carrier's
-// row and nowhere else (Network.reachFor): "no internet" beside an idle radio
-// names the wrong suspect.
-//
-// The surface is the question you came with: which network, and is it working.
-// Everything else is a layer under the row it belongs to, one open at a time,
-// the same shape the bluetooth menu uses: the adapter's own settings under the
-// Wi-Fi row, and what little there is to say about a network under its row.
-//
-// WHAT IS NOT HERE, and why, which is a shorter list than it used to be. A
-// hotspot, a static address, custom DNS, metered marking, MAC randomisation and
-// joining a hidden SSID are all edits to a NetworkManager settings profile, and
-// Quickshell exposes the type that carries a profile without exposing any way to
-// build one.
-//
-// THAT USED TO BE THE END OF THE ARGUMENT, and it was the wrong end. What the
-// paragraph actually said was "this shell does not shell out, so anything that
-// needs a profile is out of scope", and an 802.1X sign-in needs a profile too,
-// so one sentence about implementation quietly ruled out an entire way of
-// logging in to a network. What that bought was a menu offering a passphrase box
-// to a campus network that has never wanted a passphrase, and a person opening a
-// terminal. DESIGN.md section 3 asks each menu to cover the WHOLE of its domain
-// and names WPA-Enterprise in the same breath as WPA personal, so the login type
-// outranks the objection: signing in IS here now, profile and all, built with
-// nmcli in Network.qml the way ~/bin/wifi has built it from this machine for
-// years. Section 11 records that exception and how narrow it is kept.
-//
-// So the line the project draws is not "never a command line". It is that a
-// binding that does not exist is not a reason for a login type to be missing.
-// The six above are missing for a much plainer reason: nothing has needed them
-// from this menu yet. They are work not done rather than things ruled out, and
-// whichever is wanted first gets built the same way this one was.
 Column {
     id: root
 
-    // WHETHER ANYBODY IS LOOKING AT THIS, set by the panel it is loaded into.
-    //
-    // The question used to be answered by this menu not existing: it was built
-    // when the cursor arrived and destroyed when it left, which is exactly the
-    // arrangement that made pointing at the wifi gauge cost fifty vector shapes
-    // in one frame (MenuPanel.warm has the whole argument). It is built once now
-    // and kept, so everything that costs something while nobody is reading it
-    // has to hang off this instead: the radio, below, and any layer or prompt
-    // left open, because coming back to a menu should find it the way it starts
-    // rather than mid-sentence.
-    //
-    // DEFAULT FALSE, so a menu incubating at startup cannot switch the scanner
-    // on for the frames between being built and being told where it is.
     property bool showing: false
 
-    // A secured network you have never joined needs a password, and the place to
-    // ask is the row you just pressed. Only one row can be asking at a time.
     property string asking: ""
 
-    // Which layer is unrolled: a network name, "adapter", or nothing.
     property string opened: ""
 
     function toggleLayer(key: string): void {
         root.opened = root.opened === key ? "" : key;
     }
 
-    // TWO OF THEM TAKE THE MENU OVER rather than unrolling inside it.
-    //
-    // A layer is the right shape for a page of switches: it belongs to the row
-    // above it, so it pushes the rows below it down and the menu grows. A camera
-    // and a card are not that. They are one object each, as wide as the menu and
-    // as tall as a third of it, and letting either push a list of networks
-    // downward moved every row on screen and shunted the whole panel upward,
-    // because a menu is centred on the icon that opened it and half of any
-    // growth comes off the top.
-    //
-    // So the list does not move: it is dimmed out and the object is drawn over
-    // the space it was using. Nothing above shifts, nothing below survives, and
-    // the panel's height does not change at all. See `body` at the bottom.
     readonly property bool takeover: root.opened === "code" || root.opened === "share"
 
-    // AND "AS TALL AS A THIRD OF IT" IS NOW SAID IN CODE, because the list stopped
-    // saying it on the card's behalf.
-    //
-    // The card's ceiling was the list's own height, and that read as generous
-    // rather than as a limit for exactly as long as the list could not pass seven
-    // rows: seven rows is about the menu's own width, so the code came out square
-    // and stopped there. Uncapping the list turned the same expression into "as
-    // tall as there are access points in earshot", which is not a ceiling at all,
-    // and a code drawn eight hundred pixels tall is not more scannable than one at
-    // three hundred, only further from the phone and further down a scroll.
-    //
-    // A third of the tallest a menu may be, off the one token that decides that,
-    // so the number moves when the menu's own limit does and nothing is typed here
-    // twice. The list still competes: a street with two networks in it shrinks the
-    // card exactly as it always did, and this only stops the crowd growing it.
     readonly property real cardMax: Appearance.sizes.menuMaxHeight / 3
 
-    // WHICH FACE THE CARD IS SHOWING, kept on the menu rather than on the card,
-    // so it survives the card being built and thrown away with its layer. A
-    // preference you set by pressing the thing is a preference you should only
-    // have to set once.
     property bool colourful: true
 
-    // WHAT THE LAST CODE CAME TO, and "" while the camera is still looking. It
-    // is shown under the picture rather than on the row, because the row says
-    // what the row does and this is about a thing that just happened.
     property string said: ""
 
-    // Cleared with the camera. A refusal is about the code you just held up, and
-    // holding up the next one starts again.
     onOpenedChanged: if (root.opened !== "code")
         root.said = ""
 
-    // WHETHER THE CARD IS ACTUALLY IN FRONT OF SOMEBODY, which is a stricter
-    // question than whether its layer is open: a menu built and waiting to be
-    // pointed at has `showing` false, and an unread card would still be holding
-    // the passphrase.
-    //
-    // Derived rather than set from the two handlers that could each imply it,
-    // because both of them fire and the answer must not depend on which fired
-    // last. This is the only thing that switches the secret on and off.
     readonly property bool showingCard: root.showing && root.opened === "share"
 
     onShowingCardChanged: Network.share(root.showingCard)
 
-    // A CODE, ACTED ON. Joining is an answer, so the camera goes away and takes
-    // the layer with it: the list underneath is where the result of a join is
-    // legible, and leaving a lens open over it would be the shell carrying on
-    // scanning for a network it had already joined. Anything else is a sentence
-    // and the camera stays up, because every reason this can fail is one you fix
-    // by pointing it at something else.
     function tookCode(text: string): void {
         const trouble = Network.joinQr(text);
         if (trouble) {
@@ -154,44 +44,12 @@ Column {
 
     spacing: Appearance.padding.small
 
-    // THE LIST HOLDS STILL WHILE YOU ARE USING IT, and the radio does not stop.
-    //
-    // `networks` is rebuilt by every scan result, and a Repeater over a plain
-    // array rebuilds every delegate whenever that array changes identity. So the
-    // password field was destroyed mid-word every couple of seconds along with
-    // its focus, any open layer restarted its unroll, and rows moved out from
-    // under the cursor between aiming and clicking.
-    //
-    // The first fix was to stop scanning while a prompt was open, and it is the
-    // wrong one twice over. NetworkManager ages out access points it has stopped
-    // hearing, so a paused scan does not freeze the list, it slowly empties it,
-    // taking with it the very row whose password was being typed. And it left
-    // the panel announcing that scanning was off because you had opened the
-    // panel containing the scanning switch.
-    //
-    // So the radio keeps scanning and the VIEW freezes: while something is open,
-    // `rows` hands back the same array by reference, which is the only thing a
-    // Repeater treats as "nothing happened".
-    //
-    // THE RADIO IS NO LONGER THIS MENU'S TO SWITCH, either. It was, and the
-    // switch cost a second and a half of frozen shell each way; Network's own
-    // note has the measurements. It is a session-long preference now, so this
-    // file only shows it.
     readonly property bool busy: !!root.asking || !!root.opened
 
     property var frozen: []
 
     readonly property var rows: root.busy ? root.frozen : Network.enabled ? Network.networks : []
 
-    // THE NOTICES FREEZE TOO, and for the same reason, which is easy to miss
-    // because they are not part of the list.
-    //
-    // They sit ABOVE it, and `visible` on a child of a Column is a layout change
-    // rather than a repaint: one of them appearing or vanishing moves every row
-    // below it, password field included. And the state they read is not idle
-    // while you are typing. Joined-and-going-nowhere is exactly the state that
-    // rechecks every eight seconds, so the moment it changes its mind is a
-    // moment the field under your cursor jumps a row.
     property bool frozenStranded: false
     property bool frozenCaptive: false
 
@@ -204,19 +62,11 @@ Column {
         root.frozenCaptive = Network.captive;
     }
 
-    // Put away on the way out, so what comes back is the menu rather than the
-    // half-typed password and the unrolled layer you walked away from. It also
-    // gives the keyboard back: SecretField's claim is released when the field
-    // stops being visible, and nothing else would make it stop.
     onShowingChanged: if (!root.showing) {
         root.asking = "";
         root.opened = "";
     }
 
-    // One switch inside a layer, and one thing that happens. Same pair as the
-    // bluetooth menu: a toggle on the right for a state, an arrow for an act, so
-    // the right edge stays a column and "set this" and "do this" are told apart
-    // before either is read.
     component Choice: MenuRow {
         id: choice
 
@@ -232,30 +82,8 @@ Column {
         }
     }
 
-    // NO ARROW. A chevron pointing right means "there is more through here", and
-    // it was sitting on "Disconnect", which does not lead anywhere: it is the
-    // whole action, over the moment you press it. Every act in this menu wore
-    // one, so the layer read as a list of submenus that turned out to be
-    // buttons.
-    //
-    // What tells an act from a switch is now the absence of the switch. The
-    // right edge stays a column, the toggles are the only things in it, and a
-    // row with nothing there is a row that does something. The hover fill and
-    // the pointer cursor say it is pressable; the verb says what it does.
     component Act: MenuRow {}
 
-    // A BUTTON THAT IS ONLY A GLYPH, and says what it is on hover.
-    //
-    // Built like Expander, for Expander's reason: a round target of its own,
-    // which takes the hover away from whatever it sits in, so the boundary
-    // between two controls is visible before either one is pressed. What it does
-    // NOT have is a label, and that is the point. "Join from a code, with the
-    // camera" was two lines and a full row of a four-hundred-pixel menu spent
-    // saying something you read once and then recognise by its mark forever.
-    //
-    // ON IS FILLED, which is the icon set's own way of saying so: Material
-    // Symbols treats FILL as a state axis, so the same mark solid is the same
-    // mark switched on, and the menu does not need a second colour for it.
     component Tool: Item {
         id: tool
 
@@ -306,10 +134,6 @@ Column {
             onClicked: tool.activated()
         }
 
-        // ASKED THROUGH THE MOUSEAREA above, not through the handler's own
-        // hover. See HoverTip: a MouseArea filling its own item takes the hover
-        // event before the item's handlers are reached, so on a control like
-        // this one the handler is deaf in both directions.
         HoverTip {
             text: tool.tip
             asked: tool.hovered
@@ -324,23 +148,6 @@ Column {
         font.pixelSize: Appearance.font.size.small
     }
 
-    // SAYING IT, rather than having said it somewhere.
-    //
-    // "sign in required" already existed, in the row's detail line, in the faint
-    // tier, in the same slot that reads "wpa2, saved" on every other row. That
-    // slot describes a network; this is the reason nothing works, and setting it
-    // in the type reserved for what you do not need to read is how a shell tells
-    // you something without telling you.
-    //
-    // Worse, the sentence had no end. The shell knew a login page was waiting
-    // and offered no way to open one, so being informed meant going to find a
-    // browser and something to type into it, which is the work the message was
-    // supposed to save. A notice that names a problem it cannot act on is only a
-    // more articulate silence.
-    //
-    // So: its own line, the label size, and the shell's one accent, which
-    // Appearance reserves for state genuinely worth a colour and which nothing
-    // else in this menu spends. Pressing it does the thing.
     component Notice: Item {
         id: notice
 
@@ -354,8 +161,6 @@ Column {
         implicitWidth: parent ? parent.width : 0
         implicitHeight: line.implicitHeight
 
-        // The same radius as the row sitting on it, or the accent tint would
-        // show a second, squarer corner just inside the fill's.
         G2Rect {
             anchors.fill: parent
             radius: Appearance.rounding.normal
@@ -369,8 +174,6 @@ Column {
             detail: notice.detail
             onActivated: notice.activated()
 
-            // Through `mark` rather than `icon`, because the glyph has to be the
-            // accent and MenuRow's own one is a label tier by definition.
             mark: Component {
                 Icon {
                     name: notice.icon
@@ -379,10 +182,6 @@ Column {
                 }
             }
 
-            // Unanchored, like every other trailing glyph in this menu. The slot
-            // sizes itself from its children, so a child that centres itself on
-            // the slot is asking the slot how tall it is in order to say how
-            // tall the slot is.
             Icon {
                 name: notice.action
                 color: Appearance.colour.accent
@@ -390,18 +189,6 @@ Column {
         }
     }
 
-    // THE TWO WAYS A NETWORK IS HANDED OVER, as marks, in the top right.
-    //
-    // They are the same object pointed in opposite directions: the camera reads
-    // a card, the card is one to read, and neither is a setting or a network.
-    // Sitting in the list as full rows they read as two more things to join, and
-    // they were the two widest sentences in a menu whose actual job is names.
-    //
-    // Right-aligned and above everything, because a toolbar is where you look
-    // for a verb and the rest of this menu is nouns.
-    // Wrapped, because a Column owns its children's vertical placement and an
-    // anchor is how a child argues with that. The wrapper takes the row's
-    // height and the anchor stays inside it, where it is only about x.
     Item {
         width: root.width
         implicitHeight: tools.implicitHeight
@@ -432,36 +219,12 @@ Column {
         }
     }
 
-    // THE WIRE, AND ONLY WHILE THERE IS ONE.
-    //
-    // Not "this machine has a port": a laptop has a port it has not seen a
-    // cable in since it was bought, and a permanent "Ethernet / not connected"
-    // over the network you are actually on is the same dead weight the battery
-    // gauge was on a desktop. So the row appears when the wire is DOING
-    // something and is otherwise not there at all, which on a laptop means the
-    // menu is the Wi-Fi menu it always was, and on a desk means the wire is at
-    // the top where it belongs.
-    //
-    // The third case is the one that stops this being a trap. Turning off
-    // "Managed by the system" below drops the link, and a row that vanished on
-    // the way out would take the switch back with it: the setting would be
-    // unreachable by the exact act of using it. So a port that is down BECAUSE
-    // OF SOMETHING IN HERE stays on screen. A port that is down because there
-    // is no cable in it does not, and there is nothing in this menu that could
-    // have caused that.
-    //
-    // NO SWITCH ON THIS ROW, for the same reason and one more. A toggle that
-    // disconnects would hide the row it lives on, which is the trap again with
-    // one fewer step; and a hover menu is the wrong place to put a
-    // four-hundred-pixel target that drops the link the machine is on. What a
-    // wire needs said about it is a fact, and this row says it.
     MenuRow {
         width: root.width
         visible: Network.wiredShowing
         icon: "lan"
         label: "Ethernet"
-        // The port, then what the port is worth. Same shape as the Wi-Fi line
-        // below it, so the two read as one question asked twice.
+
         detail: !Network.wiredManaged ? "nothing is driving it" : Network.wiredConnecting ? "connecting" : Network.reachFor("wired") ? `${Network.wiredLabel} · ${Network.reachFor("wired")}` : Network.wiredLabel
         interactive: false
 
@@ -477,10 +240,6 @@ Column {
         visible: Network.wiredShowing
         open: root.opened === "wire"
 
-        // The wire's half of the adapter layer under Wi-Fi. There is no
-        // scanning to keep fresh and no radio to hand back, so what is left is
-        // the two questions a port can answer: does it come up on its own, and
-        // is NetworkManager driving it at all.
         Choice {
             icon: "autorenew"
             label: "Join on its own"
@@ -506,9 +265,7 @@ Column {
         width: root.width
         icon: Network.wifiIcon()
         label: "Wi-Fi"
-        // The name AND what it is worth. This used to hand the whole line over
-        // to the reach label, so the moment there was something wrong the row
-        // stopped saying which network it was wrong about.
+
         detail: !Network.available ? "no adapter" : !Network.hardwareEnabled ? "blocked by hardware switch" : !Network.enabled ? "off" : !Network.connected ? "not connected" : Network.reachFor("wifi") ? `${Network.activeName} · ${Network.reachFor("wifi")}` : Network.activeName
         interactive: Network.available && Network.hardwareEnabled
         onActivated: Network.setEnabled(!Network.enabled)
@@ -538,13 +295,6 @@ Column {
         width: root.width
         open: root.opened === "adapter"
 
-        // THE ONE SWITCH IN THIS SHELL THAT COSTS SOMETHING TO FLIP, and it says
-        // so. Off, NetworkManager reports only the network you are on, so this
-        // is not "stop refreshing", it is "stop having a list"; and the flip
-        // itself pauses the shell for a moment, because the write waits on the
-        // radio. Both facts belong on the row rather than in a file: a control
-        // that hangs for a second without warning reads as broken, and one that
-        // empties a list you were reading reads as a bug.
         Choice {
             icon: "radar"
             label: "Keep the list fresh"
@@ -562,9 +312,6 @@ Column {
             onFlipped: Network.setAutoconnect(!Network.autoconnect)
         }
 
-        // Joined and working are different questions, and only this one asks the
-        // second. Off, NetworkManager guesses; on, it actually fetches something
-        // every minute and can tell a captive portal from the real internet.
         Choice {
             visible: Network.canCheck
             icon: "public"
@@ -582,9 +329,6 @@ Column {
             onActivated: Network.checkNow()
         }
 
-        // The switch that turns the adapter back over to whatever else wants it.
-        // Last, and named for what it does rather than for `nmManaged`, because
-        // turning it off drops the connection and hands the radio to nobody.
         Choice {
             icon: "cable"
             label: "Managed by the system"
@@ -598,17 +342,9 @@ Column {
         }
     }
 
-    // Joined and going nowhere, which is the state this menu exists to catch and
-    // the one it used to be quietest about. Two of them, because they are two
-    // different problems with two different next moves: a portal is a door you
-    // can open from here, and a dead uplink is not.
     Notice {
         width: root.width
-        // Both off Network.stranded, by way of the freeze above: it is the same
-        // property the status bar raises its alert from, and the bar saying
-        // something is wrong is what sends you in here to find out what. If the
-        // two could disagree, following the alert into the menu would find
-        // nothing waiting.
+
         visible: root.stranded && root.captive
         icon: "captive_portal"
         label: "Sign in to use this network"
@@ -632,34 +368,6 @@ Column {
         visible: Network.enabled
     }
 
-    // WHERE THE MENU IS TAKEN OVER.
-    //
-    // Everything from here down is the list, and everything from here down is
-    // what a camera or a card covers. The height is the LIST'S height whether
-    // one is open or not, and that single line is the whole of "it stays put":
-    // the panel is centred on the icon that opened it, so any growth here would
-    // have come half off the top and shunted every row on screen upward, on the
-    // way IN and again on the way out.
-    //
-    // The list is dimmed rather than hidden, and that is not a shortcut: a
-    // hidden child leaves a Column and takes its height with it, which is
-    // exactly the movement being avoided. It keeps its place, loses its ink and
-    // its input, and the object is drawn over the space it was using.
-    //
-    // The one case that still grows is a card taller than the list it is
-    // covering, which means a street with two networks in it. The card is given
-    // the list's height as a ceiling and shrinks into it first; past the point
-    // where shrinking would make the code too small to scan, growing the menu is
-    // the honest answer.
-    //
-    // THE HEIGHT IS STILL THE LIST'S and deliberately not the clamp's, which
-    // looks like an oversight on a forty-network list and is the whole point.
-    // Sizing this to the card while a takeover is open would collapse a tall menu
-    // to a card's height on the way in and inflate it back on the way out, which
-    // is precisely the shunt the paragraph above exists to prevent, only larger.
-    // What the clamp on `cardMax` fixes is the CARD, not the room it is drawn in:
-    // the object stays an object, and the space it is drawn over stays the space
-    // the list was using.
     Item {
         id: body
 
@@ -672,8 +380,7 @@ Column {
             width: parent.width
 
             opacity: root.takeover ? 0 : 1
-            // `enabled` is inherited, so this is the whole of "and it cannot be
-            // clicked through either". A dimmed row is still a row to a cursor.
+
             enabled: !root.takeover
 
             Behavior on opacity {
@@ -682,23 +389,6 @@ Column {
                 }
             }
 
-            // THE WHOLE LIST, WHICH IT DID NOT USED TO BE.
-            //
-            // It stopped at seven rows and wrote "+3 more" underneath, on the
-            // argument that a flat is a dozen networks and a street is eighty
-            // and a menu that scrolls forever is worse than one that admits what
-            // it left out. That argument loses on the only case that decides it:
-            // the network you opened this menu to join is the one under the cut,
-            // and a count of what is hidden is not a way to reach any of it. A
-            // list that will not show you a network cannot join it either, and
-            // "+33 more" is the shell telling you it knows and will not say.
-            //
-            // Nothing here scrolls it and nothing here has to. Every menu body
-            // is loaded into a Flickable that turns interactive and starts
-            // clipping the moment its content passes `menuMaxHeight` (see `page`
-            // in MenuPanel), so the scrolling has been sitting there the whole
-            // time waiting for a list honest about its own length. This is that
-            // list; uncapping it was the entire fix.
             Repeater {
                 model: root.rows
 
@@ -714,8 +404,7 @@ Column {
 
                     MenuRow {
                         width: parent.width
-                        // No icon: the meter on the right says everything an
-                        // icon would, and says it comparably down the column.
+
                         label: entry.modelData.name
                         detail: Network.stateLabel(entry.modelData)
                         selected: entry.modelData.connected
@@ -724,67 +413,22 @@ Column {
                             const n = entry.modelData;
                             if (n.connected)
                                 return n.disconnect();
-                            // Known networks already have the secret, and an
-                            // open one never needed one. Everything else has to
-                            // be asked something first, and the row you just
-                            // pressed is where the asking happens.
-                            //
-                            // ENTERPRISE IS NO LONGER A SPECIAL CASE HERE, and
-                            // taking it out of this chain is most of the fix. It
-                            // used to ride along with the first branch and call
-                            // `connect()`, which for an 802.1X network is a
-                            // request NetworkManager can only refuse: there is
-                            // no profile for it to bring up and nothing in the
-                            // press to build one from. It is now just another
-                            // network that has to be asked something, and only
-                            // the shape of the form below differs.
+
                             if (n.known || !Network.secured(n))
                                 return n.connect();
                             root.asking = root.asking === n.name ? "" : n.name;
                         }
 
-                        // What pressing the ROW does, which is not what the row
-                        // says. The label is the network's name and the detail
-                        // is its state; neither of them is "and this is the
-                        // button that joins it".
-                        //
-                        // "needs sign-in" stands where "needs profile" did, and
-                        // the old one was never about this network: it named a
-                        // thing the shell could not make, in the one line
-                        // reserved for saying what pressing will do.
                         tip: entry.modelData.connected ? "disconnect" : entry.modelData.known || !Network.secured(entry.modelData) ? "join" : Network.enterprise(entry.modelData) ? "needs sign-in" : "needs password"
 
                         Row {
                             spacing: Appearance.padding.normal
 
-                            // A MARK, WHERE THE WORD "WPA2" WAS.
-                            //
-                            // The state line under a name used to read "wpa2",
-                            // or "wpa2, saved", down eight rows: a column of the
-                            // same acronym, which nobody chooses a network by
-                            // and which is only ever asking one question, "will
-                            // this want a password". A mark answers that at a
-                            // glance and gives the line back to the states that
-                            // are actually different from each other.
                             Icon {
                                 anchors.verticalCenter: parent.verticalCenter
 
                                 visible: Network.secured(entry.modelData)
-                                // THREE MARKS, BECAUSE THERE ARE THREE ANSWERS.
-                                // A key for one whose secret we already hold. A
-                                // lock for one about to ask for the room's
-                                // shared string. And a badge for 802.1X, which
-                                // HAS no such string: it asks who you are, and
-                                // wants a name, a password that is yours rather
-                                // than the room's, and the method the two of
-                                // them travel in.
-                                //
-                                // The third mark earns its place because it
-                                // answers a different question. A lock says
-                                // "this will ask you for something"; a badge
-                                // says "it will ask who you are", and that
-                                // changes what you need to have ready before you
-                                // press the row rather than after.
+
                                 name: entry.modelData.known ? "key" : Network.enterprise(entry.modelData) ? "badge" : "lock"
                                 color: Appearance.colour.textFaint
 
@@ -798,9 +442,6 @@ Column {
                                 strength: Network.percent(entry.modelData)
                                 activeColour: entry.modelData.connected ? Appearance.colour.text : Appearance.colour.textDim
 
-                                // The meter is four bars and a percentage is a
-                                // number. Reading one off the other is the guess
-                                // this saves.
                                 HoverTip {
                                     text: `${Network.percent(entry.modelData)}%`
                                 }
@@ -816,34 +457,6 @@ Column {
                         }
                     }
 
-                    // BUILT WHEN IT IS ASKED FOR, AND NOT BEFORE, which is the
-                    // bill for uncapping the list above rather than an
-                    // optimisation gone looking for a problem.
-                    //
-                    // Every row used to carry a fully constructed entry field
-                    // whether or not it was the row being asked, and a whole
-                    // layer of switches under that. At seven rows the waste was
-                    // a rounding error and not worth the machinery. Forty
-                    // networks in earshot is forty text inputs and forty layers,
-                    // thirty-nine of each for a question nobody asked, on a menu
-                    // that is rebuilt every time the scan comes back;
-                    // Network.qml's own note already names these rows as the
-                    // expensive thing in here. The change directly above is what
-                    // makes that real, so this is where it gets paid for.
-                    //
-                    // VISIBLE FOLLOWS ACTIVE for the reason the media column at
-                    // the bottom of this file sets out at length: a Loader that
-                    // has just destroyed its item goes on claiming that item's
-                    // height, and a positioner skips an invisible child
-                    // entirely, so the stale number is never asked for.
-                    //
-                    // THE FIELD IS A SecretField, CLAIMING, which is the half a
-                    // field in a menu cannot do without. A menu's content is a
-                    // Component handed in and loaded two levels down, so the
-                    // surface it lands on has no idea a field appeared and never
-                    // asks the compositor for the keyboard; the claim is what
-                    // tells it. See components/Prompts.qml, and the note above
-                    // `onShowingChanged` for the other end of it.
                     Loader {
                         id: secret
 
@@ -852,11 +465,6 @@ Column {
                         active: root.asking === entry.modelData.name
                         visible: secret.active
 
-                        // WHICH FORM, decided by the network rather than by a
-                        // flag somebody has to remember to set. A shared secret
-                        // and an identity are different questions, and
-                        // IdentityField's own note says why they are two
-                        // components instead of one that changes shape.
                         sourceComponent: Network.enterprise(entry.modelData) ? signIn : passphrase
                     }
 
@@ -869,10 +477,7 @@ Column {
                             placeholder: `password for ${entry.modelData.name}`
 
                             onAccepted: psk => {
-                                // Both sentences a previous attempt could have
-                                // left under this row, because the row is about
-                                // to be in a new state and either one of them
-                                // would be read as describing it.
+
                                 Network.clearFailure(entry.modelData.name);
                                 Network.clearEnroll(entry.modelData.name);
                                 entry.modelData.connectWithPsk(psk);
@@ -882,10 +487,6 @@ Column {
                         }
                     }
 
-                    // THE NAME IS THE PLACEHOLDER, not a sentence built here:
-                    // IdentityField composes "username for <name>" itself, so
-                    // the two boxes are worded by the component that owns them
-                    // and cannot drift apart at one call site.
                     Component {
                         id: signIn
 
@@ -906,18 +507,6 @@ Column {
                         width: parent.width
                         open: entry.showing
 
-                        // AND THE LAYER'S CONTENTS THE SAME WAY, for the same
-                        // reason: three rows per network, on every network,
-                        // whether or not anything is unrolled.
-                        //
-                        // ON THE LAYER'S OWN `visible`, NOT ON `open`. A layer
-                        // unrolls and rolls back up on a Follow, so it is on
-                        // screen for the whole of the way out as well as the way
-                        // in, and `open` goes false at the START of the way out:
-                        // binding to it would empty the layer into a bare rule
-                        // and then animate the emptiness closed. `visible` is
-                        // the layer's own answer to "is any part of me on
-                        // screen", and it stays true until the roll finishes.
                         Loader {
                             id: switches
 
@@ -937,11 +526,6 @@ Column {
                                     onActivated: entry.modelData.disconnect()
                                 }
 
-                                // Forgetting is the only cure for a saved
-                                // network whose password has changed: it will
-                                // keep failing with the secret it has, and
-                                // nothing else in this menu can take that secret
-                                // away.
                                 Act {
                                     visible: entry.modelData.known
                                     icon: "delete"
@@ -971,29 +555,6 @@ Column {
             }
         }
 
-        // WHAT COVERS IT. One of these at a time, both built with their opening
-        // and thrown away with it, which is the opposite of what the menu around
-        // them does (see `showing`) and right for the same reason: what a warm
-        // menu buys is a hover that costs nothing, and nobody hovers a camera.
-        //
-        // Loading the scanner opens the QtMultimedia plugin and enumerates the
-        // video devices, and the lens is a piece of hardware with a light next
-        // to it. Loading the card fetches a passphrase. Neither should happen
-        // because a menu exists.
-        // A LOADER THAT IS NOT LOADING IS NOT ZERO HIGH, which is the whole of
-        // "scan, then share, and the menu comes apart".
-        //
-        // Qt sizes a Loader from its item and then, on the way out, leaves that
-        // size exactly where it was: the size update returns early when there
-        // is no item to measure, so an inactive Loader goes on claiming the
-        // height of the thing it just destroyed. Going from the camera straight
-        // to the card left the camera's three hundred pixels standing in this
-        // Column with nothing in them, the card sat underneath the hole, and
-        // the menu was that much taller than anything it contained.
-        //
-        // `visible` is the fix rather than a height override, because a
-        // positioner skips a child that is not visible ENTIRELY, spacing and
-        // all, and a stale height cannot be believed if nothing is asking.
         Column {
             id: media
 
@@ -1032,19 +593,11 @@ Column {
                         id: card
 
                         width: parent.width
-                        // The list's height or a card's worth of it, whichever
-                        // is less, and then less whatever the line below is
-                        // using. Reading the LIST rather than the space left in
-                        // `body` is what keeps this out of a loop: body's height
-                        // is partly this card's. See `cardMax` for why the
-                        // list's height alone stopped being a ceiling.
+
                         maxHeight: Math.max(0, Math.min(list.implicitHeight, root.cardMax) - (note.visible ? note.implicitHeight + parent.spacing : 0))
 
                         text: Network.card
-                        // The network's name, and the passphrase under it. The
-                        // code carries both already; this is the same card read
-                        // by a person instead of a camera, for the laptop across
-                        // the table with no lens pointed this way.
+
                         caption: Network.activeName
                         detail: Network.secret
 
@@ -1054,10 +607,6 @@ Column {
                         onFlipped: root.colourful = !root.colourful
                     }
 
-                    // ONLY WHEN THERE IS SOMETHING TO SAY. What is wrong with
-                    // the writer, what is wrong with the network, or that the
-                    // passphrase has not arrived yet. A working card explains
-                    // itself by being one.
                     StyledText {
                         id: note
 

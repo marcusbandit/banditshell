@@ -4,30 +4,18 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 
-// CPU, memory and temperature, read straight from the kernel.
-//
-// /proc and /sys rather than a helper process, because these are three files and
-// spawning `top` once a second to parse its output would cost more than the
-// numbers are worth.
-//
-// CPU load is not a number the kernel reports: /proc/stat counts JIFFIES since
-// boot, so a percentage only exists between two readings. The first sample after
-// startup therefore has nothing to compare against and is deliberately dropped,
-// rather than being shown as a meaningless "100% since boot".
 Singleton {
     id: root
 
-    // 0..1
     property real cpu: 0
     property real memory: 0
     property real swap: 0
-    // Celsius, 0 when nothing sensible is exposed.
+
     property real temperature: 0
 
     property real memoryUsedGb: 0
     property real memoryTotalGb: 0
 
-    // Sampling stops when nothing is looking. Menus ask for it while open.
     property int watchers: 0
     readonly property bool sampling: watchers > 0
 
@@ -35,9 +23,7 @@ Singleton {
         root.watchers = Math.max(0, root.watchers + (on ? 1 : -1));
         if (!on)
             return;
-        // Forget the last reading before sampling again. Keeping it means the
-        // first number after re-opening the menu is the AVERAGE load since the
-        // menu last closed, presented as if it were instantaneous.
+
         root.lastStat = null;
         root.poll();
     }
@@ -68,7 +54,7 @@ Singleton {
             if (!line)
                 return;
             const f = line.trim().split(/\s+/).slice(1).map(Number);
-            // user nice system idle iowait irq softirq steal
+
             const idle = f[3] + f[4];
             const total = f.reduce((a, b) => a + b, 0);
 
@@ -100,9 +86,7 @@ Singleton {
                 if (m)
                     kb[m[1]] = Number(m[2]);
             }
-            // MemAvailable, not MemFree: free memory excludes cache, which the
-            // kernel will hand back on demand, so MemFree reads as "almost none"
-            // on a perfectly healthy machine.
+
             if (kb.MemTotal > 0) {
                 root.memory = 1 - kb.MemAvailable / kb.MemTotal;
                 root.memoryTotalGb = kb.MemTotal / 1048576;
@@ -113,8 +97,6 @@ Singleton {
         }
     }
 
-    // Which thermal zone is the CPU is machine-specific, so this is resolved once
-    // by name rather than guessed at zone0.
     property string thermalPath: ""
 
     Process {

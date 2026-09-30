@@ -3,40 +3,13 @@ pragma Singleton
 import QtQuick
 import Quickshell
 
-// THE GALLERY'S REGISTER: every component the shell means to own, one entry
-// each, held as DATA the way Settings.qml holds its pages. The list it works
-// through is ~/material3-components-todo.md, which is where the inventory of
-// widget kinds came from and nothing else: the look and the behaviour are this
-// shell's own (DESIGN.md 6), not Material's.
-//
-// `status` is how far along each one is:
-//
-//   planned   not drawn. The gallery shows its own note where the demo would
-//             be; the page file may not exist yet.
-//   draft     a first drawing is up and its knobs are live. The look is being
-//             argued with, which is what the knobs are for.
-//   done      settled. The component is in components/ (or modules/), other
-//             surfaces use it, and the page now documents it.
-//
-// `ref` is where the component lives today when it already exists. `checklist`
-// is the line it checks off, verbatim, so the two lists can be reconciled by
-// eye; the registry is the source of truth, the md mirrors it.
-//
-// Adding a component is the settings recipe: an entry here, and a
-// <Key>Page.qml dropped into pages/ (key "icon-buttons" loads
-// IconButtonsPage.qml). Until the file exists the page draws as a placeholder,
-// so the register is always the whole list and the gallery is always honest
-// about what is not here yet.
 Singleton {
     id: root
 
-    // Which page the gallery is showing. The gallery's own state, and it is
-    // here so the CLI (a later `banditshell gallery <key>`) can open the
-    // register on a component without reaching into the face.
     property string current: "buttons"
 
     readonly property var entries: [
-        // ---- buttons ----
+
         {
             key: "buttons",
             title: "Buttons",
@@ -113,7 +86,6 @@ Singleton {
             status: "draft"
         },
 
-        // ---- selection ----
         {
             key: "checkbox",
             title: "Checkbox",
@@ -152,7 +124,6 @@ Singleton {
             status: "planned"
         },
 
-        // ---- containers ----
         {
             key: "cards",
             title: "Cards",
@@ -221,7 +192,6 @@ Singleton {
             status: "planned"
         },
 
-        // ---- navigation ----
         {
             key: "navigation-bar",
             title: "Navigation bar",
@@ -278,7 +248,6 @@ Singleton {
             status: "planned"
         },
 
-        // ---- input ----
         {
             key: "text-fields",
             title: "Text fields",
@@ -327,7 +296,6 @@ Singleton {
             status: "planned"
         },
 
-        // ---- feedback ----
         {
             key: "badges",
             title: "Badges",
@@ -388,9 +356,6 @@ Singleton {
         }
     ]
 
-    // THE SECTIONS, derived. Same argument as Settings' groups: the grouping is
-    // for the person reading the list, so it is computed from the entries
-    // rather than maintained beside them, where the two could disagree.
     readonly property var sections: {
         const out = [];
         for (const e of root.entries) {
@@ -407,7 +372,6 @@ Singleton {
         return out;
     }
 
-    // How far the register has come, for the gallery's header.
     readonly property int drawn: root.entries.filter(e => e.status !== "planned").length
     readonly property int total: root.entries.length
 
@@ -415,9 +379,6 @@ Singleton {
         return root.entries.find(e => e.key === key) ?? null;
     }
 
-    // key "icon-buttons" -> pages/IconButtonsPage.qml. The one naming
-    // convention the register owns; the loader in the face calls this, and a
-    // missing file draws as the placeholder rather than as an error.
     function pageUrl(key: string): url {
         const name = key.split("-").map(p => p[0].toUpperCase() + p.slice(1)).join("") + "Page.qml";
         return Qt.resolvedUrl(`pages/${name}`);

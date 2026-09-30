@@ -1,90 +1,39 @@
 import QtQuick
 import qs.config
 
-// The shell's body, drawn as one signed distance field.
-//
-// Give it the CUTOUT (the content area it is left around) and a list of open
-// panels. It draws everything that is not the cutout, smooth-unioned with each
-// panel, so a panel near the body melts into it and the fillet grows and shrinks
-// by itself as the panel moves. See blob.frag.
-//
-// Panels arrive as data and land in a fixed number of shader slots, because a
-// uniform block cannot be a variable-length array. `capacity` is that limit; ask
-// for more and the extras are dropped, loudly.
 ShaderEffect {
     id: root
 
-    // Twelve, and see blob.frag for why it is not eight. Three slots are spent
-    // permanently on panels that park off-screen rather than emptying, and the
-    // notification tray takes one per card, so the usable headroom is always
-    // several less than this number looks.
     readonly property int capacity: 12
 
-    // [{ x, y, w, h, radius }, ...] in this item's coordinates. A zero width
-    // means nothing is drawn for that slot, which is how a closed panel costs
-    // nothing rather than leaving a stub behind.
     property var panels: []
 
     property color colour: Appearance.colour.surface
-    // How wide the melt is, in pixels. 0 gives a hard crease.
+
     property real smoothing: Appearance.sizes.melt
     property real feather: Appearance.sizes.meltFeather
 
-    // Superellipse exponent. 2 is circular; the compositor's own
-    // `rounding_power` is what makes these corners the same curve as the windows
-    // they frame rather than merely the same radius.
     property real power: Appearance.rounding.power
 
-    // The content area, and the BASE curve's radii packed the way blob.frag
-    // wants: (bottomRight, topRight, bottomLeft, topLeft).
-    //
-    // The radii are the WINDOW's, not the chassis's. Everything the chassis
-    // draws is that curve offset outwards, so there is exactly one radius in the
-    // system and the rest are distances.
     property vector4d content: Qt.vector4d(0, 0, 0, 0)
     property vector4d baseRadius: Qt.vector4d(0, 0, 0, 0)
 
     property real gap: Appearance.sizes.gap
     property real band: Appearance.sizes.band
-    // What the DISPLAY's corners are rounded off at, before the gap and the band
-    // are added to it. The window's own radius, so the screen's corner cups a
-    // maximised window's corner at a constant distance; the frame is drawn
-    // around the item rather than around the content area, so this is not one of
-    // `baseRadius`'s four (see toScreen in blob.frag).
+
     property real screenRadius: Appearance.sizes.windowRadius
 
-    // THE BLACK SCREEN-CORNER FRAME: 1 draws it, 0 does not.
-    //
-    // A NUMBER, THOUGH IT IS A YES OR NO, and it has to be. The uniform on the
-    // other side is a `float` (a uniform block has no bools), and a QML `bool`
-    // handed to a float uniform arrives as ZERO: the value is written as an int
-    // and read back as a float, and the four bytes of 1 are a denormal far below
-    // any threshold the shader tests. Nothing warns. The frame simply stopped
-    // being drawn, the screen's corners went square, and every uniform around it
-    // was still correct, which is what made it look like a geometry bug.
-    //
-    // Every other switch into this shader is already a float for the same
-    // reason (outlineWidth, sheenWidth); this one was the odd one out.
     property real frameOn: Appearance.sizes.roundOuter ? 1 : 0
     property color frameColour: Appearance.colour.frame
 
-    // A hard edge exactly on the content boundary. 0 draws none.
     property real outlineWidth: 0
     property color outlineColour: Appearance.colour.accent
 
-    // A BORDER ON THE SHELL'S INNER EDGE. It went in on trial and it stayed, so
-    // it is a token now rather than a pair of numbers here: the argument for the
-    // colour and for the two pixels is in Appearance's `colour.seam` and
-    // `sizes.seam`, where the panels that draw the same line can reach it.
-    //
-    // Set sheenWidth to 0 to remove it from the chassis alone; nothing else
-    // depends on it.
     property real sheenWidth: Appearance.sizes.seam
     property color sheenColour: Appearance.colour.seam
     property real pad2: 0
     property real pad3: 0
 
-    // The shader works in pixels, so it has to be told the size.
     readonly property vector4d size: Qt.vector4d(width, height, 0, 0)
 
     function slotRect(i: int): vector4d {
@@ -96,9 +45,6 @@ ShaderEffect {
         return root.panels[i]?.radius ?? 0;
     }
 
-    // A panel that says nothing about its melt gets the shell's, which is every
-    // panel there has ever been. A panel small enough to be swallowed by a
-    // 34px fillet says so instead; see blob.frag.
     function slotSmooth(i: int): real {
         return root.panels[i]?.smooth ?? root.smoothing;
     }
