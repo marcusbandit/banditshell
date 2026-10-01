@@ -48,6 +48,7 @@ Item {
     readonly property var updateEntry: ({
             key: "update",
             title: "update · " + Services.Update.branch,
+            heading: "",
             body: updateMenu
         })
 

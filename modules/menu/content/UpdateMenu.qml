@@ -14,9 +14,10 @@ Column {
 
     property bool declineConfirm: false
 
-    // The one width the menu cannot shrink its way out of: the button row.
-    // Prose wraps; a row of buttons does not. The panel grows to this hint.
-    readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth)
+    // The one width the menu cannot shrink its way out of: the widest row
+    // that cannot wrap - the meta line and the button pairs. Prose wraps;
+    // these do not. The panel grows to this hint.
+    readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth)
 
     spacing: Appearance.padding.small
 
@@ -37,6 +38,9 @@ Column {
         }
     }
 
+    // THE STATE LINE: what the update is doing, in the words that answer it.
+    // Most of the time this is the whole menu: up to date, when, the way to
+    // ask again.
     StyledText {
         width: parent.width
         text: {
@@ -48,14 +52,102 @@ Column {
                 return "Pull failed - the checkout is unchanged";
             if (Update.behind > 0)
                 return `${Update.behind} new commit${Update.behind === 1 ? "" : "s"} on ${Update.branch}`;
-            if (Update.checkedAt.getTime() === 0)
-                return "Not checked yet";
-            return "No updates confirmed";
+            return "You are up to date";
         }
-        font.pixelSize: Appearance.font.size.small
-        color: Appearance.colour.textDim
+        color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
+    // THE META LINE: when, and the way to ask again. The old standalone
+    // button folded in here - idle, the check IS the only action.
+    Row {
+        id: metaRow
+
+        spacing: Appearance.padding.small
+
+        StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${root.ago(Update.checkedAt)}`
+            color: Appearance.colour.textFaint
+        }
+
+        StyledText {
+            anchors.verticalCenter: parent.verticalCenter
+            text: "|"
+            color: Appearance.colour.textGhost
+        }
+
+        Item {
+            id: again
+
+            anchors.verticalCenter: parent.verticalCenter
+            width: againLabel.implicitWidth
+            height: againLabel.implicitHeight
+
+            StyledText {
+                id: againLabel
+
+                text: Update.checking ? "Checking..." : "(Check again)"
+                color: againPress.containsMouse ? Appearance.colour.text : Appearance.colour.accent
+            }
+
+            MouseArea {
+                id: againPress
+
+                anchors.fill: parent
+                anchors.margins: -Appearance.padding.small
+                enabled: !Update.checking
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: Update.check()
+            }
+        }
+    }
+
+    // THE ORDINARY UPDATE, when there is one: what came down, what went
+    // wrong, and the one button the update itself needs. None of it shows
+    // when the answer is already "up to date".
+    StyledText {
+        width: parent.width
+        visible: Update.behind > 0 && !!Update.remoteHead
+        text: `latest: ${Update.remoteHead}`
+        color: Appearance.colour.textFaint
+    }
+
+    StyledText {
+        width: parent.width
+        visible: !!Update.error
+        text: Update.error
+        color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.textFaint
+        wrapMode: Text.WordWrap
+    }
+
+    Button {
+        visible: Update.behind > 0 || Update.state === Update.downloaded || Update.state === Update.failed
+        text: {
+            if (Update.state === Update.downloaded)
+                return "Restart the shell";
+            if (Update.state === Update.failed)
+                return "Retry download";
+            return "Download Update";
+        }
+        icon: {
+            if (Update.state === Update.downloaded)
+                return "restart_alt";
+            if (Update.state === Update.failed)
+                return "refresh";
+            return "download";
+        }
+        style: "filled"
+
+        onClicked: {
+            if (Update.state === Update.downloaded)
+                Update.restart();
+            else
+                Update.download();
+        }
+    }
+
+    // THE CHANGELOG, when there is something new said about the update.
     Column {
         width: parent.width
         visible: root.card.length > 0
@@ -64,7 +156,6 @@ Column {
         StyledText {
             width: parent.width
             text: "What's new"
-            font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
         }
 
@@ -81,8 +172,7 @@ Column {
 
                 StyledText {
                     width: parent.width
-                                text: entryBlock.modelData.date !== "" && entryBlock.modelData.date !== entryBlock.modelData.id ? `${entryBlock.modelData.id} · ${entryBlock.modelData.date}` : entryBlock.modelData.id
-                    font.pixelSize: Appearance.font.size.small
+                    text: entryBlock.modelData.date !== "" && entryBlock.modelData.date !== entryBlock.modelData.id ? `${entryBlock.modelData.id} · ${entryBlock.modelData.date}` : entryBlock.modelData.id
                     color: WhatsNew.severityOf(entryBlock.modelData) === "major" ? Appearance.colour.accent : Appearance.colour.textFaint
                 }
 
@@ -100,7 +190,6 @@ Column {
                         Row {
                             id: line
 
-                            x: Appearance.padding.normal
                             spacing: Appearance.padding.small
 
                             Icon {
@@ -112,9 +201,8 @@ Column {
                             }
 
                             StyledText {
-                                width: changeLine.width - Appearance.padding.normal * 2 - Appearance.font.iconSize - line.spacing
+                                width: changeLine.width - Appearance.font.iconSize - line.spacing
                                 text: changeLine.modelData.text
-                                font.pixelSize: Appearance.font.size.small
                                 color: changeLine.modelData.severity === "major" ? Appearance.colour.text : Appearance.colour.textDim
                                 wrapMode: Text.WordWrap
                             }
@@ -125,25 +213,13 @@ Column {
         }
     }
 
-    StyledText {
-        width: parent.width
-        visible: Update.behind > 0 && !!Update.remoteHead
-        text: `latest: ${Update.remoteHead}`
-        font.pixelSize: Appearance.font.size.small
-        color: Appearance.colour.textFaint
-    }
-
-    StyledText {
-        width: parent.width
-        visible: !!Update.error
-        text: Update.error
-        color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.textFaint
-        font.pixelSize: Appearance.font.size.small
-        wrapMode: Text.WordWrap
-    }
-
+    // EVERYTHING BELOW the rule is a SPECIAL update - one that needs more of
+    // the user than pressing the update button. Most of the time there is
+    // none, and most of the time the rule and the sections under it do not
+    // exist.
     Separator {
         width: parent.width
+        visible: CliMigration.stale
     }
 
     // THE MIGRATION CARD. The scanner found old-grammar binds in the user's
@@ -158,18 +234,16 @@ Column {
 
         StyledText {
             width: parent.width
-            text: "Your keybinds are deprecated. Migrate to make them work again"
-            font.pixelSize: Appearance.font.size.small
+            text: "Your keybinds are deprecated"
             color: Appearance.colour.accent
             wrapMode: Text.WordWrap
         }
 
         StyledText {
             width: parent.width
-            visible: root.declineConfirm
-            text: "Are you sure you want to fix the config yourself? The binds keep working, but this offer will not come back."
-            font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.updateFailed
+            visible: !root.declineConfirm
+            text: "Migrate to fix"
+            color: Appearance.colour.textDim
             wrapMode: Text.WordWrap
         }
 
@@ -189,6 +263,14 @@ Column {
             }
         }
 
+        StyledText {
+            width: parent.width
+            visible: root.declineConfirm
+            text: "Are you sure you want to fix the config yourself? The binds keep working, but this offer will not come back."
+            color: Appearance.colour.updateFailed
+            wrapMode: Text.WordWrap
+        }
+
         ButtonPair {
             id: confirmRow
 
@@ -202,66 +284,13 @@ Column {
             }
         }
 
-        // The one width the menu cannot shrink its way out of: the button
-        // row. Everything else wraps. The panel grows to this hint.
-        readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth)
-
         StyledText {
             width: parent.width
             visible: CliMigration.lastResult !== ""
             text: CliMigration.lastResult
-            font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
             wrapMode: Text.WordWrap
         }
-    }
-
-    Separator {
-        width: parent.width
-        visible: CliMigration.stale
-    }
-
-    Button {
-        text: {
-            if (Update.state === Update.downloaded)
-                return "Restart the shell";
-            if (Update.state === Update.downloading)
-                return "Downloading...";
-            if (Update.state === Update.failed)
-                return "Retry download";
-            if (Update.behind > 0)
-                return "Download Update";
-            return "Search for update";
-        }
-        icon: {
-            if (Update.state === Update.downloaded)
-                return "restart_alt";
-            if (Update.state === Update.downloading)
-                return "cloud_download";
-            if (Update.state === Update.failed)
-                return "refresh";
-            if (Update.behind > 0)
-                return "download";
-            return "sync";
-        }
-        style: Update.behind > 0 || Update.state === Update.downloaded || Update.state === Update.failed ? "filled" : "tonal"
-        interactive: Update.state !== Update.downloading
-
-        onClicked: {
-            if (Update.state === Update.downloaded)
-                Update.restart();
-            else if (Update.behind > 0)
-                Update.download();
-            else
-                Update.check();
-        }
-    }
-
-    StyledText {
-        visible: Update.checkedAt.getTime() > 0
-        text: `checked ${root.ago(Update.checkedAt)}`
-        font.pixelSize: Appearance.font.size.small
-        color: Appearance.colour.textFaint
     }
 
     function glyph(type: string): string {

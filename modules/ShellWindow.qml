@@ -58,7 +58,7 @@ PanelWindow {
             return false;
 
         const centre = source.mapToItem(win.contentItem, source.width / 2, source.height / 2);
-        menuLayer.show(key, entry.title, entry.body, centre.y, pin);
+        menuLayer.show(key, entry.heading ?? entry.title, entry.body, centre.y, pin);
         return true;
     }
 

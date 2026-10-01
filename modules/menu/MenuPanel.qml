@@ -189,9 +189,16 @@ Item {
 
                 onPageBodyChanged: view.contentY = 0
 
+                // A menu with no title draws no heading and no rule: the
+                // body starts on the panel's own line. The updater opts out -
+                // "UPDATE · MAIN" said nothing the state line does not.
+                readonly property bool titled: page.pageTitle !== ""
+
                 StyledText {
                     id: heading
 
+                    visible: page.titled
+                    height: page.titled ? implicitHeight : 0
                     text: page.pageTitle.toUpperCase()
                     color: Appearance.colour.textDim
                     font.pixelSize: Appearance.font.size.small
@@ -202,6 +209,7 @@ Item {
 
                     y: heading.height + Appearance.padding.normal
                     width: page.width
+                    visible: page.titled
                 }
 
                 Flickable {
@@ -209,7 +217,7 @@ Item {
 
                     readonly property real overflowSlack: 0.5
 
-                    y: rule.y + rule.height + Appearance.padding.normal
+                    y: page.titled ? rule.y + rule.height + Appearance.padding.normal : Appearance.padding.normal
                     width: page.width
 
                     height: Math.max(0, root.implicitHeight - Appearance.padding.large * 2 - y)
