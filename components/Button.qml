@@ -247,7 +247,21 @@ Item {
     }
 
     property var paint
-    readonly property color bg: root.paint ?? root.skin.bg
+    readonly property color bg: {
+        const base = root.paint ?? root.skin.bg;
+
+        // THE STATES, at the component level: the button's own background
+        // answers for hover and press - a blend toward its own foreground,
+        // which reads on every skin (filled darkens, tonal lifts) - rather
+        // than an overlay a skin can wash out. Disabled is opacity, below.
+        if (!root.interactive)
+            return base;
+        if (root.pressed)
+            return Appearance.blend(base, root.fg, 0.18);
+        if (root.hovered)
+            return Appearance.blend(base, root.fg, 0.09);
+        return base;
+    }
 
     // Per-corner radius overrides, for buttons that sit IN a shape - a pair
     // joined as (option||option): the seam corners barely round, the outer
@@ -340,32 +354,6 @@ Item {
         Behavior on color {
             ColorAnimation {
                 duration: Appearance.anim.fast
-            }
-        }
-    }
-
-    SquircleRect {
-        anchors.fill: parent
-        radius: root.targetRadius
-        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-        cornerPower: root.platePower
-        visible: root.hovered
-        color: Appearance.colour.fill
-
-        Behavior on radius {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        Behavior on cornerPower {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutCubic
             }
         }
     }

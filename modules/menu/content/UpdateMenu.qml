@@ -43,6 +43,7 @@ Column {
     // ask again.
     StyledText {
         width: parent.width
+        alignInk: true
         text: {
             if (Update.state === Update.downloaded)
                 return "Downloaded - restart to apply";
@@ -75,12 +76,14 @@ Column {
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
+            alignInk: true
             text: "|"
             color: Appearance.colour.textGhost
         }
 
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
+            alignInk: true
             text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${root.ago(Update.checkedAt)}`
             color: Appearance.colour.textFaint
         }
@@ -217,6 +220,7 @@ Column {
 
         StyledText {
             width: parent.width
+            alignInk: true
             text: "Your keybinds are deprecated"
             color: Appearance.colour.accent
             wrapMode: Text.WordWrap
@@ -225,6 +229,7 @@ Column {
         StyledText {
             width: parent.width
             visible: !root.declineConfirm
+            alignInk: true
             text: "Migrate to fix"
             color: Appearance.colour.textDim
             wrapMode: Text.WordWrap
@@ -249,6 +254,7 @@ Column {
         StyledText {
             width: parent.width
             visible: root.declineConfirm
+            alignInk: true
             text: "Are you sure you want to fix the config yourself? The binds keep working, but this offer will not come back."
             color: Appearance.colour.updateFailed
             wrapMode: Text.WordWrap
