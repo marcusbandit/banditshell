@@ -32,8 +32,18 @@ Item {
 
     property real reveal: 0
 
-    readonly property real fullWidth: Appearance.sizes.menuWidth
     readonly property real cornerRadius: Appearance.rounding.large
+
+    // HOW WIDE THE MENU NEEDS TO BE. The configured width is the shape menus
+    // wear by default; a page's body may DEMAND more - a row of buttons that
+    // cannot wrap and would otherwise be cut at the edge - through a
+    // `menuWidthHint` on its root item. The panel grows to the demand and
+    // never shrinks below the configured shape.
+    readonly property int configuredWidth: Appearance.sizes.menuWidth
+
+    property real widthHint: 0
+
+    readonly property real fullWidth: Math.max(root.configuredWidth, root.widthHint + Appearance.padding.large * 2)
 
     property real available: Appearance.sizes.menuMaxHeight
 
@@ -47,9 +57,14 @@ Item {
     implicitWidth: fullWidth
     implicitHeight: Math.max(Appearance.sizes.menuMinHeight, Math.min(Math.min(Appearance.sizes.menuMaxHeight, available), pageHeight + Appearance.padding.large * 2))
 
-    width: fullWidth * reveal
+    width: widen.value * reveal
     height: grow.value
     visible: reveal > 0
+
+    onFullWidthChanged: if (root.reveal === 0)
+        widen.snap()
+
+    Component.onCompleted: widen.snap()
 
     onImplicitHeightChanged: if (root.unsized) {
         root.unsized = false;
@@ -85,6 +100,13 @@ Item {
         id: grow
 
         target: root.implicitHeight
+        speed: Appearance.anim.resizeSpeed
+    }
+
+    Follow {
+        id: widen
+
+        target: root.fullWidth
         speed: Appearance.anim.resizeSpeed
     }
 
@@ -148,7 +170,15 @@ Item {
                 onImplicitHeightChanged: if (current)
                     root.pageHeight = implicitHeight
 
+                // The body may demand width (a row of buttons that cannot
+                // wrap); the panel grows to the current page's demand.
+                readonly property real widthHint: bodyLoader.item && bodyLoader.item.menuWidthHint !== undefined ? bodyLoader.item.menuWidthHint : 0
+
+                onWidthHintChanged: if (current)
+                    root.widthHint = Math.max(0, widthHint)
+
                 onCurrentChanged: if (current) {
+                    root.widthHint = Math.max(0, widthHint);
 
                     if (bodyLoader.status === Loader.Loading)
                         bodyLoader.forceCompletion();

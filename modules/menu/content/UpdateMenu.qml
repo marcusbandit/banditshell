@@ -14,6 +14,11 @@ Column {
 
     property bool declineConfirm: false
 
+    // The one width the menu cannot shrink its way out of: the button pills.
+    // Prose wraps; a pill of actions does not. The panel grows to this hint,
+    // so nothing the card offers is ever cut at the edge.
+    readonly property real menuWidthHint: Math.max(offer.implicitWidth, confirm.implicitWidth) + Appearance.padding.normal * 2
+
     spacing: Appearance.padding.small
 
     function offer(): void {
@@ -163,6 +168,7 @@ Column {
             text: `Your binds: ${CliMigration.deprecated} still speak the old grammar`
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.accent
+            wrapMode: Text.WordWrap
         }
 
         StyledText {
@@ -188,44 +194,46 @@ Column {
             wrapMode: Text.WordWrap
         }
 
-        Row {
-            width: parent.width
+        // (option||option): ONE pill, the members square where they meet - a
+        // hairline of a seam, not two buttons with a gap between them.
+        ButtonGroup {
+            id: offer
+
             visible: !root.declineConfirm
-            spacing: Appearance.padding.small
-            leftPadding: Appearance.padding.normal
+            x: Appearance.padding.normal
+            actions: [{
+                    text: "Migrate the binds",
+                    icon: "published_with_changes"
+                }, {
+                    text: "I'll fix it myself",
+                    icon: "edit"
+                }]
 
-            Button {
-                text: "Migrate the binds"
-                icon: "published_with_changes"
-                onClicked: CliMigration.migrate()
-            }
-
-            Button {
-                text: "I'll fix it myself"
-                icon: "edit"
-                onClicked: root.declineConfirm = true
+            onTriggered: index => {
+                if (index === 0)
+                    CliMigration.migrate();
+                else
+                    root.declineConfirm = true;
             }
         }
 
-        Row {
-            width: parent.width
+        ButtonGroup {
+            id: confirm
+
             visible: root.declineConfirm
-            spacing: Appearance.padding.small
-            leftPadding: Appearance.padding.normal
+            x: Appearance.padding.normal
+            actions: [{
+                    text: "No - migrate",
+                    icon: "published_with_changes"
+                }, {
+                    text: "Yes - leave my config alone",
+                    icon: "check"
+                }]
 
-            Button {
-                text: "No - migrate"
-                icon: "published_with_changes"
-                onClicked: root.declineConfirm = false
-            }
-
-            Button {
-                text: "Yes - leave my config alone"
-                icon: "check"
-                onClicked: {
-                    root.declineConfirm = false;
+            onTriggered: index => {
+                root.declineConfirm = false;
+                if (index === 1)
                     CliMigration.decline();
-                }
             }
         }
 
