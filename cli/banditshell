@@ -49,7 +49,13 @@
 #                                bare + or - one step; <key> <value> is the
 #                                shell's config, dotted keys
 #   banditshell get <key>|theme
+#                                read one value back: a dotted config key, or
+#                                the theme's name
 #   banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
+#                                enumerate a registry: the menu keys, the
+#                                clipboard's history, the wallpapers that fit
+#                                a screen, the sinks, the alarms, the places,
+#                                the themes
 #   banditshell dispatch timer <action>|alarm <action>|zone <action>
 #        clipboard <action>|calculator <action>|keyboard <action>
 #        settings <action>|launcher <action>|wallpaper <action>
@@ -88,10 +94,17 @@
 #                                components/**/*.frag to .qsb, run tests/
 #                                against the plain-JavaScript parts
 #   banditshell shot [file]|demo <key>|gallery [WxH]
+#                                a plain screenshot; open a menu, shoot it,
+#                                put it away; every component the shell owns,
+#                                on buttons, with knobs
 #   banditshell lockpreview [file]|settingspreview [WxH] [page] [file]
+#                                the lock face and the settings face, at a
+#                                size, photographed - a window on a timer,
+#                                taking no input
 #   banditshell filespreview [dir] [shot]
-#                                screenshot, and the workbenches: previews
-#                                drawn without touching the desktop
+#                                the file browser in a plain window, no
+#                                timeout, because a terminal you cannot type
+#                                into is not a terminal
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
 # docs/hyprland-binds.example.conf is a ready-made set to copy or source.
