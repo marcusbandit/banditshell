@@ -768,6 +768,7 @@ const ACTION_WORDS = [
     [/^hl\.dsp\.window\.drag\(\)$/, "Move the window with the mouse"],
     [/^hl\.dsp\.window\.resize\(\)$/, "Resize the window with the mouse"],
     [/^hl\.dsp\.window\.move\(\{ direction = "([a-z]+)" \}\)$/, "Move the window $1"],
+    [/^hl\.dsp\.window\.swap\(\{ direction = "([a-z]+)" \}\)$/, "Swap the window $1 (position, column, and size)"],
     [/^hl\.dsp\.window\.move\(\{ workspace = "special:([^"]+)" \}\)$/, "Move the window to the special workspace '$1'"],
     [/^hl\.dsp\.window\.move\(\{ workspace = "([^"]+)" \}\)$/, "Move the window to workspace $1"],
     [/^hl\.dsp\.window\.move\(\{ workspace = ([^ }]+) \}\)$/, "Move the window to workspace $1"],

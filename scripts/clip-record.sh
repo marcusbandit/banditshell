@@ -112,8 +112,46 @@ if img=$(firstLike "image/"); then
     exit 0
 fi
 
-if txt=$(firstLike "text/") || has "UTF8_STRING" || has "STRING" || has "TEXT"; then
+dehtml() {
+    python3 -c '
+import re, sys
+from html.parser import HTMLParser
+
+BLOCK = {"p", "div", "li", "tr", "h1", "h2", "h3", "h4", "h5", "h6", "ul", "ol",
+         "table", "section", "article", "header", "footer", "blockquote", "pre",
+         "dl", "dt", "dd", "figure", "figcaption", "address", "main", "nav", "aside"}
+
+class Harvester(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "br" or tag in BLOCK:
+            self.parts.append("\n")
+
+    def handle_endtag(self, tag):
+        if tag in BLOCK:
+            self.parts.append("\n")
+
+    def handle_data(self, data):
+        self.parts.append(data)
+
+p = Harvester()
+p.feed(sys.stdin.read())
+p.close()
+text = "".join(p.parts).replace("\r\n", "\n").replace("\r", "\n")
+sys.stdout.write(re.sub(r"\n{3,}", "\n\n", text).strip())
+'
+}
+
+if txt=$(firstLike "text/plain") || txt=$(firstLike "text/") || has "UTF8_STRING" || has "STRING" || has "TEXT"; then
     text=$(clip -n ${txt:+-t "$txt"} 2>/dev/null)
+    case $(printf '%s' "$text" | head -c 64 | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]') in
+    '<metahttp-equiv'* | '<!doctype'* | '<html'*)
+        text=$(printf '%s' "$text" | dehtml)
+        ;;
+    esac
     size=${#text}
     if [ "$size" -gt "$maxText" ]; then
         emit "$state" "$types" "$(jq -c -n --argjson bytes "$size" '{bytes: $bytes, dropped: true}')"

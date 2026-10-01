@@ -2325,7 +2325,7 @@ text), and every judgement about that answer is QML. "Audio" is therefore a MIME
 test in a service and not a filename test in a shell, and changing what counts as
 audio does not involve a shell script.
 
-Three things fell out of owning the recorder that could not have been retrofitted:
+Four things fell out of owning the recorder that could not have been retrofitted:
 
 - **`CLIPBOARD_STATE=sensitive` is honoured.** wl-clipboard tells a watcher when
   a selection is a password, and the right answer is to record nothing, silently.
@@ -2339,6 +2339,14 @@ Three things fell out of owning the recorder that could not have been retrofitte
   re-copying the pinned thing does not lose it, because the identity carries
   forward. A promise that a thing stays cannot be conditional on how much has
   been copied since.
+- **The offer is not the value.** A browser offers the same selection as markup
+  and as text, and one that lists `text/html` first once made the history record
+  elements instead of sentences. So the recorder prefers `text/plain` over every
+  other `text/*` type, and some sources put markup into the flavors they claim
+  are plain, so anything that opens like a document (`<meta http-equiv>`,
+  `<!DOCTYPE`, `<html>`) is coerced down to its rendered text before it is
+  stored. The type list says what a selection is; only the text says what it
+  says.
 
 The existing clipse history is imported once, and the pictures are **copied**
 rather than referenced. Referencing them in place was the obvious thing and it is
