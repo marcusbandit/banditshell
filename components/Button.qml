@@ -249,6 +249,13 @@ Item {
     property var paint
     readonly property color bg: root.paint ?? root.skin.bg
 
+    // Per-corner radius overrides, for buttons that sit IN a shape - a pair
+    // joined as (option||option): the seam corners barely round, the outer
+    // ends keep the pill. -1 means "the skin decides". The seam corners do
+    // not follow the press animation; the outer corners do.
+    property real radiusLeft: -1
+    property real radiusRight: -1
+
     readonly property color fg: root.skin.fg
     readonly property color ring: root.skin.ring
     readonly property real ringW: root.skin.ringW
@@ -269,6 +276,10 @@ Item {
         visible: false
         anchors.fill: parent
         radius: root.targetRadius
+        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
+        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
         cornerPower: root.platePower
         color: "black"
 
@@ -303,6 +314,10 @@ Item {
 
         anchors.fill: parent
         radius: root.targetRadius
+        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
+        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
         cornerPower: root.platePower
         color: root.bg
         stroke: root.ring
@@ -332,6 +347,10 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: root.targetRadius
+        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
+        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
         cornerPower: root.platePower
         visible: root.hovered
         color: Appearance.colour.fill

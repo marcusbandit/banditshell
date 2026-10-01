@@ -14,10 +14,9 @@ Column {
 
     property bool declineConfirm: false
 
-    // The one width the menu cannot shrink its way out of: the button pills.
-    // Prose wraps; a pill of actions does not. The panel grows to this hint,
-    // so nothing the card offers is ever cut at the edge.
-    readonly property real menuWidthHint: Math.max(offer.implicitWidth, confirm.implicitWidth) + Appearance.padding.normal * 2
+    // The one width the menu cannot shrink its way out of: the button row.
+    // Prose wraps; a row of buttons does not. The panel grows to this hint.
+    readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth) + Appearance.padding.normal * 2
 
     spacing: Appearance.padding.small
 
@@ -194,48 +193,63 @@ Column {
             wrapMode: Text.WordWrap
         }
 
-        // (option||option): ONE pill, the members square where they meet - a
-        // hairline of a seam, not two buttons with a gap between them.
-        ButtonGroup {
-            id: offer
+        // (option||option): two real buttons, a hairline apart, the seam
+        // corners barely rounded - one shape read as a unit, with each half's
+        // own hover and press.
+        Row {
+            id: offerRow
 
             visible: !root.declineConfirm
             x: Appearance.padding.normal
-            actions: [{
-                    text: "Migrate the binds",
-                    icon: "published_with_changes"
-                }, {
-                    text: "I'll fix it myself",
-                    icon: "edit"
-                }]
+            spacing: Appearance.font.stem
 
-            onTriggered: index => {
-                if (index === 0)
-                    CliMigration.migrate();
-                else
-                    root.declineConfirm = true;
+            Button {
+                text: "Migrate the binds"
+                icon: "published_with_changes"
+                radiusRight: Appearance.rounding.small
+
+                onClicked: CliMigration.migrate()
+            }
+
+            Button {
+                text: "I'll fix it myself"
+                icon: "edit"
+                radiusLeft: Appearance.rounding.small
+
+                onClicked: root.declineConfirm = true
             }
         }
 
-        ButtonGroup {
-            id: confirm
+        Row {
+            id: confirmRow
 
             visible: root.declineConfirm
             x: Appearance.padding.normal
-            actions: [{
-                    text: "No - migrate",
-                    icon: "published_with_changes"
-                }, {
-                    text: "Yes - leave my config alone",
-                    icon: "check"
-                }]
+            spacing: Appearance.font.stem
 
-            onTriggered: index => {
-                root.declineConfirm = false;
-                if (index === 1)
+            Button {
+                text: "No - migrate"
+                icon: "published_with_changes"
+                radiusRight: Appearance.rounding.small
+
+                onClicked: root.declineConfirm = false
+            }
+
+            Button {
+                text: "Yes - leave my config alone"
+                icon: "check"
+                radiusLeft: Appearance.rounding.small
+
+                onClicked: {
+                    root.declineConfirm = false;
                     CliMigration.decline();
+                }
             }
         }
+
+        // The one width the menu cannot shrink its way out of: the button
+        // row. Everything else wraps. The panel grows to this hint.
+        readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth) + Appearance.padding.normal * 2
 
         StyledText {
             width: parent.width
