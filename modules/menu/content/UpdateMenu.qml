@@ -57,17 +57,20 @@ Column {
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
-    // THE META LINE: when, and the way to ask again. The old standalone
-    // button folded in here - idle, the check IS the only action.
+    // THE META LINE: the way to ask again, then when. The check is a real
+    // button - it is the one action an up-to-date menu has - and the stamp
+    // rides beside it.
     Row {
         id: metaRow
 
         spacing: Appearance.padding.small
 
-        StyledText {
+        Button {
             anchors.verticalCenter: parent.verticalCenter
-            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${root.ago(Update.checkedAt)}`
-            color: Appearance.colour.textFaint
+            text: Update.checking ? "Refreshing..." : "Refresh"
+            interactive: !Update.checking
+
+            onClicked: Update.check()
         }
 
         StyledText {
@@ -76,30 +79,10 @@ Column {
             color: Appearance.colour.textGhost
         }
 
-        Item {
-            id: again
-
+        StyledText {
             anchors.verticalCenter: parent.verticalCenter
-            width: againLabel.implicitWidth
-            height: againLabel.implicitHeight
-
-            StyledText {
-                id: againLabel
-
-                text: Update.checking ? "Checking..." : "(Check again)"
-                color: againPress.containsMouse ? Appearance.colour.text : Appearance.colour.accent
-            }
-
-            MouseArea {
-                id: againPress
-
-                anchors.fill: parent
-                anchors.margins: -Appearance.padding.small
-                enabled: !Update.checking
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: Update.check()
-            }
+            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${root.ago(Update.checkedAt)}`
+            color: Appearance.colour.textFaint
         }
     }
 
