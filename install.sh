@@ -58,7 +58,7 @@ build_table() {
         add_step quickshell   "false" ""  1 "the toolkit"
         add_step monocraft    "false" ""  1 "the font"
         local n
-        for n in hyprland qt6-declarative qt6-multimedia qt6-shadertools \
+        for n in cli hyprland qt6-declarative qt6-multimedia qt6-shadertools \
             ttf-material-symbols-variable ttf-nerd-fonts-symbols wl-clipboard \
             jq grim ffmpeg python python-gobject python-cryptography glib2 zenity \
             qrencode zxing-cpp librsvg zsh-completion; do
@@ -67,6 +67,7 @@ build_table() {
         return
     fi
 
+    add_step cli          "cli_installed"             @cli       1 "the CLI wrapper itself, cli/banditshell into bin/"
     add_step quickshell "command -v qs"          quickshell 1 "the toolkit the shell is written against"
     add_step monocraft  "font_present Monocraft" @monocraft 1 "the shell's face, and its pixel grid"
 
@@ -98,6 +99,21 @@ completion_present() {
         return 0
     fi
     "$REPO/scripts/zsh-completion.sh" status --quiet
+}
+
+# The CLI's source is tracked at cli/banditshell and the copy in bin/ is build
+# output, the way bs-pty is build output of src/bs-pty.c. Present means not
+# just existing but CURRENT: a pull that lands a new cli/banditshell makes the
+# stale bin/ copy older than its source, and the step runs again.
+cli_installed() {
+    [ -x "$REPO/bin/banditshell" ] || return 1
+    [ "$REPO/cli/banditshell" -nt "$REPO/bin/banditshell" ] && return 1
+    return 0
+}
+
+install_cli() {
+    install -m755 "$REPO/cli/banditshell" "$REPO/bin/banditshell" || return 1
+    user_own "$REPO/bin/banditshell"
 }
 
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
@@ -365,6 +381,8 @@ run_step() {
         install_monocraft && ok=0
     elif [ "$pkg" = "@zsh-completion" ]; then
         install_completion && ok=0
+    elif [ "$pkg" = "@cli" ]; then
+        install_cli && ok=0
     else
         install_pkg "$pkg" && ok=0
     fi
