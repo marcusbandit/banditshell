@@ -173,55 +173,32 @@ Column {
             wrapMode: Text.WordWrap
         }
 
-        // (option||option): two real buttons, a hairline apart, the seam
-        // corners barely rounded - one shape read as a unit, with each half's
-        // own hover and press.
-        Row {
+        // (option||option): the component, not hand-made rows - the seam gap
+        // and the seam rounding are tokens, `primary` decides who is loud.
+        ButtonPair {
             id: offerRow
 
             visible: !root.declineConfirm
-            spacing: Appearance.font.stem
+            actions: [{ text: "Migrate" }, { text: "Manual fix" }]
 
-            Button {
-                text: "Migrate"
-                style: "filled"
-                radiusRight: Appearance.rounding.small
-
-                onClicked: CliMigration.migrate()
-            }
-
-            Button {
-                text: "Manual fix"
-                style: "tonal"
-                radiusLeft: Appearance.rounding.small
-
-                onClicked: root.declineConfirm = true
+            onTriggered: index => {
+                if (index === 0)
+                    CliMigration.migrate();
+                else
+                    root.declineConfirm = true;
             }
         }
 
-        Row {
+        ButtonPair {
             id: confirmRow
 
             visible: root.declineConfirm
-            spacing: Appearance.font.stem
+            actions: [{ text: "Migrate" }, { text: "Leave it" }]
 
-            Button {
-                text: "Migrate"
-                style: "filled"
-                radiusRight: Appearance.rounding.small
-
-                onClicked: root.declineConfirm = false
-            }
-
-            Button {
-                text: "Leave it"
-                style: "tonal"
-                radiusLeft: Appearance.rounding.small
-
-                onClicked: {
-                    root.declineConfirm = false;
+            onTriggered: index => {
+                root.declineConfirm = false;
+                if (index === 1)
                     CliMigration.decline();
-                }
             }
         }
 

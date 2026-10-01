@@ -178,6 +178,14 @@ Singleton {
         function iconGap(i: int): real {
             return at(root.cfg.button.iconGaps, i);
         }
+
+        // THE SEAM: buttons that sit side by side as one shape
+        // (option||option) are separated by this gap, and the corners that
+        // face the seam round to the seam radius - the design's two answers
+        // to "joined, but not one control". Tokens, never literals, so every
+        // pair in the shell draws the same join.
+        readonly property real seam: Math.max(3, Math.round(Appearance.rounding.small / 2))
+        readonly property real seamRadius: Appearance.rounding.small
     }
 
     readonly property QtObject anim: QtObject {

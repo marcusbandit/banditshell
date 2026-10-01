@@ -6,6 +6,7 @@ BalancedText 1.0 BalancedText.qml
 BatteryMeter 1.0 BatteryMeter.qml
 BatteryTank 1.0 BatteryTank.qml
 ButtonGroup 1.0 ButtonGroup.qml
+ButtonPair 1.0 ButtonPair.qml
 Button 1.0 Button.qml
 CodeBlock 1.0 CodeBlock.qml
 Expander 1.0 Expander.qml
