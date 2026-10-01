@@ -16,7 +16,7 @@ Column {
 
     // The one width the menu cannot shrink its way out of: the button row.
     // Prose wraps; a row of buttons does not. The panel grows to this hint.
-    readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth) + Appearance.padding.normal * 2
+    readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth)
 
     spacing: Appearance.padding.small
 
@@ -39,7 +39,6 @@ Column {
 
     StyledText {
         width: parent.width
-        leftPadding: Appearance.padding.normal
         text: {
             if (Update.state === Update.downloaded)
                 return "Downloaded - restart to apply";
@@ -64,7 +63,6 @@ Column {
 
         StyledText {
             width: parent.width
-            leftPadding: Appearance.padding.normal
             text: "What's new"
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textDim
@@ -83,8 +81,7 @@ Column {
 
                 StyledText {
                     width: parent.width
-                    leftPadding: Appearance.padding.normal
-                    text: entryBlock.modelData.date !== "" && entryBlock.modelData.date !== entryBlock.modelData.id ? `${entryBlock.modelData.id} · ${entryBlock.modelData.date}` : entryBlock.modelData.id
+                                text: entryBlock.modelData.date !== "" && entryBlock.modelData.date !== entryBlock.modelData.id ? `${entryBlock.modelData.id} · ${entryBlock.modelData.date}` : entryBlock.modelData.id
                     font.pixelSize: Appearance.font.size.small
                     color: WhatsNew.severityOf(entryBlock.modelData) === "major" ? Appearance.colour.accent : Appearance.colour.textFaint
                 }
@@ -130,7 +127,6 @@ Column {
 
     StyledText {
         width: parent.width
-        leftPadding: Appearance.padding.normal
         visible: Update.behind > 0 && !!Update.remoteHead
         text: `latest: ${Update.remoteHead}`
         font.pixelSize: Appearance.font.size.small
@@ -139,7 +135,6 @@ Column {
 
     StyledText {
         width: parent.width
-        leftPadding: Appearance.padding.normal
         visible: !!Update.error
         text: Update.error
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.textFaint
@@ -163,8 +158,7 @@ Column {
 
         StyledText {
             width: parent.width
-            leftPadding: Appearance.padding.normal
-            text: `Your binds: ${CliMigration.deprecated} still speak the old grammar`
+            text: "Your keybinds are deprecated. Migrate to make them work again"
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.accent
             wrapMode: Text.WordWrap
@@ -172,20 +166,6 @@ Column {
 
         StyledText {
             width: parent.width
-            leftPadding: Appearance.padding.normal
-            visible: !root.declineConfirm
-            text: {
-                const files = CliMigration.staleFiles.map(f => f.replace(/^.*\//, "")).join(", ");
-                return `in ${files}. They work - the CLI rewrites them on the way in - but the fix is one click: migrate the file, a .bak beside it, and the icon goes quiet.`;
-            }
-            font.pixelSize: Appearance.font.size.small
-            color: Appearance.colour.textDim
-            wrapMode: Text.WordWrap
-        }
-
-        StyledText {
-            width: parent.width
-            leftPadding: Appearance.padding.normal
             visible: root.declineConfirm
             text: "Are you sure you want to fix the config yourself? The binds keep working, but this offer will not come back."
             font.pixelSize: Appearance.font.size.small
@@ -200,20 +180,19 @@ Column {
             id: offerRow
 
             visible: !root.declineConfirm
-            x: Appearance.padding.normal
             spacing: Appearance.font.stem
 
             Button {
-                text: "Migrate the binds"
-                icon: "published_with_changes"
+                text: "Migrate"
+                style: "filled"
                 radiusRight: Appearance.rounding.small
 
                 onClicked: CliMigration.migrate()
             }
 
             Button {
-                text: "I'll fix it myself"
-                icon: "edit"
+                text: "Manual fix"
+                style: "tonal"
                 radiusLeft: Appearance.rounding.small
 
                 onClicked: root.declineConfirm = true
@@ -224,20 +203,19 @@ Column {
             id: confirmRow
 
             visible: root.declineConfirm
-            x: Appearance.padding.normal
             spacing: Appearance.font.stem
 
             Button {
-                text: "No - migrate"
-                icon: "published_with_changes"
+                text: "Migrate"
+                style: "filled"
                 radiusRight: Appearance.rounding.small
 
                 onClicked: root.declineConfirm = false
             }
 
             Button {
-                text: "Yes - leave my config alone"
-                icon: "check"
+                text: "Leave it"
+                style: "tonal"
                 radiusLeft: Appearance.rounding.small
 
                 onClicked: {
@@ -249,11 +227,10 @@ Column {
 
         // The one width the menu cannot shrink its way out of: the button
         // row. Everything else wraps. The panel grows to this hint.
-        readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth) + Appearance.padding.normal * 2
+        readonly property real menuWidthHint: Math.max(offerRow.implicitWidth, confirmRow.implicitWidth)
 
         StyledText {
             width: parent.width
-            leftPadding: Appearance.padding.normal
             visible: CliMigration.lastResult !== ""
             text: CliMigration.lastResult
             font.pixelSize: Appearance.font.size.small
@@ -304,7 +281,6 @@ Column {
     }
 
     StyledText {
-        leftPadding: Appearance.padding.normal
         visible: Update.checkedAt.getTime() > 0
         text: `checked ${root.ago(Update.checkedAt)}`
         font.pixelSize: Appearance.font.size.small
