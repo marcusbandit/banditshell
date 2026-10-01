@@ -242,6 +242,50 @@ function rewriteText(text) {
 // ask the map for one answer without sourcing JavaScript:
 //     node services/cli-migration.js --cmd 'wallpapers toggle'
 // prints the new form, or nothing when there is nothing to do.
+//
+// And the scanner's own form: `--scan <dir>` walks a config directory
+// (.conf and .lua, as deep as it goes) and prints one `count<TAB>path` line
+// per file still carrying old forms - the shape the shell's migration
+// service reads on start.
+
+function walkConfigs(dir) {
+    const fs = require("node:fs");
+    const path = require("node:path");
+    const found = [];
+    let entries;
+    try {
+        entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+        return found; // no config dir: nothing to migrate, and not an error
+    }
+    for (const e of entries) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {
+            found.push(...walkConfigs(p));
+        } else if (/\.(conf|lua)$/.test(e.name)) {
+            found.push(p);
+        }
+    }
+    return found;
+}
+
+function scanDir(dir) {
+    const fs = require("node:fs");
+    const hits = [];
+    for (const file of walkConfigs(dir)) {
+        let text = "";
+        try {
+            text = fs.readFileSync(file, "utf8");
+        } catch {
+            continue;
+        }
+        const n = rewriteText(text).changes.length;
+        if (n)
+            hits.push({ file, n });
+    }
+    return hits;
+}
+
 function main(argv) {
     const mode = argv[0];
     if (mode === "--cmd") {
@@ -251,10 +295,16 @@ function main(argv) {
         return hit ? 0 : 2;
     }
 
+    if (mode === "--scan") {
+        for (const { file, n } of scanDir(argv[1] || ""))
+            process.stdout.write(`${n}\t${file}\n`);
+        return 0;
+    }
+
     const dry = mode === "--check";
     const files = argv.slice(dry ? 1 : 0).filter(a => a !== "--write");
     if (!files.length) {
-        process.stderr.write("usage: node cli-migration.js --check <file...> | --write <file...> | --cmd '<old command>'\n");
+        process.stderr.write("usage: node cli-migration.js --check <file...> | --write <file...> | --scan <dir> | --cmd '<old command>'\n");
         return 2;
     }
 

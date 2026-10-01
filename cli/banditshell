@@ -1,139 +1,108 @@
-#!/usr/bin/env bash
 # banditshell - run and drive the shell.
 #
-# Menus open on hover, which is a fine way to use them and an impossible way to
-# test: you cannot script a cursor into a corner and assert what happened. This
-# drives the same code path from the terminal, so the gesture and the thing it
-# opens can be checked separately.
+# The grammar is GENERIC-FIRST: verb, then object, then the args that define
+# it. `banditshell toggle panel notifications` reads off the front; the
+# bespoke tail that no generic verb can carry (a timer's start, the
+# clipboard's history edits) lives behind `dispatch`, one level down.
 #
 #   banditshell start|stop|restart|run|log
-#   banditshell menu list|open <key>|close|toggle <key>|current|hover
-#   banditshell launcher toggle|open|close|run <id>|scrub <0..1>
-#   banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status
-#                                what you copied; <n> is the index `list` prints.
-#                                `status` says whether it is actually RECORDING,
-#                                which a history that has quietly stopped growing
-#                                cannot tell you any other way.
-#   banditshell session toggle|open|close
-#   banditshell media toggle|open|close|status
-#                                the media controller, Super+M's card in the
-#                                middle of the screen. The card's own keys do
-#                                the media work - space, arrows, shift+arrows
-#                                - so this target only decides whether it is out
-#   banditshell calculator toggle|open|close|app|panel|status|answer <expression>
-#                                the keypad panel; `answer` evaluates and prints
-#                                without a surface: `calculator answer "2+3*4"`.
-#                                `app` is the same calculator standing over the
-#                                whole screen, which is what the .desktop entry
-#                                runs; `panel` is the strip on the sidebar's
-#                                flank. Both toggle. The shape is sticky, so
-#                                `toggle` reopens whichever you last used
-#   banditshell tablet on|off|toggle|lid <closed|open|toggle>|status|probe|probe-lid
-#                                the hinge. `on`/`off` are what the compositor's
-#                                switch binds call when the machine is folded
-#                                over; `probe` asks the hardware directly
-#   banditshell keyboard toggle|open|close|status|dock|float|page <name>
-#                                the on-screen board, for when the real keyboard
-#                                is face down on the table. Comes up by itself
-#                                on a fold unless tablet.autoKeyboard is off
-#   banditshell settings toggle|open [page] [screen]|close|page <key>|float|status
-#                                the page, always in a window of its own
-#                                the page, always in a window of its own
-#   banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]
-#   banditshell notch toggle [screen]|open [screen]|close|status [screen]
-#   banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]
-#                                every bind the compositor knows, read live
+#                                the shell itself: detach and prove it, stop,
+#                                restart, foreground with the QML errors, the
+#                                log
+#   banditshell toggle panel <name> [screen]
+#                                any surface, out or away: the fixed panels
+#                                below, and every menu key (`list menu`)
+#   banditshell open panel <name> [args]
+#                                open it without reading its state first:
+#                                settings takes a page then a screen, files a
+#                                path, the rest a screen
+#   banditshell close panel <name>
+#                                put one surface away (it reaches every
+#                                screen on purpose); bare `close` is the
+#                                rescue at the bottom
+#   banditshell status panel <name> [screen]
+#   banditshell toggle panel <name> [screen]|border|wallpaper
+#        sidebar [screen|all]|output|tablet [caller]|tablet lid [caller]
+#        volume mute
+#                                the boolean states, flipped: the chrome's
+#                                bare mode, the wallpaper runner, the
+#                                keyboard-side column per monitor, the
+#                                speakers/headphones switch, the hinge (`caller`
+#                                says who asks - the compositor's switch binds
+#                                pass `compositor`), mute. The level itself is
+#                                a number: set, not toggle
+#   banditshell set border [on|off]|wallpaper [on|off]
+#        sidebar [on|off] [screen|all]|tablet [on|off] [caller]
+#        tablet lid [closed|open] [caller]|volume [<pct>|+n|-n]
+#        volume mute [on|off]|output [speakers|headphones]
+#        theme [name]|penmap rect <x> <y> <w> <h>|<key> <value>
+#                                the same states, explicit, and everything
+#                                that only set has: a fraction is a percent,
+#                                .5 is 50, .32 is 32; +n/-n moves relative, a
+#                                bare + or - one step; <key> <value> is the
+#                                shell's config, dotted keys
+#   banditshell get <key>|theme
+#   banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
+#   banditshell status [thing]
+#                                bare, the shell itself; else border, sidebar,
+#                                volume, output, tablet, penmap, wallpaper,
+#                                timer, alarm, lock, keyring, panel <name>
+#   banditshell dispatch <target> <action> [args...]
+#                                the bespoke tail, target by target: timer
+#                                start <duration> [label]|pause|resume|toggle|
+#                                cancel [handle]; alarm snooze|stop|enable|
+#                                disable|remove <handle>|add <time> [--days
+#                                <spec>] [--label <text>] [--run <cmd> |
+#                                --ask <message>]; zone find|add|remove
+#                                <place>; clipboard use|pin|remove <n>|clear;
+#                                calculator answer <expression>|app|panel;
+#                                keyboard page <name>|dock|float; settings
+#                                page <key>|float; launcher run <id>|scrub
+#                                <0..1>; wallpaper next|prev|clear [screen|
+#                                all]|palette; menu current|hover; penmap
+#                                commit|cancel|aspect|follow; keyring
+#                                refuse|demo; tablet probe [lid]; lock
+#   banditshell dispatch picker open|freeze|clip|freezeclip|close
+#                                the screenshot picker. It is the ONE verb
+#                                that can work without the shell: it falls
+#                                back to grim/slurp, so the key always shoots
 #   banditshell close            shut every surface. THE WAY OUT if the desktop
 #                                looks frozen: a surface holding the keyboard
 #                                leaves no window focused and swallows clicks.
 #                                Bind it; you cannot type your way out.
-#   banditshell calendar         toggle the calendar menu (menu toggle calendar)
-#   banditshell clock            toggle the clock menu (menu toggle clock)
-#   banditshell timer start <duration> [label]|pause|resume|toggle|cancel [handle]|status
-#                                durations: 10m, 90s, 2h, 1h30m, or a bare number of minutes
-#                                a handle is the id or the position `timer status` prints;
-#                                without one, the timer about to go off
-#   banditshell alarm list|status|snooze|stop|enable <handle>|disable <handle>|remove <handle>
-#                    add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]
-#                                times: 07:00, 7:30pm, 0700, 7
-#                                days:  mon,wed | mon-fri | weekdays | weekends | daily | once
-#                                --run is a shell command, --ask sends the text to Claude
-#   banditshell zone list|find <text>|add <place>|remove <place>
-#                                a place is an IANA id, or enough of one to name only itself
-#   banditshell volume up|down [n]|set <pct>|mute [on|off]|status
-#   banditshell output toggle|speakers|headphones|status|list|assign <role> <name>
-#                                the speakers/headphones switch, as one key. Which
-#                                sink each name means is a setting, because no two
-#                                machines have the same cards: `list` prints the
-#                                names on this one and `assign` writes one
-#   banditshell lock [status]    lock the session; `loginctl unlock-session` undoes it
-#   banditshell keyring status|refuse|demo
-#                                the keyring's password question, which the shell
-#                                draws instead of gcr's GTK box. `status` says
-#                                whether the shell is actually the prompter, which
-#                                is the one thing a screenshot cannot tell you;
-#                                `demo` puts a made-up one up to look at. There is
-#                                no verb that answers one: a password does not go
-#                                on a command line
-#   banditshell picker open|freeze|clip|freezeclip|close
-#                                falls back to grim/slurp when the shell cannot
-#                                be reached, so the screenshot key always shoots
-#   banditshell wallpaper toggle|on|off|status|palette
-#   banditshell wallpaper next|prev|set <path>|clear [screen|all]
-#                                a wallpaper is per monitor: no screen means the
-#                                focused one, `all` means the whole desk at once
-#                                palette = the colours it is mostly made of
-#   banditshell wallpaper list [screen]
-#                                every wallpaper in the folder with its measured
-#                                shape, and whether it suits that screen. The
-#                                picker shows you only the ones that do, so this
-#                                is where the ones it left out are visible
-#   banditshell wallpapers toggle [screen]|open [screen]|close|status
-#                                the picker: the bottom edge's second pull. It
-#                                sets the wallpaper for the screen it is on
-#   banditshell border toggle|on|off|status
-#                                the whole chrome, bare mode. The flag is the
-#                                chrome's half only; the compositor's gaps and
-#                                rounding live in your own Lua bind beside it
-#   banditshell status
-#   banditshell theme [name]
-#   banditshell get <key>
-#   banditshell set <key> <value>
 #   banditshell completions install|print|status|remove
 #                                tab completion in zsh for every verb above,
 #                                GENERATED from this comment block rather than
 #                                written out a second time. `install` puts it
-#                                where zsh looks and wires the fpath; after that
-#                                the file rebuilds itself whenever this script is
-#                                newer than it, so a verb added above needs
-#                                nothing done to it. Bare, it says where it is
-#   banditshell shot [file]      screenshot, for checking a change actually landed
-#   banditshell demo <key>       open a menu, screenshot it, close it
-#   banditshell lockpreview      draw the lock screen WITHOUT locking, and shoot it
-#   banditshell settingspreview [WxH] [page] [file]
-#                                the settings face in a plain window at that size:
-#                                400x800 is a phone, 800x800 the phone unfolded
-#   banditshell gallery [WxH]    the component gallery: every component the shell
-#                                means to own, listed down the side, drawn where
-#                                it exists, with knobs on the ones that do. A
-#                                workbench, not a preview - it stays up until
-#                                closed, and `scripts/testbed.sh run` drives it
-#                                headless for scripted shots
-#   banditshell files [toggle|open [path]|close]
-#                                the file browser, in its own window
-#   banditshell shaders          recompile every components/**/*.frag to .qsb
-#   banditshell build            compile src/*.c into bin/ (bs-pty, bs-ls)
-#   banditshell test             run tests/ against the plain-JavaScript parts
-#                                (the terminal, the base64 codec, the file marks)
+#                                where zsh looks and wires the fpath; after
+#                                that the file rebuilds itself whenever this
+#                                script is newer than it, so a verb added
+#                                above needs nothing done to it. Bare, it
+#                                says where it is
+#   banditshell build|shaders|test
+#                                compile src/*.c into bin/, recompile every
+#                                components/**/*.frag to .qsb, run tests/
+#                                against the plain-JavaScript parts
+#   banditshell shot [file]|demo <key>|gallery [WxH]
+#   banditshell lockpreview [file]|settingspreview [WxH] [page] [file]
+#   banditshell filespreview [dir] [shot]
+#                                screenshot, and the workbenches: previews
+#                                drawn without touching the desktop
 #
 # Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
 # docs/hyprland-binds.example.conf is a ready-made set to copy or source.
 #
 # The block above is also DATA. scripts/zsh-completion.sh reads it to build the
 # zsh completion, so its shape is a contract: two spaces, `banditshell `, the
-# verb, then the alternatives separated by `|`; a description, when there is
-# one, starts at column 31 and its continuation lines are indented to match.
-# A continuation indented LESS than that is more alternatives (see `alarm`).
+# verb, then the alternatives separated by `|` (bracket an inner `|` to
+# protect it); a description, when there is one, starts at column 31 and its
+# continuation lines are indented to match. A continuation indented LESS than
+# that is more alternatives (see `dispatch`).
+#
+# OLD BINDS still speaking the noun-first grammar (`volume set 50`,
+# `wallpapers toggle`) are rewritten through services/cli-migration.js - the
+# migration map - once, on the way in, and the shell's sidebar offers to
+# rewrite the file itself.
 
 set -euo pipefail
 
@@ -336,6 +305,452 @@ start_backup() {
 # line range silently starts printing the code once the header changes length.
 usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
 
+# A fraction is a percent: `.5` is 50, `.32` is 32. Whole numbers pass through
+# untouched, so `set volume 50` still means 50 and the shell's own
+# amplification ceiling (>100) is not clipped here.
+pct_of() { awk -v v="$1" 'BEGIN{printf "%d", v * 100 + 0.5}'; }
+
+# The relative twin: an integer is already a percent (+5 is +5%), a fraction
+# is a fraction of 100 (+.5 is +50) - the same reading `set volume .5` has.
+rel_of() { case "$1" in *.*) pct_of "$1" ;; *) printf '%s' "$1" ;; esac; }
+
+# The panel nouns, and the IPC target each one drives. Most are one to one;
+# the wallpaper PICKER kept its IPC target (`wallpapers`) and lost its CLI
+# plural - the noun is `wallpaper`, whether it is being worn or picked.
+panel_ipc() {
+    case "$1" in
+    wallpaper) echo wallpapers ;;
+    *) echo "$1" ;;
+    esac
+}
+
+# Which surfaces answer `status`, and which open with no arguments at all -
+# the router refuses the verbs a target does not have rather than passing an
+# arity error down to the IPC layer.
+# `status` arity is not uniform: the screen-bearing panels declare the
+# parameter, the rest declare none, and an empty argument to one of those is
+# a "too many arguments" error rather than a quiet one.
+panel_status_ok() { case "$1" in clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | wallpaper | penmap) return 0 ;; *) return 1 ;; esac; }
+panel_status_takes_screen() { case "$1" in keyboard | notifications | notch | hotkeys) return 0 ;; *) return 1 ;; esac; }
+
+toggle_panel() { # <name> [screen]
+    local name="$1" rest="${2:-}"
+    case "$name" in
+    launcher | session) ipc "$(panel_ipc "$name")" toggle ;;
+    clipboard | media | calculator) ipc "$name" toggle ;;
+    keyboard) ipc keyboard toggle "$rest" ;;
+    settings) ipc settings toggle ;;
+    notifications | notch | hotkeys) ipc "$name" toggle "$rest" ;;
+    files) ipc files toggle "$rest" ;;
+    wallpaper) ipc wallpapers toggle "$rest" ;;
+    penmap) ipc penmap open ;;
+    # Anything else is a menu KEY: the menu engine owns it.
+    *) ipc menu toggle "$name" "$rest" ;;
+    esac
+}
+
+open_panel() { # <name> [args...]
+    local name="$1"; shift
+    case "$name" in
+    launcher | session) ipc "$(panel_ipc "$name")" open ;;
+    clipboard | media | calculator) ipc "$name" open ;;
+    keyboard) ipc keyboard open "${1:-}" ;;
+    settings) ipc settings open "${1:-}" "${2:-}" ;;
+    notifications | notch | hotkeys) ipc "$name" open "${1:-}" ;;
+    files) ipc files open "${1:-}" ;;
+    wallpaper) ipc wallpapers open "${1:-}" ;;
+    penmap) ipc penmap open ;;
+    *) ipc menu open "$name" "${1:-}" ;;
+    esac
+}
+
+close_panel() { # <name>
+    case "$1" in
+    launcher | session) ipc "$(panel_ipc "$1")" close ;;
+    clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files) ipc "$1" close ;;
+    wallpaper) ipc wallpapers close ;;
+    picker) ipc picker close ;;
+    *) ipc menu close ;;
+    esac
+}
+
+status_panel() { # <name> [screen]
+    panel_status_ok "$1" || { echo "banditshell: $1 has no status" >&2; return 1; }
+    if panel_status_takes_screen "$1"; then
+        ipc "$(panel_ipc "$1")" status "${2:-}"
+    else
+        ipc "$(panel_ipc "$1")" status
+    fi
+}
+
+# THE BESPOKE TAIL. `dispatch` carries the actions no generic verb can name,
+# straight to the same IPC target the old grammar used - the word reorder is
+# the whole change. Two exceptions keep their old intelligence: `alarm add`
+# still parses its flags here (a keybind is a line somebody reads a year
+# later), and `picker` still falls back to grim/slurp, because a screenshot
+# key that dies with the shell is not a screenshot key.
+route_dispatch() { # <target> <action> [args...]
+    local target="$1"; shift
+    local action="${1:-}"
+
+    case "$target" in
+    menu)
+        case "$action" in
+        current | hover) ipc menu "$action" ;;
+        *) echo "banditshell: dispatch menu current|hover" >&2; exit 2 ;;
+        esac
+        ;;
+
+    timer)
+        case "$action" in
+        pause | resume | toggle | cancel) ipc timer "$action" "${2:-}" ;;
+        start) [ $# -ge 2 ] || { echo "usage: banditshell dispatch timer start <duration> [label]" >&2; exit 2; }
+            ipc timer start "$2" "${3:-}" ;;
+        *) echo "banditshell: dispatch timer start|pause|resume|toggle|cancel" >&2; exit 2 ;;
+        esac
+        ;;
+
+    alarm)
+        case "$action" in
+        list | status | snooze | stop) ipc alarm "$action" ;;
+        enable | disable | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch alarm $action <handle>" >&2; exit 2; }
+            ipc alarm "$action" "$2" ;;
+        add)
+            [ $# -ge 2 ] || { echo "usage: banditshell dispatch alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]" >&2; exit 2; }
+            local when="$2"; shift 2
+            local days="" label="" mode="" payload=""
+            while [ $# -gt 0 ]; do
+                # Every flag here takes a value, so one sitting at the end of
+                # the line is a value that was forgotten rather than a flag
+                # that means something alone. Checked BEFORE the shift, because
+                # `shift 2` with one argument left fails, and under `set -e` a
+                # failed shift ends the script with no message at all.
+                [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
+                case "$1" in
+                --days) days="$2" ;;
+                --label) label="$2" ;;
+                --run) mode="command"; payload="$2" ;;
+                --ask) mode="cloud"; payload="$2" ;;
+                *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
+                esac
+                shift 2
+            done
+            ipc alarm add "$when" "$days" "$label" "$mode" "$payload"
+            ;;
+        *) echo "banditshell: dispatch alarm list|status|snooze|stop|enable|disable|remove|add" >&2; exit 2 ;;
+        esac
+        ;;
+
+    zone)
+        # The argument is EVERYTHING that follows, joined back into one string,
+        # so `dispatch zone add new york` works without quotes.
+        case "$action" in
+        list) ipc zone list ;;
+        find | add | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch zone $action <place>" >&2; exit 2; }
+            shift
+            ipc zone "$action" "$*" ;;
+        *) echo "banditshell: dispatch zone list|find|add|remove" >&2; exit 2 ;;
+        esac
+        ;;
+
+    clipboard)
+        case "$action" in
+        clear) ipc clipboard clear ;;
+        use | pin | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch clipboard $action <index>" >&2; exit 2; }
+            ipc clipboard "$action" "$2" ;;
+        *) echo "banditshell: dispatch clipboard use|pin|remove <index>|clear" >&2; exit 2 ;;
+        esac
+        ;;
+
+    calculator)
+        case "$action" in
+        app | panel) ipc calculator "$action" ;;
+        answer) [ $# -ge 2 ] || { echo "usage: banditshell dispatch calculator answer <expression>" >&2; exit 2; }
+            shift
+            ipc calculator answer "$*" ;;
+        *) echo "banditshell: dispatch calculator app|panel|answer <expression>" >&2; exit 2 ;;
+        esac
+        ;;
+
+    keyboard)
+        case "$action" in
+        dock | float) ipc keyboard "$action" ;;
+        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch keyboard page <name>" >&2; exit 2; }
+            ipc keyboard page "$2" "${3:-}" ;;
+        *) echo "banditshell: dispatch keyboard page <name>|dock|float" >&2; exit 2 ;;
+        esac
+        ;;
+
+    settings)
+        case "$action" in
+        float) ipc settings float ;;
+        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch settings page <key>" >&2; exit 2; }
+            ipc settings page "$2" ;;
+        *) echo "banditshell: dispatch settings page <key>|float" >&2; exit 2 ;;
+        esac
+        ;;
+
+    launcher)
+        case "$action" in
+        run) ipc launcher run "${2:-}" ;;
+        scrub) ipc launcher scrub "${2:-0}" ;;
+        *) echo "banditshell: dispatch launcher run <id>|scrub <0..1>" >&2; exit 2 ;;
+        esac
+        ;;
+
+    wallpaper)
+        case "$action" in
+        next | prev | clear) ipc wallpaper "$action" "${2:-}" ;;
+        palette) ipc wallpaper palette ;;
+        *) echo "banditshell: dispatch wallpaper next|prev|clear [screen|all]|palette" >&2; exit 2 ;;
+        esac
+        ;;
+
+    penmap)
+        case "$action" in
+        commit | cancel | aspect | follow) ipc penmap "$action" ;;
+        probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
+        *) echo "banditshell: dispatch penmap commit|cancel|aspect|follow" >&2; exit 2 ;;
+        esac
+        ;;
+
+    tablet)
+        case "$action" in
+        probe)
+            if [ "${2:-}" = lid ]; then
+                python3 "$SHELL_DIR/scripts/tablet-state.py" --lid --verbose
+            else
+                python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose
+            fi
+            ;;
+        *) echo "banditshell: dispatch tablet probe [lid]" >&2; exit 2 ;;
+        esac
+        ;;
+
+    keyring)
+        case "$action" in
+        refuse | demo) ipc keyring "$action" ;;
+        *) echo "banditshell: dispatch keyring refuse|demo" >&2; exit 2 ;;
+        esac
+        ;;
+
+    migration)
+        case "$action" in
+        migrate) ipc migration migrate ;;
+        *) echo "banditshell: dispatch migration migrate" >&2; exit 2 ;;
+        esac
+        ;;
+
+    lock) ipc lock lock ;;
+
+    picker)
+        # THE ONE VERB THAT CAN WORK WITHOUT THE SHELL. The fallback is the
+        # point: a screenshot key that does nothing is indistinguishable from
+        # broken hardware. See the long note in the old grammar's picker arm -
+        # the reasoning is unchanged, only the address.
+        if ipc_quiet picker "$action" && [ "$action" != close ]; then
+            exit 0
+        fi
+        case "$action" in
+        close) ipc picker close; exit 0 ;;
+        esac
+        if ! command -v slurp >/dev/null || ! command -v grim >/dev/null; then
+            complain "not running, and no grim/slurp to fall back on"
+            exit 1
+        fi
+        complain "not running - falling back to grim/slurp (try: banditshell start)"
+        region=$(slurp ${SLURP_ARGS:-}) || exit 0
+        if [ -z "$region" ]; then
+            exit 0
+        fi
+        note="banditshell was not running"
+        case "$action" in
+        freeze*) note="$note; taken live, nothing could be frozen" ;;
+        esac
+        say2() {
+            notify-send -a banditshell "$1" "$2" 2>/dev/null ||
+                hyprctl notify -1 5000 "rgb(e5c07b)" "$1 - $2" >/dev/null 2>&1 || true
+        }
+        case "$action" in
+        *clip)
+            grim -g "$region" - | wl-copy --type image/png
+            say2 "Screenshot copied" "$note"
+            ;;
+        *)
+            cfg="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+            dir=$(jq -r '.picker.dir // empty' "$cfg" 2>/dev/null || true)
+            editor=$(jq -r '.picker.editor // empty' "$cfg" 2>/dev/null || true)
+            dir="${dir:-~/Pictures/Screenshots}"
+            dir="${dir/#\~/$HOME}"
+            editor="${editor:-swappy -f}"
+            mkdir -p "$dir"
+            out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
+            grim -g "$region" "$out"
+            say2 "Screenshot saved" "$out ($note)"
+            # Unquoted on purpose: the configured editor is a command WITH its
+            # flags ("swappy -f"), the same string the shell splits when it
+            # opens one.
+            # shellcheck disable=SC2086
+            ${editor} "$out" >/dev/null 2>&1 || true
+            echo "$out"
+            ;;
+        esac
+        ;;
+
+    *)
+        echo "banditshell: no dispatch target: $target" >&2
+        exit 2
+        ;;
+    esac
+}
+
+# THE GENERIC ROUTE: verb, then object, then args. Booleans answer to both
+# `toggle` and `set` - toggle flips, set is explicit - and a thing that is not
+# on/off answers to set alone. The one-way road: everything toggleable can be
+# set; not everything settable can be toggled.
+route_verb() {
+    local verb="$1"; shift
+    local obj="${1:-}"
+    if [ "$#" -gt 0 ]; then shift; fi
+
+    case "$verb" in
+    toggle)
+        case "$obj" in
+        panel) [ $# -ge 1 ] || { echo "usage: banditshell toggle panel <name> [screen]" >&2; exit 2; }
+            toggle_panel "$1" "${2:-}" ;;
+        border) ipc border toggle ;;
+        wallpaper) ipc wallpaper toggle ;;
+        sidebar) ipc sidebar toggle "${1:-}" ;;
+        output) ipc output toggle ;;
+        tablet)
+            if [ "${1:-}" = lid ]; then
+                ipc tablet lid toggle "${2:-}"
+            else
+                ipc tablet toggle "${1:-}"
+            fi ;;
+        volume)
+            [ "${1:-}" = mute ] || { echo "banditshell: the level is a number; use 'set volume <pct>'. Only mute toggles." >&2; exit 2; }
+            ipc volume mute "" ;;
+        *) echo "banditshell: nothing to toggle: ${obj:-<none>} (try: toggle panel <name>|border|wallpaper|sidebar|output|tablet|volume mute)" >&2; exit 2 ;;
+        esac
+        ;;
+
+    open)
+        [ -n "$obj" ] || { echo "usage: banditshell open panel <name> [args]" >&2; exit 2; }
+        case "$obj" in
+        panel) [ $# -ge 1 ] || { echo "usage: banditshell open panel <name> [args]" >&2; exit 2; }
+            open_panel "$@" ;;
+        *) echo "banditshell: only panels open: open panel <name>" >&2; exit 2 ;;
+        esac
+        ;;
+
+    close)
+        # BARE: the rescue. One word, on purpose - see the header.
+        if [ -z "$obj" ]; then
+            for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
+                          "settings close" "notifications close" "notch close" "picker close" \
+                          "calculator close" "keyboard close" "media close"; do
+                # shellcheck disable=SC2086
+                ipc $target >/dev/null 2>&1 || true
+            done
+            echo "closed everything"
+            return 0
+        fi
+        [ "$obj" = panel ] && [ $# -ge 1 ] || { echo "usage: banditshell close panel <name> (bare 'close' shuts everything)" >&2; exit 2; }
+        close_panel "$1"
+        ;;
+
+    set)
+        case "$obj" in
+        border) [ $# -ge 1 ] || { echo "usage: banditshell set border on|off" >&2; exit 2; }
+            case "$1" in on | off) ipc border "$1" ;; *) echo "banditshell: set border on|off" >&2; exit 2 ;; esac ;;
+        sidebar) [ $# -ge 1 ] || { echo "usage: banditshell set sidebar on|off [screen|all]" >&2; exit 2; }
+            case "$1" in on | off) ipc sidebar "$1" "${2:-}" ;; *) echo "banditshell: set sidebar on|off [screen|all]" >&2; exit 2 ;; esac ;;
+        wallpaper)
+            # on|off is the runner's boolean; anything else is a PATH to wear.
+            [ $# -ge 1 ] || { echo "usage: banditshell set wallpaper on|off|<path> [screen|all]" >&2; exit 2; }
+            case "$1" in
+            on | off) ipc wallpaper "$1" ;;
+            "") echo "usage: banditshell set wallpaper on|off|<path> [screen|all]" >&2; exit 2 ;;
+            # ABSOLUTE, because the shell is not standing in this directory
+            # (see the note this inherited from the old `wallpaper set`).
+            *) ipc wallpaper set "$(realpath -s -m -- "$1")" "${2:-}" ;;
+            esac ;;
+        volume)
+            [ $# -ge 1 ] || { echo "usage: banditshell set volume <pct>|+n|-n|mute on|off" >&2; exit 2; }
+            if [ "$1" = mute ]; then
+                case "${2:-}" in
+                on | off) ipc volume mute "$2" ;;
+                "") echo "banditshell: set volume mute on|off (or: toggle volume mute)" >&2; exit 2 ;;
+                *) echo "banditshell: set volume mute on|off" >&2; exit 2 ;;
+                esac
+                return 0
+            fi
+            case "$1" in
+            # Relative: +n / -n in PERCENT (the unit `set volume 50` speaks),
+            # a fraction again a fraction of 100 (+.5 is +50), and the bare
+            # sign means one step of the shell's own size - the old `volume
+            # up` / `volume down`.
+            +*) n="${1#+}"; if [ -z "$n" ]; then ipc volume up ""; else ipc volume upPercent "$(rel_of "$n")"; fi ;;
+            -*) n="${1#-}"; if [ -z "$n" ]; then ipc volume down ""; else ipc volume downPercent "$(rel_of "$n")"; fi ;;
+            # A fraction is a percent.
+            *.*) ipc volume set "$(pct_of "$1")" ;;
+            *) ipc volume set "$1" ;;
+            esac ;;
+        output)
+            [ $# -ge 1 ] || { echo "usage: banditshell set output speakers|headphones|<role> <name>" >&2; exit 2; }
+            case "$1" in
+            speakers | headphones) ipc output "$1" ;;
+            "") echo "usage: banditshell set output speakers|headphones|<role> <name>" >&2; exit 2 ;;
+            # An empty name is a real argument: it unassigns the role.
+            *) [ $# -ge 2 ] || { echo "usage: banditshell set output <role> <name>" >&2; exit 2; }
+                ipc output assign "$1" "${2:-}" ;;
+            esac ;;
+        theme) [ $# -ge 1 ] || { echo "usage: banditshell set theme <name>" >&2; exit 2; }
+            ipc shell set theme "\"$1\"" ;;
+        penmap)
+            [ "$1" = rect ] && [ $# -ge 5 ] || { echo "usage: banditshell set penmap rect <x> <y> <w> <h>" >&2; exit 2; }
+            ipc penmap set "$2" "$3" "$4" "$5" ;;
+        # Anything else is a dotted config key.
+        "") echo "usage: banditshell set <key> <value>" >&2; exit 2 ;;
+        *) [ $# -ge 2 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
+            ipc shell set "$obj" "$2" ;;
+        esac
+        ;;
+
+    get)
+        case "$obj" in
+        "") echo "usage: banditshell get <key>|theme" >&2; exit 2 ;;
+        theme) ipc shell get theme ;;
+        *) ipc shell get "$obj" ;;
+        esac
+        ;;
+
+    list)
+        case "$obj" in
+        menu) ipc menu list ;;
+        clipboard) ipc clipboard list ;;
+        wallpaper) ipc wallpaper list "${2:-}" ;;
+        output) ipc output list ;;
+        alarm) ipc alarm list ;;
+        zone) ipc zone list ;;
+        themes) ipc shell themes ;;
+        *) echo "banditshell: list menu|clipboard|wallpaper|output|alarm|zone|themes" >&2; exit 2 ;;
+        esac
+        ;;
+
+    status)
+        case "$obj" in
+        "") ipc shell status ;;
+        panel) [ $# -ge 1 ] || { echo "usage: banditshell status panel <name> [screen]" >&2; exit 2; }
+            status_panel "$1" "${2:-}" ;;
+        border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration) ipc "$obj" status ;;
+        *) echo "banditshell: no status for: $obj" >&2; exit 2 ;;
+        esac
+        ;;
+    esac
+}
+
 cmd="${1:-help}"
 shift || true
 
@@ -387,603 +802,34 @@ log)
     exec qs -p "$SHELL_DIR" log "$@"
     ;;
 
-menu)
-    sub="${1:-list}"
-    shift || true
-    case "$sub" in
-    list | close | current | hover) ipc menu "$sub" ;;
-    open | toggle)
-        [ $# -ge 1 ] || { echo "usage: banditshell menu $sub <key>" >&2; exit 2; }
-        ipc menu "$sub" "$1" "${2:-}"
-        ;;
-    *) echo "usage: banditshell menu list|open <key>|close|toggle <key>|current|hover" >&2; exit 2 ;;
-    esac
+# THE GENERIC VERBS, routed. Every one of these used to be a noun-first arm
+# with its own bespoke case; the noun is now the OBJECT, the verb is the
+# command, and the wiring lives in route_verb / route_dispatch above.
+toggle|open|set|get|list|status)
+    route_verb "$cmd" "$@"
     ;;
 
-launcher)
-    case "${1:-toggle}" in
-    scrub) ipc launcher scrub "${2:-0}" ;;
-    # `run` takes a desktop entry id, or anything the launcher's own search
-    # would put at the top: `launcher run firefox`.
-    run) ipc launcher run "${2:-}" ;;
-    *) ipc launcher "${1:-toggle}" ;;
-    esac
+close)
+    # Bare, the rescue - one word, because the moment it is needed typing is
+    # exactly what has already failed. With `panel <name>`, the surface's own
+    # close.
+    route_verb close "$@"
     ;;
 
-# The verbs that take an index are spelled out; the rest pass through the way
-# session's do. An index is whatever `clipboard list` printed in its first
-# column, which is why that verb prints one.
-clipboard)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    toggle | open | close | list | clear | status) ipc clipboard "$sub" ;;
-    use | pin | remove)
-        [ $# -ge 1 ] || { echo "usage: banditshell clipboard $sub <index>" >&2; exit 2; }
-        ipc clipboard "$sub" "$1"
-        ;;
-    *) echo "usage: banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status" >&2; exit 2 ;;
-    esac
+panic)
+    route_verb close
     ;;
 
-session)
-    ipc session "${1:-toggle}"
+dispatch)
+    [ $# -ge 1 ] || { echo "usage: banditshell dispatch <target> <action> [args...]" >&2; exit 2; }
+    route_dispatch "$@"
     ;;
 
-# The media controller. Verbs only, on the session's shape: the card holds the
-# keyboard while it is out, so everything that can be done to the MEDIA is done
-# on the card, and a CLI verb for "seek" would be a second control that cannot
-# see the card. `status` says which player the shell is pointed at.
-media)
-    ipc media "${1:-toggle}"
-    ;;
-
-# THE TABLET MAPPING, and this is the verb you reach for when the tablet cannot
-# speak for itself. PenMap is meant to be driven from the pad: hold a button,
-# drag with the pen, let go. That is the whole design, and it is also the whole
-# risk, because the pad arrives over Bluetooth and a tablet that is asleep, flat
-# or unpaired has no buttons to hold. Nothing here is bound to a key by default;
-# it exists so "the mapper will not open" is one command to work around rather
-# than a shell restart.
-#
-# `set` takes GLOBAL layout coordinates, the same frame `hyprctl monitors`
-# prints, because that is the only frame in which "which monitor is this on" has
-# an answer. The service clamps and re-homes whatever it is handed, so a
-# rectangle that is off the edge or the wrong shape is corrected rather than
-# refused.
-penmap | pen)
-    sub="${1:-status}"
-    shift || true
-    case "$sub" in
-    open | commit | cancel | aspect | follow | status) ipc penmap "$sub" ;;
-    set)
-        [ $# -eq 4 ] || { echo "usage: banditshell penmap set <x> <y> <w> <h>" >&2; exit 2; }
-        ipc penmap set "$1" "$2" "$3" "$4"
-        ;;
-    *) echo "usage: banditshell penmap open|commit|cancel|aspect|follow|status|set <x> <y> <w> <h>" >&2; exit 2 ;;
-    esac
-    ;;
-
-# Spelled out rather than passed through the way session's is, because one verb
-# takes an argument: `answer` is the only route to the arithmetic that involves
-# no panel at all, so it has to be able to say what it could not parse.
-calculator | calc)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    toggle | open | close | app | panel | status) ipc calculator "$sub" ;;
-    answer)
-        [ $# -ge 1 ] || { echo "usage: banditshell calculator answer <expression>" >&2; exit 2; }
-        ipc calculator answer "$*"
-        ;;
-    *) echo "usage: banditshell calculator toggle|open|close|app|panel|status|answer <expression>" >&2; exit 2 ;;
-    esac
-    ;;
-
-# THE HINGE, and this is the verb the COMPOSITOR calls rather than you.
-#
-# The switch binds in ~/.config/hypr/lua/binds.lua exec `tablet on` and
-# `tablet off`, because the shell cannot read the switch device itself. `probe`
-# is here as the diagnostic for when a fold does not seem to be arriving: it
-# asks the hardware directly and will usually answer `unknown`, which is the
-# expected answer and is explained in the script it runs.
-tablet)
-    sub="${1:-status}"
-    case "$sub" in
-    # The second argument says WHO is calling, and only the switch binds pass
-    # one (`compositor`). It is what makes `status` able to tell a hinge that
-    # moved from a command somebody typed.
-    on | off | toggle) ipc tablet "$sub" "${2:-}" ;;
-    # THE LID, which vetoes the hinge: this machine's fold switch trips when the
-    # lid is SHUT as well as when it is folded back, so the shell needs the lid
-    # to tell 0 degrees from 360. Called by the lid bind, next to the fold ones.
-    lid)
-        case "${2:-}" in
-        closed | open | toggle) ipc tablet lid "$2" "${3:-}" ;;
-        *) echo "usage: banditshell tablet lid closed|open|toggle" >&2; exit 2 ;;
-        esac
-        ;;
-    status) ipc tablet status ;;
-    probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
-    # The lid's own probe, same script and same diagnostic purpose.
-    probe-lid) python3 "$SHELL_DIR/scripts/tablet-state.py" --lid --verbose ;;
-    *) echo "usage: banditshell tablet on|off|toggle|lid closed|open|status|probe|probe-lid" >&2; exit 2 ;;
-    esac
-    ;;
-
-# The on-screen board, separately from the hinge above: a keyboard is worth
-# having on an unfolded machine and worth dismissing on a folded one.
-keyboard | osk)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    # `close` is the odd one out and takes NO screen: it reaches every window,
-    # because "put it away" is not a question about a monitor. Passing it one
-    # anyway is not ignored, it is an arity error from the IPC layer, and the
-    # verb silently does nothing.
-    close) ipc keyboard close ;;
-    # Whether the board takes up room. Neither takes a screen: it is one
-    # preference about how the keyboard behaves, not a fact about a monitor.
-    dock | float) ipc keyboard "$sub" ;;
-    toggle | open | status) ipc keyboard "$sub" "${1:-}" ;;
-    page)
-        [ $# -ge 1 ] || { echo "usage: banditshell keyboard page <name>" >&2; exit 2; }
-        ipc keyboard page "$1" "${2:-}"
-        ;;
-    *) echo "usage: banditshell keyboard toggle|open|close|status|dock|float|page <name>" >&2; exit 2 ;;
-    esac
-    ;;
-
-# THE WAY OUT, and the reason it exists is worth writing down.
-#
-# Several surfaces take the keyboard EXCLUSIVELY while they are up (the
-# launcher, the power panel, the hotkey sheet, a pinned menu) and put a
-# full-screen region into the input mask so that a click anywhere off them
-# puts them away. That is correct for each of them on its own. The failure it
-# creates is that a surface left open by something that died mid-sequence, or
-# a pin that got stuck, takes the whole desktop with it: no window holds focus,
-# so a bind like `layoutmsg, focus l` has nothing to act on, and every click
-# lands on the shell instead of on what is under it. The screen looks frozen.
-#
-# You cannot type your way out of that, because the terminal does not have the
-# keyboard either. A compositor keybind still fires (Hyprland handles binds
-# before the event reaches any client), so the only rescue that can work is a
-# bind pointed at this, and that is why this verb exists and why it is one
-# word. See docs/hyprland-binds.example.conf for the suggested binding.
-#
-# It closes everything unconditionally and never fails: each verb is allowed to
-# error (a surface that is not open, an IPC target that is not registered yet)
-# without stopping the ones after it, because the whole point is to be the thing
-# that works when something else has not.
-close | panic)
-    for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
-                  "settings close" "notifications close" "notch close" "picker close" \
-                  "calculator close" "keyboard close" "media close"; do
-        # Unquoted on purpose: this is the one place a verb and its argument
-        # travel as one string and have to come apart again.
-        # shellcheck disable=SC2086
-        ipc $target >/dev/null 2>&1 || true
-    done
-    echo "closed everything"
-    ;;
-
-# The two verbs that take a value get spelled out; the rest pass through the
-# way session's do. `open` always sends its page and screen arguments, empty
-# when none was given, because the IPC function declares the parameters and an
-# omitted argument does not read as an empty one on the other side. The screen
-# goes second so `settings open general` keeps meaning what it always meant; a
-# caller that wants to name a screen without naming a page passes "" for the
-# page, the same shape `menu open <key> <screen>` already has.
-settings)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    toggle | close | status) ipc settings "$sub" ;;
-    open) ipc settings open "${1:-}" "${2:-}" ;;
-    float) ipc settings float ;;
-    page)
-        [ $# -ge 1 ] || { echo "usage: banditshell settings page <key>" >&2; exit 2; }
-        ipc settings page "$1"
-        ;;
-    *) echo "usage: banditshell settings toggle|open [page] [screen]|close|page <key>|float|status" >&2; exit 2 ;;
-    esac
-    ;;
-
-# The tray and the notch, both pinned PER WINDOW, so both name a screen on the
-# verbs that pin one. Bare, they toggle, like every other panel here.
-#
-# The screen is sent on every verb that has one, empty when none was named, for
-# the reason spelled out under `hotkeys` below: the IPC function declares the
-# parameter, and an omitted argument is a "too few arguments" error on the other
-# side rather than an empty one, so a pass-through that dropped it would turn
-# `notifications open` into a no-op. `close` and `clear` take none, because
-# putting the tray away reaches every screen on purpose and the history is one
-# list for the whole session.
-notifications)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    close | clear) ipc notifications "$sub" ;;
-    toggle | open | status) ipc notifications "$sub" "${1:-}" ;;
-    *) echo "usage: banditshell notifications toggle [screen]|open [screen]|close|clear|status [screen]" >&2; exit 2 ;;
-    esac
-    ;;
-
-notch)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    close) ipc notch close ;;
-    toggle | open | status) ipc notch "$sub" "${1:-}" ;;
-    *) echo "usage: banditshell notch toggle [screen]|open [screen]|close|status [screen]" >&2; exit 2 ;;
-    esac
-    ;;
-
-# The hotkey sheet. Bare, it toggles, like every other panel here: this is the
-# verb a key is bound to, and the key that put the sheet up is the key that
-# should take it down. `status` prints what the sheet actually read, which is
-# the question worth asking from a terminal, because a sheet full of chords with
-# nothing beside them is the compositor declining to say rather than this shell
-# failing to parse.
-#
-# The screen is sent on every verb that has one, empty when none was named,
-# because the IPC function DECLARES the parameter and an omitted argument is not
-# an empty one on the other side: it is a "too few arguments" error and nothing
-# happens at all. `settings open` says the same thing above; this is the same
-# trap one target along. `close` takes none, because putting the sheet away
-# reaches every screen on purpose.
-hotkeys)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    close) ipc hotkeys close ;;
-    toggle | open | status) ipc hotkeys "$sub" "${1:-}" ;;
-    *) echo "usage: banditshell hotkeys toggle [screen]|open [screen]|close|status [screen]" >&2; exit 2 ;;
-    esac
-    ;;
-
-# Sugar. The calendar is an ordinary menu with the key "calendar", registered
-# in the sidebar like the rest, so no IPC target of its own exists or should:
-# this is `menu toggle calendar` with fewer words, because the thing you bind
-# to a key deserves a shorter name than the thing it is implemented as. The
-# trailing "" is the screen argument every menu verb carries.
-calendar)
-    ipc menu toggle calendar ""
-    ;;
-
-# The same sugar for the clock, which is an ordinary menu with the key "clock".
-# The three targets below drive everything behind it without it being open at
-# all, which is the whole reason services/Clock.qml is a singleton: a countdown
-# that only exists while somebody is looking at it is not a countdown.
-clock)
-    ipc menu toggle clock ""
-    ;;
-
-# Countdowns. Bare, it says what is counting, because that is the question you
-# type in a terminal; `start` is the one worth a keybind, and `toggle` is the
-# other one, for the same reason `volume mute` toggles. Every other verb takes
-# an optional handle, the id or the position `status` prints beside it, and
-# without one means the timer about to go off, which is the only thing a key
-# could mean. The handle is sent empty rather than dropped, for the reason
-# spelled out under `hotkeys` above: the IPC function declares the parameter.
-timer)
-    sub="${1:-status}"
-    shift || true
-    case "$sub" in
-    status) ipc timer status ;;
-    pause | resume | toggle | cancel) ipc timer "$sub" "${1:-}" ;;
-    start)
-        [ $# -ge 1 ] || { echo "usage: banditshell timer start <duration> [label]" >&2; exit 2; }
-        ipc timer start "$1" "${2:-}"
-        ;;
-    *) echo "usage: banditshell timer start <duration> [label]|pause|resume|toggle|cancel [handle]|status" >&2; exit 2 ;;
-    esac
-    ;;
-
-# Alarms. `add` is the only verb in this file with options, and they are FLAGS
-# rather than positions because a keybind is a line somebody writes once and
-# reads a year later: counting empty arguments to reach the fifth one is the
-# mistake this shape cannot make. They are collected here and handed to the IPC
-# function in its own fixed order, which is the division of labour set out in
-# the alarm handler's comment in modules/Ipc.qml.
-#
-# --run and --ask are one slot said two ways (a shell command to run, a message
-# to send), so the last one on the line wins; there is no alarm that does both.
-alarm)
-    sub="${1:-list}"
-    shift || true
-    case "$sub" in
-    list | status | snooze | stop) ipc alarm "$sub" ;;
-    enable | disable | remove)
-        [ $# -ge 1 ] || { echo "usage: banditshell alarm $sub <handle>" >&2; exit 2; }
-        ipc alarm "$sub" "$1"
-        ;;
-    add)
-        [ $# -ge 1 ] || { echo "usage: banditshell alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]" >&2; exit 2; }
-        when="$1"
-        shift
-        days=""
-        label=""
-        mode=""
-        payload=""
-        while [ $# -gt 0 ]; do
-            # Every flag here takes a value, so one sitting at the end of the
-            # line is a value that was forgotten rather than a flag that means
-            # something alone. Checked BEFORE the shift, because `shift 2` with
-            # one argument left fails, and under `set -e` a failed shift ends
-            # the script with no message and an exit code nobody reads.
-            [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
-            case "$1" in
-            --days) days="$2" ;;
-            --label) label="$2" ;;
-            --run) mode="command"; payload="$2" ;;
-            --ask) mode="cloud"; payload="$2" ;;
-            *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
-            esac
-            shift 2
-        done
-        ipc alarm add "$when" "$days" "$label" "$mode" "$payload"
-        ;;
-    *) echo "usage: banditshell alarm list|status|snooze|stop|add <time> [options]|enable <handle>|disable <handle>|remove <handle>" >&2; exit 2 ;;
-    esac
-    ;;
-
-# Places. The argument is EVERYTHING that follows, joined back into one string,
-# so `zone add new york` works without quotes: the tz database writes that space
-# as an underscore, and both spellings are normalised to the same key on the
-# other side (zoneKey in modules/Ipc.qml). There is no label to pass, because
-# the city the panel draws is read off the id itself.
-zone)
-    sub="${1:-list}"
-    shift || true
-    case "$sub" in
-    list) ipc zone list ;;
-    find | add | remove)
-        [ $# -ge 1 ] || { echo "usage: banditshell zone $sub <place>" >&2; exit 2; }
-        ipc zone "$sub" "$*"
-        ;;
-    *) echo "usage: banditshell zone list|find <text>|add <place>|remove <place>" >&2; exit 2 ;;
-    esac
-    ;;
-
-# `up` and `down` move by the shell's configured step (the same one the wheel
-# and the sound menu use) and take an optional count of steps; `set` speaks
-# percent of the normal range, so 100 is full volume and anything above it is
-# amplification up to the shell's ceiling.
-volume)
-    sub="${1:-status}"
-    shift || true
-    case "$sub" in
-    up | down) ipc volume "$sub" "${1:-}" ;;
-    set)
-        [ $# -ge 1 ] || { echo "usage: banditshell volume set <percent>" >&2; exit 2; }
-        ipc volume set "$1"
-        ;;
-    mute) ipc volume mute "${1:-}" ;;
-    status) ipc volume status ;;
-    *) echo "usage: banditshell volume up|down [n]|set <pct>|mute [on|off]|status" >&2; exit 2 ;;
-    esac
-    ;;
-
-# Where the sound comes out, as opposed to how loud it is. `toggle` is the one
-# to bind: it goes to whichever of the two you are not on, and to the speakers
-# when you are on neither. Spelled out rather than passed through the way
-# session's is, because `assign` takes two arguments and has to be able to say
-# which of them it did not understand.
-output)
-    sub="${1:-status}"
-    shift || true
-    case "$sub" in
-    toggle | speakers | headphones | status | list) ipc output "$sub" ;;
-    assign)
-        [ $# -ge 1 ] || { echo "usage: banditshell output assign <role> <name>" >&2; exit 2; }
-        # An empty name is a real argument: it unassigns the role.
-        ipc output assign "$1" "${2:-}"
-        ;;
-    *) echo "usage: banditshell output toggle|speakers|headphones|status|list|assign <role> <name>" >&2; exit 2 ;;
-    esac
-    ;;
-
-# No `unlock` here, and that is not an oversight: see the lock handler in
-# modules/Ipc.qml. The way back in is `loginctl unlock-session`, which works
-# from a TTY and over SSH, which is where you will be if you need it.
-lock)
-    ipc lock "${1:-lock}"
-    ;;
-
-# The picker, and the ONE verb in this file that can work without the shell.
-#
-# A screenshot key that does nothing is indistinguishable from broken hardware,
-# and it is the key most likely to be pressed at the exact moment the thing
-# worth keeping is on the screen and about to stop being there. "Nothing
-# happened" is not an acceptable answer to it. So when the shell cannot be
-# reached, this falls through to the same two tools the shell itself drives -
-# slurp for the region, grim for the pixels - and takes the shot anyway.
-#
-# It is an HONEST backup rather than a quiet one, on both counts:
-#
-#   - It cannot freeze the screen first. Freezing means drawing a still over
-#     every output, which means an overlay, which means the shell. A freeze
-#     verb therefore comes back LIVE and the notification says so, instead of
-#     handing back a picture that silently is not the one that was asked for.
-#   - It still reports that the shell is down. A screenshot that worked is not
-#     a reason to stop hearing that the other eight binds did not.
-picker)
-    sub="${1:-freezeclip}"
-
-    if ipc_quiet picker "$sub"; then
-        exit 0
-    fi
-
-    # Nothing open, so nothing to close, and no fallback that would mean
-    # anything: the surface this would have dismissed does not exist.
-    if [ "$sub" = close ]; then
-        complain "not running (no picker to close)"
-        exit 1
-    fi
-
-    if ! command -v slurp >/dev/null || ! command -v grim >/dev/null; then
-        complain "not running, and no grim/slurp to fall back on"
-        exit 1
-    fi
-
-    complain "not running - falling back to grim/slurp (try: banditshell start)"
-
-    # Escape during the drag is a CANCEL, not a failure: slurp exits non-zero
-    # for both, and a cancelled screenshot should be as quiet as a successful
-    # one. Same for an empty selection, which is a click that never dragged.
-    region=$(slurp ${SLURP_ARGS:-}) || exit 0
-    if [ -z "$region" ]; then
-        exit 0
-    fi
-
-    note="banditshell was not running"
-    case "$sub" in
-    freeze*) note="$note; taken live, nothing could be frozen" ;;
-    esac
-
-    # A notification the SHELL cannot deliver, because the shell is the thing
-    # that is down. notify-send first anyway - another daemon may be up, and it
-    # renders the thumbnail - then the compositor, which is always there.
-    say() {
-        notify-send -a banditshell "$1" "$2" 2>/dev/null ||
-            hyprctl notify -1 5000 "rgb(e5c07b)" "$1 - $2" >/dev/null 2>&1 || true
-    }
-
-    case "$sub" in
-    *clip)
-        grim -g "$region" - | wl-copy --type image/png
-        say "Screenshot copied" "$note"
-        ;;
-    *)
-        # The same folder and the same editor the shell would have used, read
-        # from the config it reads, so a capture taken while it was down lands
-        # where the others did rather than somewhere only this branch knows.
-        cfg="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
-        dir=$(jq -r '.picker.dir // empty' "$cfg" 2>/dev/null || true)
-        editor=$(jq -r '.picker.editor // empty' "$cfg" 2>/dev/null || true)
-        dir="${dir:-~/Pictures/Screenshots}"
-        dir="${dir/#\~/$HOME}"
-        editor="${editor:-swappy -f}"
-
-        mkdir -p "$dir"
-        out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
-        grim -g "$region" "$out"
-        say "Screenshot saved" "$out ($note)"
-        # Unquoted on purpose: the configured editor is a command WITH its
-        # flags ("swappy -f"), the same string the shell splits when it opens
-        # one, so it has to come apart here the same way.
-        # shellcheck disable=SC2086
-        ${editor} "$out" >/dev/null 2>&1 || true
-        echo "$out"
-        ;;
-    esac
-    ;;
-
-# No `unlock` and no `answer` here, for the reason in the keyring handler in
-# modules/Ipc.qml: the card is the only way to say yes, because a password
-# passed as an argument is a password in the shell history and in every process
-# table on the machine for as long as the call takes.
-keyring)
-    sub="${1:-status}"
-    case "$sub" in
-    status | refuse | demo) ipc keyring "$sub" ;;
-    *) echo "usage: banditshell keyring status|refuse|demo" >&2; exit 2 ;;
-    esac
-    ;;
-
-# The wallpaper the shell draws itself. Most of these are a write to config.json
-# that `set wallpaper.enabled` or `set wallpaper.current` could make by hand;
-# what they add is the two a KEY needs, which is the two that have to read the
-# value before writing it: the opposite of whatever it is now, and the next one
-# along. Bare `wallpaper` is the toggle, like `settings` and `session`.
-#
-# AND A SCREEN, on the four verbs that put a picture somewhere. A wallpaper is
-# per monitor (services/Wallpaper.qml), and the argument is optional in the
-# shell's usual sense rather than absent: `""` reaches the handler and means the
-# focused screen, exactly as `menu open <key> ""` does above. `all` in the same
-# slot means every screen as one decision.
-#
-# `set` is the verb `set wallpaper.current` cannot be. That key is the DEFAULT
-# and writing it moves every screen that has not been given its own; the
-# per-screen map is keyed by output name, and config/Config.qml refuses a dotted
-# path its defaults do not name, so a monitor could not be addressed at all.
-wallpaper)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    toggle | on | off | status | palette) ipc wallpaper "$sub" ;;
-    next | prev | clear | list) ipc wallpaper "$sub" "${1:-}" ;;
-    set)
-        [ $# -ge 1 ] || { echo "usage: banditshell wallpaper set <path> [screen|all]" >&2; exit 2; }
-        # ABSOLUTE, because the shell is not standing in this directory. A
-        # relative path typed at a terminal is relative to the terminal, and the
-        # shell would take it as relative to its own working directory and load
-        # nothing at all, silently, which looks exactly like a broken wallpaper.
-        #
-        # `-s` SO THE NAME YOU TYPED IS THE NAME THAT ARRIVES. A collection is
-        # very often a symlink into a dotfiles repo, and canonicalising here put
-        # `~/dotfiles/wallpapers/.config/wallpapers/32x9/leaves.jpg` into
-        # config.json for somebody who had said `~/.config/wallpapers`: where
-        # that link lands is the repo's business, and the shell was told where
-        # the pictures are. services/Wallpaper.qml lists the folder by the same
-        # rule and tells two names for one file apart by inode instead.
-        #
-        # `-m` so the file need not exist: refusing a path here would be this
-        # script second-guessing a shell that already knows what it can decode.
-        ipc wallpaper set "$(realpath -s -m -- "$1")" "${2:-}"
-        ;;
-    *) echo "usage: banditshell wallpaper toggle|on|off|status|palette|list [screen]|next [screen]|prev [screen]|set <path> [screen|all]|clear [screen|all]" >&2; exit 2 ;;
-    esac
-    ;;
-
-# The picker, which is a surface rather than a setting: plural for the folder,
-# singular above for the one you are wearing. See the note on its IPC target.
-wallpapers)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    # A screen on the two that put the panel somewhere, because the picker is
-    # the control for THAT monitor's wallpaper now rather than for the shell's.
-    toggle | open) ipc wallpapers "$sub" "${1:-}" ;;
-    close | status) ipc wallpapers "$sub" ;;
-    *) echo "usage: banditshell wallpapers toggle [screen]|open [screen]|close|status" >&2; exit 2 ;;
-    esac
-    ;;
-
-# The chrome's master switch, and nothing else: every verb here is a write to
-# `edge.bare` in config.json (the shell's own half), and the compositor's gaps
-# and rounding are deliberately NOT ours to touch - see the REVERSED note in
-# DESIGN.md. The user's Lua bind reads the flag and applies the numbers beside
-# this call, which is why the toggle is safe to run from the shell at all.
-border)
-    ipc border "${1:-toggle}"
-    ;;
-
-status) ipc shell status ;;
-themes) ipc shell themes ;;
-theme)
-    # if/else, not `&& .. || ..`: a set that FAILS (shell down, refused key)
-    # used to fall into the get and print a second, contradictory answer.
-    if [ $# -ge 1 ]; then
-        ipc shell set theme "\"$1\""
-    else
-        ipc shell get theme
-    fi
-    ;;
-get)
-    [ $# -ge 1 ] || { echo "usage: banditshell get <key>" >&2; exit 2; }
-    ipc shell get "$1"
-    ;;
-set)
-    [ $# -ge 2 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
-    ipc shell set "$1" "$2"
-    ;;
-
-# TAB COMPLETION, and the whole of it lives in scripts/zsh-completion.sh: this
-# is a pass-through so that the thing you type is the thing this file documents.
-# It reads the header block at the top of this file to find the verbs, which is
-# why there is no list of them here to fall out of date.
+# THE OLD GRAMMAR, on the way in. A bind written before the overhaul
+# (`volume set 50`, `wallpapers toggle`, `calendar`) is not dead: it is
+# rewritten ONCE through the migration map - services/cli-migration.js, the
+# single authority on old -> new - and this script re-enters with the new
+# words. node only pays for the old forms, which fade as the map's rewriter
 completions)
     sub="${1:-status}"
     shift || true
@@ -1096,8 +942,8 @@ filespreview)
     # Floated and sized by a window rule, the way settingspreview does it: a
     # tiled preview is whatever size the layout gives it, and a file grid at
     # 2500px wide is not the grid anybody will actually use.
-    w=$(get files.width 2>/dev/null || echo 1200)
-    h=$(get files.height 2>/dev/null || echo 760)
+    w=$(ipc shell get files.width 2>/dev/null || echo 1200)
+    h=$(ipc shell get files.height 2>/dev/null || echo 760)
     hyprctl eval "hl.window_rule({ name = \"banditshell-filespreview\", match = { title = \"^(banditshell-filespreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
         hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1
     (cd "$HOME" && FILES_PREVIEW="$where" qs -p "$SHELL_DIR/filespreview.qml" >/dev/null 2>&1) &
@@ -1195,5 +1041,21 @@ gallery)
     ;;
 
 help | -h | --help) usage ;;
-*) usage >&2; exit 2 ;;
+# THE OLD GRAMMAR, on the way in. A bind written before the overhaul
+# (`volume set 50`, `wallpapers toggle`, `calendar`) is not dead: it is
+# rewritten ONCE through the migration map - services/cli-migration.js, the
+# single authority on old -> new - and this script re-enters with the new
+# words. node only pays for the old forms, which fade as the map's rewriter
+# reaches the files they live in.
+*)
+    old_args="$cmd${*:+ $*}"
+    if command -v node >/dev/null \
+        && new_args=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$old_args" 2>/dev/null) \
+        && [ -n "$new_args" ]; then
+        # shellcheck disable=SC2086
+        exec "$BASH_SOURCE" $new_args
+    fi
+    usage >&2
+    exit 2
+    ;;
 esac

@@ -546,6 +546,21 @@ Scope {
         return `${Math.round(target * 100)}%`;
     }
 
+    // RELATIVE BY PERCENT, for the CLI's `set volume +5` / `-5`: a nudge sized
+    // in the same unit `set volume 50` speaks, where `up`/`down` count steps
+    // of the shell's own size. A fraction arriving here is already a percent -
+    // the wrapper does the .5-is-50 arithmetic.
+    function nudgePercent(sign: real, pct: string): string {
+        if (!Audio.ready)
+            return "no audio sink";
+        const n = parseFloat(pct);
+        if (!isFinite(n))
+            return `not a number: ${pct}`;
+        const target = Audio.quantise(Audio.volume + sign * n / 100);
+        Audio.setVolume(target);
+        return `${Math.round(target * 100)}%`;
+    }
+
     IpcHandler {
         target: "files"
 
@@ -579,6 +594,14 @@ Scope {
 
         function down(count: string): string {
             return root.nudgeVolume(-1, count);
+        }
+
+        function upPercent(pct: string): string {
+            return root.nudgePercent(1, pct);
+        }
+
+        function downPercent(pct: string): string {
+            return root.nudgePercent(-1, pct);
         }
 
         function set(pct: string): string {
@@ -909,6 +932,25 @@ Scope {
                 return "no shell window";
             const on = win.screen?.name ?? "";
             return `${win.wallpapers.open ? "open" : "closed"} on=${on || "?"} scope=${win.wallpapers.everywhere ? "all" : "here"} showing=${Wallpaper.shownNameOn(on) || "-"} set=${Wallpaper.nameOf(Wallpaper.currentOn(on)) || "-"} of ${Wallpaper.available.length}`;
+        }
+    }
+
+    // THE MIGRATION, from a terminal: `banditshell status migration` says
+    // what the scanner found, `dispatch migration migrate` runs the rewriter.
+    // The sidebar's update icon offers the same two moves with a face on.
+    IpcHandler {
+        target: "migration"
+
+        function status(): string {
+            if (CliMigration.declined)
+                return `declined (${CliMigration.deprecated} old binds, in ${CliMigration.staleFiles.length} file(s); clear cli.bindsDeclined to be asked again)`;
+            if (CliMigration.deprecated === 0)
+                return CliMigration.scanned ? "all binds speak the new grammar" : "not scanned yet";
+            return `${CliMigration.deprecated} old bind(s) in: ${CliMigration.staleFiles.join(", ")}`;
+        }
+
+        function migrate(): string {
+            return CliMigration.migrate();
         }
     }
 

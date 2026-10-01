@@ -603,6 +603,15 @@ Singleton {
                 maxHeight: 1000
             },
 
+            cli: {
+
+                // The migration's one-way door: after the user declines the
+                // sidebar's offer to rewrite their binds, the offer stops
+                // being made - they chose to fix the config by hand, and a
+                // nag they cannot dismiss is worse than a stale bind.
+                bindsDeclined: false
+            },
+
             updates: {
 
                 branch: "main",

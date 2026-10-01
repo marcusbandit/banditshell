@@ -61,6 +61,28 @@ split_alts() {
     printf '%s\n' "$cur"
 }
 
+# Split on depth-0 spaces: a bracket or angle group is ONE token however many
+# spaces sit inside it (`[--run <cmd> | --ask <message>]`).
+tokens() {
+    local s="$1" i ch depth=0 cur=""
+    for ((i = 0; i < ${#s}; i++)); do
+        ch="${s:i:1}"
+        case "$ch" in
+        '<' | '[') depth=$((depth + 1)); cur+="$ch" ;;
+        '>' | ']') depth=$((depth - 1)); cur+="$ch" ;;
+        ' ')
+            if [ "$depth" -eq 0 ]; then
+                [ -n "$cur" ] && printf '%s\n' "$cur"
+                cur=""
+            else
+                cur+="$ch"
+            fi ;;
+        *) cur+="$ch" ;;
+        esac
+    done
+    [ -n "$cur" ] && printf '%s\n' "$cur"
+}
+
 placeholders() {
     local s="$1" i ch depth=0 cur=""
     for ((i = 0; i < ${#s}; i++)); do
@@ -142,21 +164,19 @@ read_header() {
 }
 
 value_source() {
-    local cmd="$1" sub="$2" ph="$3"
-    local key
+    local cmd="$1" sub="$2" ph="$3" key
     for key in "$cmd:$sub:$ph" "$cmd:$ph" "*:$ph"; do
         case "$key" in
-        'menu::<key>' | 'menu:open:<key>' | 'menu:toggle:<key>' | 'demo:<key>') echo menukeys; return ;;
-        'settings:page:<key>' | 'settings:open:[page]' | 'settings:[page]') echo setpages; return ;;
+        'toggle:panel:<name>' | 'open:panel:<name>' | 'close:panel:<name>' | 'status:panel:<name>' | 'demo:<key>') echo panels; return ;;
+        'dispatch:settings:<key>') echo setpages; return ;;
+        'dispatch:keyboard:<name>') echo kbpages; return ;;
+        'dispatch:launcher:<id>') echo desktopids; return ;;
+        'dispatch:zone:<place>') echo zoneinfo; return ;;
+        'dispatch:clipboard:<n>') echo clipindex; return ;;
+        'set:theme:[name]') echo themes; return ;;
         'get:<key>' | 'set:<key>') echo confkeys; return ;;
-        'theme:[name]') echo themes; return ;;
-        'keyboard:page:<name>') echo kbpages; return ;;
-        'launcher:run:<id>') echo desktopids; return ;;
-        'zone:add:<place>' | 'zone:find:<text>') echo zoneinfo; return ;;
-        'zone:remove:<place>') echo zones; return ;;
-        'clipboard:use:<n>' | 'clipboard:pin:<n>' | 'clipboard:remove:<n>') echo clipindex; return ;;
-        '*:[screen]') echo screens; return ;;
-        '*:[file]' | '*:<file>') echo files; return ;;
+        '*:[screen]' | '*:[screen|all]') echo screens; return ;;
+        '*:[file]' | '*:<file>' | '*:<path>') echo files; return ;;
         esac
     done
     echo ""
@@ -236,33 +256,40 @@ arg_slots() {
     local cmd="$1" sub="$2" args="$3"
     [ -n "$args" ] || return 0
 
-    local slot=0 tok src lits flags="" out=""
-    local ph
-    while IFS= read -r ph; do
-        [ -n "$ph" ] || continue
-
-        if [[ $ph == *--* ]]; then
-            for tok in $(printf '%s' "$ph" | grep -o -- '--[a-z][a-z-]*'); do
-                flags="$flags $tok"
-            done
+    # Slots are WORD POSITIONS, not placeholder counts: a literal word in an
+    # alternative (`dispatch clipboard use <n>`) occupies a position just like
+    # the sub once did, and the completion side counts every word after it.
+    local slot=0 tok flags="" out="" ph inner lits src
+    while IFS= read -r tok; do
+        [ -n "$tok" ] || continue
+        case "$tok" in
+        *--*)
+            # A flag group holds no slot; its flags are candidates of their own.
+            slot=$((slot - 1))
+            while IFS= read -r ph; do
+                for tok in $(printf '%s' "$ph" | grep -o -- '--[a-z][a-z-]*'); do
+                    flags="$flags $tok"
+                done
+            done < <(placeholders "$tok")
             continue
-        fi
-
-        slot=$((slot + 1))
-        local inner="${ph:1:${#ph}-2}"
-        if [[ $inner == *"|"* ]]; then
-            lits=""
-            while IFS= read -r tok; do
-                tok="$(trim "$tok")"
-                [ -n "$tok" ] && lits="$lits $tok"
-            done < <(split_alts "$inner")
-            out="$out    $(zq "$cmd $sub $slot") $(zq "literal$lits")"$'\n'
-            continue
-        fi
-
-        src="$(value_source "$cmd" "$sub" "$ph")"
-        [ -n "$src" ] && out="$out    $(zq "$cmd $sub $slot") $(zq "$src")"$'\n'
-    done < <(placeholders "$args")
+            ;;
+        '['* | '<'*)
+            slot=$((slot + 1))
+            local inner="${tok:1:${#tok}-2}"
+            if [[ $inner == *"|"* ]]; then
+                lits=""
+                while IFS= read -r l; do
+                    l="$(trim "$l")"
+                    [ -n "$l" ] && lits="$lits $l"
+                done < <(split_alts "$inner")
+                out="$out    $(zq "$cmd $sub $slot") $(zq "literal$lits")"$'\n'
+                continue
+            fi
+            src="$(value_source "$cmd" "$sub" "$tok")"
+            [ -n "$src" ] && out="$out    $(zq "$cmd $sub $slot") $(zq "$src")"$'\n'
+            ;;
+        esac
+    done < <(tokens "$args")
 
     [ -n "$flags" ] && out="$out    $(zq "$cmd $sub flags") $(zq "literal$flags")"$'\n'
     printf '%s' "$out"
@@ -313,13 +340,14 @@ _bs_source() {
     local -a vals
     case \$kind in
     themes)
-        vals=( \${(f)"\$(_bs_ipc themes)"} )
+        vals=( \${(f)"\$(_bs_ipc list themes)"} )
         (( \$#vals )) || vals=( \$_bs_themes )
         _describe -t themes 'theme' vals
         ;;
-    menukeys)
-        vals=( \${(f)"\$(_bs_ipc menu list)"} )
-        (( \$#vals )) && _describe -t menus 'menu' vals
+    panels)
+        # The fixed panels, plus every menu key the running shell knows.
+        vals=( launcher clipboard session media calculator keyboard settings notifications notch hotkeys files wallpaper penmap \${(f)"\$(_bs_ipc list menu 2>/dev/null)"} )
+        _describe -t panels 'panel' vals
         ;;
     setpages)  _describe -t pages 'page' _bs_setpages ;;
     kbpages)   _describe -t pages 'layer' _bs_kbpages ;;
@@ -340,11 +368,11 @@ _bs_source() {
         (( \$#vals )) && compadd -a vals
         ;;
     zones)
-        vals=( \${(f)"\$(_bs_ipc zone list | sed -n 's/.*(\\([A-Za-z_]*\\/[A-Za-z_+-]*\\)).*/\\1/p')"} )
+        vals=( \${(f)"\$(_bs_ipc list zone | sed -n 's/.*(\\([A-Za-z_]*\\/[A-Za-z_+-]*\\)).*/\\1/p')"} )
         (( \$#vals )) && compadd -a vals
         ;;
     clipindex)
-        vals=( \${(f)"\$(_bs_ipc clipboard list | awk -F'\t' 'NF>=4 {print \$1 ":" \$3 " " \$4}')"} )
+        vals=( \${(f)"\$(_bs_ipc list clipboard | awk -F'\t' 'NF>=4 {print \$1 ":" \$3 " " \$4}')"} )
         (( \$#vals )) && _describe -t entries 'entry' vals
         ;;
     files) _files ;;

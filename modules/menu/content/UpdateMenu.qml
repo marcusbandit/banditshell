@@ -12,6 +12,8 @@ Column {
 
     property var card: []
 
+    property bool declineConfirm: false
+
     spacing: Appearance.padding.small
 
     function offer(): void {
@@ -143,6 +145,104 @@ Column {
 
     Separator {
         width: parent.width
+    }
+
+    // THE MIGRATION CARD. The scanner found old-grammar binds in the user's
+    // hyprland config; the offer is one click (the rewriter runs, a .bak
+    // lands beside the file) and the decline is TWO clicks - the second asks,
+    // because "no" here means "I will fix the config by hand", and that is
+    // worth one moment of friction to confirm.
+    Column {
+        width: parent.width
+        visible: CliMigration.stale
+        spacing: Appearance.padding.small
+
+        StyledText {
+            width: parent.width
+            leftPadding: Appearance.padding.normal
+            text: `Your binds: ${CliMigration.deprecated} still speak the old grammar`
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.accent
+        }
+
+        StyledText {
+            width: parent.width
+            leftPadding: Appearance.padding.normal
+            visible: !root.declineConfirm
+            text: {
+                const files = CliMigration.staleFiles.map(f => f.replace(/^.*\//, "")).join(", ");
+                return `in ${files}. They work - the CLI rewrites them on the way in - but the fix is one click: migrate the file, a .bak beside it, and the icon goes quiet.`;
+            }
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.textDim
+            wrapMode: Text.WordWrap
+        }
+
+        StyledText {
+            width: parent.width
+            leftPadding: Appearance.padding.normal
+            visible: root.declineConfirm
+            text: "Are you sure you want to fix the config yourself? The binds keep working, but this offer will not come back."
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.updateFailed
+            wrapMode: Text.WordWrap
+        }
+
+        Row {
+            width: parent.width
+            visible: !root.declineConfirm
+            spacing: Appearance.padding.small
+            leftPadding: Appearance.padding.normal
+
+            Button {
+                text: "Migrate the binds"
+                icon: "published_with_changes"
+                onClicked: CliMigration.migrate()
+            }
+
+            Button {
+                text: "I'll fix it myself"
+                icon: "edit"
+                onClicked: root.declineConfirm = true
+            }
+        }
+
+        Row {
+            width: parent.width
+            visible: root.declineConfirm
+            spacing: Appearance.padding.small
+            leftPadding: Appearance.padding.normal
+
+            Button {
+                text: "No - migrate"
+                icon: "published_with_changes"
+                onClicked: root.declineConfirm = false
+            }
+
+            Button {
+                text: "Yes - leave my config alone"
+                icon: "check"
+                onClicked: {
+                    root.declineConfirm = false;
+                    CliMigration.decline();
+                }
+            }
+        }
+
+        StyledText {
+            width: parent.width
+            leftPadding: Appearance.padding.normal
+            visible: CliMigration.lastResult !== ""
+            text: CliMigration.lastResult
+            font.pixelSize: Appearance.font.size.small
+            color: Appearance.colour.textFaint
+            wrapMode: Text.WordWrap
+        }
+    }
+
+    Separator {
+        width: parent.width
+        visible: CliMigration.stale
     }
 
     Button {

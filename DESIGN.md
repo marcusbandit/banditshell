@@ -1000,42 +1000,77 @@ already known to work.
 
 ```
 banditshell start|stop|restart|run|log
-banditshell menu list|open <key>|close|toggle <key>|current|hover
-banditshell launcher toggle|open|close|scrub <0..1>
-banditshell clipboard toggle|open|close|list|use <n>|pin <n>|remove <n>|clear|status
-banditshell session toggle|open|close
-banditshell settings toggle|open [page]|close|page <key>|pull|put|status
-banditshell notifications toggle|open|close|clear|status
-banditshell notch toggle|open|close|status
-banditshell hotkeys toggle|open|close|status
-banditshell calendar               sugar for `menu toggle calendar`
-banditshell volume up|down [n]|set <pct>|mute [on|off]|status
-banditshell lock [status]          one direction; `loginctl unlock-session` is the way back
-banditshell keyring status|refuse|demo
-                                   the keyring's question. `status` says whether the shell is
-                                   actually the prompter, which nothing on screen can; `demo`
-                                   draws a made-up one, because this panel cannot be summoned
-                                   by any gesture at all. No verb answers one: a password on a
-                                   command line is a password in the shell history
-banditshell picker open|freeze|clip|freezeclip|close
-banditshell wallpaper toggle|on|off|next|prev|status
-banditshell wallpapers toggle|open|close|status   the picker; the edge's second swipe
-banditshell sidebar off [screen|all]|on [screen|all]|toggle [screen|all]|status   the column, per monitor
-banditshell border toggle|on|off|status           the whole chrome, bare mode
-banditshell status                 what the shell thinks the compositor said
-banditshell theme [name] | themes
-banditshell get <key> | set <key> <value>
+banditshell toggle panel <name> [screen]|border|wallpaper
+                                  |sidebar [screen|all]|output|tablet [caller]
+                                  |tablet lid [caller]|volume mute
+banditshell open panel <name> [args]
+banditshell close panel <name>     bare `close` shuts every surface - the rescue
+banditshell status panel <name> [screen]
+banditshell set border [on|off]|wallpaper [on|off]
+                                  |sidebar [on|off] [screen|all]
+                                  |tablet [on|off] [caller]
+                                  |tablet lid [closed|open] [caller]
+                                  |volume [<pct>|+n|-n]|volume mute [on|off]
+                                  |output [speakers|headphones]
+                                  |theme [name]|penmap rect <x> <y> <w> <h>
+                                  |<key> <value>       the shell's config
+banditshell get <key>|theme
+banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
+banditshell status [thing]         bare, what the shell thinks the compositor said
+banditshell dispatch <target> <action> [args...]
+                                   the bespoke tail: timer start <duration>
+                                   [label]|pause|resume|toggle|cancel [handle];
+                                   alarm snooze|stop|enable|disable|remove
+                                   <handle>|add <time> [--days <spec>] [--label
+                                   <text>] [--run <cmd> | --ask <message>]; zone
+                                   find|add|remove <place>; clipboard use|pin|
+                                   remove <n>|clear; calculator answer
+                                   <expression>|app|panel; keyboard page <name>|
+                                   dock|float; settings page <key>|float; launcher
+                                   run <id>|scrub <0..1>; wallpaper next|prev|clear
+                                   [screen|all]|palette; menu current|hover; penmap
+                                   commit|cancel|aspect|follow; keyring refuse|demo;
+                                   tablet probe [lid]; picker open|freeze|clip|
+                                   freezeclip|close (grim/slurp when the shell is
+                                   down); migration migrate; lock
 banditshell completions install|print|status|remove   tab completion, in zsh
-banditshell shot [file]
-banditshell demo <key>             open, screenshot, close
-banditshell files toggle|open [path]|close|status   the browser, in its own window
-banditshell lockpreview            the lock screen's look, without the lock
-banditshell filespreview [dir]     the browser in a plain window; no timeout, because
-                                   a terminal you cannot type into is not a terminal
-banditshell shaders                recompile components/blob/*.frag
+banditshell shot [file]|demo <key>|gallery [WxH]
+banditshell lockpreview|settingspreview [WxH] [page] [file]|filespreview [dir]
+banditshell shaders                recompile components/**/*.frag
 banditshell build                  compile src/*.c into bin/ (bs-pty, bs-ls)
 banditshell test                   node --test over tests/*.test.js
 ```
+
+The grammar is **generic-first: verb, then object, then the args that define it** -
+`banditshell toggle panel notifications` reads off the front, and every panel answers
+to the same four verbs (`toggle`/`open`/`close`/`status panel <name>`). The bespoke
+tail that no generic verb can carry lives one level down, behind `dispatch`, and is
+the ONLY place it is allowed to live: adding a verb to a panel means adding a line to
+the dispatch router, not a second top-level word.
+
+Two grammar laws, said plainly. **Booleans answer to both `toggle` and `set`, and the
+road is one-way**: everything toggleable can be set explicitly (`toggle border` and
+`set border on` are the same door), but a thing that is not on/off - the volume's
+number, a wallpaper's path - answers to `set` alone. **A fraction is a percent**:
+`set volume .5` is 50%, `+.5` is +50, and a bare `+` or `-` is one step of the
+shell's own size, which is what the wheel uses.
+
+**The picker lost its plural.** The old grammar named the worn picture `wallpaper`
+and the panel that picks it `wallpapers`, one letter apart, and both meant "the
+wallpaper" to everybody who typed them. The new grammar has the one noun:
+`set wallpaper <path>` wears it, `toggle panel wallpaper` opens the picker for it.
+The IPC target stays `wallpapers`; only the words changed.
+
+**Old binds are not dead, and the user is not sent to a manual.** Every shell start,
+`services/CliMigration.qml` scans the hyprland config for binds still speaking the
+old grammar - `services/cli-migration.js` is the ONE authority on old → new, a rule
+table the scanner, the rewriter and the CLI's own fallback all read. Until the user
+acts, those binds work: the wrapper rewrites any old form through the map on the way
+in. The sidebar's update icon wears a "published_with_changes" glyph while old binds
+exist, and its menu offers the one-click rewrite (a .bak beside the file). Refusing
+is a two-click path - the second asks, because "no" means "I will fix the config by
+hand" - and a confirmed refusal is written to `cli.bindsDeclined` and never nagged
+about again.
 
 **Tab completion is generated, not written.** `scripts/zsh-completion.sh` parses the comment
 block at the top of `bin/banditshell` (the same block `banditshell help` prints) and emits the

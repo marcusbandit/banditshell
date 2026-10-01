@@ -10,7 +10,14 @@ Item {
 
     readonly property string state: Update.state
 
+    // The migration's claim on the icon: until the old binds are rewritten or
+    // the user has confirmed they will fix the config by hand, the icon says
+    // so - same tint as an update waiting, a different glyph.
+    readonly property bool stale: CliMigration.stale
+
     readonly property string glyph: {
+        if (root.stale)
+            return "published_with_changes";
         if (root.state === Update.idle)
             return "sync";
         if (root.state === Update.downloaded)
@@ -23,9 +30,11 @@ Item {
         return "system_update_alt";
     }
 
-    readonly property real markSize: root.state === Update.idle ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
+    readonly property real markSize: root.state === Update.idle && !root.stale ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
 
     readonly property color tint: {
+        if (root.stale)
+            return Appearance.colour.updateReady;
         if (root.state === Update.idle)
             return press.containsMouse ? Appearance.colour.text : Appearance.colour.textDim;
         if (root.state === Update.downloaded)
