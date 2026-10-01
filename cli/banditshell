@@ -9,21 +9,11 @@
 #                                the shell itself: detach and prove it, stop,
 #                                restart, foreground with the QML errors, the
 #                                log
-#   banditshell toggle panel <name> [screen]
-#                                any surface, out or away: the fixed panels
-#                                below, and every menu key (`list menu`)
-#   banditshell open panel <name> [args]
-#                                open it without reading its state first:
-#                                settings takes a page then a screen, files a
-#                                path, the rest a screen
-#   banditshell close panel <name>
-#                                put one surface away (it reaches every
-#                                screen on purpose); bare `close` is the
-#                                rescue at the bottom
-#   banditshell status panel <name> [screen]
 #   banditshell toggle panel <name> [screen]|border|wallpaper
 #        sidebar [screen|all]|output|tablet [caller]|tablet lid [caller]
 #        volume mute
+#                                any surface, out or away: the fixed panels
+#                                below, and every menu key (`list menu`); and
 #                                the boolean states, flipped: the chrome's
 #                                bare mode, the wallpaper runner, the
 #                                keyboard-side column per monitor, the
@@ -31,6 +21,23 @@
 #                                says who asks - the compositor's switch binds
 #                                pass `compositor`), mute. The level itself is
 #                                a number: set, not toggle
+#   banditshell open panel <name> [args]
+#                                open it without reading its state first:
+#                                settings takes a page then a screen, files a
+#                                path, the rest a screen
+#   banditshell close panel <name>
+#                                put one surface away (it reaches every
+#                                screen on purpose). BARE, `close` with
+#                                nothing after it, shuts every surface: the
+#                                rescue, one word on purpose, because a
+#                                surface holding the keyboard leaves no window
+#                                focused and swallows clicks. Bind it; you
+#                                cannot type your way out
+#   banditshell status panel <name> [screen]|border|sidebar|volume
+#        |output|tablet|penmap|wallpaper|timer|alarm|lock|keyring
+#        |migration
+#                                what a thing is doing; bare, the shell
+#                                itself
 #   banditshell set border [on|off]|wallpaper [on|off]
 #        sidebar [on|off] [screen|all]|tablet [on|off] [caller]
 #        tablet lid [closed|open] [caller]|volume [<pct>|+n|-n]
@@ -43,12 +50,13 @@
 #                                shell's config, dotted keys
 #   banditshell get <key>|theme
 #   banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
-#   banditshell status [thing]
-#                                bare, the shell itself; else border, sidebar,
-#                                volume, output, tablet, penmap, wallpaper,
-#                                timer, alarm, lock, keyring, panel <name>
-#   banditshell dispatch <target> <action> [args...]
-#                                the bespoke tail, target by target: timer
+#   banditshell dispatch timer <action>|alarm <action>|zone <action>
+#        clipboard <action>|calculator <action>|keyboard <action>
+#        settings <action>|launcher <action>|wallpaper <action>
+#        menu <action>|penmap <action>|keyring <action>|tablet <action>
+#        migration <action>|picker <action>|lock
+#                                the bespoke tail, target by target. What
+#                                each target answers: timer
 #                                start <duration> [label]|pause|resume|toggle|
 #                                cancel [handle]; alarm snooze|stop|enable|
 #                                disable|remove <handle>|add <time> [--days
@@ -61,15 +69,11 @@
 #                                <0..1>; wallpaper next|prev|clear [screen|
 #                                all]|palette; menu current|hover; penmap
 #                                commit|cancel|aspect|follow; keyring
-#                                refuse|demo; tablet probe [lid]; lock
-#   banditshell dispatch picker open|freeze|clip|freezeclip|close
-#                                the screenshot picker. It is the ONE verb
-#                                that can work without the shell: it falls
-#                                back to grim/slurp, so the key always shoots
-#   banditshell close            shut every surface. THE WAY OUT if the desktop
-#                                looks frozen: a surface holding the keyboard
-#                                leaves no window focused and swallows clicks.
-#                                Bind it; you cannot type your way out.
+#                                refuse|demo; tablet probe [lid]; migration
+#                                migrate; picker open|freeze|clip|freezeclip|
+#                                close - the ONE target that can work without
+#                                the shell, falling back to grim/slurp, so
+#                                the key always shoots
 #   banditshell completions install|print|status|remove
 #                                tab completion in zsh for every verb above,
 #                                GENERATED from this comment block rather than
