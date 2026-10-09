@@ -9,6 +9,12 @@
 #                                the shell itself: detach and prove it, stop,
 #                                restart, foreground with the QML errors, the
 #                                log
+#   banditshell doctor
+#                                the checkout checked, and repaired where the
+#                                repair is machine-local: bin/ rebuilt from
+#                                cli/, the C helpers compiled, the exec
+#                                symlink restored; then quickshell, dkms and
+#                                failed units said out loud
 #   banditshell toggle panel <name> [screen]|border|wallpaper
 #        sidebar [screen|all]|output|tablet [caller]|tablet lid [caller]
 #        volume mute
@@ -321,6 +327,21 @@ start_backup() {
 # Print the header comment block, however long it happens to be. A hardcoded
 # line range silently starts printing the code once the header changes length.
 usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
+
+# REBUILD THE MACHINE-LOCAL PARTS OF THE CHECKOUT, without sudo, without the
+# installer UI. bin/ is gitignored build output, so a fresh clone, a `git
+# clean`, or an eager disk cleanup leaves the desktop exec'ing a path that no
+# longer exists - and the script that could fix things is the thing that is
+# gone. This is only ever reached through a copy that git carries (cli/), so
+# it can put bin/ back from the checkout alone. Missing PACKAGES are not
+# machine-local state and stay install.sh's job.
+ensure_built() {
+    if [ ! -x "$SHELL_DIR/bin/banditshell" ] || [ "$SHELL_DIR/cli/banditshell" -nt "$SHELL_DIR/bin/banditshell" ]; then
+        install -Dm755 "$SHELL_DIR/cli/banditshell" "$SHELL_DIR/bin/banditshell" || return 1
+    fi
+    [ -x "$SHELL_DIR/bin/bs-pty" ] && [ -x "$SHELL_DIR/bin/bs-ls" ] && return 0
+    "$SHELL_DIR/bin/banditshell" build >/dev/null 2>&1 || return 1
+}
 
 # A fraction is a percent: `.5` is 50, `.32` is 32. Whole numbers pass through
 # untouched, so `set volume 50` still means 50 and the shell's own
@@ -774,6 +795,7 @@ shift || true
 case "$cmd" in
 start)
     running && { echo "already running"; exit 0; }
+    ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
     if launch "$SHELL_DIR"; then
         refresh_backup
         echo "started"
@@ -799,6 +821,7 @@ restart)
         pgrep -x qs >/dev/null 2>&1 || break
         sleep 0.05
     done
+    ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
     if launch "$SHELL_DIR"; then
         refresh_backup
         echo "restarted"
@@ -817,6 +840,31 @@ run)
     ;;
 log)
     exec qs -p "$SHELL_DIR" log "$@"
+    ;;
+doctor)
+    if ensure_built; then
+        echo "bin/ current, helpers in place"
+    else
+        complain "bin/ not rebuilt (run: bash $SHELL_DIR/install.sh)"
+    fi
+    mkdir -p "$HOME/bin"
+    if [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$SHELL_DIR/bin/banditshell" ]; then
+        ln -sfn "$SHELL_DIR/bin/banditshell" "$HOME/bin/banditshell"
+        echo "exec symlink restored: ~/bin/banditshell"
+    fi
+    if command -v qs >/dev/null 2>&1; then
+        echo "quickshell $(qs --version 2>/dev/null | head -1)"
+    else
+        complain "quickshell missing (run: bash $SHELL_DIR/install.sh)"
+    fi
+    if command -v dkms >/dev/null 2>&1 && dkms status 2>/dev/null | grep -q . && ! dkms status 2>/dev/null | grep -q "$(uname -r)"; then
+        complain "no dkms module built for the running kernel $(uname -r); a reboot may come up without graphics (update again, or boot the older kernel)"
+    fi
+    failed=$(systemctl --failed --no-pager 2>/dev/null | sed -n 's/^\(.*\.service\).*/\1/p' | tr '\n' ' ')
+    if [ -n "$failed" ]; then
+        echo "failed units (machine state, not the shell): $failed"
+    fi
+    echo "the shell itself: $(running && echo running || echo 'not running (try: banditshell start)')"
     ;;
 
 # THE GENERIC VERBS, routed. Every one of these used to be a noun-first arm
