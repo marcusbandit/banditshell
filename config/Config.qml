@@ -346,6 +346,25 @@ Singleton {
                 grabFraction: 0.3
             },
 
+            screen: {
+
+                warmth: 3000,
+
+                level: 100,
+
+                warmest: 2000,
+
+                neutral: 6500,
+
+                linger: 1200,
+
+                grabFraction: 0.3,
+
+                sliderWidth: 180,
+
+                valueWidth: 52
+            },
+
             network: {
 
                 checkForInternet: true,

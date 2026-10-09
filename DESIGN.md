@@ -483,6 +483,18 @@ banditshell/
 │   ├── Bluetooth.qml            bluez: adapter and devices
 │   ├── Media.qml                MPRIS, with a stable choice of player
 │   ├── SystemInfo.qml            /proc and /sys: cpu, memory, temperature
+│   ├── Display.qml              the screen's comfort: brightness over DDC/CI
+│   │                            (ddcutil, one strictly serial queue,
+│   │                            --noverify, and NEVER a readback - Samsung
+│   │                            Odyssey firmware reports 1% whatever the
+│   │                            truth, so the shell caches the last-set
+│   │                            level and owns it, persisted like warmth)
+│   │                            and colour warmth through bin/bs-gamma, a
+│   │                            daemon that OUTLIVES the shell (guarded
+│   │                            spawn, state file in ~/.local/state, polled
+│   │                            every 300ms) so Hyprland's LUT reset - a
+│   │                            full-brightness flash - never runs at
+│   │                            restart
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, and a poster frame per video
 │   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
@@ -584,7 +596,16 @@ banditshell/
 │   │   ├── MediaPreview.qml     what is playing, the launcher's block, under the time
 │   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
 │   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
-│   ├── VolumeRail.qml           scroll the right edge; a pill three glyphs tall answers
+│   ├── VolumeRail.qml           the volume pill on the right edge; DISABLED
+│   │                            2026-10-09 (not mounted in ShellWindow), kept
+│   │                            because the QuickControls edge grew out of it
+│   ├── quickcontrols/
+│   │   └── QuickControls.qml    the right edge's whole answer: one card, three
+│   │                            rows - sound, brightness, warmth - each an
+│   │                            icon, a slider, a live value. The edge grab
+│   │                            rail keeps the volume's drag and wheel, so
+│   │                            the old muscle memory still works; the
+│   │                            warmth row wears the colour it sets
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots

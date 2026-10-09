@@ -11,6 +11,7 @@ import qs.modules.keyboard
 import qs.modules.media
 import qs.modules.keyring
 import qs.modules.menu
+import qs.modules.quickcontrols
 import qs.modules.launcher
 import qs.modules.notifications
 import qs.modules.session
@@ -41,6 +42,7 @@ PanelWindow {
 
     readonly property NotificationTray notifications: popups
     readonly property SummonZone notch: topNotch
+    readonly property QuickControls quickControls: quickLayer
 
     readonly property var statusItems: sidebar.menuItems
     readonly property var statusKeys: sidebar.menuKeys
@@ -193,12 +195,12 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
-            item: volumeRail.active ? volumeRail.maskItem : null
+            item: quickLayer.active ? quickLayer.maskItem : null
         }
 
         Region {
             intersection: Intersection.Combine
-            item: Appearance.bare ? null : volumeRail.grabItem
+            item: Appearance.bare ? null : quickLayer.grabItem
         }
 
         Region {
@@ -232,6 +234,8 @@ PanelWindow {
                 calcLayer.hide();
             else if (mediaLayer.open)
                 mediaLayer.hide();
+            else if (quickLayer.pinned)
+                quickLayer.pinned = false;
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
             else if (topNotch.wantsEscape)
@@ -262,7 +266,7 @@ PanelWindow {
 
             anchors.fill: parent
 
-            panels: [...body.barBlobs, ...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...volumeRail.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs]
+            panels: [...body.barBlobs, ...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs]
         }
 
         Sidebar {
@@ -616,8 +620,8 @@ PanelWindow {
             border: win.border
         }
 
-        VolumeRail {
-            id: volumeRail
+        QuickControls {
+            id: quickLayer
 
             anchors.fill: parent
             border: win.border

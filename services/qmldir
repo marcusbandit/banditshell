@@ -11,6 +11,7 @@ singleton Clipboard 1.0 Clipboard.qml
 singleton Clock 1.0 Clock.qml
 singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
+singleton Display 1.0 Display.qml
 FilePane 1.0 FilePane.qml
 singleton Files 1.0 Files.qml
 singleton HyprConfig 1.0 HyprConfig.qml

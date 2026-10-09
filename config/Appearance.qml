@@ -309,6 +309,13 @@ Singleton {
         readonly property int volumeLinger: root.cfg.volume.linger
         readonly property real volumeGrabFraction: root.cfg.volume.grabFraction
 
+        readonly property int screenWarmest: root.cfg.screen.warmest
+        readonly property int screenNeutral: root.cfg.screen.neutral
+        readonly property int screenLinger: root.cfg.screen.linger
+        readonly property real screenGrabFraction: root.cfg.screen.grabFraction
+        readonly property int screenSliderWidth: root.cfg.screen.sliderWidth
+        readonly property int screenValueWidth: root.cfg.screen.valueWidth
+
         readonly property int usageCapHours: root.cfg.usage.capHours
 
         readonly property bool calendarRightGoesForward: root.cfg.calendar.rightGoesForward

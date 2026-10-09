@@ -633,6 +633,70 @@ Scope {
         }
     }
 
+    IpcHandler {
+        target: "quickcontrols"
+
+        function toggle(): string {
+            const win = Shell.showing(w => w.quickControls.pinned);
+            if (!win)
+                return "no shell window";
+            win.quickControls.pinned = !win.quickControls.pinned;
+            return win.quickControls.pinned ? "open" : "closed";
+        }
+
+        function open(): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return "no shell window";
+            win.quickControls.pinned = true;
+            return "open";
+        }
+
+        function close(): string {
+            for (const win of Shell.windows)
+                win.quickControls.pinned = false;
+            return "closed";
+        }
+
+        function status(): string {
+            const win = Shell.forScreen("");
+            return `pinned=${win?.quickControls.pinned ?? false}`;
+        }
+    }
+
+    IpcHandler {
+        target: "screen"
+
+        function brightness(value: string): string {
+            if (!Display.brightnessReady)
+                return "no display answers DDC";
+            const n = parseFloat(value);
+            if (!isFinite(n))
+                return `not a number: ${value}`;
+            if (!Display.levelKnown)
+                return "brightness not read yet, ask again in a moment";
+            const relative = value.startsWith("+") || value.startsWith("-");
+            Display.setLevel(relative ? Display.level + n / 100 : n / 100);
+            return `${Math.round(Display.level * 100)}%`;
+        }
+
+        function temperature(value: string): string {
+            if (value === "off") {
+                Display.setWarmth(0);
+                return "off";
+            }
+            const n = parseInt(value, 10);
+            if (!isFinite(n) || n <= 0)
+                return `not a kelvin number or "off": ${value}`;
+            Display.setWarmth(n);
+            return `${Display.kelvin}K`;
+        }
+
+        function status(): string {
+            return Display.status();
+        }
+    }
+
     function roleLine(role: string): string {
         const node = Audio.roleNode(role);
         return node ? `${role} (${Audio.deviceLabel(node)})` : role;

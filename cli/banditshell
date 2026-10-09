@@ -41,19 +41,22 @@
 #                                cannot type your way out
 #   banditshell status panel <name> [screen]|border|sidebar|volume
 #        |output|tablet|penmap|wallpaper|timer|alarm|lock|keyring
-#        |migration
+#        |migration|screen
 #                                what a thing is doing; bare, the shell
 #                                itself
 #   banditshell set border [on|off]|wallpaper [on|off]
 #        sidebar [on|off] [screen|all]|tablet [on|off] [caller]
 #        tablet lid [closed|open] [caller]|volume [<pct>|+n|-n]
 #        volume mute [on|off]|output [speakers|headphones]
+#        brightness [<pct>|+n|-n]|temperature [<K>|off]
 #        theme [name]|penmap rect <x> <y> <w> <h>|<key> <value>
 #                                the same states, explicit, and everything
 #                                that only set has: a fraction is a percent,
 #                                .5 is 50, .32 is 32; +n/-n moves relative, a
-#                                bare + or - one step; <key> <value> is the
-#                                shell's config, dotted keys
+#                                bare + or - one step; brightness is DDC/CI
+#                                on every screen, temperature is the colour
+#                                warmth in kelvin (off is neutral); <key>
+#                                <value> is the shell's config, dotted keys
 #   banditshell get <key>|theme
 #                                read one value back: a dotted config key, or
 #                                the theme's name
@@ -368,14 +371,14 @@ panel_ipc() {
 # `status` arity is not uniform: the screen-bearing panels declare the
 # parameter, the rest declare none, and an empty argument to one of those is
 # a "too many arguments" error rather than a quiet one.
-panel_status_ok() { case "$1" in clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | wallpaper | penmap) return 0 ;; *) return 1 ;; esac; }
+panel_status_ok() { case "$1" in clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | wallpaper | penmap | quickcontrols) return 0 ;; *) return 1 ;; esac; }
 panel_status_takes_screen() { case "$1" in keyboard | notifications | notch | hotkeys) return 0 ;; *) return 1 ;; esac; }
 
 toggle_panel() { # <name> [screen]
     local name="$1" rest="${2:-}"
     case "$name" in
     launcher | session) ipc "$(panel_ipc "$name")" toggle ;;
-    clipboard | media | calculator) ipc "$name" toggle ;;
+    clipboard | media | calculator | quickcontrols) ipc "$name" toggle ;;
     keyboard) ipc keyboard toggle "$rest" ;;
     settings) ipc settings toggle ;;
     notifications | notch | hotkeys) ipc "$name" toggle "$rest" ;;
@@ -391,7 +394,7 @@ open_panel() { # <name> [args...]
     local name="$1"; shift
     case "$name" in
     launcher | session) ipc "$(panel_ipc "$name")" open ;;
-    clipboard | media | calculator) ipc "$name" open ;;
+    clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
     keyboard) ipc keyboard open "${1:-}" ;;
     settings) ipc settings open "${1:-}" "${2:-}" ;;
     notifications | notch | hotkeys) ipc "$name" open "${1:-}" ;;
@@ -405,7 +408,7 @@ open_panel() { # <name> [args...]
 close_panel() { # <name>
     case "$1" in
     launcher | session) ipc "$(panel_ipc "$1")" close ;;
-    clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files) ipc "$1" close ;;
+    clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | quickcontrols) ipc "$1" close ;;
     wallpaper) ipc wallpapers close ;;
     picker) ipc picker close ;;
     *) ipc menu close ;;
@@ -735,6 +738,15 @@ route_verb() {
             *.*) ipc volume set "$(pct_of "$1")" ;;
             *) ipc volume set "$1" ;;
             esac ;;
+        brightness)
+            [ $# -ge 1 ] || { echo "usage: banditshell set brightness <pct>|+n|-n" >&2; exit 2; }
+            case "$1" in
+            *.*) ipc screen brightness "$(pct_of "$1")" ;;
+            *) ipc screen brightness "$1" ;;
+            esac ;;
+        temperature)
+            [ $# -ge 1 ] || { echo "usage: banditshell set temperature <K>|off" >&2; exit 2; }
+            ipc screen temperature "$1" ;;
         output)
             [ $# -ge 1 ] || { echo "usage: banditshell set output speakers|headphones|<role> <name>" >&2; exit 2; }
             case "$1" in
@@ -782,7 +794,7 @@ route_verb() {
         "") ipc shell status ;;
         panel) [ $# -ge 1 ] || { echo "usage: banditshell status panel <name> [screen]" >&2; exit 2; }
             status_panel "$1" "${2:-}" ;;
-        border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration) ipc "$obj" status ;;
+        border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration | screen) ipc "$obj" status ;;
         *) echo "banditshell: no status for: $obj" >&2; exit 2 ;;
         esac
         ;;
@@ -930,10 +942,11 @@ files)
 # and has nowhere to run a build step - the same reason `shaders` exists, and the
 # same bargain: the binary is build output that lives next to its source.
 #
-# Not a Makefile. Two translation units with no options between them do not need
-# one, and a build system would be a second thing to install before the shell
-# runs at all.
-build)
+    # Not a Makefile. Translation units listed per target with the flags each
+    # one needs: bs-pty wants -lutil, bs-gamma wants the wayland client and
+    # libm, bs-ls wants nothing. A build system would be a second thing to
+    # install before the shell runs at all.
+    build)
     cc="${CC:-gcc}"
     command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
     mkdir -p "$SHELL_DIR/bin"
@@ -944,6 +957,8 @@ build)
     echo "src/bs-pty.c -> bin/bs-pty"
     "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c"
     echo "src/bs-ls.c -> bin/bs-ls"
+    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-gamma" "$SHELL_DIR/src/bs-gamma.c" "$SHELL_DIR/src/gamma-client-protocol.c" $(pkg-config --libs wayland-client 2>/dev/null || echo "-lwayland-client") -lm
+    echo "src/bs-gamma.c -> bin/bs-gamma"
     ;;
 
 shaders)
