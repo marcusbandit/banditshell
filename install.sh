@@ -112,7 +112,7 @@ cli_installed() {
 }
 
 install_cli() {
-    install -m755 "$REPO/cli/banditshell" "$REPO/bin/banditshell" || return 1
+    install -Dm755 "$REPO/cli/banditshell" "$REPO/bin/banditshell" || return 1
     user_own "$REPO/bin/banditshell"
 }
 
