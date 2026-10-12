@@ -154,7 +154,6 @@ Item {
                 root.hide();
                 break;
             case Qt.Key_Space:
-
                 if (!event.isRepeat)
                     Media.toggle();
                 break;

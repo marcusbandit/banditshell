@@ -8,7 +8,6 @@ QtObject {
     readonly property string base: "letters"
 
     readonly property var layers: ({
-
             letters: [
                 [
                     {

@@ -117,7 +117,6 @@ Item {
     }
 
     function show(key: string, title: string, body: Component, centreY: real, pin: bool): void {
-
         const wasClosed = !root.open;
 
         const swapping = key !== root.currentKey;
@@ -131,7 +130,6 @@ Item {
             panel.swap();
         root.requestedCentre = centreY;
         if (wasClosed) {
-
             centre.snap();
 
             root.sawPointer = root.shellHovered;
@@ -178,7 +176,6 @@ Item {
         interval: Appearance.anim.grace
 
         onTriggered: {
-
             if (root.pinned || root.hovered || root.shellHovered || root.needsKeyboard)
                 return;
 
@@ -262,7 +259,6 @@ Item {
         id: keys
 
         Keys.onPressed: event => {
-
             if (event.key === Qt.Key_Escape && root.open) {
                 root.hide();
                 event.accepted = true;

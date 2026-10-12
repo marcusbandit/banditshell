@@ -170,10 +170,8 @@ Item {
         } else {
             const chord = mods.filter(m => m !== "shift");
             if (chord.length) {
-
                 Keystrokes.type(key.lo, mods);
             } else {
-
                 Keystrokes.type(root.latched.includes("shift") ? (key.up ?? key.lo) : key.lo, []);
             }
         }

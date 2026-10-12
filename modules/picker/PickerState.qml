@@ -66,7 +66,6 @@ Scope {
         const out = `${Config.values.picker.dir.replace("~", Quickshell.env("HOME"))}/banditshell-${root.stamp}.png`;
 
         if (root.freeze) {
-
             const frozen = root.take(screen.name);
 
             if (!frozen)

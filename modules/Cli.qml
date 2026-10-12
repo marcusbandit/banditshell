@@ -546,10 +546,6 @@ Scope {
         return `${Math.round(target * 100)}%`;
     }
 
-    // RELATIVE BY PERCENT, for the CLI's `set volume +5` / `-5`: a nudge sized
-    // in the same unit `set volume 50` speaks, where `up`/`down` count steps
-    // of the shell's own size. A fraction arriving here is already a percent -
-    // the wrapper does the .5-is-50 arithmetic.
     function nudgePercent(sign: real, pct: string): string {
         if (!Audio.ready)
             return "no audio sink";
@@ -999,9 +995,6 @@ Scope {
         }
     }
 
-    // THE MIGRATION, from a terminal: `banditshell status migration` says
-    // what the scanner found, `dispatch migration migrate` runs the rewriter.
-    // The sidebar's update icon offers the same two moves with a face on.
     IpcHandler {
         target: "migration"
 
@@ -1072,7 +1065,6 @@ Scope {
         let hour = Number(m[1]);
         const minute = m[2] === undefined ? 0 : Number(m[2]);
         if (m[3]) {
-
             if (hour < 1 || hour > 12)
                 return -1;
             hour = (hour % 12) + (m[3] === "pm" ? 12 : 0);
@@ -1099,7 +1091,6 @@ Scope {
             return all.slice(root.dayNames.indexOf("sat"));
         const out = [];
         for (const part of want.split(",")) {
-
             const ends = part.split("-").map(word => root.dayNames.indexOf(word.slice(0, 3)));
             if (ends.length > 2 || ends.some(i => i < 0))
                 return null;
@@ -1464,7 +1455,6 @@ Scope {
         }
 
         function themes(): string {
-
             return Themes.availableNames.map(n => n === Themes.activeName ? `* ${n}` : `  ${n}`).join("\n");
         }
 

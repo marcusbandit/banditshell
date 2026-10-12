@@ -101,7 +101,6 @@ Item {
             return root.history[i] ?? 0;
 
         if (root.phase === "processing") {
-
             const p = i / (root.barCount - 1);
             const t = flow.t;
             const wave = 0.30 * Math.sin(2 * Math.PI * (1.3 * p - t))
@@ -162,7 +161,6 @@ Item {
 
         onUpChanged: {
             if (!up) {
-
                 root.phase = "idle";
                 root.resetHistory();
             }

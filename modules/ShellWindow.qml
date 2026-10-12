@@ -73,7 +73,6 @@ PanelWindow {
         running: WhatsNew.ready
 
         onTriggered: {
-
             if (WhatsNew.pending.length > 0 && Shell.forScreen("") === win)
                 win.openMenu("update", true);
         }

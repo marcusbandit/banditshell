@@ -34,11 +34,6 @@ Item {
 
     readonly property real cornerRadius: Appearance.rounding.large
 
-    // HOW WIDE THE MENU NEEDS TO BE. The configured width is the shape menus
-    // wear by default; a page's body may DEMAND more - a row of buttons that
-    // cannot wrap and would otherwise be cut at the edge - through a
-    // `menuWidthHint` on its root item. The panel grows to the demand and
-    // never shrinks below the configured shape.
     readonly property int configuredWidth: Appearance.sizes.menuWidth
 
     property real widthHint: 0
@@ -170,8 +165,6 @@ Item {
                 onImplicitHeightChanged: if (current)
                     root.pageHeight = implicitHeight
 
-                // The body may demand width (a row of buttons that cannot
-                // wrap); the panel grows to the current page's demand.
                 readonly property real widthHint: bodyLoader.item && bodyLoader.item.menuWidthHint !== undefined ? bodyLoader.item.menuWidthHint : 0
 
                 onWidthHintChanged: if (current)
@@ -189,9 +182,6 @@ Item {
 
                 onPageBodyChanged: view.contentY = 0
 
-                // A menu with no title draws no heading and no rule: the
-                // body starts on the panel's own line. The updater opts out -
-                // "UPDATE · MAIN" said nothing the state line does not.
                 readonly property bool titled: page.pageTitle !== ""
 
                 StyledText {

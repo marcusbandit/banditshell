@@ -86,7 +86,6 @@ Item {
             joinStyle: ShapePath.RoundJoin
 
             PathPolyline {
-
                 path: Wave.points(wave.width, root.amp * swell.value, root.wavelength, 2 * Math.PI * clock.t, Math.max(1, root.stroke / 2)).map(p => Qt.point(p[0], wave.height / 2 + p[1]))
             }
         }

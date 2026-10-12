@@ -68,7 +68,6 @@ MouseArea {
     }
 
     onPressed: event => {
-
         root.snapTo(event.x, event.y);
 
         root.pressX = event.x;
@@ -93,7 +92,6 @@ MouseArea {
     }
 
     onReleased: {
-
         if (root.dragged) {
             if (root.rw < 2 || root.rh < 2)
                 return root.state.close();

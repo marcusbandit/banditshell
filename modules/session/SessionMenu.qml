@@ -133,7 +133,6 @@ Item {
         id: keys
 
         Keys.onPressed: event => {
-
             const ctrl = event.modifiers & Qt.ControlModifier;
 
             if (event.key === Qt.Key_Escape)
