@@ -885,6 +885,35 @@ test.describe("vt: paste", () => {
         assert.strictEqual(Vt.pasteSequence("a\r\nb", true), "\x1b[200~a\rb\x1b[201~");
     });
 
+    test.it("cannot close the bracket from inside the pasted text", () => {
+        const out = Vt.pasteSequence("x\x1b[201~\x15touch PWNED\n", true);
+        assert.strictEqual(out, "\x1b[200~x[201~touch PWNED\r\x1b[201~");
+        assert.strictEqual(out.split("\x1b").length - 1, 2);
+        assert.ok(out.endsWith("\x1b[201~"));
+    });
+
+    test.it("strips C0 controls from a bracketed body but keeps tab and line breaks", () => {
+        const c0 = [];
+        for (let c = 0; c < 0x20; c++)
+            c0.push(String.fromCharCode(c));
+        const body = Vt.pasteSequence(`a${c0.join("")}b`, true).slice(6, -6);
+        assert.strictEqual(body, "a\t\r\rb");
+    });
+
+    test.it("strips C1 controls from a bracketed body, which UTF-8 would otherwise carry", () => {
+        const body = Vt.pasteSequence("a\u0080b\u009b201~c\u009fd", true).slice(6, -6);
+        assert.strictEqual(body, "ab201~cd");
+    });
+
+    test.it("keeps printable text either side of the C1 range", () => {
+        const body = Vt.pasteSequence("~\u007f é漢", true).slice(6, -6);
+        assert.strictEqual(body, "~\u007f é漢");
+    });
+
+    test.it("leaves an unbracketed paste untouched apart from line breaks", () => {
+        assert.strictEqual(Vt.pasteSequence("a\x1bb\u009bc\x15\n", false), "a\x1bb\u009bc\x15\r");
+    });
+
     test.it("round-trips a pasted block through the parser as text", () => {
         const t = term(20, 4);
         t.write(Vt.pasteSequence("one\ntwo", false).replace(/\r/g, "\r\n"));

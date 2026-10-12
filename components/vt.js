@@ -1076,5 +1076,7 @@ function textSequence(text, alt, ctrl) {
 
 function pasteSequence(text, bracketed) {
     var body = text.replace(/\r\n/g, "\r").replace(/\n/g, "\r");
-    return bracketed ? "\x1b[200~" + body + "\x1b[201~" : body;
+    if (!bracketed)
+        return body;
+    return "\x1b[200~" + body.replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x80-\x9f]/g, "") + "\x1b[201~";
 }
