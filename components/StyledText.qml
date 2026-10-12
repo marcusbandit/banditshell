@@ -17,6 +17,8 @@ Text {
     readonly property real inkOffsetX: root.width / 2 - (ink.tightBoundingRect.x + ink.tightBoundingRect.width / 2)
     readonly property real inkOffsetY: root.height / 2 - (root.baselineOffset + ink.tightBoundingRect.y + ink.tightBoundingRect.height / 2)
 
+    readonly property real inkWidth: ink.tightBoundingRect.width
+
     property bool alignInk: false
 
     transform: Translate {
