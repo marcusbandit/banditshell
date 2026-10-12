@@ -17,10 +17,14 @@ FloatingWindow {
 
     visible: false
 
+    property bool opened: false
+
     Connections {
         target: Files
 
         function onWindowOpenChanged(): void {
+            if (Files.windowOpen)
+                win.opened = true;
             win.visible = Files.windowOpen;
         }
     }
@@ -38,7 +42,7 @@ FloatingWindow {
     Loader {
         anchors.fill: parent
 
-        active: Files.helpersMissing
+        active: win.opened && Files.helpersMissing
         sourceComponent: HelpersMissing {}
     }
 
@@ -48,7 +52,7 @@ FloatingWindow {
         anchors.fill: parent
 
         focus: true
-        active: !Files.helpersMissing
+        active: win.opened && !Files.helpersMissing
         sourceComponent: FilesFace {}
     }
 }

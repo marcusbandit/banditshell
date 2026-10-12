@@ -17,10 +17,14 @@ FloatingWindow {
 
     visible: false
 
+    property bool opened: false
+
     Connections {
         target: Settings
 
         function onOpenChanged(): void {
+            if (Settings.open)
+                win.opened = true;
             win.visible = Settings.open;
         }
     }
@@ -35,11 +39,17 @@ FloatingWindow {
             face.forceActiveFocus();
     }
 
-    SettingsFace {
+    Loader {
         id: face
 
         anchors.fill: parent
 
-        showing: Settings.open
+        focus: true
+        active: win.opened
+
+        sourceComponent: SettingsFace {
+            focus: true
+            showing: Settings.open
+        }
     }
 }

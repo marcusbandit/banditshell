@@ -36,6 +36,7 @@ Item {
 
     property real currentRowY: 0
     property bool currentRowSeen: false
+    property bool railPlaced: false
     readonly property real markHeight: root.railRow * 0.6
 
     onQueryChanged: railSlide.snap()
@@ -388,6 +389,10 @@ Item {
             root.currentRowSeen = visible;
             Qt.callLater(() => {
                 root.currentRowY = railRow.mapToItem(sections, 0, 0).y;
+                if (!root.railPlaced) {
+                    railSlide.snap();
+                    root.railPlaced = true;
+                }
                 root.revealRow(root.currentRowY);
             });
         }
