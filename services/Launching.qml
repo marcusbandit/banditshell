@@ -2,7 +2,6 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
-import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
 
@@ -169,17 +168,10 @@ Singleton {
         }
 
         function onFocusedAddressChanged(): void {
-            const bare = root.bare(Hypr.focusedAddress);
-            if (!bare)
-                return;
-            const client = Hyprland.toplevels.values.find(t => root.bare(t.address ?? "") === bare);
+            const client = Hypr.toplevelFor(Hypr.focusedAddress);
             if (client)
                 root.noticeFocus(Hypr.classOf(client));
         }
-    }
-
-    function bare(addr: string): string {
-        return (addr.startsWith("0x") ? addr.slice(2) : addr).toLowerCase();
     }
 
     readonly property string path: `${Apps.dir}/startup.json`

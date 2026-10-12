@@ -20,15 +20,6 @@ Singleton {
 
     readonly property var bands: HyprConfig.bands.filter(b => !b.dynamic && b.path?.[1] === HyprConfig.hostName)
 
-    readonly property var order: {
-        const banded = root.bands.filter(b => !b.invalid).sort((a, b) => a.first - b.first).map(b => b.monitor);
-        const out = banded.slice();
-        for (const s of Quickshell.screens)
-            if (out.indexOf(s.name) < 0)
-                out.push(s.name);
-        return out;
-    }
-
     function bandFor(screen: string): int {
         const b = root.bands.find(x => x.monitor === screen && !x.invalid);
         if (b)
@@ -76,7 +67,6 @@ Singleton {
     readonly property var clients: {
         const out = {};
         for (const c of Hyprland.toplevels.values) {
-
             const id = c.workspace?.id ?? 0;
             if (id !== 0) {
                 if (!out[id])
@@ -110,15 +100,12 @@ Singleton {
             out.push({
                 id: ws.id,
                 name,
-
                 label: name.startsWith("special:") ? name.slice(8) : name,
                 windows: root.clients[ws.id] ?? []
             });
         }
         return out;
     }
-
-    readonly property string specialShown: root.specialByMonitor[root.focusedScreen] ?? ""
 
     property var specialByMonitor: ({})
 
@@ -138,7 +125,6 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-
                 let mons = [];
                 try {
                     mons = JSON.parse(text);
@@ -173,15 +159,26 @@ Singleton {
     }
 
     function toggleSpecial(name: string): void {
-
         const bare = name.startsWith("special:") ? name.slice(8) : name;
         root.send(`hl.dsp.workspace.toggle_special("${bare}")`, `togglespecialworkspace ${bare}`);
     }
 
     readonly property var activeClient: Hyprland.activeToplevel
 
+    function windowAddress(raw: var): string {
+        const bare = String(raw ?? "").trim().toLowerCase().replace(/^0x/, "");
+        return /^[0-9a-f]+$/.test(bare) ? `0x${bare}` : "";
+    }
+
+    function toplevelFor(addr: string): var {
+        const want = root.windowAddress(addr);
+        if (!want)
+            return null;
+        return Hyprland.toplevels.values.find(t => root.windowAddress(t.address) === want) ?? null;
+    }
+
     function isFocused(client: var): bool {
-        const addr = client?.lastIpcObject?.address ?? "";
+        const addr = root.windowAddress(client?.lastIpcObject?.address);
         if (!addr)
             return false;
         return root.focusedAddress ? root.focusedAddress === addr : root.activeClient === client;
@@ -224,9 +221,7 @@ Singleton {
     }
 
     function monitorOf(addr: string): string {
-        const bare = (addr.startsWith("0x") ? addr.slice(2) : addr).toLowerCase();
-        const client = Hyprland.toplevels.values.find(t => (t.address ?? "").toLowerCase() === bare);
-        const id = client?.workspace?.id ?? 0;
+        const id = root.toplevelFor(addr)?.workspace?.id ?? 0;
         if (id === 0)
             return "";
         const shown = Hyprland.monitors.values.find(mon => {
@@ -380,6 +375,59 @@ Singleton {
 
     signal configReloaded
 
+    readonly property var refreshes: ({
+            openwindow: ["toplevels"],
+            closewindow: ["toplevels"],
+            movewindow: ["toplevels"],
+            changefloatingmode: ["toplevels"],
+            fullscreen: ["toplevels"],
+            pin: ["toplevels"],
+            minimized: ["toplevels"],
+            togglegroup: ["toplevels"],
+            moveintogroup: ["toplevels"],
+            moveoutofgroup: ["toplevels"],
+            activewindow: ["toplevels"],
+            workspace: ["workspaces", "monitors", "toplevels"],
+            focusedmon: ["monitors"],
+            createworkspace: ["workspaces", "monitors"],
+            destroyworkspace: ["workspaces", "monitors"],
+            renameworkspace: ["workspaces"],
+            activespecial: ["workspaces", "monitors", "toplevels"],
+            moveworkspace: ["workspaces", "monitors", "toplevels"],
+            monitoradded: ["workspaces", "monitors", "toplevels"],
+            monitorremoved: ["workspaces", "monitors", "toplevels"]
+        })
+
+    property var owed: ({})
+
+    function owe(event: string): void {
+        const wanted = root.refreshes[event.replace(/v2$/, "")];
+        if (!wanted)
+            return;
+        const next = Object.assign({}, root.owed);
+        for (const kind of wanted)
+            next[kind] = true;
+        root.owed = next;
+        if (!coalesce.running)
+            coalesce.start();
+    }
+
+    Timer {
+        id: coalesce
+
+        interval: 30
+        onTriggered: {
+            const due = root.owed;
+            root.owed = {};
+            if (due.workspaces)
+                Hyprland.refreshWorkspaces();
+            if (due.monitors)
+                Hyprland.refreshMonitors();
+            if (due.toplevels)
+                Hyprland.refreshToplevels();
+        }
+    }
+
     Connections {
         target: Hyprland
 
@@ -387,10 +435,8 @@ Singleton {
             const n = event.name;
 
             if (n === "openwindow") {
-
                 const parts = (event.data ?? "").split(",");
-                const raw = parts[0] ?? "";
-                const addr = raw && !raw.startsWith("0x") ? `0x${raw}` : raw;
+                const addr = root.windowAddress(parts[0]);
 
                 if (addr)
                     root.windowOpened(addr, parts.slice(3).join(","), parts[2] ?? "");
@@ -400,10 +446,8 @@ Singleton {
             }
 
             if (n === "closewindow") {
-                const raw = (event.data ?? "").trim();
-                if (raw) {
-                    const gone = raw.startsWith("0x") ? raw : `0x${raw}`;
-
+                const gone = root.windowAddress(event.data);
+                if (gone) {
                     if (root.focusedAddress === gone)
                         root.focusedAddress = "";
                     root.forgetFocus(gone);
@@ -412,17 +456,13 @@ Singleton {
                 }
             }
 
-            if (n === "configreloaded") {
+            if (n === "configreloaded")
                 root.configReloaded();
 
-            }
-
             if (n === "activewindowv2") {
-                const addr = (event.data ?? "").trim();
-                if (addr && addr !== ",") {
-                    const now = addr.startsWith("0x") ? addr : `0x${addr}`;
+                const now = root.windowAddress(event.data);
+                if (now) {
                     root.focusedAddress = now;
-
                     root.noteFocus(root.monitorOf(now) || root.focusedScreen, now);
                 }
             }
@@ -435,12 +475,7 @@ Singleton {
                 root.noteSpecial(monitor, name);
             }
 
-            if (n.includes("workspace") || n.includes("window") || n.includes("mon") || n.includes("special")) {
-                Hyprland.refreshWorkspaces();
-                Hyprland.refreshToplevels();
-
-                Hyprland.refreshMonitors();
-            }
+            root.owe(n);
         }
     }
 }

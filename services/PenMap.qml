@@ -264,11 +264,6 @@ Singleton {
         return a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height;
     }
 
-    function bareAddress(addr: string): string {
-        const s = String(addr ?? "");
-        return (s.startsWith("0x") ? s.slice(2) : s).toLowerCase();
-    }
-
     function monitorNamed(name: string): var {
         return root.monitors.find(m => m.name === name) ?? null;
     }
@@ -655,8 +650,7 @@ Singleton {
     readonly property var boundToplevel: {
         if (!root.bound)
             return null;
-        const want = root.bareAddress(root.bound);
-        return Hyprland.toplevels.values.find(t => root.bareAddress(t.address) === want) ?? null;
+        return Hypr.toplevelFor(root.bound);
     }
 
     readonly property rect boundRect: {
@@ -1036,7 +1030,7 @@ Singleton {
         }
 
         function onWindowClosed(addr: string): void {
-            if (root.bound && root.bareAddress(addr) === root.bareAddress(root.bound))
+            if (root.bound && Hypr.windowAddress(addr) === Hypr.windowAddress(root.bound))
                 root.unbindWindow();
         }
     }
