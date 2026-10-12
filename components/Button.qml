@@ -172,43 +172,50 @@ Item {
     width: implicitWidth
     height: implicitHeight
 
-    SquircleRect {
-        id: cast
-
-        visible: false
+    Loader {
         anchors.fill: parent
-        radius: root.targetRadius
-        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-        cornerPower: root.platePower
-        color: "black"
 
-        Behavior on radius {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutCubic
+        active: root.style === "elevated"
+
+        sourceComponent: Item {
+            SquircleRect {
+                id: cast
+
+                visible: false
+                anchors.fill: parent
+                radius: root.targetRadius
+                topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+                bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
+                topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
+                bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
+                cornerPower: root.platePower
+                color: "black"
+
+                Behavior on radius {
+                    NumberAnimation {
+                        duration: Appearance.anim.fast
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                Behavior on cornerPower {
+                    NumberAnimation {
+                        duration: Appearance.anim.fast
+                        easing.type: Easing.OutCubic
+                    }
+                }
+            }
+
+            MultiEffect {
+                source: cast
+                anchors.fill: cast
+
+                shadowEnabled: true
+                shadowColor: Appearance.colour.scrim
+                shadowBlur: 0.55
+                shadowVerticalOffset: Math.max(2, Math.round(root.height / 10))
             }
         }
-
-        Behavior on cornerPower {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutCubic
-            }
-        }
-    }
-
-    MultiEffect {
-        source: cast
-        anchors.fill: cast
-
-        visible: root.style === "elevated"
-        shadowEnabled: root.style === "elevated"
-        shadowColor: Appearance.colour.scrim
-        shadowBlur: 0.55
-        shadowVerticalOffset: Math.max(2, Math.round(root.height / 10))
     }
 
     SquircleRect {
