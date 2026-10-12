@@ -140,7 +140,7 @@ Item {
                     cursorVisible: false
                     clip: true
 
-                    enabled: !Lock.busy && !Lock.exhausted
+                    enabled: !Lock.busy
 
                     font.family: Appearance.font.family
                     font.pixelSize: Appearance.font.size.small
@@ -150,10 +150,8 @@ Item {
                     selectedTextColor: Appearance.colour.accentText
 
                     onAccepted: {
-                        if (!field.text)
-                            return;
-                        Lock.submit(field.text);
-                        field.text = "";
+                        if (Lock.submit(field.text))
+                            field.text = "";
                     }
 
                     Component.onCompleted: Qt.callLater(field.forceActiveFocus)
@@ -225,12 +223,14 @@ Item {
             }
 
             StyledText {
+                id: verdict
+
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                text: Lock.message
+                text: Lock.waiting ? `next try in ${Lock.waitSeconds} s` : Lock.message
                 font.pixelSize: Appearance.font.size.small
                 color: Lock.failed ? Appearance.colour.accent : Appearance.colour.textFaint
-                opacity: Lock.message ? 1 : 0
+                opacity: verdict.text ? 1 : 0
             }
         }
     }

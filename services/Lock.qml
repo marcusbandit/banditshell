@@ -20,9 +20,16 @@ Singleton {
 
     property bool failed: false
 
-    property bool exhausted: false
-
     property string pending: ""
+
+    readonly property int freeAttempts: 3
+    readonly property int firstWait: 5000
+    readonly property int longestWait: 60000
+
+    property real now: Date.now()
+
+    readonly property int waitSeconds: Math.max(0, Math.ceil((attempts.retryAt - root.now) / 1000))
+    readonly property bool waiting: root.waitSeconds > 0
 
     readonly property string user: Quickshell.env("USER")
 
@@ -46,7 +53,6 @@ Singleton {
             return;
         root.message = "";
         root.failed = false;
-        root.exhausted = false;
         root.pending = "";
         root.active = true;
     }
@@ -73,6 +79,8 @@ Singleton {
         root.pending = "";
         root.message = "";
         root.failed = false;
+        attempts.failures = 0;
+        attempts.retryAt = 0;
         root.secure = false;
         root.active = false;
         if (root.hinted)
@@ -99,10 +107,13 @@ Singleton {
         inhibitor.running = false;
     }
 
-    function submit(secret: string): void {
+    function submit(secret: string): bool {
+        if (!root.active || root.busy || !secret)
+            return false;
 
-        if (!root.active || root.busy || root.exhausted)
-            return;
+        root.tick();
+        if (attempts.retryAt > root.now)
+            return false;
 
         root.pending = secret;
         root.failed = false;
@@ -113,6 +124,21 @@ Singleton {
             root.failed = true;
             root.message = "cannot reach PAM";
         }
+        return true;
+    }
+
+    function tick(): void {
+        root.now = Date.now();
+        attempts.retryAt = Math.min(attempts.retryAt, root.now + root.longestWait);
+    }
+
+    function countFailure(): void {
+        attempts.failures += 1;
+        const beyond = attempts.failures - root.freeAttempts;
+        if (beyond < 0)
+            return;
+        root.now = Date.now();
+        attempts.retryAt = root.now + Math.min(root.firstWait * Math.pow(2, beyond), root.longestWait);
     }
 
     function tellLogind(on: bool): void {
@@ -160,6 +186,24 @@ Singleton {
             root.lock();
         else if (member === "Unlock")
             root.release();
+    }
+
+    PersistentProperties {
+        id: attempts
+
+        reloadableId: "lockAttempts"
+
+        property int failures: 0
+        property real retryAt: 0
+
+        onReloaded: root.tick()
+    }
+
+    Timer {
+        running: attempts.retryAt > root.now
+        interval: 250
+        repeat: true
+        onTriggered: root.tick()
     }
 
     Process {
@@ -287,11 +331,6 @@ Singleton {
             root.pending = "";
         }
 
-        onMessageChanged: {
-            if (pam.message.startsWith("The account is locked") || pam.message.endsWith(" left to unlock)"))
-                root.message = pam.message;
-        }
-
         onCompleted: res => {
             root.pending = "";
 
@@ -302,15 +341,13 @@ Singleton {
 
             root.failed = true;
 
-            if (res === PamResult.MaxTries) {
-                root.exhausted = true;
-                root.message = "too many attempts";
-            } else if (res === PamResult.Error) {
+            if (res === PamResult.Error) {
                 root.message = "authentication error";
-            } else if (!root.message || root.message === "checking") {
-
-                root.message = "not your password";
+                return;
             }
+
+            root.message = res === PamResult.MaxTries ? "too many attempts" : "not your password";
+            root.countFailure();
         }
 
         onError: err => {
