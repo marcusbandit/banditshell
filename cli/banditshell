@@ -821,13 +821,15 @@ files)
 build)
     cc="${CC:-gcc}"
     command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
+    read -ra cflags <<<"-O2 -Wall -Wextra -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE ${CFLAGS:-}"
+    read -ra ldflags <<<"-pie -Wl,-z,relro,-z,now ${LDFLAGS:-}"
+    read -ra wayland <<<"$(pkg-config --libs wayland-client 2>/dev/null || echo -lwayland-client)"
     mkdir -p "$SHELL_DIR/bin"
-    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" -lutil
+    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" "${ldflags[@]}" -lutil
     echo "src/bs-pty.c -> bin/bs-pty"
-    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c"
+    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c" "${ldflags[@]}"
     echo "src/bs-ls.c -> bin/bs-ls"
-    # shellcheck disable=SC2046
-    "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-gamma" "$SHELL_DIR/src/bs-gamma.c" "$SHELL_DIR/src/gamma-client-protocol.c" $(pkg-config --libs wayland-client 2>/dev/null || echo "-lwayland-client") -lm
+    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-gamma" "$SHELL_DIR/src/bs-gamma.c" "$SHELL_DIR/src/gamma-client-protocol.c" "${ldflags[@]}" "${wayland[@]}" -lm
     echo "src/bs-gamma.c -> bin/bs-gamma"
     ;;
 shaders)
