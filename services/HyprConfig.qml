@@ -297,9 +297,8 @@ Singleton {
         if (!HyprGen.parseChord(fields.chord).key)
             return console.warn(`HyprConfig: "${fields.chord}" is not a chord this editor can write.`);
 
-        const path = root.pathOf(fileName);
-        const text = root.texts[path] ?? "";
-        root.commit(fileName, text.length + 1, text.length + 1, [line]);
+        const at = HyprGen.appendSplice(root.texts[root.pathOf(fileName)] ?? "", [line]);
+        root.commit(fileName, at.startLine, at.endLine, at.replacement);
     }
 
     function updateMonitor(id: string, changed: var): void {
@@ -334,8 +333,8 @@ Singleton {
             return;
         }
 
-        const lines = text.split("\n");
-        root.commit(fileName, lines.length, lines.length, [lines[lines.length - 1], line]);
+        const at = HyprGen.appendSplice(text, [line]);
+        root.commit(fileName, at.startLine, at.endLine, at.replacement);
     }
 
     function updateBand(id: string, changed: var): void {
@@ -370,25 +369,61 @@ Singleton {
 
     property bool applying: false
     property var committing: null
+    property bool reverting: false
 
     function commit(file: string, startLine: int, endLine: int, replacement: var): void {
         if (root.applying)
             return console.warn("HyprConfig: a write is still in flight; try again in a moment.");
 
         const path = root.pathOf(file);
-        const previous = root.texts[path] ?? "";
-        const next = HyprGen.spliceLines(previous, startLine, endLine, replacement);
-        if (next === null)
-            return console.warn(`HyprConfig: lines ${startLine}-${endLine} are outside ${file}; the model is stale, rescanning.`);
-
         root.applying = true;
         root.committing = {
             file,
             path,
-            previous
+            startLine,
+            endLine,
+            replacement,
+            previous: ""
         };
-        writer.path = path;
+        if (checker.path === path)
+            checker.reload();
+        else
+            checker.path = path;
+    }
+
+    function abandon(why: string): void {
+        console.warn(`HyprConfig: ${why}; nothing was written, rescanning.`);
+        root.applying = false;
+        root.committing = null;
+        root.rescan();
+    }
+
+    function write(disk: var): void {
+        const c = root.committing;
+        if (!c)
+            return;
+        const cached = root.texts[c.path];
+        if ((disk ?? "") !== (cached ?? ""))
+            return root.abandon(`${c.file} changed on disk since the scan`);
+
+        const next = HyprGen.spliceLines(disk ?? "", c.startLine, c.endLine, c.replacement);
+        if (next === null)
+            return root.abandon(`lines ${c.startLine}-${c.endLine} are outside ${c.file}`);
+
+        c.previous = disk ?? "";
+        root.reverting = false;
+        writer.path = c.path;
         writer.setText(next);
+    }
+
+    FileView {
+        id: checker
+
+        watchChanges: false
+        printErrors: false
+
+        onLoaded: root.write(checker.text())
+        onLoadFailed: root.write(null)
     }
 
     FileView {
@@ -397,19 +432,40 @@ Singleton {
         watchChanges: false
         printErrors: false
 
-        onSaved: root.verify()
+        onSaved: {
+            if (!root.reverting)
+                return root.verify();
+            root.reverting = false;
+            root.applying = false;
+            root.rescan();
+        }
+
         onSaveFailed: {
-            console.warn(`HyprConfig: could not write ${root.committing?.path}; the edit is not on disk.`);
+            console.warn(`HyprConfig: could not write ${root.committing?.path}; ${root.reverting ? "the failed edit is still on disk" : "the edit is not on disk"}.`);
+            root.reverting = false;
             root.applying = false;
         }
     }
 
     function verify(): void {
+        verifier.began = false;
         verifier.running = true;
+    }
+
+    function verified(ok: bool, said: string): void {
+        if (ok) {
+            reloader.running = true;
+            return;
+        }
+        console.warn(`HyprConfig: the edit did not verify; putting the previous text back.\n${said}`);
+        root.reverting = true;
+        writer.setText(root.committing.previous);
     }
 
     Process {
         id: verifier
+
+        property bool began: false
 
         command: ["Hyprland", "--verify-config", "-c", root.configPath]
 
@@ -417,15 +473,17 @@ Singleton {
             id: verifyOut
         }
 
-        onExited: {
-            if (verifier.exitCode !== 0) {
-                console.warn(`HyprConfig: the edit did not verify; putting the previous text back.\n${verifyOut.text}`);
+        stderr: StdioCollector {
+            id: verifyErr
+        }
 
-                writer.setText(root.committing.previous);
-                root.applying = false;
-                return;
-            }
-            reloader.running = true;
+        onStarted: verifier.began = true
+
+        onExited: (code, status) => root.verified(code === 0 && status !== 1, `${verifyOut.text}${verifyErr.text}`)
+
+        onRunningChanged: {
+            if (!verifier.running && !verifier.began)
+                root.verified(false, "Hyprland --verify-config did not start");
         }
     }
 
@@ -434,10 +492,11 @@ Singleton {
 
         command: ["hyprctl", "reload"]
 
-        onExited: {
+        onRunningChanged: {
+            if (reloader.running)
+                return;
             root.applying = false;
             root.rescan();
         }
     }
-
 }

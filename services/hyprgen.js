@@ -1091,6 +1091,16 @@ function confSources(text, dir, home) {
     return out;
 }
 
+function appendSplice(src, addition) {
+    const lines = String(src ?? "").split("\n");
+    const last = lines[lines.length - 1];
+    return {
+        startLine: lines.length,
+        endLine: lines.length,
+        replacement: last === "" ? addition.concat([""]) : [last].concat(addition)
+    };
+}
+
 function spliceLines(src, startLine, endLine, replacement) {
     const lines = String(src ?? "").split("\n");
     if (startLine < 1 || endLine < startLine || endLine > lines.length)

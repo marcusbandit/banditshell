@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprgen.js"), "utf8");
 const HyprGen = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprGen.parseChord("SUPER + SHIFT + Slash"), {
@@ -700,4 +700,17 @@ test(".conf source lines are followed, globs and comments left alone", () => {
         "bind = SUPER, Q, exec, foot"
     ].join("\n"), "/home/u/.config/hypr", "/home/u");
     assert.deepStrictEqual(found, ["/home/u/.config/hypr/binds.conf", "/home/u/.config/hypr/extra.conf", "/home/u/x.conf"]);
+});
+
+test("appending lands after the last line, by line count, keeping the file's final newline", () => {
+    const add = (src, line) => {
+        const at = HyprGen.appendSplice(src, [line]);
+        return HyprGen.spliceLines(src, at.startLine, at.endLine, at.replacement);
+    };
+    const src = "hl.bind(\"SUPER + A\", x)\nhl.bind(\"SUPER + B\", y)\n";
+    assert.strictEqual(add(src, "NEW"), "hl.bind(\"SUPER + A\", x)\nhl.bind(\"SUPER + B\", y)\nNEW\n");
+    assert.strictEqual(add("a\nb", "NEW"), "a\nb\nNEW");
+    assert.strictEqual(add("", "NEW"), "NEW\n");
+    assert.strictEqual(HyprGen.appendSplice(src, ["NEW"]).startLine, 3, "a line number, not a character count");
+    assert.strictEqual(HyprGen.spliceLines(src, src.length + 1, src.length + 1, ["NEW"]), null, "the old character-count call never worked");
 });
