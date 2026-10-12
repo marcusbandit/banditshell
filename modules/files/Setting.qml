@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -33,7 +34,7 @@ Item {
         StyledText {
             width: parent.width
             text: root.detail
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
             wrapMode: Text.Wrap
         }

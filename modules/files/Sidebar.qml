@@ -41,8 +41,8 @@ Item {
                 StyledText {
 
                     text: section.modelData.title.toUpperCase()
-                    font.pixelSize: Appearance.sizes.filesText
-                    font.letterSpacing: Appearance.sizes.filesText * 0.12
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
+                    font.letterSpacing: Files.zoomed(Appearance.font.size.small) * 0.12
                     color: Appearance.colour.textGhost
 
                     leftPadding: Appearance.padding.normal
@@ -66,7 +66,7 @@ Item {
 
                         width: section.width
 
-                        height: place.usage ? Appearance.sizes.filesRow * 1.5 : Appearance.sizes.filesRow
+                        height: Files.zoomed(Appearance.sizes.filesRow) * (place.usage ? 1.5 : 1)
 
                         SquircleRect {
                             anchors.fill: parent
@@ -88,7 +88,7 @@ Item {
                             anchors.topMargin: place.usage ? Appearance.padding.small / 2 : 0
 
                             name: place.modelData.icon
-                            size: Appearance.sizes.filesText * 1.2
+                            size: Files.zoomed(Appearance.font.iconSize)
                             color: place.here ? Appearance.colour.text : Appearance.colour.textDim
                         }
 
@@ -100,7 +100,7 @@ Item {
                             anchors.verticalCenter: glyph.verticalCenter
 
                             text: place.modelData.name
-                            font.pixelSize: Appearance.sizes.filesText
+                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
                             elide: Text.ElideRight
                             color: place.here ? Appearance.colour.text : Appearance.colour.textDim
                         }
@@ -113,7 +113,7 @@ Item {
                             anchors.verticalCenter: glyph.verticalCenter
 
                             text: place.modelData.detail ?? ""
-                            font.pixelSize: Appearance.sizes.filesText
+                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
                             color: Appearance.colour.textGhost
                         }
 

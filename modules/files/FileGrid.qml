@@ -25,7 +25,7 @@ Item {
 
     readonly property int columns: root.list ? 1 : Math.max(1, Math.floor(width / Appearance.sizes.filesTile))
     readonly property real cell: width / root.columns
-    readonly property real cellHeight: root.list ? Appearance.sizes.filesRow : root.cell * 1.18
+    readonly property real cellHeight: root.list ? Files.zoomed(Appearance.sizes.filesRow) : root.cell * 1.18
 
     readonly property int target: root.dragging ? root.dropIndexAt(root.dragPoint) : -1
 

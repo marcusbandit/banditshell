@@ -286,8 +286,14 @@ Singleton {
             Config.set("files.preview", root.previewWidth);
     }
 
+    readonly property real magnification: Config.values.files.zoom
+
+    function zoomed(size: real): int {
+        return Math.round(size * root.magnification);
+    }
+
     function zoom(step: real): void {
-        const now = Config.values.files.zoom;
+        const now = root.magnification;
         const next = step === 0 ? 1 : Math.max(0.7, Math.min(2.5, Math.round((now + step) * 20) / 20));
         if (next !== now)
             Config.set("files.zoom", next);

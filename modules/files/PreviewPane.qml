@@ -174,7 +174,7 @@ Item {
                     anchors.verticalCenterOffset: toggleGlyph.inkOffsetY
 
                     name: root.rendered ? "article" : "code"
-                    size: Appearance.sizes.filesText * 1.2
+                    size: Files.zoomed(Appearance.font.iconSize)
                     color: root.rendered ? Appearance.colour.text : Appearance.colour.textDim
                 }
 
@@ -203,7 +203,7 @@ Item {
                     parts.push(`${root.stat.owner} ${Files.humanMode(root.stat.mode)}`);
                 return parts.join("  ·  ");
             }
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
 
             elide: Text.ElideRight
@@ -344,7 +344,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     text: line.modelData.name
-                    font.pixelSize: Appearance.sizes.filesText
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     color: Appearance.colour.textDim
                     elide: Text.ElideRight
                 }
@@ -369,7 +369,7 @@ Item {
                 wrapMode: Text.Wrap
 
                 font.family: Appearance.font.family
-                font.pixelSize: Appearance.sizes.filesText
+                font.pixelSize: Files.zoomed(Appearance.font.size.small)
                 renderType: Text.NativeRendering
                 color: Appearance.colour.text
                 linkColor: Appearance.colour.accent

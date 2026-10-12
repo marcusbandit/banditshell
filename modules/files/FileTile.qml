@@ -99,7 +99,7 @@ Item {
 
             text: root.entry.name
 
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
             maximumLineCount: 2
             wrapMode: Text.Wrap
@@ -115,8 +115,8 @@ Item {
         anchors.rightMargin: Appearance.padding.small
         visible: root.row
 
-        readonly property real dateWidth: Appearance.sizes.filesText * 7
-        readonly property real sizeWidth: Appearance.sizes.filesText * 5
+        readonly property real dateWidth: Files.zoomed(Appearance.font.size.small) * 7
+        readonly property real sizeWidth: Files.zoomed(Appearance.font.size.small) * 5
 
         FileMark {
             id: rowMark
@@ -134,7 +134,7 @@ Item {
             owned: root.entry.mine
             rooted: root.entry.root
             worldWritable: root.entry.world
-            size: Appearance.sizes.filesText * 1.2
+            size: Files.zoomed(Appearance.font.iconSize)
         }
 
         StyledText {
@@ -145,7 +145,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             text: root.entry.name
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             elide: Text.ElideMiddle
             color: root.picked || root.cursored ? Appearance.colour.text : Appearance.colour.textDim
         }
@@ -161,7 +161,7 @@ Item {
             horizontalAlignment: Text.AlignRight
 
             text: root.entry.kind === "dir" ? "" : Files.humanSize(root.entry.size)
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
         }
 
@@ -174,7 +174,7 @@ Item {
 
             horizontalAlignment: Text.AlignRight
             text: Files.humanTime(root.entry.mtime)
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint
         }
     }

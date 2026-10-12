@@ -215,7 +215,7 @@ Item {
                 Setting {
                     width: body.width
                     label: "Size"
-                    detail: `${Math.round(Appearance.sizes.filesZoom * 100)}% · text ${Appearance.sizes.filesText}px`
+                    detail: `${Math.round(Files.magnification * 100)}% · text ${Files.zoomed(Appearance.font.size.small)}px`
 
                     Segments {
                         width: 300
@@ -292,7 +292,7 @@ Item {
                         StyledText {
                             width: group.width
                             text: group.modelData.note
-                            font.pixelSize: Appearance.sizes.filesText
+                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
                             color: Appearance.colour.textFaint
                             wrapMode: Text.Wrap
                             bottomPadding: Appearance.padding.small
@@ -310,7 +310,7 @@ Item {
                                 readonly property bool waiting: root.rebinding === binding.id
 
                                 width: group.width
-                                height: Appearance.sizes.filesRow * 1.2
+                                height: Files.zoomed(Appearance.sizes.filesRow) * 1.2
 
                                 SquircleRect {
                                     anchors.fill: parent
@@ -329,7 +329,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     text: root.labels[binding.modelData.action] ?? binding.modelData.action
-                                    font.pixelSize: Appearance.sizes.filesText
+                                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                                     elide: Text.ElideRight
                                 }
 
@@ -341,7 +341,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
 
                                     text: binding.waiting ? "press a key…" : binding.modelData.chord
-                                    font.pixelSize: Appearance.sizes.filesText
+                                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
                                     color: binding.waiting ? Appearance.colour.accent : Appearance.colour.textDim
                                 }
 

@@ -156,7 +156,7 @@ Item {
 
                     elide: Text.ElideMiddle
                     text: crumb.modelData.name
-                    font.pixelSize: Appearance.sizes.filesText
+                    font.pixelSize: Files.zoomed(Appearance.font.size.small)
 
                     color: crumb.last ? Appearance.colour.text : Appearance.colour.textFaint
                 }
@@ -218,7 +218,7 @@ Item {
             anchors.margins: Appearance.padding.normal
 
             font.family: Appearance.font.family
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.text
             selectionColor: Appearance.colour.accent
             selectedTextColor: Appearance.colour.accentText
@@ -290,7 +290,7 @@ Item {
             activeFocusOnTab: false
 
             font.family: Appearance.font.family
-            font.pixelSize: Appearance.sizes.filesText
+            font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.text
             selectionColor: Appearance.colour.accent
             selectedTextColor: Appearance.colour.accentText
