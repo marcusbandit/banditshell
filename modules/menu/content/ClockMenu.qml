@@ -11,27 +11,20 @@ Column {
 
     spacing: Appearance.padding.normal
 
-    function token(name: string, fallback: var): var {
-        const value = Appearance.sizes[name];
-        if (value === undefined)
-            return fallback;
-        return Array.isArray(value) && value.length === 0 ? fallback : value;
-    }
+    readonly property var timerPresets: [1, 5, 10, 25]
 
-    readonly property var timerPresets: root.token("timerPresets", [1, 5, 10, 25])
+    readonly property int dawnHour: 6
+    readonly property int duskHour: 18
 
-    readonly property var dayBand: root.token("dayBand", [6, 18])
+    readonly property int zoneListMax: 8
 
-    readonly property int zoneListMax: root.token("zoneListMax", 8)
-
-    readonly property int scrubDetent: root.token("scrubDetent", 5)
+    readonly property int scrubDetent: 5
 
     readonly property int hoursInDay: 24
+    readonly property int daysInWeek: 7
     readonly property int oneMinute: 60000
 
     readonly property int mark: Appearance.font.stem
-
-    readonly property real scrubHeight: Math.max(Appearance.sizes.rowHeight, Math.round(Appearance.font.size.large * 4 / 3))
 
     SystemClock {
         id: clock
@@ -45,7 +38,17 @@ Column {
 
     readonly property real localHour: clock.date.getHours() + clock.date.getMinutes() / 60
 
-    readonly property double beat: Clock.tick > 0 ? Clock.tick : root.now
+    property double timersSeen: Date.now()
+
+    Connections {
+        target: Clock
+
+        function onTimersChanged(): void {
+            root.timersSeen = Date.now();
+        }
+    }
+
+    readonly property double beat: Math.max(Clock.tick, root.timersSeen)
 
     property bool picking: false
 
@@ -120,9 +123,9 @@ Column {
         }
 
         Rectangle {
-            x: root.dayBand[0] / root.hoursInDay * bar.width
+            x: root.dawnHour / root.hoursInDay * bar.width
             y: (bar.height - height) / 2
-            width: (root.dayBand[1] - root.dayBand[0]) / root.hoursInDay * bar.width
+            width: (root.duskHour - root.dawnHour) / root.hoursInDay * bar.width
             height: root.mark
             color: Appearance.colour.fillStrong
         }
@@ -132,526 +135,6 @@ Column {
             width: root.mark * 2
             height: bar.height
             color: Appearance.colour.text
-        }
-    }
-
-    component Card: Item {
-        id: card
-
-        property real rowHeight: Appearance.sizes.rowHeight
-
-        property bool tappable: false
-
-        default property alias content: slot.data
-
-        readonly property real discSize: Appearance.sizes.minTarget
-        readonly property real discSpace: card.discSize + Appearance.padding.small
-
-        signal tapped
-        signal dismissed
-
-        property real dragX: 0
-        property real pulled: 0
-
-        readonly property real throwDistance: Math.max(1, card.width) * Appearance.sizes.dragDismissFraction
-
-        readonly property real fade: {
-            const held = card.throwDistance * Appearance.sizes.dragResistance;
-            const past = Math.max(0, card.dragX - held);
-            return Math.max(0, 1 - past / Math.max(1, card.width - held));
-        }
-
-        function resist(delta: real): real {
-            const commit = card.throwDistance;
-            const k = Appearance.sizes.dragResistance;
-            return delta < commit ? delta * k : commit * k + (delta - commit);
-        }
-
-        implicitWidth: parent ? parent.width : 0
-        implicitHeight: card.rowHeight
-        height: implicitHeight
-
-        Follow {
-            id: settle
-
-            speed: Appearance.anim.revealSpeed
-            onValueChanged: if (!drag.throwing)
-                card.dragX = value
-        }
-
-        MouseArea {
-            id: drag
-
-            property real fromX: 0
-            property real fromY: 0
-            property real startedAt: 0
-
-            property bool throwing: false
-
-            property bool wandered: false
-
-            property bool scrolling: false
-
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: card.tappable ? Qt.PointingHandCursor : Qt.ArrowCursor
-
-            function begin(): void {
-                drag.startedAt = card.dragX;
-                drag.throwing = false;
-                drag.wandered = false;
-                drag.scrolling = false;
-
-                settle.value = card.dragX;
-                settle.target = card.dragX;
-            }
-
-            function advance(dx: real, dy: real): void {
-                if (!drag.throwing) {
-                    if (Math.abs(dy) >= Appearance.sizes.dragThreshold)
-                        drag.wandered = true;
-
-                    if (Math.abs(dy) > dx)
-                        return;
-                    if (dx < Appearance.sizes.dragThreshold)
-                        return;
-                    drag.throwing = true;
-                }
-
-                card.pulled = dx;
-                card.dragX = card.resist(Math.max(0, drag.startedAt + dx));
-            }
-
-            function stream(dx: real, dy: real): void {
-                if (!drag.throwing) {
-                    if (drag.scrolling)
-                        return;
-                    if (Math.abs(dy) > dx && Math.abs(dy) >= Appearance.sizes.dragThreshold) {
-                        drag.scrolling = true;
-                        return;
-                    }
-                }
-                drag.advance(dx, dy);
-            }
-
-            function conclude(): void {
-                if (!drag.throwing)
-                    return;
-
-                if (card.pulled >= card.throwDistance) {
-                    card.dismissed();
-                    return;
-                }
-
-                settle.value = card.dragX;
-                settle.target = 0;
-                card.pulled = 0;
-                drag.throwing = false;
-            }
-
-            onPressed: mouse => {
-
-                scroll.finish();
-                drag.fromX = drag.x + mouse.x;
-                drag.fromY = drag.y + mouse.y;
-                drag.begin();
-            }
-
-            onPositionChanged: mouse => {
-                if (drag.pressed)
-                    drag.advance(drag.x + mouse.x - drag.fromX, drag.y + mouse.y - drag.fromY);
-            }
-
-            onReleased: {
-
-                if (!drag.throwing) {
-                    if (!drag.wandered && card.tappable)
-                        card.tapped();
-                    return;
-                }
-                drag.conclude();
-            }
-
-            onCanceled: {
-                settle.value = card.dragX;
-                settle.target = 0;
-                card.pulled = 0;
-                drag.throwing = false;
-                drag.wandered = false;
-                drag.scrolling = false;
-            }
-
-            onWheel: wheel => {
-                if (drag.pressed) {
-                    wheel.accepted = false;
-                    return;
-                }
-
-                if (!scroll.feed(wheel))
-                    return;
-
-                wheel.accepted = drag.throwing;
-            }
-
-            ScrollGesture {
-                id: scroll
-
-                armed: !drag.pressed
-
-                onBegan: drag.begin()
-                onMoved: (dx, dy) => drag.stream(dx, dy)
-                onEnded: drag.conclude()
-            }
-        }
-
-        Item {
-            id: shifted
-
-            x: card.dragX
-            width: card.width
-            height: card.height
-            opacity: card.fade
-
-            SquircleRect {
-                anchors.fill: parent
-                radius: Appearance.rounding.normal
-                color: Appearance.colour.fill
-
-                opacity: drag.containsMouse || drag.pressed ? 1 : 0
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
-            }
-
-            Item {
-                id: slot
-
-                anchors.fill: parent
-            }
-
-            Item {
-                id: disc
-
-                anchors.right: parent.right
-                anchors.rightMargin: Appearance.padding.small
-                anchors.verticalCenter: parent.verticalCenter
-
-                width: card.discSize
-                height: width
-                opacity: drag.containsMouse || discPress.containsMouse ? 1 : 0
-
-                visible: opacity > 0
-
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.anim.fast
-                    }
-                }
-
-                SquircleRect {
-                    anchors.fill: parent
-                    radius: height / 2
-                    color: discPress.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
-                }
-
-                Icon {
-                    anchors.centerIn: parent
-
-                    name: "close"
-
-                    size: Appearance.font.size.small
-                    color: Appearance.colour.textDim
-                }
-
-                MouseArea {
-                    id: discPress
-
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    cursorShape: Qt.PointingHandCursor
-                    onClicked: card.dismissed()
-                }
-            }
-        }
-    }
-
-    component ScrubField: Item {
-        id: field
-
-        property int value: 0
-        property int from: 0
-        property int to: 59
-        property int detent: 1
-        property bool wrap: true
-
-        property bool zeroIsEmpty: true
-
-        signal moved(int v)
-
-        readonly property real pitch: Appearance.sizes.minTarget / Math.max(1, field.detent)
-        readonly property int span: field.to - field.from + 1
-
-        implicitWidth: Math.max(Appearance.sizes.minTarget, digits.implicitWidth + Appearance.padding.small * 2)
-        implicitHeight: root.scrubHeight
-        width: implicitWidth
-        height: implicitHeight
-
-        function fold(v: int): int {
-            if (!field.wrap)
-                return Math.max(field.from, Math.min(field.to, v));
-            return field.from + ((v - field.from) % field.span + field.span) % field.span;
-        }
-
-        function magnet(raw: real): int {
-            const step = Math.max(1, field.detent);
-            const nearest = Math.round(raw / step) * step;
-            return Math.abs(raw - nearest) * field.pitch <= Appearance.sizes.dragThreshold ? nearest : Math.round(raw);
-        }
-
-        function ask(raw: real): void {
-            field.moved(field.fold(field.magnet(raw)));
-        }
-
-        function nudge(units: int): void {
-            if (units !== 0)
-                field.moved(field.fold(field.value + units));
-        }
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: Appearance.rounding.normal
-            color: Appearance.colour.fill
-            opacity: pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
-
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-        }
-
-        StyledText {
-            id: digits
-
-            anchors.centerIn: parent
-
-            text: Clock.pad2(field.value)
-            font.pixelSize: Appearance.font.size.large
-            color: field.zeroIsEmpty && field.value === 0 ? Appearance.colour.textFaint : Appearance.colour.text
-        }
-
-        MouseArea {
-            id: pointer
-
-            property real fromY: 0
-            property int startValue: 0
-
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: pressed ? Qt.ClosedHandCursor : Qt.PointingHandCursor
-
-            preventStealing: true
-
-            onPressed: mouse => {
-                scroll.finish();
-                pointer.fromY = mouse.y;
-                pointer.startValue = field.value;
-            }
-
-            onPositionChanged: mouse => {
-                if (pointer.pressed)
-                    field.ask(pointer.startValue - (mouse.y - pointer.fromY) / field.pitch);
-            }
-
-            onWheel: wheel => {
-
-                if (!scroll.feed(wheel)) {
-                    const notches = wheel.angleDelta.y / 120;
-                    field.nudge(Math.round(notches) || (notches > 0 ? 1 : notches < 0 ? -1 : 0));
-                    wheel.accepted = true;
-                    return;
-                }
-
-                wheel.accepted = Math.abs(scroll.dy) >= Math.abs(scroll.dx);
-            }
-
-            ScrollGesture {
-                id: scroll
-
-                armed: !pointer.pressed
-
-                onBegan: pointer.startValue = field.value
-                onMoved: (dx, dy) => {
-                    if (Math.abs(dy) >= Math.abs(dx))
-                        field.ask(pointer.startValue - dy / field.pitch);
-                }
-            }
-        }
-    }
-
-    component StatePill: Item {
-        id: pill
-
-        property string label: ""
-        property bool on: false
-
-        signal clicked
-
-        implicitWidth: Math.max(Appearance.sizes.minTarget, text.implicitWidth + Appearance.padding.normal * 2)
-        implicitHeight: Math.max(Appearance.sizes.minTarget, text.implicitHeight + Appearance.padding.small * 2)
-        width: implicitWidth
-        height: implicitHeight
-
-        scale: press.pressed ? 0.96 : 1
-
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.anim.fast
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        SquircleRect {
-            anchors.fill: parent
-            radius: height / 2
-            color: pill.on ? Appearance.colour.fillStronger : press.containsMouse ? Appearance.colour.fillStrong : Appearance.colour.fill
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-        }
-
-        StyledText {
-            id: text
-
-            anchors.fill: parent
-
-            text: pill.label
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            elide: Text.ElideRight
-            color: pill.on ? Appearance.colour.text : Appearance.colour.textFaint
-
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.anim.fast
-                }
-            }
-        }
-
-        MouseArea {
-            id: press
-
-            anchors.fill: parent
-            hoverEnabled: true
-            cursorShape: Qt.PointingHandCursor
-            onClicked: pill.clicked()
-        }
-    }
-
-    component Field: Item {
-        id: entry
-
-        property string placeholder: ""
-
-        property bool autoFocus: true
-
-        property string seed: ""
-
-        readonly property string value: input.text
-
-        signal accepted(string text)
-        signal committed(string text)
-        signal cancelled
-
-        implicitHeight: input.implicitHeight + Appearance.padding.small * 2
-        height: implicitHeight
-
-        function claim(): void {
-            if (entry.visible && entry.autoFocus) {
-
-                input.text = entry.seed;
-                Prompts.request(entry);
-                input.forceActiveFocus();
-            } else if (!entry.visible) {
-                Prompts.release(entry);
-            }
-        }
-
-        readonly property bool surfaceActive: entry.Window.active
-        onSurfaceActiveChanged: if (entry.surfaceActive && entry.visible && entry.autoFocus)
-            input.forceActiveFocus()
-
-        onVisibleChanged: entry.claim()
-        Component.onCompleted: {
-            input.text = entry.seed;
-            entry.claim();
-        }
-        Component.onDestruction: Prompts.release(entry)
-
-        onSeedChanged: if (!input.activeFocus)
-            input.text = entry.seed
-
-        SquircleRect {
-            anchors.fill: parent
-            anchors.topMargin: Appearance.padding.small
-            anchors.bottomMargin: Appearance.padding.small
-            radius: Appearance.rounding.small
-            color: Appearance.colour.fillStrong
-        }
-
-        TextInput {
-            id: input
-
-            anchors.fill: parent
-            anchors.leftMargin: Appearance.padding.normal
-            anchors.rightMargin: Appearance.padding.normal
-
-            verticalAlignment: TextInput.AlignVCenter
-            clip: true
-
-            font.family: Appearance.font.family
-            font.pixelSize: Appearance.font.size.small
-            renderType: Text.NativeRendering
-            color: Appearance.colour.text
-            selectionColor: Appearance.colour.accent
-            selectedTextColor: Appearance.colour.accentText
-
-            onAccepted: entry.accepted(input.text)
-            onEditingFinished: entry.committed(input.text)
-
-            Keys.onEscapePressed: entry.cancelled()
-
-            onActiveFocusChanged: {
-                if (input.activeFocus)
-                    Prompts.request(entry);
-                else if (!entry.autoFocus)
-                    Prompts.release(entry);
-            }
-
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-
-                visible: !input.text && !input.activeFocus
-                text: entry.placeholder
-                color: Appearance.colour.textFaint
-                font.pixelSize: Appearance.font.size.small
-            }
-        }
-
-        MouseArea {
-            anchors.fill: parent
-            enabled: !entry.autoFocus
-            cursorShape: Qt.IBeamCursor
-            onClicked: {
-                Prompts.request(entry);
-                input.forceActiveFocus();
-            }
         }
     }
 
@@ -802,7 +285,7 @@ Column {
             Repeater {
                 model: Clock.zones
 
-                delegate: Card {
+                delegate: ClockCard {
                     id: zoneCard
 
                     required property var modelData
@@ -886,7 +369,7 @@ Column {
         width: parent.width
         height: visible ? filter.height + zoneList.implicitHeight : 0
 
-        Field {
+        ClockTextField {
             id: filter
 
             width: parent.width
@@ -931,7 +414,7 @@ Column {
     Repeater {
         model: Clock.timers
 
-        delegate: Card {
+        delegate: ClockCard {
             id: timerCard
 
             required property var modelData
@@ -1013,7 +496,7 @@ Column {
 
             spacing: Appearance.padding.small
 
-            ScrubField {
+            ClockScrubField {
                 value: root.setHours
                 to: 23
                 detent: 1
@@ -1021,28 +504,26 @@ Column {
             }
 
             StyledText {
-                height: root.scrubHeight
-                verticalAlignment: Text.AlignVCenter
+                anchors.verticalCenter: parent.verticalCenter
                 text: ":"
                 font.pixelSize: Appearance.font.size.large
                 color: Appearance.colour.textFaint
             }
 
-            ScrubField {
+            ClockScrubField {
                 value: root.setMinutes
                 detent: root.scrubDetent
                 onMoved: v => root.setMinutes = v
             }
 
             StyledText {
-                height: root.scrubHeight
-                verticalAlignment: Text.AlignVCenter
+                anchors.verticalCenter: parent.verticalCenter
                 text: ":"
                 font.pixelSize: Appearance.font.size.large
                 color: Appearance.colour.textFaint
             }
 
-            ScrubField {
+            ClockScrubField {
                 value: root.setSeconds
                 detent: root.scrubDetent
                 onMoved: v => root.setSeconds = v
@@ -1094,7 +575,7 @@ Column {
     Repeater {
         model: root.alarmRows
 
-        delegate: Card {
+        delegate: ClockCard {
             id: alarmCard
 
             required property var modelData
@@ -1171,49 +652,47 @@ Column {
                 Row {
                     spacing: Appearance.padding.small
 
-                    ScrubField {
+                    ClockScrubField {
                         value: alarmCard.modelData.hour
                         to: 23
                         detent: 1
 
                         zeroIsEmpty: false
-                        onMoved: v => Clock.setAlarm(alarmCard.modelData.id, {
+                        onCommitted: v => Clock.setAlarm(alarmCard.modelData.id, {
                                 hour: v
                             })
                     }
 
                     StyledText {
-                        height: root.scrubHeight
-                        verticalAlignment: Text.AlignVCenter
+                        anchors.verticalCenter: parent.verticalCenter
                         text: ":"
                         font.pixelSize: Appearance.font.size.large
                         color: Appearance.colour.textFaint
                     }
 
-                    ScrubField {
+                    ClockScrubField {
                         value: alarmCard.modelData.minute
                         detent: root.scrubDetent
                         zeroIsEmpty: false
-                        onMoved: v => Clock.setAlarm(alarmCard.modelData.id, {
+                        onCommitted: v => Clock.setAlarm(alarmCard.modelData.id, {
                                 minute: v
                             })
                     }
                 }
 
-                Item {
+                Row {
                     id: days
 
                     width: parent.width
-                    height: childrenRect.height
+                    spacing: Appearance.padding.small
 
                     Repeater {
-                        model: 7
+                        model: root.daysInWeek
 
                         delegate: Button {
                             required property int index
 
-                            x: index * (days.width - width) / 6
-                            width: (days.width - Appearance.padding.small * 6) / 7
+                            width: (days.width - days.spacing * (root.daysInWeek - 1)) / root.daysInWeek
 
                             text: Qt.locale().dayName(index + 1, Locale.NarrowFormat).toUpperCase()
                             checkable: true
@@ -1228,46 +707,21 @@ Column {
                     }
                 }
 
-                Item {
-                    id: modes
+                Segments {
+                    id: modeChoice
+
+                    readonly property var modes: ["none", "command", "cloud"]
 
                     width: parent.width
-                    height: childrenRect.height
 
-                    Repeater {
-                        model: [
-                            {
-                                key: "none",
-                                label: "Nothing"
-                            },
-                            {
-                                key: "command",
-                                label: "Command"
-                            },
-                            {
-                                key: "cloud",
-                                label: "Cloud"
-                            }
-                        ]
-
-                        delegate: Button {
-                            required property int index
-                            required property var modelData
-
-                            x: index * (modes.width - width) / 2
-                            width: (modes.width - Appearance.padding.small * 2) / 3
-
-                            text: modelData.label
-                            checkable: true
-                            checked: alarmCard.modelData.mode === modelData.key
-                            onToggled: Clock.setAlarm(alarmCard.modelData.id, {
-                                mode: modelData.key
-                            })
-                        }
-                    }
+                    options: ["Nothing", "Command", "Cloud"]
+                    current: Math.max(0, modeChoice.modes.indexOf(alarmCard.modelData.mode))
+                    onPicked: index => Clock.setAlarm(alarmCard.modelData.id, {
+                            mode: modeChoice.modes[index]
+                        })
                 }
 
-                Field {
+                ClockTextField {
                     width: parent.width
 
                     visible: alarmCard.modelData.mode !== "none"

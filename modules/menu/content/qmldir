@@ -3,7 +3,10 @@ BatteryMenu 1.0 BatteryMenu.qml
 BluetoothMenu 1.0 BluetoothMenu.qml
 CalculatorMenu 1.0 CalculatorMenu.qml
 CalendarMenu 1.0 CalendarMenu.qml
+ClockCard 1.0 ClockCard.qml
 ClockMenu 1.0 ClockMenu.qml
+ClockScrubField 1.0 ClockScrubField.qml
+ClockTextField 1.0 ClockTextField.qml
 MediaMenu 1.0 MediaMenu.qml
 NetworkMenu 1.0 NetworkMenu.qml
 NotificationMenu 1.0 NotificationMenu.qml
