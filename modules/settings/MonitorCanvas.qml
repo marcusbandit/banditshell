@@ -150,10 +150,11 @@ Item {
                 cursorShape: root.dragging ? Qt.ClosedHandCursor : Qt.PointingHandCursor
 
                 onPressed: mouse => {
+                    const at = pointer.mapToItem(root, mouse.x, mouse.y);
                     root.dragging = true;
                     root.who = rect.modelData.name;
-                    root.startX = mouse.x;
-                    root.startY = mouse.y;
+                    root.startX = at.x;
+                    root.startY = at.y;
                     root.baseX = rect.modelData.x;
                     root.baseY = rect.modelData.y;
                     root.liveX = rect.modelData.x;
@@ -165,9 +166,10 @@ Item {
                         return;
 
                     const others = root.rects.filter(r => r.name !== rect.modelData.name);
+                    const at = pointer.mapToItem(root, mouse.x, mouse.y);
 
-                    let cx = root.baseX + (mouse.x - root.startX) / root.fitScale;
-                    let cy = root.baseY + (mouse.y - root.startY) / root.fitScale;
+                    let cx = root.baseX + (at.x - root.startX) / root.fitScale;
+                    let cy = root.baseY + (at.y - root.startY) / root.fitScale;
 
                     cx = root.snap(cx, rect.modelData.w, others);
                     cy = root.snap(cy, rect.modelData.h, others);
