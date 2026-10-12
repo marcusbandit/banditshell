@@ -39,5 +39,7 @@ FloatingWindow {
         id: face
 
         anchors.fill: parent
+
+        showing: Settings.open
     }
 }

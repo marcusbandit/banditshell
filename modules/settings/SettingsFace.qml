@@ -18,6 +18,8 @@ Item {
         event.accepted = true;
     }
 
+    property bool showing: true
+
     readonly property real gutter: Appearance.sizes.settingsGutter
     readonly property real pad: Appearance.padding.large
     readonly property real railWidth: Appearance.sizes.settingsRail
@@ -338,7 +340,8 @@ Item {
 
                     width: parent.width
 
-                    source: root.current ? `pages/${root.current.charAt(0).toUpperCase() + root.current.slice(1)}Page.qml` : ""
+                    active: root.showing
+                    source: root.current ?`pages/${root.current.charAt(0).toUpperCase() + root.current.slice(1)}Page.qml` : ""
 
                     onLoaded: arrive.restart()
 
