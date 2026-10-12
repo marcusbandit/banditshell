@@ -50,7 +50,7 @@
 #                                falls back to grim and slurp without the shell
 #   banditshell files [toggle|open] [dir]|close|status
 #                                the file browser
-#   banditshell completions install|status|remove|print [zsh|bash]
+#   banditshell completions [install|status|remove|print] [zsh|bash]
 #                                tab completion for zsh and bash, generated
 #                                from this text
 #   banditshell build            compile src/*.c into bin/
@@ -801,8 +801,15 @@ completions)
     shift || true
     case "$sub" in
     install | status | remove)
+        generators=(zsh bash)
+        case "${1:-}" in
+        zsh | bash)
+            generators=("$1")
+            shift
+            ;;
+        esac
         status=0
-        for generator in zsh bash; do
+        for generator in "${generators[@]}"; do
             "$SHELL_DIR/scripts/$generator-completion.sh" "$sub" "$@" || {
                 code=$?
                 [ "$code" -gt "$status" ] && status=$code
@@ -816,7 +823,7 @@ completions)
         *) echo "usage: banditshell completions print [zsh|bash]" >&2; exit 2 ;;
         esac
         ;;
-    *) echo "usage: banditshell completions install|status|remove|print [zsh|bash]" >&2; exit 2 ;;
+    *) echo "usage: banditshell completions [install|status|remove|print] [zsh|bash]" >&2; exit 2 ;;
     esac
     ;;
 shot)

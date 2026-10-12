@@ -157,3 +157,27 @@ _banditshell`;
     assert.deepStrictEqual(complete("dispatch", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
+
+test("completions install, status and remove can take one shell", () => {
+    const home = fs.mkdtempSync(path.join(HOME, "one-shell-"));
+    const env = { ...ENV, HOME: home };
+    const cli = (...args) => {
+        try {
+            execFileSync(CLI, ["completions", ...args], { cwd: ROOT, env, encoding: "utf8", stdio: "pipe" });
+            return 0;
+        } catch (error) {
+            return error.status;
+        }
+    };
+    assert.strictEqual(cli("status", "zsh", "--quiet"), 2);
+    assert.strictEqual(cli("install", "bash", "--quiet"), 0);
+    assert.strictEqual(cli("status", "bash", "--quiet"), 0);
+    assert.strictEqual(cli("status", "zsh", "--quiet"), 2);
+    assert.strictEqual(cli("status", "--quiet"), 2);
+    assert.strictEqual(cli("install", "--quiet"), 0);
+    assert.strictEqual(cli("status", "--quiet"), 0);
+    assert.strictEqual(cli("remove", "zsh", "--quiet"), 0);
+    assert.strictEqual(cli("status", "zsh", "--quiet"), 2);
+    assert.strictEqual(cli("status", "bash", "--quiet"), 0);
+    assert.deepStrictEqual(bashComplete("completions", "status", ""), ["bash", "zsh"]);
+});
