@@ -16,6 +16,8 @@ Item {
     property string receiving: ""
 
     Column {
+        id: column
+
         anchors.left: parent.left
         anchors.right: parent.right
         anchors.top: parent.top
@@ -55,6 +57,8 @@ Item {
                         id: place
 
                         required property var modelData
+
+                        objectName: place.modelData.path
 
                         readonly property bool here: Files.cwd === place.modelData.path
 
@@ -156,25 +160,16 @@ Item {
     }
 
     function pathAt(position: point): string {
-        if (position.x < 0 || position.x > root.width || position.y < 0)
+        if (position.x < 0 || position.x > root.width || position.y < 0 || position.y > root.height)
             return "";
 
-        const pad = Appearance.padding.small;
-        const heading = Math.round(Appearance.sizes.filesText * 4 / 3) + pad + pad / 2;
-        let y = pad;
+        const local = column.mapFromItem(root, position.x, position.y);
+        const section = column.childAt(local.x, local.y);
+        if (!section)
+            return "";
 
-        for (const section of root.sections) {
-            if (section.rows.length === 0)
-                continue;
-            y += heading;
-            for (const row of section.rows) {
-                if (position.y >= y && position.y < y + Appearance.sizes.filesRow)
-                    return row.path;
-                y += Appearance.sizes.filesRow;
-            }
-            y += Appearance.padding.normal;
-        }
-
-        return "";
+        const inner = section.mapFromItem(column, local.x, local.y);
+        const row = section.childAt(inner.x, inner.y);
+        return row ? row.objectName : "";
     }
 }
