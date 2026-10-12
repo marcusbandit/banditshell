@@ -17,8 +17,6 @@ Singleton {
     readonly property int count: history.length
     readonly property bool any: count > 0
 
-    readonly property bool anyUrgent: history.some(e => e.urgency === NotificationUrgency.Critical)
-
     function timeoutFor(n: var): int {
         if (n?.urgency === NotificationUrgency.Critical)
             return 0;
@@ -176,13 +174,15 @@ Singleton {
         NotificationEntry {}
     }
 
+    readonly property bool counting: !root.paused && root.popups.some(e => e.running)
+
     Timer {
         interval: 50
         repeat: true
-        running: root.popups.length > 0 || root.leaving.length > 0
+        running: root.counting || root.leaving.length > 0
 
         onTriggered: {
-            if (!root.paused) {
+            if (root.counting) {
                 const done = [];
                 for (const entry of root.popups)
                     if (entry.tick(interval))
