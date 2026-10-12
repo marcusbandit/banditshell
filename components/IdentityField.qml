@@ -21,8 +21,13 @@ Item {
             identity.input.forceActiveFocus();
         else if (!password.text)
             password.input.forceActiveFocus();
-        else
-            root.accepted(identity.text, password.text, root.methods[root.method], root.inner[root.method]);
+        else {
+            const user = identity.text;
+            const secret = password.text;
+            identity.text = "";
+            password.text = "";
+            root.accepted(user, secret, root.methods[root.method], root.inner[root.method]);
+        }
     }
 
     readonly property bool surfaceActive: root.Window.active

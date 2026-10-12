@@ -270,6 +270,7 @@ Singleton {
     property string enrollTrouble: ""
 
     property var enrollArgs: []
+    property string enrollPassword: ""
 
     function clearEnroll(name: string): void {
         if (root.enrollFailedName === name) {
@@ -279,6 +280,8 @@ Singleton {
     }
 
     function failEnroll(why: string): void {
+        root.enrollArgs = [];
+        root.enrollPassword = "";
         root.enrollFailedName = root.enrollingName;
         root.enrollTrouble = why;
         root.enrollingName = "";
@@ -299,10 +302,11 @@ Singleton {
         root.enrollingName = name;
 
         const method = eap || "peap";
-        const args = ["wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", method, "802-1x.identity", identity, "802-1x.password", password];
+        const args = ["wifi-sec.key-mgmt", "wpa-eap", "802-1x.eap", method, "802-1x.identity", identity, "802-1x.password", ""];
         if (method !== "tls")
             args.push("802-1x.phase2-auth", phase2 || "mschapv2");
         root.enrollArgs = args;
+        root.enrollPassword = password;
 
         profile.want = name;
         profile.exists = false;
@@ -338,6 +342,7 @@ Singleton {
             }
             const head = profile.exists ? ["nmcli", "connection", "modify", profile.want] : ["nmcli", "connection", "add", "type", "wifi", "con-name", profile.want, "ifname", root.deviceName, "ssid", profile.want];
             enrol.command = head.concat(root.enrollArgs);
+            root.enrollArgs = [];
             enrol.running = true;
         }
     }
@@ -346,13 +351,15 @@ Singleton {
         id: enrol
 
         onExited: code => {
+            enrol.command = [];
             if (!root.enrollingName)
                 return;
             if (code !== 0) {
                 root.failEnroll("NetworkManager would not take the profile");
                 return;
             }
-            up.command = ["nmcli", "--wait", "30", "connection", "up", "id", root.enrollingName];
+            up.command = ["nmcli", "--wait", "30", "connection", "up", "id", root.enrollingName, "passwd-file", "/dev/stdin"];
+            up.stdinEnabled = true;
             up.running = true;
         }
     }
@@ -362,10 +369,18 @@ Singleton {
 
         property bool refused: false
 
+        stdinEnabled: true
+
+        onStarted: {
+            up.write(WifiList.secretLine("802-1x.password", root.enrollPassword));
+            root.enrollPassword = "";
+            up.stdinEnabled = false;
+        }
+
         function refuse(line: string): void {
             if (up.refused || !root.enrollingName)
                 return;
-            if (!/passwords or encryption keys|required to access the wireless network|not given in .passwd-file|cannot ask without/i.test(line))
+            if (!/passwords or encryption keys|required to access the wireless network|not given in .passwd-file|cannot ask without|secrets were required|no valid secrets/i.test(line))
                 return;
 
             const name = root.enrollingName;

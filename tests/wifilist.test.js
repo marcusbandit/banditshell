@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, secretLine };")();
 
 const STEPS = 4;
 
@@ -124,5 +124,106 @@ test.describe("settle", () => {
     test.it("accepts having nothing before", () => {
         const next = [network("alpha", 0.5)];
         assert.strictEqual(WifiList.settle(undefined, next), next);
+    });
+});
+
+function isSpace(character) {
+    return character === " " || character === "\t" || character === "\n" || character === "\v" || character === "\f" || character === "\r";
+}
+
+function trimEnd(text) {
+    let end = text.length;
+    while (end > 0 && isSpace(text[end - 1]))
+        end--;
+    return text.slice(0, end);
+}
+
+function nmcliUnescape(text) {
+    let start = 0;
+    while (start < text.length && isSpace(text[start]))
+        start++;
+    text = text.slice(start);
+    let at = text.indexOf("\\");
+    if (at < 0)
+        return trimEnd(text);
+    let out = text.slice(0, at);
+    for (;;) {
+        at++;
+        let character = text[at];
+        if (character === undefined)
+            break;
+        if (character >= "0" && character <= "9") {
+            let value = character.charCodeAt(0) - 48;
+            at++;
+            if (text[at] >= "0" && text[at] <= "7") {
+                value = value * 8 + text.charCodeAt(at) - 48;
+                at++;
+                if (text[at] >= "0" && text[at] <= "7") {
+                    value = value * 8 + text.charCodeAt(at) - 48;
+                    at++;
+                }
+            }
+            character = String.fromCharCode(value & 0xff);
+        } else {
+            character = { b: "\b", f: "\f", n: "\n", r: "\r", t: "\t", v: "\v" }[character] ?? character;
+            at++;
+        }
+        out += character;
+        const next = text.indexOf("\\", at);
+        if (next < 0)
+            return out + trimEnd(text.slice(at));
+        out += text.slice(at, next);
+        at = next;
+    }
+    return out;
+}
+
+function nmcliPasswords(contents) {
+    const found = {};
+    for (const raw of contents.split(/\r\n|\n|\r/)) {
+        let line = raw;
+        while (line && isSpace(line[0]))
+            line = line.slice(1);
+        if (!line || line[0] === "#")
+            continue;
+        const cut = line.search(/[:=]/);
+        assert.ok(cut > 0, `no separator in ${JSON.stringify(line)}`);
+        found[line.slice(0, cut).trim()] = nmcliUnescape(line.slice(cut + 1));
+    }
+    return found;
+}
+
+test.describe("secretLine", () => {
+    const secrets = [
+        "hunter2",
+        "",
+        " leading space",
+        "trailing space ",
+        "  both  ",
+        "tab\there",
+        "new\nline",
+        "carriage\rreturn",
+        "back\\slash",
+        "\\n is not a newline",
+        "trailing backslash\\",
+        "colon:and=equals",
+        "#not a comment",
+        "octal \\101 stays",
+        "delete\x7fcharacter",
+        "zero after space 0",
+        "ünïcödé ✓ 🔑"
+    ];
+
+    test.it("is one line that nmcli reads back as the same secret", () => {
+        for (const secret of secrets) {
+            const line = WifiList.secretLine("802-1x.password", secret);
+            assert.ok(line.endsWith("\n"), JSON.stringify(secret));
+            assert.ok(!/[\r\n]/.test(line.slice(0, -1)), `line break inside for ${JSON.stringify(secret)}`);
+            assert.deepStrictEqual(nmcliPasswords(line), { "802-1x.password": secret }, JSON.stringify(secret));
+        }
+    });
+
+    test.it("leaves an ordinary password readable", () => {
+        assert.strictEqual(WifiList.secretLine("802-1x.password", "correct-horse"), "802-1x.password:correct-horse\n");
     });
 });

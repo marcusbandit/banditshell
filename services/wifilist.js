@@ -47,3 +47,22 @@ function same(previous, next) {
 function settle(previous, next) {
     return same(previous, next) ? previous : next;
 }
+
+function escapeSecret(secret) {
+    let escaped = "";
+    for (let i = 0; i < secret.length; i++) {
+        const character = secret[i];
+        const code = secret.charCodeAt(i);
+        if (character === "\\")
+            escaped += "\\\\";
+        else if (code <= 0x20 || code === 0x7f)
+            escaped += "\\" + ("00" + code.toString(8)).slice(-3);
+        else
+            escaped += character;
+    }
+    return escaped;
+}
+
+function secretLine(property, secret) {
+    return `${property}:${escapeSecret(String(secret ?? ""))}\n`;
+}
