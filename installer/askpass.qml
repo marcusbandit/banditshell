@@ -20,6 +20,8 @@ ShellRoot {
 
     property string secret: ""
 
+    property bool cancelled: false
+
     signal focusWanted
 
     Process {
@@ -63,12 +65,19 @@ ShellRoot {
         onStarted: {
             reply.write(root.outgoing + "\n");
             root.outgoing = "";
+            if (root.cancelled)
+                quitSoon.restart();
         }
     }
 
     Process {
         id: markCancelled
         command: ["sh", "-c", 'touch "$1/cancelled"', "_", root.dir]
+
+        onExited: {
+            reply.running = false;
+            reply.running = true;
+        }
     }
 
     function send(secret: string): void {
@@ -82,13 +91,11 @@ ShellRoot {
     }
 
     function cancel(): void {
-        markCancelled.running = true;
+        root.cancelled = true;
         root.outgoing = "";
         root.secret = "";
         root.armed = false;
-        reply.running = false;
-        reply.running = true;
-        quitSoon.running = true;
+        markCancelled.running = true;
     }
 
     Timer {
