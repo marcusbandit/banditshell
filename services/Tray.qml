@@ -7,10 +7,15 @@ import Quickshell.Services.SystemTray
 Singleton {
     id: root
 
-    readonly property var items: [...SystemTray.items.values].filter(i => i && i.status !== Status.Passive).sort((a, b) => root.keyOf(a).localeCompare(root.keyOf(b)))
+    readonly property var items: [...SystemTray.items.values].filter(i => i && i.status !== Status.Passive).sort((a, b) => root.idOf(a).localeCompare(root.idOf(b)) || root.keyOf(a).localeCompare(root.keyOf(b)))
+
+    function idOf(item: var): string {
+        return item?.id || item?.title || "";
+    }
 
     function keyOf(item: var): string {
-        return item?.id || item?.title || "";
+        const address = String(item).match(/\(0x([0-9a-f]+)/)?.[1] ?? "";
+        return `${root.idOf(item)}@${address}`;
     }
 
     function nameOf(item: var): string {
