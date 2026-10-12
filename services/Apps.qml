@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "ranking.js" as Ranking
 
 Singleton {
     id: root
@@ -372,54 +373,31 @@ Singleton {
         return root.genericIcon;
     }
 
-    readonly property int tierExact: 6
-    readonly property int tierPrefix: 5
-    readonly property int tierWordStart: 4
-    readonly property int tierAnywhere: 3
     readonly property int tierMeta: 2
     readonly property int tierComment: 1
     readonly property int tierSubsequence: 0
     readonly property int tierNone: -1
+    readonly property int tierExact: root.tierMeta + Ranking.EXACT
 
     function tier(entry: var, needle: string): int {
         if (!needle)
             return root.tierExact;
 
         const q = needle.toLowerCase();
-        const name = (entry.name ?? "").toLowerCase();
+        const name = entry.name ?? "";
         const generic = (entry.genericName ?? "").toLowerCase();
         const comment = (entry.comment ?? "").toLowerCase();
         const keywords = (entry.keywords ?? []).join(" ").toLowerCase();
 
-        if (name === q)
-            return root.tierExact;
-        if (name.startsWith(q))
-            return root.tierPrefix;
-        if (new RegExp(`\\b${root.escapeRegex(q)}`).test(name))
-            return root.tierWordStart;
-        if (name.includes(q))
-            return root.tierAnywhere;
+        const placed = Ranking.place(name, q);
+        if (placed !== Ranking.NONE)
+            return root.tierMeta + placed;
         if (generic.includes(q) || keywords.includes(q))
             return root.tierMeta;
         if (comment.includes(q))
             return root.tierComment;
 
-        return root.subsequence(name, q) ? root.tierSubsequence : root.tierNone;
-    }
-
-    function escapeRegex(s: string): string {
-        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    }
-
-    function subsequence(haystack: string, needle: string): bool {
-        let i = 0;
-        for (const ch of haystack) {
-            if (ch === needle[i])
-                i++;
-            if (i === needle.length)
-                return true;
-        }
-        return false;
+        return Ranking.subsequence(name, q) ? root.tierSubsequence : root.tierNone;
     }
 
     function search(needle: string): var {

@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "ranking.js" as Ranking
 
 Singleton {
     id: root
@@ -449,34 +450,10 @@ Singleton {
         reaper.running = true;
     }
 
-    readonly property int tierExact: 4
-    readonly property int tierPrefix: 3
-    readonly property int tierWord: 2
-    readonly property int tierAnywhere: 1
-    readonly property int tierNone: -1
+    readonly property int tierNone: Ranking.NONE
 
     function tier(entry: var, needle: string): int {
-        if (!needle)
-            return root.tierExact;
-
-        const q = needle.toLowerCase();
-
-        const hay = [entry.text ?? "", entry.kind ?? "", ...(entry.paths ?? []), entry.file ? root.basename(entry.file) : ""].join("\n").toLowerCase();
-
-        if (hay === q)
-            return root.tierExact;
-        if (hay.startsWith(q))
-            return root.tierPrefix;
-        if (new RegExp(`\\b${root.escapeRegex(q)}`).test(hay))
-            return root.tierWord;
-        if (hay.includes(q))
-            return root.tierAnywhere;
-
-        return root.tierNone;
-    }
-
-    function escapeRegex(s: string): string {
-        return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        return Ranking.place([entry.text ?? "", entry.kind ?? "", ...(entry.paths ?? []), entry.file ? root.basename(entry.file) : ""].join("\n"), needle);
     }
 
     function search(needle: string): var {
