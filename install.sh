@@ -4,14 +4,7 @@ set -uo pipefail
 
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 UI_DIR="$REPO/installer"
-
-TARGET_USER="${SUDO_USER:-$(id -un)}"
-TARGET_HOME="$(getent passwd "$TARGET_USER" | cut -d: -f6)"
-TARGET_UID="$(id -u "$TARGET_USER" 2>/dev/null || id -u)"
-
-RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$TARGET_UID}"
-[ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ] && RUNTIME_DIR="/run/user/$TARGET_UID"
-
+RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
 PROGRESS="$RUNTIME_DIR/banditshell-install.jsonl"
 ASKPASS_RUN="$RUNTIME_DIR/banditshell-askpass"
 
@@ -19,18 +12,37 @@ DRY_RUN=0
 WANT_UI=1
 LIST_ONLY=0
 
+usage() {
+    cat <<EOF
+usage: install.sh [--dry-run] [--no-ui] [--list]
+
+Installs what banditshell needs on Arch: the CLI into bin/, quickshell, the
+font, every package the shell calls, the C helpers (banditshell build) and tab
+completion for zsh and bash. Steps already satisfied are skipped, so a re-run
+retries only what failed. Run it as yourself; it asks for sudo when a package
+needs installing.
+
+  --dry-run   walk every step without installing anything
+  --no-ui     stay in the terminal; no progress window
+  --list      print the steps and exit
+EOF
+}
+
 for arg in "$@"; do
     case "$arg" in
     --dry-run) DRY_RUN=1 ;;
     --no-ui) WANT_UI=0 ;;
     --list) LIST_ONLY=1 ;;
-    -h | --help)
-        awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"
-        exit 0
-        ;;
-    *) echo "install.sh: unknown option: $arg" >&2; exit 2 ;;
+    -h | --help) usage; exit 0 ;;
+    *) echo "install.sh: unknown option: $arg" >&2; usage >&2; exit 2 ;;
     esac
 done
+
+if [ "$(id -u)" -eq 0 ]; then
+    echo "install.sh: run it as yourself, not as root; it writes into your own runtime" >&2
+    echo "and config directories and asks for sudo only for packages" >&2
+    exit 1
+fi
 
 STEP_NAME=()
 STEP_PROBE=()
@@ -54,57 +66,48 @@ font_present() {
 }
 
 build_table() {
-    if [ "$DRY_RUN" -eq 1 ]; then
-        add_step quickshell   "false" ""  1 "the toolkit"
-        add_step monocraft    "false" ""  1 "the font"
-        local n
-        for n in cli hyprland qt6-declarative qt6-multimedia qt6-shadertools \
-            ttf-material-symbols-variable ttf-nerd-fonts-symbols wl-clipboard \
-            jq grim ffmpeg python python-gobject python-cryptography glib2 zenity \
-            qrencode zxing-cpp librsvg zsh-completion; do
-            add_step "$n" "false" "" 2 "pretend"
-        done
-        return
-    fi
+    add_step cli                           "cli_installed"                           @cli                          1 "the CLI wrapper itself, cli/banditshell into bin/"
+    add_step quickshell                    "command -v qs"                           quickshell                    1 "the toolkit the shell is written against"
+    add_step curl                          "command -v curl"                         curl                          1 "fetching the font"
+    add_step unzip                         "command -v unzip"                        unzip                         1 "unpacking the font"
+    add_step monocraft                     "font_present Monocraft"                  @monocraft                    1 "the shell's face, and its pixel grid"
 
-    add_step cli          "cli_installed"             @cli       1 "the CLI wrapper itself, cli/banditshell into bin/"
-    add_step quickshell "command -v qs"          quickshell 1 "the toolkit the shell is written against"
-    add_step monocraft  "font_present Monocraft" @monocraft 1 "the shell's face, and its pixel grid"
-
-    add_step hyprland                     "command -v hyprctl"           hyprland                      2 "the compositor it talks to"
-    add_step qt6-declarative              "test -d /usr/lib/qt6/qml/QtQuick"        qt6-declarative    2 "QtQuick, Shapes, Effects"
-    add_step qt6-multimedia               "test -d /usr/lib/qt6/qml/QtMultimedia"   qt6-multimedia     2 "sound in the notifications"
-    add_step qt6-shadertools              "test -x /usr/lib/qt6/bin/qsb"            qt6-shadertools    2 "qsb, to compile the chassis shader"
+    add_step hyprland                      "command -v hyprctl"                      hyprland                      2 "the compositor it talks to"
+    add_step qt6-declarative               "test -d /usr/lib/qt6/qml/QtQuick"        qt6-declarative               2 "QtQuick, Shapes, Effects"
+    add_step qt6-multimedia                "test -d /usr/lib/qt6/qml/QtMultimedia"   qt6-multimedia                2 "sound in the notifications"
+    add_step qt6-shadertools               "test -x /usr/lib/qt6/bin/qsb"            qt6-shadertools               2 "qsb, to compile the chassis shader"
     add_step ttf-material-symbols-variable "font_present 'Material Symbols Rounded'" ttf-material-symbols-variable 2 "the icon face"
-    add_step ttf-nerd-fonts-symbols       "font_present 'Symbols Nerd Font'"        ttf-nerd-fonts-symbols 2 "per-application marks"
-    add_step wl-clipboard                 "command -v wl-paste"          wl-clipboard                  2 "what was copied, and its types"
-    add_step jq                           "command -v jq"                jq                            2 "the clipboard recorder's json"
-    add_step grim                         "command -v grim"              grim                          2 "screenshots and the freeze picker"
-    add_step ffmpeg                       "command -v ffmpeg"            ffmpeg                        2 "the picker's frozen frame"
-    add_step python                       "command -v python3"           python                        2 "the palette, the hinge probe, the keyring prompter"
-    add_step python-gobject               "python3 -c 'import gi'"       python-gobject                2 "the keyring prompter's bus side"
-    add_step python-cryptography          "python3 -c 'import cryptography'" python-cryptography       2 "the keyring prompter's secret exchange"
-    add_step glib2                        "command -v gdbus"             glib2                         2 "the portal calls"
-    add_step zenity                       "command -v zenity"            zenity                        2 "the one dialog qml cannot draw"
-    add_step qrencode                     "command -v qrencode"          qrencode                      2 "the qr the shell hands out"
-    add_step zxing-cpp                    "command -v ZXingReader"       zxing-cpp                     2 "the qr the shell reads back"
-    add_step librsvg                      "command -v rsvg-convert"      librsvg                       2 "svg icons, for the palette"
-
-    add_step zsh-completion "completion_present" @zsh-completion 2 "tab completion for the CLI, in zsh"
+    add_step ttf-nerd-fonts-symbols        "font_present 'Symbols Nerd Font'"        ttf-nerd-fonts-symbols        2 "per-application marks"
+    add_step nodejs                        "command -v node"                         nodejs                        2 "the old-bind rewriter and the tests"
+    add_step rsync                         "command -v rsync"                        rsync                         2 "the last known good copy"
+    add_step wl-clipboard                  "command -v wl-paste"                     wl-clipboard                  2 "what was copied, and its types"
+    add_step jq                            "command -v jq"                           jq                            2 "the clipboard recorder's json"
+    add_step grim                          "command -v grim"                         grim                          2 "screenshots and the freeze picker"
+    add_step slurp                         "command -v slurp"                        slurp                         2 "the region when the shell is down"
+    add_step swappy                        "command -v swappy"                       swappy                        2 "the default screenshot editor"
+    add_step ffmpeg                        "command -v ffprobe"                      ffmpeg                        2 "the picker's frozen frame, video wallpapers"
+    add_step libnotify                     "command -v notify-send"                  libnotify                     2 "timers, alarms and the battery speaking up"
+    add_step xdg-utils                     "command -v xdg-open"                     xdg-utils                     2 "opening files and links"
+    add_step networkmanager                "command -v nmcli"                        networkmanager                2 "wi-fi and wired"
+    add_step ddcutil                       "command -v ddcutil"                      ddcutil                       2 "monitor brightness over DDC/CI"
+    add_step pciutils                      "command -v lspci"                        pciutils                      2 "the device page's graphics card"
+    add_step wtype                         "command -v wtype"                        wtype                         2 "the on-screen keyboard's typing"
+    add_step ydotool                       "command -v ydotool"                      ydotool                       2 "the on-screen keyboard's modifier chords"
+    add_step python                        "command -v python3"                      python                        2 "the palette, the hinge probe, the keyring prompter"
+    add_step python-gobject                "python3 -c 'import gi'"                  python-gobject                2 "the keyring prompter's bus side"
+    add_step python-cryptography           "python3 -c 'import cryptography'"        python-cryptography           2 "the keyring prompter's secret exchange"
+    add_step python-evdev                  "python3 -c 'import evdev'"               python-evdev                  2 "the pen tablet's pad buttons"
+    add_step glib2                         "command -v gdbus"                        glib2                         2 "the portal calls"
+    add_step zenity                        "command -v zenity"                       zenity                        2 "the one dialog qml cannot draw"
+    add_step qrencode                      "command -v qrencode"                     qrencode                      2 "the qr the shell hands out"
+    add_step zxing-cpp                     "command -v ZXingReader"                  zxing-cpp                     2 "the qr the shell reads back"
+    add_step librsvg                       "command -v rsvg-convert"                 librsvg                       2 "svg icons, for the palette"
+    add_step gcc                           "command -v gcc"                          gcc                           2 "compiling the C helpers"
+    add_step pkgconf                       "command -v pkg-config"                   pkgconf                       2 "finding the wayland client library"
+    add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
+    add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
 }
 
-completion_present() {
-    if ! command -v zsh >/dev/null 2>&1; then
-        PROBE_NOTE="no zsh on this machine"
-        return 0
-    fi
-    "$REPO/scripts/zsh-completion.sh" status --quiet
-}
-
-# The CLI's source is tracked at cli/banditshell and the copy in bin/ is build
-# output, the way bs-pty is build output of src/bs-pty.c. Present means not
-# just existing but CURRENT: a pull that lands a new cli/banditshell makes the
-# stale bin/ copy older than its source, and the step runs again.
 cli_installed() {
     [ -x "$REPO/bin/banditshell" ] || return 1
     [ "$REPO/cli/banditshell" -nt "$REPO/bin/banditshell" ] && return 1
@@ -112,8 +115,35 @@ cli_installed() {
 }
 
 install_cli() {
-    install -Dm755 "$REPO/cli/banditshell" "$REPO/bin/banditshell" || return 1
-    user_own "$REPO/bin/banditshell"
+    install -Dm755 "$REPO/cli/banditshell" "$REPO/bin/banditshell"
+}
+
+helpers_built() {
+    local helper
+    for helper in bs-pty bs-ls bs-gamma; do
+        [ -x "$REPO/bin/$helper" ] || return 1
+        [ "$REPO/src/$helper.c" -nt "$REPO/bin/$helper" ] && return 1
+    done
+    return 0
+}
+
+install_helpers() {
+    STEP_OUTPUT="$("$REPO/bin/banditshell" build 2>&1)"
+}
+
+completion_present() {
+    "$REPO/scripts/bash-completion.sh" status --quiet || return 1
+    if ! command -v zsh >/dev/null 2>&1; then
+        PROBE_NOTE="no zsh on this machine; bash only"
+        return 0
+    fi
+    "$REPO/scripts/zsh-completion.sh" status --quiet
+}
+
+install_completion() {
+    "$REPO/scripts/bash-completion.sh" install --quiet || return 1
+    command -v zsh >/dev/null 2>&1 || return 0
+    "$REPO/scripts/zsh-completion.sh" install --quiet
 }
 
 json_escape() { printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'; }
@@ -164,19 +194,22 @@ bar() {
     printf '  [%s] %2d/%-2d %s %-30s\n' "$b" "$((i + 1))" "$total" "$mark" "$name"
 }
 
-ROOT_MODE=""
 KEEPALIVE_PID=""
+SUDO_READY=0
 
 cleanup() {
-    [ -n "$KEEPALIVE_PID" ] && kill "$KEEPALIVE_PID" 2>/dev/null
+    if [ -n "$KEEPALIVE_PID" ]; then
+        kill "$KEEPALIVE_PID" 2>/dev/null
+        KEEPALIVE_PID=""
+    fi
     ui_stop
     askpass_stop
     return 0
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'cleanup; exit 130' INT TERM
 
 start_keepalive() {
-    [ "$ROOT_MODE" = "direct" ] && return 0
     [ -n "$KEEPALIVE_PID" ] && return 0
     (
         while true; do
@@ -196,15 +229,10 @@ graphical_possible() {
 }
 
 need_root() {
-    [ -n "$ROOT_MODE" ] && return 0
-
-    if [ "$(id -u)" -eq 0 ]; then
-        ROOT_MODE="direct"
-        return 0
-    fi
+    [ "$SUDO_READY" -eq 1 ] && return 0
 
     if sudo -n true 2>/dev/null; then
-        ROOT_MODE="cached"
+        SUDO_READY=1
         start_keepalive
         return 0
     fi
@@ -214,7 +242,7 @@ need_root() {
             BANDITSHELL_ASKPASS_DIR="$ASKPASS_RUN" \
             BANDITSHELL_UI_DIR="$UI_DIR" \
             sudo -A -v 2>/dev/null; then
-            ROOT_MODE="cached"
+            SUDO_READY=1
             start_keepalive
             askpass_stop
             return 0
@@ -226,27 +254,13 @@ need_root() {
     local try
     for try in 1 2 3; do
         if sudo -v; then
-            ROOT_MODE="cached"
+            SUDO_READY=1
             start_keepalive
             return 0
         fi
         say "  authentication failed ($try of 3)"
     done
     return 1
-}
-
-as_root() {
-    if [ "$ROOT_MODE" = "direct" ]; then
-        "$@"
-    else
-        sudo -n "$@"
-    fi
-}
-
-user_own() {
-    [ "$(id -u)" -eq 0 ] || return 0
-    [ -n "${SUDO_USER:-}" ] || return 0
-    chown -R "$TARGET_USER":"$(id -gn "$TARGET_USER")" "$@" 2>/dev/null || true
 }
 
 askpass_stop() {
@@ -259,12 +273,17 @@ askpass_stop() {
     rm -rf "$ASKPASS_RUN" 2>/dev/null || true
 }
 
-pkg_installed() { pacman -Qq "$1" >/dev/null 2>&1; }
-
 install_pkg() {
     local pkg="$1"
-    need_root || return 1
-    as_root pacman -S --needed --noconfirm "$pkg" >/dev/null 2>&1
+    if ! command -v pacman >/dev/null 2>&1; then
+        STEP_OUTPUT="no pacman on this machine; install $pkg with the system's package manager"
+        return 1
+    fi
+    if ! need_root; then
+        STEP_OUTPUT="no sudo, so $pkg was not installed"
+        return 1
+    fi
+    STEP_OUTPUT="$(sudo -n pacman -S --needed --noconfirm "$pkg" 2>&1)"
 }
 
 MONOCRAFT_VER="4.2.1"
@@ -272,42 +291,32 @@ MONOCRAFT_URL="https://github.com/IdreesInc/Monocraft/releases/download/v${MONOC
 MONOCRAFT_SHA="e623b72f1021062ad0156cc41f54b108e70bd35e2b295127475bb572d8ade61d"
 
 install_monocraft() {
-    local tmp
+    local tmp status=0
     tmp="$(mktemp -d)" || return 1
-    trap "rm -rf '$tmp'" RETURN
+    fetch_monocraft "$tmp" || status=1
+    rm -rf "$tmp"
+    return "$status"
+}
 
-    curl -fsSL -o "$tmp/mono.zip" "$MONOCRAFT_URL" || return 1
+fetch_monocraft() {
+    local tmp="$1"
+    curl -fsSL -o "$tmp/mono.zip" "$MONOCRAFT_URL" || { STEP_OUTPUT="could not download $MONOCRAFT_URL"; return 1; }
 
     local got
     got="$(sha256sum "$tmp/mono.zip" | cut -d' ' -f1)"
     if [ "$got" != "$MONOCRAFT_SHA" ]; then
-        echo "checksum mismatch" >&2
+        STEP_OUTPUT="checksum mismatch: $got"
         return 1
     fi
 
     unzip -oq "$tmp/mono.zip" -d "$tmp/x" || return 1
 
-    local dest
-    if [ "$(id -u)" -eq 0 ]; then
-        dest="/usr/share/fonts/monocraft"
-        install -d "$dest" || return 1
-        install -m644 "$tmp/x/Monocraft-otf/Monocraft.otf" "$dest/" || return 1
-        install -m644 "$tmp"/x/Monocraft-otf/weights/*.otf "$dest/" 2>/dev/null
-    else
-        dest="$TARGET_HOME/.local/share/fonts/monocraft"
-        mkdir -p "$dest" || return 1
-        cp "$tmp/x/Monocraft-otf/Monocraft.otf" "$dest/" || return 1
-        cp "$tmp"/x/Monocraft-otf/weights/*.otf "$dest/" 2>/dev/null
-        user_own "$TARGET_HOME/.local/share/fonts"
-    fi
-
+    local dest="${XDG_DATA_HOME:-$HOME/.local/share}/fonts/monocraft"
+    mkdir -p "$dest" || return 1
+    cp "$tmp/x/Monocraft-otf/Monocraft.otf" "$dest/" || return 1
+    cp "$tmp"/x/Monocraft-otf/weights/*.otf "$dest/" 2>/dev/null
     fc-cache -f "$dest" >/dev/null 2>&1
     return 0
-}
-
-install_completion() {
-    command -v zsh >/dev/null 2>&1 || return 0
-    "$REPO/scripts/zsh-completion.sh" install --quiet
 }
 
 UI_PID=""
@@ -320,26 +329,11 @@ ui_stop() {
 
 ui_start() {
     [ "$WANT_UI" -eq 1 ] || return 1
+    [ -n "${WAYLAND_DISPLAY:-}" ] || return 1
     command -v qs >/dev/null 2>&1 || return 1
     [ -f "$UI_DIR/shell.qml" ] || return 1
 
-    local wl="${WAYLAND_DISPLAY:-}"
-    if [ -z "$wl" ] && [ -n "${SUDO_USER:-}" ]; then
-        local socks
-        socks="$(find "$RUNTIME_DIR" -maxdepth 1 -name 'wayland-[0-9]*' ! -name '*.lock' 2>/dev/null | sort)"
-        wl="$(basename "${socks%%$'\n'*}" 2>/dev/null)"
-    fi
-    [ -n "$wl" ] || return 1
-
-    if [ "$(id -u)" -eq 0 ] && [ -n "${SUDO_USER:-}" ]; then
-        runuser -u "$TARGET_USER" -- env \
-            XDG_RUNTIME_DIR="$RUNTIME_DIR" WAYLAND_DISPLAY="$wl" \
-            BANDITSHELL_INSTALL_LOG="$PROGRESS" \
-            qs -p "$UI_DIR" >/dev/null 2>&1 &
-    else
-        BANDITSHELL_INSTALL_LOG="$PROGRESS" \
-            qs -p "$UI_DIR" >/dev/null 2>&1 &
-    fi
+    BANDITSHELL_INSTALL_LOG="$PROGRESS" qs -p "$UI_DIR" >/dev/null 2>&1 &
     UI_PID=$!
 
     sleep 1.5
@@ -355,6 +349,7 @@ SKIP_N=0
 FAIL_N=0
 
 PROBE_NOTE=""
+STEP_OUTPUT=""
 
 run_step() {
     local i="$1"
@@ -363,7 +358,8 @@ run_step() {
     local pkg="${STEP_PKG[$i]}"
 
     PROBE_NOTE=""
-    if eval "$probe" >/dev/null 2>&1; then
+    STEP_OUTPUT=""
+    if [ "$DRY_RUN" -eq 0 ] && eval "$probe" >/dev/null 2>&1; then
         emit_step "$i" skip "${PROBE_NOTE:-already present}"
         [ "$UI_PID" = "" ] && bar "$i" "${#STEP_NAME[@]}" "$name" skip
         SKIP_N=$((SKIP_N + 1))
@@ -377,23 +373,24 @@ run_step() {
     if [ "$DRY_RUN" -eq 1 ]; then
         sleep 0.45
         ok=0
-    elif [ "$pkg" = "@monocraft" ]; then
-        install_monocraft && ok=0
-    elif [ "$pkg" = "@zsh-completion" ]; then
-        install_completion && ok=0
-    elif [ "$pkg" = "@cli" ]; then
-        install_cli && ok=0
     else
-        install_pkg "$pkg" && ok=0
+        case "$pkg" in
+        @monocraft) install_monocraft && ok=0 ;;
+        @completion) install_completion && ok=0 ;;
+        @cli) install_cli && ok=0 ;;
+        @helpers) install_helpers && ok=0 ;;
+        *) install_pkg "$pkg" && ok=0 ;;
+        esac
     fi
 
     if [ "$ok" -eq 0 ]; then
-        emit_step "$i" done
-        [ "$UI_PID" = "" ] && bar "$i" "${#STEP_NAME[@]}" "$name" done
+        emit_step "$i" "done"
+        [ "$UI_PID" = "" ] && bar "$i" "${#STEP_NAME[@]}" "$name" "done"
         DONE_N=$((DONE_N + 1))
     else
-        emit_step "$i" failed "install failed"
+        emit_step "$i" failed "$(printf '%s' "${STEP_OUTPUT:-install failed}" | tail -1)"
         [ "$UI_PID" = "" ] && bar "$i" "${#STEP_NAME[@]}" "$name" failed
+        [ -n "$STEP_OUTPUT" ] && printf '%s\n' "$STEP_OUTPUT" | tail -20 | sed 's/^/      /'
         FAIL_N=$((FAIL_N + 1))
     fi
     return 0
@@ -414,7 +411,6 @@ main() {
 
     mkdir -p "$RUNTIME_DIR" 2>/dev/null
     : >"$PROGRESS"
-    user_own "$PROGRESS"
 
     local p1=0 p2=0 i
     for ((i = 0; i < total; i++)); do
@@ -470,9 +466,7 @@ main() {
     fi
 
     say "  banditshell is ready."
-    if command -v zsh >/dev/null 2>&1; then
-        say "    in a NEW zsh:   banditshell <Tab> completes every verb"
-    fi
+    say "    in a new shell: banditshell <Tab> completes every verb"
     say "    run it now:     $REPO/bin/banditshell start"
     say "    see it live:    $REPO/bin/banditshell run"
     say "    every verb:     $REPO/bin/banditshell help"
