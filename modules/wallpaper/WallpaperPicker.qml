@@ -94,6 +94,8 @@ Item {
         root.showAll = false;
     }
 
+    Component.onDestruction: Wallpaper.clearPreview(root.screen)
+
     function commit(): void {
         if (strip.goal === root.settled) {
             Wallpaper.clearPreview(root.screen);
