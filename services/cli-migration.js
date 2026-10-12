@@ -126,6 +126,8 @@ const RULES = [
     { re: /^clipboard (use|pin|remove|clear)( .*)?$/, to: "dispatch clipboard $1$2", note: "history actions" },
     { re: /^clipboard list$/, to: "list clipboard", note: "registry read" },
 
+    { re: /^notifications clear$/, to: "dispatch notifications clear", note: "an action on the history" },
+
     { re: /^calculator (app|panel)$/, to: "dispatch calculator $1", note: "shape picks" },
     { re: /^calculator answer (.+)$/, to: "dispatch calculator answer $1", note: "evaluate without a surface" },
 

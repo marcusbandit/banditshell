@@ -96,6 +96,14 @@ test("bespoke panel verbs go through dispatch", () => {
         assert.strictEqual(migrate(old), now, old);
 });
 
+test("notifications clear goes through dispatch", () => {
+    assert.strictEqual(migrate("notifications clear"), "dispatch notifications clear");
+    assert.strictEqual(migrate("dispatch notifications clear"), "dispatch notifications clear");
+    const { text, changes } = Migration.rewriteText('hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd("banditshell notifications clear"))');
+    assert.strictEqual(text, 'hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd("banditshell dispatch notifications clear"))');
+    assert.strictEqual(changes.length, 1);
+});
+
 test("the noun aliases still land on the same panel", () => {
     assert.strictEqual(migrate("calc toggle"), "toggle panel calculator");
     assert.strictEqual(migrate("osk toggle"), "toggle panel keyboard");
