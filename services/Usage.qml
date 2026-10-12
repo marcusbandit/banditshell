@@ -88,10 +88,27 @@ Singleton {
         root.changed();
     }
 
+    property string lastWritten: ""
+
+    readonly property int echoAfterSave: 500
+    readonly property int echoWhileSaving: 5000
+
+    Timer {
+        id: echoQuiet
+    }
+
     function save(): void {
         if (!root.loaded || !root.keep)
             return;
-        store.setText(JSON.stringify(root.spans) + "\n");
+        const text = JSON.stringify(root.spans) + "\n";
+        if (text === root.lastWritten)
+            return;
+        root.lastWritten = text;
+        if (text === store.text())
+            return;
+        echoQuiet.interval = root.echoWhileSaving;
+        echoQuiet.restart();
+        store.setText(text);
     }
 
     function begin(): void {
@@ -153,7 +170,18 @@ Singleton {
         watchChanges: true
         printErrors: false
 
-        onFileChanged: reload()
+        onFileChanged: if (!echoQuiet.running)
+            reload()
+
+        onSaved: {
+            echoQuiet.interval = root.echoAfterSave;
+            echoQuiet.restart();
+        }
+
+        onSaveFailed: {
+            echoQuiet.stop();
+            root.lastWritten = "";
+        }
 
         onLoaded: {
             let disk = [];
