@@ -50,8 +50,32 @@ PanelWindow {
 
     readonly property var usage: Usage
 
+    readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
+
+    readonly property bool panelOpen: win.panels.some(panel => panel.open)
+
     Component.onCompleted: Shell.register(win)
     Component.onDestruction: Shell.unregister(win)
+
+    function closeOthers(opening: Item): void {
+        Keyring.refuse();
+        for (const window of Shell.windows)
+            window.closePanels(opening, window === win);
+    }
+
+    function closePanels(opening: Item, here: bool): void {
+        for (const panel of win.panels)
+            if (panel !== opening)
+                panel.hide();
+        if (quickLayer !== opening)
+            quickLayer.pinned = false;
+        if (menuLayer.needsKeyboard)
+            menuLayer.hide();
+        if (here)
+            return;
+        popups.pinned = false;
+        topNotch.pinned = false;
+    }
 
     function openMenu(key: string, pin = true): bool {
         const entry = sidebar.entryFor(key);
@@ -89,7 +113,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: keyringLayer.needsKeyboard || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || mediaLayer.open || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: keyringLayer.needsKeyboard || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -219,20 +243,9 @@ PanelWindow {
             if (event.key !== Qt.Key_Escape)
                 return;
 
-            if (launcherLayer.open)
-                launcherLayer.hide();
-            else if (clipLayer.open)
-                clipLayer.hide();
-            else if (wallpaperLayer.open)
-                wallpaperLayer.hide();
-            else if (sessionLayer.open)
-                sessionLayer.hide();
-            else if (cheatLayer.open)
-                cheatLayer.hide();
-            else if (calcLayer.open)
-                calcLayer.hide();
-            else if (mediaLayer.open)
-                mediaLayer.hide();
+            const open = win.panels.find(panel => panel.open);
+            if (open)
+                open.hide();
             else if (quickLayer.pinned)
                 quickLayer.pinned = false;
             else if (menuLayer.wantsEscape)
@@ -353,7 +366,7 @@ PanelWindow {
 
             edgeInset: win.border
 
-            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard
+            keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
         }
 
         Menus {
@@ -367,7 +380,7 @@ PanelWindow {
 
             warmSource: sidebar.status.items
 
-            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open
+            keyboardHeld: win.panelOpen
         }
 
         Launcher {
@@ -377,17 +390,8 @@ PanelWindow {
             originX: chassis.barWidth
             inset: win.border
 
-            onOpenChanged: if (open) {
-                Keyring.refuse();
-                sessionLayer.hide();
-                cheatLayer.hide();
-                wallpaperLayer.hide();
-                clipLayer.hide();
-                calcLayer.hide();
-                mediaLayer.hide();
-                if (menuLayer.needsKeyboard)
-                    menuLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(launcherLayer)
         }
 
         ClipboardPanel {
@@ -397,17 +401,8 @@ PanelWindow {
             originX: chassis.barWidth
             inset: win.border
 
-            onOpenChanged: if (open) {
-                Keyring.refuse();
-                launcherLayer.hide();
-                wallpaperLayer.hide();
-                sessionLayer.hide();
-                cheatLayer.hide();
-                calcLayer.hide();
-                mediaLayer.hide();
-                if (menuLayer.needsKeyboard)
-                    menuLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(clipLayer)
         }
 
         WallpaperPicker {
@@ -417,12 +412,8 @@ PanelWindow {
 
             screen: win.screen?.name ?? ""
 
-            onOpenChanged: if (open) {
-                Keyring.refuse();
-                launcherLayer.hide();
-                clipLayer.hide();
-                mediaLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(wallpaperLayer)
         }
 
         SessionMenu {
@@ -431,16 +422,8 @@ PanelWindow {
             anchors.fill: parent
             border: win.border
 
-            onOpenChanged: if (open) {
-                Keyring.refuse();
-                launcherLayer.hide();
-                clipLayer.hide();
-                cheatLayer.hide();
-                calcLayer.hide();
-                mediaLayer.hide();
-                if (menuLayer.needsKeyboard)
-                    menuLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(sessionLayer)
         }
 
         CalculatorPanel {
@@ -449,17 +432,8 @@ PanelWindow {
             anchors.fill: parent
             originX: chassis.barWidth
 
-            onOpenChanged: if (open) {
-                Keyring.refuse();
-                launcherLayer.hide();
-                clipLayer.hide();
-                wallpaperLayer.hide();
-                sessionLayer.hide();
-                cheatLayer.hide();
-                mediaLayer.hide();
-                if (menuLayer.needsKeyboard)
-                    menuLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(calcLayer)
         }
 
         OnScreenKeyboard {
@@ -479,16 +453,8 @@ PanelWindow {
             holeWidth: chassis.holeWidth
             holeHeight: chassis.holeHeight
 
-            onOpenChanged: if (open) {
-                Keyring.refuse();
-                launcherLayer.hide();
-                clipLayer.hide();
-                sessionLayer.hide();
-                calcLayer.hide();
-                mediaLayer.hide();
-                if (menuLayer.needsKeyboard)
-                    menuLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(cheatLayer)
 
             Component.onCompleted: {
                 cheatLayer.board = Config.get("cheatsheet.board");
@@ -506,16 +472,8 @@ PanelWindow {
             anchors.fill: parent
             border: win.border
 
-            onOpenChanged: if (open) {
-                launcherLayer.hide();
-                clipLayer.hide();
-                wallpaperLayer.hide();
-                sessionLayer.hide();
-                cheatLayer.hide();
-                calcLayer.hide();
-                if (menuLayer.needsKeyboard)
-                    menuLayer.hide();
-            }
+            onOpenChanged: if (open)
+                win.closeOthers(mediaLayer)
         }
 
         Connections {
@@ -595,7 +553,7 @@ PanelWindow {
             anchors.fill: parent
             border: win.border
 
-            keyboardHeld: launcherLayer.open || clipLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.needsKeyboard
+            keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
         }
 
         MicIndicator {
@@ -617,6 +575,9 @@ PanelWindow {
 
             anchors.fill: parent
             border: win.border
+
+            onPinnedChanged: if (pinned)
+                win.closeOthers(quickLayer)
         }
 
         SettingsCorner {
