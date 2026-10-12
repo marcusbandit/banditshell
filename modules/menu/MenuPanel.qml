@@ -174,7 +174,7 @@ Item {
                     root.widthHint = Math.max(0, widthHint);
 
                     if (bodyLoader.status === Loader.Loading)
-                        bodyLoader.forceCompletion();
+                        bodyLoader.asynchronous = false;
                     root.pageHeight = implicitHeight;
 
                     view.contentY = 0;

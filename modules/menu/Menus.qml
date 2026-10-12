@@ -57,8 +57,10 @@ Item {
     }
 
     onNeedsKeyboardChanged: {
-        if (!root.needsKeyboard)
-            Qt.callLater(root.claimKeys);
+        if (root.needsKeyboard)
+            return;
+        Qt.callLater(root.claimKeys);
+        root.release();
     }
 
     readonly property var blobs: panel.width > 0 ? [
