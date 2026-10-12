@@ -120,6 +120,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     spec: pill.modelData.mark
+                    fits: AppIcons.fits
+                    onMeasured: (path, box) => AppIcons.recordFit(path, box)
                     size: root.markSize
                     fallback: Apps.genericIcon
 

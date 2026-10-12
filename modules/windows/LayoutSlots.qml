@@ -390,6 +390,8 @@ Item {
                             visible: !shot.ready
 
                             spec: slot.modelData.mark
+                            fits: AppIcons.fits
+                            onMeasured: (path, box) => AppIcons.recordFit(path, box)
                             size: Appearance.sizes.launcherIcon
                             color: slot.aimed ? Appearance.colour.text : Appearance.colour.textDim
                         }

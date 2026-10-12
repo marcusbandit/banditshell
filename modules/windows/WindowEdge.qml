@@ -570,6 +570,8 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 spec: root.held?.mark ?? ""
+                fits: AppIcons.fits
+                onMeasured: (path, box) => AppIcons.recordFit(path, box)
                 size: Appearance.sizes.launcherIcon
                 color: Appearance.colour.text
             }

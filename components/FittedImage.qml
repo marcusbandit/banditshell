@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Effects
 import qs.config
-import qs.services
 
 Item {
     id: root
@@ -13,7 +12,13 @@ Item {
 
     readonly property bool ready: image.status === Image.Ready
 
-    property var box: AppIcons.fitFor(source) ?? [0, 0, 1, 1, 0]
+    property var fit: null
+
+    signal measured(var box)
+
+    property var probed: null
+
+    readonly property var box: root.fit ?? root.probed ?? [0, 0, 1, 1, 0]
 
     readonly property real span: Math.max(box[2], box[3], 0.05)
 
@@ -29,8 +34,8 @@ Item {
     implicitHeight: implicitWidth
 
     onSourceChanged: {
-        root.box = AppIcons.fitFor(source) ?? [0, 0, 1, 1, 0];
-        if (source && !AppIcons.fitFor(source))
+        root.probed = null;
+        if (source && !root.fit)
             probe.measure();
     }
 
@@ -50,7 +55,7 @@ Item {
         smooth: true
         visible: !root.tinted && root.ready
 
-        onStatusChanged: if (status === Image.Ready && root.source && !AppIcons.fitFor(root.source))
+        onStatusChanged: if (status === Image.Ready && root.source && !root.fit)
             probe.measure()
     }
 
@@ -115,9 +120,9 @@ Item {
 
             const w = x1 - x0 + 1;
             const h = y1 - y0 + 1;
-            const measured = [x0 / width, y0 / height, w / width, h / height, opaque / (w * h)];
-            root.box = measured;
-            AppIcons.recordFit(root.source, measured);
+            const box = [x0 / width, y0 / height, w / width, h / height, opaque / (w * h)];
+            root.probed = box;
+            root.measured(box);
         }
     }
 }

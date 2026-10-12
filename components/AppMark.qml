@@ -11,6 +11,10 @@ Item {
     property color color: Appearance.colour.text
     property int size: Appearance.font.iconSize
 
+    property var fits: ({})
+
+    signal measured(string path, var box)
+
     readonly property int mark: spec.indexOf(":")
     readonly property string kind: mark < 0 ? "" : spec.slice(0, mark)
     readonly property string value: mark < 0 ? "" : spec.slice(mark + 1)
@@ -59,5 +63,8 @@ Item {
         source: visible ? root.value : ""
         tint: root.kind === "mono"
         colour: root.color
+
+        fit: root.fits[root.value] ?? null
+        onMeasured: box => root.measured(root.value, box)
     }
 }

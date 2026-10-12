@@ -184,6 +184,8 @@ Item {
                             required property var modelData
 
                             spec: AppIcons.markFor(Hypr.classOf(modelData))
+                            fits: AppIcons.fits
+                            onMeasured: (path, box) => AppIcons.recordFit(path, box)
                             size: Appearance.sizes.workspaceIcon
                             color: Appearance.colour.textDim
                         }

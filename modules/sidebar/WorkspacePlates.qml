@@ -420,6 +420,8 @@ Item {
                     visible: bar.entry.windows.length > 0
                     size: root.barMark
                     spec: root.barSpec(bar.entry)
+                    fits: AppIcons.fits
+                    onMeasured: (path, box) => AppIcons.recordFit(path, box)
                     fallback: root.barGlyph(bar.entry)
                     color: Appearance.colour.textDim
 
@@ -594,6 +596,8 @@ Item {
                             anchors.centerIn: parent
                             size: root.iconSize
                             spec: AppIcons.markFor(row.appClass, root.iconMode)
+                            fits: AppIcons.fits
+                            onMeasured: (path, box) => AppIcons.recordFit(path, box)
                             fallback: Apps.iconFor(row.appClass)
 
                             color: row.lit ? Appearance.colour.text : Appearance.colour.textDim
@@ -761,6 +765,8 @@ Item {
                         size: Math.round(mark.markSize)
 
                         spec: AppIcons.markFor(Hypr.classOf(mark.modelData), root.iconMode)
+                        fits: AppIcons.fits
+                        onMeasured: (path, box) => AppIcons.recordFit(path, box)
                         fallback: Apps.iconFor(Hypr.classOf(mark.modelData))
                         color: Hypr.isFocused(mark.modelData) ? Appearance.colour.text : Appearance.colour.textDim
                     }
