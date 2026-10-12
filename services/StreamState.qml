@@ -2,6 +2,7 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import qs.config
 
 Singleton {
@@ -29,5 +30,43 @@ Singleton {
 
     function setOff(): void {
         Config.set("stream.enabled", false);
+    }
+
+    readonly property string flagPath: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/hypr/streamer`
+
+    function follow(streaming: bool): void {
+        if (!Config.writable)
+            return;
+        if (streaming && !root.enabled && root.screen !== "")
+            root.setOn(root.screen);
+        else if (!streaming && root.enabled)
+            root.setOff();
+    }
+
+    FileView {
+        id: flag
+
+        path: root.flagPath
+        printErrors: false
+
+        onLoaded: root.follow(true)
+        onLoadFailed: root.follow(false)
+    }
+
+    Connections {
+        target: Hypr
+
+        function onConfigReloaded(): void {
+            flag.reload();
+        }
+    }
+
+    Connections {
+        target: Config
+
+        function onWritableChanged(): void {
+            if (Config.writable)
+                flag.reload();
+        }
     }
 }

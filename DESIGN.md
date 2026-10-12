@@ -598,7 +598,10 @@ banditshell/
 │   │                            nothing and draws no frame, so no window moves
 │   │                            - and Shell.offStageScreen sends what viewers
 │   │                            must not read (notifications, the keyring
-│   │                            prompt) to the band's screen
+│   │                            prompt) to the band's screen. Follows
+│   │                            hypr-mode: on every Hyprland reload it reads
+│   │                            ~/.local/state/hypr/streamer and turns itself
+│   │                            on or off to match
 │   ├── Obs.qml                  OBS over its WebSocket, only while streaming:
 │   │                            the password is read from OBS's own config,
 │   │                            state arrives as events, and the one poll is

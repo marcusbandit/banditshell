@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-12-4",
+      "date": "2026-10-12",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Leaving streamer mode now takes the band away and gives your other screens their frame back. The shell follows hypr-mode's streamer switch on every Hyprland reload, so Super+Ctrl+K turns it on and off without anything else to set up; banditshell set stream on without hypr-mode's streamer mode lasts only until the next reload."
+        }
+      ]
+    },
+    {
       "id": "2026-10-12-3",
       "date": "2026-10-12",
       "changes": [
