@@ -10,6 +10,10 @@ Singleton {
 
     property bool active: false
 
+    property bool secure: false
+
+    property bool hinted: false
+
     readonly property bool busy: pam.active
 
     property string message: ""
@@ -33,18 +37,33 @@ Singleton {
         root.exhausted = false;
         root.pending = "";
         root.active = true;
-        root.tellLogind(true);
     }
 
     function release(): void {
         if (!root.active)
             return;
+        root.finish();
+    }
+
+    function observe(locked: bool, secure: bool): void {
+        root.secure = root.active && locked && secure;
+        if (root.active && !locked) {
+            root.finish();
+            return;
+        }
+        if (root.secure && !root.hinted)
+            root.tellLogind(true);
+    }
+
+    function finish(): void {
         pam.abort();
         root.pending = "";
         root.message = "";
         root.failed = false;
+        root.secure = false;
         root.active = false;
-        root.tellLogind(false);
+        if (root.hinted)
+            root.tellLogind(false);
     }
 
     function submit(secret: string): void {
@@ -64,6 +83,7 @@ Singleton {
     }
 
     function tellLogind(on: bool): void {
+        root.hinted = on;
         hint.command = ["busctl", "call", "org.freedesktop.login1", root.sessionPath, "org.freedesktop.login1.Session", "SetLockedHint", "b", on ? "true" : "false"];
         hint.running = true;
     }
