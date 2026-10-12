@@ -53,11 +53,13 @@ Item {
     property var contents: []
     property string contentsError: ""
 
+    readonly property var player: playback.item
+
     onPathChanged: {
         root.stat = null;
         root.contents = [];
         root.contentsError = "";
-        player.stop();
+        root.player?.stop();
         body.content = "";
         if (!root.path)
             return;
@@ -68,14 +70,14 @@ Item {
     }
 
     onVisibleChanged: if (!root.visible)
-        player.stop()
+        root.player?.stop()
 
     Connections {
         target: Files
 
         function onWindowOpenChanged(): void {
             if (!Files.windowOpen)
-                player.stop();
+                root.player?.stop();
         }
     }
 
@@ -277,7 +279,7 @@ Item {
                     anchors.horizontalCenterOffset: playGlyph.inkOffsetX
                     anchors.verticalCenterOffset: playGlyph.inkOffsetY
 
-                    name: player.playing ? "pause" : "play_arrow"
+                    name: root.player?.playing ? "pause" : "play_arrow"
                 }
 
                 MouseArea {
@@ -288,14 +290,15 @@ Item {
                     cursorShape: Qt.PointingHandCursor
 
                     onClicked: {
-                        if (player.loaded !== root.path) {
-                            player.loaded = root.path;
-                            player.source = Urls.fileUrl(root.path);
+                        playback.active = true;
+                        if (root.player.loaded !== root.path) {
+                            root.player.loaded = root.path;
+                            root.player.source = Urls.fileUrl(root.path);
                         }
-                        if (player.playing)
-                            player.pause();
+                        if (root.player.playing)
+                            root.player.pause();
                         else
-                            player.play();
+                            root.player.play();
                     }
                 }
             }
@@ -303,16 +306,16 @@ Item {
             Slider {
                 width: parent.width
 
-                enabled: player.duration > 0
-                value: player.position
-                to: Math.max(1, player.duration)
-                onMoved: v => player.position = v
+                enabled: (root.player?.duration ?? 0) > 0
+                value: root.player?.position ?? 0
+                to: Math.max(1, root.player?.duration ?? 0)
+                onMoved: v => root.player.position = v
             }
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                text: `${Files.humanDuration(player.position)} / ${Files.humanDuration(player.duration)}`
+                text: `${Files.humanDuration(root.player?.position ?? 0)} / ${Files.humanDuration(root.player?.duration ?? 0)}`
                 color: Appearance.colour.textFaint
             }
         }
@@ -433,12 +436,16 @@ Item {
         onLoadFailed: body.content = ""
     }
 
-    MediaPlayer {
-        id: player
+    Loader {
+        id: playback
 
-        readonly property bool playing: playbackState === MediaPlayer.PlayingState
-        property string loaded: ""
+        active: false
 
-        audioOutput: AudioOutput {}
+        sourceComponent: MediaPlayer {
+            readonly property bool playing: playbackState === MediaPlayer.PlayingState
+            property string loaded: ""
+
+            audioOutput: AudioOutput {}
+        }
     }
 }
