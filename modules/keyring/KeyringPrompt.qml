@@ -220,68 +220,24 @@ Item {
                     }
                 }
 
-                Row {
+                ButtonPair {
                     anchors.right: parent.right
-                    spacing: Appearance.padding.normal
 
-                    SquircleRect {
-                        width: stopMark.implicitWidth + Appearance.padding.large * 2
-                        height: em.height * 2
-                        radius: Appearance.rounding.normal
-                        color: Appearance.colour.fillStrong
-                        stroke: Appearance.colour.seam
-                        strokeWidth: Appearance.sizes.seam
-                        opacity: stopHit.containsMouse ? 1 : 0.75
-
-                        StyledText {
-                            id: stopMark
-
-                            anchors.centerIn: parent
+                    actions: [
+                        {
                             text: root.stopLabel
-                            color: Appearance.colour.textDim
-                        }
-
-                        MouseArea {
-                            id: stopHit
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: Keyring.refuse()
-                        }
-                    }
-
-                    SquircleRect {
-                        id: go
-
-                        readonly property bool ready: !root.asksForSecret || !field.empty
-
-                        width: goMark.implicitWidth + Appearance.padding.huge * 2
-                        height: em.height * 2
-                        radius: Appearance.rounding.normal
-                        color: Appearance.colour.accent
-                        stroke: Appearance.colour.seam
-                        strokeWidth: Appearance.sizes.seam
-                        opacity: go.ready ? (goHit.containsMouse ? 1 : 0.9) : 0.35
-
-                        StyledText {
-                            id: goMark
-
-                            anchors.centerIn: parent
+                        },
+                        {
                             text: root.goLabel
-
-                            color: Appearance.colour.accentText
                         }
+                    ]
+                    primary: 1
 
-                        MouseArea {
-                            id: goHit
-
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            enabled: go.ready
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: root.answer()
-                        }
+                    onTriggered: index => {
+                        if (index === 0)
+                            Keyring.refuse();
+                        else
+                            root.answer();
                     }
                 }
             }
