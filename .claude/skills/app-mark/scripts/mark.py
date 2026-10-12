@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Take an application's official SVG logo apart, and try it on in our palette."""
 
 import argparse
 import re
@@ -24,7 +23,6 @@ FLAGS = ["#ff0000", "#00ff00", "#0000ff", "#ffff00", "#ff00ff", "#00ffff",
          "#0088ff", "#884400", "#448800", "#004488"]
 
 def load(path):
-    """The file, its elements, and everything before the first one."""
     text = Path(path).read_text()
     els = [m.group(0) for m in ELEMENT.finditer(text)]
     if not els:
@@ -47,7 +45,6 @@ def fill_of(el):
     return fill or "(inherited/black)"
 
 def strokes(el):
-    """Whether this element is drawn as a LINE rather than as an area."""
     fill = FILL.search(el) or FILL_ATTR.search(el)
     stroke = STROKE.search(el) or STROKE_ATTR.search(el)
     has_stroke = bool(stroke) and stroke.group(1).strip() not in ("", "none")
@@ -55,7 +52,6 @@ def strokes(el):
     return has_stroke and (no_fill or not fill)
 
 def put(el, prop, value):
-    """Set a property, wherever this element happens to keep its properties."""
     pattern = re.compile(rf"{prop}:\s*[^;\"]*")
     if pattern.search(el):
         return pattern.sub(f"{prop}:{value}", el)
@@ -69,7 +65,6 @@ def put(el, prop, value):
     return re.sub(r">$", f' style="{prop}:{value}">', el, count=1)
 
 def repaint(el, colour, alpha):
-    """The element, painted, as a line if that is what it is and an area if not."""
     if colour is None:
         return None
     prop = "stroke" if strokes(el) else "fill"
@@ -77,7 +72,6 @@ def repaint(el, colour, alpha):
     return put(out, f"{prop}-opacity", alpha)
 
 def rebuild(head, els, plan, viewbox=None):
-    """A new SVG holding only the elements the plan keeps."""
     out = head
     if viewbox:
         out = (VIEWBOX.sub(f'viewBox="{viewbox}"', out) if VIEWBOX.search(out)
@@ -92,7 +86,6 @@ def rebuild(head, els, plan, viewbox=None):
     return out
 
 def size_of(head):
-    """The user-unit box the file draws in: its viewBox, or its width/height."""
     vb = VIEWBOX.search(head)
     if vb:
         return tuple(float(v) for v in vb.group(1).replace(",", " ").split())
@@ -115,7 +108,6 @@ def render(svg_text, out_png, width=None, height=None):
     return out_png
 
 def units_bbox(svg_text, head):
-    """The tight bounding box of some ink, in the file's own user units."""
     box = size_of(head)
     if not box:
         sys.exit("the root <svg> has neither a viewBox nor a width and height")
@@ -140,7 +132,7 @@ def parse_plan(spec, ink, accent):
         alpha = float(alpha) if alpha else 1.0
         colour = {"ink": ink, "accent": accent, "drop": None}.get(role.strip())
         if role.strip() not in ("ink", "accent", "drop"):
-            colour = role.strip()  # a literal colour, for trying something out
+            colour = role.strip()
         plan[int(index)] = (colour, alpha)
     return plan
 
@@ -206,7 +198,7 @@ def cmd_preview(args):
     print("that only works at 120px is a mark that does not work.")
 
 def main():
-    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p = argparse.ArgumentParser(description="Take an application's official SVG logo apart, and try it on in our palette.", formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
 
     a = sub.add_parser("parts", help="index the elements and render a colour-coded map")

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""What colours a wallpaper is mostly made of."""
 
 import os
 import shutil
@@ -14,7 +13,6 @@ ROUNDS = 20
 FLOOR = 0.02
 
 def pixels(path):
-    """The picture as a flat list of (r, g, b), or an empty list."""
     if path.lower().endswith(".svg"):
         rsvg = shutil.which("rsvg-convert")
         if not rsvg:
@@ -44,7 +42,6 @@ def pixels(path):
     return [(b[i], b[i + 1], b[i + 2]) for i in range(0, len(b) - 2, 3)]
 
 def seeds(px):
-    """Starting centroids: the fullest bins of a coarse grid, spread out."""
     bins = {}
     for r, g, b in px:
         key = (r * 6 // 256, g * 6 // 256, b * 6 // 256)

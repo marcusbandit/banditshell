@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Narrate the Wacom pad's buttons and ring on stdout, one event per line, forever."""
 
 import argparse
 import glob
@@ -21,20 +20,18 @@ RETRY_SECONDS = 2.0
 DEFAULT_DEVICE_NAME = "Wacom Intuos Pro M Pad"
 
 class _Terminated(BaseException):
-    """SIGTERM, SIGINT or SIGHUP arrived, or the reader hung up."""
+    pass
 
 def _stop(_signum, _frame):
     raise _Terminated()
 
 def _event_nodes():
-    """Every /dev/input/event* path, sorted by number rather than by string."""
     return sorted(
         glob.glob("/dev/input/event*"),
         key=lambda p: int("".join(c for c in os.path.basename(p) if c.isdigit()) or -1),
     )
 
 def find_pad(evdev, name, log):
-    """Open the node whose evdev name is `name`, or return None."""
     denied = False
     seen = []
     for path in _event_nodes():
@@ -57,8 +54,6 @@ def find_pad(evdev, name, log):
     return None, denied, seen
 
 class PadReader:
-    """The retry loop, plus the small amount of state the protocol needs."""
-
     def __init__(self, name, verbose, grab=False):
         self.name = name
         self.verbose = verbose
@@ -73,13 +68,11 @@ class PadReader:
             print(message, file=sys.stderr, flush=True)
 
     def warn_once(self, key, message):
-        """A real problem, said to stderr exactly once no matter how long the"""
         if key not in self.warned:
             self.warned.add(key)
             print(message, file=sys.stderr, flush=True)
 
     def watch_hangup(self, poller):
-        """Add stdout to `poller` so that the reader going away wakes us."""
         try:
             poller.register(sys.stdout.fileno(), 0)
             return True
@@ -87,7 +80,6 @@ class PadReader:
             return False
 
     def wait(self, seconds):
-        """Sleep between retries, but wake immediately if the reader hangs up."""
         poller = select.poll()
         if not self.watch_hangup(poller):
             time.sleep(seconds)
@@ -96,14 +88,12 @@ class PadReader:
             raise _Terminated()
 
     def log_missing(self, seen):
-        """The roll call from a failed scan, said only when it changes."""
         if not self.verbose or seen == self.last_scan:
             return
         self.last_scan = seen
         self.log(f"no match for {self.name!r} among:\n  " + "\n  ".join(seen))
 
     def emit(self, line):
-        """One protocol line, flushed."""
         try:
             print(line, flush=True)
         except BrokenPipeError:
@@ -124,7 +114,6 @@ class PadReader:
         self.emit("gone")
 
     def pump(self, dev):
-        """Forward events until the device stops giving them."""
         poller = select.poll()
         device_fd = dev.fileno()
         poller.register(device_fd, select.POLLIN)
@@ -140,7 +129,6 @@ class PadReader:
                     continue
 
     def handle(self, event):
-        """One raw event in, at most one protocol line out."""
         if event.type == EV_KEY and BTN_0 <= event.code <= BTN_9:
             if event.value == 0:
                 if event.code in self.held:

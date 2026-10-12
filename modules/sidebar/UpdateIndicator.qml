@@ -10,9 +10,6 @@ Item {
 
     readonly property string state: Update.state
 
-    // The migration's claim on the icon: until the old binds are rewritten or
-    // the user has confirmed they will fix the config by hand, the icon says
-    // so - same tint as an update waiting, a different glyph.
     readonly property bool stale: CliMigration.stale
 
     readonly property string glyph: {

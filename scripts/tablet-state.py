@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""Is this machine folded over into a tablet right now?"""
 
 import fcntl
 import glob
@@ -30,7 +29,6 @@ def _has_bit(buf: "bytes | bytearray", bit: int) -> bool:
     return bool(buf[bit // 8] & (1 << (bit % 8)))
 
 def probe(path: str, switch: int):
-    """(supported, set, name) for one device node, or None if it cannot be read."""
     try:
         fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
     except OSError:
