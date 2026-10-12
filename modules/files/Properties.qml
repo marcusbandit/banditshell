@@ -151,13 +151,6 @@ Item {
                     }
                 }
             }
-
-            StyledText {
-                width: parent.width
-
-                text: "Escape to close"
-                color: Appearance.colour.textFaint
-            }
         }
     }
 }

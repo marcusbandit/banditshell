@@ -121,13 +121,6 @@ Item {
                     Keys.onEscapePressed: root.close()
                 }
             }
-
-            StyledText {
-                width: parent.width
-
-                text: "Enter to confirm  ·  Escape to cancel"
-                color: Appearance.colour.textFaint
-            }
         }
     }
 }

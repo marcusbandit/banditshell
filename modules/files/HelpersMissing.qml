@@ -27,15 +27,6 @@ Item {
             wrapMode: Text.Wrap
         }
 
-        StyledText {
-            width: parent.width
-            horizontalAlignment: Text.AlignHCenter
-
-            text: `A terminal needs a pty and a listing needs readdir, and QML has neither. Both are one small C program in src/, compiled next to their source the way the shaders are.`
-            color: Appearance.colour.textFaint
-            wrapMode: Text.Wrap
-        }
-
         SquircleRect {
             anchors.horizontalCenter: parent.horizontalCenter
 
