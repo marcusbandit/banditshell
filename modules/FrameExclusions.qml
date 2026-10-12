@@ -9,20 +9,24 @@ Scope {
 
     required property ShellScreen screen
 
-    readonly property var win: Shell.forScreen(root.screen?.name ?? "")
+    readonly property string screenName: root.screen?.name ?? ""
 
-    readonly property int keyboard: root.win?.keyboard?.open && Tablet.docked ? root.win.keyboard.item.reserveHeight : 0
+    readonly property var win: Shell.forScreen(root.screenName)
 
-    readonly property bool bare: Appearance.bare
+    readonly property bool floating: StreamState.floats(root.screenName)
+
+    readonly property int keyboard: root.win?.keyboard?.open && Tablet.docked && !root.floating ? root.win.keyboard.item.reserveHeight : 0
+
+    readonly property bool bare: Appearance.bare || root.floating
     readonly property var reserve: ({
-            top: root.bare ? 0 : Appearance.sizes.border,
+            top: StreamState.shows(root.screenName) ? StreamState.reserve : root.bare ? 0 : Appearance.sizes.border,
             right: root.bare ? 0 : Appearance.sizes.border,
             bottom: root.bare ? root.keyboard : Math.max(Appearance.sizes.border, root.keyboard),
-            left: root.bare ? 0 : Appearance.sizes.border + (SidebarState.visibleOn(root.screen?.name ?? "") ? Appearance.sizes.sidebarWidth : 0)
+            left: root.bare ? 0 : Appearance.sizes.border + (SidebarState.visibleOn(root.screenName) ? Appearance.sizes.sidebarWidth : 0)
         })
 
     Variants {
-        model: ["top", "right", "bottom", "left"]
+        model: Config.loaded ? ["top", "right", "bottom", "left"] : []
 
         PanelWindow {
             id: edge

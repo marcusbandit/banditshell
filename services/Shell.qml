@@ -17,6 +17,8 @@ Singleton {
         root.windows = root.windows.filter(w => w !== win);
     }
 
+    readonly property string offStageScreen: StreamState.enabled ? StreamState.screen : Hypr.focusedScreen
+
     function forScreen(name: string): var {
         if (name)
             return root.windows.find(w => w.screen?.name === name) ?? null;

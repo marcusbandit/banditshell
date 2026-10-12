@@ -97,7 +97,7 @@ Singleton {
         const names = Quickshell.screens.map(screen => screen.name);
         if (names.includes(wanted))
             return wanted;
-        return names.includes(Hypr.focusedScreen) ? Hypr.focusedScreen : names[0] ?? "";
+        return names.includes(Shell.offStageScreen) ? Shell.offStageScreen : names[0] ?? "";
     }
 
     function take(line: string): void {
@@ -145,7 +145,7 @@ Singleton {
         root.cancelLabel = event.cancelLabel ?? "";
         root.requester = event.requester ?? "";
 
-        root.screenName = root.screenFor(Hypr.focusedScreen);
+        root.screenName = root.screenFor(Shell.offStageScreen);
         root.asked += 1;
         root.active = true;
     }
@@ -163,7 +163,7 @@ Singleton {
         root.continueLabel = "Unlock";
         root.cancelLabel = "Cancel";
         root.requester = "gnome-keyring-daemon";
-        root.screenName = root.screenFor(Hypr.focusedScreen);
+        root.screenName = root.screenFor(Shell.offStageScreen);
         root.asked += 1;
         root.active = true;
     }

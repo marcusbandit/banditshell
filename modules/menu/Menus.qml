@@ -76,6 +76,8 @@ Item {
 
     property real requestedCentre: 0
 
+    property bool fromTop: false
+
     property string currentKey: ""
     property string currentTitle: ""
 
@@ -118,8 +120,9 @@ Item {
         root.release();
     }
 
-    function show(key: string, title: string, body: Component, centreY: real, pin: bool): void {
+    function show(key: string, title: string, body: Component, at: real, pin: bool, fromTop = false): void {
         const wasClosed = !root.open;
+        const turned = fromTop !== root.fromTop;
 
         const swapping = key !== root.currentKey;
         const sameBody = body === root.currentBody;
@@ -130,12 +133,12 @@ Item {
         root.currentBody = body;
         if (swapping && sameBody)
             panel.swap();
-        root.requestedCentre = centreY;
-        if (wasClosed) {
+        root.requestedCentre = at;
+        root.fromTop = fromTop;
+        if (wasClosed || turned)
             centre.snap();
-
+        if (wasClosed)
             root.sawPointer = root.shellHovered;
-        }
         reveal.target = 1;
 
         if (pin)
@@ -168,9 +171,10 @@ Item {
             reveal.target = 1;
     }
 
-    function clampCentre(y: real): real {
-        const half = panel.implicitHeight / 2;
-        return Math.max(root.inset + half, Math.min(y, root.height - root.inset - half));
+    function clampCentre(at: real): real {
+        const half = (root.fromTop ? panel.implicitWidth : panel.implicitHeight) / 2;
+        const span = root.fromTop ? root.width : root.height;
+        return Math.max(root.inset + half, Math.min(at, span - root.inset - half));
     }
 
     Timer {
@@ -210,12 +214,12 @@ Item {
         width: panel.width
         height: panel.height
 
-        dirX: -1
-        dirY: 0
+        dirX: root.fromTop ? 0 : -1
+        dirY: root.fromTop ? -1 : 0
 
         angle: Appearance.sizes.pullAngleEdge
 
-        travel: panel.fullWidth
+        travel: root.fromTop ? panel.implicitHeight : panel.fullWidth
 
         armed: root.open
 
@@ -234,10 +238,11 @@ Item {
         warm: root.warm
         available: root.height - root.inset * 2
         reveal: reveal.value
+        dropping: root.fromTop
 
-        x: root.originX
+        x: root.fromTop ? centre.value - width / 2 : root.originX
 
-        y: centre.value - height / 2
+        y: root.fromTop ? 0 : centre.value - height / 2
 
         HoverHandler {
             id: pointer

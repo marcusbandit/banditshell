@@ -19,9 +19,9 @@ Item {
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     readonly property bool focusedHere: {
-        const focused = Hypr.focusedScreen;
-        const known = !!focused && Quickshell.screens.some(s => s.name === focused);
-        return (known ? focused : Quickshell.screens[0]?.name ?? "") === root.screenName;
+        const popup = Shell.offStageScreen;
+        const known = !!popup && Quickshell.screens.some(s => s.name === popup);
+        return (known ? popup : Quickshell.screens[0]?.name ?? "") === root.screenName;
     }
 
     readonly property int spare: 2
@@ -41,6 +41,8 @@ Item {
     }
 
     property real reveal: 0
+
+    property bool dropping: false
 
     readonly property real cornerRadius: Appearance.rounding.large
 
@@ -62,8 +64,8 @@ Item {
     implicitWidth: fullWidth
     implicitHeight: Math.max(Appearance.sizes.menuMinHeight, Math.min(Math.min(Appearance.sizes.menuMaxHeight, available), pageHeight + Appearance.padding.large * 2))
 
-    width: widen.value * reveal
-    height: grow.value
+    width: root.dropping ? widen.value : widen.value * reveal
+    height: root.dropping ? grow.value * reveal : grow.value
     visible: reveal > 0
 
     onFullWidthChanged: if (root.reveal === 0)

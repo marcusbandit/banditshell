@@ -1,0 +1,3 @@
+module qs.modules.stream
+StreamPanel 1.0 StreamPanel.qml
+StudioControls 1.0 StudioControls.qml

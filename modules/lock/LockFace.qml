@@ -65,6 +65,8 @@ Item {
         id: chassis
 
         anchors.fill: parent
+
+        streamed: false
     }
 
     Icon {

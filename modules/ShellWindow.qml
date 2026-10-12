@@ -16,6 +16,7 @@ import qs.modules.launcher
 import qs.modules.notifications
 import qs.modules.session
 import qs.modules.sidebar
+import qs.modules.stream
 import qs.modules.wallpaper
 import qs.modules.windows
 import qs.services
@@ -80,12 +81,13 @@ PanelWindow {
 
     function openMenu(key: string, pin = true): bool {
         const entry = sidebar.entryFor(key);
-        const source = sidebar.iconFor(key);
+        const beside = streamPanel.anchorFor(key);
+        const source = beside ?? sidebar.iconFor(key);
         if (!entry || !source)
             return false;
 
-        const centre = source.mapToItem(win.contentItem, source.width / 2, source.height / 2);
-        menuLayer.show(key, entry.heading ?? entry.title, entry.body, centre.y, pin);
+        const centre = source.mapToItem(menuLayer, source.width / 2, source.height / 2);
+        menuLayer.show(key, entry.heading ?? entry.title, entry.body, beside ? centre.x : centre.y, pin, !!beside);
         return true;
     }
 
@@ -265,6 +267,12 @@ PanelWindow {
             id: onShell
         }
 
+        function lowered(blobs: var): var {
+            return chassis.streamReach ? blobs.map(b => Object.assign({}, b, {
+                        y: b.y + chassis.streamReach
+                    })) : blobs;
+        }
+
         readonly property var barBlobs: chassis.sidebar ? sidebar.blobs.map(b => ({
                     x: b.x + sidebar.x,
                     y: b.y + sidebar.y,
@@ -279,7 +287,7 @@ PanelWindow {
 
             anchors.fill: parent
 
-            panels: [...body.barBlobs, ...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...keyboardLayer.blobs, ...tip.blobs, ...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered([...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs])]
         }
 
         Sidebar {
@@ -296,6 +304,22 @@ PanelWindow {
             menusShown: menuLayer.open
 
             pullSpan: Math.hypot(win.width, win.height)
+        }
+
+        StreamPanel {
+            id: streamPanel
+
+            anchors.fill: parent
+            reach: chassis.streamReach
+
+            openKey: menuLayer.fromTop ? menuLayer.currentKey : ""
+
+            onMenuRequested: key => {
+                if (menuLayer.pinned && menuLayer.currentKey === key)
+                    menuLayer.hide();
+                else
+                    win.openMenu(key, true);
+            }
         }
 
         Connections {
@@ -363,6 +387,7 @@ PanelWindow {
             id: popups
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             inset: win.border + Appearance.sizes.gap
 
             edgeInset: win.border
@@ -374,6 +399,7 @@ PanelWindow {
             id: menuLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             originX: chassis.barWidth
             inset: win.border
 
@@ -388,6 +414,7 @@ PanelWindow {
             id: launcherLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             originX: chassis.barWidth
             inset: win.border
 
@@ -399,6 +426,7 @@ PanelWindow {
             id: clipLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             onOpenChanged: if (open)
                 win.closeOthers(clipLayer)
@@ -413,6 +441,7 @@ PanelWindow {
             id: wallpaperLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             onOpenChanged: if (open)
                 win.closeOthers(wallpaperLayer)
@@ -426,6 +455,7 @@ PanelWindow {
             id: sessionLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             onOpenChanged: if (open)
                 win.closeOthers(sessionLayer)
@@ -439,6 +469,7 @@ PanelWindow {
             id: calcLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             onOpenChanged: if (open)
                 win.closeOthers(calcLayer)
@@ -505,6 +536,7 @@ PanelWindow {
             id: mediaLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
 
             onOpenChanged: if (open)
                 win.closeOthers(mediaLayer)
@@ -520,6 +552,7 @@ PanelWindow {
             property var target: null
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             border: win.border
             span: launcherLayer.open ? wallpaperLayer.item?.panelWidth ?? wallpaperLayer.width : launcherLayer.panelWidth
 
@@ -581,6 +614,7 @@ PanelWindow {
             id: topNotch
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             border: win.border
 
             keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
@@ -590,6 +624,7 @@ PanelWindow {
             id: micIndicator
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             border: win.border
         }
 
@@ -597,6 +632,7 @@ PanelWindow {
             id: launchNotice
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             border: win.border
         }
 
@@ -604,6 +640,7 @@ PanelWindow {
             id: quickLayer
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             border: win.border
 
             onPinnedChanged: if (pinned)
@@ -614,6 +651,7 @@ PanelWindow {
             id: settingsCorner
 
             anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
             border: win.border
 
             onActivated: Settings.toggle(win.screen.name)

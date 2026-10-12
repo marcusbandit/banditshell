@@ -82,7 +82,7 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property bool mine: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
+    readonly property bool mine: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
 
     readonly property var items: root.expanded ? Notifications.history : (root.mine ? Notifications.popups : [])
 

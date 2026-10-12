@@ -205,6 +205,7 @@ Singleton {
 
         readonly property int border: root.follows ? Compositor.gapsOut : root.cfg.edge.border
         readonly property int sidebarWidth: root.cfg.sidebar.width
+        readonly property int streamHeight: root.cfg.stream.height
         readonly property real sidebarFlare: root.rounding.at(root.cfg.sidebar.flareTier)
         readonly property int wsSlot: root.cfg.sidebar.workspaces.slot
         readonly property int wsGap: root.cfg.sidebar.workspaces.gap

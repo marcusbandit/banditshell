@@ -18,11 +18,12 @@
 #                                put one surface away; bare, every surface
 #   banditshell panic            every surface away
 #   banditshell status panel <panel> [screen]|border|sidebar|volume|output|tablet
-#        penmap|wallpaper|timer|alarm|lock|keyring|migration|screen
+#        penmap|wallpaper|timer|alarm|lock|keyring|migration|screen|stream
 #                                what a thing is doing; bare, the shell
 #   banditshell set border [on|off]|wallpaper [on|off]|wallpaper <file> [<screen>|all]
-#        sidebar [on|off] [<screen>|all]|tablet [on|off] [caller]
-#        tablet lid [closed|open] [caller]|volume [<percent>|+n|-n]
+#        sidebar [on|off] [<screen>|all]|stream on [<screen>]|stream off
+#        tablet [on|off] [caller]|tablet lid [closed|open] [caller]
+#        volume [<percent>|+n|-n]
 #        volume mute [on|off]|output [speakers|headphones]|output <role> <sink>
 #        brightness [<percent>|+n|-n]|temperature [<kelvin>|off]|theme [theme]
 #        penmap rect <x> <y> <width> <height>|<key> <value>
@@ -257,6 +258,15 @@ ensure_built() {
 }
 
 pct_of() { awk -v v="$1" 'BEGIN{printf "%d", v * 100 + 0.5}'; }
+
+stream_on() {
+    local reply
+    reply=$(ipc stream on "${1:-}") || return 1
+    case "$reply" in
+    "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
+    esac
+    printf '%s\n' "$reply"
+}
 
 rel_of() { case "$1" in *.*) pct_of "$1" ;; *) printf '%s' "$1" ;; esac; }
 
@@ -604,6 +614,12 @@ route_verb() {
             case "$1" in on | off) ipc border "$1" ;; *) echo "banditshell: set border on|off" >&2; exit 2 ;; esac ;;
         sidebar) [ $# -ge 1 ] || { echo "usage: banditshell set sidebar on|off [screen|all]" >&2; exit 2; }
             case "$1" in on | off) ipc sidebar "$1" "${2:-}" ;; *) echo "banditshell: set sidebar on|off [screen|all]" >&2; exit 2 ;; esac ;;
+        stream)
+            case "${1:-}" in
+            on) stream_on "${2:-}" ;;
+            off) ipc stream off ;;
+            *) echo "usage: banditshell set stream on [screen]|off" >&2; exit 2 ;;
+            esac ;;
         wallpaper)
             [ $# -ge 1 ] || { echo "usage: banditshell set wallpaper on|off|<file> [screen|all]" >&2; exit 2; }
             case "$1" in
@@ -681,7 +697,7 @@ route_verb() {
         "") ipc shell status ;;
         panel) [ $# -ge 1 ] || { echo "usage: banditshell status panel <panel> [screen]" >&2; exit 2; }
             status_panel "$1" "${2:-}" ;;
-        border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration | screen) ipc "$obj" status ;;
+        border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration | screen | stream) ipc "$obj" status ;;
         *) echo "banditshell: no status for: $obj" >&2; exit 2 ;;
         esac
         ;;

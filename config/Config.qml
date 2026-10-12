@@ -168,6 +168,15 @@ Singleton {
                 }
             },
 
+            stream: {
+
+                enabled: false,
+
+                screen: "",
+
+                height: 400
+            },
+
             wallpaper: {
 
                 enabled: true,

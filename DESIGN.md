@@ -592,6 +592,21 @@ banditshell/
 │   │                            is a file IN the checkout, so only a pull
 │   │                            can bring entries in - the available state
 │   │                            cannot announce what it does not have
+│   ├── StreamState.qml          streamer mode: the screen that carries the
+│   │                            band while streaming. Every other screen
+│   │                            floats - it keeps its pop-ups but reserves
+│   │                            nothing and draws no frame, so no window moves
+│   │                            - and Shell.offStageScreen sends what viewers
+│   │                            must not read (notifications, the keyring
+│   │                            prompt) to the band's screen
+│   ├── Obs.qml                  OBS over its WebSocket, only while streaming:
+│   │                            the password is read from OBS's own config,
+│   │                            state arrives as events, and the one poll is
+│   │                            the stream and recording clocks while they run
+│   ├── obs.js                   that protocol as DATA: the challenge answer
+│   │                            (SHA-256, since QML has no crypto), which
+│   │                            sources are camera, screen, mic or desktop
+│   │                            audio, and the stream's rate and drops
 │   └── Shell.qml                which ShellWindows exist
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
@@ -618,6 +633,21 @@ banditshell/
 │   │                            rail keeps the volume's drag and wheel, so
 │   │                            the old muscle memory still works; the
 │   │                            warmth row wears the colour it sets
+│   ├── stream/
+│   │   ├── StreamPanel.qml      a band across the stream screen's top: a
+│   │   │                        portrait screen has height to spare and no
+│   │   │                        width to give. Drawn on the chassis rather
+│   │   │                        than as a blob - the hole starts late at the
+│   │   │                        top the way it starts late beside the sidebar,
+│   │   │                        so menus drop out of it. The studio on top,
+│   │   │                        each screen's workspaces and windows side by
+│   │   │                        side, then a line of status items over their
+│   │   │                        menus and the clock
+│   │   └── StudioControls.qml   what the viewers get, in reach: going live and
+│   │                            ending take a second click inside three
+│   │                            seconds; camera, screen and the audio toggles
+│   │                            act on the scene on air, and a muted mic or a
+│   │                            hidden screen stays red until it is undone
 │   ├── MicIndicator.qml         dictation, while the microphone is actually open
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots

@@ -26,11 +26,13 @@ singleton Network 1.0 Network.qml
 singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
 singleton Notifications 1.0 Notifications.qml
+singleton Obs 1.0 Obs.qml
 singleton PenMap 1.0 PenMap.qml
 singleton Power 1.0 Power.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
+singleton StreamState 1.0 StreamState.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton Tablet 1.0 Tablet.qml
 singleton Tray 1.0 Tray.qml
