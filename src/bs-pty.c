@@ -17,6 +17,7 @@
 #include "bs-b64.h"
 
 #define CHUNK 16384
+#define DRAIN_ROUNDS 4
 
 static int master = -1;
 static pid_t child = -1;
@@ -41,7 +42,7 @@ static void proc_name(pid_t pid, char *out, size_t cap) {
     char path[64];
     snprintf(path, sizeof path, "/proc/%d/comm", (int)pid);
     out[0] = '\0';
-    FILE *f = fopen(path, "r");
+    FILE *f = fopen(path, "re");
     if (!f)
         return;
     if (fgets(out, (int)cap, f))
@@ -60,7 +61,7 @@ static int looks_like_tmux(pid_t pid) {
 
     char path[80];
     snprintf(path, sizeof path, "/proc/%d/task/%d/children", (int)pid, (int)pid);
-    FILE *f = fopen(path, "r");
+    FILE *f = fopen(path, "re");
     if (!f)
         return 0;
 
@@ -79,7 +80,7 @@ static int tmux_cwd(char *out, size_t cap) {
     if (!tty)
         return 0;
 
-    FILE *f = popen("tmux list-clients -F '#{client_tty}\t#{pane_current_path}\t#{pane_current_command}' 2>/dev/null", "r");
+    FILE *f = popen("tmux list-clients -F '#{client_tty}\t#{pane_current_path}\t#{pane_current_command}' 2>/dev/null", "re");
     if (!f)
         return 0;
 
@@ -116,7 +117,7 @@ static int session_settled = 0;
 
 static size_t run_capture(const char *cmd, char *out, size_t cap) {
     out[0] = '\0';
-    FILE *f = popen(cmd, "r");
+    FILE *f = popen(cmd, "re");
     if (!f)
         return 0;
     size_t len = fread(out, 1, cap - 1, f);
@@ -184,17 +185,23 @@ static void adopt_session(int give_up) {
             return;
         }
     } else {
-
         snprintf(cmd, sizeof cmd, "tmux new-session -d -P -F '#{session_id}' -s '%s' 2>/dev/null", ours);
         run_capture(cmd, buf, sizeof buf);
-        buf[strcspn(buf, "\n")] = '\0';
-        if (buf[0] != '$') {
+        size_t length = strcspn(buf, "\n");
+        buf[length] = '\0';
+        if (buf[0] != '$' || length >= sizeof sid) {
             session_settled = give_up;
             return;
         }
-        snprintf(sid, sizeof sid, "%s", buf);
+        memcpy(sid, buf, length + 1);
         snprintf(cmd, sizeof cmd, "tmux switch-client -c '%s' -t '%s' 2>/dev/null", tty, sid);
-        system(cmd);
+        if (system(cmd) != 0) {
+            snprintf(cmd, sizeof cmd, "tmux kill-session -t '%s' 2>/dev/null", sid);
+            if (system(cmd) != 0)
+                fprintf(stderr, "bs-pty: could not remove tmux session %s after a failed switch\n", sid);
+            session_settled = give_up;
+            return;
+        }
     }
 
     snprintf(session_id, sizeof session_id, "%s", sid);
@@ -241,6 +248,92 @@ static int read_cwd(char *out, size_t cap) {
     return 1;
 }
 
+static unsigned char *pending = NULL;
+static size_t pending_start = 0;
+static size_t pending_end = 0;
+static size_t pending_capacity = 0;
+
+static size_t pending_length(void) {
+    return pending_end - pending_start;
+}
+
+static void drop_pending(void) {
+    pending_start = 0;
+    pending_end = 0;
+}
+
+static int append_pending(const unsigned char *data, size_t length) {
+    size_t used = pending_length();
+    if (pending_start > 0 && pending_end + length > pending_capacity) {
+        memmove(pending, pending + pending_start, used);
+        pending_start = 0;
+        pending_end = used;
+    }
+    if (used + length > pending_capacity) {
+        size_t capacity = pending_capacity ? pending_capacity : 65536;
+        while (capacity < used + length)
+            capacity *= 2;
+        unsigned char *grown = realloc(pending, capacity);
+        if (!grown)
+            return 0;
+        pending = grown;
+        pending_capacity = capacity;
+    }
+    memcpy(pending + pending_end, data, length);
+    pending_end += length;
+    return 1;
+}
+
+static void flush_pending(void) {
+    while (pending_start < pending_end) {
+        ssize_t written = write(master, pending + pending_start, pending_end - pending_start);
+        if (written > 0) {
+            pending_start += (size_t)written;
+            continue;
+        }
+        if (written < 0 && errno == EINTR)
+            continue;
+        if (written < 0 && errno == EAGAIN)
+            return;
+        break;
+    }
+    drop_pending();
+}
+
+static int interrupts(const unsigned char *data, size_t length) {
+    struct termios modes;
+    if (tcgetattr(master, &modes) != 0 || !(modes.c_lflag & ISIG) || (modes.c_lflag & NOFLSH))
+        return 0;
+
+    const cc_t signals[] = {modes.c_cc[VINTR], modes.c_cc[VQUIT], modes.c_cc[VSUSP]};
+    for (size_t i = 0; i < length; i++)
+        for (size_t s = 0; s < sizeof signals / sizeof *signals; s++)
+            if (signals[s] != _POSIX_VDISABLE && data[i] == signals[s])
+                return 1;
+    return 0;
+}
+
+static void discard_typeahead(void) {
+    drop_pending();
+    tcflush(master, TCOFLUSH);
+
+    const char *tty = ptsname(master);
+    int slave = tty ? open(tty, O_RDWR | O_NOCTTY | O_CLOEXEC) : -1;
+    if (slave < 0)
+        return;
+    tcflush(slave, TCIFLUSH);
+    close(slave);
+}
+
+static void send_input(const unsigned char *data, size_t length) {
+    if (length == 0)
+        return;
+    if (interrupts(data, length))
+        discard_typeahead();
+    if (append_pending(data, length))
+        flush_pending();
+}
+
 static void resize(int cols, int rows) {
     struct winsize ws = {0};
     ws.ws_col = (unsigned short)(cols > 0 ? cols : 80);
@@ -256,7 +349,8 @@ static int command(char *line) {
         if (session_id[0]) {
             char cmd[256];
             snprintf(cmd, sizeof cmd, "tmux kill-session -t '%s' 2>/dev/null", session_id);
-            system(cmd);
+            if (system(cmd) != 0)
+                fprintf(stderr, "bs-pty: tmux kill-session %s failed\n", session_id);
         }
         return 0;
     }
@@ -266,22 +360,7 @@ static int command(char *line) {
         if (!buf)
             return 1;
         size_t n = bs_b64_decode(line + 2, buf);
-
-        for (size_t off = 0; off < n;) {
-            ssize_t w = write(master, buf + off, n - off);
-            if (w > 0) {
-                off += (size_t)w;
-                continue;
-            }
-            if (errno == EINTR)
-                continue;
-            if (errno == EAGAIN) {
-                struct pollfd p = {master, POLLOUT, 0};
-                poll(&p, 1, 100);
-                continue;
-            }
-            break;
-        }
+        send_input(buf, n);
         free(buf);
         return 1;
     }
@@ -294,6 +373,11 @@ static int command(char *line) {
     }
 
     return 1;
+}
+
+static void report_exit(int status) {
+    printf("x %d\n", WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status));
+    fflush(stdout);
 }
 
 int main(int argc, char **argv) {
@@ -311,6 +395,7 @@ int main(int argc, char **argv) {
     }
 
     if (child == 0) {
+        close_range(3, ~0U, 0);
 
         setenv("TERM", "xterm-256color", 1);
         setenv("COLORTERM", "truecolor", 1);
@@ -335,6 +420,7 @@ int main(int argc, char **argv) {
 
     signal(SIGPIPE, SIG_IGN);
 
+    fcntl(master, F_SETFD, FD_CLOEXEC);
     fcntl(master, F_SETFL, O_NONBLOCK);
 
     char cwd[4096] = "";
@@ -355,31 +441,38 @@ int main(int argc, char **argv) {
     if (!line)
         return 1;
 
-    unsigned char chunk[CHUNK];
+    static unsigned char chunk[CHUNK];
+    static char in[CHUNK];
     int running = 1;
+    int hung_up = 0;
 
     while (running) {
-        struct pollfd fds[2] = {{master, POLLIN, 0}, {STDIN_FILENO, POLLIN, 0}};
+        short wanted = (short)(pending_length() > 0 ? POLLIN | POLLOUT : POLLIN);
+        struct pollfd fds[2] = {{master, wanted, 0}, {STDIN_FILENO, POLLIN, 0}};
         int ready = poll(fds, 2, 100);
         if (ready < 0 && errno != EINTR)
             break;
 
-        if (fds[0].revents & (POLLIN | POLLHUP)) {
-            for (;;) {
+        if (fds[0].revents & POLLOUT)
+            flush_pending();
+
+        if (fds[0].revents & (POLLIN | POLLHUP | POLLERR)) {
+            for (int round = 0; round < DRAIN_ROUNDS; round++) {
                 ssize_t n = read(master, chunk, sizeof chunk);
                 if (n > 0) {
                     emit("o", chunk, (size_t)n);
                     continue;
                 }
 
-                if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR))
+                if (n == 0 || (n < 0 && errno != EAGAIN && errno != EINTR)) {
+                    hung_up = 1;
                     running = 0;
+                }
                 break;
             }
         }
 
         if (fds[1].revents & (POLLIN | POLLHUP | POLLERR)) {
-            char in[4096];
             ssize_t n = read(STDIN_FILENO, in, sizeof in);
             if (n <= 0)
                 break;
@@ -404,7 +497,6 @@ int main(int argc, char **argv) {
 
         long long t = now_ms();
         if (t >= next_cwd) {
-
             next_cwd = t + 300;
 
             if (!session_settled)
@@ -426,14 +518,24 @@ int main(int argc, char **argv) {
 
         int status;
         if (waitpid(child, &status, WNOHANG) == child) {
-            printf("x %d\n", WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status));
-            fflush(stdout);
+            report_exit(status);
+            child = -1;
             running = 0;
         }
     }
 
-    if (child > 0)
+    if (child > 0) {
         kill(child, SIGHUP);
+        for (int attempt = 0; hung_up && attempt < 50; attempt++) {
+            int status;
+            if (waitpid(child, &status, WNOHANG) == child) {
+                report_exit(status);
+                break;
+            }
+            usleep(20000);
+        }
+    }
     free(line);
+    free(pending);
     return 0;
 }
