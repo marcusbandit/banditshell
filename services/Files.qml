@@ -17,81 +17,110 @@ Singleton {
         return `${Quickshell.shellDir}/bin/${name}`;
     }
 
-    property var panes: []
-    property int activePane: 0
+    property string cwd: root.home
 
-    readonly property var pane: root.panes.length > 0 ? root.panes[Math.min(root.activePane, root.panes.length - 1)] : null
+    property var entries: []
+    property string error: ""
 
-    property Component paneMaker: Component {
-        FilePane {}
-    }
+    property int cursor: -1
+    property var picked: []
+    property int anchor: -1
 
-    function addPane(path: string): var {
-        const made = root.paneMaker.createObject(root, {
-            lister: root.helper("bs-ls"),
-            cwd: path || root.home
+    property string search: ""
+    property bool searching: false
+
+    readonly property var visible: {
+        const all = root.entries.filter(e => root.showHidden || !e.hidden);
+        const query = root.search.toLowerCase();
+        const matched = query === "" ? all : all.filter(e => e.name.toLowerCase().includes(query));
+
+        const key = root.sort;
+        return matched.slice().sort((a, b) => {
+            if ((a.kind === "dir") !== (b.kind === "dir"))
+                return a.kind === "dir" ? -1 : 1;
+            if (key === "size" && a.size !== b.size)
+                return b.size - a.size;
+            if (key === "mtime" && a.mtime !== b.mtime)
+                return b.mtime - a.mtime;
+            if (key === "kind" && a.class !== b.class)
+                return a.class < b.class ? -1 : 1;
+            return a.name.localeCompare(b.name, undefined, {numeric: true, sensitivity: "base"});
         });
-
-        made.wantsCd.connect(where => root.cd(where, made));
-        root.panes = [...root.panes, made];
-        return made;
     }
 
-    property string pending: ""
+    readonly property var current: root.cursor >= 0 && root.cursor < root.visible.length ? root.visible[root.cursor] : null
+    readonly property string currentPath: root.current ? root.join(root.cwd, root.current.name) : ""
 
-    readonly property string cwd: root.pane ? root.pane.cwd : root.home
-    readonly property var entries: root.pane ? root.pane.entries : []
-    readonly property bool loading: root.pane ? root.pane.loading : false
-    readonly property string error: root.pane ? root.pane.error : ""
-    readonly property var visible: root.pane ? root.pane.visible : []
-    readonly property int cursor: root.pane ? root.pane.cursor : -1
-    readonly property var picked: root.pane ? root.pane.picked : []
-    readonly property var current: root.pane ? root.pane.current : null
-    readonly property string currentPath: root.pane ? root.pane.currentPath : ""
-    readonly property var picks: root.pane ? root.pane.picks : []
-    readonly property var pickedPaths: root.pane ? root.pane.pickedPaths : []
-    readonly property var crumbs: root.pane ? root.pane.crumbs : []
-    readonly property var back: root.pane ? root.pane.back : []
-    readonly property var forward: root.pane ? root.pane.forward : []
-    readonly property string search: root.pane ? root.pane.search : ""
-    readonly property bool searching: root.pane ? root.pane.searching : false
+    readonly property var picks: {
+        const names = root.picked;
+        if (names.length === 0)
+            return root.current ? [root.current] : [];
+        return root.visible.filter(e => names.includes(e.name));
+    }
+
+    readonly property var pickedPaths: root.picks.map(e => root.join(root.cwd, e.name))
+
+    readonly property var crumbs: {
+        const parts = root.cwd.split("/").filter(p => p.length > 0);
+        const out = [{name: "/", path: "/"}];
+        let path = "";
+        for (const part of parts) {
+            path += `/${part}`;
+            out.push({name: part, path: path});
+        }
+        return out;
+    }
 
     function setSearch(text: string): void {
-        if (root.pane)
-            root.pane.search = text;
+        root.search = text;
     }
 
     function setSearching(on: bool): void {
-        if (root.pane)
-            root.pane.searching = on;
+        root.searching = on;
     }
 
     function isPicked(name: string): bool {
-        return root.pane ? root.pane.isPicked(name) : false;
+        return root.picked.includes(name);
     }
 
     function setCursor(index: int): void {
-        root.pane?.setCursor(index);
+        if (index < 0 || index >= root.visible.length)
+            return;
+        root.cursor = index;
+        root.anchor = index;
+        root.picked = [root.visible[index].name];
     }
 
     function togglePick(index: int): void {
-        root.pane?.togglePick(index);
+        if (index < 0 || index >= root.visible.length)
+            return;
+        const name = root.visible[index].name;
+        root.picked = root.isPicked(name) ? root.picked.filter(n => n !== name) : [...root.picked, name];
+        root.cursor = index;
+        root.anchor = index;
     }
 
     function extendTo(index: int): void {
-        root.pane?.extendTo(index);
+        if (index < 0 || index >= root.visible.length)
+            return;
+        const from = root.anchor < 0 ? index : root.anchor;
+        const lo = Math.min(from, index);
+        const hi = Math.max(from, index);
+        root.picked = root.visible.slice(lo, hi + 1).map(e => e.name);
+        root.cursor = index;
     }
 
     function pickRange(indices: var, add: bool): void {
-        root.pane?.pickRange(indices, add);
+        const names = indices.filter(i => i >= 0 && i < root.visible.length).map(i => root.visible[i].name);
+        root.picked = add ? [...new Set([...root.picked, ...names])] : names;
     }
 
     function pickAll(): void {
-        root.pane?.pickAll();
+        root.picked = root.visible.map(e => e.name);
     }
 
     function clearPicked(): void {
-        root.pane?.clearPicked();
+        root.picked = [];
     }
 
     function join(dir: string, name: string): string {
@@ -105,31 +134,88 @@ Singleton {
         return cut <= 0 ? "/" : path.slice(0, cut);
     }
 
+    property var back: []
+    property var forward: []
+
     function go(path: string): void {
-        root.pane?.go(path);
+        if (path === root.cwd)
+            return;
+        const from = root.cwd;
+        if (!root.cd(path))
+            return;
+        root.back = [...root.back, from];
+        root.forward = [];
     }
 
     function goBack(): void {
-        root.pane?.goBack();
+        if (root.back.length === 0)
+            return;
+        const from = root.cwd;
+        if (!root.cd(root.back[root.back.length - 1]))
+            return;
+        root.back = root.back.slice(0, -1);
+        root.forward = [from, ...root.forward];
     }
 
     function goForward(): void {
-        root.pane?.goForward();
+        if (root.forward.length === 0)
+            return;
+        const from = root.cwd;
+        if (!root.cd(root.forward[0]))
+            return;
+        root.forward = root.forward.slice(1);
+        root.back = [...root.back, from];
     }
 
     function open(entry: var): void {
-        if (!entry || !root.pane)
+        if (!entry)
             return;
-        const path = root.join(root.pane.cwd, entry.name);
+        const path = root.join(root.cwd, entry.name);
         if (entry.kind === "dir")
-            root.pane.go(path);
+            root.go(path);
         else
             root.openWith(path);
     }
 
+    onCwdChanged: {
+        root.cursor = -1;
+        root.anchor = -1;
+        root.picked = [];
+        root.search = "";
+        root.searching = false;
+        root.refresh();
+    }
+
     function refresh(): void {
-        for (const p of root.panes)
-            p.refresh();
+        if (!root.cwd)
+            return;
+        lister.running = false;
+        lister.command = [root.helper("bs-ls"), root.cwd];
+        lister.running = true;
+    }
+
+    Process {
+        id: lister
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    const answer = JSON.parse(text);
+
+                    if (answer.path !== root.cwd)
+                        return;
+                    root.error = answer.ok ? "" : answer.error;
+                    root.entries = answer.ok ? answer.entries : [];
+
+                    root.picked = root.picked.filter(n => root.visible.some(e => e.name === n));
+                    if (root.cursor < 0 || root.cursor >= root.visible.length)
+                        root.cursor = root.visible.length > 0 ? 0 : -1;
+                } catch (e) {
+                    root.error = "unreadable listing";
+                    root.entries = [];
+                }
+            }
+        }
     }
 
     property string focus: "grid"
@@ -369,17 +455,12 @@ Singleton {
 
     property string expecting: ""
 
-    property var expectingPane: null
-
     Timer {
         id: expiry
 
         interval: 1500
 
-        onTriggered: {
-            root.expecting = "";
-            root.expectingPane = null;
-        }
+        onTriggered: root.expecting = ""
     }
 
     function ensureTerminal(): void {
@@ -514,34 +595,27 @@ Singleton {
         onTriggered: root.refresh()
     }
 
-    function cd(path: string, which: var): bool {
-        const target = which ?? root.pane;
-        if (!target)
-            return false;
-
+    function cd(path: string): bool {
         if (pty.running && root.typed([path]) === null) {
             root.failure = root.refusal(path);
             return false;
         }
         root.failure = "";
 
-        if (pty.running && root.shellBusy) {
-            root.desynced = true;
-            target.cwd = path;
+        if (!pty.running) {
+            root.cwd = path;
             return true;
         }
 
-        if (!pty.running) {
-
-            root.pending = path;
-            target.cwd = path;
+        if (root.shellBusy) {
+            root.desynced = true;
+            root.cwd = path;
             return true;
         }
 
         root.expecting = path;
-        root.expectingPane = target;
         expiry.restart();
-        target.cwd = path;
+        root.cwd = path;
         root.typeCd(path);
         return true;
     }
@@ -617,7 +691,6 @@ Singleton {
             if (root.expecting) {
                 if (path === root.expecting) {
                     root.expecting = "";
-                    root.expectingPane = null;
                     expiry.stop();
                 }
                 return;
@@ -629,8 +702,8 @@ Singleton {
                     return;
             }
 
-            if (root.pane && path !== root.pane.cwd)
-                root.pane.cwd = path;
+            if (path !== root.cwd)
+                root.cwd = path;
             return;
         }
 
@@ -727,7 +800,7 @@ Singleton {
 
     function show(path: string): void {
         if (path)
-            root.cd(path, root.pane);
+            root.cd(path);
         root.windowOpen = true;
     }
 
@@ -789,8 +862,7 @@ Singleton {
     }
 
     Component.onCompleted: {
-
-        root.addPane(root.home);
+        root.refresh();
         root.installRules();
     }
 
