@@ -371,7 +371,6 @@ Item {
                         values: root.results
                     }
 
-                    reuseItems: true
                     cacheBuffer: root.rowPitch * 4
 
                     delegate: MenuRow {
