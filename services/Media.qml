@@ -38,9 +38,11 @@ Singleton {
 
     property bool adoptNext: false
 
-    readonly property string trackKey: (active?.trackId ?? "") + "/" + (active?.trackTitle ?? "")
+    readonly property string trackKey: `${root.active?.dbusName ?? ""}/${root.active?.uniqueId ?? 0}`
 
     onTrackKeyChanged: {
+        root.heldLength = 0;
+        root.adoptLength();
         root.adoptNext = true;
         root.active?.positionChanged();
     }
@@ -60,11 +62,16 @@ Singleton {
     property real heldLength: 0
     property real lastSeekAt: 0
 
-    function adoptLength(): void {
-        const reported = root.active?.length ?? 0;
+    readonly property real reportedLength: root.active?.lengthSupported ? root.active.length : 0
 
-        if (reported > 5)
-            root.heldLength = reported;
+    onReportedLengthChanged: {
+        if (root.heldLength === 0)
+            root.adoptLength();
+    }
+
+    function adoptLength(): void {
+        if (root.reportedLength > 5)
+            root.heldLength = root.reportedLength;
     }
 
     readonly property real length: root.heldLength
