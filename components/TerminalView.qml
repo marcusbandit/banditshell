@@ -23,9 +23,40 @@ Item {
 
     property int scrollOffset: 0
 
-    readonly property var lines: {
-        void root.revision;
-        return root.term ? root.term.view(root.scrollOffset) : [];
+    property bool stale: true
+    property int lineCount: 0
+    property int cursorColumn: 0
+    property int cursorRow: 0
+    property bool cursorShown: false
+    property int mouseMode: 0
+
+    onRevisionChanged: {
+        root.scrollOffset = 0;
+        root.stale = true;
+    }
+    onScrollOffsetChanged: root.stale = true
+    onTermChanged: root.stale = true
+
+    FrameAnimation {
+        running: root.stale
+        onTriggered: root.paint()
+    }
+
+    function paint(): void {
+        root.stale = false;
+        const lines = root.term ? root.term.view(root.scrollOffset) : [];
+        root.lineCount = lines.length;
+        for (let i = 0; i < lines.length; i++) {
+            const row = lineRepeater.itemAt(i);
+            if (!row)
+                root.stale = true;
+            else if (row.line !== lines[i])
+                row.line = lines[i];
+        }
+        root.cursorShown = root.term ? root.term.cursorVisible : false;
+        root.cursorColumn = root.term ? root.term.screen.x : 0;
+        root.cursorRow = root.term ? root.term.cursorRow(root.scrollOffset) : 0;
+        root.mouseMode = root.term ? root.term.mouse : 0;
     }
 
     readonly property string face: Appearance.sizes.filesTerminalFont
@@ -57,19 +88,23 @@ Item {
         width: parent.width
 
         Repeater {
-            model: root.lines
+            id: lineRepeater
+
+            model: root.lineCount
 
             delegate: Item {
                 id: row
 
-                required property int index
-                required property var modelData
+                property var line: ({
+                        markup: "",
+                        runs: []
+                    })
 
                 width: grid.width
                 height: root.cellHeight
 
                 Repeater {
-                    model: row.modelData.runs
+                    model: row.line.runs
 
                     delegate: Rectangle {
                         required property var modelData
@@ -81,16 +116,20 @@ Item {
                     }
                 }
 
-                StyledText {
+                Text {
                     anchors.left: parent.left
                     anchors.verticalCenter: parent.verticalCenter
 
                     font.family: root.face
                     font.pixelSize: Appearance.sizes.filesText
+                    color: Appearance.colour.text
+
+                    lineHeight: Math.round(font.pixelSize * 4 / 3)
+                    lineHeightMode: Text.FixedHeight
 
                     renderType: Text.QtRendering
 
-                    text: row.modelData.markup
+                    text: row.line.markup
                     textFormat: Text.StyledText
 
                     wrapMode: Text.NoWrap
@@ -100,10 +139,10 @@ Item {
     }
 
     Rectangle {
-        visible: root.focused && root.term && root.term.cursorVisible && root.scrollOffset === 0
+        visible: root.focused && root.cursorShown && root.scrollOffset === 0
 
-        x: root.term ? root.term.screen.x * root.cellWidth : 0
-        y: root.term ? (root.term.screen.y + Math.min(root.scrollOffset, root.term.scrollback.length)) * root.cellHeight : 0
+        x: root.cursorColumn * root.cellWidth
+        y: root.cursorRow * root.cellHeight
         width: root.cellWidth
         height: root.cellHeight
 
@@ -136,10 +175,10 @@ Item {
 
     MouseArea {
         anchors.fill: parent
-        enabled: root.term && root.term.mouse !== 0
+        enabled: root.mouseMode !== 0
         visible: enabled
         acceptedButtons: Qt.LeftButton | Qt.RightButton | Qt.MiddleButton
-        hoverEnabled: root.term && root.term.mouse === 1003
+        hoverEnabled: root.mouseMode === 1003
 
         onPressed: mouse => {
             const at = root.cellAt(mouse.x, mouse.y);
@@ -194,8 +233,6 @@ Item {
             root.scrollOffset = Math.max(0, Math.min(root.term.scrollback.length, root.scrollOffset + step));
         }
     }
-
-    onRevisionChanged: root.scrollOffset = 0
 
     readonly property var keyNames: ({
             [Qt.Key_Up]: "up",

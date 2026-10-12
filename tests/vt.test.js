@@ -341,6 +341,151 @@ test.describe("vt: scrolling and history", () => {
     });
 });
 
+test.describe("vt: only changed rows render again", () => {
+    function same(before, after) {
+        return after.map((line, i) => line === before[i]);
+    }
+
+    test.it("a write to one row keeps every other row's render", () => {
+        const t = term(20, 4);
+        t.write("a\r\nb\r\nc");
+        const before = t.view(0);
+        t.write("\x1b[2;1HX");
+        const after = t.view(0);
+        assert.deepStrictEqual(same(before, after), [true, false, true, true]);
+        assert.strictEqual(after[1].markup, "X");
+    });
+
+    test.it("moving the cursor alone renders nothing again", () => {
+        const t = term(20, 4);
+        t.write("a\r\nb");
+        const before = t.view(0);
+        t.write("\x1b[H\x1b[3;5H\x1b[A\r");
+        assert.deepStrictEqual(same(before, t.view(0)), [true, true, true, true]);
+    });
+
+    test.it("a scroll moves renders up rather than rebuilding them", () => {
+        const t = term(10, 3);
+        t.write("a\r\nb\r\nc");
+        const before = t.view(0);
+        t.write("\r\nd");
+        const after = t.view(0);
+        assert.strictEqual(after[0], before[1]);
+        assert.strictEqual(after[1], before[2]);
+        assert.strictEqual(after[2].markup, "d");
+        assert.strictEqual(t.scrollback[t.scrollback.length - 1], before[0]);
+    });
+
+    test.it("erasing a line renders only that line again", () => {
+        const t = term(10, 3);
+        t.write("a\r\nb\r\nc");
+        const before = t.view(0);
+        t.write("\x1b[2;1H\x1b[K");
+        assert.deepStrictEqual(same(before, t.view(0)), [true, false, true]);
+    });
+
+    test.it("erasing the screen renders every line again", () => {
+        const t = term(10, 3);
+        t.write("a\r\nb\r\nc");
+        const before = t.view(0);
+        t.write("\x1b[2J");
+        assert.deepStrictEqual(same(before, t.view(0)), [false, false, false]);
+    });
+
+    test.it("inserting and deleting characters renders the row again", () => {
+        const t = term(10, 3);
+        t.write("abc\r\ndef");
+        let before = t.view(0);
+        t.write("\x1b[1;1H\x1b[2@");
+        assert.deepStrictEqual(same(before, t.view(0)), [false, true, true]);
+        before = t.view(0);
+        t.write("\x1b[2;1H\x1b[P");
+        assert.deepStrictEqual(same(before, t.view(0)), [true, false, true]);
+        assert.strictEqual(t.view(0)[1].markup, "ef");
+    });
+
+    test.it("a combining mark renders its row again", () => {
+        const t = term(10, 2);
+        t.write("e");
+        const before = t.view(0);
+        t.write(bytes("́"));
+        const after = t.view(0);
+        assert.notStrictEqual(after[0], before[0]);
+        assert.strictEqual(after[0].markup, "é");
+    });
+
+    test.it("a resize renders every row again", () => {
+        const t = term(10, 2);
+        t.write("abcdefgh\r\nij");
+        const before = t.view(0);
+        t.resize(4, 2);
+        const after = t.view(0);
+        assert.deepStrictEqual(same(before, after), [false, false]);
+        assert.strictEqual(after[0].markup, "abcd");
+    });
+
+    test.it("coming back from the alt screen keeps the main screen's renders", () => {
+        const t = term(10, 2);
+        t.write("main");
+        const before = t.view(0);
+        t.write("\x1b[?1049hvim\x1b[?1049l");
+        assert.deepStrictEqual(same(before, t.view(0)), [true, true]);
+    });
+
+    test.it("hands back no more rows than the screen has, however far back it looks", () => {
+        const t = term(10, 2);
+        for (let i = 0; i < 10; i++)
+            t.write(`l${i}\r\n`);
+        assert.deepStrictEqual(t.view(6).map(l => l.markup), ["l3", "l4"]);
+        assert.strictEqual(t.view(6).length, 2);
+    });
+
+    test.it("never serves a stale render, whatever the stream does", () => {
+        let seed = 12345;
+        const next = n => {
+            seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+            return seed % n;
+        };
+        const moves = [
+            () => "word",
+            () => "\r\n",
+            () => "\r",
+            () => "\b",
+            () => "\t",
+            () => `\x1b[${1 + next(6)};${1 + next(12)}H`,
+            () => `\x1b[${next(3)}K`,
+            () => `\x1b[${next(3)}J`,
+            () => `\x1b[${1 + next(3)}@`,
+            () => `\x1b[${1 + next(3)}P`,
+            () => `\x1b[${1 + next(3)}X`,
+            () => `\x1b[${1 + next(2)}L`,
+            () => `\x1b[${1 + next(2)}M`,
+            () => `\x1b[${1 + next(2)}S`,
+            () => `\x1b[${1 + next(2)}T`,
+            () => `\x1b[${30 + next(8)};${40 + next(8)}m`,
+            () => "\x1b[7m",
+            () => "\x1b[0m",
+            () => bytes("漢字"),
+            () => bytes("é"),
+            () => "\x1b(0lqk\x1b(B",
+            () => `\x1b[${1 + next(2)};${4 + next(3)}r`,
+            () => "\x1b[r",
+            () => "\x1bM",
+            () => "\x1b[?1049h",
+            () => "\x1b[?1049l",
+            () => "\x1bc"
+        ];
+        const t = term(12, 6, {scrollback: 20});
+        for (let step = 0; step < 4000; step++) {
+            if (next(200) === 0)
+                t.resize(6 + next(10), 3 + next(5));
+            t.write(moves[next(moves.length)]());
+            const fresh = t.screen.lines.map(row => t.renderLine(row));
+            assert.deepStrictEqual(t.view(0), fresh, `step ${step}`);
+        }
+    });
+});
+
 test.describe("vt: the alt screen", () => {
     test.it("is a separate grid and gives the old one back", () => {
         const t = term(10, 3);

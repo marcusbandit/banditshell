@@ -143,7 +143,7 @@ Terminal.prototype.scrollUp = function (n) {
 Terminal.prototype.pushScrollback = function (row) {
     if (this.scrollbackMax <= 0)
         return;
-    this.scrollback.push(this.renderLine(row));
+    this.scrollback.push(this.rendered(row));
     if (this.scrollback.length > this.scrollbackMax)
         this.scrollback.splice(0, this.scrollback.length - this.scrollbackMax);
 };
@@ -175,8 +175,10 @@ Terminal.prototype.put = function (ch, width) {
 
     if (width === 0) {
         var prev = s.lines[s.y][Math.max(0, s.x - 1)];
-        if (prev)
+        if (prev) {
             prev.c += ch;
+            this.invalidate(s.y);
+        }
         return;
     }
 
@@ -187,6 +189,7 @@ Terminal.prototype.put = function (ch, width) {
         this.newline();
     }
 
+    this.invalidate(s.y);
     var cell = s.lines[s.y][s.x];
     cell.c = ch;
     cell.f = this.fg;
@@ -210,7 +213,12 @@ Terminal.prototype.put = function (ch, width) {
     }
 };
 
+Terminal.prototype.invalidate = function (y) {
+    this.screen.lines[y].cache = null;
+};
+
 Terminal.prototype.eraseCells = function (y, from, to) {
+    this.invalidate(y);
     var row = this.screen.lines[y];
     for (var x = from; x <= to && x < this.cols; x++) {
         row[x].c = " ";
@@ -236,6 +244,7 @@ Terminal.prototype.resize = function (cols, rows) {
             while (row.length < cols)
                 row.push(blankCell());
             row.length = cols;
+            row.cache = null;
         }
         while (s.lines.length < rows)
             s.lines.push(blankRow(cols));
@@ -373,15 +382,21 @@ Terminal.prototype.renderLine = function (row) {
     return {markup: out, runs: runs};
 };
 
+Terminal.prototype.rendered = function (row) {
+    if (!row.cache)
+        row.cache = this.renderLine(row);
+    return row.cache;
+};
+
 Terminal.prototype.view = function (offset) {
     var lines = [];
     var back = this.scrollback.length;
     var start = Math.max(0, back - (offset || 0));
 
-    for (var i = start; i < back; i++)
+    for (var i = start; i < back && lines.length < this.rows; i++)
         lines.push(this.scrollback[i]);
     for (var y = 0; y < this.rows && lines.length < this.rows; y++)
-        lines.push(this.renderLine(this.screen.lines[y]));
+        lines.push(this.rendered(this.screen.lines[y]));
 
     return lines;
 };
@@ -643,6 +658,7 @@ Terminal.prototype.dispatch = function (c) {
     switch (c) {
     case "@":
         n = this.param(0, 1);
+        this.invalidate(s.y);
         for (i = 0; i < n; i++) {
             s.lines[s.y].splice(s.x, 0, blankCell());
             s.lines[s.y].length = this.cols;
@@ -731,6 +747,7 @@ Terminal.prototype.dispatch = function (c) {
         break;
     case "P":
         n = this.param(0, 1);
+        this.invalidate(s.y);
         for (i = 0; i < n; i++) {
             s.lines[s.y].splice(s.x, 1);
             s.lines[s.y].push(blankCell());
