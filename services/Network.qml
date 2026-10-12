@@ -344,7 +344,7 @@ Singleton {
                 root.failEnroll("could not ask NetworkManager what it has saved");
                 return;
             }
-            const head = profile.exists ? ["nmcli", "connection", "modify", "id", profile.want] :["nmcli", "connection", "add", "type", "wifi", "con-name", profile.want, "ifname", root.deviceName, "ssid", profile.want];
+            const head = profile.exists ? ["nmcli", "connection", "modify", "id", profile.want] : ["nmcli", "connection", "add", "type", "wifi", "con-name", profile.want, "ifname", root.deviceName, "ssid", profile.want];
             enrol.command = head.concat(root.enrollArgs);
             root.enrollArgs = [];
             enrol.running = true;
