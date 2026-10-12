@@ -210,15 +210,14 @@ Singleton {
         onTriggered: root.refresh()
     }
 
+    readonly property var hotplugEvents: ["monitoradded", "monitoraddedv2", "monitorremoved", "monitorremovedv2"]
+
     Connections {
         target: Hyprland
 
-        function onMonitorAdded(): void {
-            settle.restart();
-        }
-
-        function onMonitorRemoved(): void {
-            settle.restart();
+        function onRawEvent(event): void {
+            if (root.hotplugEvents.includes(event.name))
+                settle.restart();
         }
     }
 
