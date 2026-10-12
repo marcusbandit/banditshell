@@ -340,6 +340,7 @@ Item {
 
                 full: root.entry?.body ?? ""
                 brief: root.entry?.brief ?? ""
+                textFormat: Text.StyledText
                 unfolded: root.unfolded
 
                 font.pixelSize: Appearance.font.size.small

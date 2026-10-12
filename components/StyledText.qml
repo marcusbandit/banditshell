@@ -9,6 +9,7 @@ Text {
     font.pixelSize: Appearance.font.size.small
     renderType: Text.NativeRendering
     color: Appearance.colour.text
+    textFormat: Text.PlainText
 
     lineHeight: Math.round(font.pixelSize * 4 / 3)
     lineHeightMode: Text.FixedHeight

@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import "markup.js" as Markup
 
 Item {
     id: root
@@ -16,11 +17,12 @@ Item {
     property alias font: label.font
     property alias color: label.color
     property alias topPadding: label.topPadding
+    property alias textFormat: label.textFormat
 
     readonly property real advance: ruler.advanceWidth / ruler.text.length
     readonly property int limit: root.lines * Math.max(1, Math.floor(root.width / Math.max(1, root.advance)))
 
-    readonly property string folded: root.shorten(root.brief || root.full, root.limit)
+    readonly property string folded: root.textFormat === Text.StyledText ? Markup.shorten(root.brief || root.full, root.limit) : root.shorten(root.brief || root.full, root.limit)
 
     readonly property bool foldable: root.folded !== root.full
 

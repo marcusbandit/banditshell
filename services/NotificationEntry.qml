@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Notifications
+import "../components/markup.js" as Markup
 
 QtObject {
     id: root
@@ -101,7 +102,7 @@ QtObject {
             return;
         root.appName = n.appName;
         root.summary = n.summary;
-        root.body = n.body;
+        root.body = Markup.sanitise(n.body);
         root.appIcon = n.appIcon;
         root.desktopEntry = n.desktopEntry;
 
