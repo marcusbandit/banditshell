@@ -442,6 +442,11 @@ PanelWindow {
             anchors.fill: parent
             originX: chassis.barWidth
             inset: win.border
+
+            onDismissed: {
+                for (const window of Shell.windows)
+                    window.keyboard.hide();
+            }
         }
 
         CheatSheet {

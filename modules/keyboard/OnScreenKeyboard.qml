@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -11,6 +12,10 @@ Item {
     required property real originX
 
     required property int inset
+
+    signal dismissed
+
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
     readonly property bool open: root.shown
     property bool shown: false
@@ -88,9 +93,15 @@ Item {
             root.show();
     }
 
+    function focusedHere(): bool {
+        const focused = Hypr.focusedScreen;
+        const known = !!focused && Quickshell.screens.some(s => s.name === focused);
+        return (known ? focused : Quickshell.screens[0]?.name ?? "") === root.screenName;
+    }
+
     function follow(): void {
         if (Tablet.folded) {
-            if (Config.values.tablet.autoKeyboard)
+            if (Config.values.tablet.autoKeyboard && root.focusedHere())
                 root.show();
         } else {
             root.hide();
@@ -105,7 +116,7 @@ Item {
         }
     }
 
-    Component.onCompleted: root.follow()
+    Component.onCompleted: Qt.callLater(root.follow)
 
     function capOf(key: var): string {
         if (key.icon)
@@ -149,7 +160,7 @@ Item {
         }
 
         if (key.act === "hide") {
-            root.hide();
+            root.dismissed();
             return;
         }
 
