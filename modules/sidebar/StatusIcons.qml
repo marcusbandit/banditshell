@@ -60,47 +60,64 @@ Item {
         {
             key: "audio",
             title: "Sound",
-            icon: Audio.icon(Audio.volume, Audio.muted),
-            active: !Audio.muted && Audio.volume > 0,
-
-            alert: Audio.sourceMuted,
+            reading: sound,
             body: soundMenu
         },
         {
             key: "network",
             title: "Network",
-            icon: Network.icon(),
-
-            mark: Network.carrier === "wifi" ? signalMark : null,
-            active: Network.linked,
-
-            alert: (Network.available && !Network.enabled && !Network.wiredConnected) || Network.stranded,
-            available: Network.available || Network.wiredAvailable,
+            reading: network,
             body: networkMenu
         },
         {
             key: "bluetooth",
             title: "Bluetooth",
-            icon: Bluetooth.statusIcon(),
-            active: Bluetooth.anyConnected,
-            available: Bluetooth.available,
+            reading: bluetooth,
             body: bluetoothMenu
         },
-
         {
             key: "battery",
             title: "Battery",
-            icon: Battery.icon(),
-
-            mark: batteryMark,
-            active: Battery.charging,
-
-            alarm: Battery.low,
-
+            reading: battery,
             present: Battery.available,
             body: batteryMenu
         }
     ].filter(g => g.present ?? true)
+
+    QtObject {
+        id: sound
+
+        readonly property string icon: Audio.icon(Audio.volume, Audio.muted)
+        readonly property bool active: !Audio.muted && Audio.volume > 0
+        readonly property bool alert: Audio.sourceMuted
+    }
+
+    QtObject {
+        id: network
+
+        readonly property string icon: Network.icon()
+        readonly property Component mark: Network.carrier === "wifi" ? signalMark : null
+        readonly property bool active: Network.linked
+        readonly property bool alert: (Network.available && !Network.enabled && !Network.wiredConnected) || Network.stranded
+        readonly property bool available: Network.available || Network.wiredAvailable
+    }
+
+    QtObject {
+        id: bluetooth
+
+        readonly property string icon: Bluetooth.statusIcon()
+        readonly property bool active: Bluetooth.anyConnected
+        readonly property bool available: Bluetooth.available
+    }
+
+    QtObject {
+        id: battery
+
+        readonly property string icon: Battery.icon()
+        readonly property Component mark: batteryMark
+        readonly property bool active: Battery.charging
+        readonly property bool alarm: Battery.low
+    }
 
     readonly property var items: root.gauges.filter(g => g.body !== undefined)
 
@@ -170,12 +187,12 @@ Item {
 
                 width: column.width
 
-                icon: modelData.icon
-                mark: modelData.mark ?? null
-                active: modelData.active ?? false
-                alert: modelData.alert ?? false
-                alarm: modelData.alarm ?? false
-                available: modelData.available ?? true
+                icon: modelData.reading.icon
+                mark: modelData.reading.mark ?? null
+                active: modelData.reading.active ?? false
+                alert: modelData.reading.alert ?? false
+                alarm: modelData.reading.alarm ?? false
+                available: modelData.reading.available ?? true
 
                 onHoveredChanged: {
                     if (hovered) {
