@@ -33,6 +33,7 @@ Item {
 
         StyledText {
             width: parent.width
+            visible: root.detail !== ""
             text: root.detail
             font.pixelSize: Files.zoomed(Appearance.font.size.small)
             color: Appearance.colour.textFaint

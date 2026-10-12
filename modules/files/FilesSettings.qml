@@ -32,6 +32,19 @@ Item {
 
     property string rebinding: ""
 
+    component Choice: Segments {
+        id: choice
+
+        property var choices: []
+        property var chosen
+
+        signal chose(var value)
+
+        options: choice.choices.map(c => c.label)
+        current: choice.choices.findIndex(c => c.value === choice.chosen)
+        onPicked: index => choice.chose(choice.choices[index].value)
+    }
+
     readonly property var keyNames: Chords.names(Qt)
 
     function chordOf(event: var): string {
@@ -202,13 +215,14 @@ Item {
                 Setting {
                     width: body.width
                     label: "View"
-                    detail: "How the files are laid out"
 
-                    Segments {
-                        width: 220
-                        options: ["Icons", "List"]
-                        current: Files.view === "list" ? 1 : 0
-                        onPicked: index => Config.set("files.view", index === 1 ? "list" : "icons")
+                    Choice {
+                        choices: [
+                            {label: "Icons", value: "icons"},
+                            {label: "List", value: "list"}
+                        ]
+                        chosen: Files.view
+                        onChose: value => Config.set("files.view", value)
                     }
                 }
 
@@ -217,18 +231,20 @@ Item {
                     label: "Size"
                     detail: `${Math.round(Files.magnification * 100)}% · text ${Files.zoomed(Appearance.font.size.small)}px`
 
-                    Segments {
-                        width: 300
-                        options: ["Smaller", "Reset", "Bigger"]
-                        current: 1
-                        onPicked: index => Files.zoom(index === 0 ? -0.1 : index === 2 ? 0.1 : 0)
+                    Choice {
+                        choices: [
+                            {label: "Smaller", value: -0.1},
+                            {label: "Reset", value: 0},
+                            {label: "Bigger", value: 0.1}
+                        ]
+                        chosen: 0
+                        onChose: value => Files.zoom(value)
                     }
                 }
 
                 Setting {
                     width: body.width
                     label: "Hidden files"
-                    detail: "Names beginning with a dot"
 
                     Toggle {
                         checked: Files.showHidden
@@ -239,26 +255,30 @@ Item {
                 Setting {
                     width: body.width
                     label: "Sort by"
-                    detail: "Folders always come first"
 
-                    Segments {
-                        width: 300
-                        options: ["Name", "Size", "Changed", "Kind"]
-                        current: ["name", "size", "mtime", "kind"].indexOf(Files.sort)
-                        onPicked: index => Config.set("files.sort", ["name", "size", "mtime", "kind"][index])
+                    Choice {
+                        choices: [
+                            {label: "Name", value: "name"},
+                            {label: "Size", value: "size"},
+                            {label: "Changed", value: "mtime"},
+                            {label: "Kind", value: "kind"}
+                        ]
+                        chosen: Files.sort
+                        onChose: value => Config.set("files.sort", value)
                     }
                 }
 
                 Setting {
                     width: body.width
                     label: "Markdown"
-                    detail: "How .md files open in the preview"
 
-                    Segments {
-                        width: 220
-                        options: ["Rendered", "Raw"]
-                        current: Files.markdownRendered ? 0 : 1
-                        onPicked: index => Config.set("files.markdown", index === 1 ? "raw" : "rendered")
+                    Choice {
+                        choices: [
+                            {label: "Rendered", value: "rendered"},
+                            {label: "Raw", value: "raw"}
+                        ]
+                        chosen: Files.markdownRendered ? "rendered" : "raw"
+                        onChose: value => Config.set("files.markdown", value)
                     }
                 }
 
@@ -266,13 +286,11 @@ Item {
                     model: [
                         {
                             which: "keys",
-                            title: "Keys, anywhere in the window",
-                            note: "Read whatever has focus. Anything not listed here goes to the panel you are typing in, which is what leaves Ctrl+C to the shell."
+                            title: "Keys, anywhere in the window"
                         },
                         {
                             which: "grid",
-                            title: "Keys, while the files have focus",
-                            note: "Only when the keyboard is on the grid, so the terminal keeps them."
+                            title: "Keys, while the files have focus"
                         }
                     ]
 
@@ -287,14 +305,6 @@ Item {
                         StyledText {
                             text: group.modelData.title
                             font.pixelSize: Appearance.font.size.normal
-                        }
-
-                        StyledText {
-                            width: group.width
-                            text: group.modelData.note
-                            font.pixelSize: Files.zoomed(Appearance.font.size.small)
-                            color: Appearance.colour.textFaint
-                            wrapMode: Text.Wrap
                             bottomPadding: Appearance.padding.small
                         }
 
