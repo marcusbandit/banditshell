@@ -1,8 +1,10 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -13,6 +15,14 @@ Item {
     property string key: ""
 
     property var warm: []
+
+    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+
+    readonly property bool focusedHere: {
+        const focused = Hypr.focusedScreen;
+        const known = !!focused && Quickshell.screens.some(s => s.name === focused);
+        return (known ? focused : Quickshell.screens[0]?.name ?? "") === root.screenName;
+    }
 
     readonly property int spare: 2
 
@@ -141,6 +151,12 @@ Item {
 
                 property bool believed: false
 
+                property bool kept: false
+
+                function keep(): void {
+                    page.kept = true;
+                }
+
                 onLiveChanged: settle.restart()
 
                 Timer {
@@ -173,8 +189,6 @@ Item {
                 onCurrentChanged: if (current) {
                     root.widthHint = Math.max(0, widthHint);
 
-                    if (bodyLoader.status === Loader.Loading)
-                        bodyLoader.asynchronous = false;
                     root.pageHeight = implicitHeight;
 
                     view.contentY = 0;
@@ -229,12 +243,14 @@ Item {
                         id: bodyLoader
 
                         width: page.width
-                        active: page.warm || page.live
+                        active: page.warm && (root.focusedHere || page.kept) || page.live
 
-                        asynchronous: page.warm
+                        asynchronous: page.warm && !page.current
                         sourceComponent: page.pageBody
 
                         onLoaded: {
+                            if (page.warm)
+                                Qt.callLater(page.keep);
                             item.width = Qt.binding(() => page.width);
                             if (item.showing !== undefined)
                                 item.showing = Qt.binding(() => page.believed);
