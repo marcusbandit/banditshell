@@ -106,12 +106,10 @@ Item {
 
         SettingsCard {
             title: "Theme from wallpaper"
-            visible: Wallpaper.palette.length > 0
 
             SettingsRow {
                 icon: "colorize"
                 label: "Theme from wallpaper"
-                detail: "not worn yet"
                 onActivated: Config.set("themeFromWallpaper", !Config.values.themeFromWallpaper)
 
                 Row {
