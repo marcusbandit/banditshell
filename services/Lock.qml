@@ -35,6 +35,12 @@ Singleton {
 
     property int monitorDelay: root.quickestRestart
 
+    property int inhibitorDelay: root.quickestRestart
+
+    property bool sleeping: false
+
+    readonly property int sleepDeadline: 3000
+
     function lock(): void {
         if (root.active)
             return;
@@ -59,6 +65,7 @@ Singleton {
         }
         if (root.secure && !root.hinted)
             root.tellLogind(true);
+        root.letSleep();
     }
 
     function finish(): void {
@@ -70,6 +77,26 @@ Singleton {
         root.active = false;
         if (root.hinted)
             root.tellLogind(false);
+        root.letSleep();
+    }
+
+    function prepareForSleep(going: bool): void {
+        root.sleeping = going;
+        if (!going) {
+            sleepCap.stop();
+            inhibitor.running = true;
+            return;
+        }
+        root.lock();
+        sleepCap.restart();
+        root.letSleep();
+    }
+
+    function letSleep(): void {
+        if (!root.sleeping || (root.active && !root.secure))
+            return;
+        sleepCap.stop();
+        inhibitor.running = false;
     }
 
     function submit(secret: string): void {
@@ -122,7 +149,11 @@ Singleton {
         const heard = /^(\/[\w\/]*): ([\w.]+)\.(\w+) \((.*)\)$/.exec(line);
         if (!heard)
             return;
-        const [, path, interfaceName, member] = heard;
+        const [, path, interfaceName, member, body] = heard;
+        if (path === "/org/freedesktop/login1" && interfaceName === "org.freedesktop.login1.Manager" && member === "PrepareForSleep") {
+            root.prepareForSleep(body.startsWith("true"));
+            return;
+        }
         if (!root.sessionPath || path !== root.sessionPath || interfaceName !== "org.freedesktop.login1.Session")
             return;
         if (member === "Lock")
@@ -204,6 +235,41 @@ Singleton {
         running: monitor.running
         interval: root.slowestRestart
         onTriggered: root.monitorDelay = root.quickestRestart
+    }
+
+    Process {
+        id: inhibitor
+
+        running: true
+        command: ["systemd-inhibit", "--what=sleep", "--mode=delay", "--who=banditshell", "--why=locking the screen", "cat"]
+        stdinEnabled: true
+
+        onRunningChanged: if (!inhibitor.running && !root.sleeping)
+            inhibitorRestart.restart()
+    }
+
+    Timer {
+        id: inhibitorRestart
+
+        interval: root.inhibitorDelay
+        onTriggered: {
+            root.inhibitorDelay = Math.min(root.inhibitorDelay * 2, root.slowestRestart);
+            if (!root.sleeping)
+                inhibitor.running = true;
+        }
+    }
+
+    Timer {
+        running: inhibitor.running
+        interval: root.slowestRestart
+        onTriggered: root.inhibitorDelay = root.quickestRestart
+    }
+
+    Timer {
+        id: sleepCap
+
+        interval: root.sleepDeadline
+        onTriggered: inhibitor.running = false
     }
 
     PamContext {
