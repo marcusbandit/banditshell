@@ -5,71 +5,17 @@ import qs.config
 import qs.components
 import qs.services
 import "urls.js" as Urls
+import "keys.js" as Chords
 
 Item {
     id: root
 
     focus: true
 
-    readonly property var keyNames: ({
-            [Qt.Key_Left]: "Left",
-            [Qt.Key_Right]: "Right",
-            [Qt.Key_Up]: "Up",
-            [Qt.Key_Down]: "Down",
-            [Qt.Key_Home]: "Home",
-            [Qt.Key_End]: "End",
-            [Qt.Key_PageUp]: "PageUp",
-            [Qt.Key_PageDown]: "PageDown",
-            [Qt.Key_Space]: "Space",
-            [Qt.Key_Tab]: "Tab",
-            [Qt.Key_Return]: "Return",
-            [Qt.Key_Enter]: "Return",
-            [Qt.Key_Backspace]: "Backspace",
-            [Qt.Key_Delete]: "Delete",
-            [Qt.Key_Escape]: "Escape",
-            [Qt.Key_F1]: "F1",
-            [Qt.Key_F2]: "F2",
-            [Qt.Key_F3]: "F3",
-            [Qt.Key_F4]: "F4",
-            [Qt.Key_F5]: "F5",
-            [Qt.Key_F6]: "F6",
-
-            [Qt.Key_Plus]: "+",
-            [Qt.Key_Equal]: "=",
-            [Qt.Key_Minus]: "-",
-            [Qt.Key_Underscore]: "_",
-
-            [Qt.Key_Comma]: ",",
-            [Qt.Key_Period]: ".",
-            [Qt.Key_Slash]: "/",
-            [Qt.Key_Semicolon]: ";",
-            [Qt.Key_Apostrophe]: "'",
-            [Qt.Key_BracketLeft]: "[",
-            [Qt.Key_BracketRight]: "]"
-        })
-
-    function keyLabel(key: int): string {
-        if (root.keyNames[key])
-            return root.keyNames[key];
-        if (key >= Qt.Key_A && key <= Qt.Key_Z || key >= Qt.Key_0 && key <= Qt.Key_9)
-            return String.fromCharCode(key);
-        return "";
-    }
+    readonly property var keyNames: Chords.names(Qt)
 
     function chordOf(event: var): string {
-        const parts = [];
-        if (event.modifiers & Qt.ControlModifier)
-            parts.push("Ctrl");
-        if (event.modifiers & Qt.AltModifier)
-            parts.push("Alt");
-        if (event.modifiers & Qt.ShiftModifier)
-            parts.push("Shift");
-
-        const label = root.keyLabel(event.key);
-        if (!label)
-            return "";
-        parts.push(label);
-        return parts.join("+");
+        return Chords.chordOf(Qt, root.keyNames, event.key, event.modifiers, event.text);
     }
 
     function isChord(event: var): bool {
