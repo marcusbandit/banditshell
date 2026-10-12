@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.services
+import "cli.js" as Words
 
 Scope {
     id: root
@@ -841,7 +842,7 @@ Scope {
                 return bits;
             });
 
-            return rows.length ? `${head}\n${root.columns(rows)}` : head;
+            return rows.length ? `${head}\n${Words.columns(rows)}` : head;
         }
 
         function list(screen: string): string {
@@ -864,7 +865,7 @@ Scope {
 
             const kept = rows.filter(r => r[1] === "fits").length;
             const head = `${name} ${aspect.toFixed(2)} · ${kept} of ${rows.length} fit · tolerance ${Config.values.wallpaper.fit}`;
-            return rows.length ? `${head}\n${root.columns(rows)}` : head;
+            return rows.length ? `${head}\n${Words.columns(rows)}` : head;
         }
     }
 
@@ -926,7 +927,7 @@ Scope {
                     SidebarState.visibleOn(s.name) ? "on" : "off",
                     s.name in SidebarState.perScreen ? "own" : "default"
                 ]);
-            return rows.length ? `${head}\n${root.columns(rows)}` : head;
+            return rows.length ? `${head}\n${Words.columns(rows)}` : head;
         }
     }
 
@@ -1048,78 +1049,6 @@ Scope {
 
     readonly property string clockUnread: "the clock has not read its state file yet; ask again in a moment"
 
-    function duration(text: string): int {
-        const spec = String(text ?? "").trim().toLowerCase().replace(/\s+/g, "");
-        if (/^\d+(\.\d+)?$/.test(spec))
-            return Math.round(parseFloat(spec) * 60);
-        if (!/^(\d+(\.\d+)?[hms])+$/.test(spec))
-            return 0;
-        let total = 0;
-        for (const part of spec.match(/\d+(\.\d+)?[hms]/g))
-            total += parseFloat(part) * (part.endsWith("h") ? 3600 : part.endsWith("m") ? 60 : 1);
-        return Math.round(total);
-    }
-
-    function timeOfDay(text: string): int {
-        const m = String(text ?? "").trim().toLowerCase().replace(/\s+/g, "").match(/^(\d{1,2}):?(\d{2})?(am|pm)?$/);
-        if (!m)
-            return -1;
-        let hour = Number(m[1]);
-        const minute = m[2] === undefined ? 0 : Number(m[2]);
-        if (m[3]) {
-            if (hour < 1 || hour > 12)
-                return -1;
-            hour = (hour % 12) + (m[3] === "pm" ? 12 : 0);
-        }
-        return hour > 23 || minute > 59 ? -1 : hour * 60 + minute;
-    }
-
-    function hhmm(hour: int, minute: int): string {
-        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
-    }
-
-    readonly property var dayNames: ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
-
-    function repeatDays(spec: string): var {
-        const want = String(spec ?? "").trim().toLowerCase().replace(/\s+/g, "");
-        const all = root.dayNames.map((name, i) => i);
-        if (!want || want === "once" || want === "never")
-            return [];
-        if (want === "daily" || want === "everyday" || want === "all")
-            return all;
-        if (want === "weekdays")
-            return all.slice(0, root.dayNames.indexOf("sat"));
-        if (want === "weekends" || want === "weekend")
-            return all.slice(root.dayNames.indexOf("sat"));
-        const out = [];
-        for (const part of want.split(",")) {
-            const ends = part.split("-").map(word => root.dayNames.indexOf(word.slice(0, 3)));
-            if (ends.length > 2 || ends.some(i => i < 0))
-                return null;
-            for (let i = ends[0]; ; i = (i + 1) % all.length) {
-                if (!out.includes(i))
-                    out.push(i);
-                if (i === ends[ends.length - 1])
-                    break;
-            }
-        }
-        return out.sort((a, b) => a - b);
-    }
-
-    function dayWords(days: var): string {
-        const list = Array.isArray(days) ? days : [];
-        const sat = root.dayNames.indexOf("sat");
-        if (list.length === 0)
-            return "once";
-        if (list.length === root.dayNames.length)
-            return "daily";
-        if (list.length === sat && list.every(d => d < sat))
-            return "weekdays";
-        if (list.length === root.dayNames.length - sat && list.every(d => d >= sat))
-            return "weekends";
-        return list.map(d => root.dayNames[d]).join(",");
-    }
-
     function resolveScreen(screen: string): string {
         if (screen === "all")
             return "all";
@@ -1143,13 +1072,6 @@ Scope {
         }
         Wallpaper.stepOn(where, delta);
         return `${where}: ${Wallpaper.nameOf(Wallpaper.currentOn(where))}`;
-    }
-
-    function columns(rows: var): string {
-        const width = [];
-        for (const row of rows)
-            row.forEach((cell, i) => width[i] = Math.max(width[i] ?? 0, String(cell).length));
-        return rows.map(row => row.map((cell, i) => i === row.length - 1 ? String(cell) : String(cell).padEnd(width[i])).join("  ")).join("\n");
     }
 
     function pickTimer(handle: string, matches: var): var {
@@ -1177,7 +1099,7 @@ Scope {
 
         const when = alarm.snoozedUntil > at ? `snoozed, in ${Clock.spanLabel(next - at)}` : next > 0 ? `in ${Clock.spanLabel(next - at)}` : "-";
         const action = alarm.mode === "command" ? `run: ${alarm.payload}` : alarm.mode === "cloud" ? `ask: ${alarm.payload}` : "-";
-        return [`${index}`, root.hhmm(alarm.hour, alarm.minute), root.dayWords(alarm.days), state, when, alarm.label || "-", action, `(${alarm.id})`];
+        return [`${index}`, Words.hhmm(alarm.hour, alarm.minute), Words.dayWords(alarm.days), state, when, alarm.label || "-", action, `(${alarm.id})`];
     }
 
     function armAlarm(handle: string, on: bool): string {
@@ -1187,17 +1109,7 @@ Scope {
         if (!alarm)
             return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
         Clock.setAlarmArmed(alarm.id, on);
-        return root.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
-    }
-
-    function zoneKey(text: string): string {
-        return String(text ?? "").trim().toLowerCase().replace(/[\s_]+/g, "_");
-    }
-
-    function zoneMatches(text: string): var {
-        const want = root.zoneKey(text);
-        const exact = Clock.allZones.filter(id => root.zoneKey(id) === want);
-        return exact.length > 0 ? exact : Clock.allZones.filter(id => root.zoneKey(id).includes(want));
+        return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
     }
 
     IpcHandler {
@@ -1206,7 +1118,7 @@ Scope {
         function start(spec: string, label: string): string {
             if (!Clock.loaded)
                 return root.clockUnread;
-            const secs = root.duration(spec);
+            const secs = Words.duration(spec);
             if (secs <= 0)
                 return `not a duration: "${spec}" (10m, 90s, 1h30m, 2h, or a bare number of minutes)`;
             const id = Clock.startTimer(secs, label ?? "");
@@ -1214,7 +1126,7 @@ Scope {
             if (!id)
                 return `no room: ${Clock.timerMax} timers at a time and all of them are running`;
             const timer = Clock.timers.find(t => t.id === id);
-            return root.columns([root.timerFields(timer, Clock.timers.indexOf(timer) + 1, Date.now())]);
+            return Words.columns([root.timerFields(timer, Clock.timers.indexOf(timer) + 1, Date.now())]);
         }
 
         function pause(handle: string): string {
@@ -1273,7 +1185,7 @@ Scope {
             if (Clock.timers.length === 0)
                 return `no timers (${Clock.timerMax} at a time)`;
             const at = Date.now();
-            return root.columns(Clock.timers.map((timer, i) => root.timerFields(timer, i + 1, at)));
+            return Words.columns(Clock.timers.map((timer, i) => root.timerFields(timer, i + 1, at)));
         }
     }
 
@@ -1283,10 +1195,10 @@ Scope {
         function add(time: string, days: string, label: string, mode: string, payload: string): string {
             if (!Clock.loaded)
                 return root.clockUnread;
-            const minutes = root.timeOfDay(time);
+            const minutes = Words.timeOfDay(time);
             if (minutes < 0)
                 return `not a time: "${time}" (07:00, 7:30pm, 0700, or a bare hour)`;
-            const repeat = root.repeatDays(days);
+            const repeat = Words.repeatDays(days);
             if (repeat === null)
                 return `not a repeat: "${days}" (mon,wed / mon-fri / weekdays / weekends / daily / once)`;
             const action = mode || "none";
@@ -1308,7 +1220,7 @@ Scope {
                 payload: payload ?? ""
             });
             const alarm = Clock.alarms.find(a => a.id === id);
-            return root.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
+            return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
         }
 
         function list(): string {
@@ -1317,7 +1229,7 @@ Scope {
             if (Clock.alarms.length === 0)
                 return `no alarms (${Clock.alarmMax} is the lot)`;
             const at = Date.now();
-            return root.columns(Clock.alarms.map((alarm, i) => root.alarmFields(alarm, i + 1, at)));
+            return Words.columns(Clock.alarms.map((alarm, i) => root.alarmFields(alarm, i + 1, at)));
         }
 
         function remove(handle: string): string {
@@ -1327,7 +1239,7 @@ Scope {
             if (!alarm)
                 return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
             Clock.removeAlarm(alarm.id);
-            return `removed ${root.hhmm(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} (${alarm.id})`;
+            return `removed ${Words.hhmm(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} (${alarm.id})`;
         }
 
         function enable(handle: string): string {
@@ -1343,7 +1255,7 @@ Scope {
                 return "nothing is ringing";
             const alarm = Clock.ringing;
             Clock.snooze();
-            return `snoozed ${root.hhmm(alarm.hour, alarm.minute)} for ${Clock.snoozeMinutes}m (${alarm.id})`;
+            return `snoozed ${Words.hhmm(alarm.hour, alarm.minute)} for ${Clock.snoozeMinutes}m (${alarm.id})`;
         }
 
         function stop(): string {
@@ -1352,7 +1264,7 @@ Scope {
             const alarm = Clock.ringing;
             Clock.stop();
 
-            return `stopped ${root.hhmm(alarm.hour, alarm.minute)}, ${alarm.days.length === 0 ? "disarmed" : `next ${root.dayWords(alarm.days)}`} (${alarm.id})`;
+            return `stopped ${Words.hhmm(alarm.hour, alarm.minute)}, ${alarm.days.length === 0 ? "disarmed" : `next ${Words.dayWords(alarm.days)}`} (${alarm.id})`;
         }
 
         function status(): string {
@@ -1371,8 +1283,8 @@ Scope {
             }
 
             const ring = Clock.ringing;
-            const next = soonest ? `${root.hhmm(soonest.alarm.hour, soonest.alarm.minute)} ${root.dayWords(soonest.alarm.days)}, ${soonest.alarm.snoozedUntil > at ? "snoozed, " : ""}in ${Clock.spanLabel(soonest.when - at)}` : "-";
-            return [`alarms     ${Clock.alarms.length} of ${Clock.alarmMax}`, `armed      ${armed.length}`, `next       ${next}`, `ringing    ${ring ? `${root.hhmm(ring.hour, ring.minute)}${ring.label ? ` ${ring.label}` : ""}, ${Clock.spanLabel(at - Clock.ringingSince)} so far${Clock.ringingLate > 60000 ? `, late by ${Clock.spanLabel(Clock.ringingLate)}` : ""}` : "none"}`, `policy     snooze ${Clock.snoozeMinutes}m, gives up after ${Clock.ringMinutes}m, catches up within ${Clock.catchUpMinutes}m`].join("\n");
+            const next = soonest ? `${Words.hhmm(soonest.alarm.hour, soonest.alarm.minute)} ${Words.dayWords(soonest.alarm.days)}, ${soonest.alarm.snoozedUntil > at ? "snoozed, " : ""}in ${Clock.spanLabel(soonest.when - at)}` : "-";
+            return [`alarms     ${Clock.alarms.length} of ${Clock.alarmMax}`, `armed      ${armed.length}`, `next       ${next}`, `ringing    ${ring ? `${Words.hhmm(ring.hour, ring.minute)}${ring.label ? ` ${ring.label}` : ""}, ${Clock.spanLabel(at - Clock.ringingSince)} so far${Clock.ringingLate > 60000 ? `, late by ${Clock.spanLabel(Clock.ringingLate)}` : ""}` : "none"}`, `policy     snooze ${Clock.snoozeMinutes}m, gives up after ${Clock.ringMinutes}m, catches up within ${Clock.catchUpMinutes}m`].join("\n");
         }
     }
 
@@ -1391,7 +1303,7 @@ Scope {
             }
 
             const pending = Clock.places.filter(id => !Clock.zones.some(z => z.id === id));
-            const table = rows.length > 1 ? root.columns(rows) : `${root.columns(rows)}\nno places yet (banditshell zone add <place>)`;
+            const table = rows.length > 1 ? Words.columns(rows) : `${Words.columns(rows)}\nno places yet (banditshell zone add <place>)`;
             return pending.length > 0 ? `${table}\nmeasuring ${pending.join(", ")}` : table;
         }
 
@@ -1403,7 +1315,7 @@ Scope {
                 Clock.loadZoneList();
                 return "reading this machine's zone list; ask again in a moment";
             }
-            const near = root.zoneMatches(want);
+            const near = Words.zoneMatches(want, Clock.allZones);
             return near.length > 0 ? near.join("\n") : `nothing here is called that: ${want}`;
         }
 
@@ -1417,7 +1329,7 @@ Scope {
                 Clock.loadZoneList();
                 return "reading this machine's zone list; ask again in a moment";
             }
-            const near = root.zoneMatches(want);
+            const near = Words.zoneMatches(want, Clock.allZones);
             if (near.length === 0)
                 return `no such place: ${want} (banditshell zone find ${want})`;
             if (near.length > 1)
@@ -1435,10 +1347,10 @@ Scope {
         function remove(place: string): string {
             if (!Clock.loaded)
                 return root.clockUnread;
-            const want = root.zoneKey(place);
+            const want = Words.zoneKey(place);
             if (!want)
                 return "which place? (banditshell zone list)";
-            const hits = Clock.places.filter(id => root.zoneKey(id) === want || root.zoneKey(Clock.cityOf(id)) === want);
+            const hits = Clock.places.filter(id => Words.zoneKey(id) === want || Words.zoneKey(Clock.cityOf(id)) === want);
             if (hits.length === 0)
                 return `not on the list: ${place} (banditshell zone list)`;
             if (hits.length > 1)
