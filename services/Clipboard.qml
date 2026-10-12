@@ -9,10 +9,9 @@ import "ranking.js" as Ranking
 Singleton {
     id: root
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/clipboard.json`
+    readonly property string path: `${Config.stateDir}/clipboard.json`
 
-    readonly property string blobs: `${root.dir}/clipboard`
+    readonly property string blobs: `${Config.stateDir}/clipboard`
 
     property var entries: []
 
@@ -564,7 +563,7 @@ Singleton {
     Process {
         id: mkdir
 
-        command: ["sh", "-c", 'umask 077 && mkdir -p -- "$2" && chmod 700 -- "$1" "$2"', "sh", root.dir, root.blobs]
+        command: ["sh", "-c", 'umask 077 && mkdir -p -- "$2" && chmod 700 -- "$1" "$2"', "sh", Config.stateDir, root.blobs]
 
         onExited: {
             stale.running = true;

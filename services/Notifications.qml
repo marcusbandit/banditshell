@@ -109,7 +109,7 @@ Singleton {
 
     property var leaving: []
 
-    readonly property string cacheRoot: `${Quickshell.env("XDG_CACHE_HOME") || `${Quickshell.env("HOME")}/.cache`}/banditshell/notifications`
+    readonly property string cacheRoot: `${Config.cacheDir}/notifications`
 
     readonly property string cacheName: `${Quickshell.processId}-${Date.now()}`
     readonly property string cacheDir: `${root.cacheRoot}/${root.cacheName}`

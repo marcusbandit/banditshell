@@ -55,12 +55,10 @@ Item {
             }
 
             SettingsRow {
-                readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-
                 icon: "folder_open"
                 label: "State folder"
-                detail: dir
-                onActivated: opener.exec(["xdg-open", dir])
+                detail: Config.stateDir
+                onActivated: opener.exec(["xdg-open", Config.stateDir])
             }
         }
 

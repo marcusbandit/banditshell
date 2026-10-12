@@ -11,6 +11,9 @@ Singleton {
     readonly property string dir: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/banditshell`
     readonly property string path: `${dir}/config.json`
 
+    readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/banditshell`
+    readonly property string cacheDir: `${Quickshell.env("XDG_CACHE_HOME") || `${Quickshell.env("HOME")}/.cache`}/banditshell`
+
     readonly property var defaults: ({
 
             theme: "slate",

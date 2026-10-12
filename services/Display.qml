@@ -31,8 +31,7 @@ Singleton {
 
     property bool ddcutilMissing: false
 
-    readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/banditshell`
-    readonly property string warmthPath: `${root.stateDir}/warmth`
+    readonly property string warmthPath: `${Config.stateDir}/warmth`
 
     readonly property string gammaPath: Quickshell.shellPath("bin/bs-gamma")
 

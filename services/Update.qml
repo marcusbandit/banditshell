@@ -32,7 +32,7 @@ Singleton {
 
     readonly property string dir: Quickshell.shellDir
 
-    readonly property string statePath: `${Quickshell.env("HOME")}/.local/state/banditshell/update.json`
+    readonly property string statePath: `${Config.stateDir}/update.json`
     readonly property real fetchGap: 30 * 60 * 1000
 
     property real fetchedAt: 0

@@ -8,8 +8,7 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/appicons.json`
+    readonly property string path: `${Config.stateDir}/appicons.json`
 
     property bool loaded: false
 

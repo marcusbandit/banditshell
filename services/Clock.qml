@@ -30,8 +30,7 @@ Singleton {
     readonly property int cloudSeconds: root.settings.cloudSeconds
     readonly property int cloudReplyChars: root.settings.cloudReplyChars
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/clock.json`
+    readonly property string path: `${Config.stateDir}/clock.json`
 
     property bool loaded: false
 
@@ -646,7 +645,7 @@ Singleton {
     Process {
         id: mkdir
 
-        command: ["mkdir", "-p", root.dir]
+        command: ["mkdir", "-p", Config.stateDir]
         onExited: root.adopt(null)
     }
 

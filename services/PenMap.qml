@@ -736,8 +736,7 @@ Singleton {
         root.snapshot = Array.isArray(raw) ? raw : [];
     }
 
-    readonly property string stateDir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string statePath: `${root.stateDir}/penmap.json`
+    readonly property string statePath: `${Config.stateDir}/penmap.json`
 
     function save(): void {
 
