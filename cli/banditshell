@@ -1,168 +1,85 @@
+#!/usr/bin/env bash
 # banditshell - run and drive the shell.
 #
-# The grammar is GENERIC-FIRST: verb, then object, then the args that define
-# it. `banditshell toggle panel notifications` reads off the front; the
-# bespoke tail that no generic verb can carry (a timer's start, the
-# clipboard's history edits) lives behind `dispatch`, one level down.
-#
-#   banditshell start|stop|restart|run|log
-#                                the shell itself: detach and prove it, stop,
-#                                restart, foreground with the QML errors, the
-#                                log
-#   banditshell doctor
-#                                the checkout checked, and repaired where the
-#                                repair is machine-local: bin/ rebuilt from
-#                                cli/, the C helpers compiled, the exec
-#                                symlink restored; then quickshell, dkms and
-#                                failed units said out loud
-#   banditshell toggle panel <name> [screen]|border|wallpaper
-#        sidebar [screen|all]|output|tablet [caller]|tablet lid [caller]
+#   banditshell start|stop|restart|run
+#                                the shell itself: detach and prove it, stop it,
+#                                restart it, run it in the foreground
+#   banditshell log [args]       the running shell's log
+#   banditshell doctor           repair bin/, the helpers and ~/bin/banditshell,
+#                                then report quickshell, dkms and failed units
+#   banditshell toggle panel <panel> [screen]|panel files [dir]|border|wallpaper
+#        sidebar [<screen>|all]|output|tablet [caller]|tablet lid [caller]
 #        volume mute
-#                                any surface, out or away: the fixed panels
-#                                below, and every menu key (`list menu`); and
-#                                the boolean states, flipped: the chrome's
-#                                bare mode, the wallpaper runner, the
-#                                keyboard-side column per monitor, the
-#                                speakers/headphones switch, the hinge (`caller`
-#                                says who asks - the compositor's switch binds
-#                                pass `compositor`), mute. The level itself is
-#                                a number: set, not toggle
-#   banditshell open panel <name> [args]
-#                                open it without reading its state first:
-#                                settings takes a page then a screen, files a
-#                                path, the rest a screen
-#   banditshell close panel <name>
-#                                put one surface away (it reaches every
-#                                screen on purpose). BARE, `close` with
-#                                nothing after it, shuts every surface: the
-#                                rescue, one word on purpose, because a
-#                                surface holding the keyboard leaves no window
-#                                focused and swallows clicks. Bind it; you
-#                                cannot type your way out
-#   banditshell status panel <name> [screen]|border|sidebar|volume
-#        |output|tablet|penmap|wallpaper|timer|alarm|lock|keyring
-#        |migration|screen
+#                                flip a surface or a boolean
+#   banditshell open panel <panel> [screen]|panel settings [page] [screen]
+#        panel files [dir]
+#                                open a surface
+#   banditshell close panel <panel>
+#                                put one surface away; bare, every surface
+#   banditshell panic            every surface away
+#   banditshell status panel <panel> [screen]|border|sidebar|volume|output|tablet
+#        penmap|wallpaper|timer|alarm|lock|keyring|migration|screen
 #                                what a thing is doing; bare, the shell
-#                                itself
-#   banditshell set border [on|off]|wallpaper [on|off]
-#        sidebar [on|off] [screen|all]|tablet [on|off] [caller]
-#        tablet lid [closed|open] [caller]|volume [<pct>|+n|-n]
-#        volume mute [on|off]|output [speakers|headphones]
-#        brightness [<pct>|+n|-n]|temperature [<K>|off]
-#        theme [name]|penmap rect <x> <y> <w> <h>|<key> <value>
-#                                the same states, explicit, and everything
-#                                that only set has: a fraction is a percent,
-#                                .5 is 50, .32 is 32; +n/-n moves relative, a
-#                                bare + or - one step; brightness is DDC/CI
-#                                on every screen, temperature is the colour
-#                                warmth in kelvin (off is neutral); <key>
-#                                <value> is the shell's config, dotted keys
-#   banditshell get <key>|theme
-#                                read one value back: a dotted config key, or
-#                                the theme's name
+#   banditshell set border [on|off]|wallpaper [on|off]|wallpaper <file> [<screen>|all]
+#        sidebar [on|off] [<screen>|all]|tablet [on|off] [caller]
+#        tablet lid [closed|open] [caller]|volume [<percent>|+n|-n]
+#        volume mute [on|off]|output [speakers|headphones]|output <role> <sink>
+#        brightness [<percent>|+n|-n]|temperature [<kelvin>|off]|theme [theme]
+#        penmap rect <x> <y> <width> <height>|<key> <value>
+#                                a state, a level or a dotted config key; .5 is
+#                                50 percent, +n and -n move, a bare + or - steps
+#   banditshell get <key>|theme  a dotted config key, or the theme's name
 #   banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
-#                                enumerate a registry: the menu keys, the
-#                                clipboard's history, the wallpapers that fit
-#                                a screen, the sinks, the alarms, the places,
-#                                the themes
-#   banditshell dispatch timer <action>|alarm <action>|zone <action>
-#        clipboard <action>|calculator <action>|keyboard <action>
-#        settings <action>|launcher <action>|wallpaper <action>
-#        menu <action>|penmap <action>|keyring <action>|tablet <action>
-#        migration <action>|picker <action>|lock
-#                                the bespoke tail, target by target. What
-#                                each target answers: timer
-#                                start <duration> [label]|pause|resume|toggle|
-#                                cancel [handle]; alarm snooze|stop|enable|
-#                                disable|remove <handle>|add <time> [--days
-#                                <spec>] [--label <text>] [--run <cmd> |
-#                                --ask <message>]; zone find|add|remove
-#                                <place>; clipboard use|pin|remove <n>|clear;
-#                                calculator answer <expression>|app|panel;
-#                                keyboard page <name>|dock|float; settings
-#                                page <key>|float; launcher run <id>|scrub
-#                                <0..1>; wallpaper next|prev|clear [screen|
-#                                all]|palette; menu current|hover; penmap
-#                                commit|cancel|aspect|follow; keyring
-#                                refuse|demo; tablet probe [lid]; migration
-#                                migrate; picker open|freeze|clip|freezeclip|
-#                                close - the ONE target that can work without
-#                                the shell, falling back to grim/slurp, so
-#                                the key always shoots
-#   banditshell completions install|print|status|remove
-#                                tab completion in zsh for every verb above,
-#                                GENERATED from this comment block rather than
-#                                written out a second time. `install` puts it
-#                                where zsh looks and wires the fpath; after
-#                                that the file rebuilds itself whenever this
-#                                script is newer than it, so a verb added
-#                                above needs nothing done to it. Bare, it
-#                                says where it is
-#   banditshell build|shaders|test
-#                                compile src/*.c into bin/, recompile every
-#                                components/**/*.frag to .qsb, run tests/
-#                                against the plain-JavaScript parts
-#   banditshell shot [file]|demo <key>|gallery [WxH]
-#                                a plain screenshot; open a menu, shoot it,
-#                                put it away; every component the shell owns,
-#                                on buttons, with knobs
-#   banditshell lockpreview [file]|settingspreview [WxH] [page] [file]
-#                                the lock face and the settings face, at a
-#                                size, photographed - a window on a timer,
-#                                taking no input
-#   banditshell filespreview [dir] [shot]
-#                                the file browser in a plain window, no
-#                                timeout, because a terminal you cannot type
-#                                into is not a terminal
+#                                enumerate a registry
+#   banditshell dispatch timer start <duration> [label]
+#        timer [pause|resume|toggle|cancel] [handle]
+#        alarm [list|status|snooze|stop]|alarm [enable|disable|remove] <handle>
+#        alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]
+#        zone list|zone [find|add|remove] <place>
+#        clipboard [use|pin|remove] <index>|clipboard clear
+#        calculator [app|panel]|calculator answer <expression>
+#        keyboard [dock|float]|keyboard page <layer> [screen]
+#        settings float|settings page <page>
+#        launcher run <app>|launcher scrub <fraction>
+#        wallpaper [next|prev|clear] [<screen>|all]|wallpaper palette
+#        menu [current|hover]|penmap [commit|cancel|aspect|centre|follow]
+#        keyring [refuse|demo]|tablet probe|tablet probe lid
+#        notifications clear|migration migrate|lock
+#        picker [open|freeze|clip|freezeclip|close]
+#                                the bespoke tail, target by target; the picker
+#                                falls back to grim and slurp without the shell
+#   banditshell files [toggle|open] [dir]|close|status
+#                                the file browser
+#   banditshell completions install|status|remove|print
+#                                tab completion, generated from this text
+#   banditshell build            compile src/*.c into bin/
+#   banditshell shaders          compile components/**/*.frag to .qsb
+#   banditshell test [args]      run tests/*.test.js in node
+#   banditshell shot [file]      a plain screenshot
+#   banditshell demo <menu> [file]
+#                                open a menu, shoot it, put it away
+#   banditshell gallery [WxH]    every component the shell owns, in a window
+#   banditshell lockpreview [file]
+#                                the lock face, photographed
+#   banditshell settingspreview [WxH] [page] [file]
+#                                the settings face at a size, photographed
+#   banditshell filespreview [dir] [file]
+#                                the file browser in a window; with a file, shot
+#   banditshell help             this text
 #
-# Every verb above is bindable: a Hyprland bind is an exec of this CLI, and
-# docs/hyprland-binds.example.conf is a ready-made set to copy or source.
-#
-# The block above is also DATA. scripts/zsh-completion.sh reads it to build the
-# zsh completion, so its shape is a contract: two spaces, `banditshell `, the
-# verb, then the alternatives separated by `|` (bracket an inner `|` to
-# protect it); a description, when there is one, starts at column 31 and its
-# continuation lines are indented to match. A continuation indented LESS than
-# that is more alternatives (see `dispatch`).
-#
-# OLD BINDS still speaking the noun-first grammar (`volume set 50`,
-# `wallpapers toggle`) are rewritten through services/cli-migration.js - the
-# migration map - once, on the way in, and the shell's sidebar offers to
-# rewrite the file itself.
+#   <panel>: launcher|session|clipboard|media|calculator|quickcontrols|keyboard
+#        settings|notifications|notch|hotkeys|files|wallpaper|penmap
+#                                or any menu key (list menu)
 
 set -euo pipefail
 
 SHELL_DIR="${BANDITSHELL_DIR:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)}"
 SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
+BACKUP="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/lastgood"
+FAILED_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/failed.log"
+SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications notch hotkeys files wallpaper penmap)
+HELPERS=(bs-pty bs-ls bs-gamma)
 
-# Started from $HOME, ALWAYS.
-#
-# Every application the shell launches is its child and inherits its working
-# directory, so a shell started from this repo opened every terminal in this
-# repo. -p takes an absolute path, so nothing here depends on the cwd; the only
-# thing it decides is where the desktop lands, and that is the user's home.
-qs_() { (cd "$HOME" && qs -p "$SHELL_DIR" "$@"); }
-
-# WHICH INSTANCE, and this is the failure it exists to stop.
-#
-# `qs ipc -p <dir>` finds an instance by the config path it was STARTED from,
-# and the only path this script knows is the checkout it happens to live in.
-# Those two agree right up until the shell is started from somewhere else,
-# which a git worktree during development does as a matter of course, and from
-# that moment every verb in this file addresses an instance that does not
-# exist: one line to stderr, exit 1. A Hyprland bind is an exec with no
-# terminal behind it, so the line goes nowhere, the KEY DOES NOTHING, and
-# nothing says why. Nine binds silently dead with a shell running perfectly
-# well on the screen.
-#
-# So the instance is the one that is RUNNING, found by asking rather than
-# assumed from a path. The path stays a preference between candidates instead
-# of a requirement: this checkout wins when it is up, any other shell.qml is
-# taken over nothing at all. Preview instances (lockpreview.qml,
-# settingspreview.qml) fall out by that filename; they are qs processes too and
-# they answer no IPC.
-#
-# Resolved once and cached, because several verbs make more than one call.
 qs_target=()
 qs_target_resolved=0
 
@@ -177,13 +94,21 @@ list_instances() {
     '
 }
 
-# The pid of the instance whose config is <dir>/shell.qml, if one is up.
 instance_of() {
     local pid path
     while IFS=$'\t' read -r pid path; do
         [ "$path" = "$1/shell.qml" ] && { echo "$pid"; return 0; }
     done < <(list_instances)
     return 1
+}
+
+shell_pids() {
+    local pid path
+    while IFS=$'\t' read -r pid path; do
+        case "$path" in
+        "$SHELL_DIR/shell.qml" | "$BACKUP/shell.qml") echo "$pid" ;;
+        esac
+    done < <(list_instances)
 }
 
 resolve_target() {
@@ -208,25 +133,11 @@ resolve_target() {
     fi
 }
 
-# SAY SO SOMEWHERE A KEYBIND CAN BE HEARD.
-#
-# stderr is the right place for a line somebody typed in a terminal and the
-# wrong place for a line produced by a key. hyprctl notify draws from the
-# COMPOSITOR, which is the process still standing when the shell is the thing
-# that died; notify-send hands the message to the shell's own notification
-# daemon, so the one failure worth announcing is the one it cannot announce.
 complain() {
     echo "banditshell: $1" >&2
     hyprctl notify -1 5000 "rgb(e06c75)" "banditshell: $1" >/dev/null 2>&1 || true
 }
 
-# `qs ipc call` fails loudly when the shell is not running; say so in a way that
-# tells you what to do about it.
-# The answer is BUFFERED rather than streamed, because qs writes its own
-# failure ("No running instances for ...") to STDOUT, not to stderr. Passed
-# straight through, that line lands in the middle of whatever was reading this
-# verb's output as if it were the answer. So the call's output is held and
-# printed only when the call actually worked.
 ipc() {
     resolve_target
     local out
@@ -238,9 +149,6 @@ ipc() {
     return 1
 }
 
-# The same call for a caller that has its own answer to failure. Quiet only
-# about the FAILURE: a verb that worked still says what it did, the way it
-# always did from a terminal.
 ipc_quiet() {
     resolve_target
     local out
@@ -251,11 +159,6 @@ ipc_quiet() {
     return 1
 }
 
-# IS A SHELL RUNNING -- and not just any qs. A preview instance (gallery,
-# lockpreview, settingspreview) is a qs process too, answers no IPC and is
-# not the desktop, but a bare `pgrep -x qs` cannot tell the difference: it
-# made `start` answer "already running" to a gallery. The test is the same
-# one resolve_target asks -- a process whose config path is a shell.qml.
 running() {
     qs list --all 2>/dev/null | awk '
         /^[[:space:]]*Config path:/ {
@@ -267,31 +170,15 @@ running() {
     '
 }
 
-# THE LAST KNOWN GOOD COPY. A config that cannot load leaves nothing on the
-# screen - no bar, no launcher, no keys - and a shell started from a keybind
-# cannot even say why. So every PROVEN boot rsyncs the checkout here, and a
-# boot that fails falls back to the snapshot. It is written only after a boot
-# has survived the probe below, so the snapshot itself always boots.
-BACKUP="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/lastgood"
-FAILED_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/failed.log"
-
 refresh_backup() {
     mkdir -p "$BACKUP"
     rsync -a --delete --exclude .git --exclude .claude --exclude .scratch \
         "$SHELL_DIR/" "$BACKUP/"
 }
 
-# LAUNCH AND PROVE IT. `qs -d` detaches before the config is parsed: a config
-# that cannot load prints its errors and dies, and the exit code is 0 all the
-# same - the launcher would report success over a bare desktop. So a launch is
-# not believed until the instance has registered in `qs list` AND is still
-# there a second later; a failed load is dead well before that. Its output,
-# which a keybind launch has no terminal to show, lands in FAILED_LOG.
-launch() { # launch <dir>
+launch() {
     local out tries=0
     out=$(mktemp)
-    # Not qs_: it appends its own -p, and the dir here is an argument - the
-    # snapshot has to be launchable from somewhere that is not the checkout.
     if ! (cd "$HOME" && qs -d -p "$1") >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
         mkdir -p "$(dirname "$FAILED_LOG")"
         cat "$out" >>"$FAILED_LOG"
@@ -316,8 +203,6 @@ launch() { # launch <dir>
     return 1
 }
 
-# IF THE CHECKOUT CANNOT LOAD, THE SHOW GOES ON: the snapshot starts instead,
-# and the failure is said where a keybind can be heard.
 start_backup() {
     if [ ! -f "$BACKUP/shell.qml" ]; then
         complain "shell failed to load and there is no backup yet (errors: $FAILED_LOG)"
@@ -327,37 +212,51 @@ start_backup() {
     launch "$BACKUP"
 }
 
-# Print the header comment block, however long it happens to be. A hardcoded
-# line range silently starts printing the code once the header changes length.
+stop_shell() {
+    local -a pids
+    local pid alive tries=0
+    mapfile -t pids < <(shell_pids)
+    [ "${#pids[@]}" -gt 0 ] || return 1
+    kill "${pids[@]}" 2>/dev/null || true
+    while [ "$tries" -lt 40 ]; do
+        alive=0
+        for pid in "${pids[@]}"; do
+            if kill -0 "$pid" 2>/dev/null; then
+                alive=1
+            fi
+        done
+        [ "$alive" = 0 ] && return 0
+        sleep 0.05
+        tries=$((tries + 1))
+    done
+    return 0
+}
+
 usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
 
-# REBUILD THE MACHINE-LOCAL PARTS OF THE CHECKOUT, without sudo, without the
-# installer UI. bin/ is gitignored build output, so a fresh clone, a `git
-# clean`, or an eager disk cleanup leaves the desktop exec'ing a path that no
-# longer exists - and the script that could fix things is the thing that is
-# gone. This is only ever reached through a copy that git carries (cli/), so
-# it can put bin/ back from the checkout alone. Missing PACKAGES are not
-# machine-local state and stay install.sh's job.
+helpers_current() {
+    local helper
+    for helper in "${HELPERS[@]}"; do
+        [ -x "$SHELL_DIR/bin/$helper" ] || return 1
+        if [ "$SHELL_DIR/src/$helper.c" -nt "$SHELL_DIR/bin/$helper" ]; then
+            return 1
+        fi
+    done
+    return 0
+}
+
 ensure_built() {
     if [ ! -x "$SHELL_DIR/bin/banditshell" ] || [ "$SHELL_DIR/cli/banditshell" -nt "$SHELL_DIR/bin/banditshell" ]; then
         install -Dm755 "$SHELL_DIR/cli/banditshell" "$SHELL_DIR/bin/banditshell" || return 1
     fi
-    [ -x "$SHELL_DIR/bin/bs-pty" ] && [ -x "$SHELL_DIR/bin/bs-ls" ] && return 0
+    helpers_current && return 0
     "$SHELL_DIR/bin/banditshell" build >/dev/null 2>&1 || return 1
 }
 
-# A fraction is a percent: `.5` is 50, `.32` is 32. Whole numbers pass through
-# untouched, so `set volume 50` still means 50 and the shell's own
-# amplification ceiling (>100) is not clipped here.
 pct_of() { awk -v v="$1" 'BEGIN{printf "%d", v * 100 + 0.5}'; }
 
-# The relative twin: an integer is already a percent (+5 is +5%), a fraction
-# is a fraction of 100 (+.5 is +50) - the same reading `set volume .5` has.
 rel_of() { case "$1" in *.*) pct_of "$1" ;; *) printf '%s' "$1" ;; esac; }
 
-# The panel nouns, and the IPC target each one drives. Most are one to one;
-# the wallpaper PICKER kept its IPC target (`wallpapers`) and lost its CLI
-# plural - the noun is `wallpaper`, whether it is being worn or picked.
 panel_ipc() {
     case "$1" in
     wallpaper) echo wallpapers ;;
@@ -365,16 +264,10 @@ panel_ipc() {
     esac
 }
 
-# Which surfaces answer `status`, and which open with no arguments at all -
-# the router refuses the verbs a target does not have rather than passing an
-# arity error down to the IPC layer.
-# `status` arity is not uniform: the screen-bearing panels declare the
-# parameter, the rest declare none, and an empty argument to one of those is
-# a "too many arguments" error rather than a quiet one.
 panel_status_ok() { case "$1" in clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | wallpaper | penmap | quickcontrols) return 0 ;; *) return 1 ;; esac; }
 panel_status_takes_screen() { case "$1" in keyboard | notifications | notch | hotkeys) return 0 ;; *) return 1 ;; esac; }
 
-toggle_panel() { # <name> [screen]
+toggle_panel() {
     local name="$1" rest="${2:-}"
     case "$name" in
     launcher | session) ipc "$(panel_ipc "$name")" toggle ;;
@@ -385,13 +278,13 @@ toggle_panel() { # <name> [screen]
     files) ipc files toggle "$rest" ;;
     wallpaper) ipc wallpapers toggle "$rest" ;;
     penmap) ipc penmap open ;;
-    # Anything else is a menu KEY: the menu engine owns it.
     *) ipc menu toggle "$name" "$rest" ;;
     esac
 }
 
-open_panel() { # <name> [args...]
-    local name="$1"; shift
+open_panel() {
+    local name="$1"
+    shift
     case "$name" in
     launcher | session) ipc "$(panel_ipc "$name")" open ;;
     clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
@@ -405,17 +298,38 @@ open_panel() { # <name> [args...]
     esac
 }
 
-close_panel() { # <name>
+close_call() {
     case "$1" in
-    launcher | session) ipc "$(panel_ipc "$1")" close ;;
-    clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | quickcontrols) ipc "$1" close ;;
-    wallpaper) ipc wallpapers close ;;
-    picker) ipc picker close ;;
-    *) ipc menu close ;;
+    wallpaper) call=(wallpapers close) ;;
+    penmap) call=(penmap cancel) ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | notch | hotkeys | files | picker) call=("$1" close) ;;
+    *) call=(menu close) ;;
     esac
 }
 
-status_panel() { # <name> [screen]
+close_panel() {
+    local -a call
+    close_call "$1"
+    ipc "${call[@]}"
+}
+
+close_everything() {
+    local -a call
+    local name closed=0
+    for name in menu picker "${SURFACES[@]}"; do
+        close_call "$name"
+        if ipc_quiet "${call[@]}" >/dev/null; then
+            closed=1
+        fi
+    done
+    if [ "$closed" = 0 ]; then
+        complain "not running (try: banditshell start)"
+        return 1
+    fi
+    echo "closed everything"
+}
+
+status_panel() {
     panel_status_ok "$1" || { echo "banditshell: $1 has no status" >&2; return 1; }
     if panel_status_takes_screen "$1"; then
         ipc "$(panel_ipc "$1")" status "${2:-}"
@@ -424,14 +338,9 @@ status_panel() { # <name> [screen]
     fi
 }
 
-# THE BESPOKE TAIL. `dispatch` carries the actions no generic verb can name,
-# straight to the same IPC target the old grammar used - the word reorder is
-# the whole change. Two exceptions keep their old intelligence: `alarm add`
-# still parses its flags here (a keybind is a line somebody reads a year
-# later), and `picker` still falls back to grim/slurp, because a screenshot
-# key that dies with the shell is not a screenshot key.
-route_dispatch() { # <target> <action> [args...]
-    local target="$1"; shift
+route_dispatch() {
+    local target="$1"
+    shift
     local action="${1:-}"
 
     case "$target" in
@@ -458,14 +367,10 @@ route_dispatch() { # <target> <action> [args...]
             ipc alarm "$action" "$2" ;;
         add)
             [ $# -ge 2 ] || { echo "usage: banditshell dispatch alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]" >&2; exit 2; }
-            local when="$2"; shift 2
+            local when="$2"
+            shift 2
             local days="" label="" mode="" payload=""
             while [ $# -gt 0 ]; do
-                # Every flag here takes a value, so one sitting at the end of
-                # the line is a value that was forgotten rather than a flag
-                # that means something alone. Checked BEFORE the shift, because
-                # `shift 2` with one argument left fails, and under `set -e` a
-                # failed shift ends the script with no message at all.
                 [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
                 case "$1" in
                 --days) days="$2" ;;
@@ -483,8 +388,6 @@ route_dispatch() { # <target> <action> [args...]
         ;;
 
     zone)
-        # The argument is EVERYTHING that follows, joined back into one string,
-        # so `dispatch zone add new york` works without quotes.
         case "$action" in
         list) ipc zone list ;;
         find | add | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch zone $action <place>" >&2; exit 2; }
@@ -516,18 +419,18 @@ route_dispatch() { # <target> <action> [args...]
     keyboard)
         case "$action" in
         dock | float) ipc keyboard "$action" ;;
-        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch keyboard page <name>" >&2; exit 2; }
+        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch keyboard page <layer> [screen]" >&2; exit 2; }
             ipc keyboard page "$2" "${3:-}" ;;
-        *) echo "banditshell: dispatch keyboard page <name>|dock|float" >&2; exit 2 ;;
+        *) echo "banditshell: dispatch keyboard page <layer>|dock|float" >&2; exit 2 ;;
         esac
         ;;
 
     settings)
         case "$action" in
         float) ipc settings float ;;
-        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch settings page <key>" >&2; exit 2; }
+        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch settings page <page>" >&2; exit 2; }
             ipc settings page "$2" ;;
-        *) echo "banditshell: dispatch settings page <key>|float" >&2; exit 2 ;;
+        *) echo "banditshell: dispatch settings page <page>|float" >&2; exit 2 ;;
         esac
         ;;
 
@@ -535,7 +438,7 @@ route_dispatch() { # <target> <action> [args...]
         case "$action" in
         run) ipc launcher run "${2:-}" ;;
         scrub) ipc launcher scrub "${2:-0}" ;;
-        *) echo "banditshell: dispatch launcher run <id>|scrub <0..1>" >&2; exit 2 ;;
+        *) echo "banditshell: dispatch launcher run <app>|scrub <fraction>" >&2; exit 2 ;;
         esac
         ;;
 
@@ -549,9 +452,9 @@ route_dispatch() { # <target> <action> [args...]
 
     penmap)
         case "$action" in
-        commit | cancel | aspect | follow) ipc penmap "$action" ;;
+        commit | cancel | aspect | centre | follow) ipc penmap "$action" ;;
         probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
-        *) echo "banditshell: dispatch penmap commit|cancel|aspect|follow" >&2; exit 2 ;;
+        *) echo "banditshell: dispatch penmap commit|cancel|aspect|centre|follow" >&2; exit 2 ;;
         esac
         ;;
 
@@ -575,6 +478,13 @@ route_dispatch() { # <target> <action> [args...]
         esac
         ;;
 
+    notifications)
+        case "$action" in
+        clear) ipc notifications clear ;;
+        *) echo "banditshell: dispatch notifications clear" >&2; exit 2 ;;
+        esac
+        ;;
+
     migration)
         case "$action" in
         migrate) ipc migration migrate ;;
@@ -585,10 +495,6 @@ route_dispatch() { # <target> <action> [args...]
     lock) ipc lock lock ;;
 
     picker)
-        # THE ONE VERB THAT CAN WORK WITHOUT THE SHELL. The fallback is the
-        # point: a screenshot key that does nothing is indistinguishable from
-        # broken hardware. See the long note in the old grammar's picker arm -
-        # the reasoning is unchanged, only the address.
         if ipc_quiet picker "$action" && [ "$action" != close ]; then
             exit 0
         fi
@@ -600,6 +506,7 @@ route_dispatch() { # <target> <action> [args...]
             exit 1
         fi
         complain "not running - falling back to grim/slurp (try: banditshell start)"
+        # shellcheck disable=SC2086
         region=$(slurp ${SLURP_ARGS:-}) || exit 0
         if [ -z "$region" ]; then
             exit 0
@@ -628,9 +535,6 @@ route_dispatch() { # <target> <action> [args...]
             out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
             grim -g "$region" "$out"
             say2 "Screenshot saved" "$out ($note)"
-            # Unquoted on purpose: the configured editor is a command WITH its
-            # flags ("swappy -f"), the same string the shell splits when it
-            # opens one.
             # shellcheck disable=SC2086
             ${editor} "$out" >/dev/null 2>&1 || true
             echo "$out"
@@ -645,19 +549,16 @@ route_dispatch() { # <target> <action> [args...]
     esac
 }
 
-# THE GENERIC ROUTE: verb, then object, then args. Booleans answer to both
-# `toggle` and `set` - toggle flips, set is explicit - and a thing that is not
-# on/off answers to set alone. The one-way road: everything toggleable can be
-# set; not everything settable can be toggled.
 route_verb() {
-    local verb="$1"; shift
+    local verb="$1"
+    shift
     local obj="${1:-}"
     if [ "$#" -gt 0 ]; then shift; fi
 
     case "$verb" in
     toggle)
         case "$obj" in
-        panel) [ $# -ge 1 ] || { echo "usage: banditshell toggle panel <name> [screen]" >&2; exit 2; }
+        panel) [ $# -ge 1 ] || { echo "usage: banditshell toggle panel <panel> [screen]" >&2; exit 2; }
             toggle_panel "$1" "${2:-}" ;;
         border) ipc border toggle ;;
         wallpaper) ipc wallpaper toggle ;;
@@ -670,34 +571,27 @@ route_verb() {
                 ipc tablet toggle "${1:-}"
             fi ;;
         volume)
-            [ "${1:-}" = mute ] || { echo "banditshell: the level is a number; use 'set volume <pct>'. Only mute toggles." >&2; exit 2; }
+            [ "${1:-}" = mute ] || { echo "banditshell: the level is a number; use 'set volume <percent>'. Only mute toggles." >&2; exit 2; }
             ipc volume mute "" ;;
-        *) echo "banditshell: nothing to toggle: ${obj:-<none>} (try: toggle panel <name>|border|wallpaper|sidebar|output|tablet|volume mute)" >&2; exit 2 ;;
+        *) echo "banditshell: nothing to toggle: ${obj:-<none>} (try: toggle panel <panel>|border|wallpaper|sidebar|output|tablet|volume mute)" >&2; exit 2 ;;
         esac
         ;;
 
     open)
-        [ -n "$obj" ] || { echo "usage: banditshell open panel <name> [args]" >&2; exit 2; }
         case "$obj" in
-        panel) [ $# -ge 1 ] || { echo "usage: banditshell open panel <name> [args]" >&2; exit 2; }
+        panel) [ $# -ge 1 ] || { echo "usage: banditshell open panel <panel> [args]" >&2; exit 2; }
             open_panel "$@" ;;
-        *) echo "banditshell: only panels open: open panel <name>" >&2; exit 2 ;;
+        "") echo "usage: banditshell open panel <panel> [args]" >&2; exit 2 ;;
+        *) echo "banditshell: only panels open: open panel <panel>" >&2; exit 2 ;;
         esac
         ;;
 
     close)
-        # BARE: the rescue. One word, on purpose - see the header.
         if [ -z "$obj" ]; then
-            for target in "menu close" "launcher close" "clipboard close" "session close" "hotkeys close" \
-                          "settings close" "notifications close" "notch close" "picker close" \
-                          "calculator close" "keyboard close" "media close"; do
-                # shellcheck disable=SC2086
-                ipc $target >/dev/null 2>&1 || true
-            done
-            echo "closed everything"
-            return 0
+            close_everything
+            return
         fi
-        [ "$obj" = panel ] && [ $# -ge 1 ] || { echo "usage: banditshell close panel <name> (bare 'close' shuts everything)" >&2; exit 2; }
+        [ "$obj" = panel ] && [ $# -ge 1 ] || { echo "usage: banditshell close panel <panel> (bare 'close' shuts everything)" >&2; exit 2; }
         close_panel "$1"
         ;;
 
@@ -708,17 +602,14 @@ route_verb() {
         sidebar) [ $# -ge 1 ] || { echo "usage: banditshell set sidebar on|off [screen|all]" >&2; exit 2; }
             case "$1" in on | off) ipc sidebar "$1" "${2:-}" ;; *) echo "banditshell: set sidebar on|off [screen|all]" >&2; exit 2 ;; esac ;;
         wallpaper)
-            # on|off is the runner's boolean; anything else is a PATH to wear.
-            [ $# -ge 1 ] || { echo "usage: banditshell set wallpaper on|off|<path> [screen|all]" >&2; exit 2; }
+            [ $# -ge 1 ] || { echo "usage: banditshell set wallpaper on|off|<file> [screen|all]" >&2; exit 2; }
             case "$1" in
             on | off) ipc wallpaper "$1" ;;
-            "") echo "usage: banditshell set wallpaper on|off|<path> [screen|all]" >&2; exit 2 ;;
-            # ABSOLUTE, because the shell is not standing in this directory
-            # (see the note this inherited from the old `wallpaper set`).
+            "") echo "usage: banditshell set wallpaper on|off|<file> [screen|all]" >&2; exit 2 ;;
             *) ipc wallpaper set "$(realpath -s -m -- "$1")" "${2:-}" ;;
             esac ;;
         volume)
-            [ $# -ge 1 ] || { echo "usage: banditshell set volume <pct>|+n|-n|mute on|off" >&2; exit 2; }
+            [ $# -ge 1 ] || { echo "usage: banditshell set volume <percent>|+n|-n|mute on|off" >&2; exit 2; }
             if [ "$1" = mute ]; then
                 case "${2:-}" in
                 on | off) ipc volume mute "$2" ;;
@@ -728,43 +619,36 @@ route_verb() {
                 return 0
             fi
             case "$1" in
-            # Relative: +n / -n in PERCENT (the unit `set volume 50` speaks),
-            # a fraction again a fraction of 100 (+.5 is +50), and the bare
-            # sign means one step of the shell's own size - the old `volume
-            # up` / `volume down`.
             +*) n="${1#+}"; if [ -z "$n" ]; then ipc volume up ""; else ipc volume upPercent "$(rel_of "$n")"; fi ;;
             -*) n="${1#-}"; if [ -z "$n" ]; then ipc volume down ""; else ipc volume downPercent "$(rel_of "$n")"; fi ;;
-            # A fraction is a percent.
             *.*) ipc volume set "$(pct_of "$1")" ;;
             *) ipc volume set "$1" ;;
             esac ;;
         brightness)
-            [ $# -ge 1 ] || { echo "usage: banditshell set brightness <pct>|+n|-n" >&2; exit 2; }
+            [ $# -ge 1 ] || { echo "usage: banditshell set brightness <percent>|+n|-n" >&2; exit 2; }
             case "$1" in
             *.*) ipc screen brightness "$(pct_of "$1")" ;;
             *) ipc screen brightness "$1" ;;
             esac ;;
         temperature)
-            [ $# -ge 1 ] || { echo "usage: banditshell set temperature <K>|off" >&2; exit 2; }
+            [ $# -ge 1 ] || { echo "usage: banditshell set temperature <kelvin>|off" >&2; exit 2; }
             ipc screen temperature "$1" ;;
         output)
-            [ $# -ge 1 ] || { echo "usage: banditshell set output speakers|headphones|<role> <name>" >&2; exit 2; }
+            [ $# -ge 1 ] || { echo "usage: banditshell set output speakers|headphones|<role> <sink>" >&2; exit 2; }
             case "$1" in
             speakers | headphones) ipc output "$1" ;;
-            "") echo "usage: banditshell set output speakers|headphones|<role> <name>" >&2; exit 2 ;;
-            # An empty name is a real argument: it unassigns the role.
-            *) [ $# -ge 2 ] || { echo "usage: banditshell set output <role> <name>" >&2; exit 2; }
+            "") echo "usage: banditshell set output speakers|headphones|<role> <sink>" >&2; exit 2 ;;
+            *) [ $# -ge 2 ] || { echo "usage: banditshell set output <role> <sink>" >&2; exit 2; }
                 ipc output assign "$1" "${2:-}" ;;
             esac ;;
-        theme) [ $# -ge 1 ] || { echo "usage: banditshell set theme <name>" >&2; exit 2; }
+        theme) [ $# -ge 1 ] || { echo "usage: banditshell set theme <theme>" >&2; exit 2; }
             ipc shell set theme "\"$1\"" ;;
         penmap)
-            [ "$1" = rect ] && [ $# -ge 5 ] || { echo "usage: banditshell set penmap rect <x> <y> <w> <h>" >&2; exit 2; }
+            [ "${1:-}" = rect ] && [ $# -ge 5 ] || { echo "usage: banditshell set penmap rect <x> <y> <width> <height>" >&2; exit 2; }
             ipc penmap set "$2" "$3" "$4" "$5" ;;
-        # Anything else is a dotted config key.
         "") echo "usage: banditshell set <key> <value>" >&2; exit 2 ;;
-        *) [ $# -ge 2 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
-            ipc shell set "$obj" "$2" ;;
+        *) [ $# -ge 1 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
+            ipc shell set "$obj" "$1" ;;
         esac
         ;;
 
@@ -780,7 +664,7 @@ route_verb() {
         case "$obj" in
         menu) ipc menu list ;;
         clipboard) ipc clipboard list ;;
-        wallpaper) ipc wallpaper list "${2:-}" ;;
+        wallpaper) ipc wallpaper list "${1:-}" ;;
         output) ipc output list ;;
         alarm) ipc alarm list ;;
         zone) ipc zone list ;;
@@ -792,13 +676,44 @@ route_verb() {
     status)
         case "$obj" in
         "") ipc shell status ;;
-        panel) [ $# -ge 1 ] || { echo "usage: banditshell status panel <name> [screen]" >&2; exit 2; }
+        panel) [ $# -ge 1 ] || { echo "usage: banditshell status panel <panel> [screen]" >&2; exit 2; }
             status_panel "$1" "${2:-}" ;;
         border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration | screen) ipc "$obj" status ;;
         *) echo "banditshell: no status for: $obj" >&2; exit 2 ;;
         esac
         ;;
     esac
+}
+
+preview_pid=""
+preview_log=""
+
+start_preview() {
+    local name="$1" limit="$2"
+    shift 2
+    [ -f "$SHELL_DIR/previews/$name.qml" ] || { echo "banditshell: no preview named $name" >&2; exit 1; }
+    mkdir -p "$SHOT_DIR"
+    preview_log="$SHOT_DIR/$name.log"
+    local -a command=(env "BANDITSHELL_PREVIEW=$name" "$@" qs -p "$SHELL_DIR/preview.qml")
+    if [ "$limit" -gt 0 ]; then
+        command=(timeout "$limit" "${command[@]}")
+    fi
+    (cd "$HOME" && exec "${command[@]}") >"$preview_log" 2>&1 &
+    preview_pid=$!
+}
+
+preview_failed() {
+    if kill -0 "$preview_pid" 2>/dev/null && ! grep -q "@previews/$1\.qml\[" "$preview_log"; then
+        return 1
+    fi
+    kill "$preview_pid" 2>/dev/null || true
+    echo "banditshell: the $1 preview did not come up (log: $preview_log)" >&2
+    sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -E 'ERROR|@previews/' >&2 || true
+    return 0
+}
+
+window_rect() {
+    hyprctl -j clients | jq -r --arg title "$1" '.[] | select(.title == $title) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1
 }
 
 cmd="${1:-help}"
@@ -818,21 +733,14 @@ start)
     fi
     ;;
 stop)
-    # -x, not -f: `pkill -f qs` matches this script's own command line and kills
-    # the terminal it was typed in.
-    pkill -x qs || true
-    echo "stopped"
+    if stop_shell; then
+        echo "stopped"
+    else
+        echo "not running"
+    fi
     ;;
 restart)
-    pkill -x qs || true
-    # POLL for the death rather than hoping 0.5s was enough: the new instance
-    # needs the old one's IPC name gone, and on a busy machine the old one can
-    # still be dying a second in. Give up waiting after two seconds and start
-    # anyway -- if the name is still taken, qs says so itself.
-    for _ in $(seq 1 40); do
-        pgrep -x qs >/dev/null 2>&1 || break
-        sleep 0.05
-    done
+    stop_shell || true
     ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
     if launch "$SHELL_DIR"; then
         refresh_backup
@@ -844,9 +752,6 @@ restart)
     fi
     ;;
 run)
-    # Foreground, so QML errors land in the terminal. Spelled out rather than
-    # calling qs_: bash's exec replaces the process from PATH and cannot run a
-    # shell function, so `exec qs_` dies with "not found" before qs is reached.
     cd "$HOME" || exit 1
     exec qs -p "$SHELL_DIR"
     ;;
@@ -878,35 +783,16 @@ doctor)
     fi
     echo "the shell itself: $(running && echo running || echo 'not running (try: banditshell start)')"
     ;;
-
-# THE GENERIC VERBS, routed. Every one of these used to be a noun-first arm
-# with its own bespoke case; the noun is now the OBJECT, the verb is the
-# command, and the wiring lives in route_verb / route_dispatch above.
-toggle|open|set|get|list|status)
+toggle | open | set | get | list | status | close)
     route_verb "$cmd" "$@"
     ;;
-
-close)
-    # Bare, the rescue - one word, because the moment it is needed typing is
-    # exactly what has already failed. With `panel <name>`, the surface's own
-    # close.
-    route_verb close "$@"
-    ;;
-
 panic)
-    route_verb close
+    close_everything
     ;;
-
 dispatch)
     [ $# -ge 1 ] || { echo "usage: banditshell dispatch <target> <action> [args...]" >&2; exit 2; }
     route_dispatch "$@"
     ;;
-
-# THE OLD GRAMMAR, on the way in. A bind written before the overhaul
-# (`volume set 50`, `wallpapers toggle`, `calendar`) is not dead: it is
-# rewritten ONCE through the migration map - services/cli-migration.js, the
-# single authority on old -> new - and this script re-enters with the new
-# words. node only pays for the old forms, which fade as the map's rewriter
 completions)
     sub="${1:-status}"
     shift || true
@@ -917,88 +803,48 @@ completions)
     *) echo "usage: banditshell completions install|print|status|remove" >&2; exit 2 ;;
     esac
     ;;
-
 shot)
     mkdir -p "$SHOT_DIR"
     out="${1:-$SHOT_DIR/shot.png}"
     grim "$out"
     echo "$out"
     ;;
-
 files)
     sub="${1:-toggle}"
     shift || true
     case "$sub" in
-    # Only the two that OPEN take a path. `close` and `status` declare no
-    # parameter, and an extra argument is a hard error on the other side rather
-    # than an ignored one, so passing "" to them turned both into failures.
     toggle | open) ipc files "$sub" "${1:-}" ;;
     close | status) ipc files "$sub" ;;
-    *) echo "usage: banditshell files toggle|open [path]|close|status" >&2; exit 2 ;;
+    *) echo "usage: banditshell files toggle|open [dir]|close|status" >&2; exit 2 ;;
     esac
     ;;
-
-# The C helpers, compiled here because Quickshell loads QML out of a directory
-# and has nowhere to run a build step - the same reason `shaders` exists, and the
-# same bargain: the binary is build output that lives next to its source.
-#
-    # Not a Makefile. Translation units listed per target with the flags each
-    # one needs: bs-pty wants -lutil, bs-gamma wants the wayland client and
-    # libm, bs-ls wants nothing. A build system would be a second thing to
-    # install before the shell runs at all.
-    build)
+build)
     cc="${CC:-gcc}"
     command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
     mkdir -p "$SHELL_DIR/bin"
-    # bs-pty wants -lutil for forkpty; bs-ls wants nothing. Listed per target
-    # rather than shared, because a link line that is one thing for everything
-    # is a link line nobody reads.
     "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" -lutil
     echo "src/bs-pty.c -> bin/bs-pty"
     "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c"
     echo "src/bs-ls.c -> bin/bs-ls"
+    # shellcheck disable=SC2046
     "$cc" -O2 -Wall -Wextra -o "$SHELL_DIR/bin/bs-gamma" "$SHELL_DIR/src/bs-gamma.c" "$SHELL_DIR/src/gamma-client-protocol.c" $(pkg-config --libs wayland-client 2>/dev/null || echo "-lwayland-client") -lm
     echo "src/bs-gamma.c -> bin/bs-gamma"
     ;;
-
 shaders)
-    # .qsb files are build output committed alongside their source, because
-    # Quickshell loads QML from a directory and has nowhere to run a build step.
-    # This is that build step; run it after editing any .frag.
     qsb="${QSB:-/usr/lib/qt6/bin/qsb}"
     [ -x "$qsb" ] || { echo "banditshell: qsb not found (install qt6-shadertools)" >&2; exit 1; }
-    # EVERY .frag under components/, wherever it sits. It used to be the one
-    # directory the first shader happened to live in, so the second one was
-    # written, committed, and silently never compiled: the shell loaded the
-    # stale .qsb that was not there and drew nothing at all.
     while IFS= read -r f; do
         "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
         echo "${f#"$SHELL_DIR/"} -> ${f#"$SHELL_DIR/"}.qsb"
     done < <(find "$SHELL_DIR/components" -name '*.frag' | sort)
     ;;
-
 test)
-    # The parts of the shell that are plain JavaScript are the parts a
-    # screenshot cannot check. A colour that resolves to the wrong hex, an
-    # erase that forgets its background, a character split across two reads of
-    # the pty: none of those throw, they just make the terminal quietly wrong,
-    # and the only evidence is a picture that looks a bit off. Node runs the
-    # same files with no Qt under them, which is the whole reason vt.js has no
-    # QML in it.
-    #
-    # A glob rather than the directory: node 26 reads `--test tests/` as a
-    # module to load and fails with "Cannot find module". Quoted so node does
-    # the expanding, since it is node's idea of a test file that decides.
     command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
     cd "$SHELL_DIR" || exit 1
     exec node --test 'tests/*.test.js' "$@"
     ;;
-
 demo)
-    # Open a menu, wait for the reveal to settle, capture it, put it away. The
-    # sleep is the animation, not a guess: the reveal is exponential smoothing,
-    # so it is asymptotic and needs a moment rather than a frame.
-    [ $# -ge 1 ] || { echo "usage: banditshell demo <key>" >&2; exit 2; }
+    [ $# -ge 1 ] || { echo "usage: banditshell demo <menu> [file]" >&2; exit 2; }
     mkdir -p "$SHOT_DIR"
     out="${2:-$SHOT_DIR/menu-$1.png}"
     ipc menu open "$1" "" >/dev/null
@@ -1007,133 +853,92 @@ demo)
     ipc menu close >/dev/null
     echo "$out"
     ;;
-
 filespreview)
-    # The browser in a plain window, for looking at it without touching the
-    # running shell's own session. lockpreview's shape, with one difference: no
-    # timeout, because a terminal you cannot type into for more than nine
-    # seconds is not a terminal you can test. Close the window to end it.
-    #
-    # `banditshell filespreview [dir] [shot]` - with a second argument it
-    # screenshots the window's own rect and exits, which is the form worth
-    # binding while working on the layout.
     where="${1:-$HOME}"
     out="${2:-}"
-    # Floated and sized by a window rule, the way settingspreview does it: a
-    # tiled preview is whatever size the layout gives it, and a file grid at
-    # 2500px wide is not the grid anybody will actually use.
-    w=$(ipc shell get files.width 2>/dev/null || echo 1200)
-    h=$(ipc shell get files.height 2>/dev/null || echo 760)
+    resolve_target
+    w=$(ipc_quiet shell get files.width || echo 1200)
+    h=$(ipc_quiet shell get files.height || echo 760)
     hyprctl eval "hl.window_rule({ name = \"banditshell-filespreview\", match = { title = \"^(banditshell-filespreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
-        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1
-    (cd "$HOME" && FILES_PREVIEW="$where" qs -p "$SHELL_DIR/filespreview.qml" >/dev/null 2>&1) &
-    preview=$!
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1 || true
+    start_preview FilesPreview 0 "FILES_PREVIEW=$where"
     if [ -n "$out" ]; then
-        mkdir -p "$SHOT_DIR"
         sleep 4
-        rect=$(hyprctl -j clients | jq -r '.[] | select(.title == "banditshell-filespreview") | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1)
+        preview_failed FilesPreview && exit 1
+        rect=$(window_rect banditshell-filespreview)
         if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
-        kill "$preview" 2>/dev/null
+        kill "$preview_pid" 2>/dev/null || true
         echo "$out"
     else
-        wait "$preview"
+        sleep 2
+        preview_failed FilesPreview && exit 1
+        wait "$preview_pid"
     fi
     ;;
-
 lockpreview)
-    # The lock screen's LOOK, without the lock. A session lock cannot be opened
-    # to look at, and the way back from one that drew wrong is a TTY, so the face
-    # is a plain Item that also fits in an ordinary overlay surface.
-    #
-    # Its own quickshell instance, on a timer, taking no input: it draws over
-    # everything for a few seconds and then goes away on its own whatever
-    # happens. Deliberately NOT killed with pkill afterwards, which would take
-    # the running shell with it.
     mkdir -p "$SHOT_DIR"
     out="${1:-$SHOT_DIR/lock.png}"
-    (cd "$HOME" && timeout 9 qs -p "$SHELL_DIR/lockpreview.qml" >/dev/null 2>&1) &
+    start_preview LockPreview 9
     sleep 4
+    preview_failed LockPreview && exit 1
     grim "$out"
-    wait
+    wait "$preview_pid" || true
     echo "$out"
     ;;
-
 settingspreview)
-    # The settings face at a SIZE, which is the thing a running shell cannot
-    # show you: its card is one size, and the page has three shapes. A plain
-    # floating window of the asked-for size draws the same face, and grim
-    # shoots that window's rect alone so the picture is the page and not the
-    # desktop it happens to be over. Its own quickshell instance, on a timer,
-    # for lockpreview's reason.
     mkdir -p "$SHOT_DIR"
     size="${1:-560x560}"
     page="${2:-}"
     out="${3:-$SHOT_DIR/settings-$size${page:+-$page}.png}"
-    # FLOATED AND SIZED BY A WINDOW RULE, installed before the window exists:
-    # a tiled window is whatever size the layout gives it, and the size IS the
-    # question being asked. The same rule services/Settings.qml installs for
-    # the real settings window, in whichever dialect this Hyprland speaks (the
-    # Lua parser refuses `keyword`, the legacy one has no `eval`).
-    #
-    # AND OUT OF THE WAY: on a workspace of its own, silently, and without
-    # taking the keyboard. A preview is spawned to be photographed, not
-    # looked at, and one that landed on the workspace being worked in and
-    # stole focus would interrupt exactly the person who asked for it.
-    # PREVIEW_WORKSPACE names the workspace; the default is the first band of
-    # the second screen (the vertical monitor here).
-    w="${size%x*}"; h="${size#*x}"
+    w="${size%x*}"
+    h="${size#*x}"
     ws="${PREVIEW_WORKSPACE:-6}"
     hyprctl eval "hl.window_rule({ name = \"banditshell-settingspreview\", match = { title = \"^(banditshell-settingspreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true, workspace = \"$ws silent\", no_initial_focus = true, no_focus = true })" >/dev/null 2>&1 ||
-        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule center on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule workspace $ws silent, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_initial_focus on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_focus on, match:title ^(banditshell-settingspreview)\$" >/dev/null 2>&1
-    (cd "$HOME" && SETTINGS_PREVIEW="$size" SETTINGS_PAGE="$page" timeout 9 qs -p "$SHELL_DIR/settingspreview.qml" >/dev/null 2>&1) &
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule center on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule workspace $ws silent, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_initial_focus on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_focus on, match:title ^(banditshell-settingspreview)\$" >/dev/null 2>&1 || true
+    start_preview SettingsPreview 9 "SETTINGS_PREVIEW=$size" "SETTINGS_PAGE=$page"
     sleep 4
-    rect=$(hyprctl -j clients | jq -r '.[] | select(.title == "banditshell-settingspreview") | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1)
+    preview_failed SettingsPreview && exit 1
+    rect=$(window_rect banditshell-settingspreview)
     if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
-    wait
+    wait "$preview_pid" || true
     echo "$out"
     ;;
-
 gallery)
-    # THE WORKBENCH. settingspreview's shape with the opposite purpose: the
-    # previews exist to be photographed and killed, so they run on a timeout
-    # and refuse focus. The gallery exists to be USED - flipped, dragged,
-    # compared - so it takes focus, sets no timeout, and stays up until it
-    # is closed. Same window rule as the previews, minus the parts that push
-    # it out of the way: floated, sized, centred, before the window exists.
-    #
-    # SELF-HEALING, because things have already gone wrong here: a reload
-    # that died mid-edit could leave a WINDOWLESS qs husk squatting on the
-    # config path; a second run stacked a second window; and a window on
-    # another workspace looked exactly like "the command did nothing". The
-    # gallery now QUITS on window close (gallery.qml), so husks cannot
-    # accumulate any more; the sweep stays as the janitor for anything older
-    # than that fix, and every run of this command starts a fresh gallery -
-    # more than one is allowed, drag them apart.
     size="${1:-1280x800}"
-    w="${size%x*}"; h="${size#*x}"
-    for pid in $(pgrep -f "^qs -p $SHELL_DIR/gallery" 2>/dev/null); do
-        kill "$pid" 2>/dev/null && echo "windowless husk $pid put down"
-    done
+    w="${size%x*}"
+    h="${size#*x}"
     hyprctl eval "hl.window_rule({ name = \"banditshell-gallery\", match = { title = \"^(banditshell-gallery)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
-        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1
-    (cd "$HOME" && GALLERY_SIZE="$size" qs -p "$SHELL_DIR/gallery.qml" >/dev/null 2>&1) &
+        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1 || true
+    start_preview Gallery 0 "GALLERY_SIZE=$size"
+    sleep 2
+    preview_failed Gallery && exit 1
     echo "gallery up at $size"
     ;;
-
-help | -h | --help) usage ;;
-# THE OLD GRAMMAR, on the way in. A bind written before the overhaul
-# (`volume set 50`, `wallpapers toggle`, `calendar`) is not dead: it is
-# rewritten ONCE through the migration map - services/cli-migration.js, the
-# single authority on old -> new - and this script re-enters with the new
-# words. node only pays for the old forms, which fade as the map's rewriter
-# reaches the files they live in.
+help | -h | --help)
+    usage
+    ;;
 *)
-    old_args="$cmd${*:+ $*}"
-    if command -v node >/dev/null \
-        && new_args=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$old_args" 2>/dev/null) \
-        && [ -n "$new_args" ]; then
-        # shellcheck disable=SC2086
-        exec "$BASH_SOURCE" $new_args
+    if [ -z "${BANDITSHELL_MIGRATED:-}" ] && command -v node >/dev/null &&
+        migrated=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$cmd${*:+ $*}" 2>/dev/null) &&
+        [ -n "$migrated" ]; then
+        words=("$cmd" "$@")
+        lead="$migrated"
+        kept=()
+        for ((i = 0; i < ${#words[@]}; i++)); do
+            kept=("${words[@]:i}")
+            suffix="${kept[*]}"
+            if [ "$migrated" = "$suffix" ]; then
+                lead=""
+                break
+            elif [[ $migrated == *" $suffix" ]]; then
+                lead="${migrated% "$suffix"}"
+                break
+            fi
+            kept=()
+        done
+        read -ra lead_words <<<"$lead"
+        export BANDITSHELL_MIGRATED=1
+        exec "${BASH_SOURCE[0]}" "${lead_words[@]}" "${kept[@]}"
     fi
     usage >&2
     exit 2
