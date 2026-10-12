@@ -917,6 +917,16 @@ Terminal.prototype.sgr = function () {
     }
 };
 
+function percentDecode(text) {
+    return text.replace(/(%[0-9a-fA-F]{2})+/g, function (run) {
+        try {
+            return decodeURIComponent(run);
+        } catch (error) {
+            return run;
+        }
+    });
+}
+
 Terminal.prototype.endString = function () {
     var body = this.stringBuf;
     this.stringBuf = "";
@@ -932,10 +942,8 @@ Terminal.prototype.endString = function () {
     if (code === 0 || code === 2)
         this.title = arg;
     else if (code === 7)
-
-        this.cwd = decodeURIComponent(arg.replace(/^file:\/\/[^/]*/, ""));
+        this.cwd = percentDecode(arg.replace(/^file:\/\/[^/]*/, ""));
     else if ((code === 10 || code === 11) && arg.indexOf("?") === 0)
-
         this.reply += "\x1b]" + code + ";" + (code === 10 ? this.fgQuery : this.bgQuery) + "\x1b\\";
 };
 

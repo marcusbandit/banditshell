@@ -722,6 +722,28 @@ test.describe("vt: strings and modes", () => {
         assert.strictEqual(t.cwd, "/home/bandit/some dir");
     });
 
+    test.it("decodes multi-byte escapes in OSC 7", () => {
+        const t = term();
+        t.write("\x1b]7;file://host/tmp/caf%C3%A9\x07");
+        assert.strictEqual(t.cwd, "/tmp/café");
+    });
+
+    test.it("leaves a malformed escape in OSC 7 as it was and keeps the rest of the chunk", () => {
+        const t = term(40, 2);
+        const before = t.revision;
+        t.write("\x1b]7;file://host/tmp/100%/a%20b/%zz/%E0%A4\x07after");
+        assert.strictEqual(t.cwd, "/tmp/100%/a b/%zz/%E0%A4");
+        assert.strictEqual(row(t, 0), "after");
+        assert.ok(t.revision > before);
+    });
+
+    test.it("survives an OSC 7 that is nothing but a broken escape", () => {
+        const t = term(40, 2);
+        assert.doesNotThrow(() => t.write("\x1b]7;%\x1b\\ok"));
+        assert.strictEqual(t.cwd, "%");
+        assert.strictEqual(row(t, 0), "ok");
+    });
+
     test.it("draws none of a string it swallowed", () => {
         const t = term(40, 2);
         t.write("\x1b]0;title\x07visible");
