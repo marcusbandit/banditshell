@@ -27,7 +27,13 @@ Singleton {
     readonly property string user: Quickshell.env("USER")
 
     readonly property string sessionId: Quickshell.env("XDG_SESSION_ID")
-    readonly property string sessionPath: root.sessionId ? `/org/freedesktop/login1/session/_${Array.from(root.sessionId).map(c => c.charCodeAt(0).toString(16)).join("")}` : "/org/freedesktop/login1/session/auto"
+
+    property string sessionPath: ""
+
+    readonly property int quickestRestart: 1000
+    readonly property int slowestRestart: 60000
+
+    property int monitorDelay: root.quickestRestart
 
     function lock(): void {
         if (root.active)
@@ -84,8 +90,45 @@ Singleton {
 
     function tellLogind(on: bool): void {
         root.hinted = on;
-        hint.command = ["busctl", "call", "org.freedesktop.login1", root.sessionPath, "org.freedesktop.login1.Session", "SetLockedHint", "b", on ? "true" : "false"];
+        root.sendHint();
+    }
+
+    function sendHint(): void {
+        if (!root.sessionPath)
+            return;
+        hint.command = ["busctl", "call", "org.freedesktop.login1", root.sessionPath, "org.freedesktop.login1.Session", "SetLockedHint", "b", root.hinted ? "true" : "false"];
         hint.running = true;
+    }
+
+    function reply(text: string): var {
+        try {
+            return JSON.parse(text)?.data;
+        } catch (e) {
+            return undefined;
+        }
+    }
+
+    function placeSession(text: string): void {
+        const path = root.reply(text)?.[0];
+        if (typeof path !== "string" || !path.startsWith("/org/freedesktop/login1/session/"))
+            return;
+        root.sessionPath = path;
+        probe.running = true;
+        if (root.hinted)
+            root.sendHint();
+    }
+
+    function hear(line: string): void {
+        const heard = /^(\/[\w\/]*): ([\w.]+)\.(\w+) \((.*)\)$/.exec(line);
+        if (!heard)
+            return;
+        const [, path, interfaceName, member] = heard;
+        if (!root.sessionPath || path !== root.sessionPath || interfaceName !== "org.freedesktop.login1.Session")
+            return;
+        if (member === "Lock")
+            root.lock();
+        else if (member === "Unlock")
+            root.release();
     }
 
     Process {
@@ -93,35 +136,74 @@ Singleton {
     }
 
     Process {
-        id: probe
+        id: lookup
 
         running: true
-        command: ["busctl", "get-property", "org.freedesktop.login1", root.sessionPath, "org.freedesktop.login1.Session", "LockedHint"]
+        command: ["busctl", "--json=short", "call", "org.freedesktop.login1", "/org/freedesktop/login1", "org.freedesktop.login1.Manager", "GetSession", "s", root.sessionId || "auto"]
 
         stdout: StdioCollector {
-            onStreamFinished: if (text.trim() === "b true")
-                root.lock()
+            id: lookupReply
+        }
+
+        onExited: code => {
+            if (code === 0)
+                root.placeSession(lookupReply.text);
+        }
+
+        onRunningChanged: if (!lookup.running && !root.sessionPath)
+            lookupRetry.restart()
+    }
+
+    Timer {
+        id: lookupRetry
+
+        interval: 5000
+        onTriggered: lookup.running = true
+    }
+
+    Process {
+        id: probe
+
+        command: ["busctl", "--json=short", "get-property", "org.freedesktop.login1", root.sessionPath, "org.freedesktop.login1.Session", "LockedHint"]
+
+        stdout: StdioCollector {
+            id: probeReply
+        }
+
+        onExited: code => {
+            if (code === 0 && root.reply(probeReply.text) === true)
+                root.lock();
         }
     }
 
     Process {
-        id: logind
+        id: monitor
 
         running: true
         command: ["gdbus", "monitor", "--system", "--dest", "org.freedesktop.login1"]
 
         stdout: SplitParser {
-            onRead: line => {
-
-                if (!line.startsWith(`${root.sessionPath}:`))
-                    return;
-
-                if (line.includes(".Session.Lock ("))
-                    root.lock();
-                else if (line.includes(".Session.Unlock ("))
-                    root.release();
-            }
+            onRead: line => root.hear(line)
         }
+
+        onRunningChanged: if (!monitor.running)
+            monitorRestart.restart()
+    }
+
+    Timer {
+        id: monitorRestart
+
+        interval: root.monitorDelay
+        onTriggered: {
+            root.monitorDelay = Math.min(root.monitorDelay * 2, root.slowestRestart);
+            monitor.running = true;
+        }
+    }
+
+    Timer {
+        running: monitor.running
+        interval: root.slowestRestart
+        onTriggered: root.monitorDelay = root.quickestRestart
     }
 
     PamContext {
