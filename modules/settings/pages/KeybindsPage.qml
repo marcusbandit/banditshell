@@ -119,7 +119,13 @@ Item {
             || key === Qt.Key_Hyper_L || key === Qt.Key_Hyper_R;
     }
 
-    function keyName(key: int, text: string): string {
+    readonly property int firstDigitKeycode: 10
+
+    function keyName(event: var): string {
+        const key = event.key;
+        const digit = event.nativeScanCode - root.firstDigitKeycode;
+        if ((event.modifiers & Qt.ShiftModifier) && digit >= 0 && digit < 10)
+            return String((digit + 1) % 10);
         const named = {
             [Qt.Key_Return]: "RETURN",
             [Qt.Key_Enter]: "KPENTER",
@@ -151,6 +157,10 @@ Item {
             [Qt.Key_Apostrophe]: "apostrophe",
             [Qt.Key_BracketLeft]: "bracketleft",
             [Qt.Key_BracketRight]: "bracketright",
+            [Qt.Key_Plus]: "plus",
+            [Qt.Key_Less]: "less",
+            [Qt.Key_Asterisk]: "asterisk",
+            [Qt.Key_NumberSign]: "numbersign",
             [Qt.Key_CapsLock]: "CAPSLOCK",
             [Qt.Key_MediaPlay]: "XF86AudioPlay",
             [Qt.Key_MediaStop]: "XF86AudioStop",
@@ -166,6 +176,11 @@ Item {
             return named[key];
         if (key >= Qt.Key_F1 && key <= Qt.Key_F35)
             return `F${key - Qt.Key_F1 + 1}`;
+        if (key >= Qt.Key_0 && key <= Qt.Key_9)
+            return (event.modifiers & Qt.KeypadModifier) ? `KP_${key - Qt.Key_0}` : String.fromCharCode(key);
+        if (key >= Qt.Key_A && key <= Qt.Key_Z)
+            return String.fromCharCode(key);
+        const text = event.text;
         if (text && text.length === 1 && text >= " " && text !== "\x7f")
             return text.toUpperCase();
         return "";
@@ -204,7 +219,7 @@ Item {
             root.held[event.key] = true;
             root.capMods = mods;
             if (!root.isModKey(event.key)) {
-                const name = root.keyName(event.key, event.text);
+                const name = root.keyName(event);
                 if (name !== "")
                     root.capKey = name;
                 else
