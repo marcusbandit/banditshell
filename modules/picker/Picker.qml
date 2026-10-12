@@ -87,7 +87,7 @@ MouseArea {
         if (!root.pressed)
             return root.snapTo(event.x, event.y);
 
-        if (Math.abs(event.x - root.pressX) + Math.abs(event.y - root.pressY) < Appearance.sizes.dragThreshold)
+        if (Math.abs(event.x - root.pressX) + Math.abs(event.y - root.pressY) < Config.values.control.dragThreshold)
             return;
 
         root.dragged = true;

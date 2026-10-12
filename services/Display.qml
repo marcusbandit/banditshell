@@ -11,8 +11,8 @@ Singleton {
 
     property int kelvin: 3000
 
-    readonly property int warmest: Appearance.sizes.screenWarmest
-    readonly property int neutral: Appearance.sizes.screenNeutral
+    readonly property int warmest: Config.values.screen.warmest
+    readonly property int neutral: Config.values.screen.neutral
     readonly property bool warm: root.kelvin > 0
 
     property int lastWarm: 3000

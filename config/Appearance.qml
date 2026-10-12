@@ -219,15 +219,10 @@ Singleton {
         readonly property real sidebarFlare: root.rounding.at(root.cfg.sidebar.flareTier)
         readonly property int wsSlot: root.cfg.sidebar.workspaces.slot
         readonly property int wsGap: root.cfg.sidebar.workspaces.gap
-        readonly property int wsPersistent: root.cfg.sidebar.workspaces.persistent
-
-        readonly property var wsSpecials: root.cfg.sidebar.workspaces.specials
 
         readonly property int wsIcon: Math.round(root.font.iconSize * root.cfg.sidebar.workspaces.iconScale)
         readonly property int wsWindowPitch: Math.round(wsIcon * root.cfg.sidebar.workspaces.windowPitch)
-        readonly property string wsIconMode: root.cfg.sidebar.workspaces.iconMode
 
-        readonly property string wsStyle: root.cfg.sidebar.workspaces.style
         readonly property int wsMapBar: root.cfg.sidebar.workspaces.mapBar
         readonly property int wsMapGap: root.cfg.sidebar.workspaces.mapGap
         readonly property int wsBlock: root.cfg.sidebar.workspaces.block
@@ -241,42 +236,16 @@ Singleton {
         readonly property int traySlot: root.cfg.sidebar.tray.slot
         readonly property int trayGap: root.cfg.sidebar.tray.gap
         readonly property int trayIcon: Math.round(root.font.iconSize * root.cfg.sidebar.tray.iconScale)
-        readonly property int trayMax: root.cfg.sidebar.tray.max
 
         readonly property real melt: root.cfg.blob.melt
         readonly property real meltFeather: root.cfg.blob.feather
 
-        readonly property int signalBands: root.cfg.control.signalBands
-        readonly property int deviceListMax: root.cfg.control.deviceListMax
         readonly property int minTarget: root.cfg.control.minTarget
-        readonly property real dragDismissFraction: root.cfg.control.dragDismissFraction
-        readonly property real dragResistance: root.cfg.control.dragResistance
-        readonly property int dragThreshold: root.cfg.control.dragThreshold
 
-        readonly property int pullSlack: root.cfg.control.pullSlack
-        readonly property real pullCommit: root.cfg.control.pullCommit
-        readonly property real pullReversal: root.cfg.control.pullReversal
-        readonly property real flickVelocity: root.cfg.control.flickVelocity
-        readonly property int pullAngleCorner: root.cfg.control.pullAngleCorner
-        readonly property int pullAngleEdge: root.cfg.control.pullAngleEdge
-        readonly property real pullTravel: root.cfg.control.pullTravel
-
-        readonly property bool touchEdges: root.cfg.control.touchEdges
-
-        readonly property bool windowEdge: root.cfg.windows.edge
         readonly property int windowGrab: root.cfg.windows.grab
-        readonly property int windowSettle: root.cfg.windows.settle
-        readonly property int windowHold: root.cfg.windows.hold
-        readonly property int windowHoldSlop: root.cfg.windows.holdSlop
-        readonly property real windowTravel: root.cfg.windows.travel
-        readonly property real windowFling: root.cfg.windows.fling
         readonly property real windowScale: root.cfg.windows.scale
         readonly property real windowPlate: root.cfg.windows.plate
-        readonly property string windowMode: root.cfg.windows.mode
-        readonly property bool windowFollow: root.cfg.windows.follow
         readonly property int rowHeight: root.cfg.control.rowHeight
-        readonly property real wheelRows: root.cfg.control.wheelRows
-        readonly property real coastMs: root.cfg.control.coastMs
         readonly property int sliderHeight: root.cfg.control.sliderHeight
         readonly property int toggleWidth: root.cfg.control.toggleWidth
         readonly property int toggleHeight: root.cfg.control.toggleHeight
@@ -298,27 +267,14 @@ Singleton {
         readonly property int scrubWaveLength: root.cfg.media.waveLength
         readonly property int scrubWaveAmplitude: root.cfg.media.waveAmplitude
         readonly property real scrubWaveSpeed: root.cfg.media.waveSpeed
-        readonly property real scrubWheelSeek: root.cfg.media.wheelSeek
 
         readonly property int mediaPanelWidth: root.cfg.media.panelWidth
-        readonly property real mediaSeekSmall: root.cfg.media.seekSmall
-        readonly property real mediaSeekLarge: root.cfg.media.seekLarge
         readonly property int notificationWidth: root.cfg.notifications.width
         readonly property int notificationBadge: root.cfg.notifications.badge
         readonly property int cornerZone: root.cfg.notifications.cornerZone
 
-        readonly property real volumeStep: root.cfg.volume.step
-
-        readonly property int screenWarmest: root.cfg.screen.warmest
-        readonly property int screenNeutral: root.cfg.screen.neutral
-        readonly property int screenLinger: root.cfg.screen.linger
-        readonly property real screenGrabFraction: root.cfg.screen.grabFraction
         readonly property int screenSliderWidth: root.cfg.screen.sliderWidth
         readonly property int screenValueWidth: root.cfg.screen.valueWidth
-
-        readonly property int usageCapHours: root.cfg.usage.capHours
-
-        readonly property bool calendarRightGoesForward: root.cfg.calendar.rightGoesForward
 
         readonly property int sessionButton: root.cfg.session.button
         readonly property int sessionIcon: Math.round(root.font.iconSize * root.cfg.session.iconScale)
@@ -343,10 +299,6 @@ Singleton {
 
         readonly property int filesRow: Math.round(root.font.line.small * filesZoom) + root.padding.small
         readonly property int filesThumbnail: root.cfg.files.thumbnail
-        readonly property int filesTextMax: root.cfg.files.textMax
-
-        readonly property int filesTerminalRows: root.cfg.files.terminal.rows
-        readonly property int filesScrollback: root.cfg.files.terminal.scrollback
 
         readonly property string filesTerminalFont: root.cfg.files.terminal.font
 

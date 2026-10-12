@@ -17,11 +17,11 @@ MouseArea {
 
     signal tapped
 
-    readonly property real slack: Appearance.sizes.pullSlack
+    readonly property real slack: Config.values.control.pullSlack
 
     readonly property real travelFull: Math.max(1, root.travel)
 
-    property real angle: Appearance.sizes.pullAngleCorner
+    property real angle: Config.values.control.pullAngleCorner
 
     readonly property real cosLimit: Math.cos(root.angle * Math.PI / 180)
 
@@ -86,8 +86,8 @@ MouseArea {
 
         if (root.pulling)
             root.finished(root.velocity >= 0
-                || (root.progress >= Appearance.sizes.pullCommit
-                    && root.velocity > -Appearance.sizes.pullReversal));
+                || (root.progress >= Config.values.control.pullCommit
+                    && root.velocity > -Config.values.control.pullReversal));
 
         root.pulling = false;
         root.spent = false;

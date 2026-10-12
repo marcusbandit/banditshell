@@ -185,7 +185,7 @@ Item {
             const dx = x - root.scrubFromX;
             const dy = y - root.scrubFromY;
 
-            if (Math.hypot(dx, dy) < Appearance.sizes.dragThreshold)
+            if (Math.hypot(dx, dy) < Config.values.control.dragThreshold)
                 return;
 
             if (Math.abs(dy) <= Math.abs(dx)) {
@@ -212,7 +212,7 @@ Item {
     function scrubRelease(): bool {
         const consumed = root.scrubbing || root.scrubSpent;
 
-        if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Appearance.sizes.flickVelocity) {
+        if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Config.values.control.flickVelocity) {
             const to = root.scrubBase + (root.scrubVelocity > 0 ? 1 : -1);
             if (to >= root.band && to < root.band + root.count)
                 Hypr.switchTo(to);

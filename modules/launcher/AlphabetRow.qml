@@ -39,7 +39,7 @@ Item {
     property real slide: 0
     property bool swiping: false
 
-    readonly property real commitAt: Math.max(1, root.width * Appearance.sizes.dragDismissFraction)
+    readonly property real commitAt: Math.max(1, root.width * Config.values.control.dragDismissFraction)
     readonly property bool past: Math.abs(root.slide) >= root.commitAt
 
     function armed(dx: real): bool {
@@ -51,7 +51,7 @@ Item {
             return 0;
         const far = Math.abs(dx);
         const over = far - root.commitAt;
-        const travel = over <= 0 ? far : root.commitAt + over * Appearance.sizes.dragResistance;
+        const travel = over <= 0 ? far : root.commitAt + over * Config.values.control.dragResistance;
         return dx < 0 ? -travel : travel;
     }
 
@@ -112,7 +112,7 @@ Item {
             if (pointer.deciding) {
                 const dx = mouse.x - pointer.fromX;
                 const dy = mouse.y - pointer.fromY;
-                if (Math.abs(dx) < Appearance.sizes.dragThreshold)
+                if (Math.abs(dx) < Config.values.control.dragThreshold)
                     return;
 
                 if (Math.abs(dx) <= Math.abs(dy))

@@ -12,7 +12,7 @@ Item {
 
     required property string screen
 
-    readonly property string iconMode: Appearance.sizes.wsIconMode
+    readonly property string iconMode: Config.values.sidebar.workspaces.iconMode
 
     readonly property int slot: Appearance.sizes.wsSlot
     readonly property int iconSize: Appearance.sizes.wsIcon
@@ -39,7 +39,7 @@ Item {
     property int racked: -1
 
     readonly property var deck: {
-        const want = Appearance.sizes.wsSpecials;
+        const want = Config.values.sidebar.workspaces.specials;
         const live = Hypr.specials;
         const out = [];
         for (const name of want)

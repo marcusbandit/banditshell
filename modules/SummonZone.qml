@@ -52,7 +52,7 @@ Item {
 
     property int border: Appearance.sizes.border
 
-    readonly property real grab: Appearance.sizes.touchEdges ? Math.max(root.border, Appearance.sizes.minTarget) : root.border
+    readonly property real grab: Config.values.control.touchEdges ? Math.max(root.border, Appearance.sizes.minTarget) : root.border
 
     function dragTo(fraction: real): void {
         root.pulling = true;
@@ -139,7 +139,7 @@ Item {
         dirX: 0
         dirY: 1
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.notchFull
 
@@ -159,7 +159,7 @@ Item {
 
         dirX: 0
         dirY: -1
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.notchFull
 

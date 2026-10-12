@@ -206,7 +206,7 @@ Item {
         dirX: 0
         dirY: 1
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.travel
 

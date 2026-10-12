@@ -169,6 +169,6 @@ Item {
             Media.seekTo(root.dragged * Media.length);
         }
 
-        onWheel: wheel => Media.seekBy(wheel.angleDelta.y / 120 * Appearance.sizes.scrubWheelSeek)
+        onWheel: wheel => Media.seekBy(wheel.angleDelta.y / 120 * Config.values.media.wheelSeek)
     }
 }

@@ -10,9 +10,9 @@ Item {
 
     required property real border
 
-    readonly property real grab: Appearance.sizes.touchEdges ? Math.max(root.border, Appearance.sizes.minTarget) : root.border
+    readonly property real grab: Config.values.control.touchEdges ? Math.max(root.border, Appearance.sizes.minTarget) : root.border
 
-    readonly property real step: Appearance.sizes.volumeStep
+    readonly property real step: Config.values.volume.step
 
     readonly property real iconColumn: Appearance.font.iconSize
 
@@ -96,7 +96,7 @@ Item {
     Timer {
         id: linger
 
-        interval: Appearance.sizes.screenLinger
+        interval: Config.values.screen.linger
     }
 
     Connections {
@@ -306,7 +306,7 @@ Item {
         anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
         width: root.grab
-        height: parent.height * Appearance.sizes.screenGrabFraction
+        height: parent.height * Config.values.screen.grabFraction
 
         property real fromY: 0
         property real fromVolume: 0

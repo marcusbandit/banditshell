@@ -4,7 +4,7 @@ import qs.config
 ListView {
     id: root
 
-    property real step: Appearance.sizes.rowHeight * Appearance.sizes.wheelRows
+    property real step: Appearance.sizes.rowHeight * Config.values.control.wheelRows
 
     property real scrollTarget: 0
 
@@ -106,7 +106,7 @@ ListView {
 
     function coastOn(): void {
         coast.stop();
-        root.scrollTo(root.contentY + root.velocity * Appearance.sizes.coastMs);
+        root.scrollTo(root.contentY + root.velocity * Config.values.control.coastMs);
         root.velocity = 0;
     }
 

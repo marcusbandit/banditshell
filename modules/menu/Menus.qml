@@ -213,7 +213,7 @@ Item {
         dirX: -1
         dirY: 0
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: panel.fullWidth
 

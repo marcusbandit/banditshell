@@ -36,9 +36,9 @@ Item {
 
     property int flung: 0
 
-    readonly property real throwDistance: fullWidth * Appearance.sizes.dragDismissFraction
+    readonly property real throwDistance: fullWidth * Config.values.control.dragDismissFraction
 
-    readonly property bool committed: Math.abs(pulled) >= throwDistance || (pulled * drag.velocity > 0 && Math.abs(drag.velocity) >= Appearance.sizes.flickVelocity)
+    readonly property bool committed: Math.abs(pulled) >= throwDistance || (pulled * drag.velocity > 0 && Math.abs(drag.velocity) >= Config.values.control.flickVelocity)
 
     readonly property real throwX: dragX + flung * leave * Math.max(0, fullWidth - Math.abs(dragX))
 
@@ -81,7 +81,7 @@ Item {
 
     x: throwX
 
-    opacity: open * Math.max(0.1, 1 - Math.max(0, throwX - throwDistance * Appearance.sizes.dragResistance) / (fullWidth * 0.6))
+    opacity: open * Math.max(0.1, 1 - Math.max(0, throwX - throwDistance * Config.values.control.dragResistance) / (fullWidth * 0.6))
 
     HoverHandler {
         id: hover
@@ -129,7 +129,7 @@ Item {
 
     function resist(delta: real): real {
         const commit = root.throwDistance;
-        const k = Appearance.sizes.dragResistance;
+        const k = Config.values.control.dragResistance;
         const m = Math.abs(delta);
         const held = m < commit ? m * k : commit * k + (m - commit);
         return delta < 0 ? -held : held;
@@ -463,11 +463,11 @@ Item {
             drag.velocity += (step / dt - drag.velocity) * 0.4;
 
             if (!drag.throwing) {
-                if (Math.abs(dy) >= Appearance.sizes.dragThreshold)
+                if (Math.abs(dy) >= Config.values.control.dragThreshold)
                     drag.wandered = true;
                 if (Math.abs(dy) > Math.abs(dx))
                     return;
-                if (Math.abs(dx) < Appearance.sizes.dragThreshold)
+                if (Math.abs(dx) < Config.values.control.dragThreshold)
                     return;
                 drag.throwing = true;
             }
@@ -481,7 +481,7 @@ Item {
                 if (drag.scrolling)
                     return;
 
-                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) >= Appearance.sizes.dragThreshold) {
+                if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) >= Config.values.control.dragThreshold) {
                     drag.scrolling = true;
                     return;
                 }

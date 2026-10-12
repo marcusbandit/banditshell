@@ -20,17 +20,17 @@ Item {
     property real dragX: 0
     property real pulled: 0
 
-    readonly property real throwDistance: Math.max(1, root.width) * Appearance.sizes.dragDismissFraction
+    readonly property real throwDistance: Math.max(1, root.width) * Config.values.control.dragDismissFraction
 
     readonly property real fade: {
-        const held = root.throwDistance * Appearance.sizes.dragResistance;
+        const held = root.throwDistance * Config.values.control.dragResistance;
         const past = Math.max(0, root.dragX - held);
         return Math.max(0, 1 - past / Math.max(1, root.width - held));
     }
 
     function resist(delta: real): real {
         const commit = root.throwDistance;
-        const k = Appearance.sizes.dragResistance;
+        const k = Config.values.control.dragResistance;
         return delta < commit ? delta * k : commit * k + (delta - commit);
     }
 
@@ -75,12 +75,12 @@ Item {
 
         function advance(dx: real, dy: real): void {
             if (!pointer.throwing) {
-                if (Math.abs(dy) >= Appearance.sizes.dragThreshold)
+                if (Math.abs(dy) >= Config.values.control.dragThreshold)
                     pointer.wandered = true;
 
                 if (Math.abs(dy) > dx)
                     return;
-                if (dx < Appearance.sizes.dragThreshold)
+                if (dx < Config.values.control.dragThreshold)
                     return;
                 pointer.throwing = true;
             }
@@ -93,7 +93,7 @@ Item {
             if (!pointer.throwing) {
                 if (pointer.scrolling)
                     return;
-                if (Math.abs(dy) > dx && Math.abs(dy) >= Appearance.sizes.dragThreshold) {
+                if (Math.abs(dy) > dx && Math.abs(dy) >= Config.values.control.dragThreshold) {
                     pointer.scrolling = true;
                     return;
                 }

@@ -49,9 +49,9 @@ Column {
             dirX: 1
             dirY: 0
 
-            angle: Appearance.sizes.pullAngleEdge
+            angle: Config.values.control.pullAngleEdge
 
-            travel: Math.max(1, root.pullSpan * Appearance.sizes.pullTravel)
+            travel: Math.max(1, root.pullSpan * Config.values.control.pullTravel)
 
             cursorShape: Qt.PointingHandCursor
 
@@ -111,9 +111,9 @@ Column {
             dirX: 1
             dirY: 0
 
-            angle: Appearance.sizes.pullAngleEdge
+            angle: Config.values.control.pullAngleEdge
 
-            travel: Math.max(1, root.pullSpan * Appearance.sizes.pullTravel)
+            travel: Math.max(1, root.pullSpan * Config.values.control.pullTravel)
 
             cursorShape: Qt.PointingHandCursor
 

@@ -32,7 +32,7 @@ Item {
 
     property bool mapped: false
 
-    property string mode: Appearance.sizes.windowMode
+    property string mode: Config.values.windows.mode
 
     property var committed: null
 
@@ -65,7 +65,7 @@ Item {
 
     readonly property real rise: root.held ? Math.max(0, root.originY - root.pointY) : 0
 
-    readonly property real travelFull: Math.max(1, root.height * Appearance.sizes.windowTravel)
+    readonly property real travelFull: Math.max(1, root.height * Config.values.windows.travel)
     readonly property real progress: root.held ? Math.max(0, Math.min(root.rise / root.travelFull, 1)) : 0
 
     readonly property bool showing: !!root.held && (root.lifted || root.outro !== "")
@@ -198,7 +198,7 @@ Item {
 
         if (!root.lifted) {
 
-            if (root.rise < Appearance.sizes.pullSlack)
+            if (root.rise < Config.values.control.pullSlack)
                 return;
 
             root.lifted = true;
@@ -208,7 +208,7 @@ Item {
             return;
         }
 
-        if (Math.hypot(x - root.stillX, y - root.stillY) > Appearance.sizes.windowHoldSlop) {
+        if (Math.hypot(x - root.stillX, y - root.stillY) > Config.values.windows.holdSlop) {
             root.stillX = x;
             root.stillY = y;
             if (!root.racked)
@@ -273,7 +273,7 @@ Item {
             return;
         }
 
-        if (root.velocity >= Appearance.sizes.windowFling) {
+        if (root.velocity >= Config.values.windows.fling) {
 
             root.undoAim();
             Hypr.closeWindow(root.held.addr);
@@ -288,7 +288,7 @@ Item {
             if (slot.target === shelf.activeId)
                 root.finish("back", -1);
             else {
-                Hypr.sendToWorkspace(root.held.addr, slot.target, Appearance.sizes.windowFollow);
+                Hypr.sendToWorkspace(root.held.addr, slot.target, Config.values.windows.follow);
                 root.finish("sent", plate);
             }
             return;
@@ -430,17 +430,17 @@ Item {
     Timer {
         id: settle
 
-        interval: Appearance.sizes.windowSettle
+        interval: Config.values.windows.settle
         repeat: true
         running: root.grabbed && root.lifted && !root.mapped
-        onTriggered: if (root.velocity < Appearance.sizes.windowFling)
+        onTriggered: if (root.velocity < Config.values.windows.fling)
             root.mapped = true
     }
 
     Timer {
         id: hold
 
-        interval: Appearance.sizes.windowHold
+        interval: Config.values.windows.hold
         onTriggered: if (root.grabbed && root.lifted)
             root.racked = true
     }
@@ -604,7 +604,7 @@ Item {
         minimumTouchPoints: 1
         maximumTouchPoints: 1
 
-        enabled: Appearance.sizes.windowEdge && (!root.blocked || !!root.held)
+        enabled: Config.values.windows.edge && (!root.blocked || !!root.held)
 
         onPressed: points => {
             const p = points[0];

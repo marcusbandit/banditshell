@@ -158,7 +158,7 @@ Item {
         dirX: -1
         dirY: 1
 
-        travel: Math.hypot(root.width, root.height) * Appearance.sizes.pullTravel
+        travel: Math.hypot(root.width, root.height) * Config.values.control.pullTravel
 
         anchors.top: parent.top
         anchors.right: parent.right
@@ -190,7 +190,7 @@ Item {
         dirX: 1
         dirY: 0
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.panelWidth
 

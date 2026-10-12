@@ -8,7 +8,7 @@ Item {
 
     required property string screen
 
-    readonly property string style: Appearance.sizes.wsStyle
+    readonly property string style: Config.values.sidebar.workspaces.style
 
     readonly property var blobs: content.item?.blobs ?? []
 

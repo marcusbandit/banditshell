@@ -93,7 +93,7 @@ Singleton {
         if (named)
             return `symbol:${named}`;
 
-        const mode = want || Appearance.sizes.wsIconMode;
+        const mode = want || Config.values.sidebar.workspaces.iconMode;
 
         if (mode === "colour") {
             const art = Apps.iconSourceFor([cls]);

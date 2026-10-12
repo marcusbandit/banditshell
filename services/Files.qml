@@ -508,13 +508,13 @@ Singleton {
         if (root.term)
             return;
 
-        pty.command = [root.helper("bs-pty"), "80", String(Appearance.sizes.filesTerminalRows)];
+        pty.command = [root.helper("bs-pty"), "80", String(Config.values.files.terminal.rows)];
 
         pty.workingDirectory = root.cwd;
         root.synced = false;
-        root.term = TerminalEmulator.create(80, Appearance.sizes.filesTerminalRows, {
+        root.term = TerminalEmulator.create(80, Config.values.files.terminal.rows, {
             palette: Appearance.colour.terminalPalette,
-            scrollback: Appearance.sizes.filesScrollback,
+            scrollback: Config.values.files.terminal.scrollback,
             foreground: String(Appearance.colour.text),
             background: String(Appearance.colour.surfaceSolid)
         });

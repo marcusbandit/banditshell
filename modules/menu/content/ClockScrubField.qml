@@ -39,7 +39,7 @@ Item {
     function magnet(raw: real): int {
         const step = Math.max(1, root.detent);
         const nearest = Math.round(raw / step) * step;
-        return Math.abs(raw - nearest) * root.pitch <= Appearance.sizes.dragThreshold ? nearest : Math.round(raw);
+        return Math.abs(raw - nearest) * root.pitch <= Config.values.control.dragThreshold ? nearest : Math.round(raw);
     }
 
     function hold(): void {

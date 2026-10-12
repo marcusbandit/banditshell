@@ -15,9 +15,9 @@ Item {
 
     readonly property real travelFull: Math.max(1, root.height - root.border * 2)
 
-    readonly property real slack: Appearance.sizes.pullSlack
+    readonly property real slack: Config.values.control.pullSlack
 
-    readonly property real cosLimit: Math.cos(Appearance.sizes.pullAngleEdge * Math.PI / 180)
+    readonly property real cosLimit: Math.cos(Config.values.control.pullAngleEdge * Math.PI / 180)
 
     readonly property real grab: Math.max(root.border + root.swellBy, Appearance.sizes.minTarget)
 
@@ -111,7 +111,7 @@ Item {
 
         function settle(): void {
             if (zone.pulling)
-                root.finished(zone.velocity >= 0 || (zone.progress >= Appearance.sizes.pullCommit && zone.velocity > -Appearance.sizes.pullReversal));
+                root.finished(zone.velocity >= 0 || (zone.progress >= Config.values.control.pullCommit && zone.velocity > -Config.values.control.pullReversal));
             zone.pulling = false;
         }
 

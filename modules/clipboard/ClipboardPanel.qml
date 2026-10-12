@@ -377,7 +377,7 @@ Item {
 
         dirX: 0
         dirY: 1
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: panel.fullHeight
 
@@ -681,7 +681,7 @@ Item {
 
                             if (pager.spent)
                                 return;
-                            const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
+                            const step = Math.max(1, root.panelWidth * Config.values.control.pullTravel);
                             if (Math.abs(dx) < step)
                                 return;
                             pager.spent = true;

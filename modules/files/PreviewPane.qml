@@ -22,7 +22,7 @@ Item {
     readonly property bool isFolder: root.entry && root.entry.kind === "dir"
     readonly property bool isImage: root.entry && root.entry.class === "image" && !root.entry.broken
     readonly property bool isAudio: root.entry && root.entry.class === "audio"
-    readonly property bool isText: root.stat && root.stat.text && root.stat.size <= Appearance.sizes.filesTextMax
+    readonly property bool isText: root.stat && root.stat.text && root.stat.size <= Config.values.files.textMax
 
     readonly property var languages: ({
             c: ["c", "h", "cpp", "cc", "cxx", "hpp", "hh"],

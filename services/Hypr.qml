@@ -16,7 +16,7 @@ Singleton {
         return Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
     }
 
-    readonly property int count: Appearance.sizes.wsPersistent
+    readonly property int count: Config.values.sidebar.workspaces.persistent
 
     readonly property var bands: HyprConfig.bands.filter(b => !b.dynamic && b.path?.[1] === HyprConfig.hostName)
 
