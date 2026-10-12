@@ -572,7 +572,7 @@ Item {
                         anchors.topMargin: Appearance.padding.normal
                         x: Appearance.padding.large
                         width: parent.width - Appearance.padding.large * 2
-                        height: Math.max(0, panel.fullHeight - y - Appearance.padding.large)
+                        height: panel.visible ? Math.max(0, panel.fullHeight - y - Appearance.padding.large) : 0
                         clip: true
 
                         model: ScriptModel {
@@ -580,7 +580,7 @@ Item {
                         }
 
                         reuseItems: false
-                        cacheBuffer: list.pitch * 6
+                        cacheBuffer: panel.visible ? list.pitch * 6 : 0
 
                         delegate: ClipboardRow {
                             required property var modelData
