@@ -27,6 +27,8 @@ Item {
 
     readonly property var stage: Quickshell.screens.find(s => s.name === Hypr.focusedScreen) ?? root.host
 
+    readonly property bool mine: !root.host || !Hypr.focusedScreen || root.host.name === Hypr.focusedScreen
+
     readonly property real centre: {
         const box = Hypr.activeClient?.lastIpcObject;
         if (box?.at && box?.size)
