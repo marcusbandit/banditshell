@@ -1,11 +1,14 @@
 import QtQuick
 import Quickshell
+import qs.services
 
 Loader {
     id: root
 
     property string preview: Quickshell.env("BANDITSHELL_PREVIEW") ?? ""
     property bool failed: false
+
+    readonly property var compositorSync: CompositorSync
 
     function check(): void {
         if (root.failed || (root.preview !== "" && root.status !== Loader.Error))

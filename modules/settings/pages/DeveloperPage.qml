@@ -40,7 +40,7 @@ Item {
             SettingsRow {
                 icon: "sync"
                 label: "Re-read the compositor"
-                onActivated: Compositor.refresh()
+                onActivated: CompositorSync.refresh()
             }
         }
 

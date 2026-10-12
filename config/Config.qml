@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../services/configuration.js" as Configuration
+import "configuration.js" as Configuration
 
 Singleton {
     id: root

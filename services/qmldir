@@ -9,6 +9,7 @@ singleton Calculator 1.0 Calculator.qml
 singleton CliMigration 1.0 CliMigration.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Clock 1.0 Clock.qml
+singleton CompositorSync 1.0 CompositorSync.qml
 singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Display 1.0 Display.qml
@@ -33,6 +34,7 @@ singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton Tablet 1.0 Tablet.qml
+singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton Tray 1.0 Tray.qml
 singleton Update 1.0 Update.qml
 singleton Usage 1.0 Usage.qml

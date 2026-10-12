@@ -32,7 +32,7 @@ Item {
 
                     label: row.modelData
                     selected: Themes.activeName === row.modelData
-                    onActivated: Themes.apply(row.modelData)
+                    onActivated: ThemeSwitcher.apply(row.modelData)
 
                     Row {
                         spacing: Appearance.padding.small
