@@ -286,6 +286,23 @@ Singleton {
                 rightGoesForward: true
             },
 
+            clock: {
+
+                snoozeMinutes: 9,
+
+                ringMinutes: 15,
+
+                catchUpMinutes: 60,
+
+                timerMax: 3,
+                alarmMax: 8,
+
+                cloud: ["claude", "-p"],
+
+                cloudSeconds: 120,
+                cloudReplyChars: 240
+            },
+
             usage: {
 
                 capHours: 10

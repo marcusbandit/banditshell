@@ -6,32 +6,29 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "alarms.js" as Alarms
 
 Singleton {
     id: root
 
-    function token(name: string, fallback: var): var {
-        const block = Config.values.clock;
-        const value = block ? block[name] : undefined;
-        return value === undefined ? fallback : value;
-    }
+    readonly property var settings: Config.values.clock
 
-    readonly property int snoozeMinutes: root.token("snoozeMinutes", 9)
+    readonly property int snoozeMinutes: root.settings.snoozeMinutes
 
-    readonly property int ringMinutes: root.token("ringMinutes", 15)
+    readonly property int ringMinutes: root.settings.ringMinutes
 
-    readonly property int catchUpMinutes: root.token("catchUpMinutes", 60)
+    readonly property int catchUpMinutes: root.settings.catchUpMinutes
 
-    readonly property int timerMax: root.token("timerMax", 3)
-    readonly property int alarmMax: root.token("alarmMax", 8)
+    readonly property int timerMax: root.settings.timerMax
+    readonly property int alarmMax: root.settings.alarmMax
 
     readonly property var cloud: {
-        const set = root.token("cloud", []);
-        return Array.isArray(set) && set.length > 0 ? set : ["claude", "-p"];
+        const set = root.settings.cloud;
+        return Array.isArray(set) && set.length > 0 ? set : Config.defaults.clock.cloud;
     }
 
-    readonly property int cloudSeconds: root.token("cloudSeconds", 120)
-    readonly property int cloudReplyChars: root.token("cloudReplyChars", 240)
+    readonly property int cloudSeconds: root.settings.cloudSeconds
+    readonly property int cloudReplyChars: root.settings.cloudReplyChars
 
     readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
     readonly property string path: `${root.dir}/clock.json`
@@ -119,23 +116,6 @@ Singleton {
         return m === 0 ? `${sign}${h}h` : `${sign}${h}h${root.pad2(m)}`;
     }
 
-    property int watchers: 0
-
-    function watch(on: bool): void {
-        root.watchers = Math.max(0, root.watchers + (on ? 1 : -1));
-
-        if (on)
-            root.rebuildZones();
-    }
-
-    SystemClock {
-        id: minuteClock
-
-        precision: SystemClock.Minutes
-        enabled: root.watchers > 0
-        onDateChanged: root.rebuildZones()
-    }
-
     property var timers: []
 
     property double tick: 0
@@ -210,66 +190,15 @@ Singleton {
     signal actionFailed(alarm: var, code: int, output: string)
     signal timerFinished(timer: var)
 
-    function weekdayOf(d: date): int {
-        return (d.getDay() + 6) % 7;
-    }
-
-    function occurrence(from: date, offset: int, hour: int, minute: int): double {
-        return new Date(from.getFullYear(), from.getMonth(), from.getDate() + offset, hour, minute, 0, 0).getTime();
-    }
-
-    function nextClockTime(hour: int, minute: int, at: double): double {
-        const from = new Date(at);
-        const today = root.occurrence(from, 0, hour, minute);
-        return today > at ? today : root.occurrence(from, 1, hour, minute);
-    }
-
     function nextFor(alarm: var, at: double): double {
-        if (!alarm || !alarm.armed)
-            return 0;
-        if (alarm.snoozedUntil > at)
-            return alarm.snoozedUntil;
-        if (alarm.days.length === 0)
-            return alarm.at > at ? alarm.at : 0;
-        const from = new Date(at);
-        for (let i = 0; i <= 7; i++) {
-            const when = root.occurrence(from, i, alarm.hour, alarm.minute);
-            if (when > at && alarm.days.includes(root.weekdayOf(new Date(when))))
-                return when;
-        }
-        return 0;
-    }
-
-    function lastFor(alarm: var, at: double): double {
-        if (alarm.days.length === 0)
-            return alarm.at <= at ? alarm.at : 0;
-        const from = new Date(at);
-        for (let i = 0; i <= 7; i++) {
-            const when = root.occurrence(from, -i, alarm.hour, alarm.minute);
-            if (when <= at && alarm.days.includes(root.weekdayOf(new Date(when))))
-                return when;
-        }
-        return 0;
-    }
-
-    function pendingFor(alarm: var, at: double): double {
-        if (!alarm.armed)
-            return 0;
-
-        if (alarm.snoozedUntil > 0) {
-            if (alarm.snoozedUntil > at)
-                return 0;
-            return alarm.snoozedUntil > alarm.handledUntil ? alarm.snoozedUntil : 0;
-        }
-        const due = root.lastFor(alarm, at);
-        return due > alarm.handledUntil && due <= at ? due : 0;
+        return Alarms.nextFor(alarm, at);
     }
 
     function addAlarm(): string {
         if (root.alarms.length >= root.alarmMax)
             return "";
         const now = new Date();
-        const at = root.occurrence(now, 0, now.getHours() + 1, 0);
+        const at = Alarms.occurrence(now, 0, now.getHours() + 1, 0);
         const alarm = {
             id: root.newId(),
             hour: new Date(at).getHours(),
@@ -318,7 +247,7 @@ Singleton {
         alarm.snoozedUntil = 0;
         alarm.missed = false;
         if (alarm.days.length === 0)
-            alarm.at = root.nextClockTime(alarm.hour, alarm.minute, now);
+            alarm.at = Alarms.nextClockTime(alarm.hour, alarm.minute, now);
 
         if (root.ringing && root.ringing.id === alarm.id)
             root.clearRinging();
@@ -424,7 +353,7 @@ Singleton {
         const catchUpMs = root.catchUpMinutes * 60000;
         let changed = false;
         for (const alarm of root.alarms) {
-            const due = root.pendingFor(alarm, now);
+            const due = Alarms.pendingFor(alarm, now);
             if (due <= 0)
                 continue;
             const late = now - due;
@@ -635,24 +564,17 @@ Singleton {
     }
 
     function rebuildZones(): void {
-        const at = Date.now();
         const rows = [];
         for (const id of root.places) {
             const offset = root.offsetMap[id];
 
             if (offset === undefined)
                 continue;
-            const t = root.zoneTime(offset, at);
             rows.push({
                 id,
                 city: root.cityOf(id),
                 offsetMinutes: offset,
-                deltaMinutes: offset - root.localOffset,
-                hour: t.hour,
-                minute: t.minute,
-                hourOfDay: t.hourOfDay,
-                dayDelta: t.dayDelta,
-                text: t.text
+                deltaMinutes: offset - root.localOffset
             });
         }
         rows.sort((a, b) => a.deltaMinutes - b.deltaMinutes || a.city.localeCompare(b.city));
@@ -668,7 +590,7 @@ Singleton {
 
         function rearm(): void {
             const now = new Date();
-            hourly.interval = Math.max(1000, root.occurrence(now, 0, now.getHours() + 1, 0) + 1000 - now.getTime());
+            hourly.interval = Math.max(1000, Alarms.occurrence(now, 0, now.getHours() + 1, 0) + 1000 - now.getTime());
             hourly.restart();
         }
 
@@ -755,7 +677,7 @@ Singleton {
 
         for (const alarm of root.alarms)
             if (alarm.days.length === 0 && !alarm.at)
-                alarm.at = root.nextClockTime(alarm.hour, alarm.minute, now);
+                alarm.at = Alarms.nextClockTime(alarm.hour, alarm.minute, now);
 
         root.timers = (Array.isArray(disk?.timers) ? disk.timers : []).filter(t => t && Number.isFinite(t.total) && t.total > 0).map(t => ({
                     id: typeof t.id === "string" && t.id ? t.id : root.newId(),
@@ -774,10 +696,5 @@ Singleton {
         root.loaded = true;
         root.rebuildZones();
         root.refreshOffsets();
-    }
-
-    Component.onCompleted: {
-        if (Config.values.clock === undefined)
-            console.warn("Clock: config.json has no `clock` block, so the shipped defaults cannot be changed. Add it to Config.defaults; see the contract in services/Clock.qml.");
     }
 }
