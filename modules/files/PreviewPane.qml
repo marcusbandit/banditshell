@@ -259,7 +259,7 @@ Item {
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                         easing.type: Easing.OutBack
                     }
                 }

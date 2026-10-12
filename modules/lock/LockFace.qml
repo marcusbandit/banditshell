@@ -205,14 +205,14 @@ Item {
 
                                 Behavior on scale {
                                     NumberAnimation {
-                                        duration: Appearance.anim.normal
+                                        duration: Appearance.animation.normal
                                         easing.type: Easing.OutCubic
                                     }
                                 }
 
                                 Behavior on opacity {
                                     NumberAnimation {
-                                        duration: Appearance.anim.normal
+                                        duration: Appearance.animation.normal
                                         easing.type: Easing.OutCubic
                                     }
                                 }

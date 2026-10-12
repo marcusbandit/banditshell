@@ -175,7 +175,7 @@ Item {
 
     Timer {
         id: grace
-        interval: Appearance.anim.grace
+        interval: Appearance.animation.grace
 
         onTriggered: {
             if (root.pinned || root.hovered || root.shellHovered || root.needsKeyboard)
@@ -195,12 +195,12 @@ Item {
 
         target: root.clampCentre(root.requestedCentre)
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
     }
 
     Follow {
         id: reveal
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 

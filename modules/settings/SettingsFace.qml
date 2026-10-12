@@ -239,7 +239,7 @@ Item {
 
                     target: root.currentRowY
 
-                    speed: Appearance.anim.railSpeed
+                    speed: Appearance.animation.railSpeed
                     epsilon: 0.5
                 }
 
@@ -300,7 +300,7 @@ Item {
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
                         }
@@ -353,7 +353,7 @@ Item {
                         property: "opacity"
                         from: 0
                         to: 1
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -407,7 +407,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }

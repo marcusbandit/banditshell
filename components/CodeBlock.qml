@@ -151,7 +151,7 @@ Item {
     Follow {
         id: pan
 
-        speed: Appearance.anim.scrollSpeed
+        speed: Appearance.animation.scrollSpeed
         epsilon: 0.5
         target: root.panTarget
     }

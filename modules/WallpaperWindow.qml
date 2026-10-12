@@ -104,7 +104,7 @@ PanelWindow {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.anim.slow
+                duration: Appearance.animation.slow
             }
         }
 

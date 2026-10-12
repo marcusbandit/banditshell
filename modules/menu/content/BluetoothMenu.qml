@@ -221,7 +221,7 @@ Column {
 
             Behavior on rotation {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutBack
                 }
             }

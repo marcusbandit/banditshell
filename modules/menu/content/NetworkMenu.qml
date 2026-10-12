@@ -119,7 +119,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -133,7 +133,7 @@ Column {
 
             Behavior on fill {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -397,7 +397,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                 }
             }
 

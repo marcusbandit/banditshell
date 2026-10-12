@@ -413,7 +413,7 @@ Item {
     Follow {
         id: turn
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.expanded ? 1 : 0
         epsilon: 0.005
     }
@@ -421,7 +421,7 @@ Item {
     Follow {
         id: rise
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
 
         epsilon: 0.005
@@ -493,7 +493,7 @@ Item {
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
 
@@ -617,7 +617,7 @@ Item {
                             NumberAnimation {
                                 property: "opacity"
                                 to: 0
-                                duration: Appearance.anim.fast
+                                duration: Appearance.animation.fast
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -625,7 +625,7 @@ Item {
                         displaced: Transition {
                             NumberAnimation {
                                 property: "y"
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                                 easing.type: Easing.OutCubic
                             }
                         }

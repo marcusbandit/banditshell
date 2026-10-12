@@ -84,7 +84,7 @@ Item {
     Timer {
         id: quiet
 
-        interval: Appearance.anim.settle
+        interval: Appearance.animation.settle
         onTriggered: root.release()
     }
 
@@ -96,7 +96,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
     }
@@ -106,7 +106,7 @@ Item {
 
         anchors.centerIn: parent
 
-        text: Clock.pad2(root.shown)
+        text: Clock.twoDigits(root.shown)
         font.pixelSize: Appearance.font.size.large
         color: root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
     }

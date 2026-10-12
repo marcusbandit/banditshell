@@ -41,7 +41,7 @@ Item {
     Follow {
         id: settle
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         onValueChanged: if (!pointer.throwing)
             root.dragX = value
     }
@@ -186,7 +186,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -212,7 +212,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
 

@@ -416,7 +416,7 @@ Item {
     Follow {
         id: reveal
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.open ? 1 : 0
 
         epsilon: 0.005
@@ -425,7 +425,7 @@ Item {
     Follow {
         id: wide
 
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         target: root.wantWidth
 
         onTargetChanged: {
@@ -437,7 +437,7 @@ Item {
     Follow {
         id: tall
 
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         target: root.wantHeight
 
         onTargetChanged: {

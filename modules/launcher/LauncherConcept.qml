@@ -180,7 +180,7 @@ Item {
         id: rise
 
         target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 

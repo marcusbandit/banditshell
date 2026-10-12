@@ -113,7 +113,7 @@ Item {
     Follow {
         id: grow
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
         onValueChanged: root.reveal = value
     }
@@ -121,7 +121,7 @@ Item {
     Follow {
         id: settle
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: 0
         onValueChanged: if (!drag.throwing)
             root.dragX = value
@@ -145,7 +145,7 @@ Item {
 
         Behavior on color {
             ColorAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
     }
@@ -294,7 +294,7 @@ Item {
                     id: chase
 
                     target: meter.pct
-                    speed: Appearance.anim.revealSpeed
+                    speed: Appearance.animation.revealSpeed
                 }
 
                 Component.onCompleted: chase.snap()

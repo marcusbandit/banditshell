@@ -98,7 +98,7 @@ LauncherConcept {
         id: grow
 
         target: panel.implicitHeight
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         epsilon: 0.5
     }
 

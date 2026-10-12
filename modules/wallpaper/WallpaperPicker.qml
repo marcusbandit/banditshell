@@ -182,7 +182,7 @@ Item {
         id: rise
 
         target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -216,7 +216,7 @@ Item {
                 id: glide
 
                 target: strip.goal
-                speed: Appearance.anim.scrollSpeed
+                speed: Appearance.animation.scrollSpeed
 
                 epsilon: 0.002
             }

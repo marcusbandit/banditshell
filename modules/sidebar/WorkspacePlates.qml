@@ -14,18 +14,18 @@ Item {
 
     readonly property string iconMode: Config.values.sidebar.workspaces.iconMode
 
-    readonly property int slot: Appearance.sizes.wsSlot
-    readonly property int iconSize: Appearance.sizes.wsIcon
-    readonly property int pitch: Appearance.sizes.wsWindowPitch
+    readonly property int slot: Appearance.sizes.workspaceSlot
+    readonly property int iconSize: Appearance.sizes.workspaceIcon
+    readonly property int pitch: Appearance.sizes.workspaceWindowPitch
 
     readonly property real lane: Math.round((root.width - root.slot) / 2)
 
-    readonly property int dot: Math.round(root.slot * Appearance.sizes.wsEmptyReach)
+    readonly property int dot: Math.round(root.slot * Appearance.sizes.workspaceEmptyReach)
 
     readonly property real radius: Appearance.rounding.normal
 
-    readonly property int bleedUp: Math.floor(Appearance.sizes.wsGap / 2)
-    readonly property int bleedDown: Appearance.sizes.wsGap - root.bleedUp
+    readonly property int bleedUp: Math.floor(Appearance.sizes.workspaceGap / 2)
+    readonly property int bleedDown: Appearance.sizes.workspaceGap - root.bleedUp
 
     readonly property int barH: Appearance.font.iconSize
     readonly property int barGap: Math.round(Appearance.padding.small / 2)
@@ -90,7 +90,7 @@ Item {
     }
 
     function barWidth(entry: var): real {
-        return entry.windows.length ? Math.max(Math.round(root.slot * Appearance.sizes.wsBusyReach), root.barMark + root.barGap * 2) : root.dot;
+        return entry.windows.length ? Math.max(Math.round(root.slot * Appearance.sizes.workspaceBusyReach), root.barMark + root.barGap * 2) : root.dot;
     }
 
     implicitHeight: layout.total + (root.deck.length ? root.rackGap + root.rackHeight : 0)
@@ -233,7 +233,7 @@ Item {
     Follow {
         id: growth
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.tags.length && root.hovering && !layout.scrubbing ? 1 : 0
         epsilon: 0.005
     }
@@ -241,21 +241,21 @@ Item {
     Follow {
         id: markY
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.heldGeom.y
     }
 
     Follow {
         id: markH
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.heldGeom.h
     }
 
     Follow {
         id: markShown
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.onColumn ? 1 : 0
         epsilon: 0.005
     }
@@ -263,28 +263,28 @@ Item {
     Follow {
         id: hoverY
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.hoverGeom.y
     }
 
     Follow {
         id: hoverH
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.hoverGeom.h
     }
 
     Follow {
         id: hoverW
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.hoverGeom.w
     }
 
     Follow {
         id: lit
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
 
         target: root.hovering && !layout.scrubbing ? 1 : 0
         epsilon: 0.005
@@ -346,7 +346,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -381,7 +381,7 @@ Item {
 
             Behavior on width {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                     easing.type: Easing.OutCubic
                 }
             }
@@ -400,7 +400,7 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -411,7 +411,7 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
 
@@ -425,7 +425,7 @@ Item {
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
                 }
@@ -556,7 +556,7 @@ Item {
 
                 Behavior on full {
                     NumberAnimation {
-                        duration: Appearance.anim.normal
+                        duration: Appearance.animation.normal
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -586,7 +586,7 @@ Item {
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                             }
                         }
 
@@ -600,7 +600,7 @@ Item {
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
                         }
@@ -688,7 +688,7 @@ Item {
 
             Behavior on shown {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                     easing.type: Easing.OutCubic
                 }
             }

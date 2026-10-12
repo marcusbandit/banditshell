@@ -17,7 +17,7 @@ Item {
         id: unroll
 
         target: root.open ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.001
     }
 

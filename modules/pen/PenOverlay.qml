@@ -113,20 +113,20 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "banditshell-pen"
 
-    WlrLayershell.keyboardFocus: PenMap.active ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: PenMap.editing ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
-    visible: PenMap.active
+    visible: PenMap.editing
 
     mask: Region {
-        width: PenMap.active ? win.width : 0
-        height: PenMap.active ? win.height : 0
+        width: PenMap.editing ? win.width : 0
+        height: PenMap.editing ? win.height : 0
     }
 
     Connections {
         target: PenMap
 
         function onActiveChanged(): void {
-            if (!PenMap.active)
+            if (!PenMap.editing)
                 win.release();
         }
 
@@ -156,7 +156,7 @@ PanelWindow {
         id: padless
 
         interval: 30000
-        running: PenMap.active && !PenMap.padConnected
+        running: PenMap.editing && !PenMap.padConnected
         onTriggered: PenMap.cancel()
     }
 
@@ -274,7 +274,7 @@ PanelWindow {
         id: aim
 
         target: highlight.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -297,13 +297,13 @@ PanelWindow {
 
         Behavior on color {
             ColorAnimation {
-                duration: Appearance.anim.normal
+                duration: Appearance.animation.normal
             }
         }
 
         Behavior on stroke {
             ColorAnimation {
-                duration: Appearance.anim.normal
+                duration: Appearance.animation.normal
             }
         }
 
@@ -350,28 +350,28 @@ PanelWindow {
         id: fx
 
         target: PenMap.region.x - win.originX
-        speed: win.mine ? Appearance.anim.trackSpeed : 0
+        speed: win.mine ? Appearance.animation.trackSpeed : 0
     }
 
     Follow {
         id: fy
 
         target: PenMap.region.y - win.originY
-        speed: win.mine ? Appearance.anim.trackSpeed : 0
+        speed: win.mine ? Appearance.animation.trackSpeed : 0
     }
 
     Follow {
         id: fw
 
         target: PenMap.region.width
-        speed: win.mine ? Appearance.anim.trackSpeed : 0
+        speed: win.mine ? Appearance.animation.trackSpeed : 0
     }
 
     Follow {
         id: fh
 
         target: PenMap.region.height
-        speed: win.mine ? Appearance.anim.trackSpeed : 0
+        speed: win.mine ? Appearance.animation.trackSpeed : 0
     }
 
     SquircleRect {
@@ -390,13 +390,13 @@ PanelWindow {
 
         Behavior on stroke {
             ColorAnimation {
-                duration: Appearance.anim.normal
+                duration: Appearance.animation.normal
             }
         }
 
         Behavior on strokeWidth {
             NumberAnimation {
-                duration: Appearance.anim.normal
+                duration: Appearance.animation.normal
                 easing.type: Easing.OutCubic
             }
         }
@@ -424,7 +424,7 @@ PanelWindow {
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }

@@ -41,7 +41,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: Appearance.anim.normal
+            duration: Appearance.animation.normal
             easing.type: Easing.OutQuad
         }
     }
@@ -110,7 +110,7 @@ Item {
 
         property bool elapsed: false
 
-        interval: Appearance.anim.settle
+        interval: Appearance.animation.settle
         running: root.held !== ""
 
         onTriggered: settle.elapsed = true

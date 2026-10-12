@@ -173,13 +173,13 @@ Item {
         property: "sweep"
         from: 0
         to: 1
-        duration: Appearance.anim.slow * 3
+        duration: Appearance.animation.slow * 3
         easing.type: Easing.OutSine
     }
 
     Behavior on turn {
         NumberAnimation {
-            duration: Appearance.anim.slow * 2
+            duration: Appearance.animation.slow * 2
             easing.type: Easing.InOutSine
         }
     }
@@ -207,13 +207,13 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                 }
             }
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.slow * 2
+                    duration: Appearance.animation.slow * 2
                 }
             }
         }
@@ -259,7 +259,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                 }
             }
 
@@ -274,7 +274,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.slow * 2
+                        duration: Appearance.animation.slow * 2
                     }
                 }
             }
@@ -289,7 +289,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.slow * 2
+                        duration: Appearance.animation.slow * 2
                     }
                 }
             }

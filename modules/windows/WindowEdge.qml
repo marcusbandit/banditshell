@@ -360,7 +360,7 @@ Item {
     Timer {
         id: linger
 
-        interval: Appearance.anim.slow * 2
+        interval: Appearance.animation.slow * 2
         onTriggered: root.clear()
     }
 
@@ -394,7 +394,7 @@ Item {
         id: tuck
 
         target: root.racked ? 1 : root.progress
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         epsilon: 0.005
     }
 
@@ -402,7 +402,7 @@ Item {
         id: gone
 
         target: root.outro ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
 
         onSettledChanged: if (gone.settled && root.outro)
@@ -415,7 +415,7 @@ Item {
         id: mapDim
 
         target: root.mapped && !root.outro ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -423,7 +423,7 @@ Item {
         id: rackDim
 
         target: root.racked ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -509,7 +509,7 @@ Item {
 
         Behavior on scale {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutBack
             }
         }
@@ -519,7 +519,7 @@ Item {
         id: markFade
 
         target: root.mapped && !root.outro ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -528,7 +528,7 @@ Item {
     Timer {
         id: flip
 
-        interval: Appearance.anim.normal
+        interval: Appearance.animation.normal
         onTriggered: root.flipped = false
     }
 

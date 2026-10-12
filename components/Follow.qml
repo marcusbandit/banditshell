@@ -6,7 +6,7 @@ QtObject {
 
     property real target: 0
     property real value: 0
-    property real speed: Appearance.anim.trackSpeed
+    property real speed: Appearance.animation.trackSpeed
 
     property real epsilon: 0.25
 

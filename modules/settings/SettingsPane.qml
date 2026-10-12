@@ -43,7 +43,7 @@ Item {
         id: flow
 
         target: root.target
-        speed: Appearance.anim.scrollSpeed
+        speed: Appearance.animation.scrollSpeed
         epsilon: 0.5
     }
 

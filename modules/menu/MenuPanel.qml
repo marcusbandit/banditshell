@@ -105,20 +105,20 @@ Item {
         id: grow
 
         target: root.implicitHeight
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
     }
 
     Follow {
         id: widen
 
         target: root.fullWidth
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
     }
 
     Follow {
         id: fade
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -162,7 +162,7 @@ Item {
                 Timer {
                     id: settle
 
-                    interval: Appearance.anim.settle
+                    interval: Appearance.animation.settle
                     onTriggered: page.believed = page.live
                 }
 

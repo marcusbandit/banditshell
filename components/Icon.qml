@@ -52,7 +52,7 @@ Text {
     Timer {
         id: complaint
 
-        interval: Appearance.anim.slow
+        interval: Appearance.animation.slow
         running: !root.resolved && root.name !== "" && root.glyph === ""
 
         onTriggered: console.warn(`Icon: "${root.name}" is not in ${Appearance.font.icon}; drawing ${root.fallback} instead.`)

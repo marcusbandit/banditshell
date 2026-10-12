@@ -59,7 +59,7 @@ Item {
     readonly property real docked: 0.72
     readonly property real rowScale: root.docked + (1 - root.docked) * arm.value
 
-    readonly property int marksFit: Math.max(1, Math.floor((root.scaledW - root.markGap) / (Appearance.sizes.wsIcon + root.markGap)))
+    readonly property int marksFit: Math.max(1, Math.floor((root.scaledW - root.markGap) / (Appearance.sizes.workspaceIcon + root.markGap)))
     readonly property real markGap: Math.round(Appearance.padding.small / 2)
 
     readonly property real scaledPitch: root.pitch * root.rowScale
@@ -88,7 +88,7 @@ Item {
         id: reveal
 
         target: root.active ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -96,7 +96,7 @@ Item {
         id: arm
 
         target: root.armed ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -130,7 +130,7 @@ Item {
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutCubic
                 }
             }
@@ -146,7 +146,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -184,7 +184,7 @@ Item {
                             required property var modelData
 
                             spec: AppIcons.markFor(Hypr.classOf(modelData))
-                            size: Appearance.sizes.wsIcon
+                            size: Appearance.sizes.workspaceIcon
                             color: Appearance.colour.textDim
                         }
                     }

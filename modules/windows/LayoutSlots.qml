@@ -123,7 +123,7 @@ Item {
         id: land
 
         target: root.landed ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.002
     }
 
@@ -253,7 +253,7 @@ Item {
         id: reveal
 
         target: root.active ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -294,7 +294,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
 
@@ -312,7 +312,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -321,7 +321,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -330,7 +330,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -339,7 +339,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -364,7 +364,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.anim.fast
+                                duration: Appearance.animation.fast
                             }
                         }
                     }
@@ -404,7 +404,7 @@ Item {
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
                         }

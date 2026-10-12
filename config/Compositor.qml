@@ -101,7 +101,7 @@ Singleton {
         }
     }
 
-    readonly property bool pushBorders: Appearance.cfg.compositor.pushBorders ?? true
+    readonly property bool pushBorders: Appearance.config.compositor.pushBorders ?? true
 
     readonly property color activeBorder: Appearance.colour.accent
 

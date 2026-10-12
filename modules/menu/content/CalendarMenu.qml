@@ -103,7 +103,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -336,7 +336,7 @@ Column {
                         property: "glow"
                         from: 0
                         to: 1
-                        duration: Appearance.anim.slow
+                        duration: Appearance.animation.slow
                     }
 
                     Repeater {
@@ -395,7 +395,7 @@ Column {
         Follow {
             id: settle
 
-            speed: Appearance.anim.revealSpeed
+            speed: Appearance.animation.revealSpeed
             target: 0
 
             onValueChanged: if (!pager.paging)

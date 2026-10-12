@@ -36,7 +36,7 @@ Singleton {
         return (node?.properties?.["device.api"] ?? "") === "bluez5" || (node?.name ?? "").startsWith("bluez");
     }
 
-    function btAddress(node: PwNode): string {
+    function bluetoothAddress(node: PwNode): string {
         const direct = node?.properties?.["api.bluez5.address"] ?? "";
         if (direct)
             return direct.toUpperCase();
@@ -48,7 +48,7 @@ Singleton {
         const sink = !!node?.isSink;
 
         if (root.isBluetooth(node)) {
-            const kind = Bluetooth.icon(Bluetooth.deviceAt(root.btAddress(node)));
+            const kind = Bluetooth.icon(Bluetooth.deviceAt(root.bluetoothAddress(node)));
             if (kind === "headphones")
                 return sink ? "headphones" : "headset_mic";
             if (kind !== "bluetooth")

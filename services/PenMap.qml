@@ -9,12 +9,6 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property bool active: root.editing
-
-    readonly property bool aspectLocked: root.locked
-
-    readonly property bool followWindow: root.following
-
     readonly property real surfaceAspect: {
         const surface = Config.values.pen.surface;
         const w = Number(surface?.width);
@@ -23,32 +17,18 @@ Singleton {
         return w > 0 && h > 0 ? w / h : 1;
     }
 
-    readonly property string monitorName: root.home
-
-    readonly property rect region: root.mapping
-
-    readonly property rect hoveredWindow: root.hovered
-
-    readonly property string hoveredWindowName: root.hoveredName
-
-    readonly property string boundWindow: root.bound
-
-    readonly property string boundWindowName: root.boundName
-
-    readonly property bool tracking: root.bound !== ""
-
-    readonly property bool padConnected: root.padAlive
+    readonly property bool tracking: root.boundWindow !== ""
 
     function begin(): void {
         if (root.editing)
             return;
 
         root.before = {
-            home: root.home,
-            region: root.mapping,
-            locked: root.locked,
-            bound: root.bound,
-            boundName: root.boundName
+            home: root.monitorName,
+            region: root.region,
+            locked: root.aspectLocked,
+            bound: root.boundWindow,
+            boundName: root.boundWindowName
         };
 
         root.mapped = true;
@@ -58,7 +38,7 @@ Singleton {
         root.scanMonitors();
 
         root.forgetWindows();
-        if (root.following)
+        if (root.followWindow)
             root.scanClients();
 
         padLost.stop();
@@ -68,9 +48,9 @@ Singleton {
         if (!root.editing)
             return;
 
-        if (root.following && root.hovered.width > 0 && root.hovered.height > 0) {
-            root.snapToWindow(root.hovered);
-            root.bindWindow(root.hoveredAddr, root.hoveredName);
+        if (root.followWindow && root.hoveredWindow.width > 0 && root.hoveredWindow.height > 0) {
+            root.snapToWindow(root.hoveredWindow);
+            root.bindWindow(root.hoveredWindowAddress, root.hoveredWindowName);
         } else {
             root.unbindWindow();
         }
@@ -89,12 +69,12 @@ Singleton {
 
         const was = root.before;
         if (was) {
-            root.home = was.home;
-            root.mapping = was.region;
-            root.locked = was.locked;
+            root.monitorName = was.home;
+            root.region = was.region;
+            root.aspectLocked = was.locked;
 
-            root.bound = root.following ? was.bound : "";
-            root.boundName = root.following ? was.boundName : "";
+            root.boundWindow = root.followWindow ? was.bound : "";
+            root.boundWindowName = root.followWindow ? was.boundName : "";
             root.boundMisses = 0;
         }
 
@@ -106,9 +86,9 @@ Singleton {
     }
 
     function toggleAspect(): void {
-        root.locked = !root.locked;
+        root.aspectLocked = !root.aspectLocked;
 
-        root.proposeRegion(root.mapping.x, root.mapping.y, root.mapping.width, root.mapping.height);
+        root.proposeRegion(root.region.x, root.region.y, root.region.width, root.region.height);
 
         if (!root.editing) {
             if (root.mapped)
@@ -118,12 +98,12 @@ Singleton {
     }
 
     function fitAndCentre(): void {
-        const mon = root.monitorNamed(root.home) ?? root.monitors.find(m => m.focused) ?? root.monitors[0];
+        const mon = root.monitorNamed(root.monitorName) ?? root.monitors.find(m => m.focused) ?? root.monitors[0];
         if (!mon)
             return;
 
         root.mapped = true;
-        root.locked = true;
+        root.aspectLocked = true;
         root.unbindWindow();
 
         const aspect = root.surfaceAspect;
@@ -135,7 +115,7 @@ Singleton {
             h = w / aspect;
         }
 
-        root.home = mon.name;
+        root.monitorName = mon.name;
         root.proposeRegion(mon.x + (mon.w - w) / 2, mon.y + (mon.h - h) / 2, w, h);
 
         if (!root.editing) {
@@ -145,9 +125,9 @@ Singleton {
     }
 
     function toggleFollowWindow(): void {
-        root.following = !root.following;
+        root.followWindow = !root.followWindow;
 
-        if (!root.following) {
+        if (!root.followWindow) {
 
             root.forgetWindows();
 
@@ -162,8 +142,8 @@ Singleton {
     }
 
     function unbindWindow(): void {
-        root.bound = "";
-        root.boundName = "";
+        root.boundWindow = "";
+        root.boundWindowName = "";
         root.boundMisses = 0;
 
         if (!root.editing)
@@ -197,14 +177,14 @@ Singleton {
         const mon = root.homeFor(px, py, pw, ph);
         if (!mon) {
 
-            root.mapping = Qt.rect(px, py, pw, ph);
+            root.region = Qt.rect(px, py, pw, ph);
             return;
         }
 
         const aspect = root.surfaceAspect;
         const floor = Math.max(1, Number(Config.values.pen.minSize) || 1);
 
-        if (root.locked) {
+        if (root.aspectLocked) {
 
             let t = (pw * aspect + ph) / (aspect * aspect + 1);
 
@@ -221,19 +201,19 @@ Singleton {
         px = root.clamp(px, mon.x, mon.x + mon.w - pw);
         py = root.clamp(py, mon.y, mon.y + mon.h - ph);
 
-        root.home = mon.name;
-        root.mapping = Qt.rect(px, py, pw, ph);
+        root.monitorName = mon.name;
+        root.region = Qt.rect(px, py, pw, ph);
     }
 
     property bool editing: false
-    property rect mapping
-    property string home: ""
+    property rect region
+    property string monitorName: ""
 
-    property bool locked: Config.values.pen.aspectLock
+    property bool aspectLocked: Config.values.pen.aspectLock
 
-    property bool following: false
+    property bool followWindow: false
 
-    property bool padAlive: false
+    property bool padConnected: false
 
     property bool mapped: false
 
@@ -321,7 +301,7 @@ Singleton {
             h = w / aspect;
         }
 
-        root.home = mon.name;
+        root.monitorName = mon.name;
         root.proposeRegion(mon.x + (mon.w - w) / 2, mon.y + (mon.h - h) / 2, w, h);
     }
 
@@ -341,17 +321,17 @@ Singleton {
         if (!root.mapped)
             return;
 
-        const mon = root.monitorNamed(root.home);
+        const mon = root.monitorNamed(root.monitorName);
         if (!mon) {
 
-            console.warn(`PenMap: no monitor named "${root.home}" is connected, so the mapping was not applied.`);
+            console.warn(`PenMap: no monitor named "${root.monitorName}" is connected, so the mapping was not applied.`);
             return;
         }
 
-        const rx = Math.round(root.mapping.x - mon.x);
-        const ry = Math.round(root.mapping.y - mon.y);
-        const rw = Math.max(1, Math.round(root.mapping.width));
-        const rh = Math.max(1, Math.round(root.mapping.height));
+        const rx = Math.round(root.region.x - mon.x);
+        const ry = Math.round(root.region.y - mon.y);
+        const rw = Math.max(1, Math.round(root.region.width));
+        const rh = Math.max(1, Math.round(root.region.height));
 
         root.evalDevice(`output = ${root.luaString(mon.name)}, region_position = {${rx},${ry}}, region_size = {${rw},${rh}}`);
     }
@@ -488,7 +468,7 @@ Singleton {
         if (!forced && !root.layoutMoved)
             return;
 
-        root.proposeRegion(root.mapping.x, root.mapping.y, root.mapping.width, root.mapping.height);
+        root.proposeRegion(root.region.x, root.region.y, root.region.width, root.region.height);
 
         if (root.editing)
             root.unbind();
@@ -502,10 +482,10 @@ Singleton {
     property real pointerY: 0
     property bool pointerKnown: false
 
-    property rect hovered
-    property string hoveredName: ""
+    property rect hoveredWindow
+    property string hoveredWindowName: ""
 
-    property string hoveredAddr: ""
+    property string hoveredWindowAddress: ""
 
     readonly property var candidates: root.buildCandidates(root.snapshot, root.monitors)
 
@@ -601,17 +581,17 @@ Singleton {
     }
 
     function refreshHover(): void {
-        const hit = root.editing && root.following && root.pointerKnown ? root.windowAt(root.pointerX, root.pointerY) : null;
+        const hit = root.editing && root.followWindow && root.pointerKnown ? root.windowAt(root.pointerX, root.pointerY) : null;
         root.setHover(hit ? Qt.rect(hit.x, hit.y, hit.w, hit.h) : Qt.rect(0, 0, 0, 0), hit ? hit.name : "", hit ? hit.address : "");
     }
 
     function setHover(r: rect, name: string, addr: string): void {
-        if (root.hoveredName === name && root.hoveredAddr === addr && root.sameRect(root.hovered, r))
+        if (root.hoveredWindowName === name && root.hoveredWindowAddress === addr && root.sameRect(root.hoveredWindow, r))
             return;
 
-        root.hovered = r;
-        root.hoveredName = name;
-        root.hoveredAddr = addr;
+        root.hoveredWindow = r;
+        root.hoveredWindowName = name;
+        root.hoveredWindowAddress = addr;
     }
 
     function forgetWindows(): void {
@@ -626,7 +606,7 @@ Singleton {
         let w = r.width;
         let h = r.height;
 
-        if (root.locked) {
+        if (root.aspectLocked) {
             const aspect = root.surfaceAspect;
             const t = Math.min(w / aspect, h);
             x += (w - t * aspect) / 2;
@@ -638,8 +618,8 @@ Singleton {
         root.proposeRegion(x, y, w, h);
     }
 
-    property string bound: ""
-    property string boundName: ""
+    property string boundWindow: ""
+    property string boundWindowName: ""
 
     property int boundMisses: 0
 
@@ -648,9 +628,9 @@ Singleton {
     readonly property int trackGrace: 1000
 
     readonly property var boundToplevel: {
-        if (!root.bound)
+        if (!root.boundWindow)
             return null;
-        return Hypr.toplevelFor(root.bound);
+        return Hypr.toplevelFor(root.boundWindow);
     }
 
     readonly property rect boundRect: {
@@ -666,14 +646,14 @@ Singleton {
         if (!addr)
             return root.unbindWindow();
 
-        root.bound = addr;
-        root.boundName = name;
+        root.boundWindow = addr;
+        root.boundWindowName = name;
         root.boundMisses = 0;
     }
 
     function followBound(): void {
 
-        if (!root.bound || !root.settled)
+        if (!root.boundWindow || !root.settled)
             return;
 
         if (root.editing)
@@ -683,12 +663,12 @@ Singleton {
         if (!(r.width > 0) || !(r.height > 0))
             return;
 
-        const wasHome = root.home;
-        const was = Qt.rect(root.mapping.x, root.mapping.y, root.mapping.width, root.mapping.height);
+        const wasHome = root.monitorName;
+        const was = Qt.rect(root.region.x, root.region.y, root.region.width, root.region.height);
 
         root.snapToWindow(r);
 
-        if (root.home === wasHome && root.sameRect(root.mapping, was))
+        if (root.monitorName === wasHome && root.sameRect(root.region, was))
             return;
 
         root.applyRegion();
@@ -696,7 +676,7 @@ Singleton {
     }
 
     function pollBound(): void {
-        if (!root.bound)
+        if (!root.boundWindow)
             return;
 
         if (root.boundToplevel) {
@@ -764,20 +744,20 @@ Singleton {
         boundSave.stop();
 
         const out = {
-            aspectLocked: root.locked,
-            followWindow: root.following,
+            aspectLocked: root.aspectLocked,
+            followWindow: root.followWindow,
 
-            boundWindow: root.bound,
-            boundWindowName: root.boundName
+            boundWindow: root.boundWindow,
+            boundWindowName: root.boundWindowName
         };
 
-        const mon = root.mapped ? root.monitorNamed(root.home) : null;
+        const mon = root.mapped ? root.monitorNamed(root.monitorName) : null;
         if (mon) {
             out.monitor = mon.name;
-            out.x = Math.round(root.mapping.x - mon.x);
-            out.y = Math.round(root.mapping.y - mon.y);
-            out.width = Math.round(root.mapping.width);
-            out.height = Math.round(root.mapping.height);
+            out.x = Math.round(root.region.x - mon.x);
+            out.y = Math.round(root.region.y - mon.y);
+            out.width = Math.round(root.region.width);
+            out.height = Math.round(root.region.height);
         }
 
         store.setText(JSON.stringify(out, null, 4) + "\n");
@@ -788,14 +768,14 @@ Singleton {
             return;
 
         if (typeof data.aspectLocked === "boolean")
-            root.locked = data.aspectLocked;
+            root.aspectLocked = data.aspectLocked;
 
         if (typeof data.followWindow === "boolean")
-            root.following = data.followWindow;
+            root.followWindow = data.followWindow;
 
-        if (root.following && typeof data.boundWindow === "string" && typeof data.boundWindowName === "string" && data.boundWindow) {
-            root.bound = data.boundWindow;
-            root.boundName = data.boundWindowName;
+        if (root.followWindow && typeof data.boundWindow === "string" && typeof data.boundWindowName === "string" && data.boundWindow) {
+            root.boundWindow = data.boundWindow;
+            root.boundWindowName = data.boundWindowName;
         }
 
         const name = typeof data.monitor === "string" ? data.monitor : "";
@@ -823,7 +803,7 @@ Singleton {
 
         if (s && mon) {
             root.mapped = true;
-            root.home = mon.name;
+            root.monitorName = mon.name;
 
             const w = Math.min(s.width, mon.w);
             const h = Math.min(s.height, mon.h);
@@ -918,7 +898,7 @@ Singleton {
             return;
 
         if (verb === "ready") {
-            root.padAlive = true;
+            root.padConnected = true;
 
             padLost.stop();
 
@@ -927,7 +907,7 @@ Singleton {
         }
 
         if (verb === "gone") {
-            root.padAlive = false;
+            root.padConnected = false;
             root.padEdgeAt = {};
 
             if (root.editing)
@@ -978,7 +958,7 @@ Singleton {
         }
 
         onExited: {
-            root.padAlive = false;
+            root.padConnected = false;
             root.padEdgeAt = {};
 
             if (root.editing)
@@ -1021,7 +1001,7 @@ Singleton {
         }
 
         function onWindowClosed(addr: string): void {
-            if (root.bound && Hypr.windowAddress(addr) === Hypr.windowAddress(root.bound))
+            if (root.boundWindow && Hypr.windowAddress(addr) === Hypr.windowAddress(root.boundWindow))
                 root.unbindWindow();
         }
     }

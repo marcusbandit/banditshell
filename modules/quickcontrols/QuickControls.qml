@@ -88,7 +88,7 @@ Item {
     Follow {
         id: reveal
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.active ? 1 : 0
         epsilon: 0.005
     }

@@ -8,9 +8,9 @@ import qs.services
 Item {
     id: root
 
-    property int base: Appearance.sizes.wsSlot
-    property int pitch: Appearance.sizes.wsWindowPitch
-    property int gap: Appearance.sizes.wsGap
+    property int base: Appearance.sizes.workspaceSlot
+    property int pitch: Appearance.sizes.workspaceWindowPitch
+    property int gap: Appearance.sizes.workspaceGap
 
     property bool stack: false
 
@@ -84,7 +84,7 @@ Item {
     }
 
     function step(dt: real): void {
-        const f = 1 - Math.exp(-Appearance.anim.trackSpeed * dt);
+        const f = 1 - Math.exp(-Appearance.animation.trackSpeed * dt);
         const n = Math.max(root.live.length, root.slots.length);
 
         const last = root.slots[root.slots.length - 1];

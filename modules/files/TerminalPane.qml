@@ -39,7 +39,7 @@ Item {
 
             Behavior on width {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutQuad
                 }
             }

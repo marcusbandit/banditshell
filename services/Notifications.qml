@@ -41,7 +41,7 @@ Singleton {
         root.pausedBy = root.pausedBy.filter(w => w && w !== who);
     }
 
-    readonly property int exitMs: Appearance.anim.normal
+    readonly property int exitMs: Appearance.animation.normal
 
     function beginLeave(entry: var, forget: bool): void {
         if (!entry || entry.leaving)

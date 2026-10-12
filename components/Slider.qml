@@ -56,7 +56,7 @@ Item {
         id: glide
 
         target: root.fraction
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         epsilon: 0.001
     }
 
@@ -101,7 +101,7 @@ Item {
 
         Behavior on scale {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutBack
             }
         }

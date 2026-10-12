@@ -44,7 +44,7 @@ Item {
         id: charge
 
         target: Math.max(0, Math.min(1, root.level))
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         epsilon: 0.001
     }
 
@@ -61,7 +61,7 @@ Item {
 
     property real phase: 0
 
-    readonly property int drift: root.charging ? Appearance.anim.slow * 6 : Appearance.anim.slow * 20
+    readonly property int drift: root.charging ? Appearance.animation.slow * 6 : Appearance.animation.slow * 20
 
     Timer {
         interval: 16

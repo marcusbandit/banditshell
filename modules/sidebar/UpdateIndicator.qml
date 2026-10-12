@@ -57,14 +57,14 @@ Item {
 
         Behavior on scale {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutCubic
             }
         }
 
         Behavior on color {
             ColorAnimation {
-                duration: Appearance.anim.normal
+                duration: Appearance.animation.normal
             }
         }
     }

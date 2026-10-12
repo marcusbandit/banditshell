@@ -35,7 +35,7 @@ Item {
     Timer {
         id: hoverDwell
 
-        interval: Appearance.anim.dwell
+        interval: Appearance.animation.dwell
         running: root.hovered
         onTriggered: root.dwellMet = true
     }
@@ -58,14 +58,14 @@ Item {
         id: reveal
 
         target: root.open ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
     Timer {
         id: linger
 
-        interval: Appearance.anim.grace
+        interval: Appearance.animation.grace
     }
 
     property bool hoverLost: false
@@ -77,7 +77,7 @@ Item {
     Timer {
         id: watchdog
 
-        interval: Appearance.anim.grace * root.patience
+        interval: Appearance.animation.grace * root.patience
         repeat: true
 
         running: Compositor.isHyprland && zone.containsMouse && !zone.pressed && !root.hoverLost

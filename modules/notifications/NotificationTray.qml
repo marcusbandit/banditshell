@@ -33,7 +33,7 @@ Item {
     Timer {
         id: armsDwell
 
-        interval: Appearance.anim.dwell
+        interval: Appearance.animation.dwell
         running: root.armsHovered
         onTriggered: root.dwellMet = true
     }
@@ -76,7 +76,7 @@ Item {
     Timer {
         id: grace
 
-        interval: Appearance.anim.grace
+        interval: Appearance.animation.grace
         onTriggered: root.courted = false
     }
 
@@ -210,7 +210,7 @@ Item {
     Follow {
         id: shove
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
         target: 0
         onValueChanged: if (!push.pulling)
@@ -282,7 +282,7 @@ Item {
                     Follow {
                         id: reveal
 
-                        speed: Appearance.anim.revealSpeed
+                        speed: Appearance.animation.revealSpeed
                         epsilon: 0.005
                         target: root.expanded ? 1 : 0
                     }

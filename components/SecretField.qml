@@ -63,7 +63,7 @@ Item {
     Follow {
         id: focusIn
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: field.activeFocus ? 1 : 0
         epsilon: 0.005
     }
@@ -138,7 +138,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutCubic
             }
         }
@@ -170,7 +170,7 @@ Item {
     Follow {
         id: pan
 
-        speed: Appearance.anim.scrollSpeed
+        speed: Appearance.animation.scrollSpeed
         target: root.offset
     }
 
@@ -202,14 +202,14 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                     easing.type: Easing.OutCubic
                 }
             }
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
 
                     easing.type: Easing.OutBack
                     easing.overshoot: 2.2

@@ -662,7 +662,7 @@ Item {
     Timer {
         id: leaving
 
-        interval: Appearance.anim.settle
+        interval: Appearance.animation.settle
         running: root.dragging && root.outside
 
         onTriggered: root.exportDrag()
@@ -731,14 +731,14 @@ Item {
 
         target: root.dragAt.x
 
-        speed: Appearance.anim.trackSpeed * 2
+        speed: Appearance.animation.trackSpeed * 2
     }
 
     Follow {
         id: followY
 
         target: root.dragAt.y
-        speed: Appearance.anim.trackSpeed * 2
+        speed: Appearance.animation.trackSpeed * 2
     }
 
     Item {

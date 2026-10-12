@@ -54,7 +54,7 @@ ListView {
     Follow {
         id: glide
 
-        speed: Appearance.anim.scrollSpeed
+        speed: Appearance.animation.scrollSpeed
 
         epsilon: 0.5
         target: root.scrollTarget
@@ -113,7 +113,7 @@ ListView {
     Timer {
         id: coast
 
-        interval: Appearance.anim.fast
+        interval: Appearance.animation.fast
         onTriggered: root.coastOn()
     }
 }

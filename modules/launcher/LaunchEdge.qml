@@ -58,7 +58,7 @@ Item {
         id: swell
 
         target: root.active ? root.swellBy : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
 
         epsilon: 0.2
     }

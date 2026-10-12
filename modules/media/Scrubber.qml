@@ -38,7 +38,7 @@ Item {
         id: glide
 
         target: Media.progress
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         epsilon: 0.001
     }
 
@@ -46,7 +46,7 @@ Item {
         id: swell
 
         target: Media.playing ? 1 : 0
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         epsilon: 0.004
     }
 
@@ -104,7 +104,7 @@ Item {
 
         Behavior on scale {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutBack
             }
         }

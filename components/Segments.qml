@@ -40,7 +40,7 @@ Item {
     Follow {
         id: slide
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.current * root.segment
     }
 

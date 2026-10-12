@@ -79,14 +79,14 @@ Item {
         id: unroll
 
         target: root.open ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.001
     }
 
     Follow {
         id: marker
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.selected * root.step
     }
 
@@ -183,7 +183,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                             }
                         }
                     }
@@ -210,7 +210,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                             }
                         }
                     }

@@ -35,7 +35,7 @@ Item {
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
