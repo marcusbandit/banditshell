@@ -56,7 +56,7 @@ Item {
         }
     ]
 
-    readonly property real keyCeiling: Math.round(Appearance.font.size.large * 4 / 3) + Appearance.padding.huge * 2
+    readonly property real keyCeiling: Appearance.font.line.large + Appearance.padding.huge * 2
     readonly property real keyRoom: (root.fullHeight - Appearance.padding.large * 2 - pad.chromeHeight - (pad.rows - 1) * pad.gap) / pad.rows
     readonly property real fullKeyHeight: Math.max(pad.restKeyHeight, Math.min(root.keyCeiling, root.keyRoom))
 
@@ -108,7 +108,7 @@ Item {
     Follow {
         id: reveal
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
         epsilon: 0.005
     }
@@ -116,7 +116,7 @@ Item {
     Follow {
         id: shape
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.full ? 1 : 0
         epsilon: 0.005
 

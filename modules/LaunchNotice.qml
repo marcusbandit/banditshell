@@ -82,7 +82,7 @@ Item {
     Follow {
         id: rise
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.out ? 1 : 0
         epsilon: 0.005
     }
@@ -120,6 +120,8 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     spec: pill.modelData.mark
+                    fits: AppIcons.fits
+                    onMeasured: (path, box) => AppIcons.recordFit(path, box)
                     size: root.markSize
                     fallback: Apps.genericIcon
 

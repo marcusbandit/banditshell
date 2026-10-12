@@ -50,11 +50,11 @@ Item {
                 width: root.ring
                 height: root.ring
 
-                scale: press.pressed ? 0.94 : press.containsMouse ? 1.12 : 1
+                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                         easing.type: Easing.OutBack
                     }
                 }

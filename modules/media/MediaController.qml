@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
@@ -127,18 +128,18 @@ Item {
     function volume(dir: int): void {
         if (!Audio.ready)
             return;
-        Audio.setVolume(Audio.quantise(Audio.volume + dir * Appearance.sizes.volumeStep));
+        Audio.setVolume(Audio.quantise(Audio.volume + dir * Config.values.volume.step));
     }
 
     function seek(dir: int, big: bool): void {
-        const amount = big ? Appearance.sizes.mediaSeekLarge : Appearance.sizes.mediaSeekSmall;
+        const amount = big ? Config.values.media.seekLarge : Config.values.media.seekSmall;
         Media.seekBy(dir * amount);
     }
 
     Follow {
         id: reveal
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
         epsilon: 0.005
     }

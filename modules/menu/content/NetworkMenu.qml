@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Column {
     id: root
@@ -119,7 +120,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -133,7 +134,7 @@ Column {
 
             Behavior on fill {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -397,7 +398,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                 }
             }
 

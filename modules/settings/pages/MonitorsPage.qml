@@ -208,7 +208,7 @@ Item {
             MonitorCanvas {
                 id: canvas
 
-                readonly property real chrome: Appearance.font.size.small * 4 / 3 + Appearance.padding.small
+                readonly property real chrome: Appearance.font.line.small + Appearance.padding.small
                 readonly property real room: root.viewport - root.canvasReserve
 
                 width: parent.width

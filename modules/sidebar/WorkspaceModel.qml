@@ -8,9 +8,9 @@ import qs.services
 Item {
     id: root
 
-    property int base: Appearance.sizes.wsSlot
-    property int pitch: Appearance.sizes.wsWindowPitch
-    property int gap: Appearance.sizes.wsGap
+    property int base: Appearance.sizes.workspaceSlot
+    property int pitch: Appearance.sizes.workspaceWindowPitch
+    property int gap: Appearance.sizes.workspaceGap
 
     property bool stack: false
 
@@ -84,7 +84,7 @@ Item {
     }
 
     function step(dt: real): void {
-        const f = 1 - Math.exp(-Appearance.anim.trackSpeed * dt);
+        const f = 1 - Math.exp(-Appearance.animation.trackSpeed * dt);
         const n = Math.max(root.live.length, root.slots.length);
 
         const last = root.slots[root.slots.length - 1];
@@ -185,7 +185,7 @@ Item {
             const dx = x - root.scrubFromX;
             const dy = y - root.scrubFromY;
 
-            if (Math.hypot(dx, dy) < Appearance.sizes.dragThreshold)
+            if (Math.hypot(dx, dy) < Config.values.control.dragThreshold)
                 return;
 
             if (Math.abs(dy) <= Math.abs(dx)) {
@@ -212,7 +212,7 @@ Item {
     function scrubRelease(): bool {
         const consumed = root.scrubbing || root.scrubSpent;
 
-        if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Appearance.sizes.flickVelocity) {
+        if (root.scrubbing && !root.scrubFired && Math.abs(root.scrubVelocity) >= Config.values.control.flickVelocity) {
             const to = root.scrubBase + (root.scrubVelocity > 0 ? 1 : -1);
             if (to >= root.band && to < root.band + root.count)
                 Hypr.switchTo(to);

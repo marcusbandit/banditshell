@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -179,7 +180,7 @@ Item {
 
     Timer {
         id: grace
-        interval: Appearance.anim.grace
+        interval: Appearance.animation.grace
 
         onTriggered: {
             if (root.pinned || root.hovered || root.shellHovered || root.needsKeyboard)
@@ -199,12 +200,12 @@ Item {
 
         target: root.clampCentre(root.requestedCentre)
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
     }
 
     Follow {
         id: reveal
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -217,7 +218,7 @@ Item {
         dirX: root.fromTop ? 0 : -1
         dirY: root.fromTop ? -1 : 0
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.fromTop ? panel.implicitHeight : panel.fullWidth
 

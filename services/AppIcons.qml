@@ -8,8 +8,7 @@ import qs.config
 Singleton {
     id: root
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/appicons.json`
+    readonly property string path: `${Config.stateDir}/appicons.json`
 
     property bool loaded: false
 
@@ -93,7 +92,7 @@ Singleton {
         if (named)
             return `symbol:${named}`;
 
-        const mode = want || Appearance.sizes.wsIconMode;
+        const mode = want || Config.values.sidebar.workspaces.iconMode;
 
         if (mode === "colour") {
             const art = Apps.iconSourceFor([cls]);

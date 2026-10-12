@@ -11,7 +11,7 @@ Item {
     readonly property alias view: view
     readonly property bool focused: Files.focus === "terminal"
 
-    property int rows: Appearance.sizes.filesTerminalRows
+    property int rows: Config.values.files.terminal.rows
 
     readonly property real chrome: handle.height + Appearance.padding.small * 2
     readonly property real bodyHeight: root.rows * view.cellHeight
@@ -39,7 +39,7 @@ Item {
 
             Behavior on width {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutQuad
                 }
             }

@@ -104,7 +104,7 @@ Item {
     Timer {
         id: coast
 
-        interval: Math.max(root.lapseFloor, Appearance.anim.fast)
+        interval: Math.max(root.lapseFloor, Appearance.animation.fast)
 
         onTriggered: root.finish()
     }

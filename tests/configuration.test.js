@@ -4,7 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
-const src = fs.readFileSync(path.join(ROOT, "services/configuration.js"), "utf8");
+const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
 const Configuration = new Function(src + "\nreturn { merge, assign, lookup };")();
 
 const OPAQUE = ["files.keys", "files.grid"];

@@ -22,7 +22,7 @@ Item {
     readonly property bool isFolder: root.entry && root.entry.kind === "dir"
     readonly property bool isImage: root.entry && root.entry.class === "image" && !root.entry.broken
     readonly property bool isAudio: root.entry && root.entry.class === "audio"
-    readonly property bool isText: root.stat && root.stat.text && root.stat.size <= Appearance.sizes.filesTextMax
+    readonly property bool isText: root.stat && root.stat.text && root.stat.size <= Config.values.files.textMax
 
     readonly property var languages: ({
             c: ["c", "h", "cpp", "cc", "cxx", "hpp", "hh"],
@@ -255,11 +255,11 @@ Item {
 
                 readonly property real ring: Appearance.font.iconSize + Appearance.padding.normal * 2
 
-                scale: press.pressed ? 0.94 : press.containsMouse ? 1.12 : 1
+                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
 
                 Behavior on scale {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                         easing.type: Easing.OutBack
                     }
                 }
@@ -367,7 +367,7 @@ Item {
 
                 width: parent.width
 
-                text: root.rendered ? Markdown.inert(body.content) : ""
+                text: root.rendered ? Markdown.inert(Markdown.flattenHeadings(body.content)) : ""
                 textFormat: Text.MarkdownText
                 wrapMode: Text.Wrap
 

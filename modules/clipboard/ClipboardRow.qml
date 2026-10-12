@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
@@ -30,7 +31,7 @@ Item {
     property real thrown: 0
     property bool throwing: false
 
-    readonly property real throwFull: Math.max(1, root.width * Appearance.sizes.dragDismissFraction)
+    readonly property real throwFull: Math.max(1, root.width * Config.values.control.dragDismissFraction)
     readonly property real throwFraction: Math.min(1, Math.abs(root.thrown) / root.throwFull)
 
     readonly property bool focused: root.selected || root.hovered
@@ -40,11 +41,11 @@ Item {
     Follow {
         id: slide
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.throwing ? root.thrown : 0
     }
 
-    readonly property real offset: slide.value * Appearance.sizes.dragResistance
+    readonly property real offset: slide.value * Config.values.control.dragResistance
 
     Item {
         id: card
@@ -64,7 +65,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -138,7 +139,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -165,7 +166,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -200,7 +201,7 @@ Item {
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
                 }
@@ -297,7 +298,7 @@ Item {
             const dx = mouse.x - press.fromX;
             const dy = mouse.y - press.fromY;
 
-            if (!press.moved && Math.hypot(dx, dy) < Appearance.sizes.dragThreshold)
+            if (!press.moved && Math.hypot(dx, dy) < Config.values.control.dragThreshold)
                 return;
 
             if (!press.moved) {
@@ -331,8 +332,8 @@ Item {
                 return;
             }
 
-            const away = Math.sign(root.thrown) === Math.sign(press.velocity) && Math.abs(press.velocity) > Appearance.sizes.flickVelocity;
-            const far = root.throwFraction >= 1 && Math.abs(press.velocity) < Appearance.sizes.pullReversal;
+            const away = Math.sign(root.thrown) === Math.sign(press.velocity) && Math.abs(press.velocity) > Config.values.control.flickVelocity;
+            const far = root.throwFraction >= 1 && Math.abs(press.velocity) < Config.values.control.pullReversal;
 
             if (away || far) {
 

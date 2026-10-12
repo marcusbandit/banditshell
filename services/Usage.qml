@@ -3,12 +3,12 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 
 Singleton {
     id: root
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/usage.json`
+    readonly property string path: `${Config.stateDir}/usage.json`
 
     property bool loaded: false
 

@@ -16,7 +16,7 @@ Singleton {
         return Hyprland.focusedMonitor?.activeWorkspace?.id ?? 1;
     }
 
-    readonly property int count: Appearance.sizes.wsPersistent
+    readonly property int count: Config.values.sidebar.workspaces.persistent
 
     readonly property var bands: HyprConfig.bands.filter(b => !b.dynamic && b.path?.[1] === HyprConfig.hostName)
 
@@ -341,8 +341,8 @@ Singleton {
         if (!mon)
             return [];
         const special = mon.lastIpcObject?.specialWorkspace;
-        const wsId = special?.name ? special.id : mon.activeWorkspace?.id;
-        return Hyprland.toplevels.values.filter(c => c.workspace?.id === wsId).sort((a, b) => {
+        const workspaceId = special?.name ? special.id : mon.activeWorkspace?.id;
+        return Hyprland.toplevels.values.filter(c => c.workspace?.id === workspaceId).sort((a, b) => {
             const x = a.lastIpcObject;
             const y = b.lastIpcObject;
             return (y.pinned - x.pinned) || ((y.fullscreen !== 0) - (x.fullscreen !== 0)) || (y.floating - x.floating);

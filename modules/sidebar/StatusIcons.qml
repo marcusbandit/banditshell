@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 import qs.modules.menu.content
 
 Item {
@@ -44,14 +45,14 @@ Item {
     Follow {
         id: slide
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.markedIndex * root.pitch
     }
 
     Follow {
         id: lit
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.hoveredKey ? 1 : 0
         epsilon: 0.005
     }

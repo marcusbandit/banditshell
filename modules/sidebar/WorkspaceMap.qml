@@ -11,11 +11,11 @@ Item {
 
     required property string screen
 
-    readonly property int bar: Appearance.sizes.wsMapBar
-    readonly property int pitch: bar + Appearance.sizes.wsMapGap
+    readonly property int bar: Appearance.sizes.workspaceMapBar
+    readonly property int pitch: bar + Appearance.sizes.workspaceMapGap
     readonly property real span: width - Appearance.sizes.band
 
-    readonly property real floor: Appearance.sizes.wsEmptyReach
+    readonly property real floor: Appearance.sizes.workspaceEmptyReach
 
     property int hovered: -1
 
@@ -24,7 +24,7 @@ Item {
     function reachOf(client: var, hovered: bool): real {
         const w = client?.lastIpcObject?.size?.[0] ?? 0;
         const screen = root.Screen.width || 1;
-        const f = Math.max(root.floor, Math.min(1, w / screen)) + (hovered ? Appearance.sizes.wsHover : 0);
+        const f = Math.max(root.floor, Math.min(1, w / screen)) + (hovered ? Appearance.sizes.workspaceHover : 0);
         return Math.round(root.span * f);
     }
 
@@ -79,7 +79,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -109,14 +109,14 @@ Item {
 
                     Behavior on width {
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
 

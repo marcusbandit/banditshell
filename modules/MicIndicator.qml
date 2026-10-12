@@ -178,7 +178,7 @@ Item {
         id: slide
 
         target: root.anchor
-        speed: Appearance.anim.trackSpeed / 2
+        speed: Appearance.animation.trackSpeed / 2
     }
 
     Loader {
@@ -280,7 +280,7 @@ Item {
     Follow {
         id: drop
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.out ? 1 : 0
         epsilon: 0.005
     }
@@ -288,7 +288,7 @@ Item {
     Follow {
         id: tuck
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.near ? 1 : 0
         epsilon: 0.005
     }
@@ -306,14 +306,14 @@ Item {
         from: 0
         to: 1
 
-        duration: Appearance.anim.slow * 9
+        duration: Appearance.animation.slow * 9
         loops: Animation.Infinite
     }
 
     Follow {
         id: fill
 
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         target: root.phase === "processing" ? 1 : 0
         epsilon: 0.004
     }
@@ -331,7 +331,7 @@ Item {
         from: 0
         to: 1
 
-        duration: Appearance.anim.slow * 2
+        duration: Appearance.animation.slow * 2
         loops: Animation.Infinite
     }
 

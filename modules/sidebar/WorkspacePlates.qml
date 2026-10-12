@@ -6,26 +6,27 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
 
     required property string screen
 
-    readonly property string iconMode: Appearance.sizes.wsIconMode
+    readonly property string iconMode: Config.values.sidebar.workspaces.iconMode
 
-    readonly property int slot: Appearance.sizes.wsSlot
-    readonly property int iconSize: Appearance.sizes.wsIcon
-    readonly property int pitch: Appearance.sizes.wsWindowPitch
+    readonly property int slot: Appearance.sizes.workspaceSlot
+    readonly property int iconSize: Appearance.sizes.workspaceIcon
+    readonly property int pitch: Appearance.sizes.workspaceWindowPitch
 
     readonly property real lane: Math.round((root.width - root.slot) / 2)
 
-    readonly property int dot: Math.round(root.slot * Appearance.sizes.wsEmptyReach)
+    readonly property int dot: Math.round(root.slot * Appearance.sizes.workspaceEmptyReach)
 
     readonly property real radius: Appearance.rounding.normal
 
-    readonly property int bleedUp: Math.floor(Appearance.sizes.wsGap / 2)
-    readonly property int bleedDown: Appearance.sizes.wsGap - root.bleedUp
+    readonly property int bleedUp: Math.floor(Appearance.sizes.workspaceGap / 2)
+    readonly property int bleedDown: Appearance.sizes.workspaceGap - root.bleedUp
 
     readonly property int barH: Appearance.font.iconSize
     readonly property int barGap: Math.round(Appearance.padding.small / 2)
@@ -39,7 +40,7 @@ Item {
     property int racked: -1
 
     readonly property var deck: {
-        const want = Appearance.sizes.wsSpecials;
+        const want = Config.values.sidebar.workspaces.specials;
         const live = Hypr.specials;
         const out = [];
         for (const name of want)
@@ -90,7 +91,7 @@ Item {
     }
 
     function barWidth(entry: var): real {
-        return entry.windows.length ? Math.max(Math.round(root.slot * Appearance.sizes.wsBusyReach), root.barMark + root.barGap * 2) : root.dot;
+        return entry.windows.length ? Math.max(Math.round(root.slot * Appearance.sizes.workspaceBusyReach), root.barMark + root.barGap * 2) : root.dot;
     }
 
     implicitHeight: layout.total + (root.deck.length ? root.rackGap + root.rackHeight : 0)
@@ -233,7 +234,7 @@ Item {
     Follow {
         id: growth
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.tags.length && root.hovering && !layout.scrubbing ? 1 : 0
         epsilon: 0.005
     }
@@ -241,21 +242,21 @@ Item {
     Follow {
         id: markY
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.heldGeom.y
     }
 
     Follow {
         id: markH
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.heldGeom.h
     }
 
     Follow {
         id: markShown
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.onColumn ? 1 : 0
         epsilon: 0.005
     }
@@ -263,28 +264,28 @@ Item {
     Follow {
         id: hoverY
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.hoverGeom.y
     }
 
     Follow {
         id: hoverH
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.hoverGeom.h
     }
 
     Follow {
         id: hoverW
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.hoverGeom.w
     }
 
     Follow {
         id: lit
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
 
         target: root.hovering && !layout.scrubbing ? 1 : 0
         epsilon: 0.005
@@ -346,7 +347,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -381,7 +382,7 @@ Item {
 
             Behavior on width {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                     easing.type: Easing.OutCubic
                 }
             }
@@ -400,7 +401,7 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -411,7 +412,7 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
 
@@ -420,12 +421,14 @@ Item {
                     visible: bar.entry.windows.length > 0
                     size: root.barMark
                     spec: root.barSpec(bar.entry)
+                    fits: AppIcons.fits
+                    onMeasured: (path, box) => AppIcons.recordFit(path, box)
                     fallback: root.barGlyph(bar.entry)
                     color: Appearance.colour.textDim
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
                 }
@@ -556,7 +559,7 @@ Item {
 
                 Behavior on full {
                     NumberAnimation {
-                        duration: Appearance.anim.normal
+                        duration: Appearance.animation.normal
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -586,7 +589,7 @@ Item {
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                             }
                         }
 
@@ -594,13 +597,15 @@ Item {
                             anchors.centerIn: parent
                             size: root.iconSize
                             spec: AppIcons.markFor(row.appClass, root.iconMode)
+                            fits: AppIcons.fits
+                            onMeasured: (path, box) => AppIcons.recordFit(path, box)
                             fallback: Apps.iconFor(row.appClass)
 
                             color: row.lit ? Appearance.colour.text : Appearance.colour.textDim
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
                         }
@@ -688,7 +693,7 @@ Item {
 
             Behavior on shown {
                 NumberAnimation {
-                    duration: Appearance.anim.normal
+                    duration: Appearance.animation.normal
                     easing.type: Easing.OutCubic
                 }
             }
@@ -761,6 +766,8 @@ Item {
                         size: Math.round(mark.markSize)
 
                         spec: AppIcons.markFor(Hypr.classOf(mark.modelData), root.iconMode)
+                        fits: AppIcons.fits
+                        onMeasured: (path, box) => AppIcons.recordFit(path, box)
                         fallback: Apps.iconFor(Hypr.classOf(mark.modelData))
                         color: Hypr.isFocused(mark.modelData) ? Appearance.colour.text : Appearance.colour.textDim
                     }

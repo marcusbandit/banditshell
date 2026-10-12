@@ -324,7 +324,7 @@ done`, "sh", ...fresh];
         return k === "video" ? root.poster(path) : path;
     }
 
-    readonly property string posterDir: `${Quickshell.env("XDG_CACHE_HOME") || `${Quickshell.env("HOME")}/.cache`}/banditshell/posters`
+    readonly property string posterDir: `${Config.cacheDir}/posters`
 
     function makePosters(): void {
         const videos = root.available.filter(p => root.kindOf(p) === "video");

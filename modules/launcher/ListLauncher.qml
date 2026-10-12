@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 LauncherConcept {
     id: root
@@ -98,7 +99,7 @@ LauncherConcept {
         id: grow
 
         target: panel.implicitHeight
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         epsilon: 0.5
     }
 

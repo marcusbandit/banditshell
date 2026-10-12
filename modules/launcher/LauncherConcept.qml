@@ -180,7 +180,7 @@ Item {
         id: rise
 
         target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -206,7 +206,7 @@ Item {
         dirX: 0
         dirY: 1
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.travel
 

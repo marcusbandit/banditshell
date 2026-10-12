@@ -35,11 +35,13 @@ Item {
             anchors.centerIn: parent
             size: Appearance.sizes.trayIcon
             spec: Tray.markFor(root.item)
+            fits: AppIcons.fits
+            onMeasured: (path, box) => AppIcons.recordFit(path, box)
             color: root.markColour
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }

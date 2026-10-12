@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import Quickshell
+import qs.services
 import qs.modules
 import qs.modules.files
 import qs.modules.lock
@@ -9,6 +10,7 @@ import qs.modules.picker
 import qs.modules.settings
 
 ShellRoot {
+    readonly property var compositorSync: CompositorSync
 
     LockScreen {}
 

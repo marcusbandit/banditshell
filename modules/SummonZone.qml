@@ -25,7 +25,7 @@ Item {
     Timer {
         id: stripDwell
 
-        interval: Appearance.anim.dwell
+        interval: Appearance.animation.dwell
         running: root.stripHovered
         onTriggered: root.stripDwelt = true
     }
@@ -52,7 +52,7 @@ Item {
 
     property int border: Appearance.sizes.border
 
-    readonly property real grab: Appearance.sizes.touchEdges ? Math.max(root.border, Appearance.sizes.minTarget) : root.border
+    readonly property real grab: Config.values.control.touchEdges ? Math.max(root.border, Appearance.sizes.minTarget) : root.border
 
     function dragTo(fraction: real): void {
         root.pulling = true;
@@ -100,20 +100,20 @@ Item {
 
     Follow {
         id: drop
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.active ? 1 : 0
         epsilon: 0.005
     }
 
     Follow {
         id: wide
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         target: root.contentWidth
     }
 
     Follow {
         id: tall
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         target: root.contentHeight
     }
 
@@ -139,7 +139,7 @@ Item {
         dirX: 0
         dirY: 1
 
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.notchFull
 
@@ -159,7 +159,7 @@ Item {
 
         dirX: 0
         dirY: -1
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: root.notchFull
 

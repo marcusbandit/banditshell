@@ -27,7 +27,7 @@ Column {
 
     property real slide: 0
 
-    readonly property int gestureSign: Appearance.sizes.calendarRightGoesForward ? 1 : -1
+    readonly property int gestureSign: Config.values.calendar.rightGoesForward ? 1 : -1
 
     spacing: Appearance.padding.normal
 
@@ -103,7 +103,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -215,7 +215,7 @@ Column {
 
                 if (!pager.paging) {
 
-                    if (Math.abs(travel) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
+                    if (Math.abs(travel) < Config.values.control.dragThreshold && Math.abs(dy) < Config.values.control.dragThreshold)
                         return;
 
                     if (Math.abs(dy) > Math.abs(travel)) {
@@ -237,7 +237,7 @@ Column {
                 if (pager.paging) {
 
                     const half = Math.abs(root.slide) > months.width / 2;
-                    const onward = root.slide * pager.velocity > 0 && Math.abs(pager.velocity) >= Appearance.sizes.flickVelocity;
+                    const onward = root.slide * pager.velocity > 0 && Math.abs(pager.velocity) >= Config.values.control.flickVelocity;
                     if (half || onward)
                         root.page(root.slide > 0 ? -1 : 1);
                     root.glide();
@@ -336,7 +336,7 @@ Column {
                         property: "glow"
                         from: 0
                         to: 1
-                        duration: Appearance.anim.slow
+                        duration: Appearance.animation.slow
                     }
 
                     Repeater {
@@ -353,7 +353,7 @@ Column {
 
                             readonly property var usage: cellText.inMonth ? Usage.forDay(cellText.day) : null
 
-                            readonly property real awake: cellText.usage ? Math.min(1, cellText.usage.minutes / (Appearance.sizes.usageCapHours * 60)) : 0
+                            readonly property real awake: cellText.usage ? Math.min(1, cellText.usage.minutes / (Config.values.usage.capHours * 60)) : 0
 
                             readonly property int level: cellText.awake > 0 ? Math.min(root.usageTones.length, Math.ceil(cellText.awake * root.usageTones.length)) : 0
 
@@ -395,7 +395,7 @@ Column {
         Follow {
             id: settle
 
-            speed: Appearance.anim.revealSpeed
+            speed: Appearance.animation.revealSpeed
             target: 0
 
             onValueChanged: if (!pager.paging)

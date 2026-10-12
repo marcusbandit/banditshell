@@ -34,7 +34,7 @@ Item {
     }
 
     function coast(v: real): void {
-        root.scrollTo(flow.value + v * Appearance.sizes.coastMs);
+        root.scrollTo(flow.value + v * Config.values.control.coastMs);
     }
 
     onLimitChanged: root.scrollTo(root.target)
@@ -43,7 +43,7 @@ Item {
         id: flow
 
         target: root.target
-        speed: Appearance.anim.scrollSpeed
+        speed: Appearance.animation.scrollSpeed
         epsilon: 0.5
     }
 
@@ -80,7 +80,7 @@ Item {
             if (swipe.spent)
                 return;
             if (!swipe.scrolling && !swipe.backing) {
-                if (Math.abs(dx) < Appearance.sizes.dragThreshold && Math.abs(dy) < Appearance.sizes.dragThreshold)
+                if (Math.abs(dx) < Config.values.control.dragThreshold && Math.abs(dy) < Config.values.control.dragThreshold)
                     return;
                 if (Math.abs(dy) > Math.abs(dx))
                     swipe.scrolling = true;
@@ -111,8 +111,8 @@ Item {
         function settle(meant: bool): void {
             if (swipe.backing) {
 
-                const thrown = swipe.velocity >= Appearance.sizes.flickVelocity;
-                const far = root.backFraction >= Appearance.sizes.pullCommit;
+                const thrown = swipe.velocity >= Config.values.control.flickVelocity;
+                const far = root.backFraction >= Config.values.control.pullCommit;
                 swipe.backing = false;
                 root.backed(meant && (thrown || far));
             } else if (swipe.scrolling && meant) {
@@ -142,7 +142,7 @@ Item {
             if (scroll.feed(wheel))
                 return;
             wheel.accepted = true;
-            const step = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 120 * Appearance.sizes.rowHeight * Appearance.sizes.wheelRows;
+            const step = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 120 * Appearance.sizes.rowHeight * Config.values.control.wheelRows;
             root.scrollTo(root.target - step);
         }
 

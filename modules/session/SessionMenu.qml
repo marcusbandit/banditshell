@@ -117,7 +117,7 @@ Item {
     Follow {
         id: reveal
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
         epsilon: 0.005
     }
@@ -125,7 +125,7 @@ Item {
     Follow {
         id: marker
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.selected * root.step
     }
 
@@ -189,7 +189,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -224,7 +224,7 @@ Item {
 
                             Behavior on color {
                                 ColorAnimation {
-                                    duration: Appearance.anim.normal
+                                    duration: Appearance.animation.normal
                                 }
                             }
                         }

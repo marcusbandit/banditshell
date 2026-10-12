@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.modules.controls
 
 MenuRow {
     id: root
@@ -32,7 +33,7 @@ MenuRow {
 
         Behavior on color {
             ColorAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
     }

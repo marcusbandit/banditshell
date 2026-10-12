@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import qs.components
 import qs.config
 import qs.modules.menu.content
 
@@ -33,7 +34,7 @@ ShellRoot {
             width: Appearance.sizes.menuWidth - Appearance.padding.large * 2
         }
 
-        Text {
+        StyledText {
             x: Appearance.padding.large
             y: Appearance.padding.large
             color: "#eaf6f0"

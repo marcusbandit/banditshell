@@ -4,7 +4,7 @@ import qs.config
 ListView {
     id: root
 
-    property real step: Appearance.sizes.rowHeight * Appearance.sizes.wheelRows
+    property real step: Appearance.sizes.rowHeight * Config.values.control.wheelRows
 
     property real scrollTarget: 0
 
@@ -54,7 +54,7 @@ ListView {
     Follow {
         id: glide
 
-        speed: Appearance.anim.scrollSpeed
+        speed: Appearance.animation.scrollSpeed
 
         epsilon: 0.5
         target: root.scrollTarget
@@ -106,14 +106,14 @@ ListView {
 
     function coastOn(): void {
         coast.stop();
-        root.scrollTo(root.contentY + root.velocity * Appearance.sizes.coastMs);
+        root.scrollTo(root.contentY + root.velocity * Config.values.control.coastMs);
         root.velocity = 0;
     }
 
     Timer {
         id: coast
 
-        interval: Appearance.anim.fast
+        interval: Appearance.animation.fast
         onTriggered: root.coastOn()
     }
 }

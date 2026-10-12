@@ -522,7 +522,7 @@ Scope {
             return "no audio sink";
         const n = parseFloat(count);
         const steps = n > 0 ? n : 1;
-        const target = Audio.quantise(Audio.volume + sign * steps * Appearance.sizes.volumeStep);
+        const target = Audio.quantise(Audio.volume + sign * steps * Config.values.volume.step);
         Audio.setVolume(target);
         return `${Math.round(target * 100)}%`;
     }

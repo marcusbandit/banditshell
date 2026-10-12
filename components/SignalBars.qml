@@ -5,7 +5,7 @@ Item {
     id: root
 
     property real strength: 0
-    property int steps: Appearance.sizes.signalBands
+    property int steps: Config.values.control.signalBands
     property color activeColour: Appearance.colour.text
 
     property color inactiveColour: Appearance.colour.fillStronger
@@ -35,7 +35,7 @@ Item {
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }

@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Column {
     id: root
@@ -129,7 +130,7 @@ Column {
 
     Repeater {
 
-        model: Bluetooth.enabled ? Bluetooth.known.slice(0, Appearance.sizes.deviceListMax) : []
+        model: Bluetooth.enabled ? Bluetooth.known.slice(0, Config.values.control.deviceListMax) : []
 
         delegate: Column {
             id: entry
@@ -221,7 +222,7 @@ Column {
 
             Behavior on rotation {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutBack
                 }
             }
@@ -233,7 +234,7 @@ Column {
         open: root.opened === "pair"
 
         Repeater {
-            model: Bluetooth.strangers.slice(0, Appearance.sizes.deviceListMax)
+            model: Bluetooth.strangers.slice(0, Config.values.control.deviceListMax)
 
             delegate: MenuRow {
                 required property var modelData

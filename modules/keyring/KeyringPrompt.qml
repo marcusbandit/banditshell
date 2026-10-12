@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
@@ -38,7 +39,7 @@ Item {
     Follow {
         id: reveal
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.open ? 1 : 0
 
         epsilon: 0.005
@@ -57,7 +58,7 @@ Item {
     Follow {
         id: tall
 
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         target: body.implicitHeight + Appearance.padding.huge * 2
 
         onTargetChanged: if (!root.open)
@@ -136,7 +137,6 @@ Item {
                 StyledText {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    textFormat: Text.PlainText
                     text: Keyring.title || "Keyring"
                     font.pixelSize: Appearance.font.size.normal
                 }
@@ -145,7 +145,6 @@ Item {
                     width: parent.width
                     elide: Text.ElideRight
                     visible: !!Keyring.requester
-                    textFormat: Text.PlainText
                     text: Keyring.requester
                     color: Appearance.colour.textFaint
                 }
@@ -183,7 +182,6 @@ Item {
                     width: parent.width
                     elide: Text.ElideRight
                     visible: !!Keyring.warning
-                    textFormat: Text.PlainText
                     text: Keyring.warning
                     color: Appearance.colour.alarm
                 }

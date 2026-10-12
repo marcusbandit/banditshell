@@ -6,6 +6,7 @@ import Quickshell.Wayland
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.wallpaper
 
 PanelWindow {
     id: win
@@ -104,7 +105,7 @@ PanelWindow {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.anim.slow
+                duration: Appearance.animation.slow
             }
         }
 

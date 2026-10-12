@@ -30,8 +30,7 @@ Singleton {
     readonly property int cloudSeconds: root.settings.cloudSeconds
     readonly property int cloudReplyChars: root.settings.cloudReplyChars
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string path: `${root.dir}/clock.json`
+    readonly property string path: `${Config.stateDir}/clock.json`
 
     property bool loaded: false
 
@@ -96,7 +95,7 @@ Singleton {
             hourOfDay: hour + minute / 60,
 
             dayDelta: root.dayNumber(there) - root.dayNumber(here),
-            text: `${root.pad2(hour)}:${root.pad2(minute)}`
+            text: `${root.twoDigits(hour)}:${root.twoDigits(minute)}`
         };
     }
 
@@ -104,7 +103,7 @@ Singleton {
         return Math.floor(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 86400000);
     }
 
-    function pad2(n: int): string {
+    function twoDigits(n: int): string {
         return n < 10 ? `0${n}` : `${n}`;
     }
 
@@ -113,7 +112,7 @@ Singleton {
         const abs = Math.abs(deltaMinutes);
         const h = Math.floor(abs / 60);
         const m = abs % 60;
-        return m === 0 ? `${sign}${h}h` : `${sign}${h}h${root.pad2(m)}`;
+        return m === 0 ? `${sign}${h}h` : `${sign}${h}h${root.twoDigits(m)}`;
     }
 
     property var timers: []
@@ -388,7 +387,7 @@ Singleton {
 
     function alarmTitle(alarm: var, due: double): string {
         const at = new Date(due);
-        const when = `${root.pad2(at.getHours())}:${root.pad2(at.getMinutes())}`;
+        const when = `${root.twoDigits(at.getHours())}:${root.twoDigits(at.getMinutes())}`;
         return alarm.label ? `${when}  ${alarm.label}` : `Alarm ${when}`;
     }
 
@@ -634,20 +633,13 @@ Singleton {
         onLoadFailed: err => {
 
             if (err === FileViewError.FileNotFound) {
-                mkdir.running = true;
+                root.adopt(null);
             } else {
                 console.warn(`Clock: could not read ${root.path} (${err}); alarms set now will not be kept.`);
                 root.keep = false;
                 root.adopt(null);
             }
         }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", root.dir]
-        onExited: root.adopt(null)
     }
 
     function adopt(disk: var): void {

@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import qs.components
 import qs.config
 import qs.modules.menu.content
 
@@ -36,7 +37,7 @@ ShellRoot {
             colourful: false
         }
 
-        Text {
+        StyledText {
             x: 200
             y: 20
             color: "#eaf6f0"

@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 import Quickshell.Services.UPower
 
 Singleton {
@@ -157,8 +158,7 @@ done
         onTriggered: probe.running = true
     }
 
-    readonly property string logDir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-    readonly property string logPath: `${root.logDir}/battery-health.json`
+    readonly property string logPath: `${Config.stateDir}/battery-health.json`
 
     property bool logLoaded: false
     property bool logKeep: true

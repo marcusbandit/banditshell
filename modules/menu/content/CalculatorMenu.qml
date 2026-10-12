@@ -32,7 +32,7 @@ Column {
 
     readonly property real unit: (root.width - root.gap * (root.columns - 1)) / root.columns
 
-    readonly property real restKeyHeight: Math.max(Appearance.sizes.minTarget, Math.round(Appearance.font.size.normal * 4 / 3) + Appearance.padding.normal * 2)
+    readonly property real restKeyHeight: Math.max(Appearance.sizes.minTarget, Appearance.font.line.normal + Appearance.padding.normal * 2)
 
     property real rowHeight: 0
 
@@ -346,11 +346,11 @@ Column {
         width: implicitWidth
         height: implicitHeight
 
-        scale: press.pressed ? 0.96 : 1
+        scale: press.pressed ? Appearance.press.plate : 1
 
         Behavior on scale {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutCubic
             }
         }
@@ -363,7 +363,7 @@ Column {
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -392,7 +392,7 @@ Column {
 
             Behavior on color {
                 ColorAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                 }
             }
         }
@@ -423,11 +423,11 @@ Column {
             width: root.expandable ? Appearance.sizes.minTarget : 0
             height: root.expandable ? Appearance.sizes.minTarget : 0
 
-            scale: grab.pressed ? 0.96 : 1
+            scale: grab.pressed ? Appearance.press.plate : 1
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutCubic
                 }
             }
@@ -439,7 +439,7 @@ Column {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -455,7 +455,7 @@ Column {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -492,7 +492,7 @@ Column {
                 id: answer
 
                 width: parent.width
-                height: Math.round(Appearance.font.size.large * 4 / 3)
+                height: Appearance.font.line.large
 
                 text: root.entry
                 font.pixelSize: probe.width <= lines.width ? Appearance.font.size.large : Appearance.font.size.normal
@@ -508,7 +508,7 @@ Column {
                 anchors.topMargin: Appearance.padding.small
 
                 width: parent.width
-                height: Math.round(Appearance.font.size.small * 4 / 3)
+                height: Appearance.font.line.small
 
                 text: root.working
                 color: Appearance.colour.textFaint

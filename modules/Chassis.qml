@@ -35,7 +35,7 @@ Item {
         id: reach
 
         target: root.streamed ? Appearance.sizes.streamHeight : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
     }
 
     BlobField {

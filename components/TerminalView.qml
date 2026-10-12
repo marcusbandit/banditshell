@@ -17,7 +17,7 @@ Item {
 
     readonly property int textSize: Math.round(Appearance.font.size.small * Appearance.sizes.filesZoom)
     readonly property real cellWidth: metrics.advanceWidth
-    readonly property real cellHeight: Math.round(root.textSize * 4 / 3)
+    readonly property real cellHeight: Math.round(root.textSize * Appearance.font.leading)
 
     readonly property int cols: Math.max(1, Math.floor(width / Math.max(1, cellWidth)))
     readonly property int rows: Math.max(1, Math.floor(height / Math.max(1, cellHeight)))
@@ -125,7 +125,7 @@ Item {
                     font.pixelSize: root.textSize
                     color: Appearance.colour.text
 
-                    lineHeight: Math.round(font.pixelSize * 4 / 3)
+                    lineHeight: Math.round(font.pixelSize * Appearance.font.leading)
                     lineHeightMode: Text.FixedHeight
 
                     renderType: Text.QtRendering

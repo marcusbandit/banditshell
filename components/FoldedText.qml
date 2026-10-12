@@ -45,7 +45,7 @@ Item {
         id: grow
 
         target: label.implicitHeight
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
     }
 
     StyledText {

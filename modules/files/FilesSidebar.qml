@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Item {
     id: root
@@ -65,7 +66,7 @@ Item {
 
                         width: section.width
 
-                        height: Files.zoomed(Appearance.sizes.filesRow) * (place.usage ? 1.5 : 1)
+                        height: Appearance.sizes.filesRow * (place.usage ? 1.5 : 1)
 
                         SquircleRect {
                             anchors.fill: parent

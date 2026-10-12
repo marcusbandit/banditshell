@@ -41,8 +41,7 @@ Item {
             if (!o?.at || !o?.size)
                 continue;
 
-            const raw = o.address ?? "";
-            const addr = raw.startsWith("0x") ? raw : `0x${raw}`;
+            const addr = Hypr.windowAddress(o.address);
             if (!addr)
                 continue;
 
@@ -123,7 +122,7 @@ Item {
         id: land
 
         target: root.landed ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.002
     }
 
@@ -222,8 +221,7 @@ Item {
             if (!o?.at || !o?.size)
                 continue;
 
-            const raw = o.address ?? "";
-            if ((raw.startsWith("0x") ? raw : `0x${raw}`) !== addr)
+            if (Hypr.windowAddress(o.address) !== addr)
                 continue;
 
             return Qt.rect(o.at[0] - root.screen.x, o.at[1] - root.screen.y, o.size[0], o.size[1]);
@@ -253,7 +251,7 @@ Item {
         id: reveal
 
         target: root.active ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -294,7 +292,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
 
@@ -312,7 +310,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -321,7 +319,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -330,7 +328,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -339,7 +337,7 @@ Item {
                         enabled: !root.landed
 
                         NumberAnimation {
-                            duration: Appearance.anim.normal
+                            duration: Appearance.animation.normal
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -364,7 +362,7 @@ Item {
 
                         Behavior on color {
                             ColorAnimation {
-                                duration: Appearance.anim.fast
+                                duration: Appearance.animation.fast
                             }
                         }
                     }
@@ -390,6 +388,8 @@ Item {
                             visible: !shot.ready
 
                             spec: slot.modelData.mark
+                            fits: AppIcons.fits
+                            onMeasured: (path, box) => AppIcons.recordFit(path, box)
                             size: Appearance.sizes.launcherIcon
                             color: slot.aimed ? Appearance.colour.text : Appearance.colour.textDim
                         }
@@ -404,7 +404,7 @@ Item {
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
                         }

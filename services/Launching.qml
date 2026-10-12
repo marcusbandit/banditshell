@@ -174,7 +174,7 @@ Singleton {
         }
     }
 
-    readonly property string path: `${Apps.dir}/startup.json`
+    readonly property string path: `${Config.stateDir}/startup.json`
 
     property var times: ({})
 

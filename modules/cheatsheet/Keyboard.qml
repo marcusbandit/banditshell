@@ -282,7 +282,7 @@ Item {
         return parts.join(", ");
     }
 
-    readonly property real lineBox: Math.round(Appearance.font.size.small * 4 / 3)
+    readonly property real lineBox: Appearance.font.line.small
 
     implicitHeight: stack.implicitHeight
 

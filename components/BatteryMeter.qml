@@ -30,7 +30,7 @@ Item {
         id: charge
 
         target: Math.max(0, Math.min(1, root.level))
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         epsilon: 0.001
     }
 
@@ -54,7 +54,7 @@ Item {
         loops: Animation.Infinite
         from: 0
         to: 1
-        duration: Appearance.anim.slow * 6
+        duration: Appearance.animation.slow * 6
     }
 
     property real throb: 0
@@ -66,14 +66,14 @@ Item {
         NumberAnimation {
             from: 0
             to: 1
-            duration: Appearance.anim.slow * 4
+            duration: Appearance.animation.slow * 4
             easing.type: Easing.InOutSine
         }
 
         NumberAnimation {
             from: 1
             to: 0
-            duration: Appearance.anim.slow * 4
+            duration: Appearance.animation.slow * 4
             easing.type: Easing.InOutSine
         }
     }

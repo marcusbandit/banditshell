@@ -11,10 +11,10 @@ Item {
 
     required property string screen
 
-    readonly property int block: Appearance.sizes.wsBlock
-    readonly property int step: block + Appearance.sizes.wsBlockGap
+    readonly property int block: Appearance.sizes.workspaceBlock
+    readonly property int step: block + Appearance.sizes.workspaceBlockGap
 
-    readonly property int perRow: Math.max(1, Math.floor((root.width + Appearance.sizes.wsBlockGap) / root.step))
+    readonly property int perRow: Math.max(1, Math.floor((root.width + Appearance.sizes.workspaceBlockGap) / root.step))
 
     property int hovered: -1
 
@@ -28,7 +28,7 @@ Item {
 
         pitch: root.step
         perRow: root.perRow
-        gap: Appearance.sizes.wsBlockGap * 2
+        gap: Appearance.sizes.workspaceBlockGap * 2
     }
 
     Repeater {
@@ -73,7 +73,7 @@ Item {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -100,7 +100,7 @@ Item {
 
                     Behavior on color {
                         ColorAnimation {
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
 

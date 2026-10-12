@@ -185,7 +185,7 @@ Item {
 
         target: null
 
-        dragThreshold: Appearance.sizes.dragThreshold
+        dragThreshold: Config.values.control.dragThreshold
 
         grabPermissions: PointerHandler.CanTakeOverFromItems | PointerHandler.CanTakeOverFromHandlersOfDifferentType
 

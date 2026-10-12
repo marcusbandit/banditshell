@@ -26,7 +26,7 @@ Singleton {
     }
 
     function bars(n: var): int {
-        return WifiList.band(n?.signalStrength ?? 0, Appearance.sizes.signalBands);
+        return WifiList.band(n?.signalStrength ?? 0, Config.values.control.signalBands);
     }
 
     readonly property string connectingName: wifiDevice?.networks?.values?.find(n => n.stateChanging && !n.connected)?.name ?? ""
@@ -178,7 +178,7 @@ Singleton {
         return root.carrier === which ? root.reachLabel() : "";
     }
 
-    readonly property var scan: WifiList.arrange(root.wifiDevice?.networks?.values ?? [], Appearance.sizes.signalBands)
+    readonly property var scan: WifiList.arrange(root.wifiDevice?.networks?.values ?? [], Config.values.control.signalBands)
 
     property var networks: []
 

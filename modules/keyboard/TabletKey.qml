@@ -53,7 +53,7 @@ Item {
         Behavior on color {
             enabled: !root.down
             ColorAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
 

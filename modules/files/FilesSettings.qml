@@ -123,7 +123,7 @@ Item {
 
     Behavior on opacity {
         NumberAnimation {
-            duration: Appearance.anim.fast
+            duration: Appearance.animation.fast
             easing.type: Easing.OutQuad
         }
     }
@@ -306,7 +306,7 @@ Item {
                                 readonly property bool waiting: root.rebinding === binding.id
 
                                 width: group.width
-                                height: Files.zoomed(Appearance.sizes.filesRow) * 1.2
+                                height: Appearance.sizes.filesRow * 1.2
 
                                 SquircleRect {
                                     anchors.fill: parent

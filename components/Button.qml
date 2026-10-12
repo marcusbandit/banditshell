@@ -23,7 +23,7 @@ Item {
     readonly property bool hovered: root.interactive && press.containsMouse
     readonly property bool pressed: root.interactive && press.pressed
 
-    readonly property real labelSize: Appearance.button.label(root.size)
+    readonly property real labelSize: root.size < 2 ? Appearance.font.size.small : root.size < 3 ? Appearance.font.size.normal : Appearance.font.size.large
     readonly property real padX: Appearance.button.padX(root.size)
     readonly property real markSize: Appearance.button.iconSize(root.size)
     readonly property real markGap: Appearance.button.iconGap(root.size)
@@ -193,14 +193,14 @@ Item {
 
                 Behavior on radius {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                         easing.type: Easing.OutCubic
                     }
                 }
 
                 Behavior on cornerPower {
                     NumberAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -234,30 +234,30 @@ Item {
 
         Behavior on radius {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutCubic
             }
         }
 
         Behavior on cornerPower {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
                 easing.type: Easing.OutCubic
             }
         }
 
         Behavior on color {
             ColorAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
     }
 
-    scale: root.pressed ? 0.96 : 1
+    scale: root.pressed ? Appearance.press.plate : 1
 
     Behavior on scale {
         NumberAnimation {
-            duration: Appearance.anim.fast
+            duration: Appearance.animation.fast
             easing.type: Easing.OutCubic
         }
     }

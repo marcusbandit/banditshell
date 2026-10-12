@@ -425,9 +425,7 @@ Singleton {
     }
 
     readonly property real halfLifeDays: Config.values.launcher.halfLifeDays
-    readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
-
-    readonly property string path: `${root.dir}/frecency.json`
+    readonly property string path: `${Config.stateDir}/frecency.json`
 
     property var usage: ({})
 
@@ -482,16 +480,5 @@ Singleton {
                 root.usage = {};
             }
         }
-
-        onLoadFailed: err => {
-            if (err === FileViewError.FileNotFound)
-                mkdir.running = true;
-        }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", root.dir]
     }
 }

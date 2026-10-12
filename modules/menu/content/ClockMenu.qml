@@ -5,6 +5,7 @@ import Quickshell
 import qs.config
 import qs.components
 import qs.services
+import qs.modules.controls
 
 Column {
     id: root
@@ -76,7 +77,7 @@ Column {
         const h = Math.floor(total / 3600);
         const m = Math.floor((total % 3600) / 60);
         const s = total % 60;
-        return h > 0 ? `${h}:${Clock.pad2(m)}:${Clock.pad2(s)}` : `${m}:${Clock.pad2(s)}`;
+        return h > 0 ? `${h}:${Clock.twoDigits(m)}:${Clock.twoDigits(s)}` : `${m}:${Clock.twoDigits(s)}`;
     }
 
     function zoneDetail(delta: int, dayDelta: int): string {
@@ -478,7 +479,7 @@ Column {
                 id: drain
 
                 target: timerCard.fraction * track.width
-                speed: Appearance.anim.trackSpeed
+                speed: Appearance.animation.trackSpeed
             }
         }
     }
@@ -611,7 +612,7 @@ Column {
 
                     StyledText {
                         width: parent.width
-                        text: `${Clock.pad2(alarmCard.modelData.hour)}:${Clock.pad2(alarmCard.modelData.minute)}`
+                        text: `${Clock.twoDigits(alarmCard.modelData.hour)}:${Clock.twoDigits(alarmCard.modelData.minute)}`
                         font.pixelSize: Appearance.font.size.normal
                     }
 

@@ -531,7 +531,7 @@ LauncherConcept {
         id: grow
 
         target: root.needed
-        speed: Appearance.anim.resizeSpeed
+        speed: Appearance.animation.resizeSpeed
         epsilon: 0.5
     }
 
@@ -539,14 +539,14 @@ LauncherConcept {
         id: plate
 
         target: root.hoverY
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
     }
 
     Follow {
         id: bow
 
         target: root.grabbing || root.scrubbing ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -587,7 +587,7 @@ LauncherConcept {
 
                 Behavior on width {
                     NumberAnimation {
-                        duration: Appearance.anim.normal
+                        duration: Appearance.animation.normal
                         easing.type: Easing.OutCubic
                     }
                 }
@@ -824,7 +824,7 @@ LauncherConcept {
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Appearance.anim.fast
+                                duration: Appearance.animation.fast
                             }
                         }
                     }
@@ -852,7 +852,7 @@ LauncherConcept {
                             property: "opacity"
                             from: 0
                             to: 1
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                         }
                     }
 
@@ -860,7 +860,7 @@ LauncherConcept {
                         NumberAnimation {
                             property: "opacity"
                             to: 0
-                            duration: Appearance.anim.fast
+                            duration: Appearance.animation.fast
                             easing.type: Easing.OutCubic
                         }
                     }
@@ -873,7 +873,7 @@ LauncherConcept {
 
                             NumberAnimation {
                                 property: "y"
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                                 easing.type: Easing.OutCubic
                             }
                         }

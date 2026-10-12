@@ -49,9 +49,9 @@ Column {
             dirX: 1
             dirY: 0
 
-            angle: Appearance.sizes.pullAngleEdge
+            angle: Config.values.control.pullAngleEdge
 
-            travel: Math.max(1, root.pullSpan * Appearance.sizes.pullTravel)
+            travel: Math.max(1, root.pullSpan * Config.values.control.pullTravel)
 
             cursorShape: Qt.PointingHandCursor
 
@@ -69,11 +69,11 @@ Column {
             anchors.centerIn: parent
             spacing: 0
 
-            scale: clockSummon.pressed ? 0.96 : 1
+            scale: clockSummon.pressed ? Appearance.press.plate : 1
 
             Behavior on scale {
                 NumberAnimation {
-                    duration: Appearance.anim.fast
+                    duration: Appearance.animation.fast
                     easing.type: Easing.OutCubic
                 }
             }
@@ -111,9 +111,9 @@ Column {
             dirX: 1
             dirY: 0
 
-            angle: Appearance.sizes.pullAngleEdge
+            angle: Config.values.control.pullAngleEdge
 
-            travel: Math.max(1, root.pullSpan * Appearance.sizes.pullTravel)
+            travel: Math.max(1, root.pullSpan * Config.values.control.pullTravel)
 
             cursorShape: Qt.PointingHandCursor
 
@@ -139,7 +139,7 @@ Column {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }
@@ -152,7 +152,7 @@ Column {
 
                 Behavior on color {
                     ColorAnimation {
-                        duration: Appearance.anim.fast
+                        duration: Appearance.animation.fast
                     }
                 }
             }

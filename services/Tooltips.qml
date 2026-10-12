@@ -48,7 +48,7 @@ Singleton {
     Timer {
         id: delay
 
-        interval: Appearance.anim.tooltip
+        interval: Appearance.animation.tooltip
         onTriggered: {
             root.anchor = root.pending;
             root.text = root.pendingText;

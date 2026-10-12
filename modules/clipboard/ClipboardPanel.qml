@@ -377,7 +377,7 @@ Item {
 
         dirX: 0
         dirY: 1
-        angle: Appearance.sizes.pullAngleEdge
+        angle: Config.values.control.pullAngleEdge
 
         travel: panel.fullHeight
 
@@ -413,7 +413,7 @@ Item {
     Follow {
         id: turn
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.expanded ? 1 : 0
         epsilon: 0.005
     }
@@ -421,7 +421,7 @@ Item {
     Follow {
         id: rise
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
 
         epsilon: 0.005
@@ -486,14 +486,14 @@ Item {
                             anchors.left: tabStrip.right
                             anchors.leftMargin: Appearance.padding.large
                             anchors.verticalCenter: parent.verticalCenter
-                            height: Math.round(Appearance.font.size.small * 4 / 3) + Appearance.padding.small * 2
+                            height: Appearance.font.line.small + Appearance.padding.small * 2
 
                             opacity: root.searching ? 1 : 0
                             visible: opacity > 0.01
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Appearance.anim.fast
+                                    duration: Appearance.animation.fast
                                 }
                             }
 
@@ -617,7 +617,7 @@ Item {
                             NumberAnimation {
                                 property: "opacity"
                                 to: 0
-                                duration: Appearance.anim.fast
+                                duration: Appearance.animation.fast
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -625,7 +625,7 @@ Item {
                         displaced: Transition {
                             NumberAnimation {
                                 property: "y"
-                                duration: Appearance.anim.normal
+                                duration: Appearance.animation.normal
                                 easing.type: Easing.OutCubic
                             }
                         }
@@ -681,7 +681,7 @@ Item {
 
                             if (pager.spent)
                                 return;
-                            const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
+                            const step = Math.max(1, root.panelWidth * Config.values.control.pullTravel);
                             if (Math.abs(dx) < step)
                                 return;
                             pager.spent = true;

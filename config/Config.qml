@@ -3,13 +3,16 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
-import "../services/configuration.js" as Configuration
+import "configuration.js" as Configuration
 
 Singleton {
     id: root
 
     readonly property string dir: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/banditshell`
     readonly property string path: `${dir}/config.json`
+
+    readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/banditshell`
+    readonly property string cacheDir: `${Quickshell.env("XDG_CACHE_HOME") || `${Quickshell.env("HOME")}/.cache`}/banditshell`
 
     readonly property var defaults: ({
 
@@ -66,7 +69,6 @@ Singleton {
             },
             button: {
 
-                scale: [2, 2, 3, 4, 5],
                 heights: [32, 40, 56, 96, 136],
                 padX: [12, 16, 24, 48, 64],
                 iconSizes: [20, 20, 24, 32, 40],
@@ -417,8 +419,6 @@ Singleton {
                 height: 760,
 
                 tile: 96,
-
-                text: 15,
 
                 zoom: 1.0,
 

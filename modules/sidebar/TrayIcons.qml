@@ -45,19 +45,19 @@ Item {
     Follow {
         id: slide
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.markedIndex * root.pitch
     }
 
     Follow {
         id: lit
 
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         target: root.hoveredKey ? 1 : 0
         epsilon: 0.005
     }
 
-    readonly property var shown: Tray.items.slice(0, Appearance.sizes.trayMax)
+    readonly property var shown: Tray.items.slice(0, Config.values.sidebar.tray.max)
 
     function keyFor(item: var): string {
         return `tray:${Tray.keyOf(item)}`;

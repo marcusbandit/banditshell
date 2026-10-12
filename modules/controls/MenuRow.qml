@@ -1,5 +1,6 @@
 import QtQuick
 import qs.config
+import qs.components
 
 Item {
     id: root
@@ -43,7 +44,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
     }

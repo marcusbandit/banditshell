@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 
 Item {
     id: root
@@ -35,21 +36,21 @@ Item {
         id: glideX
 
         target: root.wantX
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
     }
 
     Follow {
         id: glideY
 
         target: root.wantY
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
     }
 
     Follow {
         id: grow
 
         target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.001
     }
 

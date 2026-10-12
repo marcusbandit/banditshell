@@ -182,7 +182,7 @@ Item {
         id: rise
 
         target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
+        speed: Appearance.animation.revealSpeed
         epsilon: 0.005
     }
 
@@ -216,7 +216,7 @@ Item {
                 id: glide
 
                 target: strip.goal
-                speed: Appearance.anim.scrollSpeed
+                speed: Appearance.animation.scrollSpeed
 
                 epsilon: 0.002
             }
@@ -293,7 +293,7 @@ Item {
             }
 
             function coast(vx: real): void {
-                const cards = Math.round(-vx * Appearance.sizes.coastMs / root.pitch);
+                const cards = Math.round(-vx * Config.values.control.coastMs / root.pitch);
                 if (cards)
                     strip.step(cards);
             }
@@ -482,7 +482,7 @@ Item {
                 swipe.lastX = mouse.x;
                 swipe.lastAt = now;
 
-                if (!swipe.dragging && Math.abs(mouse.x - swipe.fromX) < Appearance.sizes.dragThreshold)
+                if (!swipe.dragging && Math.abs(mouse.x - swipe.fromX) < Config.values.control.dragThreshold)
                     return;
                 swipe.dragging = true;
 
@@ -506,7 +506,7 @@ Item {
                     return;
                 }
 
-                const thrown = -swipe.velocity * Appearance.sizes.coastMs / root.pitch;
+                const thrown = -swipe.velocity * Config.values.control.coastMs / root.pitch;
                 strip.goal = Math.round(glide.value + thrown);
                 swipe.dragging = false;
             }

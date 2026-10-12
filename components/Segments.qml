@@ -25,7 +25,7 @@ Item {
     }
 
     implicitWidth: root.count * (Math.ceil(ink.width) + Appearance.padding.normal * 2)
-    implicitHeight: Math.max(Appearance.sizes.minTarget, Math.round(Appearance.font.size.small * 4 / 3) + Appearance.padding.small * 2)
+    implicitHeight: Math.max(Appearance.sizes.minTarget, Appearance.font.line.small + Appearance.padding.small * 2)
     width: implicitWidth
     height: implicitHeight
 
@@ -40,7 +40,7 @@ Item {
     Follow {
         id: slide
 
-        speed: Appearance.anim.trackSpeed
+        speed: Appearance.animation.trackSpeed
         target: root.current * root.segment
     }
 

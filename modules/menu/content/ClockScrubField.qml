@@ -26,7 +26,7 @@ Item {
     readonly property int span: root.to - root.from + 1
 
     implicitWidth: Math.max(Appearance.sizes.minTarget, digits.implicitWidth + Appearance.padding.small * 2)
-    implicitHeight: Math.max(Appearance.sizes.rowHeight, Math.round(Appearance.font.size.large * 4 / 3))
+    implicitHeight: Math.max(Appearance.sizes.rowHeight, Appearance.font.line.large)
     width: implicitWidth
     height: implicitHeight
 
@@ -39,7 +39,7 @@ Item {
     function magnet(raw: real): int {
         const step = Math.max(1, root.detent);
         const nearest = Math.round(raw / step) * step;
-        return Math.abs(raw - nearest) * root.pitch <= Appearance.sizes.dragThreshold ? nearest : Math.round(raw);
+        return Math.abs(raw - nearest) * root.pitch <= Config.values.control.dragThreshold ? nearest : Math.round(raw);
     }
 
     function hold(): void {
@@ -84,7 +84,7 @@ Item {
     Timer {
         id: quiet
 
-        interval: Appearance.anim.settle
+        interval: Appearance.animation.settle
         onTriggered: root.release()
     }
 
@@ -96,7 +96,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.anim.fast
+                duration: Appearance.animation.fast
             }
         }
     }
@@ -106,7 +106,7 @@ Item {
 
         anchors.centerIn: parent
 
-        text: Clock.pad2(root.shown)
+        text: Clock.twoDigits(root.shown)
         font.pixelSize: Appearance.font.size.large
         color: root.zeroIsEmpty && root.shown === 0 ? Appearance.colour.textFaint : Appearance.colour.text
     }

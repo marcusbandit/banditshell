@@ -125,8 +125,8 @@ Item {
                                     readonly property bool current: chip.workspace === section.active
                                     readonly property bool busy: Hypr.clientsIn(chip.workspace).length > 0
 
-                                    width: Appearance.sizes.wsSlot
-                                    height: Appearance.sizes.wsSlot
+                                    width: Appearance.sizes.workspaceSlot
+                                    height: Appearance.sizes.workspaceSlot
                                     radius: Appearance.rounding.normal
                                     color: chip.current ? Appearance.colour.fillStronger : press.containsMouse ? Appearance.colour.fill : "transparent"
 

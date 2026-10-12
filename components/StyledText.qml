@@ -11,7 +11,7 @@ Text {
     color: Appearance.colour.text
     textFormat: Text.PlainText
 
-    lineHeight: Math.round(font.pixelSize * 4 / 3)
+    lineHeight: Math.round(font.pixelSize * Appearance.font.leading)
     lineHeightMode: Text.FixedHeight
 
     readonly property real inkOffsetX: root.width / 2 - (ink.tightBoundingRect.x + ink.tightBoundingRect.width / 2)
