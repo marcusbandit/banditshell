@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-"""The keyring's question, taken off gcr and handed to the shell."""
 
 import base64
 import ctypes
@@ -75,17 +74,14 @@ def _b64encode(raw: bytes) -> str:
     return base64.b64encode(raw).decode("ascii")
 
 def _boxed(value: "GLib.Variant") -> "GLib.Variant":
-    """A property value wrapped the way the prompter has to send it back."""
     return GLib.Variant("v", value)
 
 def _keyfile_write(fields: "dict[str, bytes]") -> str:
-    """The exchange's wire form: a GKeyFile with one group and base64 values."""
     lines = [f"[{PROTOCOL}]"]
     lines += [f"{key}={_b64encode(value)}" for key, value in fields.items()]
     return "\n".join(lines) + "\n"
 
 def _keyfile_read(text: str) -> "dict[str, bytes]":
-    """The other direction, tolerant in the ways GKeyFile is."""
     out = {}
     group = None
     for line in text.splitlines():
@@ -105,7 +101,6 @@ def _keyfile_read(text: str) -> "dict[str, bytes]":
     return out
 
 class Exchange:
-    """One side of a secret exchange, for the life of one prompt conversation."""
 
     def __init__(self) -> None:
         self._private = 0
@@ -130,12 +125,10 @@ class Exchange:
         return self._public.to_bytes((self._public.bit_length() + 7) // 8, "big")
 
     def begin(self) -> str:
-        """Our public value, and nothing else. The opening move."""
         self._generate()
         return _keyfile_write({"public": self._public_bytes()})
 
     def receive(self, text: str) -> "bytes | None":
-        """Take the peer's message: derive the key if we have not, then decrypt."""
         self._generate()
         fields = _keyfile_read(text)
 
@@ -150,7 +143,6 @@ class Exchange:
         return self._decrypt(fields["secret"], fields.get("iv", b""))
 
     def send(self, secret: "bytes | None") -> str:
-        """Our reply, with the secret encrypted into it when there is one."""
         if not self.derived:
             raise ValueError("nothing has been received to reply to")
         fields = {"public": self._public_bytes()}
@@ -182,7 +174,6 @@ class Exchange:
         return unpadder.update(padded) + unpadder.finalize()
 
 class Pipe:
-    """The line protocol with services/Keyring.qml."""
 
     def __init__(self, on_answer) -> None:
         self._on_answer = on_answer
@@ -195,7 +186,6 @@ class Pipe:
             sys.stdout.flush()
 
     def listen(self) -> None:
-        """Read stdin forever, on a thread of its own."""
         for line in sys.stdin:
             line = line.strip()
             if not line:
@@ -212,7 +202,6 @@ class Pipe:
         return GLib.SOURCE_REMOVE
 
 class Conversation:
-    """One client's prompting session: a bus name, a callback path, a key."""
 
     def __init__(self, sender: str, path: str) -> None:
         self.sender = sender
@@ -287,7 +276,6 @@ class Prompter:
         self._pipe.send(event="owner", name=name, program=self.owner_of(name))
 
     def _later(self, action) -> None:
-        """Run this once the method handler that asked for it has returned."""
         GLib.idle_add(lambda: (action(), GLib.SOURCE_REMOVE)[1])
 
     def method(self, _conn, sender, _path, _iface, method, params, invocation):
@@ -305,7 +293,7 @@ class Prompter:
                     f"no such method: {method}",
                 )
                 return
-        except Exception as error:  # the bus must always get an answer
+        except Exception as error:
             invocation.return_error_literal(
                 Gio.dbus_error_quark(), Gio.DBusError.FAILED, str(error)
             )
@@ -375,7 +363,6 @@ class Prompter:
             self._stop(key[0], key[1], tell_client=False)
 
     def _advance(self) -> None:
-        """Give the screen to the next conversation waiting for it."""
         if self._active is not None or not self._waiting:
             return
         self._active = self._waiting.pop(0)
@@ -527,7 +514,6 @@ def main() -> int:
     return _exit_code
 
 class _PyGObject(ctypes.Structure):
-    """Where PyGObject keeps the C pointer inside a Python wrapper."""
 
     _fields_ = [
         ("head", ctypes.c_byte * object.__basicsize__),
@@ -535,7 +521,6 @@ class _PyGObject(ctypes.Structure):
     ]
 
 def selftest() -> int:
-    """Hold a whole conversation with gcr's own implementation."""
     gi.require_version("Gcr", "3")
     from gi.repository import Gcr
 
