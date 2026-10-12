@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-12-2",
+      "date": "2026-10-12",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Starting the shell no longer writes your saved brightness to the monitors. On a Samsung Odyssey that write made the monitor reset, and the compositor crashed with it; the saved level now only shows on the slider, and the monitors get a new brightness only when you change it."
+        }
+      ]
+    },
+    {
       "id": "2026-10-12",
       "date": "2026-10-12",
       "changes": [

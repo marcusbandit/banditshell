@@ -25,6 +25,8 @@ Singleton {
 
     readonly property bool levelKnown: root.level >= 0
 
+    property bool unwritten: false
+
     property var queue: []
 
     property string detectedFor: ""
@@ -81,10 +83,8 @@ Singleton {
         root.followWarmth(true);
 
         const saved = Number(Config.values.screen.level);
-        if (!root.levelKnown && isFinite(saved)) {
+        if (!root.levelKnown && isFinite(saved))
             root.level = Math.max(0, Math.min(1, saved / 100));
-            root.writeLevel();
-        }
     }
 
     function followWarmth(always: bool): void {
@@ -156,13 +156,15 @@ Singleton {
                 console.warn(`Display: ddcutil detect exited ${code}`);
             }
             root.displays = code === 0 ? Ddcutil.parseDetect(output) : [];
-            root.writeLevel();
+            if (root.unwritten)
+                root.writeLevel();
         }
         Qt.callLater(root.step);
     }
 
     function writeLevel(): void {
-        if (!root.brightnessReady || !root.levelKnown)
+        root.unwritten = root.levelKnown && !root.brightnessReady;
+        if (root.unwritten || !root.levelKnown)
             return;
         root.queue = root.queue.filter(job => job.kind !== "write");
         root.enqueue("write", ["sh", "-c", root.displays.map(d => `ddcutil --display ${d.index} setvcp 10 ${Math.round(root.level * d.max)} --noverify 2>/dev/null`).join("; ")]);
