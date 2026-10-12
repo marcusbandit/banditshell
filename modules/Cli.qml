@@ -1020,7 +1020,9 @@ Scope {
         }
 
         function status(): string {
-            return Lock.active ? "locked" : "unlocked";
+            if (!Lock.active)
+                return "unlocked";
+            return Lock.secure ? "locked" : "locking";
         }
     }
 
@@ -1028,7 +1030,7 @@ Scope {
         target: "keyring"
 
         function status(): string {
-            return [`prompter   ${Keyring.serving ? "the shell" : Keyring.blocked ? "gcr (the shell was refused the bus name)" : "not running"}`, `asking     ${Keyring.active}`, `kind       ${Keyring.kind || "-"}`, `title      ${Keyring.title || "-"}`, `message    ${Keyring.message || "-"}`, `warning    ${Keyring.warning || "-"}`, `choice     ${Keyring.choiceLabel ? `${Keyring.choiceChosen ? "yes" : "no"}: ${Keyring.choiceLabel}` : "-"}`, `screen     ${Keyring.screenName || "-"}`].join("\n");
+            return [`prompter   ${Keyring.serving ? "the shell" : Keyring.blocked ? `${Keyring.owner || "another program"} (the shell was refused the bus name)` : "not running"}`, `asking     ${Keyring.active}`, `requester  ${Keyring.requester || "-"}`, `kind       ${Keyring.kind || "-"}`, `title      ${Keyring.title || "-"}`, `message    ${Keyring.message || "-"}`, `warning    ${Keyring.warning || "-"}`, `choice     ${Keyring.choiceLabel ? `${Keyring.choiceChosen ? "yes" : "no"}: ${Keyring.choiceLabel}` : "-"}`, `screen     ${Keyring.screenName || "-"}`].join("\n");
         }
 
         function refuse(): string {
