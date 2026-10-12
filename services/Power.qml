@@ -26,26 +26,21 @@ Singleton {
             key: "logout",
             icon: "logout",
             label: "Log out",
-            detail: "ends this session",
-            command: ["loginctl", "terminate-user", ""]
+            detail: "",
+            command: ["sh", "-c", "session=\"${XDG_SESSION_ID:-$(loginctl show-user \"$(id -u)\" -p Display --value)}\"; [ -n \"$session\" ] || exit 1; exec loginctl terminate-session \"$session\""]
         },
         {
             key: "lock",
             icon: "lock",
             label: "Lock",
             detail: "",
-
             safe: true,
             command: ["loginctl", "lock-session"]
         }
     ]
 
     function run(entry: var): void {
-        const cmd = entry.command.slice();
-
-        if (entry.key === "logout")
-            cmd[2] = Quickshell.env("USER");
-        runner.command = cmd;
+        runner.command = entry.command;
         runner.running = true;
     }
 
