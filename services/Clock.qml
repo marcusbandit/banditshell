@@ -633,20 +633,13 @@ Singleton {
         onLoadFailed: err => {
 
             if (err === FileViewError.FileNotFound) {
-                mkdir.running = true;
+                root.adopt(null);
             } else {
                 console.warn(`Clock: could not read ${root.path} (${err}); alarms set now will not be kept.`);
                 root.keep = false;
                 root.adopt(null);
             }
         }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", Config.stateDir]
-        onExited: root.adopt(null)
     }
 
     function adopt(disk: var): void {

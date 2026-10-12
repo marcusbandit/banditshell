@@ -137,7 +137,6 @@ Item {
                 StyledText {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    textFormat: Text.PlainText
                     text: Keyring.title || "Keyring"
                     font.pixelSize: Appearance.font.size.normal
                 }
@@ -146,7 +145,6 @@ Item {
                     width: parent.width
                     elide: Text.ElideRight
                     visible: !!Keyring.requester
-                    textFormat: Text.PlainText
                     text: Keyring.requester
                     color: Appearance.colour.textFaint
                 }
@@ -184,7 +182,6 @@ Item {
                     width: parent.width
                     elide: Text.ElideRight
                     visible: !!Keyring.warning
-                    textFormat: Text.PlainText
                     text: Keyring.warning
                     color: Appearance.colour.alarm
                 }

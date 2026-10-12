@@ -41,8 +41,7 @@ Item {
             if (!o?.at || !o?.size)
                 continue;
 
-            const raw = o.address ?? "";
-            const addr = raw.startsWith("0x") ? raw : `0x${raw}`;
+            const addr = Hypr.windowAddress(o.address);
             if (!addr)
                 continue;
 
@@ -222,8 +221,7 @@ Item {
             if (!o?.at || !o?.size)
                 continue;
 
-            const raw = o.address ?? "";
-            if ((raw.startsWith("0x") ? raw : `0x${raw}`) !== addr)
+            if (Hypr.windowAddress(o.address) !== addr)
                 continue;
 
             return Qt.rect(o.at[0] - root.screen.x, o.at[1] - root.screen.y, o.size[0], o.size[1]);

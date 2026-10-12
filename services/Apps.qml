@@ -480,16 +480,5 @@ Singleton {
                 root.usage = {};
             }
         }
-
-        onLoadFailed: err => {
-            if (err === FileViewError.FileNotFound)
-                mkdir.running = true;
-        }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", Config.stateDir]
     }
 }

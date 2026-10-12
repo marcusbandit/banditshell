@@ -632,7 +632,6 @@ Item {
         bottomPadding: Appearance.padding.small
 
         text: Files.failure
-        textFormat: Text.PlainText
         font.pixelSize: Files.zoomed(Appearance.font.size.small)
         color: Appearance.colour.alarm
         elide: Text.ElideRight

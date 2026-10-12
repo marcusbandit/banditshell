@@ -114,8 +114,7 @@ Item {
             if (!o?.at || !o?.size)
                 continue;
 
-            const raw = o.address ?? "";
-            if ((raw.startsWith("0x") ? raw : `0x${raw}`) !== addr)
+            if (Hypr.windowAddress(o.address) !== addr)
                 continue;
 
             return {
@@ -149,9 +148,8 @@ Item {
             if (best && bottom <= best.y + best.h)
                 continue;
 
-            const addr = o.address ?? "";
             best = {
-                addr: addr.startsWith("0x") ? addr : `0x${addr}`,
+                addr: Hypr.windowAddress(o.address),
 
                 client,
                 mark: AppIcons.markFor(Hypr.classOf(client)),
