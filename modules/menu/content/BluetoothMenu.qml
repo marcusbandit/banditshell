@@ -20,12 +20,25 @@ Column {
 
     readonly property bool discovering: root.showing && root.opened === "pair"
 
-    onDiscoveringChanged: Bluetooth.setDiscovering(root.discovering)
+    property bool startedScan: false
+
+    onDiscoveringChanged: {
+        if (root.discovering) {
+            if (Bluetooth.discovering)
+                return;
+            root.startedScan = true;
+            Bluetooth.setDiscovering(true);
+        } else if (root.startedScan) {
+            root.startedScan = false;
+            Bluetooth.setDiscovering(false);
+        }
+    }
 
     onShowingChanged: if (!root.showing)
         root.opened = ""
 
-    Component.onDestruction: Bluetooth.setDiscovering(false)
+    Component.onDestruction: if (root.startedScan)
+        Bluetooth.setDiscovering(false)
 
     component Choice: MenuRow {
         id: choice
