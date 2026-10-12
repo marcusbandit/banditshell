@@ -34,7 +34,7 @@ Item {
 
     property string mode: Appearance.sizes.windowMode
 
-    property string committed: ""
+    property var committed: null
 
     property bool grabbed: false
 
