@@ -50,8 +50,9 @@
 #                                falls back to grim and slurp without the shell
 #   banditshell files [toggle|open] [dir]|close|status
 #                                the file browser
-#   banditshell completions install|status|remove|print
-#                                tab completion, generated from this text
+#   banditshell completions install|status|remove|print [zsh|bash]
+#                                tab completion for zsh and bash, generated
+#                                from this text
 #   banditshell build            compile src/*.c into bin/
 #   banditshell shaders          compile components/**/*.frag to .qsb
 #   banditshell test [args]      run tests/*.test.js in node
@@ -799,10 +800,23 @@ completions)
     sub="${1:-status}"
     shift || true
     case "$sub" in
-    install | print | status | remove)
-        exec "$SHELL_DIR/scripts/zsh-completion.sh" "$sub" "$@"
+    install | status | remove)
+        status=0
+        for generator in zsh bash; do
+            "$SHELL_DIR/scripts/$generator-completion.sh" "$sub" "$@" || {
+                code=$?
+                [ "$code" -gt "$status" ] && status=$code
+            }
+        done
+        exit "$status"
         ;;
-    *) echo "usage: banditshell completions install|print|status|remove" >&2; exit 2 ;;
+    print)
+        case "${1:-zsh}" in
+        zsh | bash) exec "$SHELL_DIR/scripts/${1:-zsh}-completion.sh" print ;;
+        *) echo "usage: banditshell completions print [zsh|bash]" >&2; exit 2 ;;
+        esac
+        ;;
+    *) echo "usage: banditshell completions install|status|remove|print [zsh|bash]" >&2; exit 2 ;;
     esac
     ;;
 shot)
