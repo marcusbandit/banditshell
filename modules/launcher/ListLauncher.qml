@@ -6,16 +6,15 @@ import qs.config
 import qs.components
 import qs.services
 
-Item {
+LauncherConcept {
     id: root
 
-    required property real originX
-    required property real inset
+    surface: panel
+    input: query
+    view: list
+    rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
+    travel: panel.implicitHeight
 
-    readonly property bool open: shown
-    property bool shown: false
-
-    readonly property real drawnHeight: panel.height
     readonly property int resultCount: results.length
     readonly property string scrollInfo: `row ${root.selected} of ${root.results.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}`
 
@@ -23,118 +22,56 @@ Item {
 
     property bool collapseToCentre: false
 
-    readonly property Item maskItem: catcher
-
     readonly property var results: Apps.search(query.text)
     property int selected: 0
 
-    readonly property var answer: Calculator.answer(query.text)
-
-    property bool answerHolds: false
-
-    onAnswerChanged: root.answerHolds = !!root.answer
-
-    readonly property real rowPitch: Math.max(Appearance.sizes.rowHeight, Appearance.sizes.launcherIcon + Appearance.padding.small * 2)
-
-    readonly property var blobs: panel.height <= 0 ? [] : [
-        {
-            x: panel.x,
-            y: panel.y,
-            w: panel.width,
-            h: panel.height,
-            radius: Appearance.rounding.large,
-            smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
-        }
-    ]
-
-    property string restoreTo: ""
-
-    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
-
-    function show(): void {
-
-        if (!root.shown)
-            root.restoreTo = Hypr.focusedOn(root.screenName);
-
+    onShowing: {
         root.collapseToCentre = false;
         root.unsized = true;
-        root.shown = true;
-        query.text = "";
-        root.selected = 0;
-
-        Qt.callLater(query.forceActiveFocus);
     }
 
-    function hide(): void {
+    onCleared: root.selected = 0
 
-        root.collapseToCentre = !panel.bottomAnchored;
-        root.shown = false;
-        query.focus = false;
-        Hypr.restoreFocus(root.restoreTo);
-        root.restoreTo = "";
-    }
+    onHidden: root.collapseToCentre = !panel.bottomAnchored
 
-    function toggle(): void {
-        if (root.shown)
-            root.hide();
-        else
-            root.show();
-    }
-
-    property bool dragging: false
-    property real dragProgress: 0
-
-    readonly property real revealed: root.dragging ? root.dragProgress : rise.value
-
-    function dragTo(fraction: real): void {
-        root.dragging = true;
-        root.dragProgress = Math.max(0, Math.min(fraction, 1));
-    }
-
-    function dragEnd(open: bool): void {
-        root.dragging = false;
-
-        rise.value = root.dragProgress;
-        if (open) {
-
-            if (!root.shown)
-                root.show();
-        } else {
-            root.hide();
-
+    onDropped: stayedOpen => {
+        if (!stayedOpen)
             root.collapseToCentre = false;
-        }
-
-        root.dragProgress = 0;
     }
 
     function accept(): void {
-
-        if (root.answerHolds && root.answer) {
-            Clipboard.copy({
-                text: root.answer.text
-            });
-            root.hide();
+        if (root.copyAnswer())
             return;
-        }
 
         const entry = root.results[root.selected];
-        if (entry) {
-            Apps.launch(entry);
-
-            root.restoreTo = "";
-            Hypr.claimNextWindow();
-        }
-        root.hide();
+        if (entry)
+            root.launch(() => Apps.launch(entry));
+        else
+            root.hide();
     }
 
     function move(delta: int): void {
-
         root.answerHolds = false;
         const n = root.results.length;
         if (n <= 0)
             return;
         root.moveTo((root.selected + delta + n) % n);
+    }
+
+    function page(rows: int): void {
+        root.moveTo(root.selected + rows);
+    }
+
+    function claimKey(event: var): bool {
+        switch (event.key) {
+        case Qt.Key_Home:
+            root.moveTo(0);
+            return true;
+        case Qt.Key_End:
+            root.moveTo(root.results.length - 1);
+            return true;
+        }
+        return false;
     }
 
     function chooseRow(index: int): void {
@@ -165,14 +102,6 @@ Item {
         epsilon: 0.5
     }
 
-    Follow {
-        id: rise
-
-        target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
-        epsilon: 0.005
-    }
-
     property bool unsized: false
 
     Connections {
@@ -184,37 +113,6 @@ Item {
                 grow.value = panel.implicitHeight;
             }
         }
-    }
-
-    MouseArea {
-        id: catcher
-
-        anchors.fill: parent
-        enabled: root.open
-        visible: root.open
-        onClicked: root.hide()
-    }
-
-    Pull {
-        id: putAway
-
-        x: panel.x
-        y: panel.y
-        width: panel.width
-        height: panel.height
-
-        armed: root.open
-
-        dirX: 0
-        dirY: 1
-
-        angle: Appearance.sizes.pullAngleEdge
-
-        travel: panel.implicitHeight
-
-        onPulled: fraction => root.dragTo(1 - fraction)
-
-        onFinished: gone => root.dragEnd(!gone)
     }
 
     Item {
@@ -286,42 +184,7 @@ Item {
                         selectedTextColor: Appearance.colour.accentText
                         clip: true
 
-                        Keys.onPressed: event => {
-                            const page = Math.max(1, Math.floor(list.height / root.rowPitch) - 1);
-
-                            switch (event.key) {
-                            case Qt.Key_Escape:
-                                root.hide();
-                                break;
-                            case Qt.Key_Return:
-                            case Qt.Key_Enter:
-                                root.accept();
-                                break;
-                            case Qt.Key_Down:
-                            case Qt.Key_Tab:
-                                root.move(1);
-                                break;
-                            case Qt.Key_Up:
-                            case Qt.Key_Backtab:
-                                root.move(-1);
-                                break;
-                            case Qt.Key_PageDown:
-                                root.moveTo(root.selected + page);
-                                break;
-                            case Qt.Key_PageUp:
-                                root.moveTo(root.selected - page);
-                                break;
-                            case Qt.Key_Home:
-                                root.moveTo(0);
-                                break;
-                            case Qt.Key_End:
-                                root.moveTo(root.results.length - 1);
-                                break;
-                            default:
-                                return;
-                            }
-                            event.accepted = true;
-                        }
+                        Keys.onPressed: event => root.pressKey(event)
 
                         StyledText {
                             anchors.verticalCenter: parent.verticalCenter

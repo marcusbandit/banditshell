@@ -6,14 +6,16 @@ import qs.config
 import qs.components
 import qs.services
 
-Item {
+LauncherConcept {
     id: root
 
-    required property real originX
-    required property real inset
+    surface: panel
+    input: query
+    view: list
+    rowPitch: root.iconSize + Appearance.padding.normal
+    travel: panel.fullHeight
 
-    readonly property bool open: shown
-    property bool shown: false
+    readonly property bool asking: sheet.open
 
     readonly property real panelWidth: Config.values.launcher.niagara.width
     readonly property real railWidth: Config.values.launcher.niagara.rail
@@ -25,7 +27,6 @@ Item {
 
     readonly property real gutter: Appearance.font.size.large + Appearance.padding.normal
 
-    readonly property real rowPitch: root.iconSize + Appearance.padding.normal
     readonly property real sectionPitch: Appearance.font.size.large + Appearance.padding.large
 
     readonly property string star: "favourites"
@@ -44,19 +45,6 @@ Item {
             return "arrow_back";
         return "";
     }
-
-    readonly property Item maskItem: catcher
-
-    readonly property var blobs: panel.height <= 0 ? [] : [
-        {
-            x: panel.x,
-            y: panel.y,
-            w: panel.width,
-            h: panel.height,
-            radius: Appearance.rounding.large,
-            smooth: Math.min(Appearance.sizes.melt, Math.min(panel.width, panel.height) / 2)
-        }
-    ]
 
     readonly property var byLetter: {
         const out = {};
@@ -220,29 +208,6 @@ Item {
             plate.snap();
     }
 
-    property bool dragging: false
-    property real dragProgress: 0
-
-    function dragTo(fraction: real): void {
-        root.dragging = true;
-        root.dragProgress = Math.max(0, Math.min(fraction, 1));
-    }
-
-    function dragEnd(open: bool): void {
-        root.dragging = false;
-
-        rise.value = root.dragProgress;
-
-        if (open) {
-            if (!root.shown)
-                root.show();
-        } else {
-            root.hide();
-        }
-
-        root.dragProgress = 0;
-    }
-
     property bool scrubbing: false
 
     function scrubTo(fraction: real): void {
@@ -262,21 +227,11 @@ Item {
 
     property int selected: 0
 
-    readonly property real drawnHeight: panel.height
     readonly property int resultCount: root.rows.filter(r => !!r.entry).length
 
     readonly property string scrollInfo: `${query.text ? `search "${query.text}"` : root.marked || "top"}, row ${root.selected} of ${root.rows.length}, at ${Math.round(list.contentY)}/${Math.round(list.maxScroll)}, view ${Math.round(list.height)}px, tail ${Math.round(root.tail)}px, section at ${Math.round(root.sectionSpan[root.marked]?.y ?? -1)}+${Math.round(root.sectionSpan[root.marked]?.h ?? 0)}`
 
-    property string restoreTo: ""
-
-    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
-
-    function show(): void {
-
-        if (!root.shown)
-            root.restoreTo = Hypr.focusedOn(root.screenName);
-        root.shown = true;
-        query.text = "";
+    onCleared: {
         root.marked = "";
         root.hovered = -1;
         root.scrubbing = false;
@@ -286,42 +241,20 @@ Item {
         root.naming = "";
         root.selected = root.firstApp(0, 1);
         list.reset();
-        Qt.callLater(query.forceActiveFocus);
 
         Qt.callLater(grow.snap);
     }
 
-    function hide(): void {
-        root.shown = false;
-        query.focus = false;
+    onHidden: {
         root.scrubbing = false;
         root.grabbing = false;
         root.naming = "";
         sheet.close();
-        Hypr.restoreFocus(root.restoreTo);
-        root.restoreTo = "";
     }
-
-    function toggle(): void {
-        if (root.shown)
-            root.hide();
-        else
-            root.show();
-    }
-
-    readonly property var answer: Calculator.answer(query.text)
-    property bool answerHolds: false
-
-    onAnswerChanged: root.answerHolds = !!root.answer
 
     function accept(): void {
-        if (root.answerHolds && root.answer) {
-            Clipboard.copy({
-                text: root.answer.text
-            });
-            root.hide();
+        if (root.copyAnswer())
             return;
-        }
 
         if (root.naming) {
             root.commitName();
@@ -336,12 +269,10 @@ Item {
         }
 
         const entry = row?.entry;
-        if (entry) {
-            Apps.launch(entry);
-            root.restoreTo = "";
-            Hypr.claimNextWindow();
-        }
-        root.hide();
+        if (entry)
+            root.launch(() => Apps.launch(entry));
+        else
+            root.hide();
     }
 
     property string naming: ""
@@ -380,6 +311,40 @@ Item {
         query.text = "";
     }
 
+    function claimKey(event: var): bool {
+        if (sheet.open) {
+            switch (event.key) {
+            case Qt.Key_Down:
+                sheet.move(1);
+                break;
+            case Qt.Key_Up:
+                sheet.move(-1);
+                break;
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+                sheet.activate(sheet.selected);
+                break;
+            default:
+                sheet.close();
+                break;
+            }
+            return true;
+        }
+
+        if (query.text || root.naming)
+            return false;
+
+        switch (event.key) {
+        case Qt.Key_Right:
+            root.enterFolder(root.rows[root.selected]?.folder ?? "");
+            return true;
+        case Qt.Key_Left:
+            root.leaveFolder();
+            return true;
+        }
+        return false;
+    }
+
     function back(): void {
         if (root.naming)
             root.cancelName();
@@ -387,13 +352,6 @@ Item {
             root.leaveFolder();
         else
             root.hide();
-    }
-
-    function launch(what: var): void {
-        what();
-        root.restoreTo = "";
-        Hypr.claimNextWindow();
-        root.hide();
     }
 
     function actionsFor(entry: var): var {
@@ -570,14 +528,6 @@ Item {
     onRowsChanged: root.reselect()
 
     Follow {
-        id: rise
-
-        target: root.shown ? 1 : 0
-        speed: Appearance.anim.revealSpeed
-        epsilon: 0.005
-    }
-
-    Follow {
         id: grow
 
         target: root.needed
@@ -600,37 +550,6 @@ Item {
         epsilon: 0.005
     }
 
-    MouseArea {
-        id: catcher
-
-        anchors.fill: parent
-        enabled: root.open
-        visible: root.open
-        onClicked: root.hide()
-    }
-
-    Pull {
-        id: putAway
-
-        x: panel.x
-        y: panel.y
-        width: panel.width
-        height: panel.height
-
-        armed: root.open
-
-        dirX: 0
-        dirY: 1
-
-        angle: Appearance.sizes.pullAngleEdge
-
-        travel: panel.fullHeight
-
-        onPulled: fraction => root.dragTo(1 - fraction)
-
-        onFinished: gone => root.dragEnd(!gone)
-    }
-
     Item {
         id: panel
 
@@ -640,7 +559,7 @@ Item {
         x: (root.width - width) / 2
         width: root.panelWidth
 
-        height: fullHeight * (root.dragging ? root.dragProgress : rise.value)
+        height: fullHeight * root.revealed
         y: bandY - height
 
         visible: height > 0
@@ -838,67 +757,7 @@ Item {
                         list.reset();
                     }
 
-                    Keys.onPressed: event => {
-                        const page = Math.max(1, Math.floor(list.height / root.rowPitch) - 1);
-
-                        if (sheet.open) {
-                            switch (event.key) {
-                            case Qt.Key_Down:
-                                sheet.move(1);
-                                break;
-                            case Qt.Key_Up:
-                                sheet.move(-1);
-                                break;
-                            case Qt.Key_Return:
-                            case Qt.Key_Enter:
-                                sheet.activate(sheet.selected);
-                                break;
-                            default:
-                                sheet.close();
-                                break;
-                            }
-                            event.accepted = true;
-                            return;
-                        }
-
-                        switch (event.key) {
-                        case Qt.Key_Escape:
-                            root.back();
-                            break;
-
-                        case Qt.Key_Right:
-                            if (query.text || root.naming)
-                                return;
-                            root.enterFolder(root.rows[root.selected]?.folder ?? "");
-                            break;
-                        case Qt.Key_Left:
-                            if (query.text || root.naming)
-                                return;
-                            root.leaveFolder();
-                            break;
-                        case Qt.Key_Return:
-                        case Qt.Key_Enter:
-                            root.accept();
-                            break;
-                        case Qt.Key_Down:
-                        case Qt.Key_Tab:
-                            root.move(1);
-                            break;
-                        case Qt.Key_Up:
-                        case Qt.Key_Backtab:
-                            root.move(-1);
-                            break;
-                        case Qt.Key_PageDown:
-                            root.move(page);
-                            break;
-                        case Qt.Key_PageUp:
-                            root.move(-page);
-                            break;
-                        default:
-                            return;
-                        }
-                        event.accepted = true;
-                    }
+                    Keys.onPressed: event => root.pressKey(event)
                 }
             }
 
@@ -1025,464 +884,9 @@ Item {
                         height: root.tail
                     }
 
-                    delegate: Item {
-                        id: row
-
-                        required property var modelData
-                        required property int index
-
-                        readonly property bool isSection: !!modelData.section
-                        readonly property var entry: modelData.entry
-                        readonly property string glyph: root.keyIcon(modelData.section)
-                        readonly property string folder: modelData.folder
-                        readonly property var folderData: row.folder ? Apps.folders[row.folder] : null
-                        readonly property var inside: row.folder ? Apps.folderApps(row.folder) : []
-
-                        readonly property bool actionable: !!row.entry || !!row.folder
-
-                        readonly property bool isBack: row.isSection && modelData.section === root.opened
-
-                        readonly property bool chosen: index === root.selected
-                        readonly property bool under: index === root.hovered
-                        readonly property bool away: !!entry && Apps.isHidden(entry)
-                        readonly property color ring: Appearance.colour.accent
-
-                        readonly property int unread: row.folder ? AppNotifications.countForAll(row.inside) : row.entry ? AppNotifications.countFor(row.entry) : 0
-                        readonly property var newest: row.entry ? AppNotifications.newestFor(row.entry) : null
-
-                        readonly property bool canOpen: !!row.folder
-                        readonly property bool canClear: row.unread > 0
-
-                        property real slide: 0
-                        property bool swiping: false
-
-                        readonly property real commitAt: Math.max(1, list.width * Appearance.sizes.dragDismissFraction)
-                        readonly property bool past: Math.abs(row.slide) >= row.commitAt
-
-                        function armed(dx: real): bool {
-                            return dx > 0 ? row.canOpen || row.canClear : row.canClear;
-                        }
-
-                        function resist(dx: real): real {
-                            if (!row.armed(dx))
-                                return 0;
-                            const far = Math.abs(dx);
-                            const over = far - row.commitAt;
-                            const travel = over <= 0 ? far : row.commitAt + over * Appearance.sizes.dragResistance;
-                            return dx < 0 ? -travel : travel;
-                        }
-
-                        function settleSwipe(): void {
-                            const acting = row.past;
-                            const open = row.slide > 0 && row.canOpen;
-                            const clear = row.canClear && !open;
-
-                            row.swiping = false;
-                            row.slide = 0;
-
-                            if (!acting)
-                                return;
-                            if (open)
-                                root.enterFolder(row.folder);
-                            else if (clear)
-                                row.clear();
-                        }
-
-                        function clear(): void {
-                            if (row.folder)
-                                AppNotifications.dismissForAll(row.inside);
-                            else
-                                AppNotifications.dismissFor(row.entry);
-                        }
-
+                    delegate: AlphabetRow {
+                        launcher: root
                         width: list.width
-                        height: isSection ? root.sectionPitch : root.rowPitch
-
-                        MouseArea {
-                            id: pointer
-
-                            anchors.fill: parent
-                            enabled: row.actionable || row.isBack
-
-                            cursorShape: Qt.PointingHandCursor
-                            acceptedButtons: Qt.LeftButton | Qt.RightButton
-
-                            property bool held: false
-
-                            property real fromX: 0
-                            property real fromY: 0
-                            property bool deciding: false
-
-                            onPressed: mouse => {
-                                pointer.held = false;
-                                pointer.fromX = mouse.x;
-                                pointer.fromY = mouse.y;
-                                pointer.deciding = true;
-                                row.swiping = false;
-                            }
-
-                            preventStealing: row.swiping
-
-                            onPositionChanged: mouse => {
-                                if (!pointer.pressed)
-                                    return;
-
-                                if (pointer.deciding) {
-                                    const dx = mouse.x - pointer.fromX;
-                                    const dy = mouse.y - pointer.fromY;
-                                    if (Math.abs(dx) < Appearance.sizes.dragThreshold)
-                                        return;
-
-                                    if (Math.abs(dx) <= Math.abs(dy))
-                                        return;
-                                    pointer.deciding = false;
-                                    row.swiping = true;
-
-                                    pointer.held = true;
-                                }
-
-                                row.slide = row.resist(mouse.x - pointer.fromX);
-                            }
-
-                            onReleased: row.settleSwipe()
-                            onCanceled: row.settleSwipe()
-
-                            onPressAndHold: mouse => {
-                                if (row.swiping)
-                                    return;
-                                pointer.held = true;
-                                root.askRow(row, mouse.x, mouse.y);
-                            }
-
-                            onClicked: mouse => {
-
-                                if (pointer.held)
-                                    return;
-
-                                if (mouse.button === Qt.RightButton) {
-                                    root.askRow(row, mouse.x, mouse.y);
-                                    return;
-                                }
-                                if (row.isBack) {
-                                    root.leaveFolder();
-                                    return;
-                                }
-
-                                root.answerHolds = false;
-                                root.selected = row.index;
-                                root.accept();
-                            }
-                        }
-
-                        HoverHandler {
-                            id: hover
-
-                            enabled: (row.actionable || row.isBack) && !sheet.open
-
-                            onHoveredChanged: {
-                                if (hover.hovered)
-                                    root.hoverRow(row.index, row.y);
-                                else if (root.hovered === row.index)
-                                    root.hovered = -1;
-                            }
-                        }
-
-                        onYChanged: if (row.under)
-                            root.hoverY = row.y
-
-                        Item {
-                            id: marks
-
-                            anchors.fill: parent
-
-                            readonly property real reach: Math.min(1, Math.abs(sled.x) / row.commitAt)
-                            readonly property bool ready: Math.abs(sled.x) >= row.commitAt
-
-                            visible: marks.reach > 0.001
-
-                            Icon {
-                                id: leadMark
-
-                                anchors.left: parent.left
-                                anchors.leftMargin: root.gutter
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: leadMark.inkOffsetY
-
-                                visible: sled.x > 0
-                                size: root.iconSize / 2
-                                name: row.canOpen ? "folder_open" : "clear_all"
-                                opacity: marks.reach
-                                color: marks.ready ? Appearance.colour.accent : Appearance.colour.textFaint
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-
-                            Icon {
-                                id: trailMark
-
-                                anchors.right: parent.right
-                                anchors.rightMargin: root.gutter
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: trailMark.inkOffsetY
-
-                                visible: sled.x < 0
-                                size: root.iconSize / 2
-                                name: "clear_all"
-                                opacity: marks.reach
-                                color: marks.ready ? Appearance.colour.accent : Appearance.colour.textFaint
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-                        }
-
-                        Item {
-                            id: sled
-
-                            x: row.slide
-                            width: row.width
-                            height: row.height
-
-                            Behavior on x {
-                                enabled: !row.swiping
-
-                                NumberAnimation {
-                                    duration: Appearance.anim.fast
-                                    easing.type: Easing.OutCubic
-                                }
-                            }
-
-                            StyledText {
-                                id: heading
-
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: heading.inkOffsetY
-                                width: root.gutter
-
-                                visible: row.isSection && !row.glyph
-                                text: row.modelData.section
-                                font.pixelSize: Appearance.font.size.large
-                                color: row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-
-                            Icon {
-                                id: headingGlyph
-
-                                anchors.left: parent.left
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: headingGlyph.inkOffsetY
-                                width: root.gutter
-
-                                visible: row.isSection && !!row.glyph
-                                size: Appearance.font.size.large
-                                name: row.glyph
-                                color: row.isBack && row.under ? Appearance.colour.text : row.modelData.section === root.marked ? Appearance.colour.accent : Appearance.colour.textDim
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-
-                            StyledText {
-                                id: headingLabel
-
-                                anchors.left: parent.left
-                                anchors.leftMargin: root.gutter
-                                anchors.right: parent.right
-                                anchors.rightMargin: Appearance.padding.large
-                                anchors.verticalCenter: parent.verticalCenter
-                                anchors.verticalCenterOffset: headingLabel.inkOffsetY
-
-                                visible: row.isBack
-                                text: root.openedFolder?.name ?? ""
-                                font.pixelSize: Appearance.font.size.large
-                                color: row.under ? Appearance.colour.text : Appearance.colour.textDim
-                                elide: Text.ElideRight
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-
-                            SquircleRect {
-                                id: badge
-
-                                anchors.left: parent.left
-                                anchors.leftMargin: root.gutter
-                                anchors.verticalCenter: parent.verticalCenter
-                                width: root.iconSize
-                                height: width
-
-                                radius: width / 2
-
-                                visible: !row.isSection
-
-                                color: art.visible ? "transparent" : row.under ? Appearance.colour.fillStrong : Appearance.colour.fill
-
-                                stroke: row.chosen ? row.ring : Qt.rgba(row.ring.r, row.ring.g, row.ring.b, 0)
-                                strokeWidth: 2
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-
-                                Behavior on stroke {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-
-                                Image {
-                                    id: art
-
-                                    anchors.fill: parent
-                                    anchors.margins: Appearance.padding.small
-                                    source: row.entry?.icon ? Quickshell.iconPath(row.entry.icon, true) : ""
-                                    fillMode: Image.PreserveAspectFit
-                                    asynchronous: true
-                                    visible: status === Image.Ready
-                                    sourceSize.width: width * Screen.devicePixelRatio
-                                    sourceSize.height: height * Screen.devicePixelRatio
-                                }
-
-                                Item {
-                                    id: stack
-
-                                    anchors.fill: parent
-                                    anchors.margins: Appearance.padding.small
-                                    visible: !!row.folder
-
-                                    readonly property var shown: row.inside.slice(0, 4)
-                                    readonly property int cols: Math.max(1, Math.ceil(Math.sqrt(stack.shown.length)))
-                                    readonly property int lines: Math.max(1, Math.ceil(stack.shown.length / stack.cols))
-                                    readonly property real cell: stack.width / stack.cols
-                                    readonly property real gridY: (stack.height - stack.cell * stack.lines) / 2
-
-                                    Repeater {
-                                        model: stack.shown
-
-                                        delegate: Image {
-                                            required property var modelData
-                                            required property int index
-
-                                            x: (index % stack.cols) * stack.cell
-                                            y: stack.gridY + Math.floor(index / stack.cols) * stack.cell
-                                            width: stack.cell
-                                            height: stack.cell
-
-                                            source: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
-                                            fillMode: Image.PreserveAspectFit
-                                            asynchronous: true
-                                            sourceSize.width: width * Screen.devicePixelRatio
-                                            sourceSize.height: height * Screen.devicePixelRatio
-                                        }
-                                    }
-                                }
-
-                                Icon {
-                                    id: fallbackGlyph
-
-                                    anchors.centerIn: parent
-                                    anchors.horizontalCenterOffset: fallbackGlyph.inkOffsetX
-                                    anchors.verticalCenterOffset: fallbackGlyph.inkOffsetY
-
-                                    visible: row.folder ? stack.shown.length === 0 : !art.visible
-                                    size: root.iconSize / 2
-                                    name: row.folder ? "folder" : "apps"
-                                    color: Appearance.colour.textDim
-                                }
-
-                                SquircleRect {
-                                    id: unread
-
-                                    x: badge.width - width * 0.78
-                                    y: -height * 0.22
-                                    width: root.iconSize * 0.46
-                                    height: width
-                                    radius: width / 2
-
-                                    visible: row.unread > 0
-                                    color: Appearance.colour.accent
-
-                                    StyledText {
-                                        id: unreadCount
-
-                                        anchors.centerIn: parent
-                                        anchors.horizontalCenterOffset: unreadCount.inkOffsetX
-                                        anchors.verticalCenterOffset: unreadCount.inkOffsetY
-
-                                        text: row.unread > 9 ? "9+" : `${row.unread}`
-                                        font.pixelSize: Appearance.font.size.small
-                                        color: Appearance.colour.accentText
-                                    }
-                                }
-                            }
-
-                            StyledText {
-                                anchors.left: badge.right
-                                anchors.leftMargin: Appearance.padding.large
-
-                                anchors.right: notice.left
-                                anchors.rightMargin: Appearance.padding.normal
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                visible: !row.isSection
-                                text: row.folder ? (row.folderData?.name ?? "") : (row.entry?.name ?? "")
-                                font.pixelSize: Appearance.font.size.normal
-                                color: row.chosen || row.under ? Appearance.colour.text : Appearance.colour.textDim
-                                elide: Text.ElideRight
-
-                                Behavior on color {
-                                    ColorAnimation {
-                                        duration: Appearance.anim.fast
-                                    }
-                                }
-                            }
-
-                            StyledText {
-                                id: notice
-
-                                anchors.right: parent.right
-                                anchors.rightMargin: Appearance.padding.large
-                                anchors.verticalCenter: parent.verticalCenter
-
-                                width: notice.visible ? Math.min(noticeInk.width, list.width * 0.34) : 0
-                                horizontalAlignment: Text.AlignRight
-
-                                visible: !row.isSection && !row.folder && !!row.newest
-                                text: row.newest?.summary ?? ""
-                                font.pixelSize: Appearance.font.size.small
-                                color: Appearance.colour.textFaint
-                                elide: Text.ElideRight
-
-                                TextMetrics {
-                                    id: noticeInk
-
-                                    font: notice.font
-                                    text: notice.text
-                                }
-                            }
-                        }
                     }
                 }
             }
