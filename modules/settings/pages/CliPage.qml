@@ -12,14 +12,17 @@ Item {
 
     implicitHeight: list.implicitHeight
 
-    property int state: -1
+    readonly property var shells: ["zsh", "bash"]
 
-    property string target: ""
-    readonly property string dir: root.target.slice(0, root.target.lastIndexOf("/"))
+    property var states: ({})
+
+    readonly property var known: root.shells.filter(s => root.states[s] !== undefined && root.states[s] >= 0)
+    readonly property bool anySetUp: root.known.some(s => root.states[s] < 2)
+    readonly property bool allCurrent: root.known.length === root.shells.length && root.known.every(s => root.states[s] === 0)
 
     property bool busy: false
 
-    readonly property string script: Quickshell.shellPath("scripts/zsh-completion.sh")
+    readonly property string cli: Quickshell.shellPath("cli/banditshell")
 
     Component.onCompleted: root.probe()
 
@@ -38,23 +41,46 @@ Item {
         prober.running = true;
     }
 
+    function word(state: int): string {
+        switch (state) {
+        case 0:
+            return "current";
+        case 1:
+            return "stale";
+        case 2:
+            return "not set up";
+        default:
+            return "";
+        }
+    }
+
+    function summary(): string {
+        if (root.busy)
+            return "working";
+        if (!root.known.length)
+            return "";
+        const first = root.states[root.known[0]];
+        if (root.known.length === root.shells.length && root.known.every(s => root.states[s] === first))
+            return first === 2 ? "not set up" : `set up, ${root.word(first)}`;
+        return root.known.map(s => `${s} ${root.word(root.states[s])}`).join(", ");
+    }
+
     Process {
         id: prober
 
-        command: ["sh", "-c", `"$1" where; "$1" status --quiet; echo "state=$?"`, "sh", root.script]
+        command: ["sh", "-c", `for shell in ${root.shells.join(" ")}; do "$1" completions status "$shell" --quiet; echo "$shell=$?"; done`, "sh", root.cli]
 
         stdout: StdioCollector {
             onStreamFinished: {
-                let where = "";
-                let code = -1;
+                const next = {};
                 for (const line of text.trim().split("\n")) {
-                    if (line.startsWith("state="))
-                        code = parseInt(line.slice(6), 10);
-                    else if (line.startsWith("/"))
-                        where = line;
+                    const at = line.indexOf("=");
+                    if (at < 0)
+                        continue;
+                    const code = parseInt(line.slice(at + 1), 10);
+                    next[line.slice(0, at)] = isNaN(code) || code > 2 ? -1 : code;
                 }
-                root.target = where;
-                root.state = isNaN(code) ? -1 : code;
+                root.states = next;
             }
         }
     }
@@ -68,16 +94,11 @@ Item {
         }
     }
 
-    function short(path: string): string {
-        const home = Quickshell.env("HOME");
-        return home && path.startsWith(home) ? `~${path.slice(home.length)}` : path;
-    }
-
     function act(verb: string): void {
         if (root.busy)
             return;
         root.busy = true;
-        actor.command = [root.script, verb];
+        actor.command = [root.cli, "completions", verb, "--quiet"];
         actor.running = true;
     }
 
@@ -87,34 +108,11 @@ Item {
         width: parent.width
         spacing: Appearance.padding.small / 2
 
-        StyledText {
-            width: list.width
-            wrapMode: Text.WordWrap
-            text: "Generated from the CLI itself, so it offers every verb banditshell has and none it does not."
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            bottomPadding: Appearance.padding.small
-        }
-
         MenuRow {
             width: list.width
             icon: "keyboard_tab"
             label: "Tab completion"
-            detail: {
-                if (root.busy)
-                    return "working";
-                switch (root.state) {
-                case 0:
-                    return "set up, current";
-                case 1:
-                    return "set up, stale";
-                case 2:
-                    return "not set up";
-                default:
-                    return "";
-                }
-            }
-            tip: root.state === 2 ? "write it, and wire zsh's fpath to find it" : root.state === 1 ? "rebuild it now rather than on the next Tab" : "rebuild it from the CLI as it stands now"
+            detail: root.summary()
             interactive: !root.busy
             onActivated: root.act("install")
 
@@ -122,58 +120,18 @@ Item {
                 width: Appearance.font.size.small
                 height: width
                 radius: width / 2
-                visible: root.state >= 0 && !root.busy
-                color: root.state === 0 ? Appearance.colour.accent : Appearance.colour.textFaint
+                visible: root.known.length > 0 && !root.busy
+                color: root.allCurrent ? Appearance.colour.accent : Appearance.colour.textFaint
             }
-        }
-
-        StyledText {
-            width: list.width
-            visible: root.state === 0 || root.state === 1
-            text: root.short(root.dir)
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-            topPadding: Appearance.padding.small / 2
-            bottomPadding: Appearance.padding.small
         }
 
         MenuRow {
             width: list.width
-            visible: root.state === 0 || root.state === 1
+            visible: root.anySetUp
             icon: "backspace"
             label: "Remove it"
-            detail: "the file, and the fpath line"
-            tip: "banditshell keeps working; only the Tab does not"
             interactive: !root.busy
             onActivated: root.act("remove")
-        }
-
-        Item {
-            width: list.width
-            height: Appearance.padding.large
-
-            Separator {
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width
-            }
-        }
-
-        StyledText {
-            width: list.width
-            wrapMode: Text.WordWrap
-            text: "It keeps itself current: the first Tab in a shell checks the CLI and rebuilds if it has changed, so a new verb needs nothing pressed here. This row is for the first time, and for a machine where it cannot write the file itself."
-            color: Appearance.colour.textFaint
-            font.pixelSize: Appearance.font.size.small
-        }
-
-        StyledText {
-            width: list.width
-            wrapMode: Text.WordWrap
-            visible: root.state === 2
-            text: "Open a new terminal afterwards. zsh reads its startup file once."
-            color: Appearance.colour.textDim
-            font.pixelSize: Appearance.font.size.small
-            topPadding: Appearance.padding.small
         }
     }
 }

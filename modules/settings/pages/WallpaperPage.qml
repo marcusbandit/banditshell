@@ -92,7 +92,6 @@ Item {
                 visible: Wallpaper.available.some(p => Wallpaper.movesOf(p)) || Wallpaper.moves
                 icon: "motion_photos_on"
                 label: "Play animated wallpapers"
-                detail: "only on an empty workspace"
                 onActivated: Config.set("wallpaper.animate", !Config.values.wallpaper.animate)
 
                 Toggle {

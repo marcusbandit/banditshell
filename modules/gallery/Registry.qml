@@ -14,8 +14,6 @@ Singleton {
             title: "Buttons",
             icon: "smart_button",
             section: "Buttons",
-            blurb: "what a press looks like, at every size it is asked for",
-            checklist: "Buttons (common, filled, elevated, outlined, text)",
             status: "draft"
         },
         {
@@ -23,8 +21,6 @@ Singleton {
             title: "Segmented buttons",
             icon: "view_week",
             section: "Buttons",
-            blurb: "one row, one choice taken",
-            checklist: "Segmented buttons",
             status: "draft"
         },
         {
@@ -32,8 +28,6 @@ Singleton {
             title: "Switch",
             icon: "toggle_on",
             section: "Selection",
-            blurb: "one thing, on or off",
-            checklist: "Switch",
             status: "draft"
         },
         {
@@ -41,8 +35,6 @@ Singleton {
             title: "Sliders",
             icon: "tune",
             section: "Input",
-            blurb: "a bead on a rail",
-            checklist: "Sliders",
             status: "draft"
         }
     ]

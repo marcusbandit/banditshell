@@ -65,7 +65,7 @@ Item {
                 label: "Speakers"
                 value: Audio.speakers ? Audio.deviceLabel(Audio.speakers) : Audio.speakersName ? "not connected" : "not set"
 
-                detail: Audio.speakers ? Audio.deviceTransport(Audio.speakers) : Audio.speakersName ? `assigned to ${Audio.speakersName}, which is not here right now` : "nothing assigned, so the toggle has nowhere to go"
+                detail: Audio.speakers ? Audio.deviceTransport(Audio.speakers) : Audio.speakersName
                 onActivated: root.toggleLayer("speakers")
 
                 Expander {
@@ -100,7 +100,6 @@ Item {
                     visible: !!Audio.speakersName
                     icon: "block"
                     label: "Nothing"
-                    detail: "leave the role unset; the toggle says so rather than guessing"
                     onActivated: Config.set("audio.speakers", "")
                 }
             }
@@ -109,7 +108,7 @@ Item {
                 icon: "headphones"
                 label: "Headphones"
                 value: Audio.headphones ? Audio.deviceLabel(Audio.headphones) : Audio.headphonesName ? "not connected" : "not set"
-                detail: Audio.headphones ? Audio.deviceTransport(Audio.headphones) : Audio.headphonesName ? `assigned to ${Audio.headphonesName}, which is not here right now` : "nothing assigned, so the toggle has nowhere to go"
+                detail: Audio.headphones ? Audio.deviceTransport(Audio.headphones) : Audio.headphonesName
                 onActivated: root.toggleLayer("headphones")
 
                 Expander {
@@ -143,7 +142,6 @@ Item {
                     visible: !!Audio.headphonesName
                     icon: "block"
                     label: "Nothing"
-                    detail: "leave the role unset; the toggle says so rather than guessing"
                     onActivated: Config.set("audio.headphones", "")
                 }
             }
@@ -152,7 +150,6 @@ Item {
                 visible: Audio.rolesCollide
                 icon: "warning"
                 label: "Both roles are the same device"
-                detail: "the toggle has nowhere to go, so the key will look like it does nothing"
                 interactive: false
             }
         }

@@ -28,21 +28,18 @@ Item {
             SettingsRow {
                 icon: "refresh"
                 label: "Reload the shell"
-                detail: "re-read every QML file; the config is watched already and needs no reload"
                 onActivated: Quickshell.reload(true)
             }
 
             SettingsRow {
                 icon: "rule"
                 label: "Reinstall the window rules"
-                detail: "tell the compositor again how the settings window floats"
                 onActivated: Settings.installRules()
             }
 
             SettingsRow {
                 icon: "sync"
                 label: "Re-read the compositor"
-                detail: "rounding, gaps and border, if you changed them in hyprland.conf"
                 onActivated: Compositor.refresh()
             }
         }
@@ -88,13 +85,6 @@ Item {
                 icon: "web_asset"
                 label: "This page is held by"
                 value: "a window" + (Settings.screenName ? ` (summoned on ${Settings.screenName})` : "")
-                interactive: false
-            }
-
-            SettingsRow {
-                icon: "terminal"
-                label: "From a terminal"
-                detail: "banditshell settings status · banditshell shell get <key>"
                 interactive: false
             }
         }

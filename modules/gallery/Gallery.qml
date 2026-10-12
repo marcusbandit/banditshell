@@ -229,20 +229,6 @@ Item {
                     color: root.statusColour(root.entry.status)
                 }
             }
-
-            StyledText {
-                width: head.width
-                text: root.entry.blurb
-                color: Appearance.colour.textDim
-                elide: Text.ElideRight
-            }
-
-            StyledText {
-                width: head.width
-                text: `from the list: ${root.entry.checklist}`
-                color: Appearance.colour.textGhost
-                elide: Text.ElideRight
-            }
         }
 
         SquircleRect {

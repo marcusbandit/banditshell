@@ -47,18 +47,6 @@ Item {
 
             SettingsRow {
                 label: Appearance.font.family
-                detail: "this is what the shell wears now; tap a family below to wear it"
-                interactive: false
-            }
-        }
-
-        SettingsCard {
-            title: "About sizes"
-
-            SettingsRow {
-                icon: "info"
-                label: "Sizes stay on the pixel grid"
-                detail: "the shell's three text sizes are whole multiples of the font base, so a pixel face like Monocraft stays crisp; another family simply takes those same sizes"
                 interactive: false
             }
         }

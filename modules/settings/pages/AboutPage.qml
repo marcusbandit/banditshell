@@ -111,7 +111,6 @@ Item {
                 visible: !Compositor.isHyprland
                 icon: "info"
                 label: "Hyprland-only features are off"
-                detail: "the shell runs, and everything that speaks to the compositor waits for Hyprland"
                 interactive: false
             }
         }
@@ -122,7 +121,6 @@ Item {
             SettingsRow {
                 icon: "menu_book"
                 label: "Design notes"
-                detail: "DESIGN.md: the reasons behind every part of it"
                 onActivated: opener.exec(["xdg-open", `${Device.shellDir}/DESIGN.md`])
             }
 
@@ -143,7 +141,6 @@ Item {
             SettingsRow {
                 icon: "keyboard"
                 label: "Hotkeys"
-                detail: "every bind the compositor knows, drawn live"
                 onActivated: Shell.forScreen(Settings.screenName)?.hotkeys.show()
             }
         }
