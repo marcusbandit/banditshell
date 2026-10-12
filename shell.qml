@@ -10,6 +10,8 @@ import qs.modules.settings
 
 ShellRoot {
 
+    LockScreen {}
+
     FilesWindow {}
 
     PickerState {
@@ -19,8 +21,6 @@ ShellRoot {
     Cli {
         picker: picker
     }
-
-    LockScreen {}
 
     SettingsFloat {}
 
