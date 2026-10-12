@@ -30,8 +30,6 @@ Singleton {
         return only;
     }
 
-    readonly property var names: Object.keys(root.all)
-
     function get(name: string): Theme {
         return root.all[name] ?? (root.live ? root.rendered : root.literals[root.fallback]);
     }

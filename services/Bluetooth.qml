@@ -83,11 +83,6 @@ Singleton {
             device.wakeAllowed = on;
     }
 
-    function rename(device: var, name: string): void {
-        if (device && name)
-            device.name = name;
-    }
-
     function forget(device: var): void {
         if (device)
             device.forget();
@@ -107,10 +102,6 @@ Singleton {
             device.connect();
         else
             device.pair();
-    }
-
-    function busy(device: var): bool {
-        return !!device?.pairing || device?.state === Bluez.BluetoothDeviceState.Connecting || device?.state === Bluez.BluetoothDeviceState.Disconnecting;
     }
 
     function stateLabel(device: var): string {

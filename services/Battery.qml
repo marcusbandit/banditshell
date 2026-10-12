@@ -262,8 +262,6 @@ done
 
     readonly property real lostWh: root.tracking ? root.firstSample.cap - root.lastSample.cap : 0
 
-    readonly property int trackedDays: root.tracking ? Math.max(0, Math.round((root.lastSample.t - root.firstSample.t) / (24 * 60 * 60 * 1000))) : 0
-
     FileView {
         id: healthStore
 
