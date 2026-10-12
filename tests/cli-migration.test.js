@@ -13,8 +13,6 @@ function migrate(cmd) {
     return hit ? hit.args : cmd;
 }
 
-// ---- the shape of the new grammar -----------------------------------------
-
 test("lifecycle verbs need nothing", () => {
     for (const verb of ["start", "stop", "restart", "run", "log"])
         assert.strictEqual(migrate(verb), verb);
@@ -33,8 +31,6 @@ test("dev verbs pass through untouched", () => {
         "completions install", "completions status"])
         assert.strictEqual(migrate(cmd), cmd);
 });
-
-// ---- panels ----------------------------------------------------------------
 
 test("every panel's surface verbs move in front of panel", () => {
     for (const [old, now] of [
@@ -105,8 +101,6 @@ test("the noun aliases still land on the same panel", () => {
     assert.strictEqual(migrate("osk toggle"), "toggle panel keyboard");
     assert.strictEqual(migrate("pen open"), "open panel penmap");
 });
-
-// ---- booleans get both toggle and set --------------------------------------
 
 test("border", () => {
     assert.strictEqual(migrate("border toggle"), "toggle border");
@@ -202,15 +196,11 @@ test("the rescue stays one word", () => {
     assert.strictEqual(migrate("panic"), "close");
 });
 
-// ---- the new grammar is not re-migrated ------------------------------------
-
 test("new forms pass through untouched", () => {
     for (const cmd of ["toggle panel launcher", "set volume 50", "dispatch clipboard use 3",
         "list wallpaper", "status border", "close panel notifications", "close"])
         assert.strictEqual(Migration.migrateArgs(cmd), null, cmd);
 });
-
-// ---- whole-text rewriting ---------------------------------------------------
 
 test("rewrites inside exec_cmd strings", () => {
     const { text, changes } = Migration.rewriteText(
@@ -247,7 +237,6 @@ test("rewriting twice changes nothing the second time", () => {
 });
 
 test("the map covers every noun the old CLI had", () => {
-    // The old header's nouns, minus the pass-throughs and the aliases.
     const oldNouns = ["menu", "launcher", "clipboard", "session", "media", "calculator",
         "tablet", "keyboard", "settings", "notifications", "notch", "hotkeys",
         "timer", "alarm", "zone", "volume", "output", "lock", "keyring", "picker",
@@ -255,4 +244,75 @@ test("the map covers every noun the old CLI had", () => {
     const sources = Migration.RULES.map(r => String(r.re));
     for (const noun of oldNouns)
         assert.ok(sources.some(s => s.includes(noun)), `no rule names ${noun}`);
+});
+
+test("the sidebar's old noun-first forms become its generic verbs", () => {
+    assert.strictEqual(migrate("sidebar toggle"), "toggle sidebar");
+    assert.strictEqual(migrate("sidebar toggle DP-2"), "toggle sidebar DP-2");
+    assert.strictEqual(migrate("sidebar toggle all"), "toggle sidebar all");
+    assert.strictEqual(migrate("sidebar on"), "set sidebar on");
+    assert.strictEqual(migrate("sidebar off all"), "set sidebar off all");
+    assert.strictEqual(migrate("sidebar status"), "status sidebar");
+});
+
+test("a bare old noun runs what the old CLI defaulted it to", () => {
+    const bare = {
+        launcher: "toggle panel launcher",
+        clipboard: "toggle panel clipboard",
+        session: "toggle panel session",
+        media: "toggle panel media",
+        calculator: "toggle panel calculator",
+        calc: "toggle panel calculator",
+        keyboard: "toggle panel keyboard",
+        osk: "toggle panel keyboard",
+        settings: "toggle panel settings",
+        notifications: "toggle panel notifications",
+        notch: "toggle panel notch",
+        hotkeys: "toggle panel hotkeys",
+        wallpapers: "toggle panel wallpaper",
+        wallpaper: "toggle wallpaper",
+        border: "toggle border",
+        menu: "list menu",
+        alarm: "list alarm",
+        zone: "list zone",
+        penmap: "status penmap",
+        pen: "status penmap",
+        tablet: "status tablet",
+        timer: "status timer",
+        volume: "status volume",
+        output: "status output",
+        keyring: "status keyring",
+        picker: "dispatch picker freezeclip",
+        lock: "dispatch lock"
+    };
+    for (const old in bare)
+        assert.strictEqual(migrate(old), bare[old], old);
+});
+
+test("bare words that are still verbs stay as they are", () => {
+    for (const verb of ["files", "status", "close", "start", "doctor"])
+        assert.strictEqual(Migration.migrateArgs(verb), null, verb);
+});
+
+test("the sidebar bind is rewritten where it lives in a Lua config", () => {
+    const { text, changes } = Migration.rewriteText('hl.bind("SUPER + K", hl.dsp.exec_cmd("banditshell sidebar toggle"))');
+    assert.strictEqual(changes.length, 1);
+    assert.strictEqual(text, 'hl.bind("SUPER + K", hl.dsp.exec_cmd("banditshell toggle sidebar"))');
+});
+
+test("the example binds speak only the new grammar", () => {
+    const example = fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.conf"), "utf8");
+    assert.deepStrictEqual(Migration.rewriteText(example).changes.map(c => c.from), []);
+});
+
+test("comments are prose, not binds: they are never counted or rewritten", () => {
+    const conf = [
+        "# the old key ran `banditshell media",
+        "-- banditshell sidebar toggle was the old form",
+        "bind = $mod, Z, exec, banditshell sidebar toggle # the sidebar"
+    ].join("\n");
+    const { text, changes } = Migration.rewriteText(conf);
+    assert.strictEqual(changes.length, 1);
+    assert.strictEqual(text.split("\n")[2], "bind = $mod, Z, exec, banditshell toggle sidebar # the sidebar");
+    assert.strictEqual(text.split("\n")[1], "-- banditshell sidebar toggle was the old form");
 });

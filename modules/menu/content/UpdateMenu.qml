@@ -14,9 +14,6 @@ Column {
 
     property bool declineConfirm: false
 
-    // The one width the menu cannot shrink its way out of: the widest row
-    // that cannot wrap - the meta line and the button pairs. Prose wraps;
-    // these do not. The panel grows to this hint.
     readonly property real menuWidthHint: Math.max(metaRow.implicitWidth, offerRow.implicitWidth, confirmRow.implicitWidth)
 
     spacing: Appearance.padding.small
@@ -38,9 +35,6 @@ Column {
         }
     }
 
-    // THE STATE LINE: what the update is doing, in the words that answer it.
-    // Most of the time this is the whole menu: up to date, when, the way to
-    // ask again.
     StyledText {
         width: parent.width
         alignInk: true
@@ -58,9 +52,6 @@ Column {
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
-    // THE META LINE: the way to ask again, then when. The check is a real
-    // button - it is the one action an up-to-date menu has - and the stamp
-    // rides beside it.
     Row {
         id: metaRow
 
@@ -89,9 +80,6 @@ Column {
         }
     }
 
-    // THE ORDINARY UPDATE, when there is one: what came down, what went
-    // wrong, and the one button the update itself needs. None of it shows
-    // when the answer is already "up to date".
     StyledText {
         width: parent.width
         visible: Update.behind > 0 && !!Update.remoteHead
@@ -133,7 +121,6 @@ Column {
         }
     }
 
-    // THE CHANGELOG, when there is something new said about the update.
     Column {
         width: parent.width
         visible: root.card.length > 0
@@ -199,20 +186,11 @@ Column {
         }
     }
 
-    // EVERYTHING BELOW the rule is a SPECIAL update - one that needs more of
-    // the user than pressing the update button. Most of the time there is
-    // none, and most of the time the rule and the sections under it do not
-    // exist.
     Separator {
         width: parent.width
         visible: CliMigration.stale
     }
 
-    // THE MIGRATION CARD. The scanner found old-grammar binds in the user's
-    // hyprland config; the offer is one click (the rewriter runs, a .bak
-    // lands beside the file) and the decline is TWO clicks - the second asks,
-    // because "no" here means "I will fix the config by hand", and that is
-    // worth one moment of friction to confirm.
     Column {
         width: parent.width
         visible: CliMigration.stale
@@ -226,17 +204,6 @@ Column {
             wrapMode: Text.WordWrap
         }
 
-        StyledText {
-            width: parent.width
-            visible: !root.declineConfirm
-            alignInk: true
-            text: "Migrate to fix"
-            color: Appearance.colour.textDim
-            wrapMode: Text.WordWrap
-        }
-
-        // (option||option): the component, not hand-made rows - the seam gap
-        // and the seam rounding are tokens, `primary` decides who is loud.
         ButtonPair {
             id: offerRow
 
@@ -268,7 +235,9 @@ Column {
 
             onTriggered: index => {
                 root.declineConfirm = false;
-                if (index === 1)
+                if (index === 0)
+                    CliMigration.migrate();
+                else
                     CliMigration.decline();
             }
         }
