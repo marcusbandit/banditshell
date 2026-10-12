@@ -9,6 +9,6 @@ Text {
     renderType: Text.NativeRendering
     color: Theme.text
 
-    lineHeight: Math.round(font.pixelSize * 4 / 3)
+    lineHeight: Math.round(font.pixelSize * Theme.leading)
     lineHeightMode: Text.FixedHeight
 }

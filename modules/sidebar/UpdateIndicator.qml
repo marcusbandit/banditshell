@@ -53,7 +53,7 @@ Item {
         size: root.markSize
         color: root.tint
 
-        scale: press.pressed ? 0.92 : 1
+        scale: press.pressed ? Appearance.press.glyph : 1
 
         Behavior on scale {
             NumberAnimation {

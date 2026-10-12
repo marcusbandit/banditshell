@@ -486,7 +486,7 @@ Item {
                             anchors.left: tabStrip.right
                             anchors.leftMargin: Appearance.padding.large
                             anchors.verticalCenter: parent.verticalCenter
-                            height: Math.round(Appearance.font.size.small * 4 / 3) + Appearance.padding.small * 2
+                            height: Appearance.font.line.small + Appearance.padding.small * 2
 
                             opacity: root.searching ? 1 : 0
                             visible: opacity > 0.01

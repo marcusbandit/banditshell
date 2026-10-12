@@ -26,7 +26,7 @@ Item {
     readonly property int span: root.to - root.from + 1
 
     implicitWidth: Math.max(Appearance.sizes.minTarget, digits.implicitWidth + Appearance.padding.small * 2)
-    implicitHeight: Math.max(Appearance.sizes.rowHeight, Math.round(Appearance.font.size.large * 4 / 3))
+    implicitHeight: Math.max(Appearance.sizes.rowHeight, Appearance.font.line.large)
     width: implicitWidth
     height: implicitHeight
 

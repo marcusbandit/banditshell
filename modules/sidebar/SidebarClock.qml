@@ -69,7 +69,7 @@ Column {
             anchors.centerIn: parent
             spacing: 0
 
-            scale: clockSummon.pressed ? 0.96 : 1
+            scale: clockSummon.pressed ? Appearance.press.plate : 1
 
             Behavior on scale {
                 NumberAnimation {

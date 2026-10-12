@@ -20,6 +20,7 @@ var fontFamily = "Monocraft";
 var small = 18;
 var normal = 27;
 var large = 36;
+var leading = 4 / 3;
 
 var rSmall = 9;
 var rNormal = 15;

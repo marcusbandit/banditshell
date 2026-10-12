@@ -167,7 +167,7 @@ Column {
 
                             Icon {
 
-                                y: Math.round((Appearance.font.size.small * 4 / 3 - size) / 2)
+                                y: Math.round((Appearance.font.line.small - size) / 2)
                                 size: Appearance.font.iconSize
                                 name: root.glyph(changeLine.modelData.type)
                                 color: Appearance.colour.textDim

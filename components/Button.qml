@@ -253,7 +253,7 @@ Item {
         }
     }
 
-    scale: root.pressed ? 0.96 : 1
+    scale: root.pressed ? Appearance.press.plate : 1
 
     Behavior on scale {
         NumberAnimation {

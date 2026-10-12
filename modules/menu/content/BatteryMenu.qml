@@ -10,8 +10,8 @@ Column {
 
     spacing: Appearance.padding.normal
 
-    readonly property int lineHeight: Math.round(Appearance.font.size.small * 4 / 3)
-    readonly property int leadHeight: Math.round(Appearance.font.size.normal * 4 / 3) + lineHeight
+    readonly property int lineHeight: Appearance.font.line.small
+    readonly property int leadHeight: Appearance.font.line.normal + lineHeight
 
     function readouts(): var {
         if (!Battery.available)

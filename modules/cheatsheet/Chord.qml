@@ -21,7 +21,7 @@ Item {
     }
 
     implicitWidth: root.cells * root.advance
-    implicitHeight: Math.round(Appearance.font.size.small * 4 / 3)
+    implicitHeight: Appearance.font.line.small
 
     Row {
         anchors.fill: parent

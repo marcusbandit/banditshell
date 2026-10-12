@@ -255,7 +255,7 @@ Item {
 
                 readonly property real ring: Appearance.font.iconSize + Appearance.padding.normal * 2
 
-                scale: press.pressed ? 0.94 : press.containsMouse ? 1.12 : 1
+                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
 
                 Behavior on scale {
                     NumberAnimation {

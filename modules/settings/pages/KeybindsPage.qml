@@ -414,7 +414,7 @@ Item {
         }
 
         readonly property real plateH: Appearance.sizes.minTarget
-        readonly property real lineH: Appearance.font.size.small * 4 / 3
+        readonly property real lineH: Appearance.font.line.small
         readonly property real blockH: row.plateH + Appearance.font.stem + row.lineH
 
         width: parent ? parent.width : 0

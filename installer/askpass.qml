@@ -331,7 +331,7 @@ ShellRoot {
 
                     Item {
                         width: parent.width
-                        height: Theme.small * 4 / 3
+                        height: Theme.small * Theme.leading
 
                         InstallerText {
                             color: root.errorState ? Theme.alarm : Theme.ramp[6]

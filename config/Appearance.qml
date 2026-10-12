@@ -124,9 +124,24 @@ Singleton {
             readonly property int large: Math.round(root.tier(root.cfg.font.base, root.cfg.font.scale, 2))
         }
 
+        readonly property real leading: 4 / 3
+
+        readonly property QtObject line: QtObject {
+            readonly property int small: Math.round(root.font.size.small * root.font.leading)
+            readonly property int normal: Math.round(root.font.size.normal * root.font.leading)
+            readonly property int large: Math.round(root.font.size.large * root.font.leading)
+        }
+
         readonly property int iconSize: Math.round(size.small * root.cfg.font.iconScale)
 
         readonly property int stem: Math.max(1, Math.round(size.small / root.cfg.font.base))
+    }
+
+    readonly property QtObject press: QtObject {
+        readonly property real plate: 0.96
+        readonly property real ring: 0.94
+        readonly property real ringHover: 1.12
+        readonly property real glyph: 0.92
     }
 
     readonly property QtObject rounding: QtObject {
@@ -326,7 +341,7 @@ Singleton {
 
         readonly property int filesSidebar: root.cfg.files.sidebar
 
-        readonly property int filesRow: Math.round(root.font.size.small * 4 / 3 * filesZoom) + root.padding.small
+        readonly property int filesRow: Math.round(root.font.line.small * filesZoom) + root.padding.small
         readonly property int filesThumbnail: root.cfg.files.thumbnail
         readonly property int filesTextMax: root.cfg.files.textMax
 
@@ -338,7 +353,7 @@ Singleton {
         readonly property int cornerIcon: Math.round(root.font.iconSize * root.cfg.corner.iconScale)
 
         readonly property int lockField: root.cfg.lock.fieldWidth
-        readonly property real lockFieldHeight: Math.round(root.font.size.small * 4 / 3) + root.padding.normal * 2
+        readonly property real lockFieldHeight: root.font.line.small + root.padding.normal * 2
         readonly property real lockBlur: root.cfg.lock.blur
         readonly property real lockDim: root.cfg.lock.dim
         readonly property real lockDesaturate: root.cfg.lock.desaturate
