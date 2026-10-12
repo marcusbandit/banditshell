@@ -22,9 +22,9 @@ Singleton {
     property var entries: []
     property string error: ""
 
-    property int cursor: -1
+    property string cursorName: ""
     property var picked: []
-    property int anchor: -1
+    property string anchorName: ""
 
     property string search: ""
     property bool searching: false
@@ -48,7 +48,16 @@ Singleton {
         });
     }
 
-    readonly property var current: root.cursor >= 0 && root.cursor < root.visible.length ? root.visible[root.cursor] : null
+    function indexOf(name: string): int {
+        return root.visible.findIndex(e => e.name === name);
+    }
+
+    readonly property int cursor: {
+        const at = root.indexOf(root.cursorName);
+        return at >= 0 ? at : root.visible.length > 0 ? 0 : -1;
+    }
+
+    readonly property var current: root.cursor >= 0 ? root.visible[root.cursor] : null
     readonly property string currentPath: root.current ? root.join(root.cwd, root.current.name) : ""
 
     readonly property var picks: {
@@ -86,9 +95,10 @@ Singleton {
     function setCursor(index: int): void {
         if (index < 0 || index >= root.visible.length)
             return;
-        root.cursor = index;
-        root.anchor = index;
-        root.picked = [root.visible[index].name];
+        const name = root.visible[index].name;
+        root.cursorName = name;
+        root.anchorName = name;
+        root.picked = [name];
     }
 
     function togglePick(index: int): void {
@@ -96,18 +106,20 @@ Singleton {
             return;
         const name = root.visible[index].name;
         root.picked = root.isPicked(name) ? root.picked.filter(n => n !== name) : [...root.picked, name];
-        root.cursor = index;
-        root.anchor = index;
+        root.cursorName = name;
+        root.anchorName = name;
     }
 
     function extendTo(index: int): void {
         if (index < 0 || index >= root.visible.length)
             return;
-        const from = root.anchor < 0 ? index : root.anchor;
+        const anchor = root.indexOf(root.anchorName);
+        const from = anchor < 0 ? index : anchor;
         const lo = Math.min(from, index);
         const hi = Math.max(from, index);
+        const name = root.visible[index].name;
         root.picked = root.visible.slice(lo, hi + 1).map(e => e.name);
-        root.cursor = index;
+        root.cursorName = name;
     }
 
     function pickRange(indices: var, add: bool): void {
@@ -178,43 +190,68 @@ Singleton {
     }
 
     onCwdChanged: {
-        root.cursor = -1;
-        root.anchor = -1;
+        root.cursorName = "";
+        root.anchorName = "";
         root.picked = [];
         root.search = "";
         root.searching = false;
         root.refresh();
     }
 
+    property int generation: 0
+    property var latestListing: null
+
     function refresh(): void {
         if (!root.cwd)
             return;
-        lister.running = false;
-        lister.command = [root.helper("bs-ls"), root.cwd];
-        lister.running = true;
+        root.generation += 1;
+        if (root.latestListing)
+            root.latestListing.running = false;
+        root.latestListing = lister.createObject(root, {
+            command: [root.helper("bs-ls"), root.cwd],
+            generation: root.generation,
+            running: true
+        });
     }
 
-    Process {
+    function take(generation: int, text: string): void {
+        if (generation !== root.generation)
+            return;
+
+        const was = root.cursor;
+        try {
+            const answer = JSON.parse(text);
+
+            if (answer.path !== root.cwd)
+                return;
+            root.error = answer.ok ? "" : answer.error;
+            root.entries = answer.ok ? answer.entries : [];
+        } catch (e) {
+            root.error = "unreadable listing";
+            root.entries = [];
+        }
+
+        root.picked = root.picked.filter(n => root.indexOf(n) >= 0);
+        if (root.cursorName && root.indexOf(root.cursorName) < 0) {
+            const at = Math.min(Math.max(was, 0), root.visible.length - 1);
+            root.cursorName = at >= 0 ? root.visible[at].name : "";
+        }
+    }
+
+    Component {
         id: lister
 
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const answer = JSON.parse(text);
+        Process {
+            id: listing
 
-                    if (answer.path !== root.cwd)
-                        return;
-                    root.error = answer.ok ? "" : answer.error;
-                    root.entries = answer.ok ? answer.entries : [];
+            property int generation: 0
 
-                    root.picked = root.picked.filter(n => root.visible.some(e => e.name === n));
-                    if (root.cursor < 0 || root.cursor >= root.visible.length)
-                        root.cursor = root.visible.length > 0 ? 0 : -1;
-                } catch (e) {
-                    root.error = "unreadable listing";
-                    root.entries = [];
-                }
+            stdout: StdioCollector {
+                onStreamFinished: root.take(listing.generation, text)
             }
+
+            onRunningChanged: if (!listing.running)
+                listing.destroy()
         }
     }
 
