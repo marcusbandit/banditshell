@@ -158,7 +158,7 @@ Item {
     }
 
     function slotSolid(s: var): bool {
-        return !!s && (s.windows.length > 0 || layout.active === s.id);
+        return !!s && ((s.windows?.length ?? 0) > 0 || layout.active === s.id);
     }
 
     onHoveredChanged: if (root.hovered >= 0)
@@ -366,17 +366,12 @@ Item {
 
         model: root.deck.length
 
-        delegate: SquircleRect {
+        delegate: ScratchpadEntry {
             id: bar
 
-            required property int index
-            readonly property var entry: root.deck[bar.index] ?? ({
-                    name: "",
-                    label: "",
-                    windows: []
-                })
+            deck: root.deck
+            openSpecial: layout.special
 
-            readonly property bool open: !!bar.entry.name && layout.special === bar.entry.name
             readonly property string name: root.barName(bar.entry)
 
             x: Math.round((root.width - width) / 2)
@@ -384,15 +379,17 @@ Item {
             width: bar.open ? root.dot : root.barWidth(bar.entry)
             height: root.barH
 
-            radius: root.radius
-
-            color: Appearance.colour.fill
-
             Behavior on width {
                 NumberAnimation {
                     duration: Appearance.anim.normal
                     easing.type: Easing.OutCubic
                 }
+            }
+
+            SquircleRect {
+                anchors.fill: parent
+                radius: root.radius
+                color: Appearance.colour.fill
             }
 
             SquircleRect {
@@ -491,7 +488,6 @@ Item {
             readonly property var geom: layout.at(index)
 
             readonly property bool isActive: layout.active === slotItem.info.id
-            readonly property bool isOccupied: slotItem.info.windows.length > 0
 
             readonly property bool covered: slotItem.isActive && layout.eclipsed
 
@@ -664,17 +660,11 @@ Item {
     Repeater {
         model: root.deck.length
 
-        delegate: Item {
+        delegate: ScratchpadEntry {
             id: pad
 
-            required property int index
-            readonly property var entry: root.deck[pad.index] ?? ({
-                    name: "",
-                    label: "",
-                    windows: []
-                })
-
-            readonly property bool open: !!pad.entry.name && layout.special === pad.entry.name
+            deck: root.deck
+            openSpecial: layout.special
 
             readonly property var windows: pad.entry.windows
             readonly property int rows: Math.max(1, pad.windows.length)

@@ -1,4 +1,5 @@
 module qs.modules.sidebar
+ScratchpadEntry 1.0 ScratchpadEntry.qml
 SidebarClock 1.0 SidebarClock.qml
 Sidebar 1.0 Sidebar.qml
 StatusIcon 1.0 StatusIcon.qml
