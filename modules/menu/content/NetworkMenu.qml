@@ -62,10 +62,16 @@ Column {
         root.frozenCaptive = Network.captive;
     }
 
-    onShowingChanged: if (!root.showing) {
-        root.asking = "";
-        root.opened = "";
+    onShowingChanged: {
+        Network.setViewing(root, root.showing);
+        if (!root.showing) {
+            root.asking = "";
+            root.opened = "";
+        }
     }
+
+    Component.onCompleted: Network.setViewing(root, root.showing)
+    Component.onDestruction: Network.setViewing(root, false)
 
     component Choice: MenuRow {
         id: choice
@@ -298,10 +304,9 @@ Column {
         Choice {
             icon: "radar"
             label: "Keep the list fresh"
-            detail: Network.wantScanning ? "" : "only the network you are on"
-            on: Network.scanning
+            on: Network.keepListFresh
             tip: "pauses for a moment"
-            onFlipped: Network.setScanning(!Network.wantScanning)
+            onFlipped: Network.setKeepListFresh(!Network.keepListFresh)
         }
 
         Choice {

@@ -369,7 +369,7 @@ Singleton {
 
                 checkForInternet: true,
 
-                keepListFresh: true,
+                keepListFresh: false,
 
                 portalUri: ""
             },

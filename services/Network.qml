@@ -742,7 +742,23 @@ Singleton {
 
     readonly property bool stranded: !!root.reachLabel()
 
-    readonly property bool wantScanning: Config.values.network.keepListFresh
+    readonly property bool keepListFresh: Config.values.network.keepListFresh
+
+    readonly property bool keepingFresh: root.keepListFresh && root.carrier === "wifi"
+
+    property var viewers: []
+
+    readonly property bool viewed: root.viewers.length > 0
+
+    function setViewing(viewer: var, on: bool): void {
+        const held = root.viewers.indexOf(viewer) >= 0;
+        if (on && !held)
+            root.viewers = root.viewers.concat([viewer]);
+        else if (!on && held)
+            root.viewers = root.viewers.filter(other => other !== viewer);
+    }
+
+    readonly property bool wantScanning: root.viewed || root.keepingFresh
 
     Timer {
         id: scanSettle
@@ -759,7 +775,7 @@ Singleton {
     onWantScanningChanged: root.applyScanning()
     onWifiDeviceChanged: scanSettle.restart()
 
-    function setScanning(on: bool): void {
+    function setKeepListFresh(on: bool): void {
         Config.set("network.keepListFresh", on);
     }
 }

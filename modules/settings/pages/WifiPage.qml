@@ -63,7 +63,7 @@ Item {
 
                     source: Qt.resolvedUrl("../../menu/content/NetworkMenu.qml")
 
-                    onLoaded: menu.item.showing = Qt.binding(() => root.visible)
+                    onLoaded: menu.item.showing = Qt.binding(() => root.visible && !!root.Window.window && root.Window.window.visible)
                 }
             }
         }
