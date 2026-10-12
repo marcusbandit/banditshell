@@ -7,8 +7,6 @@ import qs.config
 Item {
     id: page
 
-    property bool drawn: true
-
     property bool checked: true
 
     readonly property var knobs: [

@@ -65,11 +65,6 @@ Item {
                 text: "banditshell"
                 font.pixelSize: Appearance.font.size.normal
             }
-
-            StyledText {
-                text: `${Registry.drawn} of ${Registry.total} drawn`
-                color: Appearance.colour.textFaint
-            }
         }
 
         Separator {
@@ -266,31 +261,6 @@ Item {
                 anchors.fill: parent
                 anchors.margins: Appearance.padding.normal
                 source: root.entry ? Registry.pageUrl(root.entry.key) : ""
-            }
-
-            Column {
-                anchors.centerIn: parent
-                spacing: Appearance.padding.small
-                visible: !demo.item || !demo.item.drawn
-
-                Icon {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    name: root.entry.icon
-                    size: Appearance.font.size.large * 2
-                    color: Appearance.colour.textGhost
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: "not drawn yet"
-                    color: Appearance.colour.textDim
-                }
-
-                StyledText {
-                    anchors.horizontalCenter: parent.horizontalCenter
-                    text: root.entry.ref ? `grows from ${root.entry.ref}` : "no primitive behind it yet"
-                    color: Appearance.colour.textGhost
-                }
             }
         }
     }

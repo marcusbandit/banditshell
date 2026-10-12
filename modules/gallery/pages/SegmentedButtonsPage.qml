@@ -7,8 +7,6 @@ import qs.config
 Item {
     id: page
 
-    property bool drawn: true
-
     property string members: "three"
     property string taken: "first"
 

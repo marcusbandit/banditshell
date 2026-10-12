@@ -7,8 +7,6 @@ import qs.config
 Item {
     id: page
 
-    property bool drawn: true
-
     property real value: 0.4
     property bool dimmed: false
 
