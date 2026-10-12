@@ -21,7 +21,6 @@ Singleton {
         })
 
     readonly property var codes: ({
-
             "1": 2,
             "2": 3,
             "3": 4,
@@ -133,7 +132,6 @@ Singleton {
     function chord(token: string, mods: var): void {
         const code = root.codes[token];
         if (code === undefined) {
-
             console.warn(`Keystrokes: no keycode for "${token}", sending it without modifiers.`);
             root.send(["wtype", "--", token]);
             return;
@@ -166,21 +164,35 @@ Singleton {
         const next = root.pending[0];
         root.pending = root.pending.slice(1);
         root.busy = true;
+        root.finished = false;
 
         sender.command = next;
         sender.running = true;
     }
 
+    property bool finished: false
+
+    function settle(): void {
+        if (!root.busy || sender.running)
+            return;
+        root.busy = false;
+        if (!root.finished) {
+            const tool = sender.command[0];
+            const left = root.pending.filter(argv => argv[0] !== tool);
+            console.warn(`Keystrokes: ${tool} could not start; dropped ${root.pending.length - left.length + 1} keystroke(s) meant for it.`);
+            root.pending = left;
+        }
+        root.pump();
+    }
+
     Process {
         id: sender
 
-        onExited: {
-            root.busy = false;
-            root.pump();
-        }
+        onExited: root.finished = true
+        onRunningChanged: if (!running)
+            Qt.callLater(root.settle)
 
         stderr: SplitParser {
-
             onRead: line => console.warn("Keystrokes:", line)
         }
     }
