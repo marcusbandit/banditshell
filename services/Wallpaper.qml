@@ -216,10 +216,6 @@ done`, "sh", ...fresh];
         return root.nameOf(root.shownOn(screen));
     }
 
-    readonly property string shown: root.shownOn(root.here)
-    readonly property string shownName: root.nameOf(root.shown)
-    readonly property string shownKind: root.kindOf(root.shown)
-
     property var origins: ({})
 
     readonly property point centre: Qt.point(0.5, 0.5)
@@ -302,10 +298,6 @@ done`, "sh", ...fresh];
         root.setOn(screen, root.available[next]);
     }
 
-    function step(delta: int): void {
-        root.stepOn(root.here, delta);
-    }
-
     function stepAll(delta: int): void {
         if (!root.available.length)
             return;
@@ -368,10 +360,10 @@ done`, root.posterDir, ...videos];
 
     property var palette: []
 
-    readonly property color dominant: root.palette.length ? root.palette[0].colour : "transparent"
+    readonly property bool wantsPalette: Config.values.themeFromWallpaper
 
     function measure(): void {
-        const face = root.faceOf(root.currentOn(root.here));
+        const face = root.wantsPalette ? root.faceOf(root.currentOn(root.here)) : "";
         if (!face) {
             root.palette = [];
             return;
@@ -381,6 +373,7 @@ done`, root.posterDir, ...videos];
         paletter.running = true;
     }
 
+    onWantsPaletteChanged: settle.restart()
     onCurrentChanged: settle.restart()
     onPerScreenChanged: settle.restart()
     onHereChanged: settle.restart()
