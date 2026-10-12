@@ -40,9 +40,16 @@ MouseArea {
     Keys.onEscapePressed: root.state.close()
 
     function snapTo(x: real, y: real): void {
+        root.onWindow = false;
+        root.sx = x;
+        root.sy = y;
+        root.ex = x;
+        root.ey = y;
         for (const client of Hypr.clientsOn(root.screen)) {
-            const at = client.lastIpcObject.at;
-            const size = client.lastIpcObject.size;
+            const at = client.lastIpcObject?.at;
+            const size = client.lastIpcObject?.size;
+            if (!at || !size)
+                continue;
             const cx = at[0] - root.screen.x;
             const cy = at[1] - root.screen.y;
             if (x >= cx && y >= cy && x <= cx + size[0] && y <= cy + size[1]) {
