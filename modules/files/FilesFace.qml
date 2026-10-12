@@ -504,6 +504,8 @@ Item {
         anchors.margins: Appearance.padding.normal
 
         receiving: root.dragging ? path.crumbAt(root.dragAt) : -1
+
+        onDismissed: Qt.callLater(root.forceActiveFocus)
     }
 
     Separator {

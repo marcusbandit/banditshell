@@ -11,6 +11,8 @@ Item {
     property int receiving: -1
     property bool editing: false
 
+    signal dismissed
+
     implicitHeight: Math.max(buttons.implicitHeight, crumbs.implicitHeight, field.implicitHeight + Appearance.padding.small * 2)
 
     function edit(): void {
@@ -23,6 +25,7 @@ Item {
     function stopEditing(): void {
         root.editing = false;
         Files.focus = "grid";
+        root.dismissed();
     }
 
     Row {
