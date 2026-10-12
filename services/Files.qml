@@ -634,6 +634,14 @@ Singleton {
         }
     }
 
+    function fromUtf8(bytes: string): string {
+        try {
+            return decodeURIComponent(escape(bytes));
+        } catch (e) {
+            return bytes;
+        }
+    }
+
     function frame(line: string): void {
         const kind = line.charAt(0);
         const body = line.slice(2);
@@ -656,12 +664,12 @@ Singleton {
         }
 
         if (kind === "t") {
-            root.tmuxSession = B64.decode(body);
+            root.tmuxSession = root.fromUtf8(B64.decode(body));
             return;
         }
 
         if (kind === "w") {
-            const rows = B64.decode(body).split("\n").filter(l => l.length > 0);
+            const rows = root.fromUtf8(B64.decode(body)).split("\n").filter(l => l.length > 0);
             root.tmuxWindows = rows.map(line => {
                 const parts = line.split("\t");
                 return {id: parts[0], name: parts[1] ?? "", active: parts[2] === "1"};
@@ -681,7 +689,7 @@ Singleton {
         }
 
         if (kind === "c") {
-            const path = B64.decode(body);
+            const path = root.fromUtf8(B64.decode(body));
             if (!path)
                 return;
 
