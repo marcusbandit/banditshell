@@ -34,6 +34,12 @@ Singleton {
     readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/banditshell`
     readonly property string warmthPath: `${root.stateDir}/warmth`
 
+    readonly property string gammaPath: Quickshell.shellPath("bin/bs-gamma")
+
+    property bool gammaLaunched: false
+
+    property bool gammaGivenUp: false
+
     function status(): string {
         const brightness = !root.brightnessReady ? "none" : root.levelKnown ? `${Math.round(root.level * 100)}%` : "unknown";
         const names = root.displays.map(d => d.name).join(",") || "none";
@@ -44,6 +50,8 @@ Singleton {
         if (Config.loaded)
             root.adoptConfig();
         root.detect();
+        root.ensureGamma();
+        gammaCheck.restart();
     }
 
     Connections {
@@ -162,6 +170,30 @@ Singleton {
 
     function writeWarmth(): void {
         warmthFile.setText(`${root.kelvin}\n`);
+        root.ensureGamma();
+    }
+
+    function ensureGamma(): void {
+        if (root.gammaGivenUp || gammaGuard.running)
+            return;
+        gammaGuard.running = true;
+    }
+
+    function gammaChecked(code: int): void {
+        if (code === 0) {
+            root.gammaLaunched = false;
+            return;
+        }
+        root.gammaGivenUp = code !== 1 || root.gammaLaunched;
+        if (code === 10)
+            return console.warn(`Display: ${root.gammaPath} is missing, so warmth is off until \`banditshell build\``);
+        if (code !== 1)
+            return console.warn(`Display: could not look for a running bs-gamma (exit ${code}), so warmth is off`);
+        if (root.gammaGivenUp)
+            return console.warn("Display: bs-gamma stopped right after it started, so warmth is off");
+        root.gammaLaunched = true;
+        Quickshell.execDetached([root.gammaPath]);
+        gammaCheck.restart();
     }
 
     function commitWarmth(): void {
@@ -211,29 +243,17 @@ Singleton {
     }
 
     Process {
-        id: gamma
+        id: gammaGuard
 
-        running: true
-        command: ["sh", "-c", `mkdir -p '${root.stateDir}'; pgrep -x bs-gamma >/dev/null || exec '${Quickshell.shellPath("bin/bs-gamma")}'`]
+        command: ["sh", "-c", "[ -x \"$1\" ] || exit 10; pgrep -u \"$(id -u)\" -x bs-gamma >/dev/null", "sh", root.gammaPath]
 
-        stdout: SplitParser {
-            onRead: line => {
-                if (!line.startsWith("set ") && !line.startsWith("failed "))
-                    console.warn(`Display: gamma said ${line}`);
-            }
-        }
-
-        stderr: SplitParser {
-            onRead: line => console.warn(`Display: ${line}`)
-        }
-
-        onExited: code => retry.restart()
+        onExited: code => root.gammaChecked(code)
     }
 
     Timer {
-        id: retry
+        id: gammaCheck
 
-        interval: 4000
-        onTriggered: gamma.running = true
+        interval: 2000
+        onTriggered: root.ensureGamma()
     }
 }
