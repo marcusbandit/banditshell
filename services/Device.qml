@@ -248,7 +248,11 @@ Singleton {
                 const classes = ["VGA compatible controller", "3D controller", "Display controller"];
                 const found = [];
                 for (const line of text.split("\n")) {
-                    const q = [...line.matchAll(/"([^"]*)"/g)].map(m => m[1]);
+                    const quoted = /"([^"]*)"/g;
+                    const q = [];
+                    let m;
+                    while ((m = quoted.exec(line)) !== null)
+                        q.push(m[1]);
                     if (q.length >= 3 && classes.indexOf(q[0]) >= 0)
                         found.push(`${q[1]} ${q[2]}`.trim());
                 }
