@@ -210,8 +210,7 @@ Singleton {
         if (e.file)
             return `file:${e.file}`;
         if ((e.paths ?? []).length)
-
-        return `paths:${e.paths.join("\u0000")}`;
+            return `paths:${e.paths.join("\u0000")}`;
         return `text:${e.text ?? ""}`;
     }
 
@@ -472,12 +471,6 @@ Singleton {
                 ppid=$(ps -o ppid= -p "$p" 2>/dev/null | tr -d ' ')
                 [ -n "$ppid" ] || continue
                 owner=$(ps -o comm= -p "$ppid" 2>/dev/null | tr -d ' ')
-                # BOTH NAMES. The binary is invoked as \`qs\` and reports itself
-                # as \`quickshell\`, and which one \`comm\` shows is not this
-                # file's business to predict: testing only the short one meant
-                # every live shell's watcher looked ownerless and got killed,
-                # which is precisely the failure this parentage test exists to
-                # prevent, arrived at from the other side.
                 case "$owner" in
                 qs | quickshell) continue ;;
                 esac
