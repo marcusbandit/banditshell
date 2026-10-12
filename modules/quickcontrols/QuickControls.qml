@@ -38,7 +38,7 @@ Item {
 
     readonly property bool held: rail.containsMouse || rail.pressed || cardZone.containsMouse
 
-    readonly property Item maskItem: cardZone
+    readonly property Item maskItem: root.pinned ? catcher : cardZone
 
     readonly property Item grabItem: rail
 
@@ -126,7 +126,10 @@ Item {
         enabled: root.pinned
         visible: root.pinned
 
-        onClicked: root.pinned = false
+        onClicked: mouse => {
+            if (!cardZone.contains(catcher.mapToItem(cardZone, mouse.x, mouse.y)))
+                root.pinned = false;
+        }
     }
 
     MouseArea {
