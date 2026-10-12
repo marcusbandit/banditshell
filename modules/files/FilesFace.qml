@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "urls.js" as Urls
 
 Item {
     id: root
@@ -725,14 +726,15 @@ Item {
     }
 
     function exportDrag(): void {
-        if (root.exported || !Files.currentPath)
+        const paths = Files.pickedPaths;
+        if (root.exported || paths.length === 0)
             return;
         root.exported = true;
         root.dragging = false;
 
         exporter.Drag.mimeData = {
-            "text/uri-list": `file://${Files.currentPath}`,
-            "text/plain": Files.currentPath
+            "text/uri-list": Urls.uriList(paths),
+            "text/plain": paths.join("\n")
         };
         exporter.Drag.active = true;
     }

@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.services
+import "urls.js" as Urls
 
 Item {
     id: root
@@ -65,7 +66,7 @@ Item {
                 height: parent.height
                 visible: root.isImage && status !== Image.Error
 
-                source: root.isImage ? `file://${root.path}` : ""
+                source: root.isImage ? Urls.fileUrl(root.path) : ""
                 radius: Appearance.rounding.small
                 decodeWidth: Appearance.sizes.filesThumbnail
                 decodeHeight: Appearance.sizes.filesThumbnail

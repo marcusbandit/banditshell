@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
+import "urls.js" as Urls
 
 Item {
     id: root
@@ -211,7 +212,7 @@ Item {
             anchors.fill: parent
             visible: root.isImage
 
-            source: root.isImage ? `file://${root.path}` : ""
+            source: root.isImage ? Urls.fileUrl(root.path) : ""
             fillMode: Image.PreserveAspectFit
             radius: Appearance.rounding.small
         }
@@ -274,10 +275,10 @@ Item {
                     cursorShape: Qt.PointingHandCursor
 
                     onClicked: {
-
-                        const url = `file://${root.path}`;
-                        if (String(player.source) !== url)
-                            player.source = url;
+                        if (player.loaded !== root.path) {
+                            player.loaded = root.path;
+                            player.source = Urls.fileUrl(root.path);
+                        }
                         if (player.playing)
                             player.pause();
                         else
@@ -422,6 +423,7 @@ Item {
         id: player
 
         readonly property bool playing: playbackState === MediaPlayer.PlayingState
+        property string loaded: ""
 
         audioOutput: AudioOutput {}
     }
