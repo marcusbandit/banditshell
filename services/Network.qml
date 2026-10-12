@@ -194,6 +194,10 @@ Singleton {
         return root.scan.find(n => n.name === name) ?? null;
     }
 
+    function pick(names: var): var {
+        return WifiList.pick(names, root.networks);
+    }
+
     function setEnabled(on: bool): void {
         Networking.wifiEnabled = on;
     }

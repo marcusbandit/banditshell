@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/wifilist.js"), "utf8");
-const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, secretLine };")();
+const WifiList = new Function(src + "\nreturn { band, collapse, arrange, settle, pick, secretLine };")();
 
 const STEPS = 4;
 
@@ -124,6 +124,26 @@ test.describe("settle", () => {
     test.it("accepts having nothing before", () => {
         const next = [network("alpha", 0.5)];
         assert.strictEqual(WifiList.settle(undefined, next), next);
+    });
+});
+
+test.describe("pick", () => {
+    test.it("keeps the frozen order and uses the live networks", () => {
+        const a = network("alpha", 0.5);
+        const b = network("bravo", 0.5);
+        const picked = WifiList.pick(["bravo", "alpha"], [a, b]);
+        assert.strictEqual(picked[0], b);
+        assert.strictEqual(picked[1], a);
+    });
+
+    test.it("leaves out networks that went away and ignores new ones", () => {
+        const picked = WifiList.pick(["alpha", "gone"], [network("alpha", 0.5), network("new", 0.9)]);
+        assert.deepStrictEqual(names(picked), ["alpha"]);
+    });
+
+    test.it("follows a network that came back as a new object", () => {
+        const back = network("alpha", 0.5);
+        assert.strictEqual(WifiList.pick(["alpha"], [back])[0], back);
     });
 });
 

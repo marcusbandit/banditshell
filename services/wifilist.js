@@ -48,6 +48,19 @@ function settle(previous, next) {
     return same(previous, next) ? previous : next;
 }
 
+function pick(names, networks) {
+    const byName = new Map();
+    for (const network of networks)
+        byName.set(network.name, network);
+    const picked = [];
+    for (const name of names) {
+        const network = byName.get(name);
+        if (network)
+            picked.push(network);
+    }
+    return picked;
+}
+
 function escapeSecret(secret) {
     let escaped = "";
     for (let i = 0; i < secret.length; i++) {

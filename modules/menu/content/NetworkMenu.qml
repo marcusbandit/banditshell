@@ -51,7 +51,7 @@ Column {
 
     readonly property var listed: !Network.enabled ? [] : root.showing || Network.keepingFresh ? Network.networks : Network.knownNetworks
 
-    readonly property var rows: root.busy && root.frozen.length ? root.frozen : root.listed
+    readonly property var rows: root.busy && root.frozen.length ? Network.pick(root.frozen) : root.listed
 
     property bool frozenStranded: false
     property bool frozenCaptive: false
@@ -64,7 +64,7 @@ Column {
             root.frozen = [];
             return;
         }
-        root.frozen = root.listed;
+        root.frozen = root.listed.map(n => n.name);
         root.frozenStranded = Network.stranded;
         root.frozenCaptive = Network.captive;
     }
@@ -412,7 +412,9 @@ Column {
 
                     required property var modelData
 
-                    readonly property bool showing: root.opened === entry.modelData.name
+                    readonly property string name: entry.modelData?.name ?? ""
+
+                    readonly property bool showing: root.opened === entry.name
 
                     width: list.width
                     spacing: 0
@@ -420,12 +422,14 @@ Column {
                     MenuRow {
                         width: parent.width
 
-                        label: entry.modelData.name
+                        label: entry.name
                         detail: Network.stateLabel(entry.modelData)
                         selected: entry.modelData.connected
 
                         onActivated: {
-                            const n = entry.modelData;
+                            const n = Network.find(entry.name);
+                            if (!n)
+                                return;
                             if (n.connected)
                                 return n.disconnect();
 
@@ -467,7 +471,7 @@ Column {
 
                                 open: entry.showing
                                 tip: "more"
-                                onToggled: root.toggleLayer(entry.modelData.name)
+                                onToggled: root.toggleLayer(entry.name)
                             }
                         }
                     }
@@ -477,7 +481,7 @@ Column {
 
                         width: parent.width
 
-                        active: root.asking === entry.modelData.name
+                        active: root.asking === entry.name
                         visible: secret.active
 
                         sourceComponent: Network.enterprise(entry.modelData) ? signIn : passphrase
@@ -489,13 +493,15 @@ Column {
                         SecretField {
                             claims: true
 
-                            placeholder: `password for ${entry.modelData.name}`
+                            placeholder: `password for ${entry.name}`
 
                             onAccepted: psk => {
-
-                                Network.clearFailure(entry.modelData.name);
-                                Network.clearEnroll(entry.modelData.name);
-                                entry.modelData.connectWithPsk(psk);
+                                const n = Network.find(entry.name);
+                                if (n) {
+                                    Network.clearFailure(n.name);
+                                    Network.clearEnroll(n.name);
+                                    n.connectWithPsk(psk);
+                                }
                                 root.asking = "";
                             }
                             onCancelled: root.asking = ""
@@ -506,10 +512,11 @@ Column {
                         id: signIn
 
                         IdentityField {
-                            placeholder: entry.modelData.name
+                            placeholder: entry.name
 
                             onAccepted: (identity, password, eap, phase2) => {
-                                Network.joinEnterprise(entry.modelData.name, identity, password, eap, phase2);
+                                if (Network.find(entry.name))
+                                    Network.joinEnterprise(entry.name, identity, password, eap, phase2);
                                 root.asking = "";
                             }
                             onCancelled: root.asking = ""
@@ -517,7 +524,7 @@ Column {
                     }
 
                     MenuLayer {
-                        id: layer
+                        id: drawer
 
                         width: parent.width
                         open: entry.showing
@@ -527,7 +534,7 @@ Column {
 
                             width: parent.width
 
-                            active: layer.visible
+                            active: drawer.visible
 
                             sourceComponent: Column {
                                 width: switches.width
@@ -538,7 +545,11 @@ Column {
                                     icon: "link_off"
                                     label: "Disconnect"
                                     tip: "keeps password"
-                                    onActivated: entry.modelData.disconnect()
+                                    onActivated: {
+                                        const n = Network.find(entry.name);
+                                        if (n)
+                                            n.disconnect();
+                                    }
                                 }
 
                                 Act {
@@ -548,7 +559,7 @@ Column {
                                     tip: "drops password"
                                     onActivated: {
                                         root.opened = "";
-                                        Network.forget(entry.modelData);
+                                        Network.forget(Network.find(entry.name));
                                     }
                                 }
 
