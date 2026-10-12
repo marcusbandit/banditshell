@@ -5,8 +5,6 @@ import Quickshell.Wayland
 WlSessionLockSurface {
     id: surface
 
-    required property WlSessionLock lock
-
     color: "black"
 
     LockFace {
