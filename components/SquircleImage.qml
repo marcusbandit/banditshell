@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Effects
 import qs.config
 
 Item {
@@ -23,6 +22,21 @@ Item {
     readonly property real drawnWidth: root.fitted ? Math.min(root.width, root.height * root.aspect) : root.width
     readonly property real drawnHeight: root.fitted ? Math.min(root.height, root.width / root.aspect) : root.height
 
+    readonly property vector4d crop: {
+        const across = image.implicitWidth;
+        const down = image.implicitHeight;
+        if (root.fillMode !== Image.PreserveAspectCrop || across <= 0 || down <= 0 || root.width <= 0 || root.height <= 0)
+            return Qt.vector4d(0, 0, 1, 1);
+        const wide = root.width / across;
+        const tall = root.height / down;
+        if (wide > tall) {
+            const rows = Math.floor(tall / wide * down);
+            return Qt.vector4d(0, Math.ceil((down - rows) / 2) / down, 1, rows / down);
+        }
+        const columns = Math.floor(wide / tall * across);
+        return Qt.vector4d(Math.ceil((across - columns) / 2) / across, 0, columns / across, 1);
+    }
+
     Image {
         id: image
 
@@ -34,28 +48,22 @@ Item {
         sourceSize.width: root.decodeWidth * Screen.devicePixelRatio
         sourceSize.height: root.decodeHeight * Screen.devicePixelRatio
 
-        layer.enabled: true
         visible: false
     }
 
-    SquircleRect {
-        id: mask
-
-        anchors.centerIn: parent
+    ShaderEffect {
+        x: (root.width - width) / 2
+        y: (root.height - height) / 2
         width: root.drawnWidth
         height: root.drawnHeight
-        radius: root.radius
-
-        color: "white"
-        layer.enabled: true
-        visible: false
-    }
-
-    MultiEffect {
-        anchors.fill: parent
-        source: image
-        maskEnabled: true
-        maskSource: mask
         visible: root.ready
+
+        property var source: image
+        property real corner: Math.max(0, Math.min(root.radius, width / 2, height / 2))
+        property real power: Appearance.rounding.power
+        property vector2d extent: Qt.vector2d(width, height)
+        property vector4d crop: root.crop
+
+        fragmentShader: Qt.resolvedUrl("squircle.frag.qsb")
     }
 }
