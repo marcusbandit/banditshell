@@ -367,7 +367,7 @@ Item {
 
                 width: parent.width
 
-                text: root.rendered ? Markdown.inert(body.content) : ""
+                text: root.rendered ? Markdown.inert(Markdown.flattenHeadings(body.content)) : ""
                 textFormat: Text.MarkdownText
                 wrapMode: Text.Wrap
 

@@ -65,7 +65,7 @@ Item {
 
                         width: section.width
 
-                        height: Files.zoomed(Appearance.sizes.filesRow) * (place.usage ? 1.5 : 1)
+                        height: Appearance.sizes.filesRow * (place.usage ? 1.5 : 1)
 
                         SquircleRect {
                             anchors.fill: parent

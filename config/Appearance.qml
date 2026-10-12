@@ -159,10 +159,6 @@ Singleton {
             return list[Math.max(0, Math.min(i, list.length - 1))];
         }
 
-        function label(i: int): real {
-            return root.tier(root.cfg.font.base, root.cfg.button.scale, i);
-        }
-
         function height(i: int): real {
             return at(root.cfg.button.heights, i);
         }
@@ -328,10 +324,9 @@ Singleton {
         readonly property int filesTile: Math.round(root.cfg.files.tile * filesZoom)
         readonly property int filesPreview: root.cfg.files.preview
 
-        readonly property int filesText: Math.round(root.cfg.files.text * filesZoom)
         readonly property int filesSidebar: root.cfg.files.sidebar
 
-        readonly property int filesRow: Math.round(root.cfg.files.text * 2)
+        readonly property int filesRow: Math.round(root.font.size.small * 4 / 3 * filesZoom) + root.padding.small
         readonly property int filesThumbnail: root.cfg.files.thumbnail
         readonly property int filesTextMax: root.cfg.files.textMax
 

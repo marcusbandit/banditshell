@@ -66,7 +66,6 @@ Singleton {
             },
             button: {
 
-                scale: [2, 2, 3, 4, 5],
                 heights: [32, 40, 56, 96, 136],
                 padX: [12, 16, 24, 48, 64],
                 iconSizes: [20, 20, 24, 32, 40],
@@ -408,8 +407,6 @@ Singleton {
                 height: 760,
 
                 tile: 96,
-
-                text: 15,
 
                 zoom: 1.0,
 
