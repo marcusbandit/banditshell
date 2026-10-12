@@ -176,14 +176,20 @@ test.describe("vt: colour", () => {
     test.it("hides the text of a hidden run without losing its width", () => {
         const t = term();
         t.write("\x1b[8msecret");
-        assert.strictEqual(markup(t), "      ");
+        assert.strictEqual(markup(t), "&nbsp;".repeat(6));
     });
 
     test.it("draws nothing at all for an ordinary row", () => {
         const t = term();
         t.write("plain output");
-        assert.strictEqual(markup(t), "plain output");
+        assert.strictEqual(markup(t), "plain&nbsp;output");
         assert.deepStrictEqual(runs(t), []);
+    });
+
+    test.it("keeps every space, which StyledText would otherwise collapse to one", () => {
+        const t = term(20, 2);
+        t.write("a   b\tc");
+        assert.strictEqual(markup(t), "a&nbsp;&nbsp;&nbsp;b" + "&nbsp;".repeat(3) + "c");
     });
 
     test.it("escapes the characters that would otherwise be markup", () => {
@@ -942,7 +948,7 @@ test.describe("vt: strings and modes", () => {
         t.write("\x1b8x");
         assert.strictEqual(row(t, 1), "  x");
         assert.strictEqual(t.renderLine(t.screen.lines[1]).markup,
-            "  <font color=\"#cd0000\">x</font>");
+            "&nbsp;&nbsp;<font color=\"#cd0000\">x</font>");
     });
 
     test.it("wipes both screens on a full reset", () => {

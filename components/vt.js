@@ -364,6 +364,7 @@ Terminal.prototype.renderLine = function (row) {
         var body = escapeMarkup(text);
         if (a & HIDDEN)
             body = escapeMarkup(text.replace(/[^\s]/g, " "));
+        body = body.replace(/ /g, "&nbsp;");
         if (a & BOLD)
             body = "<b>" + body + "</b>";
         if (a & ITALIC)
