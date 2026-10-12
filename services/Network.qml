@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Networking
 import qs.config
+import "wifilist.js" as WifiList
 
 Singleton {
     id: root
@@ -25,8 +26,7 @@ Singleton {
     }
 
     function bars(n: var): int {
-        const steps = Appearance.sizes.signalBands;
-        return Math.ceil(root.percent(n) / (100 / steps));
+        return WifiList.band(n?.signalStrength ?? 0, Appearance.sizes.signalBands);
     }
 
     readonly property string connectingName: wifiDevice?.networks?.values?.find(n => n.stateChanging && !n.connected)?.name ?? ""
@@ -178,48 +178,14 @@ Singleton {
         return root.carrier === which ? root.reachLabel() : "";
     }
 
-    readonly property var scan: {
-        const seen = {};
-        for (const n of wifiDevice?.networks?.values ?? []) {
-            if (!n.name)
-                continue;
-            const best = seen[n.name];
-            if (!best || (n.connected && !best.connected) || (!best.connected && n.signalStrength > best.signalStrength))
-                seen[n.name] = n;
-        }
-        return Object.values(seen).sort((a, b) => {
-            if (a.connected !== b.connected)
-                return a.connected ? -1 : 1;
-            if (a.known !== b.known)
-                return a.known ? -1 : 1;
-            const ba = root.bars(a);
-            const bb = root.bars(b);
-            if (ba !== bb)
-                return bb - ba;
-            return a.name.localeCompare(b.name);
-        });
-    }
+    readonly property var scan: WifiList.arrange(root.wifiDevice?.networks?.values ?? [], Appearance.sizes.signalBands)
 
     property var networks: []
 
-    function settled(next: var): var {
-        const now = root.networks;
-        if (now.length !== next.length)
-            return next;
-        const live = new Set(root.wifiDevice?.networks?.values ?? []);
-        for (let i = 0; i < now.length; i++) {
-            const a = now[i];
-            const b = next[i];
-            if (a === b)
-                continue;
-            if (a.name !== b.name || a.connected !== b.connected || !live.has(a))
-                return next;
-        }
-        return now;
-    }
+    readonly property var knownNetworks: root.networks.filter(n => n.known || n.connected)
 
     onScanChanged: {
-        const next = root.settled(root.scan);
+        const next = WifiList.settle(root.networks, root.scan);
         if (next !== root.networks)
             root.networks = next;
     }

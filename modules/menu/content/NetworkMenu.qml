@@ -1,6 +1,7 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import Quickshell
 import qs.config
 import qs.components
 import qs.services
@@ -48,7 +49,9 @@ Column {
 
     property var frozen: []
 
-    readonly property var rows: root.busy ? root.frozen : Network.enabled ? Network.networks : []
+    readonly property var listed: !Network.enabled ? [] : root.showing || Network.keepingFresh ? Network.networks : Network.knownNetworks
+
+    readonly property var rows: root.busy && root.frozen.length ? root.frozen : root.listed
 
     property bool frozenStranded: false
     property bool frozenCaptive: false
@@ -56,8 +59,12 @@ Column {
     readonly property bool stranded: root.busy ? root.frozenStranded : Network.stranded
     readonly property bool captive: root.busy ? root.frozenCaptive : Network.captive
 
-    onBusyChanged: if (root.busy) {
-        root.frozen = root.rows;
+    onBusyChanged: {
+        if (!root.busy) {
+            root.frozen = [];
+            return;
+        }
+        root.frozen = root.listed;
         root.frozenStranded = Network.stranded;
         root.frozenCaptive = Network.captive;
     }
@@ -395,7 +402,10 @@ Column {
             }
 
             Repeater {
-                model: root.rows
+                model: ScriptModel {
+                    values: root.rows
+                    objectProp: "name"
+                }
 
                 delegate: Column {
                     id: entry
