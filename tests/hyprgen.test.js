@@ -87,15 +87,183 @@ test("binds born in loops and functions are dynamic; block depth survives the lo
         "hl.bind(\"SUPER + N\", hl.dsp.exec_cmd(\"banditshell notifications toggle\"))",
         "hl.define_submap(\"voice\", function()",
         "    hl.bind(\"J\", hl.dsp.exec_cmd(\"voice lang ja\"))",
-        "end)"
+        "end)",
+        "hl.bind(\"SUPER + W\", hl.dsp.exec_cmd(\"banditshell toggle wallpaper\"))"
     ].join("\n"));
-    assert.strictEqual(r.binds.length, 3);
+    assert.strictEqual(r.binds.length, 4);
 
     assert.strictEqual(r.binds[0].dynamic, true);
 
     assert.strictEqual(r.binds[1].dynamic, false);
 
     assert.strictEqual(r.binds[2].dynamic, true);
+
+    assert.strictEqual(r.binds[1].submap, "");
+    assert.strictEqual(r.binds[2].submap, "voice");
+    assert.strictEqual(r.binds[3].submap, "");
+});
+
+test("a submap without a name contributes no submap", () => {
+    const r = HyprGen.scanLua([
+        "hl.define_submap(function()",
+        "    hl.bind(\"J\", hl.dsp.exec_cmd(\"x\"))",
+        "end)"
+    ].join("\n"));
+    assert.strictEqual(r.binds.length, 1);
+    assert.strictEqual(r.binds[0].submap, "");
+});
+
+test("a chord built with .. is woven: the source stays the chord, the second argument the expression", () => {
+    const r = HyprGen.scanLua('hl.bind("SUPER + " .. key, hl.dsp.exec_cmd("banditshell toggle output"))');
+    assert.strictEqual(r.binds.length, 1);
+    assert.strictEqual(r.binds[0].chordLiteral, false);
+    assert.strictEqual(r.binds[0].chord, '"SUPER + " .. key');
+    assert.strictEqual(r.binds[0].expr, 'hl.dsp.exec_cmd("banditshell toggle output")');
+    assert.strictEqual(r.binds[0].dynamic, true);
+    assert.deepStrictEqual(r.binds[0].chords, []);
+});
+
+test("a literal chord is its own and only chord", () => {
+    const r = HyprGen.scanLua('hl.bind("SUPER + W", hl.dsp.exec_cmd("x"))');
+    assert.deepStrictEqual(r.binds[0].chords, ["SUPER + W"]);
+});
+
+test("loop keys reach only the binds that use the loop variable", () => {
+    const r = HyprGen.scanLua([
+        "for _, key in ipairs({ \"KP_0\", \"KP_Insert\" }) do",
+        "    hl.bind(\"SUPER + \" .. key, hl.dsp.exec_cmd(\"banditshell toggle output\"))",
+        "    hl.bind(\"SUPER + \" .. other, hl.dsp.exec_cmd(\"y\"))",
+        "    hl.bind(\"SUPER + W\", hl.dsp.exec_cmd(\"x\"))",
+        "end",
+        "hl.bind(\"SUPER + \" .. key, hl.dsp.exec_cmd(\"z\"))"
+    ].join("\n"));
+    assert.deepStrictEqual(r.binds[0].chords, ["SUPER + KP_0", "SUPER + KP_Insert"]);
+    assert.deepStrictEqual(r.binds[1].chords, []);
+    assert.deepStrictEqual(r.binds[2].chords, ["SUPER + W"]);
+    assert.deepStrictEqual(r.binds[3].chords, [], "the loop's scope ended at its end");
+});
+
+test("numeric loops carry no literal keys", () => {
+    const r = HyprGen.scanLua("for i = 1, 10 do\n    hl.bind(\"SUPER + \" .. i, x)\nend");
+    assert.deepStrictEqual(r.binds[0].chords, []);
+});
+
+test("nested key tables flatten through the field or slot the bind reads", () => {
+    const r = HyprGen.scanLua([
+        "local directions = {",
+        "    { key = \"LEFT\", msg = \"l\" },",
+        "    { key = \"RIGHT\", msg = \"r\" },",
+        "}",
+        "local pairs_of = { { \"SUPER + F\", hl.dsp.layout(\"fit active\") }, { \"SUPER + SHIFT + F\", x } }",
+        "for _, d in ipairs(directions) do",
+        "    hl.bind(\"SUPER + \" .. d.key, hl.dsp.layout(\"focus \" .. d.msg))",
+        "end",
+        "for _, b in ipairs(pairs_of) do",
+        "    hl.bind(b[1], b[2])",
+        "end",
+        "for _, g in ipairs({ { \"A\", \"B\" }, { \"C\" } }) do",
+        "    hl.bind(\"ALT + \" .. g[1], y)",
+        "    hl.bind(\"ALT + \" .. g, y)",
+        "end"
+    ].join("\n"));
+    assert.deepStrictEqual(r.binds[0].chords, ["SUPER + LEFT", "SUPER + RIGHT"]);
+    assert.deepStrictEqual(r.binds[1].chords, ["SUPER + F", "SUPER + SHIFT + F"]);
+    assert.deepStrictEqual(r.binds[2].chords, ["ALT + A", "ALT + C"]);
+    assert.deepStrictEqual(r.binds[3].chords, [], "a table is not a key name");
+});
+
+test("nested loops expand over every loop the chord names", () => {
+    const r = HyprGen.scanLua([
+        "for _, m in ipairs({ \"SUPER\", \"ALT\" }) do",
+        "    for _, k in ipairs({ \"1\", \"2\" }) do",
+        "        hl.bind(m .. \" + \" .. k, y)",
+        "    end",
+        "end"
+    ].join("\n"));
+    assert.deepStrictEqual(r.binds[0].chords, ["SUPER + 1", "SUPER + 2", "ALT + 1", "ALT + 2"]);
+});
+
+test("a chord glued from top-level strings resolves through the aliases", () => {
+    const r = HyprGen.scanLua([
+        "local tablet_switch = \"Lid Switch\"",
+        "hl.bind(\"switch:on:\" .. tablet_switch, hl.dsp.exec_cmd(\"x\"), { locked = true })",
+        "hl.bind(\"SUPER + \" .. tostring(i % 10), y)"
+    ].join("\n"));
+    assert.strictEqual(r.binds[0].chordLiteral, false);
+    assert.deepStrictEqual(r.binds[0].chords, ["switch:on:Lid Switch"]);
+    assert.strictEqual(r.binds[0].locked, true);
+    assert.deepStrictEqual(r.binds[1].chords, []);
+});
+
+test("elseif closes the branch before it: depth and scopes do not leak", () => {
+    const r = HyprGen.scanLua([
+        "if a then",
+        "    x()",
+        "elseif b then",
+        "    y()",
+        "else",
+        "    z()",
+        "end",
+        "hl.bind(\"SUPER + A\", hl.dsp.exec_cmd(\"a\"))",
+        "hl.define_submap(\"voice\", function()",
+        "    if a then",
+        "        hl.bind(\"J\", hl.dsp.exec_cmd(\"j\"))",
+        "    elseif b then",
+        "        hl.bind(\"K\", hl.dsp.exec_cmd(\"k\"))",
+        "    end",
+        "end)",
+        "hl.bind(\"SUPER + B\", hl.dsp.exec_cmd(\"b\"))"
+    ].join("\n"));
+    assert.strictEqual(r.binds[0].dynamic, false, "the elseif left the top level one block deep");
+    assert.strictEqual(r.binds[1].submap, "voice");
+    assert.strictEqual(r.binds[2].submap, "voice");
+    assert.strictEqual(r.binds[3].submap, "");
+    assert.strictEqual(r.binds[3].dynamic, false);
+});
+
+test("define_submap opens a scope only around an inline function", () => {
+    const r = HyprGen.scanLua([
+        "hl.define_submap(\"resize\")",
+        "hl.bind(\"SUPER + A\", hl.dsp.exec_cmd(\"a\"))",
+        "for i = 1, 2 do x() end",
+        "hl.define_submap(\"move\", \"reset\", function()",
+        "    hl.bind(\"H\", hl.dsp.exec_cmd(\"h\"))",
+        "end)",
+        "hl.define_submap(\"named\", build_it)",
+        "hl.bind(\"SUPER + B\", hl.dsp.exec_cmd(\"b\"))"
+    ].join("\n"));
+    assert.strictEqual(r.binds[0].submap, "");
+    assert.strictEqual(r.binds[1].submap, "move");
+    assert.strictEqual(r.binds[2].submap, "");
+});
+
+test("modifier aliases count as modifiers", () => {
+    assert.deepStrictEqual(HyprGen.parseChord("SUPER + SHIFT + CONTROL + RIGHT"), {
+        mods: ["SUPER", "SHIFT", "CTRL"], key: "RIGHT", mask: 69
+    });
+    assert.strictEqual(HyprGen.parseChord("WIN + A").mask, 64);
+});
+
+test("options the editor cannot write keep the bind out of its hands", () => {
+    const r = HyprGen.scanLua([
+        "hl.bind(\"SUPER + A\", hl.dsp.exec_cmd(\"a\"), { release = true })",
+        "hl.bind(\"SUPER + B\", hl.dsp.exec_cmd(\"b\"), { description = \"Both, of them\", repeating = true })"
+    ].join("\n"));
+    assert.strictEqual(r.binds[0].dynamic, true);
+    assert.strictEqual(r.binds[1].dynamic, false);
+    assert.strictEqual(r.binds[1].description, "Both, of them");
+    assert.strictEqual(r.binds[1].repeating, true);
+});
+
+test("hyprgen.js uses nothing Quickshell's engine lacks", () => {
+    for (const api of ["matchAll", "replaceAll", "flatMap", ".flat(", "trimEnd", "trimStart", "fromEntries", "findLast", ".at(", "(?<"])
+        assert.ok(!src.includes(api), `hyprgen.js uses ${api}, which Quickshell's JavaScript engine does not have`);
+});
+
+test("define_submap is a known call, not a foreign one", () => {
+    const r = HyprGen.scanLua('hl.define_submap("voice", function() end)');
+    assert.strictEqual(r.binds.length, 0);
+    assert.strictEqual(r.foreign.length, 0);
 });
 
 test("requires are read, in order, and only at the top level", () => {

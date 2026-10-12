@@ -1,16 +1,20 @@
 const MOD_BITS = [
-    { name: "SUPER", bit: 64 },
-    { name: "CTRL", bit: 4 },
-    { name: "ALT", bit: 8 },
-    { name: "SHIFT", bit: 1 },
-    { name: "CAPS", bit: 2 }
+    { name: "SUPER", bit: 64, aliases: ["WIN", "LOGO", "META", "MOD4"] },
+    { name: "CTRL", bit: 4, aliases: ["CONTROL"] },
+    { name: "ALT", bit: 8, aliases: ["MOD1"] },
+    { name: "SHIFT", bit: 1, aliases: [] },
+    { name: "CAPS", bit: 2, aliases: [] },
+    { name: "MOD2", bit: 16, aliases: [] },
+    { name: "MOD3", bit: 32, aliases: [] },
+    { name: "MOD5", bit: 128, aliases: [] }
 ];
 
 function parseChord(chord) {
     const mods = [];
     let key = "";
     for (const tok of String(chord ?? "").split(" + ")) {
-        const mod = MOD_BITS.find(m => m.name === tok.toUpperCase());
+        const said = tok.toUpperCase();
+        const mod = MOD_BITS.find(m => m.name === said || m.aliases.includes(said));
 
         if (mod && !key) {
             if (!mods.includes(mod.name))
@@ -57,6 +61,351 @@ function luaUnescape(s) {
 
 const OPENERS = ["function", "do", "then", "repeat"];
 const CLOSERS = ["end", "until"];
+
+const OPENING = { "(": ")", "{": "}", "[": "]" };
+
+function longBracketLevel(s, pos) {
+    if (s[pos] !== "[")
+        return -1;
+    let j = pos + 1;
+    while (s[j] === "=")
+        j++;
+    return s[j] === "[" ? j - pos - 1 : -1;
+}
+
+function pastLongBracket(s, pos, level) {
+    const close = `]${"=".repeat(level)}]`;
+    const end = s.indexOf(close, pos);
+    return end === -1 ? s.length : end + close.length;
+}
+
+function pastString(s, pos) {
+    const quote = s[pos];
+    let j = pos + 1;
+    while (j < s.length && s[j] !== quote) {
+        if (s[j] === "\\")
+            j++;
+        j++;
+    }
+    return Math.min(j + 1, s.length);
+}
+
+function pastComment(s, pos) {
+    const level = longBracketLevel(s, pos + 2);
+    if (level >= 0)
+        return pastLongBracket(s, pos + 2, level);
+    const end = s.indexOf("\n", pos);
+    return end === -1 ? s.length : end;
+}
+
+function pastBalanced(s, pos) {
+    const closers = [OPENING[s[pos]]];
+    let j = pos + 1;
+    while (j < s.length && closers.length) {
+        const c = s[j];
+        if (c === "\"" || c === "'") {
+            j = pastString(s, j);
+            continue;
+        }
+        if (c === "-" && s[j + 1] === "-") {
+            j = pastComment(s, j);
+            continue;
+        }
+        const level = longBracketLevel(s, j);
+        if (level >= 0) {
+            j = pastLongBracket(s, j + 1, level);
+            continue;
+        }
+        if (OPENING[c])
+            closers.push(OPENING[c]);
+        else if (c === closers[closers.length - 1])
+            closers.pop();
+        j++;
+    }
+    return j;
+}
+
+function splitTopLevel(text, separator) {
+    const s = String(text ?? "");
+    const parts = [];
+    let start = 0;
+    let j = 0;
+    while (j < s.length) {
+        const c = s[j];
+        if (c === "\"" || c === "'") {
+            j = pastString(s, j);
+            continue;
+        }
+        if (c === "-" && s[j + 1] === "-") {
+            j = pastComment(s, j);
+            continue;
+        }
+        const level = longBracketLevel(s, j);
+        if (level >= 0) {
+            j = pastLongBracket(s, j + 1, level);
+            continue;
+        }
+        if (OPENING[c]) {
+            j = pastBalanced(s, j);
+            continue;
+        }
+        if (s.startsWith(separator, j) && (separator !== ".." || s[j + 2] !== ".")) {
+            parts.push(s.slice(start, j).trim());
+            j += separator.length;
+            start = j;
+            continue;
+        }
+        j++;
+    }
+    const last = s.slice(start).trim();
+    if (last || parts.length)
+        parts.push(last);
+    return parts;
+}
+
+function stringLiteral(text) {
+    const t = String(text ?? "").trim();
+    if (t[0] === "\"" || t[0] === "'")
+        return pastString(t, 0) === t.length && t[t.length - 1] === t[0] ? luaUnescape(t.slice(1, -1)) : null;
+    const level = longBracketLevel(t, 0);
+    if (level >= 0 && pastLongBracket(t, 1, level) === t.length) {
+        const body = t.slice(level + 2, t.length - level - 2);
+        return body[0] === "\n" ? body.slice(1) : body;
+    }
+    return null;
+}
+
+function parseLuaTable(text, aliases) {
+    const s = String(text ?? "");
+    let i = 0;
+
+    function skipBlank() {
+        for (;;) {
+            while (i < s.length && /\s/.test(s[i]))
+                i++;
+            if (s[i] === "-" && s[i + 1] === "-") {
+                i = pastComment(s, i);
+                continue;
+            }
+            return;
+        }
+    }
+
+    function opaque() {
+        while (i < s.length && s[i] !== "," && s[i] !== ";" && s[i] !== "}") {
+            const c = s[i];
+            if (c === "\"" || c === "'")
+                i = pastString(s, i);
+            else if (OPENING[c])
+                i = pastBalanced(s, i);
+            else
+                i++;
+        }
+        return undefined;
+    }
+
+    function value() {
+        skipBlank();
+        const start = i;
+        const c = s[i];
+        let v;
+        if (c === "{")
+            v = table();
+        else if (c === "\"" || c === "'" || longBracketLevel(s, i) >= 0) {
+            i = c === "[" ? pastLongBracket(s, i + 1, longBracketLevel(s, i)) : pastString(s, i);
+            v = stringLiteral(s.slice(start, i));
+        } else {
+            const number = /^-?(\d+\.?\d*|\.\d+)/.exec(s.slice(i, i + 32));
+            const word = /^[A-Za-z_]\w*/.exec(s.slice(i, i + 256));
+            if (number) {
+                i += number[0].length;
+                v = +number[0];
+            } else if (word) {
+                i += word[0].length;
+                v = word[0] === "true" ? true : word[0] === "false" ? false : aliases?.[word[0]];
+            } else
+                return opaque();
+        }
+        skipBlank();
+        return i < s.length && s[i] !== "," && s[i] !== ";" && s[i] !== "}" ? opaque() : v;
+    }
+
+    function table() {
+        const out = {
+            list: [],
+            fields: {}
+        };
+        i++;
+        for (;;) {
+            skipBlank();
+            if (i >= s.length)
+                return out;
+            if (s[i] === "}") {
+                i++;
+                return out;
+            }
+            if (s[i] === "," || s[i] === ";") {
+                i++;
+                continue;
+            }
+            const named = /^([A-Za-z_]\w*)\s*=(?!=)/.exec(s.slice(i, i + 256));
+            if (named) {
+                i += named[0].length;
+                out.fields[named[1]] = value();
+            } else if (s[i] === "[" && longBracketLevel(s, i) < 0) {
+                i = pastBalanced(s, i);
+                skipBlank();
+                if (s[i] === "=")
+                    i++;
+                value();
+            } else
+                out.list.push(value());
+        }
+    }
+
+    skipBlank();
+    return s[i] === "{" ? table() : null;
+}
+
+function readSubmapHead(s, from) {
+    const open = s.indexOf("(", from);
+    if (open < 0 || s.slice(from, open).trim())
+        return null;
+    const args = splitTopLevel(s.slice(open + 1, pastBalanced(s, open) - 1), ",");
+    const name = stringLiteral(args[0]);
+    if (name === null)
+        return null;
+    const body = stringLiteral(args[1]) !== null ? args[2] : args[1];
+    return /^function\b/.test(body ?? "") ? name : null;
+}
+
+function readLoopHead(s, from, aliases, tables) {
+    let j = from;
+    let head = null;
+    while (j < s.length) {
+        const c = s[j];
+        if (c === "\"" || c === "'") {
+            j = pastString(s, j);
+            continue;
+        }
+        if (OPENING[c]) {
+            j = pastBalanced(s, j);
+            continue;
+        }
+        if (s.startsWith("do", j) && !/\w/.test(s[j - 1] ?? "") && !/\w/.test(s[j + 2] ?? "")) {
+            head = s.slice(from, j);
+            break;
+        }
+        if (c === "\n" && j - from > 2048)
+            break;
+        j++;
+    }
+    const m = /^\s*([A-Za-z_]\w*(?:\s*,\s*[A-Za-z_]\w*)*)\s+in\s+(i?pairs)\s*\(([\s\S]*)\)\s*$/.exec(head ?? "");
+    if (!m)
+        return null;
+    const names = m[1].split(",").map(n => n.trim());
+    const source = m[3].trim();
+    const table = source[0] === "{" ? parseLuaTable(source, aliases) : tables[source] ?? null;
+    if (!table)
+        return null;
+    let items = table.list.slice();
+    if (m[2] === "pairs")
+        for (const k in table.fields)
+            items.push(table.fields[k]);
+    return {
+        variable: names[names.length - 1],
+        items
+    };
+}
+
+function indexValue(value, index) {
+    if (!value || typeof value !== "object")
+        return undefined;
+    if (typeof index === "number")
+        return value.list[index - 1];
+    return value.fields[index];
+}
+
+function resolvePiece(piece, lookup) {
+    const t = String(piece ?? "").trim();
+    const text = stringLiteral(t);
+    if (text !== null)
+        return text;
+    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t))
+        return t;
+    const wrapped = /^tostring\s*\(([\s\S]*)\)$/.exec(t);
+    if (wrapped)
+        return resolvePiece(wrapped[1], lookup);
+    const base = /^[A-Za-z_]\w*/.exec(t);
+    if (!base)
+        return null;
+    let value = lookup(base[0]);
+    let rest = t.slice(base[0].length).trim();
+    while (rest && value !== undefined) {
+        const field = /^\.\s*([A-Za-z_]\w*)/.exec(rest) ?? /^\[\s*"([^"]*)"\s*\]/.exec(rest) ?? /^\[\s*'([^']*)'\s*\]/.exec(rest);
+        const slot = /^\[\s*(\d+)\s*\]/.exec(rest);
+        if (field) {
+            value = indexValue(value, field[1]);
+            rest = rest.slice(field[0].length).trim();
+        } else if (slot) {
+            value = indexValue(value, +slot[1]);
+            rest = rest.slice(slot[0].length).trim();
+        } else
+            return null;
+    }
+    if (rest)
+        return null;
+    return typeof value === "string" || typeof value === "number" ? String(value) : null;
+}
+
+const CHORD_LIMIT = 64;
+
+function resolveChord(text, scope) {
+    const loops = scope.loops;
+    const pieces = splitTopLevel(text, "..");
+    if (!pieces.length || pieces.some(p => !p))
+        return [];
+    const used = [];
+    for (const piece of pieces) {
+        const base = /^(?:tostring\s*\(\s*)?([A-Za-z_]\w*)/.exec(piece);
+        if (!base)
+            continue;
+        for (let l = loops.length - 1; l >= 0; l--) {
+            if (loops[l].variable !== base[1])
+                continue;
+            if (!used.includes(loops[l]))
+                used.push(loops[l]);
+            break;
+        }
+    }
+
+    const out = [];
+    const bound = {};
+    const walk = depth => {
+        if (out.length >= CHORD_LIMIT)
+            return;
+        if (depth === used.length) {
+            const lookup = name => bound[name] !== undefined ? bound[name] : scope.aliases[name] !== undefined ? scope.aliases[name] : scope.tables[name];
+            let chord = "";
+            for (const piece of pieces) {
+                const v = resolvePiece(piece, lookup);
+                if (v === null)
+                    return;
+                chord += v;
+            }
+            if (!out.includes(chord))
+                out.push(chord);
+            return;
+        }
+        for (const item of used[depth].items) {
+            bound[used[depth].variable] = item;
+            walk(depth + 1);
+        }
+        delete bound[used[depth].variable];
+    };
+    walk(0);
+    return out;
+}
 
 function isIdentStart(c) {
     return /[A-Za-z_]/.test(c);
@@ -105,25 +454,13 @@ function scanLua(src) {
     let parenDepth = 0;
 
     const aliases = {};
+    const tables = {};
     const frames = [];
+    const submapScopes = [];
+    const loopScopes = [];
     let pendingKey = null;
 
     const lineOf = offset => s.slice(0, offset).split("\n").length;
-
-    function longLevel(pos) {
-        if (s[pos] !== "[")
-            return -1;
-        let j = pos + 1;
-        while (s[j] === "=")
-            j++;
-        return s[j] === "[" ? j - pos - 1 : -1;
-    }
-
-    function skipLongBracket(pos, level) {
-        const close = `]${"=".repeat(level)}]`;
-        const end = s.indexOf(close, pos);
-        return end === -1 ? s.length : end + close.length;
-    }
 
     while (i < s.length) {
         const c = s[i];
@@ -139,9 +476,9 @@ function scanLua(src) {
         }
 
         if (c === "-" && s[i + 1] === "-") {
-            const lvl = longLevel(i + 2);
+            const lvl = longBracketLevel(s, i + 2);
             if (lvl >= 0) {
-                i = skipLongBracket(i + 2, lvl);
+                i = pastLongBracket(s, i + 2, lvl);
                 continue;
             }
             while (i < s.length && s[i] !== "\n")
@@ -163,9 +500,9 @@ function scanLua(src) {
             continue;
         }
 
-        const lvl = longLevel(i);
+        const lvl = longBracketLevel(s, i);
         if (lvl >= 0) {
-            const end = skipLongBracket(i + 1, lvl);
+            const end = pastLongBracket(s, i + 1, lvl);
             line += s.slice(i, end).split("\n").length - 1;
             i = end;
             continue;
@@ -183,8 +520,21 @@ function scanLua(src) {
                 i = j;
                 continue;
             }
-            if (CLOSERS.includes(word)) {
+            if (CLOSERS.includes(word) || word === "elseif") {
                 blockDepth = Math.max(0, blockDepth - 1);
+                while (submapScopes.length && submapScopes[submapScopes.length - 1].depth >= blockDepth)
+                    submapScopes.pop();
+                while (loopScopes.length && loopScopes[loopScopes.length - 1].depth >= blockDepth)
+                    loopScopes.pop();
+                i = j;
+                continue;
+            }
+            if (word === "for") {
+                const loop = readLoopHead(s, j, aliases, tables);
+                if (loop)
+                    loopScopes.push(Object.assign({
+                        depth: blockDepth
+                    }, loop));
                 i = j;
                 continue;
             }
@@ -296,10 +646,18 @@ function scanLua(src) {
             return k;
 
         if (what !== "bind") {
-            foreign.push({
-                line: startLine,
-                text: `hl.${what}(...)`
-            });
+            if (what === "define_submap") {
+                const name = readSubmapHead(s, k);
+                if (name !== null)
+                    submapScopes.push({
+                        name,
+                        depth: blockDepth
+                    });
+            } else
+                foreign.push({
+                    line: startLine,
+                    text: `hl.${what}(...)`
+                });
             return k;
         }
 
@@ -319,9 +677,9 @@ function scanLua(src) {
                 j++;
                 continue;
             }
-            const ll = longLevel(j);
+            const ll = longBracketLevel(s, j);
             if (ll >= 0) {
-                j = skipLongBracket(j + 1, ll);
+                j = pastLongBracket(s, j + 1, ll);
                 continue;
             }
             if (ch === "(" || ch === "{")
@@ -382,6 +740,11 @@ function scanLua(src) {
             if (blockDepth === 0)
                 aliases[name] = +num[0];
             return j + num[0].length;
+        }
+        if (s[j] === "{" && blockDepth === 0) {
+            const table = parseLuaTable(s.slice(j, pastBalanced(s, j)), aliases);
+            if (table)
+                tables[name] = table;
         }
 
         pendingKey = name;
@@ -544,103 +907,54 @@ function scanLua(src) {
     }
 
     function collectBind(raw, callStart, callEnd, startLine) {
-
         const open = raw.indexOf("(");
-        const body = raw.slice(open + 1, raw.lastIndexOf(")"));
+        const args = splitTopLevel(raw.slice(open + 1, raw.lastIndexOf(")")), ",");
+        const first = args[0] ?? "";
+        const literal = stringLiteral(first);
+        const chordLiteral = literal !== null;
+        const chord = chordLiteral ? literal : first.replace(/\s+/g, " ").trim();
+        const expr = args[1] ?? "";
 
-        let rest = body.trim();
-        let chord = null;
-        let chordLiteral = true;
-
-        const q = rest[0];
-        if (q === "\"" || q === "'") {
-            const close = rest.indexOf(q, 1);
-
-            let end = 1;
-            while (end < rest.length) {
-                if (rest[end] === "\\")
-                    end++;
-                else if (rest[end] === q)
-                    break;
-                end++;
-            }
-            if (rest[end] === q) {
-                chord = luaUnescape(rest.slice(1, end));
-                rest = rest.slice(end + 1).trim();
-            }
+        const opts = {
+            locked: false,
+            repeating: false,
+            description: ""
+        };
+        let optsLiteral = args.length <= 3;
+        const table = /^\{([\s\S]*)\}$/.exec(args[2] ?? "");
+        if (args[2] !== undefined && !table)
+            optsLiteral = false;
+        for (const part of table ? splitTopLevel(table[1], ",") : []) {
+            if (!part)
+                continue;
+            const pm = /^(\w+)\s*=\s*([\s\S]+)$/.exec(part);
+            const said = pm ? stringLiteral(pm[2]) : null;
+            if (pm && (pm[1] === "locked" || pm[1] === "repeating"))
+                opts[pm[1]] = pm[2].trim() === "true";
+            else if (pm && (pm[1] === "description" || pm[1] === "desc") && said !== null)
+                opts.description = said;
+            else
+                optsLiteral = false;
         }
-
-        if (chord === null) {
-
-            chord = raw.replace(/\s+/g, " ").trim();
-            chordLiteral = false;
-            rest = "";
-        } else {
-
-            rest = rest.replace(/^,/, "").trim();
-        }
-
-        let opts = { locked: false, repeating: false, description: "" };
-        let optsLiteral = true;
-        const om = /,\s*\{(.*)\}\s*$/.exec(rest);
-        if (om) {
-            for (const part of splitTop(om[1])) {
-                const pm = /^\s*(\w+)\s*=\s*(.+?)\s*$/.exec(part);
-                if (!pm) {
-                    optsLiteral = false;
-                    continue;
-                }
-                if (pm[1] === "locked" || pm[1] === "repeating")
-                    opts[pm[1]] = pm[2] === "true";
-                else if (pm[1] === "description" && /^".*"$/.test(pm[2].trim()))
-                    opts.description = luaUnescape(pm[2].trim().slice(1, -1));
-                else
-                    optsLiteral = false;
-            }
-            rest = rest.slice(0, om.index).trim();
-        } else if (rest.endsWith("}")) {
-
-        }
-
-        const expr = rest;
 
         binds.push({
             chord,
             chordLiteral,
+            chords: chordLiteral ? [chord] : resolveChord(first, {
+                aliases,
+                tables,
+                loops: loopScopes
+            }),
             expr,
             description: opts.description,
             locked: opts.locked,
             repeating: opts.repeating,
-
+            submap: submapScopes.length ? submapScopes[submapScopes.length - 1].name : "",
             dynamic: !chordLiteral || !optsLiteral || blockDepth > 0 || expr.includes(".."),
             startLine,
             endLine: lineOf(callEnd - 1),
             raw: raw.trim()
         });
-    }
-
-    function splitTop(str) {
-        const parts = [];
-        let cur = "";
-        let quoted = false;
-        for (let p = 0; p < str.length; p++) {
-            const ch = str[p];
-            if (ch === "\\") {
-                cur += ch + (str[++p] ?? "");
-                continue;
-            }
-            if (ch === "\"")
-                quoted = !quoted;
-            if (ch === "," && !quoted) {
-                parts.push(cur);
-                cur = "";
-                continue;
-            }
-            cur += ch;
-        }
-        if (cur.trim())
-            parts.push(cur);
-        return parts;
     }
 
     return {
