@@ -154,7 +154,7 @@ Item {
                 root.hide();
                 break;
             case Qt.Key_Space:
-                if (!event.isRepeat)
+                if (!event.isAutoRepeat)
                     Media.toggle();
                 break;
             case Qt.Key_Left:
@@ -176,7 +176,7 @@ Item {
                 Media.previous();
                 break;
             case Qt.Key_M:
-                if (!event.isRepeat)
+                if (!event.isAutoRepeat)
                     Audio.toggleMute();
                 break;
             case Qt.Key_Return:
