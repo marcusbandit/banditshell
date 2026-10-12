@@ -8,8 +8,8 @@ import qs.services
 Singleton {
     id: root
 
-    readonly property bool isHyprland: Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") !== ""
-    readonly property bool isNiri: Quickshell.env("NIRI_SOCKET") !== ""
+    readonly property bool isHyprland: !!Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE")
+    readonly property bool isNiri: !!Quickshell.env("NIRI_SOCKET")
 
     readonly property string name: isHyprland ? "hyprland" : isNiri ? "niri" : "unknown"
 
