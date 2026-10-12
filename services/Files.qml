@@ -124,7 +124,7 @@ Singleton {
         if (entry.kind === "dir")
             root.pane.go(path);
         else
-            opener.exec(["xdg-open", path]);
+            root.openWith(path);
     }
 
     function refresh(): void {
@@ -427,13 +427,64 @@ Singleton {
         const quoted = pty.running && !root.shellBusy ? root.typed(paths) : null;
 
         if (quoted === null) {
-            runner.exec(["sh", "-c", `cd ${root.quote(root.cwd)} && ${[...words, ...paths.map(root.quote)].join(" ")}`]);
-            root.restat();
+            root.spawn([...words, ...paths], "");
             return;
         }
 
         root.send(root.clearLine() + `${[...words, ...quoted].join(" ")}\r`);
         root.restat();
+    }
+
+    function spawn(command: var, input: string): void {
+        job.createObject(root, {
+            command: command,
+            input: input,
+            stdinEnabled: input !== "",
+            running: true
+        });
+    }
+
+    function report(command: var, code: int, complaint: string): void {
+        const lines = complaint.split("\n").map(line => line.trim()).filter(line => line.length > 0);
+        const said = lines.length === 0 ? `${command[0]} exited with ${code}` : lines.length === 1 ? lines[0] : `${lines[0]} (+${lines.length - 1} more)`;
+        root.failure = Quoting.visible(said);
+    }
+
+    Component {
+        id: job
+
+        Process {
+            id: task
+
+            property string input: ""
+            property bool begun: false
+
+            stderr: StdioCollector {
+                id: complaint
+            }
+
+            onStarted: {
+                task.begun = true;
+                if (task.input !== "") {
+                    task.write(task.input);
+                    task.stdinEnabled = false;
+                }
+            }
+
+            onRunningChanged: {
+                if (task.running || task.begun)
+                    return;
+                root.failure = `${task.command[0]} could not be started`;
+                task.destroy();
+            }
+
+            onExited: (code, status) => {
+                if (code !== 0 || status !== 0)
+                    root.report(task.command, code, complaint.text);
+                root.restat();
+                task.destroy();
+            }
+        }
     }
 
     function typeCd(path: string): bool {
@@ -449,10 +500,6 @@ Singleton {
 
     function clearLine(): string {
         return root.shellName === "zsh" ? "\x1bq" : "\x05\x15";
-    }
-
-    Process {
-        id: runner
     }
 
     function restat(): void {
@@ -666,15 +713,12 @@ Singleton {
     }
 
     function copyText(text: string): void {
-        copier.exec(["wl-copy", "--", text]);
-    }
-
-    Process {
-        id: copier
+        root.spawn(["wl-copy"], text);
     }
 
     function openWith(path: string): void {
-        opener.exec(["xdg-open", path]);
+        opener.command = ["xdg-open", path];
+        opener.startDetached();
     }
 
     Process {
