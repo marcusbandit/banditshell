@@ -4,7 +4,8 @@ import QtQuick
 import QtQuick.Shapes
 import Quickshell.Io
 import qs.config
-import "squircle.js" as Squircle
+import qs.components
+import "../../components/squircle.js" as Squircle
 
 Item {
     id: root

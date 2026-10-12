@@ -1,6 +1,8 @@
 import QtQuick
 import QtQuick.Shapes
 import qs.config
+import qs.components
+import qs.services
 import "lobes.js" as Lobes
 
 Item {
