@@ -21,6 +21,49 @@ Scope {
         return `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.x)},${Math.round(r.y)} on ${PenMap.monitorName || "no monitor"} (${lock}, ${pad}${mode})`;
     }
 
+    function missing(screen: string): string {
+        return screen ? `no shell window on screen: ${screen}` : "no shell window";
+    }
+
+    function togglePanel(part: string, screen: string): string {
+        const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w[part].open);
+        if (!win)
+            return "";
+        win[part].toggle();
+        return win[part].open ? "open" : "closed";
+    }
+
+    function openPanel(part: string, screen: string): string {
+        const win = Shell.forScreen(screen);
+        if (!win)
+            return "";
+        win[part].show();
+        return "open";
+    }
+
+    function closePanel(part: string): string {
+        for (const win of Shell.windows)
+            win[part].hide();
+        return "closed";
+    }
+
+    function pin(win: var, part: string, on: bool): string {
+        if (!win)
+            return "";
+        win[part].pinned = on;
+        return on ? "open" : "closed";
+    }
+
+    function unpin(part: string): string {
+        for (const win of Shell.windows)
+            win[part].pinned = false;
+        return "closed";
+    }
+
+    function withClock(answer: var): string {
+        return Clock.loaded ? answer() : root.clockUnread;
+    }
+
     IpcHandler {
         target: "menu"
 
@@ -32,7 +75,7 @@ Scope {
         function open(key: string, screen: string): string {
             const win = Shell.forScreen(screen);
             if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+                return root.missing(screen);
             return win.openMenu(key) ? `open ${key}` : `no such menu: ${key}`;
         }
 
@@ -95,22 +138,16 @@ Scope {
         target: "launcher"
 
         function toggle(): string {
-            const win = Shell.showing(w => w.launcher.open);
-            if (!win)
-                return "no shell window";
-            win.launcher.toggle();
-            return win.launcher.open ? "open" : "closed";
+            return root.togglePanel("launcher", "") || root.missing("");
         }
 
         function open(): string {
-            Shell.forScreen("")?.launcher.show();
+            root.openPanel("launcher", "");
             return "open";
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.launcher.hide();
-            return "closed";
+            return root.closePanel("launcher");
         }
 
         function run(id: string): string {
@@ -135,22 +172,16 @@ Scope {
         target: "clipboard"
 
         function toggle(): string {
-            const win = Shell.showing(w => w.clipboard.open);
-            if (!win)
-                return "no shell window";
-            win.clipboard.toggle();
-            return win.clipboard.open ? "open" : "closed";
+            return root.togglePanel("clipboard", "") || root.missing("");
         }
 
         function open(): string {
-            Shell.forScreen("")?.clipboard.show();
+            root.openPanel("clipboard", "");
             return "open";
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.clipboard.hide();
-            return "closed";
+            return root.closePanel("clipboard");
         }
 
         function list(): string {
@@ -208,22 +239,16 @@ Scope {
         target: "session"
 
         function toggle(): string {
-            const win = Shell.showing(w => w.session.open);
-            if (!win)
-                return "no shell window";
-            win.session.toggle();
-            return win.session.open ? "open" : "closed";
+            return root.togglePanel("session", "") || root.missing("");
         }
 
         function open(): string {
-            Shell.forScreen("")?.session.show();
+            root.openPanel("session", "");
             return "open";
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.session.hide();
-            return "closed";
+            return root.closePanel("session");
         }
     }
 
@@ -231,22 +256,16 @@ Scope {
         target: "media"
 
         function toggle(): string {
-            const win = Shell.showing(w => w.media.open);
-            if (!win)
-                return "no shell window";
-            win.media.toggle();
-            return win.media.open ? "open" : "closed";
+            return root.togglePanel("media", "") || root.missing("");
         }
 
         function open(): string {
-            Shell.forScreen("")?.media.show();
+            root.openPanel("media", "");
             return "open";
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.media.hide();
-            return "closed";
+            return root.closePanel("media");
         }
 
         function status(): string {
@@ -259,22 +278,16 @@ Scope {
         target: "calculator"
 
         function toggle(): string {
-            const win = Shell.showing(w => w.calculator.open);
-            if (!win)
-                return "no shell window";
-            win.calculator.toggle();
-            return win.calculator.open ? "open" : "closed";
+            return root.togglePanel("calculator", "") || root.missing("");
         }
 
         function open(): string {
-            Shell.forScreen("")?.calculator.show();
+            root.openPanel("calculator", "");
             return "open";
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.calculator.hide();
-            return "closed";
+            return root.closePanel("calculator");
         }
 
         function app(): string {
@@ -340,25 +353,15 @@ Scope {
         target: "keyboard"
 
         function toggle(screen: string): string {
-            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.keyboard.open);
-            if (!win)
-                return "no shell window";
-            win.keyboard.toggle();
-            return win.keyboard.open ? "open" : "closed";
+            return root.togglePanel("keyboard", screen) || "no shell window";
         }
 
         function open(screen: string): string {
-            const win = Shell.forScreen(screen);
-            if (!win)
-                return "no shell window";
-            win.keyboard.show();
-            return "open";
+            return root.openPanel("keyboard", screen) || "no shell window";
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.keyboard.hide();
-            return "closed";
+            return root.closePanel("keyboard");
         }
 
         function status(screen: string): string {
@@ -391,31 +394,21 @@ Scope {
         target: "hotkeys"
 
         function toggle(screen: string): string {
-            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.hotkeys.open);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.hotkeys.toggle();
-            return win.hotkeys.open ? "open" : "closed";
+            return root.togglePanel("hotkeys", screen) || root.missing(screen);
         }
 
         function open(screen: string): string {
-            const win = Shell.forScreen(screen);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.hotkeys.show();
-            return "open";
+            return root.openPanel("hotkeys", screen) || root.missing(screen);
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.hotkeys.hide();
-            return "closed";
+            return root.closePanel("hotkeys");
         }
 
         function status(screen: string): string {
             const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.hotkeys.open);
             if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+                return root.missing(screen);
             return `open=${win.hotkeys.open} binds=${win.hotkeys.rows.length} woven=${win.hotkeys.woven} groups=${win.hotkeys.sections.length}`;
         }
     }
@@ -424,25 +417,16 @@ Scope {
         target: "notifications"
 
         function open(screen: string): string {
-            const win = Shell.forScreen(screen);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.notifications.pinned = true;
-            return "open";
+            return root.pin(Shell.forScreen(screen), "notifications", true) || root.missing(screen);
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.notifications.pinned = false;
-            return "closed";
+            return root.unpin("notifications");
         }
 
         function toggle(screen: string): string {
             const win = Shell.forScreen(screen);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.notifications.pinned = !win.notifications.pinned;
-            return win.notifications.pinned ? "open" : "closed";
+            return root.pin(win, "notifications", !win?.notifications.pinned) || root.missing(screen);
         }
 
         function clear(): string {
@@ -453,7 +437,7 @@ Scope {
         function status(screen: string): string {
             const win = Shell.forScreen(screen);
             if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+                return root.missing(screen);
             return `count=${Notifications.count} pinned=${win.notifications.pinned} expanded=${win.notifications.expanded}`;
         }
 
@@ -470,31 +454,22 @@ Scope {
         target: "notch"
 
         function open(screen: string): string {
-            const win = Shell.forScreen(screen);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.notch.pinned = true;
-            return "open";
+            return root.pin(Shell.forScreen(screen), "notch", true) || root.missing(screen);
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.notch.pinned = false;
-            return "closed";
+            return root.unpin("notch");
         }
 
         function toggle(screen: string): string {
             const win = Shell.forScreen(screen);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.notch.pinned = !win.notch.pinned;
-            return win.notch.pinned ? "open" : "closed";
+            return root.pin(win, "notch", !win?.notch.pinned) || root.missing(screen);
         }
 
         function status(screen: string): string {
             const win = Shell.forScreen(screen);
             if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
+                return root.missing(screen);
             return `pinned=${win.notch.pinned} active=${win.notch.active}`;
         }
     }
@@ -511,7 +486,7 @@ Scope {
             if (page && !Settings.pages.some(p => p.key === page))
                 return `no such page: ${page} (have: ${Settings.pages.map(p => p.key).join(", ")})`;
             if (screen && !Shell.forScreen(screen))
-                return `no shell window on screen: ${screen}`;
+                return root.missing(screen);
             Settings.show(screen, page);
             if (page)
                 Settings.setPage(page);
@@ -635,24 +610,15 @@ Scope {
 
         function toggle(): string {
             const win = Shell.showing(w => w.quickControls.pinned);
-            if (!win)
-                return "no shell window";
-            win.quickControls.pinned = !win.quickControls.pinned;
-            return win.quickControls.pinned ? "open" : "closed";
+            return root.pin(win, "quickControls", !win?.quickControls.pinned) || root.missing("");
         }
 
         function open(): string {
-            const win = Shell.forScreen("");
-            if (!win)
-                return "no shell window";
-            win.quickControls.pinned = true;
-            return "open";
+            return root.pin(Shell.forScreen(""), "quickControls", true) || root.missing("");
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.quickControls.pinned = false;
-            return "closed";
+            return root.unpin("quickControls");
         }
 
         function status(): string {
@@ -966,25 +932,15 @@ Scope {
         target: "wallpapers"
 
         function toggle(screen: string): string {
-            const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.wallpapers.open);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.wallpapers.toggle();
-            return win.wallpapers.open ? "open" : "closed";
+            return root.togglePanel("wallpapers", screen) || root.missing(screen);
         }
 
         function open(screen: string): string {
-            const win = Shell.forScreen(screen);
-            if (!win)
-                return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            win.wallpapers.show();
-            return "open";
+            return root.openPanel("wallpapers", screen) || root.missing(screen);
         }
 
         function close(): string {
-            for (const win of Shell.windows)
-                win.wallpapers.hide();
-            return "closed";
+            return root.closePanel("wallpapers");
         }
 
         function status(): string {
@@ -1103,89 +1059,88 @@ Scope {
     }
 
     function armAlarm(handle: string, on: bool): string {
-        if (!Clock.loaded)
-            return root.clockUnread;
-        const alarm = root.pickAlarm(handle);
-        if (!alarm)
-            return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
-        Clock.setAlarmArmed(alarm.id, on);
-        return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
+        return root.withClock(() => {
+            const alarm = root.pickAlarm(handle);
+            if (!alarm)
+                return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
+            Clock.setAlarmArmed(alarm.id, on);
+            return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
+        });
     }
 
     IpcHandler {
         target: "timer"
 
         function start(spec: string, label: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const secs = Words.duration(spec);
-            if (secs <= 0)
-                return `not a duration: "${spec}" (10m, 90s, 1h30m, 2h, or a bare number of minutes)`;
-            const id = Clock.startTimer(secs, label ?? "");
+            return root.withClock(() => {
+                const secs = Words.duration(spec);
+                if (secs <= 0)
+                    return `not a duration: "${spec}" (10m, 90s, 1h30m, 2h, or a bare number of minutes)`;
+                const id = Clock.startTimer(secs, label ?? "");
 
-            if (!id)
-                return `no room: ${Clock.timerMax} timers at a time and all of them are running`;
-            const timer = Clock.timers.find(t => t.id === id);
-            return Words.columns([root.timerFields(timer, Clock.timers.indexOf(timer) + 1, Date.now())]);
+                if (!id)
+                    return `no room: ${Clock.timerMax} timers at a time and all of them are running`;
+                const timer = Clock.timers.find(t => t.id === id);
+                return Words.columns([root.timerFields(timer, Clock.timers.indexOf(timer) + 1, Date.now())]);
+            });
         }
 
         function pause(handle: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const timer = root.pickTimer(handle, t => !t.finished && !t.paused);
-            if (!timer)
-                return handle ? `no such timer: ${handle}` : "nothing is counting";
-            if (timer.finished)
-                return `that one has already gone off (${timer.id})`;
-            if (timer.paused)
-                return `already paused, ${Clock.spanLabel(timer.left)} left (${timer.id})`;
-            Clock.toggleTimer(timer.id);
-            return `paused, ${Clock.spanLabel(timer.left)} left (${timer.id})`;
+            return root.withClock(() => {
+                const timer = root.pickTimer(handle, t => !t.finished && !t.paused);
+                if (!timer)
+                    return handle ? `no such timer: ${handle}` : "nothing is counting";
+                if (timer.finished)
+                    return `that one has already gone off (${timer.id})`;
+                if (timer.paused)
+                    return `already paused, ${Clock.spanLabel(timer.left)} left (${timer.id})`;
+                Clock.toggleTimer(timer.id);
+                return `paused, ${Clock.spanLabel(timer.left)} left (${timer.id})`;
+            });
         }
 
         function resume(handle: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const timer = root.pickTimer(handle, t => t.paused && !t.finished);
-            if (!timer)
-                return handle ? `no such timer: ${handle}` : "nothing is paused";
-            if (timer.finished)
-                return `that one has already gone off (${timer.id})`;
-            if (!timer.paused)
-                return `already running, ${Clock.spanLabel(Clock.remainingOf(timer, Date.now()))} left (${timer.id})`;
-            Clock.toggleTimer(timer.id);
-            return `running, ${Clock.spanLabel(Clock.remainingOf(timer, Date.now()))} left (${timer.id})`;
+            return root.withClock(() => {
+                const timer = root.pickTimer(handle, t => t.paused && !t.finished);
+                if (!timer)
+                    return handle ? `no such timer: ${handle}` : "nothing is paused";
+                if (timer.finished)
+                    return `that one has already gone off (${timer.id})`;
+                if (!timer.paused)
+                    return `already running, ${Clock.spanLabel(Clock.remainingOf(timer, Date.now()))} left (${timer.id})`;
+                Clock.toggleTimer(timer.id);
+                return `running, ${Clock.spanLabel(Clock.remainingOf(timer, Date.now()))} left (${timer.id})`;
+            });
         }
 
         function toggle(handle: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const timer = root.pickTimer(handle, t => !t.finished);
-            if (!timer)
-                return handle ? `no such timer: ${handle}` : "no timer to pause";
-            if (timer.finished)
-                return `that one has already gone off (${timer.id})`;
-            return timer.paused ? resume(timer.id) : pause(timer.id);
+            return root.withClock(() => {
+                const timer = root.pickTimer(handle, t => !t.finished);
+                if (!timer)
+                    return handle ? `no such timer: ${handle}` : "no timer to pause";
+                if (timer.finished)
+                    return `that one has already gone off (${timer.id})`;
+                return timer.paused ? resume(timer.id) : pause(timer.id);
+            });
         }
 
         function cancel(handle: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-
-            const timer = root.pickTimer(handle, t => t.finished) ?? root.pickTimer(handle, t => true);
-            if (!timer)
-                return handle ? `no such timer: ${handle}` : "no timers";
-            Clock.removeTimer(timer.id);
-            return `cancelled ${timer.label || Clock.spanLabel(timer.total)} (${timer.id})`;
+            return root.withClock(() => {
+                const timer = root.pickTimer(handle, t => t.finished) ?? root.pickTimer(handle, t => true);
+                if (!timer)
+                    return handle ? `no such timer: ${handle}` : "no timers";
+                Clock.removeTimer(timer.id);
+                return `cancelled ${timer.label || Clock.spanLabel(timer.total)} (${timer.id})`;
+            });
         }
 
         function status(): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            if (Clock.timers.length === 0)
-                return `no timers (${Clock.timerMax} at a time)`;
-            const at = Date.now();
-            return Words.columns(Clock.timers.map((timer, i) => root.timerFields(timer, i + 1, at)));
+            return root.withClock(() => {
+                if (Clock.timers.length === 0)
+                    return `no timers (${Clock.timerMax} at a time)`;
+                const at = Date.now();
+                return Words.columns(Clock.timers.map((timer, i) => root.timerFields(timer, i + 1, at)));
+            });
         }
     }
 
@@ -1193,53 +1148,53 @@ Scope {
         target: "alarm"
 
         function add(time: string, days: string, label: string, mode: string, payload: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const minutes = Words.timeOfDay(time);
-            if (minutes < 0)
-                return `not a time: "${time}" (07:00, 7:30pm, 0700, or a bare hour)`;
-            const repeat = Words.repeatDays(days);
-            if (repeat === null)
-                return `not a repeat: "${days}" (mon,wed / mon-fri / weekdays / weekends / daily / once)`;
-            const action = mode || "none";
-            if (!["none", "command", "cloud"].includes(action))
-                return `not an action: "${mode}" (command or cloud)`;
+            return root.withClock(() => {
+                const minutes = Words.timeOfDay(time);
+                if (minutes < 0)
+                    return `not a time: "${time}" (07:00, 7:30pm, 0700, or a bare hour)`;
+                const repeat = Words.repeatDays(days);
+                if (repeat === null)
+                    return `not a repeat: "${days}" (mon,wed / mon-fri / weekdays / weekends / daily / once)`;
+                const action = mode || "none";
+                if (!["none", "command", "cloud"].includes(action))
+                    return `not an action: "${mode}" (command or cloud)`;
 
-            if (action !== "none" && !payload)
-                return `${action} needs something to ${action === "command" ? "run" : "say"}`;
-            const id = Clock.addAlarm();
-            if (!id)
-                return `no room: ${Clock.alarmMax} alarms is the lot`;
+                if (action !== "none" && !payload)
+                    return `${action} needs something to ${action === "command" ? "run" : "say"}`;
+                const id = Clock.addAlarm();
+                if (!id)
+                    return `no room: ${Clock.alarmMax} alarms is the lot`;
 
-            Clock.setAlarm(id, {
-                hour: Math.floor(minutes / 60),
-                minute: minutes % 60,
-                days: repeat,
-                label: label ?? "",
-                mode: action,
-                payload: payload ?? ""
+                Clock.setAlarm(id, {
+                    hour: Math.floor(minutes / 60),
+                    minute: minutes % 60,
+                    days: repeat,
+                    label: label ?? "",
+                    mode: action,
+                    payload: payload ?? ""
+                });
+                const alarm = Clock.alarms.find(a => a.id === id);
+                return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
             });
-            const alarm = Clock.alarms.find(a => a.id === id);
-            return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
         }
 
         function list(): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            if (Clock.alarms.length === 0)
-                return `no alarms (${Clock.alarmMax} is the lot)`;
-            const at = Date.now();
-            return Words.columns(Clock.alarms.map((alarm, i) => root.alarmFields(alarm, i + 1, at)));
+            return root.withClock(() => {
+                if (Clock.alarms.length === 0)
+                    return `no alarms (${Clock.alarmMax} is the lot)`;
+                const at = Date.now();
+                return Words.columns(Clock.alarms.map((alarm, i) => root.alarmFields(alarm, i + 1, at)));
+            });
         }
 
         function remove(handle: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const alarm = root.pickAlarm(handle);
-            if (!alarm)
-                return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
-            Clock.removeAlarm(alarm.id);
-            return `removed ${Words.hhmm(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} (${alarm.id})`;
+            return root.withClock(() => {
+                const alarm = root.pickAlarm(handle);
+                if (!alarm)
+                    return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
+                Clock.removeAlarm(alarm.id);
+                return `removed ${Words.hhmm(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} (${alarm.id})`;
+            });
         }
 
         function enable(handle: string): string {
@@ -1268,23 +1223,23 @@ Scope {
         }
 
         function status(): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const at = Date.now();
-            const armed = Clock.alarms.filter(a => a.armed);
-            let soonest = null;
-            for (const alarm of armed) {
-                const when = Clock.nextFor(alarm, at);
-                if (when > 0 && (!soonest || when < soonest.when))
-                    soonest = {
-                        alarm,
-                        when
-                    };
-            }
+            return root.withClock(() => {
+                const at = Date.now();
+                const armed = Clock.alarms.filter(a => a.armed);
+                let soonest = null;
+                for (const alarm of armed) {
+                    const when = Clock.nextFor(alarm, at);
+                    if (when > 0 && (!soonest || when < soonest.when))
+                        soonest = {
+                            alarm,
+                            when
+                        };
+                }
 
-            const ring = Clock.ringing;
-            const next = soonest ? `${Words.hhmm(soonest.alarm.hour, soonest.alarm.minute)} ${Words.dayWords(soonest.alarm.days)}, ${soonest.alarm.snoozedUntil > at ? "snoozed, " : ""}in ${Clock.spanLabel(soonest.when - at)}` : "-";
-            return [`alarms     ${Clock.alarms.length} of ${Clock.alarmMax}`, `armed      ${armed.length}`, `next       ${next}`, `ringing    ${ring ? `${Words.hhmm(ring.hour, ring.minute)}${ring.label ? ` ${ring.label}` : ""}, ${Clock.spanLabel(at - Clock.ringingSince)} so far${Clock.ringingLate > 60000 ? `, late by ${Clock.spanLabel(Clock.ringingLate)}` : ""}` : "none"}`, `policy     snooze ${Clock.snoozeMinutes}m, gives up after ${Clock.ringMinutes}m, catches up within ${Clock.catchUpMinutes}m`].join("\n");
+                const ring = Clock.ringing;
+                const next = soonest ? `${Words.hhmm(soonest.alarm.hour, soonest.alarm.minute)} ${Words.dayWords(soonest.alarm.days)}, ${soonest.alarm.snoozedUntil > at ? "snoozed, " : ""}in ${Clock.spanLabel(soonest.when - at)}` : "-";
+                return [`alarms     ${Clock.alarms.length} of ${Clock.alarmMax}`, `armed      ${armed.length}`, `next       ${next}`, `ringing    ${ring ? `${Words.hhmm(ring.hour, ring.minute)}${ring.label ? ` ${ring.label}` : ""}, ${Clock.spanLabel(at - Clock.ringingSince)} so far${Clock.ringingLate > 60000 ? `, late by ${Clock.spanLabel(Clock.ringingLate)}` : ""}` : "none"}`, `policy     snooze ${Clock.snoozeMinutes}m, gives up after ${Clock.ringMinutes}m, catches up within ${Clock.catchUpMinutes}m`].join("\n");
+            });
         }
     }
 
@@ -1292,19 +1247,19 @@ Scope {
         target: "zone"
 
         function list(): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const at = Date.now();
-            const rows = [[Clock.localCity || "-", Clock.zoneTime(Clock.localOffset, at).text, "here", `(${Clock.localZone || "unknown"})`]];
-            for (const zone of Clock.zones) {
-                const there = Clock.zoneTime(zone.offsetMinutes, at);
-                const day = there.dayDelta === 0 ? "" : there.dayDelta < 0 ? " yesterday" : " tomorrow";
-                rows.push([zone.city, there.text, `${Clock.offsetLabel(zone.deltaMinutes)}${day}`, `(${zone.id})`]);
-            }
+            return root.withClock(() => {
+                const at = Date.now();
+                const rows = [[Clock.localCity || "-", Clock.zoneTime(Clock.localOffset, at).text, "here", `(${Clock.localZone || "unknown"})`]];
+                for (const zone of Clock.zones) {
+                    const there = Clock.zoneTime(zone.offsetMinutes, at);
+                    const day = there.dayDelta === 0 ? "" : there.dayDelta < 0 ? " yesterday" : " tomorrow";
+                    rows.push([zone.city, there.text, `${Clock.offsetLabel(zone.deltaMinutes)}${day}`, `(${zone.id})`]);
+                }
 
-            const pending = Clock.places.filter(id => !Clock.zones.some(z => z.id === id));
-            const table = rows.length > 1 ? Words.columns(rows) : `${Words.columns(rows)}\nno places yet (banditshell zone add <place>)`;
-            return pending.length > 0 ? `${table}\nmeasuring ${pending.join(", ")}` : table;
+                const pending = Clock.places.filter(id => !Clock.zones.some(z => z.id === id));
+                const table = rows.length > 1 ? Words.columns(rows) : `${Words.columns(rows)}\nno places yet (banditshell zone add <place>)`;
+                return pending.length > 0 ? `${table}\nmeasuring ${pending.join(", ")}` : table;
+            });
         }
 
         function find(text: string): string {
@@ -1320,43 +1275,43 @@ Scope {
         }
 
         function add(place: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const want = String(place ?? "").trim();
-            if (!want)
-                return "which place? (banditshell zone find <text>)";
-            if (Clock.allZones.length === 0) {
-                Clock.loadZoneList();
-                return "reading this machine's zone list; ask again in a moment";
-            }
-            const near = Words.zoneMatches(want, Clock.allZones);
-            if (near.length === 0)
-                return `no such place: ${want} (banditshell zone find ${want})`;
-            if (near.length > 1)
-                return `${want} could be any of ${near.length} (banditshell zone find ${want})`;
-            const id = near[0];
+            return root.withClock(() => {
+                const want = String(place ?? "").trim();
+                if (!want)
+                    return "which place? (banditshell zone find <text>)";
+                if (Clock.allZones.length === 0) {
+                    Clock.loadZoneList();
+                    return "reading this machine's zone list; ask again in a moment";
+                }
+                const near = Words.zoneMatches(want, Clock.allZones);
+                if (near.length === 0)
+                    return `no such place: ${want} (banditshell zone find ${want})`;
+                if (near.length > 1)
+                    return `${want} could be any of ${near.length} (banditshell zone find ${want})`;
+                const id = near[0];
 
-            if (id === Clock.localZone)
-                return `${Clock.cityOf(id)} is this machine's own zone, which the panel draws already`;
-            if (Clock.places.includes(id))
-                return `already on the list: ${id}`;
-            Clock.addZone(id);
-            return `added ${Clock.cityOf(id)} (${id})`;
+                if (id === Clock.localZone)
+                    return `${Clock.cityOf(id)} is this machine's own zone, which the panel draws already`;
+                if (Clock.places.includes(id))
+                    return `already on the list: ${id}`;
+                Clock.addZone(id);
+                return `added ${Clock.cityOf(id)} (${id})`;
+            });
         }
 
         function remove(place: string): string {
-            if (!Clock.loaded)
-                return root.clockUnread;
-            const want = Words.zoneKey(place);
-            if (!want)
-                return "which place? (banditshell zone list)";
-            const hits = Clock.places.filter(id => Words.zoneKey(id) === want || Words.zoneKey(Clock.cityOf(id)) === want);
-            if (hits.length === 0)
-                return `not on the list: ${place} (banditshell zone list)`;
-            if (hits.length > 1)
-                return `${place} is ${hits.length} of them; name the id (banditshell zone list)`;
-            Clock.removeZone(hits[0]);
-            return `removed ${Clock.cityOf(hits[0])} (${hits[0]})`;
+            return root.withClock(() => {
+                const want = Words.zoneKey(place);
+                if (!want)
+                    return "which place? (banditshell zone list)";
+                const hits = Clock.places.filter(id => Words.zoneKey(id) === want || Words.zoneKey(Clock.cityOf(id)) === want);
+                if (hits.length === 0)
+                    return `not on the list: ${place} (banditshell zone list)`;
+                if (hits.length > 1)
+                    return `${place} is ${hits.length} of them; name the id (banditshell zone list)`;
+                Clock.removeZone(hits[0]);
+                return `removed ${Clock.cityOf(hits[0])} (${hits[0]})`;
+            });
         }
     }
 
