@@ -10,7 +10,7 @@ Scope {
 
     required property var picker
 
-    readonly property string bootsTheService: HyprConfig.state
+    readonly property string bootsTheService: HyprConfig.configPath
 
     function penmapStatus(): string {
         const r = PenMap.region;
