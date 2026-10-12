@@ -211,20 +211,11 @@ Singleton {
             if (root.loaded)
                 return;
 
-            if (err === FileViewError.FileNotFound) {
-                mkdir.running = true;
-            } else {
+            if (err !== FileViewError.FileNotFound) {
                 console.warn(`Usage: could not read ${root.path} (${err}); tracking this session in memory only.`);
                 root.keep = false;
-                root.begin();
             }
+            root.begin();
         }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", root.dir]
-        onExited: root.begin()
     }
 }

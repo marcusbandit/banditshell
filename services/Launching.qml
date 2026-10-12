@@ -209,16 +209,5 @@ Singleton {
                 console.warn(`Launching: ${root.path} is not valid JSON, starting the times over.`, e);
             }
         }
-
-        onLoadFailed: err => {
-            if (err === FileViewError.FileNotFound)
-                mkdir.running = true;
-        }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", Apps.dir]
     }
 }

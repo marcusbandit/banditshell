@@ -302,23 +302,10 @@ done
             if (root.logLoaded)
                 return;
 
-            if (err === FileViewError.FileNotFound) {
-
-                logDirMk.running = true;
-            } else {
+            if (err !== FileViewError.FileNotFound) {
                 console.warn(`Battery: could not read ${root.logPath} (${err}); keeping health history in memory only.`);
                 root.logKeep = false;
-                root.logLoaded = true;
-                root.record();
             }
-        }
-    }
-
-    Process {
-        id: logDirMk
-
-        command: ["mkdir", "-p", root.logDir]
-        onExited: {
             root.logLoaded = true;
             root.record();
         }

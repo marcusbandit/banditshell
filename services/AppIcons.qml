@@ -141,18 +141,10 @@ Singleton {
         }
 
         onLoadFailed: err => {
-
             if (err === FileViewError.FileNotFound)
-                mkdir.running = true;
+                root.loaded = true;
             else
                 console.warn(`AppIcons: could not read ${root.path} (${err}); choices made now will not be kept.`);
         }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", root.dir]
-        onExited: root.loaded = true
     }
 }

@@ -862,21 +862,12 @@ Singleton {
         }
 
         onLoadFailed: err => {
-
-            if (err === FileViewError.FileNotFound)
-                mkdir.running = true;
-            else
+            if (err !== FileViewError.FileNotFound)
                 console.warn(`PenMap: could not read ${root.statePath} (${err}); starting from the defaults.`);
 
             root.stateKnown = true;
             root.settle();
         }
-    }
-
-    Process {
-        id: mkdir
-
-        command: ["mkdir", "-p", root.stateDir]
     }
 
     function startPad(): void {
