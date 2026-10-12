@@ -55,6 +55,8 @@
 #   banditshell build            compile src/*.c into bin/
 #   banditshell shaders          compile components/**/*.frag to .qsb
 #   banditshell test [args]      run tests/*.test.js in node
+#   banditshell check            compile every QML file in a fresh engine, then
+#                                run the tests
 #   banditshell shot [file]      a plain screenshot
 #   banditshell demo <menu> [file]
 #                                open a menu, shoot it, put it away
@@ -844,6 +846,17 @@ test)
     command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
     cd "$SHELL_DIR" || exit 1
     exec node --test 'tests/*.test.js' "$@"
+    ;;
+check)
+    status=0
+    "$SHELL_DIR/scripts/qml-compile-check.sh" "$SHELL_DIR" || status=1
+    if command -v node >/dev/null; then
+        (cd "$SHELL_DIR" && node --test 'tests/*.test.js') || status=1
+    else
+        echo "banditshell: node not found" >&2
+        status=1
+    fi
+    exit "$status"
     ;;
 demo)
     [ $# -ge 1 ] || { echo "usage: banditshell demo <menu> [file]" >&2; exit 2; }
