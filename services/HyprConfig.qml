@@ -11,6 +11,7 @@ Singleton {
     readonly property string home: Quickshell.env("HOME")
     readonly property string xdgConfig: Quickshell.env("XDG_CONFIG_HOME") || `${home}/.config`
     readonly property string defaultPath: `${xdgConfig}/hypr/hyprland.lua`
+    readonly property string legacyPath: `${xdgConfig}/hypr/hyprland.conf`
     readonly property string signature: Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") ?? ""
 
     property string configPath: ""
@@ -136,8 +137,12 @@ Singleton {
 
         onLoadFailed: {
             root.inFlight = false;
-            Qt.callLater(root.nextFile);
+            Qt.callLater(reader.path === root.defaultPath && root.configPath === root.defaultPath ? root.useLegacy : root.nextFile);
         }
+    }
+
+    function useLegacy(): void {
+        root.configPath = root.legacyPath;
     }
 
     property var queue: []

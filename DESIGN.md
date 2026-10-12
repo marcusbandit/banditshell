@@ -457,8 +457,8 @@ banditshell/
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
 │   │                            (the file this compositor was handed with
-│   │                            -c, else hyprland.lua, + everything it
-│   │                            requires or a .conf sources)
+│   │                            -c, else hyprland.lua, else hyprland.conf,
+│   │                            + everything it requires or sources)
 │   │                            scanned into binds, each carrying the file
 │   │                            and lines it came from. Edits splice those
 │   │                            lines and splice nothing else; every write
