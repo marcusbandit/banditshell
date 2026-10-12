@@ -35,225 +35,117 @@ Item {
     opacity: root.interactive ? 1 : 0.45
 
     readonly property var skins: ({
-            enabled: {
-                "default": {
-                    filled: {
-                        bg: Appearance.colour.accent,
-                        fg: Appearance.colour.accentText,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    elevated: {
-                        bg: Appearance.colour.surfaceSolid,
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    tonal: {
-                        bg: Appearance.colour.accentFill,
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    outlined: {
-                        bg: "transparent",
-                        fg: Appearance.colour.text,
-                        ring: Appearance.colour.fillStrong,
-                        ringW: Appearance.font.stem,
-                        shape: "round"
-                    },
-                    text: {
-                        bg: "transparent",
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    }
+            "default": {
+                filled: {
+                    bg: Appearance.colour.accent,
+                    fg: Appearance.colour.accentText,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
                 },
-                unselected: {
-                    filled: {
-
-                        bg: Appearance.blend(
-                            Appearance.colour.surfaceSolid,
-                            Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, Appearance.colour.veilWeight),
-                            0.5),
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    elevated: {
-                        bg: Appearance.colour.surfaceSolid,
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    tonal: {
-                        bg: Appearance.colour.accentFillDull,
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    outlined: {
-                        bg: "transparent",
-                        fg: Appearance.colour.text,
-                        ring: Appearance.colour.fillStrong,
-                        ringW: Appearance.font.stem,
-                        shape: "round"
-                    }
+                elevated: {
+                    bg: Appearance.colour.surfaceSolid,
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
                 },
-                selected: {
-                    filled: {
-                        bg: Appearance.colour.accent,
-                        fg: Appearance.colour.accentText,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    },
-                    elevated: {
-                        bg: Appearance.colour.accent,
-                        fg: Appearance.colour.accentText,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    },
-                    tonal: {
-                        bg: Appearance.colour.accentFill,
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    },
-                    outlined: {
-
-                        bg: Appearance.colour.fillStrong,
-                        fg: Appearance.colour.text,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    }
+                tonal: {
+                    bg: Appearance.colour.accentFill,
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
+                },
+                outlined: {
+                    bg: "transparent",
+                    fg: Appearance.colour.text,
+                    ring: Appearance.colour.fillStrong,
+                    ringW: Appearance.font.stem,
+                    shape: "round"
+                },
+                text: {
+                    bg: "transparent",
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
                 }
             },
-            disabled: {
-                "default": {
-                    filled: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    elevated: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    tonal: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    outlined: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: Appearance.colour.fillStrong,
-                        ringW: Appearance.font.stem,
-                        shape: "round"
-                    },
-                    text: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    }
+            unselected: {
+                filled: {
+                    bg: Appearance.blend(
+                        Appearance.colour.surfaceSolid,
+                        Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, Appearance.colour.veilWeight),
+                        0.5),
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
                 },
-                unselected: {
-                    filled: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    elevated: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    tonal: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "round"
-                    },
-                    outlined: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: Appearance.colour.fillStrong,
-                        ringW: Appearance.font.stem,
-                        shape: "round"
-                    }
+                elevated: {
+                    bg: Appearance.colour.surfaceSolid,
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
                 },
-                selected: {
-                    filled: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    },
-                    elevated: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    },
-                    tonal: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: "transparent",
-                        ringW: 0,
-                        shape: "square"
-                    },
-                    outlined: {
-                        bg: Appearance.colour.fill,
-                        fg: Appearance.colour.textGhost,
-                        ring: Appearance.colour.fillStrong,
-                        ringW: Appearance.font.stem,
-                        shape: "square"
-                    }
+                tonal: {
+                    bg: Appearance.colour.accentFillDull,
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "round"
+                },
+                outlined: {
+                    bg: "transparent",
+                    fg: Appearance.colour.text,
+                    ring: Appearance.colour.fillStrong,
+                    ringW: Appearance.font.stem,
+                    shape: "round"
+                }
+            },
+            selected: {
+                filled: {
+                    bg: Appearance.colour.accent,
+                    fg: Appearance.colour.accentText,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "square"
+                },
+                elevated: {
+                    bg: Appearance.colour.accent,
+                    fg: Appearance.colour.accentText,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "square"
+                },
+                tonal: {
+                    bg: Appearance.colour.accentFill,
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "square"
+                },
+                outlined: {
+                    bg: Appearance.colour.fillStrong,
+                    fg: Appearance.colour.text,
+                    ring: "transparent",
+                    ringW: 0,
+                    shape: "square"
                 }
             }
         })
 
-    readonly property var stateTier: !root.interactive ? skins.disabled : skins.enabled
     readonly property var skin: {
-        const tier = root.checkable ? (root.checked ? stateTier.selected : stateTier.unselected) : stateTier["default"];
-        return tier[root.style] ?? stateTier["default"][root.style] ?? skins.enabled.tonal;
+        const tier = root.checkable ? (root.checked ? root.skins.selected : root.skins.unselected) : root.skins["default"];
+        return tier[root.style] ?? root.skins["default"][root.style] ?? root.skins["default"].tonal;
     }
 
     property var paint
     readonly property color bg: {
         const base = root.paint ?? root.skin.bg;
 
-        // THE STATES, at the component level: the button's own background
-        // answers for hover and press - a blend toward its own foreground,
-        // which reads on every skin (filled darkens, tonal lifts) - rather
-        // than an overlay a skin can wash out. Disabled is opacity, below.
         if (!root.interactive)
             return base;
         if (root.pressed)
@@ -263,10 +155,6 @@ Item {
         return base;
     }
 
-    // Per-corner radius overrides, for buttons that sit IN a shape - a pair
-    // joined as (option||option): the seam corners barely round, the outer
-    // ends keep the pill. -1 means "the skin decides". The seam corners do
-    // not follow the press animation; the outer corners do.
     property real radiusLeft: -1
     property real radiusRight: -1
 
