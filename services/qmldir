@@ -16,6 +16,7 @@ FilePane 1.0 FilePane.qml
 singleton Files 1.0 Files.qml
 singleton HyprConfig 1.0 HyprConfig.qml
 singleton Hypr 1.0 Hypr.qml
+singleton Keyboards 1.0 Keyboards.qml
 singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
 singleton Launching 1.0 Launching.qml

@@ -1060,6 +1060,37 @@ function entryLiteral(key, value) {
     return QUOTED_KEYS.includes(key) ? `"${luaString(value)}"` : String(value);
 }
 
+function configFromCommandLine(text, home) {
+    const lines = String(text ?? "").split("\n");
+    const cwd = lines[0].startsWith("cwd=") ? lines[0].slice(4) : "";
+    let given = "";
+    for (let a = 1; a < lines.length; a++) {
+        if ((lines[a] === "-c" || lines[a] === "--config") && a + 1 < lines.length)
+            given = lines[++a];
+        else if (lines[a].startsWith("--config="))
+            given = lines[a].slice(9);
+    }
+    if (!given)
+        return "";
+    if (given === "~" || given.startsWith("~/"))
+        return `${home}${given.slice(1)}`;
+    if (given.startsWith("/"))
+        return given;
+    return cwd ? `${cwd}/${given.replace(/^(\.\/)+/, "")}` : "";
+}
+
+function confSources(text, dir, home) {
+    const out = [];
+    for (const raw of String(text ?? "").split("\n")) {
+        const m = /^\s*source\s*=\s*([^#]*?)\s*(#.*)?$/.exec(raw);
+        if (!m || !m[1] || m[1].includes("*"))
+            continue;
+        const p = m[1].replace(/^\$HOME(?=\/|$)/, home).replace(/^~(?=\/|$)/, home);
+        out.push(p.startsWith("/") ? p : `${dir}/${p.replace(/^(\.\/)+/, "")}`);
+    }
+    return out;
+}
+
 function spliceLines(src, startLine, endLine, replacement) {
     const lines = String(src ?? "").split("\n");
     if (startLine < 1 || endLine < startLine || endLine > lines.length)

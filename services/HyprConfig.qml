@@ -8,8 +8,19 @@ import "hyprgen.js" as HyprGen
 Singleton {
     id: root
 
-    readonly property string hyprDir: `${Quickshell.env("HOME")}/.config/hypr`
-    readonly property string configPath: `${hyprDir}/hyprland.lua`
+    readonly property string home: Quickshell.env("HOME")
+    readonly property string xdgConfig: Quickshell.env("XDG_CONFIG_HOME") || `${home}/.config`
+    readonly property string defaultPath: `${xdgConfig}/hypr/hyprland.lua`
+    readonly property string signature: Quickshell.env("HYPRLAND_INSTANCE_SIGNATURE") ?? ""
+
+    property string configPath: ""
+
+    onConfigPathChanged: root.rescan()
+
+    readonly property string hyprDir: {
+        const at = root.configPath.lastIndexOf("/");
+        return at > 0 ? root.configPath.slice(0, at) : `${root.xdgConfig}/hypr`;
+    }
 
     property var files: []
     property var binds: []
@@ -30,13 +41,77 @@ Singleton {
 
     property var texts: ({})
 
-    Component.onCompleted: root.rescan()
+    Component.onCompleted: root.findConfig()
 
     Connections {
         target: Hypr
 
         function onConfigReloaded(): void {
             root.rescan();
+        }
+    }
+
+    function findConfig(): void {
+        if (!root.signature)
+            return root.settle("");
+        instances.began = false;
+        instances.running = true;
+    }
+
+    function settle(found: string): void {
+        const next = found || root.defaultPath;
+        if (next !== root.configPath)
+            root.configPath = next;
+        else
+            root.rescan();
+    }
+
+    function readInstances(text: string): void {
+        let list = [];
+        try {
+            list = JSON.parse(text);
+        } catch (e) {
+            return root.settle("");
+        }
+        const mine = (Array.isArray(list) ? list : []).find(i => i.instance === root.signature);
+        if (!mine || !(mine.pid > 0))
+            return root.settle("");
+        commandLine.began = false;
+        commandLine.command = ["sh", "-c", "printf 'cwd=%s\\n' \"$(readlink \"/proc/$1/cwd\")\"; tr '\\0' '\\n' < \"/proc/$1/cmdline\"", "sh", String(mine.pid)];
+        commandLine.running = true;
+    }
+
+    Process {
+        id: instances
+
+        property bool began: false
+
+        command: ["hyprctl", "instances", "-j"]
+
+        stdout: StdioCollector {
+            onStreamFinished: root.readInstances(text)
+        }
+
+        onStarted: instances.began = true
+        onRunningChanged: {
+            if (!instances.running && !instances.began)
+                root.settle("");
+        }
+    }
+
+    Process {
+        id: commandLine
+
+        property bool began: false
+
+        stdout: StdioCollector {
+            onStreamFinished: root.settle(HyprGen.configFromCommandLine(text, root.home))
+        }
+
+        onStarted: commandLine.began = true
+        onRunningChanged: {
+            if (!commandLine.running && !commandLine.began)
+                root.settle("");
         }
     }
 
@@ -54,15 +129,24 @@ Singleton {
         watchChanges: false
         printErrors: false
 
-        onLoaded: root.fileScanned()
+        onLoaded: {
+            root.inFlight = false;
+            root.fileScanned();
+        }
 
-        onLoadFailed: Qt.callLater(root.nextFile)
+        onLoadFailed: {
+            root.inFlight = false;
+            Qt.callLater(root.nextFile);
+        }
     }
 
     property var queue: []
     property var visited: ({})
+    property bool inFlight: false
 
     function rescan(): void {
+        if (!root.configPath)
+            return;
         root.visited = {};
         root.files = [];
         root.binds = [];
@@ -72,19 +156,26 @@ Singleton {
         root.bandTables = [];
         root.scanned = false;
         root.queue = [root.configPath];
+        root.inFlight = false;
         console.info("HyprConfig: rescanning from", root.configPath);
         root.nextFile();
     }
 
     function nextFile(): void {
+        if (root.inFlight)
+            return;
         const p = root.queue.shift();
         if (!p)
             return root.finishScan();
         if (root.visited[p])
             return root.nextFile();
         root.visited[p] = true;
+        root.inFlight = true;
         console.info("HyprConfig: reading", p);
-        reader.path = p;
+        if (reader.path === p)
+            reader.reload();
+        else
+            reader.path = p;
     }
 
     function fileScanned(): void {
@@ -98,9 +189,19 @@ Singleton {
         };
         const collected = [];
         for (const b of r.binds) {
+            const chord = HyprGen.parseChord(b.chordLiteral ? b.chord : "");
             const bind = Object.assign({
                 id: `${name}:${b.startLine}`,
-                file: name
+                file: name,
+                mask: chord.mask,
+                key: chord.key,
+                presses: b.chords.map(c => {
+                    const p = HyprGen.parseChord(c);
+                    return {
+                        mask: p.mask,
+                        key: p.key
+                    };
+                })
             }, b);
 
             if (!bind.dynamic) {
@@ -134,20 +235,11 @@ Singleton {
 
         for (const req of r.requires)
             root.queue.push(`${root.hyprDir}/${req.split(".").join("/")}.lua`);
+        if (reader.path.endsWith(".conf"))
+            for (const source of HyprGen.confSources(reader.text(), root.hyprDir, root.home))
+                root.queue.push(source);
 
         Qt.callLater(root.nextFile);
-    }
-
-    function actionFor(mask: int, key: string): string {
-        const k = String(key).toLowerCase();
-        for (const b of root.binds) {
-            if (b.dynamic)
-                continue;
-            const c = HyprGen.parseChord(b.chord);
-            if (c.mask === mask && c.key.toLowerCase() === k)
-                return b.action;
-        }
-        return "";
     }
 
     function finishScan(): void {

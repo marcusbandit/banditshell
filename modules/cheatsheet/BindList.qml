@@ -32,7 +32,7 @@ Item {
             elide: Text.ElideRight
             visible: root.sheet.rows.length === 0
 
-            text: "nothing came back from hyprctl"
+            text: root.sheet.reading ? `reading ${root.sheet.source}…` : `no binds in ${root.sheet.source}`
             color: Appearance.colour.textGhost
         }
 
@@ -63,10 +63,12 @@ Item {
 
                 Item {
                     width: parent.width
-                    height: heading.implicitHeight
+                    height: section.modelData.woven ? wovenHead.implicitHeight : heading.implicitHeight
 
                     Chord {
                         id: heading
+
+                        visible: !section.modelData.woven
 
                         parts: section.headParts.length > 0 ? section.headParts : root.bareParts
                         advance: root.sheet.advance
@@ -74,8 +76,19 @@ Item {
                     }
 
                     StyledText {
-                        x: heading.implicitWidth + Appearance.padding.small
-                        width: Math.max(0, parent.width - heading.implicitWidth - Appearance.padding.small)
+                        id: wovenHead
+
+                        anchors.verticalCenter: parent.verticalCenter
+
+                        visible: section.modelData.woven
+
+                        text: "woven in the source"
+                        color: Appearance.colour.textFaint
+                    }
+
+                    StyledText {
+                        x: (section.modelData.woven ? wovenHead.implicitWidth : heading.implicitWidth) + Appearance.padding.small
+                        width: Math.max(0, parent.width - (section.modelData.woven ? wovenHead.implicitWidth : heading.implicitWidth) - Appearance.padding.small)
                         elide: Text.ElideRight
                         visible: !!section.modelData.submap
 
@@ -102,7 +115,7 @@ Item {
 
                             clip: root.sheet.chordWidth > line.width
 
-                            parts: root.sheet.chordParts(line.modelData.mask, line.modelData.key)
+                            parts: root.sheet.rowParts(line.modelData)
                             advance: root.sheet.advance
                         }
 
@@ -111,7 +124,7 @@ Item {
                             width: Math.max(0, line.width - root.sheet.chordWidth - root.sheet.gutter)
                             elide: Text.ElideRight
 
-                            text: line.modelData.what
+                            text: line.modelData.action
                             color: Appearance.colour.textDim
                         }
                     }

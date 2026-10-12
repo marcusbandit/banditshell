@@ -456,7 +456,9 @@ banditshell/
 ├── services/                    state that outlives any one widget
 │   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
-│   │                            (hyprland.lua + everything it requires)
+│   │                            (the file this compositor was handed with
+│   │                            -c, else hyprland.lua, + everything it
+│   │                            requires or a .conf sources)
 │   │                            scanned into binds, each carrying the file
 │   │                            and lines it came from. Edits splice those
 │   │                            lines and splice nothing else; every write
@@ -469,8 +471,18 @@ banditshell/
 │   │                            line composition and the splice. Binds the
 │   │                            scanner cannot fully own -- loops, submap
 │   │                            functions, concatenation -- come back
-│   │                            `dynamic`, read-only. No QML in it, the
-│   │                            way vt.js has none, tested the same way
+│   │                            `dynamic`, read-only, with the chords their
+│   │                            loop tables and aliases resolve to. No QML
+│   │                            in it, the way vt.js has none, tested the
+│   │                            same way
+│   ├── Keyboards.qml            the user's own board, when they name one: a
+│   │                            VIA definition copied into the shell's
+│   │                            config and watched, aligned into keys; and
+│   │                            the keys struck in cheatsheet.blocked
+│   ├── keyboards.js             the board models as data: the drawn
+│   │                            template (function row, ISO main block,
+│   │                            numpad) and the VIA reader, legends by
+│   │                            position. No QML in it, tested in node
 │   ├── whatsnew.js               the What's new log as DATA: entries parsed
 │   │                            tolerantly and accumulated past the
 │   │                            last-shown marker. No QML in it, the way
@@ -641,12 +653,13 @@ banditshell/
 │   │                            draws over everything, a click off it is a NO
 │   │                            rather than a dismissal, and every panel that
 │   │                            takes the keyboard refuses it on the way in
-│   ├── cheatsheet/              the hotkey sheet, read off hyprctl on every open
+│   ├── cheatsheet/              the hotkey sheet, read from the Lua config scrape
 │   │   ├── CheatSheet.qml       the card, the two view choices, and the way out
 │   │   ├── BindList.qml         every bind there is, grouped by how it is pressed
-│   │   ├── Keyboard.qml          the same binds, on the keys your hands know
+│   │   ├── Keyboard.qml          the same binds, on the keys your hands know; a row of
+│   │   │                        it exists only when something is bound there
 │   │   ├── KeyCap.qml           one key: a width in units, a legend, a state
-│   │   └── Chord.qml            one chord, in whichever vocabulary is being spoken
+│   │   └── Chord.qml            one chord, spoken in symbols
 │   ├── keyboard/                the board for when the machine is folded over
 │   │   ├── OnScreenKeyboard.qml the panel, out of the bottom band. THE ONE
 │   │   │                        SURFACE THAT MUST NOT TAKE THE KEYBOARD: it
@@ -1083,7 +1096,7 @@ wallpaper" to everybody who typed them. The new grammar has the one noun:
 The IPC target stays `wallpapers`; only the words changed.
 
 **Old binds are not dead, and the user is not sent to a manual.** Every shell start,
-`services/CliMigration.qml` scans the hyprland config for binds still speaking the
+`services/CliMigration.qml` scans the config files `HyprConfig` read for binds still speaking the
 old grammar - `services/cli-migration.js` is the ONE authority on old → new, a rule
 table the scanner, the rewriter and the CLI's own fallback all read. Until the user
 acts, those binds work: the wrapper rewrites any old form through the map on the way
@@ -1480,17 +1493,34 @@ becomes a drag and **a PathView does not**, so every press that landed on a card
 carousel never saw and only the gaps between cards could be dragged.
 
 `hotkeys` is the one target that is not a second way in but the **only** way in. The sheet it
-opens recites the user's own config rather than the shell's state, so it is drawn from
-`hyprctl binds -j` on every open and there is no gauge, edge or gesture that could summon it;
-the keybind is the control, and it has to keep working across a config the shell never sees.
-`status` therefore prints what the sheet *read* rather than whether it is up, because the
-failure this panel actually has is a screen of chords with nothing beside them, and from a
-screenshot that looks identical whatever caused it: a bind registered from Lua or a plugin is
-reported with no dispatcher this side can read, which is the compositor declining to say and
-not the shell failing to parse. Binding it is the one bind with a trap in it, because `?` is a
-shifted character and which physical key it is shifted from is a property of the keyboard
-LAYOUT: `SHIFT + slash` on US, `SHIFT + plus` on Danish, and Hyprland says nothing at all about
-a key name it cannot resolve, it simply never fires.
+opens recites the user's own config rather than the shell's state, so it is drawn from the
+`HyprConfig` scrape of `hyprland.lua` and everything it requires - the config found by asking
+the running compositor what it was actually handed, so `-c` overrides and moved
+`$XDG_CONFIG_HOME`s are honoured wherever they point - the same scan the keybinds
+editor writes through, rescan on every config reload - and not from `hyprctl binds`, which
+reports every bind here as dispatcher `__lua` and says nothing this side can read. Opening
+the sheet still runs `hyprctl devices -j`, for the keymap the footer names. A `.conf` setup,
+or a Lua scrape that finds nothing, falls back to `hyprctl binds -j` on every open, which
+is the one source those configs have. There is no gauge, edge or gesture that could
+summon it; the keybind is the control, and it has to keep working across a config the shell
+never sees. Each row carries the chord beside the Lua that runs under it, not a description:
+the code is the one account of a bind that cannot be out of date with the bind. The board can
+be given the user's own keyboard too: a VIA definition JSON, copied into the shell's config
+and remembered, donates the physical shape - real rows, real widths and heights, the knob,
+read as KLE means them: `x` and `y` move the cursor, `w` and `h` size the key. Its legends
+come from the template by POSITION: the board says whether it is ISO (a two-row Enter) or
+ANSI (a wide home-row Enter under a 1.5u backslash), the numpad is found by where its
+columns sit and the arrows by their shape, and keys the template has no opinion about draw
+their matrix spots and wait. A woven bind lights the keys its loop variables and top-level
+aliases resolve to, and only when its chord names the variable. Keys can also be struck
+from the board in the config (`cheatsheet.blocked`, by keysym or matrix spot, each with an
+optional why): they draw as an empty outline with the legend struck through, never light,
+and say their why when tapped. `status`
+therefore prints what the sheet *read* rather than whether it is up, because the failure this
+panel actually has is a screen of chords with nothing beside them. Binding it is the one bind
+with a trap in it, because `?` is a shifted character and which physical key it is shifted
+from is a property of the keyboard LAYOUT: `SHIFT + slash` on US, `SHIFT + plus` on Danish,
+and Hyprland says nothing at all about a key name it cannot resolve, it simply never fires.
 
 `status` exists for one failure in particular: the shell deriving its geometry from the
 compositor and quietly disagreeing with it. Printing rounding, smoothing, both gaps and the

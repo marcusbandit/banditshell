@@ -13,7 +13,6 @@ Item {
     property bool open: false
 
     property bool board: false
-    property bool symbols: false
 
     property real listY: 0
     property real boardY: 0
@@ -29,8 +28,6 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    property var rows: []
-
     property string keymap: ""
     property string kbLayout: ""
     property string kbOptions: ""
@@ -44,12 +41,12 @@ Item {
         {
             bit: 4,
             name: "CTRL",
-            symbol: String.fromCodePoint(0xF0634)
+            symbol: ""
         },
         {
             bit: 8,
             name: "ALT",
-            symbol: String.fromCodePoint(0xF0635)
+            symbol: ""
         },
         {
             bit: 1,
@@ -97,19 +94,11 @@ Item {
             const named = root.mouseNames[parseInt(key.slice(6), 10) - root.mouseBase];
             return named ? `MOUSE ${named}` : key.toUpperCase();
         }
+        const side = /^([A-Za-z]+)_([LR])$/.exec(key);
+        if (side)
+            return `${side[1]} ${side[2]}`.toUpperCase();
         const bare = key.startsWith("XF86") ? key.slice(4).replace(/([a-z0-9])([A-Z])/g, "$1 $2") : key;
         return bare.toUpperCase();
-    }
-
-    function keyOf(bind: var): string {
-        const named = (bind.key ?? "").trim();
-        if (named)
-            return named;
-
-        if (bind.catch_all === true)
-            return "any key";
-        const code = bind.keycode ?? 0;
-        return code > 0 ? `code:${code}` : "";
     }
 
     readonly property real advance: Math.ceil(em.advanceWidth)
@@ -131,11 +120,10 @@ Item {
             if ((mask & m.bit) === 0)
                 continue;
             join();
-            const sym = root.symbols ? m.symbol : "";
             out.push({
-                text: sym ? "" : m.name,
-                glyph: sym,
-                cells: sym ? root.symbolCells : m.name.length
+                text: m.symbol ? "" : m.name,
+                glyph: m.symbol,
+                cells: m.symbol ? root.symbolCells : m.name.length
             });
         }
 
@@ -151,72 +139,114 @@ Item {
         return out;
     }
 
-    function chordCells(mask: int, key: string): int {
+    function partCells(parts: var): int {
         let n = 0;
-        for (const p of root.chordParts(mask, key))
+        for (const p of parts)
             n += p.cells;
         return n;
     }
 
-    function humaniseExec(cmd: string): string {
-        const words = cmd.split(/\s+/).filter(w => w);
-        const at = words.findIndex(w => w.split("/").pop() === "banditshell");
-        if (at < 0)
-            return cmd;
-        const verbs = words.slice(at + 1);
-        return verbs.length > 0 ? verbs.join(" ") : cmd;
+    function sharedMask(presses: var): int {
+        if (presses.length === 0)
+            return 0;
+        let mask = ~0;
+        for (const p of presses)
+            mask &= p.mask;
+        return mask;
     }
 
-    function describe(bind: var): string {
+    readonly property bool fallback: (Hypr.parserKnown && !Hypr.lua) || (HyprConfig.ready && (!HyprConfig.configPath.endsWith(".lua") || HyprConfig.binds.length === 0))
 
-        const said = (bind.description ?? "").trim();
-        if (said)
-            return said;
+    property var hyprRows: []
+    property bool hyprRead: false
 
-        const dispatcher = (bind.dispatcher ?? "").trim();
-        const arg = (bind.arg ?? "").trim();
-
-        if (dispatcher === "__lua")
-
-            return HyprConfig.actionFor(bind.modmask ?? 0, bind.key ?? "");
-
-        if (dispatcher === "exec")
-            return root.humaniseExec(arg);
-
-        return arg ? `${dispatcher} ${arg}` : dispatcher;
+    readonly property var luaRows: {
+        const out = [];
+        for (const b of HyprConfig.binds) {
+            const woven = !b.chordLiteral;
+            const presses = (b.presses ?? []).filter(p => p.key);
+            const mask = woven ? root.sharedMask(presses) : b.mask ?? 0;
+            const said = (b.expr ?? "").trim();
+            out.push({
+                mask: mask,
+                mods: root.modNames(mask).length,
+                key: woven ? "" : (b.key ?? ""),
+                presses: presses,
+                submap: b.submap ?? "",
+                woven: woven,
+                action: (woven || !said ? (b.raw ?? "") : said).replace(/\s+/g, " ").trim()
+            });
+        }
+        return out;
     }
 
-    function machinery(bind: var): string {
-        if ((bind.dispatcher ?? "").trim() === "__lua")
-            return HyprConfig.actionFor(bind.modmask ?? 0, bind.key ?? "") || "a bind from the Lua config";
-        const dispatcher = (bind.dispatcher ?? "").trim();
-        const arg = (bind.arg ?? "").trim();
-        return arg ? `${dispatcher} ${arg}` : dispatcher;
+    readonly property var rows: root.fallback ? root.hyprRows : root.luaRows
+
+    function rowParts(row: var): var {
+        const parts = root.chordParts(row.mask, row.key);
+        if (row.mask > 0 && !row.key)
+            parts.push({
+                text: "…",
+                glyph: "",
+                cells: 1
+            });
+        return parts;
     }
 
-    function parse(text: string): var {
+    readonly property bool reading: !HyprConfig.ready || (root.fallback && !root.hyprRead)
+
+    readonly property string source: root.fallback ? "hyprctl" : "the Lua config"
+
+    readonly property int woven: root.rows.filter(r => r.woven).length
+
+    function keyOf(bind: var): string {
+        const named = (bind.key ?? "").trim();
+        if (named)
+            return named;
+        if (bind.catch_all === true)
+            return "any key";
+        const code = bind.keycode ?? 0;
+        return code > 0 ? `code:${code}` : "";
+    }
+
+    function readBinds(text: string): void {
         let raw = [];
         try {
             raw = JSON.parse(text);
         } catch (e) {
             console.warn(`CheatSheet: hyprctl binds did not answer with JSON: ${e}`);
-            return [];
         }
-        if (!Array.isArray(raw))
-            return [];
-
-        return raw.map(b => {
+        const out = [];
+        for (const b of Array.isArray(raw) ? raw : []) {
             const mask = b.modmask ?? 0;
-            return {
+            const key = root.keyOf(b);
+            const dispatcher = (b.dispatcher ?? "").trim();
+            const arg = (b.arg ?? "").trim();
+            out.push({
                 mask: mask,
                 mods: root.modNames(mask).length,
+                key: key,
+                presses: key ? [{
+                        mask: mask,
+                        key: key
+                    }] : [],
                 submap: b.submap ?? "",
+                woven: false,
+                action: (b.description ?? "").trim() || (arg ? `${dispatcher} ${arg}` : dispatcher)
+            });
+        }
+        root.hyprRows = out;
+        root.hyprRead = true;
+    }
 
-                key: root.keyOf(b),
-                what: root.describe(b),
-                raw: root.machinery(b)
-            };
-        });
+    function refreshBinds(): void {
+        if (root.fallback && !query.running)
+            query.running = true;
+    }
+
+    onFallbackChanged: {
+        if (root.fallback && root.open)
+            root.refreshBinds();
     }
 
     function readDevices(text: string): void {
@@ -251,13 +281,14 @@ Item {
 
         for (const row of root.rows) {
 
-            const key = `${row.submap}${row.mask}`;
+            const key = row.woven ? `woven:${row.submap}` : `${row.submap}:${row.mask}`;
             let group = byKey[key];
             if (!group) {
                 group = {
-                    mask: row.mask,
-                    mods: row.mods,
+                    mask: row.woven ? 0 : row.mask,
+                    mods: row.woven ? 0 : row.mods,
                     submap: row.submap,
+                    woven: row.woven,
                     rows: []
                 };
                 byKey[key] = group;
@@ -266,11 +297,9 @@ Item {
             group.rows.push(row);
         }
 
-        out.sort((a, b) => b.rows.length - a.rows.length || a.mods - b.mods || a.mask - b.mask);
+        out.sort((a, b) => (a.woven ? 1 : 0) - (b.woven ? 1 : 0) || b.rows.length - a.rows.length || a.mods - b.mods || a.mask - b.mask);
         return out;
     }
-
-    readonly property int unnamed: root.rows.filter(r => !r.what).length
 
     readonly property real areaX: root.holeX + Appearance.sizes.gap
     readonly property real areaY: root.holeY + Appearance.sizes.gap
@@ -282,14 +311,14 @@ Item {
     readonly property real chordWidth: {
         let n = 0;
         for (const row of root.rows) {
-            const c = root.chordCells(row.mask, row.key);
+            const c = root.partCells(root.rowParts(row));
             if (c > n)
                 n = c;
         }
         return n * root.advance;
     }
 
-    readonly property real contentWidth: root.chordWidth + root.gutter + Math.ceil(whatInk.width)
+    readonly property real contentWidth: root.chordWidth + root.gutter + Math.ceil(luaInk.width)
 
     readonly property real headWidth: title.implicitWidth + Appearance.padding.large + controls.implicitWidth
 
@@ -329,7 +358,8 @@ Item {
             return;
         root.restoreTo = Hypr.focusedOn(root.screenName);
 
-        root.reload();
+        root.refreshDevices();
+        root.refreshBinds();
 
         view.contentY = 0;
         root.listY = 0;
@@ -359,10 +389,7 @@ Item {
             root.show();
     }
 
-    function reload(): void {
-        if (!query.running)
-            query.running = true;
-
+    function refreshDevices(): void {
         if (!devices.running)
             devices.running = true;
     }
@@ -425,7 +452,7 @@ Item {
         command: ["hyprctl", "binds", "-j"]
 
         stdout: StdioCollector {
-            onStreamFinished: root.rows = root.parse(text)
+            onStreamFinished: root.readBinds(text)
         }
     }
 
@@ -448,20 +475,22 @@ Item {
         text: "M"
     }
 
-    readonly property string widestWhat: {
+    readonly property string widestLua: {
         let widest = "";
-        for (const row of root.rows)
-            if (row.what.length > widest.length)
-                widest = row.what;
+        for (const row of root.rows) {
+            const t = row.action.length > 96 ? row.action.slice(0, 96) : row.action;
+            if (t.length > widest.length)
+                widest = t;
+        }
         return widest;
     }
 
     TextMetrics {
-        id: whatInk
+        id: luaInk
 
         font.family: Appearance.font.family
         font.pixelSize: Appearance.font.size.small
-        text: root.widestWhat
+        text: root.widestLua
     }
 
     Item {
@@ -568,15 +597,6 @@ Item {
                                     root.board = i === 1;
                                 }
                             }
-
-                            Segments {
-                                options: ["Words", "Symbols"]
-                                current: root.symbols ? 1 : 0
-
-                                onPicked: i => {
-                                    root.symbols = i === 1;
-                                }
-                            }
                         }
                     }
 
@@ -584,7 +604,7 @@ Item {
                         width: parent.width
                         wrapMode: Text.WordWrap
 
-                        text: root.unnamed > 0 ? `${root.rows.length} binds, ${root.unnamed} of them saying only which key: give a bind a description with bindd and it lands here` : `${root.rows.length} binds`
+                        text: root.reading ? `reading ${root.source}…` : root.woven > 0 ? `${root.rows.length} binds from ${root.source}, ${root.woven} woven` : `${root.rows.length} binds from ${root.source}`
                         color: Appearance.colour.textFaint
                     }
                 }

@@ -493,17 +493,11 @@ PanelWindow {
 
             Component.onCompleted: {
                 cheatLayer.board = Config.get("cheatsheet.board");
-                cheatLayer.symbols = Config.get("cheatsheet.symbols");
             }
 
             onBoardChanged: {
                 if (cheatLayer.board !== Config.get("cheatsheet.board"))
                     Config.set("cheatsheet.board", cheatLayer.board);
-            }
-
-            onSymbolsChanged: {
-                if (cheatLayer.symbols !== Config.get("cheatsheet.symbols"))
-                    Config.set("cheatsheet.symbols", cheatLayer.symbols);
             }
         }
 
@@ -530,7 +524,6 @@ PanelWindow {
 
             function onValuesChanged(): void {
                 cheatLayer.board = Config.get("cheatsheet.board");
-                cheatLayer.symbols = Config.get("cheatsheet.symbols");
             }
         }
 

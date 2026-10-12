@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprgen.js"), "utf8");
 const HyprGen = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprGen.parseChord("SUPER + SHIFT + Slash"), {
@@ -679,4 +679,25 @@ test("an invalid band in the file is shown and editable, but feeds no model", ()
     assert.strictEqual(r.bands[0].invalid, true);
     assert.strictEqual(r.bands[0].first, undefined);
     assert.strictEqual(r.bands[0].dynamic, false, "invalid is not dynamic: the field shows it so it can be fixed");
+});
+
+test("the compositor's -c resolves absolute, home and relative paths", () => {
+    const home = "/home/u";
+    assert.strictEqual(HyprGen.configFromCommandLine("cwd=/tmp\nHyprland\n--watchdog-fd\n4", home), "");
+    assert.strictEqual(HyprGen.configFromCommandLine("cwd=/tmp\nHyprland\n-c\n/etc/hypr/h.lua", home), "/etc/hypr/h.lua");
+    assert.strictEqual(HyprGen.configFromCommandLine("cwd=/tmp\nHyprland\n--config\n~/dots/h.lua", home), "/home/u/dots/h.lua");
+    assert.strictEqual(HyprGen.configFromCommandLine("cwd=/srv/x\nHyprland\n--config=./conf/h.conf", home), "/srv/x/conf/h.conf");
+    assert.strictEqual(HyprGen.configFromCommandLine("cwd=\nHyprland\n-c\nh.lua", home), "", "a relative path with no cwd is no answer");
+});
+
+test(".conf source lines are followed, globs and comments left alone", () => {
+    const found = HyprGen.confSources([
+        "source = ~/.config/hypr/binds.conf",
+        "  source=extra.conf # trailing",
+        "# source = commented.conf",
+        "source = $HOME/x.conf",
+        "source = ./parts/*.conf",
+        "bind = SUPER, Q, exec, foot"
+    ].join("\n"), "/home/u/.config/hypr", "/home/u");
+    assert.deepStrictEqual(found, ["/home/u/.config/hypr/binds.conf", "/home/u/.config/hypr/extra.conf", "/home/u/x.conf"]);
 });

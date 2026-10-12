@@ -491,7 +491,9 @@ Singleton {
 
                 board: false,
 
-                symbols: false
+                keyboard: "",
+
+                blocked: {}
             },
 
             tablet: {

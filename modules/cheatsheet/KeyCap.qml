@@ -8,6 +8,7 @@ Item {
     id: root
 
     property real units: 1
+    property real span: 1
     property real pitch: 0
     property real seam: 0
 
@@ -16,21 +17,26 @@ Item {
     property string label: ""
     property string glyph: ""
 
+    property bool blocked: false
+
     property bool lit: false
     property bool latched: false
     property bool selected: false
 
     signal tapped
 
-    readonly property real headHeight: root.foot > 0 ? root.pitch : root.pitch - root.seam
+    readonly property real headHeight: root.foot > 0 ? root.pitch : root.span * root.pitch - root.seam
 
     readonly property real radius: Appearance.rounding.small
 
-    readonly property color fill: root.latched ? Appearance.colour.accentFill : root.lit ? Appearance.colour.fillStronger : Appearance.colour.fill
+    readonly property color fill: root.blocked ? "transparent" : root.latched ? Appearance.colour.accentFill : root.lit ? Appearance.colour.fillStronger : Appearance.colour.fill
     readonly property color ink: root.latched || root.lit ? Appearance.colour.text : Appearance.colour.textGhost
 
+    readonly property color edge: root.selected ? Appearance.colour.accent : root.blocked ? Appearance.colour.separator : "transparent"
+    readonly property real edgeWidth: root.selected || root.blocked ? Appearance.font.stem : 0
+
     width: root.units * root.pitch - root.seam
-    height: (root.foot > 0 ? 2 * root.pitch : root.pitch) - root.seam
+    height: root.span * root.pitch - root.seam
 
     SquircleRect {
         id: head
@@ -45,9 +51,8 @@ Item {
         bottomRightRadius: root.foot > 0 ? 0 : root.radius
 
         color: root.fill
-        stroke: root.selected ? Appearance.colour.accent : "transparent"
-
-        strokeWidth: root.selected ? Appearance.font.stem : 0
+        stroke: root.edge
+        strokeWidth: root.edgeWidth
 
         Behavior on color {
             ColorAnimation {
@@ -68,15 +73,51 @@ Item {
 
             text: root.label
             color: root.ink
+            font.strikeout: root.blocked
         }
 
         Icon {
             anchors.centerIn: parent
-            visible: !!root.glyph
+            visible: !!root.glyph && !root.label
 
             glyph: root.glyph
             size: Appearance.font.size.small
             color: root.ink
+        }
+
+        Item {
+            id: pair
+
+            readonly property real gap: Appearance.padding.small / 2
+
+            anchors.centerIn: parent
+            width: Math.min(sigil.implicitWidth + pair.gap + word.implicitWidth, head.width - Appearance.padding.small * 2)
+            height: head.height
+            visible: !!root.glyph && !!root.label
+
+            Icon {
+                id: sigil
+
+                anchors.verticalCenter: parent.verticalCenter
+
+                glyph: root.glyph
+                size: Appearance.font.size.small
+                color: root.ink
+            }
+
+            StyledText {
+                id: word
+
+                anchors.verticalCenter: parent.verticalCenter
+                x: sigil.implicitWidth + pair.gap
+                width: Math.max(0, pair.width - word.x)
+
+                elide: Text.ElideRight
+
+                text: root.label
+                color: root.ink
+                font.strikeout: root.blocked
+            }
         }
 
         MouseArea {
@@ -92,7 +133,7 @@ Item {
         x: parent.width - width
         y: root.pitch
         width: root.foot * root.pitch - root.seam
-        height: root.pitch - root.seam
+        height: (root.span - 1) * root.pitch - root.seam
         visible: root.foot > 0
 
         topLeftRadius: 0
@@ -101,8 +142,8 @@ Item {
         bottomRightRadius: root.radius
 
         color: root.fill
-        stroke: root.selected ? Appearance.colour.accent : "transparent"
-        strokeWidth: root.selected ? Appearance.font.stem : 0
+        stroke: root.edge
+        strokeWidth: root.edgeWidth
 
         Behavior on color {
             ColorAnimation {

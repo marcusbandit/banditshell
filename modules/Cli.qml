@@ -415,7 +415,7 @@ Scope {
             const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.hotkeys.open);
             if (!win)
                 return screen ? `no shell window on screen: ${screen}` : "no shell window";
-            return `open=${win.hotkeys.open} binds=${win.hotkeys.rows.length} described=${win.hotkeys.rows.length - win.hotkeys.unnamed} groups=${win.hotkeys.sections.length}`;
+            return `open=${win.hotkeys.open} binds=${win.hotkeys.rows.length} woven=${win.hotkeys.woven} groups=${win.hotkeys.sections.length}`;
         }
     }
 
