@@ -3,11 +3,12 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import "../services/configuration.js" as Configuration
 
 Singleton {
     id: root
 
-    readonly property string dir: `${Quickshell.env("HOME")}/.config/banditshell`
+    readonly property string dir: `${Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`}/banditshell`
     readonly property string path: `${dir}/config.json`
 
     readonly property var defaults: ({
@@ -626,10 +627,6 @@ Singleton {
 
             cli: {
 
-                // The migration's one-way door: after the user declines the
-                // sidebar's offer to rewrite their binds, the offer stops
-                // being made - they chose to fix the config by hand, and a
-                // nag they cannot dismiss is worse than a stale bind.
                 bindsDeclined: false
             },
 
@@ -653,8 +650,18 @@ Singleton {
 
     property bool loaded: false
 
+    property bool unreadable: false
+
+    readonly property bool writable: root.loaded && !root.unreadable
+
+    property string lastWritten: ""
+
+    property bool rewatch: false
+
+    readonly property var opaque: ["files.keys", "files.grid"]
+
     function get(key: string): var {
-        return key.split(".").reduce((node, k) => node?.[k], root.values);
+        return Configuration.lookup(root.values, key);
     }
 
     function set(key: string, value: var): void {
@@ -662,49 +669,28 @@ Singleton {
     }
 
     function setMany(pairs: var): void {
-        const next = JSON.parse(JSON.stringify(root.values));
+        const result = Configuration.assign(root.values, pairs);
+        if (result.refused)
+            return console.warn(`Config: no such setting "${result.refused}"`);
 
-        for (const [key, value] of pairs) {
-            const keys = key.split(".");
-            let node = next;
-            for (let i = 0; i < keys.length - 1; i++) {
-                node = node[keys[i]];
-                if (typeof node !== "object" || node === null)
-                    return console.warn(`Config: no such setting "${key}"`);
-            }
-            if (!(keys[keys.length - 1] in node))
-                return console.warn(`Config: no such setting "${key}"`);
+        const keys = pairs.map(pair => pair[0]).join(", ");
+        if (!root.loaded)
+            return console.warn(`Config: dropped ${keys}, because ${root.path} has not been read yet`);
 
-            node[keys[keys.length - 1]] = value;
-        }
+        if (JSON.stringify(result.values) === JSON.stringify(root.values))
+            return;
+        root.values = result.values;
 
-        root.values = next;
+        if (root.unreadable)
+            return console.warn(`Config: ${keys} not saved, because ${root.path} could not be read and is left untouched`);
         root.save();
     }
 
     function save(): void {
-        file.setText(JSON.stringify(root.values, null, 4) + "\n");
-    }
-
-    readonly property var opaque: ["files.keys", "files.grid"]
-
-    function merge(base: var, over: var, path: string): var {
-
-        if (root.opaque.includes(path))
-            return over && typeof over === "object" ? over : base;
-
-        if (Array.isArray(base))
-            return Array.isArray(over) && (base.length === 0 || over.length === base.length) ? over : base;
-
-        if (base && typeof base === "object" && !Object.keys(base).length)
-            return over && typeof over === "object" ? over : base;
-        if (over === undefined || base === null || typeof base !== "object")
-            return over === undefined ? base : over;
-
-        const out = {};
-        for (const k in base)
-            out[k] = merge(base[k], over[k], path ? `${path}.${k}` : k);
-        return out;
+        if (!root.writable)
+            return;
+        root.lastWritten = JSON.stringify(root.values, null, 4) + "\n";
+        file.setText(root.lastWritten);
     }
 
     FileView {
@@ -717,36 +703,49 @@ Singleton {
         onFileChanged: reload()
 
         onLoaded: {
-            let parsed;
+            const raw = text();
+            if (root.writable && raw === root.lastWritten)
+                return;
+
+            let parsed = null;
+            let problem = "not an object";
             try {
-                parsed = JSON.parse(text());
+                parsed = JSON.parse(raw);
             } catch (e) {
-                return console.warn(`Config: ${root.path} is not valid JSON, keeping previous values.`, e);
+                problem = e.message;
             }
 
-            root.values = root.merge(root.defaults, parsed, "");
+            if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+                root.unreadable = true;
+                return console.warn(`Config: ${root.path} is not valid (${problem}), so it is left untouched and the shell keeps ${root.loaded ? "the values it had" : "the defaults"} until it is fixed.`);
+            }
 
+            root.unreadable = false;
+            root.values = Configuration.merge(root.defaults, parsed, "", root.opaque);
             root.loaded = true;
 
             if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {
                 console.log("Config: schema changed, updating config.json (your values are kept).");
-
                 Qt.callLater(root.save);
             }
         }
 
         onLoadFailed: err => {
-            if (err === FileViewError.FileNotFound)
-                mkdir.running = true;
-        }
-    }
-
-    Process {
-        id: mkdir
-        command: ["mkdir", "-p", root.dir]
-        onExited: {
-            root.save();
+            if (err !== FileViewError.FileNotFound) {
+                root.unreadable = true;
+                return console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell keeps ${root.loaded ? "the values it had" : "the defaults"}.`);
+            }
+            root.unreadable = false;
             root.loaded = true;
+            root.rewatch = true;
+            Qt.callLater(root.save);
+        }
+
+        onSaved: {
+            if (!root.rewatch)
+                return;
+            root.rewatch = false;
+            reload();
         }
     }
 }
