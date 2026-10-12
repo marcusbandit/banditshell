@@ -49,9 +49,23 @@ Item {
 
     readonly property Item maskItem: catcher
 
-    readonly property var results: root.speech ? Dictation.search(query.text) : Clipboard.search(query.text)
+    readonly property var history: root.speech ? ({
+            search: text => Dictation.search(text),
+            use: e => Dictation.use(e),
+            forget: e => Dictation.drop(e)
+        }) : ({
+            search: text => Clipboard.search(text),
+            use: e => Clipboard.copy(e),
+            forget: e => Clipboard.remove(e)
+        })
+
+    readonly property var results: root.history.search(query.text)
+
+    onResultsChanged: root.selected = Math.max(0, Math.min(root.selected, root.results.length - 1))
 
     readonly property var entry: root.results[root.selected] ?? null
+
+    readonly property var current: root.expanded ? root.reading : root.entry
 
     function show(): void {
         if (root.shown)
@@ -135,22 +149,17 @@ Item {
     }
 
     function accept(): void {
-        const e = root.expanded ? root.reading : root.entry;
-        if (e) {
-            if (root.speech)
-                Dictation.use(e);
-            else
-                Clipboard.copy(e);
-        }
+        if (root.current)
+            root.history.use(root.current);
         root.hide();
     }
 
-    function pinCurrent(): void {
-        const e = root.entry;
-
+    function pin(e: var): void {
         if (!e || root.speech)
             return;
         Clipboard.setPinned(e, !e.pinned);
+        if (root.reading?.id === e.id)
+            root.reading = Clipboard.entries.find(x => x.id === e.id) ?? null;
         root.follow(e.id);
     }
 
@@ -162,16 +171,13 @@ Item {
         list.reveal(at);
     }
 
-    function discardCurrent(): void {
-        const e = root.entry;
+    function discard(e: var): void {
         if (!e)
             return;
-        if (root.speech)
-            Dictation.drop(e);
-        else
-            Clipboard.remove(e);
-
-        root.selected = Math.max(0, Math.min(root.selected, root.results.length - 1));
+        const onScreen = root.reading?.id === e.id;
+        root.history.forget(e);
+        if (onScreen)
+            root.collapse();
     }
 
     function actionsFor(e: var): var {
@@ -183,10 +189,7 @@ Item {
                 icon: "content_copy",
                 label: root.speech ? "Use this" : "Copy",
                 run: () => {
-                    if (root.speech)
-                        Dictation.use(e);
-                    else
-                        Clipboard.copy(e);
+                    root.history.use(e);
                     root.hide();
                 }
             }
@@ -207,22 +210,13 @@ Item {
             acts.push({
                 icon: "keep",
                 label: e.pinned ? "Let go of this" : "Keep this",
-                run: () => {
-                    Clipboard.setPinned(e, !e.pinned);
-                    root.follow(e.id);
-                }
+                run: () => root.pin(e)
             });
 
         acts.push({
             icon: "delete",
             label: "Delete",
-            run: () => {
-                if (root.speech)
-                    Dictation.drop(e);
-                else
-                    Clipboard.remove(e);
-                root.selected = Math.max(0, Math.min(root.selected, root.results.length - 1));
-            }
+            run: () => root.discard(e)
         });
 
         return acts;
@@ -358,11 +352,11 @@ Item {
                 root.moveTo(root.results.length - 1);
                 break;
             case Qt.Key_P:
-                root.pinCurrent();
+                root.pin(root.current);
                 break;
             case Qt.Key_X:
             case Qt.Key_Delete:
-                root.discardCurrent();
+                root.discard(root.current);
                 break;
             default:
                 return;
@@ -466,252 +460,238 @@ Item {
                     width: viewport.width
                     height: viewport.height
 
-            Item {
-                id: header
+                    Item {
+                        id: header
 
-                x: Appearance.padding.large
-                y: Appearance.padding.large
-                width: parent.width - Appearance.padding.large * 2
-                height: Math.max(tabStrip.height, field.height)
+                        x: Appearance.padding.large
+                        y: Appearance.padding.large
+                        width: parent.width - Appearance.padding.large * 2
+                        height: Math.max(tabStrip.height, field.height)
 
-                Segments {
-                    id: tabStrip
+                        Segments {
+                            id: tabStrip
 
-                    anchors.left: parent.left
-                    anchors.verticalCenter: parent.verticalCenter
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
 
-                    options: root.tabs
-                    current: root.tab
-                    onPicked: index => root.setTab(index)
-                }
+                            options: root.tabs
+                            current: root.tab
+                            onPicked: index => root.setTab(index)
+                        }
 
-                Item {
-                    id: field
+                        Item {
+                            id: field
 
-                    anchors.right: parent.right
-                    anchors.left: tabStrip.right
-                    anchors.leftMargin: Appearance.padding.large
-                    anchors.verticalCenter: parent.verticalCenter
-                    height: Math.round(Appearance.font.size.small * 4 / 3) + Appearance.padding.small * 2
+                            anchors.right: parent.right
+                            anchors.left: tabStrip.right
+                            anchors.leftMargin: Appearance.padding.large
+                            anchors.verticalCenter: parent.verticalCenter
+                            height: Math.round(Appearance.font.size.small * 4 / 3) + Appearance.padding.small * 2
 
-                    opacity: root.searching ? 1 : 0
-                    visible: opacity > 0.01
+                            opacity: root.searching ? 1 : 0
+                            visible: opacity > 0.01
 
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.anim.fast
+                            Behavior on opacity {
+                                NumberAnimation {
+                                    duration: Appearance.anim.fast
+                                }
+                            }
+
+                            SquircleRect {
+                                anchors.fill: parent
+                                radius: height / 2
+                                color: Appearance.colour.fill
+                            }
+
+                            Icon {
+                                id: searchGlyph
+
+                                anchors.left: parent.left
+                                anchors.leftMargin: Appearance.padding.normal
+                                anchors.verticalCenter: parent.verticalCenter
+                                name: "search"
+                                size: Appearance.font.iconSize
+                                color: Appearance.colour.textFaint
+                            }
+
+                            TextInput {
+                                id: query
+
+                                anchors.left: searchGlyph.right
+                                anchors.leftMargin: Appearance.padding.small
+                                anchors.right: parent.right
+                                anchors.rightMargin: Appearance.padding.normal
+                                anchors.verticalCenter: parent.verticalCenter
+
+                                font.family: Appearance.font.family
+                                font.pixelSize: Appearance.font.size.small
+                                renderType: Text.NativeRendering
+                                color: Appearance.colour.text
+                                selectionColor: Appearance.colour.accent
+                                selectedTextColor: Appearance.colour.accentText
+                                clip: true
+
+                                Keys.onPressed: event => {
+                                    if (root.commonKey(event)) {
+                                        event.accepted = true;
+                                        return;
+                                    }
+
+                                    if (event.key === Qt.Key_Escape) {
+                                        root.stopSearch();
+                                        event.accepted = true;
+                                    }
+
+                                }
+
+                                StyledText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    visible: !query.text
+                                    text: root.speech ? "Search what you said" : "Search what you copied"
+                                    color: Appearance.colour.textGhost
+                                }
+                            }
                         }
                     }
 
-                    SquircleRect {
-                        anchors.fill: parent
-                        radius: height / 2
-                        color: Appearance.colour.fill
+                    Separator {
+                        id: rule
+
+                        anchors.top: header.bottom
+                        anchors.topMargin: Appearance.padding.normal
+                        x: Appearance.padding.large
+                        width: parent.width - Appearance.padding.large * 2
                     }
 
-                    Icon {
-                        id: searchGlyph
+                    GlideList {
+                        id: list
 
-                        anchors.left: parent.left
-                        anchors.leftMargin: Appearance.padding.normal
-                        anchors.verticalCenter: parent.verticalCenter
-                        name: "search"
-                        size: Appearance.font.iconSize
-                        color: Appearance.colour.textFaint
-                    }
+                        readonly property real pitch: Appearance.sizes.rowHeight + Appearance.padding.small
 
-                    TextInput {
-                        id: query
-
-                        anchors.left: searchGlyph.right
-                        anchors.leftMargin: Appearance.padding.small
-                        anchors.right: parent.right
-                        anchors.rightMargin: Appearance.padding.normal
-                        anchors.verticalCenter: parent.verticalCenter
-
-                        font.family: Appearance.font.family
-                        font.pixelSize: Appearance.font.size.small
-                        renderType: Text.NativeRendering
-                        color: Appearance.colour.text
-                        selectionColor: Appearance.colour.accent
-                        selectedTextColor: Appearance.colour.accentText
+                        anchors.top: rule.bottom
+                        anchors.topMargin: Appearance.padding.normal
+                        x: Appearance.padding.large
+                        width: parent.width - Appearance.padding.large * 2
+                        height: Math.max(0, panel.fullHeight - y - Appearance.padding.large)
                         clip: true
 
-                        Keys.onPressed: event => {
-                            if (root.commonKey(event)) {
-                                event.accepted = true;
-                                return;
+                        model: ScriptModel {
+                            values: root.results
+                        }
+
+                        reuseItems: false
+                        cacheBuffer: list.pitch * 6
+
+                        delegate: ClipRow {
+                            required property var modelData
+
+                            width: list.width
+                            entry: modelData
+                            selected: index === root.selected
+
+                            onActivated: {
+                                root.selected = index;
+                                root.accept();
                             }
 
-                            if (event.key === Qt.Key_Escape) {
-                                root.stopSearch();
-                                event.accepted = true;
+                            onPinned: root.pin(modelData)
+
+                            onMenu: (mx, my) => {
+                                root.selected = index;
+                                const at = mapToItem(panel, mx, my);
+                                sheet.popup(at.x, at.y, root.actionsFor(modelData));
+                            }
+                            onDiscarded: root.discard(modelData)
+
+                            onExpanded: {
+                                root.selected = index;
+                                root.reading = modelData;
                             }
 
+                            onEntered: root.hovered = index
+                            onExited: if (root.hovered === index)
+                                root.hovered = -1
+                        }
+
+                        remove: Transition {
+                            NumberAnimation {
+                                property: "opacity"
+                                to: 0
+                                duration: Appearance.anim.fast
+                                easing.type: Easing.OutCubic
+                            }
+                        }
+
+                        displaced: Transition {
+                            NumberAnimation {
+                                property: "y"
+                                duration: Appearance.anim.normal
+                                easing.type: Easing.OutCubic
+                            }
                         }
 
                         StyledText {
-                            anchors.verticalCenter: parent.verticalCenter
-                            visible: !query.text
-                            text: root.speech ? "Search what you said" : "Search what you copied"
-                            color: Appearance.colour.textGhost
+                            anchors.centerIn: parent
+                            visible: !root.results.length
+                            horizontalAlignment: Text.AlignHCenter
+                            color: Appearance.colour.textFaint
+
+                            text: {
+                                if (query.text)
+                                    return "Nothing matches.";
+                                if (!root.speech)
+                                    return "Nothing has been copied yet.";
+                                if (!Dictation.present)
+                                    return "The dictation daemon is not running.\n`voice up` starts it.";
+                                return "Nothing has been dictated yet.\nSUPER + R starts.";
+                            }
                         }
                     }
-                }
 
-                StyledText {
-                    anchors.right: parent.right
-                    anchors.verticalCenter: parent.verticalCenter
-                    visible: !root.searching
-                    text: "/  to search"
-                    color: Appearance.colour.textGhost
-                }
-            }
+                    WheelHandler {
+                        id: pager
 
-            Separator {
-                id: rule
+                        property bool spent: false
 
-                anchors.top: header.bottom
-                anchors.topMargin: Appearance.padding.normal
-                x: Appearance.padding.large
-                width: parent.width - Appearance.padding.large * 2
-            }
+                        onWheel: event => {
 
-            GlideList {
-                id: list
+                            if (event.pixelDelta.x === 0 && event.pixelDelta.y === 0) {
+                                event.accepted = false;
+                                return;
+                            }
 
-                readonly property real pitch: Appearance.sizes.rowHeight + Appearance.padding.small
+                            if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y)) {
+                                event.accepted = false;
+                                return;
+                            }
 
-                anchors.top: rule.bottom
-                anchors.topMargin: Appearance.padding.normal
-                x: Appearance.padding.large
-                width: parent.width - Appearance.padding.large * 2
-                height: Math.max(0, panel.fullHeight - y - Appearance.padding.large)
-                clip: true
-
-                model: ScriptModel {
-                    values: root.results
-                }
-
-                reuseItems: false
-                cacheBuffer: list.pitch * 6
-
-                delegate: ClipRow {
-                    required property var modelData
-
-                    width: list.width
-                    entry: modelData
-                    selected: index === root.selected
-
-                    onActivated: {
-                        root.selected = index;
-                        root.accept();
+                            event.accepted = true;
+                            swipe.feed(event);
+                        }
                     }
 
-                    onPinned: if (!root.speech)
-                        Clipboard.setPinned(modelData, !modelData.pinned)
+                    ScrollGesture {
+                        id: swipe
 
-                    onMenu: (mx, my) => {
-                        root.selected = index;
-                        const at = mapToItem(panel, mx, my);
-                        sheet.popup(at.x, at.y, root.actionsFor(modelData));
+                        armed: root.open
+
+                        onBegan: pager.spent = false
+
+                        onMoved: (dx, dy) => {
+
+                            if (pager.spent)
+                                return;
+                            const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
+                            if (Math.abs(dx) < step)
+                                return;
+                            pager.spent = true;
+
+                            if (dx < 0)
+                                root.expand();
+                            else
+                                root.collapse();
+                        }
                     }
-                    onDiscarded: {
-                        if (root.speech)
-                            Dictation.drop(modelData);
-                        else
-                            Clipboard.remove(modelData);
-                    }
-
-                    onExpanded: {
-                        root.selected = index;
-                        root.reading = modelData;
-                    }
-
-                    onEntered: root.hovered = index
-                    onExited: if (root.hovered === index)
-                        root.hovered = -1
-                }
-
-                remove: Transition {
-                    NumberAnimation {
-                        property: "opacity"
-                        to: 0
-                        duration: Appearance.anim.fast
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                displaced: Transition {
-                    NumberAnimation {
-                        property: "y"
-                        duration: Appearance.anim.normal
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                StyledText {
-                    anchors.centerIn: parent
-                    visible: !root.results.length
-                    horizontalAlignment: Text.AlignHCenter
-                    color: Appearance.colour.textFaint
-
-                    text: {
-                        if (query.text)
-                            return "Nothing matches.";
-                        if (!root.speech)
-                            return "Nothing has been copied yet.";
-                        if (!Dictation.present)
-                            return "The dictation daemon is not running.\n`voice up` starts it.";
-                        return "Nothing has been dictated yet.\nSUPER + R starts.";
-                    }
-                }
-            }
-
-            WheelHandler {
-                id: pager
-
-                property bool spent: false
-
-                onWheel: event => {
-
-                    if (event.pixelDelta.x === 0 && event.pixelDelta.y === 0) {
-                        event.accepted = false;
-                        return;
-                    }
-
-                    if (Math.abs(event.pixelDelta.x) <= Math.abs(event.pixelDelta.y)) {
-                        event.accepted = false;
-                        return;
-                    }
-
-                    event.accepted = true;
-                    swipe.feed(event);
-                }
-            }
-
-            ScrollGesture {
-                id: swipe
-
-                armed: root.open
-
-                onBegan: pager.spent = false
-
-                onMoved: (dx, dy) => {
-
-                    if (pager.spent)
-                        return;
-                    const step = Math.max(1, root.panelWidth * Appearance.sizes.pullTravel);
-                    if (Math.abs(dx) < step)
-                        return;
-                    pager.spent = true;
-
-                    if (dx < 0)
-                        root.expand();
-                    else
-                        root.collapse();
-                }
-            }
                 }
 
                 ClipDetail {
