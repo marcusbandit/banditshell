@@ -39,7 +39,6 @@ Item {
                 visible: section.modelData.rows.length > 0
 
                 StyledText {
-
                     text: section.modelData.title.toUpperCase()
                     font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     font.letterSpacing: Files.zoomed(Appearance.font.size.small) * 0.12

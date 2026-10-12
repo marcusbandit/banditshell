@@ -113,7 +113,6 @@ Item {
 
     Keys.onPressed: event => {
         if (root.rebinding) {
-
             if (event.key === Qt.Key_Control || event.key === Qt.Key_Alt || event.key === Qt.Key_Shift || event.key === Qt.Key_Meta)
                 return;
             event.accepted = true;

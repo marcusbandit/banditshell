@@ -40,7 +40,6 @@ Item {
 
         stroke: root.receiving ? Appearance.colour.accent : root.cursored ? Appearance.colour.textFaint : "transparent"
         strokeWidth: root.receiving || root.cursored ? Appearance.font.stem : 0
-
     }
 
     HoverHandler {

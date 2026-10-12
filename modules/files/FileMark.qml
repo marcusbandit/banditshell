@@ -75,7 +75,6 @@ Item {
     readonly property bool marked: root.permissionHue.a > 0
 
     readonly property color hue: {
-
         if (root.marked && (root.fileClass === "directory" || !root.readable))
             return root.permissionHue;
 

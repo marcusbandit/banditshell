@@ -348,7 +348,6 @@ Singleton {
                         const rm = removable || node.rm === true || node.rm === "1";
 
                         for (const where of node.mountpoints ?? []) {
-
                             if (!where)
                                 continue;
                             const volume = where.startsWith("/mnt/") || where.startsWith("/media/") || where.startsWith("/run/media/");
@@ -397,7 +396,6 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-
                 const filled = {};
                 for (const line of text.split("\n").slice(1)) {
                     const parts = line.trim().split(/\s+/);
@@ -759,7 +757,6 @@ Singleton {
         }
 
         if (kind === "x") {
-
             root.term = null;
             root.terminalOpen = false;
             root.synced = false;
@@ -882,7 +879,6 @@ Singleton {
     ]
 
     function installRules(): void {
-
         if (!Compositor.isHyprland || !Hypr.parserKnown)
             return;
 

@@ -51,5 +51,4 @@ FloatingWindow {
         active: !Files.helpersMissing
         sourceComponent: FilesFace {}
     }
-
 }

@@ -137,7 +137,6 @@ Item {
                     spacing: Appearance.padding.normal
 
                     StyledText {
-
                         width: Appearance.font.size.small * 0.6 * 10
 
                         text: line.modelData.label

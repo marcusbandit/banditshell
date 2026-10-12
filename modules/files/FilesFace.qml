@@ -42,7 +42,6 @@ Item {
     }
 
     Keys.onPressed: event => {
-
         if (settings.up || prompt.up)
             return;
 
@@ -78,7 +77,6 @@ Item {
 
         const chord = root.isChord(event) ? root.chordOf(event) : "";
         if (chord && Files.chords[chord] !== undefined) {
-
             event.accepted = root.act(Files.chords[chord]);
             if (event.accepted)
                 return;
@@ -550,7 +548,6 @@ Item {
                 sheet.popup(at.x, at.y, root.folderActions());
             }
             onLifted: index => {
-
                 if (!Files.isPicked(Files.visible[index].name))
                     Files.setCursor(index);
                 root.dragging = true;
@@ -568,7 +565,6 @@ Item {
                 root.dragAt = at;
 
                 if (!root.placed) {
-
                     followX.snap();
                     followY.snap();
                     root.placed = true;
