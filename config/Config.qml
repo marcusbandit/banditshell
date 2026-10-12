@@ -350,16 +350,7 @@ Singleton {
             },
 
             volume: {
-
-                step: 0.05,
-
-                railWidth: 10,
-
-                meterGlyphs: 3,
-
-                linger: 1200,
-
-                grabFraction: 0.3
+                step: 0.05
             },
 
             screen: {

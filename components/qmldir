@@ -5,7 +5,6 @@ AspectMark 1.0 AspectMark.qml
 BalancedText 1.0 BalancedText.qml
 BatteryMeter 1.0 BatteryMeter.qml
 BatteryTank 1.0 BatteryTank.qml
-ButtonGroup 1.0 ButtonGroup.qml
 ButtonPair 1.0 ButtonPair.qml
 Button 1.0 Button.qml
 CodeBlock 1.0 CodeBlock.qml
@@ -20,7 +19,6 @@ Icon 1.0 Icon.qml
 IdentityField 1.0 IdentityField.qml
 MenuLayer 1.0 MenuLayer.qml
 MenuRow 1.0 MenuRow.qml
-Nudge 1.0 Nudge.qml
 PathField 1.0 PathField.qml
 singleton Prompts 1.0 Prompts.qml
 Pull 1.0 Pull.qml

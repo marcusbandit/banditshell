@@ -2,7 +2,6 @@ module qs.modules.gallery.pages
 AppBarsPage 1.0 AppBarsPage.qml
 BadgesPage 1.0 BadgesPage.qml
 BottomSheetsPage 1.0 BottomSheetsPage.qml
-ButtonGroupsPage 1.0 ButtonGroupsPage.qml
 ButtonsPage 1.0 ButtonsPage.qml
 CardsPage 1.0 CardsPage.qml
 CarouselPage 1.0 CarouselPage.qml

@@ -66,16 +66,6 @@ Singleton {
             status: "planned"
         },
         {
-            key: "button-groups",
-            title: "Button groups",
-            icon: "apps",
-            section: "Buttons",
-            blurb: "related presses held together",
-            checklist: "Button groups",
-            ref: "components/ButtonGroup.qml",
-            status: "draft"
-        },
-        {
             key: "segmented-buttons",
             title: "Segmented buttons",
             icon: "view_week",

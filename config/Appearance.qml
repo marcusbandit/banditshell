@@ -303,12 +303,6 @@ Singleton {
 
         readonly property real volumeStep: root.cfg.volume.step
 
-        readonly property int volumeRailWidth: root.cfg.volume.railWidth
-
-        readonly property int volumeMeterGlyphs: root.cfg.volume.meterGlyphs
-        readonly property int volumeLinger: root.cfg.volume.linger
-        readonly property real volumeGrabFraction: root.cfg.volume.grabFraction
-
         readonly property int screenWarmest: root.cfg.screen.warmest
         readonly property int screenNeutral: root.cfg.screen.neutral
         readonly property int screenLinger: root.cfg.screen.linger
