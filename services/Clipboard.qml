@@ -25,8 +25,6 @@ Singleton {
 
     property string current: ""
 
-    readonly property var kinds: ["image", "audio", "video", "json", "code", "document", "files", "colour", "url", "text"]
-
     function markFor(kind: string): string {
         switch (kind) {
         case "image":
@@ -288,19 +286,35 @@ Singleton {
             return;
 
         if (entry.file) {
-
             const ext = entry.file.slice(entry.file.lastIndexOf(".") + 1).toLowerCase();
-            paste.command = ["sh", "-c", 'exec wl-copy -t "$1" < "$2"', "sh", `image/${ext === "jpg" ? "jpeg" : ext}`, entry.file];
+            root.offer(["sh", "-c", 'exec wl-copy -t "$1" < "$2"', "sh", `image/${ext === "jpg" ? "jpeg" : ext}`, entry.file], "");
         } else if ((entry.paths ?? []).length) {
-
-            const uris = entry.paths.map(p => `file://${encodeURI(p)}`).join("\r\n");
-            paste.command = ["wl-copy", "-t", "text/uri-list", "--", uris];
+            root.offer(["wl-copy", "-t", "text/uri-list"], entry.paths.map(p => `file://${encodeURI(p)}`).join("\r\n"));
         } else {
-
-            paste.command = ["wl-copy", "-n", "--", entry.text ?? ""];
+            root.offer(["wl-copy", "-n"], entry.text ?? "");
         }
+    }
 
+    property var offered: null
+
+    function offer(command: var, input: string): void {
+        root.offered = {
+            command: command,
+            input: input
+        };
+        root.offerNext();
+    }
+
+    function offerNext(): void {
+        if (paste.running || !root.offered)
+            return;
+        const next = root.offered;
+        root.offered = null;
+        paste.command = next.command;
+        paste.stdinEnabled = true;
         paste.running = true;
+        paste.write(next.input);
+        paste.stdinEnabled = false;
     }
 
     function pathsOf(entry: var): var {
@@ -316,8 +330,7 @@ Singleton {
         if (!paths.length)
             return;
 
-        paste.command = ["wl-copy", "-n", "--", paths.join("\n")];
-        paste.running = true;
+        root.offer(["wl-copy", "-n"], paths.join("\n"));
     }
 
     function noteAspect(id: string, ratio: real): void {
@@ -499,10 +512,40 @@ Singleton {
         onExited: root.reaped = true
     }
 
+    readonly property bool wantsRecorder: root.loaded && root.reaped && Config.values.clipboard.record
+
+    readonly property int recorderPatience: 60000
+    property int recorderFailures: 0
+    property real recorderStarted: 0
+
+    onWantsRecorderChanged: {
+        revive.stop();
+        root.recorderFailures = 0;
+        watcher.running = root.wantsRecorder;
+    }
+
+    function recorderStopped(): void {
+        const ranLong = root.recorderStarted > 0 && Date.now() - root.recorderStarted > root.recorderPatience;
+        root.recorderStarted = 0;
+        if (!root.wantsRecorder)
+            return;
+        if (ranLong)
+            root.recorderFailures = 0;
+        revive.interval = Math.min(root.recorderPatience, 1000 * Math.pow(2, root.recorderFailures));
+        root.recorderFailures++;
+        console.warn(`Clipboard: the recorder stopped; starting it again in ${revive.interval / 1000} s.`);
+        revive.restart();
+    }
+
+    Timer {
+        id: revive
+
+        onTriggered: if (root.wantsRecorder && !watcher.running)
+            watcher.running = true
+    }
+
     Process {
         id: watcher
-
-        running: root.loaded && root.reaped && Config.values.clipboard.record
 
         command: ["wl-paste", "--watch", Quickshell.shellPath("scripts/clip-record.sh")]
 
@@ -523,10 +566,9 @@ Singleton {
             onRead: line => console.warn("clip-record:", line)
         }
 
-        onExited: (code, status) => {
-            if (Config.values.clipboard.record)
-                console.warn(`Clipboard: the recorder exited (${code}); nothing new will be recorded until the shell restarts it.`);
-        }
+        onStarted: root.recorderStarted = Date.now()
+        onRunningChanged: if (!running)
+            root.recorderStopped()
     }
 
     Process {
@@ -535,6 +577,9 @@ Singleton {
         stderr: SplitParser {
             onRead: line => console.warn("wl-copy:", line)
         }
+
+        onRunningChanged: if (!running)
+            Qt.callLater(root.offerNext)
     }
 
     property bool sweepOwed: false
@@ -549,7 +594,7 @@ Singleton {
     Process {
         id: mkdir
 
-        command: ["mkdir", "-p", root.blobs]
+        command: ["sh", "-c", 'umask 077 && mkdir -p -- "$2" && chmod 700 -- "$1" "$2"', "sh", root.dir, root.blobs]
 
         onExited: {
             stale.running = true;
@@ -565,7 +610,18 @@ Singleton {
         watchChanges: true
         printErrors: false
 
-        onFileChanged: reload()
+        onFileChanged: if (!echoQuiet.running)
+            reload()
+
+        onSaved: {
+            echoQuiet.interval = root.echoAfterSave;
+            echoQuiet.restart();
+        }
+
+        onSaveFailed: {
+            echoQuiet.stop();
+            root.lastWritten = "";
+        }
 
         onLoaded: {
             const raw = text();
@@ -629,24 +685,53 @@ Singleton {
 
     property string lastWritten: ""
 
+    readonly property int echoAfterSave: 500
+    readonly property int echoWhileSaving: 5000
+
+    Timer {
+        id: echoQuiet
+    }
+
+    Timer {
+        id: saveDelay
+
+        interval: 1000
+        onTriggered: root.write()
+    }
+
     function save(): void {
         if (!root.keep || !root.loaded)
             return;
-
-        Qt.callLater(root.write);
+        if (!saveDelay.running)
+            saveDelay.start();
     }
 
     function write(): void {
+        saveDelay.stop();
         if (!root.keep || !root.loaded)
             return;
-        root.lastWritten = JSON.stringify({
+        const text = JSON.stringify({
             version: 1,
             entries: root.entries
         });
-        store.setText(root.lastWritten);
+        if (text === root.lastWritten)
+            return;
+        root.lastWritten = text;
+        if (text === store.text())
+            return;
+        echoQuiet.interval = root.echoWhileSaving;
+        echoQuiet.restart();
+        store.setText(text);
     }
 
     Component.onCompleted: mkdir.running = true
+
+    Component.onDestruction: {
+        if (!saveDelay.running)
+            return;
+        store.blockWrites = true;
+        root.write();
+    }
 
     FileView {
         id: clipse

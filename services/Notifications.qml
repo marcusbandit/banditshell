@@ -120,21 +120,22 @@ Singleton {
         id: sweep
 
         command: ["sh", "-c", `
-            mkdir -p '${root.cacheDir}' && cd '${root.cacheRoot}' || exit 0
+            umask 077
+            mkdir -p -- "$1/$2" && chmod 700 -- "$1" "$1/$2" && cd -- "$1" || exit 0
             for n in *; do
                 case "$n" in
                 *.png)
                     rm -f "./$n"
                     ;;
                 [0-9]*-[0-9]*)
-                    [ "$n" = '${root.cacheName}' ] && continue
+                    [ "$n" = "$2" ] && continue
                     p=\${n%%-*}
-                    [ "$p" != '${Quickshell.processId}' ] && [ -d "/proc/$p" ] && continue
+                    [ "$p" != "$3" ] && [ -d "/proc/$p" ] && continue
                     rm -rf "./$n"
                     ;;
                 esac
             done
-        `]
+        `, "sh", root.cacheRoot, root.cacheName, `${Quickshell.processId}`]
         running: true
     }
 

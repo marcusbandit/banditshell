@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 set -uo pipefail
+umask 077
 
 store="${BANDITSHELL_CLIP_STORE:-${XDG_STATE_HOME:-$HOME/.local/state}/banditshell/clipboard}"
 
