@@ -33,7 +33,7 @@ ShellRoot {
             onResized: (cols, rows) => {
                 Files.resizeTerminal(cols, rows);
 
-                grid.exec(["sh", "-c", `printf '%dx%d' ${cols} ${rows} > /tmp/banditshell-termdebug.grid`]);
+                grid.exec(["sh", "-c", 'printf "%dx%d" "$1" "$2" > "$XDG_RUNTIME_DIR/banditshell-termdebug.grid"', "sh", String(cols), String(rows)]);
             }
 
             Keys.onPressed: event => view.key(event)
@@ -45,7 +45,7 @@ ShellRoot {
 
             function onTmuxSessionChanged(): void {
                 if (Files.tmuxSession)
-                    stamp.exec(["sh", "-c", `printf '%s' ${Files.quote(Files.tmuxSession)} > /tmp/banditshell-termdebug.session`]);
+                    stamp.exec(["sh", "-c", 'printf "%s" "$1" > "$XDG_RUNTIME_DIR/banditshell-termdebug.session"', "sh", Files.tmuxSession]);
             }
         }
     }
