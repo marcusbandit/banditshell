@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "ddcutil.js" as Ddcutil
 
 Singleton {
     id: root
@@ -13,6 +14,8 @@ Singleton {
     readonly property int warmest: Appearance.sizes.screenWarmest
     readonly property int neutral: Appearance.sizes.screenNeutral
     readonly property bool warm: root.kelvin > 0
+
+    property int lastWarm: 3000
 
     property var displays: []
 
@@ -24,24 +27,36 @@ Singleton {
 
     property var queue: []
 
-    property string currentKind: ""
+    property string detectedFor: ""
+
+    property bool ddcutilMissing: false
 
     readonly property string stateDir: `${Quickshell.env("XDG_STATE_HOME") || `${Quickshell.env("HOME")}/.local/state`}/banditshell`
     readonly property string warmthPath: `${root.stateDir}/warmth`
 
+    function status(): string {
+        const brightness = !root.brightnessReady ? "none" : root.levelKnown ? `${Math.round(root.level * 100)}%` : "unknown";
+        const names = root.displays.map(d => d.name).join(",") || "none";
+        return `brightness=${brightness} displays=${names} warmth=${root.warm ? `${root.kelvin}K` : "off"}`;
+    }
+
     Component.onCompleted: {
-        root.kelvin = Config.get("screen.warmth") ?? root.kelvin;
-        root.level = (Config.get("screen.level") ?? 100) / 100;
-        gammaDebounce.restart();
+        if (Config.loaded)
+            root.adoptConfig();
+        root.detect();
     }
 
     Connections {
         target: Config
 
+        function onLoadedChanged(): void {
+            if (Config.loaded)
+                root.adoptConfig();
+        }
+
         function onValuesChanged(): void {
-            const want = Config.get("screen.warmth");
-            if (want !== undefined && want !== null && want !== root.kelvin)
-                root.kelvin = want;
+            if (Config.loaded && !gammaDebounce.running)
+                root.followWarmth(false);
         }
     }
 
@@ -49,8 +64,30 @@ Singleton {
         target: Monitors
 
         function onOutputsChanged(): void {
-            root.enqueue("detect", ["ddcutil", "detect", "--brief"]);
+            if (root.outputKey() !== root.detectedFor)
+                root.detect();
         }
+    }
+
+    function adoptConfig(): void {
+        root.followWarmth(true);
+
+        const saved = Number(Config.values.screen.level);
+        if (!root.levelKnown && isFinite(saved)) {
+            root.level = Math.max(0, Math.min(1, saved / 100));
+            root.writeLevel();
+        }
+    }
+
+    function followWarmth(always: bool): void {
+        const want = Number(Config.values.screen.warmth);
+        const next = isFinite(want) ? Math.max(0, Math.min(root.neutral, Math.round(want))) : root.kelvin;
+        if (next === root.kelvin && !always)
+            return;
+        root.kelvin = next;
+        if (root.warm)
+            root.lastWarm = root.kelvin;
+        root.writeWarmth();
     }
 
     function setWarmth(k: int): void {
@@ -65,8 +102,6 @@ Singleton {
         root.setWarmth(root.warm ? 0 : root.lastWarm);
     }
 
-    property int lastWarm: 3000
-
     function setLevel(v: real): void {
         const f = Math.max(0, Math.min(1, v));
         if (root.levelKnown && Math.abs(f - root.level) < 0.001)
@@ -75,10 +110,15 @@ Singleton {
         levelDebounce.restart();
     }
 
-    function nudgeLevel(sign: int, notches: real): void {
-        if (!root.levelKnown)
+    function outputKey(): string {
+        return Monitors.outputs.map(o => o.name).sort().join(",");
+    }
+
+    function detect(): void {
+        root.detectedFor = root.outputKey();
+        if (root.ddcutilMissing || root.queue.some(job => job.kind === "detect"))
             return;
-        root.setLevel(root.level + sign * notches * 0.04);
+        root.enqueue("detect", ["sh", "-c", "exec ddcutil detect --brief 2>/dev/null"]);
     }
 
     function enqueue(kind: string, command: var): void {
@@ -86,78 +126,59 @@ Singleton {
                 kind,
                 command
             }];
-        if (!runner.running)
-            step();
+        root.step();
     }
 
     function step(): void {
-        const next = root.queue[0] ?? null;
-        if (!next) {
-            root.currentKind = "";
+        if (runner.running || root.queue.length === 0)
             return;
-        }
+        const next = root.queue[0];
         root.queue = root.queue.slice(1);
-        root.currentKind = next.kind;
+        runner.kind = next.kind;
         runner.command = next.command;
         runner.running = true;
     }
 
-    function takeDetect(text: string): void {
-        const found = [];
-        let current = null;
-
-        for (const raw of text.split("\n")) {
-            const line = raw.trim();
-
-            let m = /^Display (\d+)/.exec(line);
-            if (m) {
-                current = {
-                    index: m[1],
-                    name: "",
-                    model: "",
-                    max: 100
-                };
-                found.push(current);
-                continue;
+    function finish(kind: string, code: int, output: string): void {
+        if (kind === "detect") {
+            if (code === 127) {
+                root.ddcutilMissing = true;
+                console.warn("Display: ddcutil is not installed, so brightness stays hidden");
+            } else if (code !== 0) {
+                console.warn(`Display: ddcutil detect exited ${code}`);
             }
-
-            if (!current)
-                continue;
-
-            m = /^DRM connector:\s*\S+-(.+)$/.exec(line);
-            if (m) {
-                current.name = m[1];
-                continue;
-            }
-
-            m = /^Monitor:\s*(.+)$/.exec(line);
-            if (m) {
-                const parts = m[1].split(":");
-                current.model = parts.length > 1 ? parts[1] : m[1];
-            }
+            root.displays = code === 0 ? Ddcutil.parseDetect(output) : [];
+            root.writeLevel();
         }
-
-        root.displays = found.filter(d => d.name);
-        root.writeLevel();
+        Qt.callLater(root.step);
     }
 
     function writeLevel(): void {
         if (!root.brightnessReady || !root.levelKnown)
             return;
+        root.queue = root.queue.filter(job => job.kind !== "write");
         root.enqueue("write", ["sh", "-c", root.displays.map(d => `ddcutil --display ${d.index} setvcp 10 ${Math.round(root.level * d.max)} --noverify 2>/dev/null`).join("; ")]);
+    }
+
+    function writeWarmth(): void {
+        warmthFile.setText(`${root.kelvin}\n`);
     }
 
     function commitWarmth(): void {
         Config.set("screen.warmth", root.kelvin);
         if (root.warm)
             root.lastWarm = root.kelvin;
-        fileWrite.command = ["sh", "-c", `printf '${root.kelvin}\\n' > '${root.warmthPath}.tmp' && mv '${root.warmthPath}.tmp' '${root.warmthPath}'`];
-        fileWrite.running = false;
-        fileWrite.running = true;
+        root.writeWarmth();
     }
 
-    Process {
-        id: fileWrite
+    FileView {
+        id: warmthFile
+
+        path: root.warmthPath
+        preload: false
+        watchChanges: false
+
+        onSaveFailed: err => console.warn(`Display: could not write ${root.warmthPath} (${FileViewError.toString(err)})`)
     }
 
     Timer {
@@ -180,19 +201,13 @@ Singleton {
     Process {
         id: runner
 
+        property string kind: ""
+
         stdout: StdioCollector {
-            onStreamFinished: {
-                root.currentKind = "";
-                pump.restart();
-            }
+            id: runnerOutput
         }
-    }
 
-    Timer {
-        id: pump
-
-        interval: 50
-        onTriggered: runner.running ? pump.restart() : root.step()
+        onExited: code => root.finish(runner.kind, code, runnerOutput.text)
     }
 
     Process {
