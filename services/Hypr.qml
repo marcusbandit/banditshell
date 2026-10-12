@@ -369,6 +369,8 @@ Singleton {
 
     readonly property string focusedScreen: Hyprland.focusedMonitor?.name ?? ""
 
+    readonly property string requestSocket: Hyprland.requestSocketPath
+
     signal windowOpened(addr: string, title: string, cls: string)
 
     signal windowClosed(addr: string)

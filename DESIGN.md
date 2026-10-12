@@ -648,7 +648,15 @@ banditshell/
 │   │                            seconds; camera, screen and the audio toggles
 │   │                            act on the scene on air, and a muted mic or a
 │   │                            hidden screen stays red until it is undone
-│   ├── MicIndicator.qml         dictation, while the microphone is actually open
+│   ├── MicIndicator.qml         dictation, while the microphone is actually open.
+│   │                            The shape melts out of the chassis, but the bars
+│   │                            draw on their own thin click-through strip, so a
+│   │                            level update never repaints the full-screen
+│   │                            field. Tucks away while the pointer is near (the
+│   │                            pointer is read from Hyprland's socket only while
+│   │                            it is out); the language is a small tag beside
+│   │                            the bars; while streaming a smaller capsule that
+│   │                            floats below the edge instead of melting out of it
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
 │   ├── WallpaperWindow.qml      background layer, below every window; two slots
 │   │                            that cross-fade, motion only on an empty workspace

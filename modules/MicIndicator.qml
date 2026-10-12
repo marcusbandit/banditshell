@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import Quickshell.Wayland
 import qs.config
 import qs.components
 import qs.services
@@ -10,7 +11,7 @@ Item {
 
     property int border: Appearance.sizes.border
 
-    readonly property string socketPath: Quickshell.env("HOME") + "/.local/share/gvoice/events.sock"
+    property string socketPath: Quickshell.env("HOME") + "/.local/share/gvoice/events.sock"
 
     property string phase: "idle"
     property real level: 0
@@ -21,7 +22,7 @@ Item {
         : root.lang.startsWith("en") ? "EN"
         : root.lang.startsWith("da") ? "DK"
         : root.lang.startsWith("ja") ? "JP"
-        : root.lang.split("-")[0].toUpperCase()
+        : root.lang.split(/[-_]/)[0].toUpperCase()
 
     readonly property var host: QsWindow.window?.screen ?? null
 
@@ -53,30 +54,47 @@ Item {
 
     property var history: []
 
-    readonly property int barCount: 45
+    readonly property bool floating: StreamState.enabled
+
+    readonly property real lift: root.floating ? Appearance.padding.large : 0
+
+    readonly property int barCount: root.floating ? 29 : 45
     readonly property real barWidth: Math.max(2, Math.round(Appearance.font.size.small / 6))
     readonly property real barGap: root.barWidth
-    readonly property real barMax: Appearance.font.size.large * 1.6
+    readonly property real barMax: root.floating ? Appearance.font.size.large : Appearance.font.size.large * 1.6
     readonly property real barMin: root.barWidth
     readonly property real barsWidth: root.barCount * root.barWidth + (root.barCount - 1) * root.barGap
 
-    readonly property real wellPad: Appearance.padding.normal
-    readonly property real contentWidth: root.barsWidth + root.wellPad * 2
+    readonly property real tagWidth: root.langTag ? tagText.width + Appearance.padding.small : 0
+
+    readonly property real wellPad: root.floating ? Appearance.padding.small : Appearance.padding.normal
+    readonly property real contentWidth: root.tagWidth + root.barsWidth + root.wellPad * 2
     readonly property real contentHeight: root.barMax + root.wellPad * 2
 
     readonly property real rim: Appearance.padding.small
 
-    readonly property real cornerPower: Appearance.rounding.power
-    readonly property real pillRadius: Appearance.rounding.large
+    readonly property real cornerPower: root.floating ? 2 : Appearance.rounding.power
+    readonly property real pillRadius: root.floating ? root.pillHeight / 2 : Appearance.rounding.large
 
-    readonly property real wellRadius: Math.max(0, root.pillRadius - root.rim * Math.pow(2, 1 / root.cornerPower) / Math.SQRT2)
+    readonly property real wellRadius: root.floating ? root.contentHeight / 2 : Math.max(0, root.pillRadius - root.rim * Math.pow(2, 1 / root.cornerPower) / Math.SQRT2)
     readonly property real pillWidth: root.contentWidth + root.rim * 2
-    readonly property real pillHeight: root.border + root.contentHeight + root.rim * 2
+    readonly property real pillHeight: (root.floating ? 0 : root.border) + root.contentHeight + root.rim * 2
 
-    readonly property var blobs: drop.value > 0.001 && root.here ? [
+    readonly property real lip: Appearance.padding.small
+    readonly property real tuckedY: (root.floating ? 0 : root.border) + root.lip - root.pillHeight
+
+    readonly property real pillY: root.lift - (root.pillHeight + root.lift + Appearance.sizes.melt) * (1 - drop.value) - (root.lift - root.tuckedY) * tuck.value
+
+    readonly property real reach: Appearance.padding.large
+
+    property bool near: false
+
+    readonly property bool watching: root.mine && root.out && Hypr.requestSocket !== ""
+
+    readonly property var blobs: !root.floating && drop.value > 0.001 && root.here ? [
         {
             x: root.axis - root.pillWidth / 2,
-            y: -(root.pillHeight + Appearance.sizes.melt) * (1 - drop.value),
+            y: root.pillY,
             w: root.pillWidth,
             h: root.pillHeight,
             radius: root.pillRadius,
@@ -121,6 +139,16 @@ Item {
             return 1;
         return 0.34;
     }
+
+    function judge(x: real, y: real): void {
+        const top = (root.host?.y ?? 0) + root.y;
+        root.near = Math.abs(x - slide.value) <= root.pillWidth / 2 + root.reach && y >= top && y <= top + root.lift + root.pillHeight + root.reach;
+    }
+
+    onWatchingChanged: if (!root.watching)
+        root.near = false
+
+    onBarCountChanged: root.resetHistory()
 
     onPhaseChanged: {
         if (root.phase !== "listening")
@@ -209,11 +237,59 @@ Item {
         }
     }
 
+    Socket {
+        id: pointer
+
+        property string reply: ""
+
+        path: Hypr.requestSocket
+
+        onConnectedChanged: {
+            if (!pointer.connected)
+                return;
+            pointer.reply = "";
+            pointer.write("j/cursorpos");
+            pointer.flush();
+        }
+
+        parser: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                pointer.reply += data;
+                let pos;
+                try {
+                    pos = JSON.parse(pointer.reply);
+                } catch (e) {
+                    return;
+                }
+                pointer.connected = false;
+                if (typeof pos.x === "number" && typeof pos.y === "number")
+                    root.judge(pos.x, pos.y);
+            }
+        }
+    }
+
+    Timer {
+        interval: 80
+        repeat: true
+        running: root.watching
+        onTriggered: if (!pointer.connected)
+            pointer.connected = true
+    }
+
     Follow {
         id: drop
 
         speed: Appearance.anim.revealSpeed
         target: root.out ? 1 : 0
+        epsilon: 0.005
+    }
+
+    Follow {
+        id: tuck
+
+        speed: Appearance.anim.revealSpeed
+        target: root.near ? 1 : 0
         epsilon: 0.005
     }
 
@@ -259,58 +335,101 @@ Item {
         loops: Animation.Infinite
     }
 
-    Item {
-        id: content
+    PanelWindow {
+        screen: root.host
+        visible: drop.value > 0.001 && root.here
 
-        x: root.axis - width / 2
-        visible: root.here
-        width: root.contentWidth
-        height: root.contentHeight
-        y: root.pillHeight - (root.pillHeight + Appearance.sizes.melt) * (1 - drop.value) - height - root.rim
-        opacity: drop.value
+        anchors {
+            top: true
+            left: true
+            right: true
+        }
 
-        SquircleRect {
-            anchors.fill: parent
-            radius: root.wellRadius
-            cornerPower: root.cornerPower
-            color: Appearance.colour.fillStronger
+        implicitHeight: Math.ceil(root.y + root.lift + root.pillHeight + Appearance.sizes.melt)
+        color: "transparent"
+        exclusiveZone: 0
 
-            StyledText {
-                anchors.centerIn: parent
-                visible: root.here && root.langTag !== ""
-                text: root.langTag
-                color: Appearance.colour.textFaint
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        WlrLayershell.namespace: "banditshell-dictation"
+
+        mask: Region {}
+
+        Item {
+            y: root.y
+            width: parent.width
+            height: parent.height - root.y
+
+            SquircleRect {
+                visible: root.floating
+                x: root.axis - width / 2
+                y: root.pillY
+                width: root.pillWidth
+                height: root.pillHeight
+                radius: root.pillRadius
+                cornerPower: root.cornerPower
+                color: Appearance.colour.surface
+                stroke: Appearance.colour.seam
+                strokeWidth: Appearance.font.stem
             }
 
-            Row {
-                anchors.centerIn: parent
+            SquircleRect {
+                x: root.axis - width / 2
+                y: root.pillY + root.pillHeight - height - root.rim
+                width: root.contentWidth
+                height: root.contentHeight
+                radius: root.wellRadius
+                cornerPower: root.cornerPower
+                color: Appearance.colour.fillStronger
+                opacity: drop.value * (1 - tuck.value)
 
-                height: root.barMax
-                spacing: root.barGap
+                Row {
+                    anchors.centerIn: parent
+                    spacing: Appearance.padding.small
 
-                Repeater {
-                    model: root.barCount
+                    StyledText {
+                        id: tagText
 
-                    Rectangle {
-                        required property int index
+                        anchors.verticalCenter: parent.verticalCenter
+                        anchors.verticalCenterOffset: tagText.inkOffsetY
+                        visible: root.langTag !== ""
+                        width: tagText.inkWidth
+                        alignInk: true
+                        text: root.langTag
+                        color: Appearance.colour.textFaint
+                        font.letterSpacing: Appearance.font.stem
+                    }
 
-                        readonly property real fraction: {
-                            root.history
-                            root.phase
-                            flow.t
-                            fill.value
-                            writer.position
-                            root.barFraction(index)
+                    Row {
+                        height: root.barMax
+                        spacing: root.barGap
+
+                        Repeater {
+                            model: root.barCount
+
+                            Rectangle {
+                                required property int index
+
+                                readonly property real fraction: {
+                                    root.history
+                                    root.phase
+                                    flow.t
+                                    fill.value
+                                    writer.position
+                                    root.barFraction(index)
+                                }
+
+                                readonly property bool liquid: root.phase === "processing"
+
+                                width: root.barWidth
+                                height: root.barMin + (root.barMax - root.barMin) * fraction
+                                radius: width / 2
+                                color: Appearance.colour.accent
+
+                                y: liquid ? parent.height - height : (parent.height - height) / 2
+                            }
                         }
-
-                        readonly property bool liquid: root.phase === "processing"
-
-                        width: root.barWidth
-                        height: root.barMin + (root.barMax - root.barMin) * fraction
-                        radius: width / 2
-                        color: Appearance.colour.accent
-
-                        y: liquid ? parent.height - height : (parent.height - height) / 2
                     }
                 }
             }
