@@ -365,7 +365,7 @@ Item {
                 Button {
                     id: resBtn
 
-                    text: root.spec ? `${root.modeW} × ${root.modeH}` : "—"
+                    text: root.spec ? `${root.modeW} × ${root.modeH}` : ""
                     icon: "arrow_drop_down"
                     style: "tonal"
                     enabled: !!root.spec
@@ -383,7 +383,7 @@ Item {
                 interactive: false
 
                 Button {
-                    text: root.spec ? `${Math.round(root.modeHz)} Hz` : "—"
+                    text: root.spec ? `${Math.round(root.modeHz)} Hz` : ""
                     icon: "arrow_drop_down"
                     style: "tonal"
                     enabled: !!root.spec
@@ -401,7 +401,7 @@ Item {
                 interactive: false
 
                 Button {
-                    text: root.spec ? `${Math.round(root.spec.scale * 100) / 100}` : "—"
+                    text: root.spec ? `${Math.round(root.spec.scale * 100) / 100}` : ""
                     icon: "arrow_drop_down"
                     style: "tonal"
                     enabled: !!root.spec
@@ -419,7 +419,7 @@ Item {
                 interactive: false
 
                 Button {
-                    text: Monitors.transformChoices[root.transformIndex]?.label ?? "—"
+                    text: Monitors.transformChoices[root.transformIndex]?.label ?? ""
                     icon: "arrow_drop_down"
                     style: "tonal"
                     enabled: !!root.spec
