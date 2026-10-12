@@ -24,11 +24,13 @@ Item {
     }
 
     SquircleRect {
-        readonly property real inset: Math.max(2, Math.round(root.height / 9))
+        id: knob
 
-        y: inset
-        x: root.checked ? parent.width - width - inset : inset
-        width: root.height - inset * 2
+        readonly property real gap: Math.max(2, Math.round(root.height / 9))
+
+        y: knob.gap
+        x: root.checked ? parent.width - width - knob.gap : knob.gap
+        width: root.height - knob.gap * 2
         height: width
         radius: height / 2
         color: root.checked ? Appearance.colour.accentText : Appearance.colour.text
