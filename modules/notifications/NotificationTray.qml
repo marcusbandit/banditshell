@@ -97,6 +97,10 @@ Item {
 
     Component.onDestruction: Notifications.resume(root)
 
+    NotificationCopier {
+        entries: root.items
+    }
+
     readonly property Item maskItem: tray
 
     readonly property Item grabItem: corner

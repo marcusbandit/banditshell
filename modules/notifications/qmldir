@@ -1,3 +1,4 @@
 module qs.modules.notifications
 NotificationCard 1.0 NotificationCard.qml
+NotificationCopier 1.0 NotificationCopier.qml
 NotificationTray 1.0 NotificationTray.qml

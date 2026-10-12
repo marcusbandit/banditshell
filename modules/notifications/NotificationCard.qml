@@ -87,10 +87,7 @@ Item {
         id: hover
     }
 
-    Component.onCompleted: {
-        grow.target = 1;
-        root.beginCopy();
-    }
+    Component.onCompleted: grow.target = 1
 
     onLeavingChanged: {
         if (leaving) {
@@ -398,79 +395,7 @@ Item {
         visible: opacity > 0.01
     }
 
-    readonly property real copyCap: Appearance.sizes.notificationBadge * 4
-
-    readonly property string borrowedPicture: root.entry?.copyPath ? root.entry.image : ""
-
-    onBorrowedPictureChanged: root.beginCopy()
-
-    property string claimed: ""
-
-    function beginCopy(): void {
-        const e = root.entry;
-        if (!e || !e.wantsCopy)
-            return;
-        root.claimed = e.image;
-        e.copying = true;
-        copier.source = e.image;
-    }
-
-    function finishCopy(): void {
-        const e = root.entry;
-        const claim = root.claimed;
-        const target = e?.copyPathFor(claim) ?? "";
-        if (!target)
-            return root.releaseCopy();
-
-        const ok = copier.grabToImage(result => {
-            if (result.saveToFile(Qt.resolvedUrl(`file://${target}`)))
-                e.keep(target);
-            else
-                console.warn(`Notifications: could not write ${target}; ${e.appName} keeps its picture only until its sender closes it.`);
-
-            if (root.claimed === claim)
-                root.releaseCopy();
-        });
-
-        if (!ok)
-            root.releaseCopy();
-    }
-
-    function releaseCopy(): void {
-        if (!root.claimed)
-            return;
-        root.claimed = "";
-        copier.source = "";
-        if (root.entry)
-            root.entry.copying = false;
-    }
-
-    Component.onDestruction: {
-        root.releaseCopy();
-        root.holding?.release(root);
-    }
-
-    Image {
-        id: copier
-
-        visible: false
-        asynchronous: true
-        smooth: true
-
-        cache: false
-
-        readonly property real shrink: Math.min(1, root.copyCap / Math.max(1, implicitWidth, implicitHeight))
-
-        width: implicitWidth * shrink
-        height: implicitHeight * shrink
-
-        onStatusChanged: {
-            if (copier.status === Image.Ready)
-                root.finishCopy();
-            else if (copier.status === Image.Error)
-                root.releaseCopy();
-        }
-    }
+    Component.onDestruction: root.holding?.release(root)
 
     MouseArea {
         id: drag
