@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-12-3",
+      "date": "2026-10-12",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Two config.json keys are gone: button.scale, because button labels now use the shell's three font sizes, and files.text, because Files text is the small size scaled by its zoom. The shell drops them from your config by itself; if you had changed either, that size no longer applies."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "All text in the shell now comes in the same three sizes, so a few button labels change size slightly."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The dictation pill's language tag sits centred beside the bars again."
+        }
+      ]
+    },
+    {
       "id": "2026-10-12-2",
       "date": "2026-10-12",
       "changes": [
