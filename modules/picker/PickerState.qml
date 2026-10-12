@@ -16,10 +16,10 @@ Scope {
 
     property bool hiding: false
 
-    readonly property string stamp: Qt.formatDateTime(new Date(), "yyyy-MM-dd-hhmmss")
+    property bool freezing: false
 
     function show(doFreeze: bool, clipOnly: bool): void {
-        if (root.open)
+        if (root.open || root.freezing)
             return;
         root.freeze = doFreeze;
         root.clipboardOnly = clipOnly;
@@ -41,12 +41,14 @@ Scope {
                 grim -o "$n" "$f" && printf '%s\\t%s\\n' "$n" "$f" || rm -f "$f"
             done
         `, "sh", ...names];
+        root.freezing = true;
         freezer.running = true;
     }
 
     function close(): void {
         root.open = false;
         root.hiding = false;
+        root.freezing = false;
 
         const orphans = Object.values(root.frozenByScreen);
         if (orphans.length)
@@ -63,7 +65,8 @@ Scope {
     }
 
     function capture(screen: var, x: int, y: int, w: int, h: int): void {
-        const out = `${Config.values.picker.dir.replace("~", Quickshell.env("HOME"))}/banditshell-${root.stamp}.png`;
+        const stamp = Qt.formatDateTime(new Date(), "yyyy-MM-dd-hhmmss");
+        const out = `${Config.values.picker.dir.replace("~", Quickshell.env("HOME"))}/banditshell-${stamp}.png`;
 
         if (root.freeze) {
             const frozen = root.take(screen.name);
@@ -77,20 +80,20 @@ Scope {
             const cx = Math.round(x * dpr);
             const cy = Math.round(y * dpr);
 
-            crop.exec(["sh", "-c", `mkdir -p "$(dirname '${out}')" && ffmpeg -y -loglevel error -i '${frozen}' -vf "crop=${cw}:${ch}:${cx}:${cy}" '${out}' && ${root.deliver(out)}; rm -f '${frozen}'`]);
+            crop.exec(["sh", "-c", `mkdir -p "$(dirname "$1")" && ffmpeg -y -loglevel error -i "$2" -vf "crop=${cw}:${ch}:${cx}:${cy}" "$1" && ${root.deliver()}; rm -f "$2"`, "sh", out, frozen]);
             root.close();
             return;
         }
 
         root.hiding = true;
-        liveDelay.pending = ["sh", "-c", `mkdir -p "$(dirname '${out}')" && grim -g '${x + screen.x},${y + screen.y} ${w}x${h}' '${out}' && ${root.deliver(out)}`];
+        liveDelay.pending = ["sh", "-c", `mkdir -p "$(dirname "$1")" && grim -g "${x + screen.x},${y + screen.y} ${w}x${h}" "$1" && ${root.deliver()}`, "sh", out];
         liveDelay.restart();
     }
 
-    function deliver(path: string): string {
+    function deliver(): string {
         if (root.clipboardOnly)
-            return `wl-copy --type image/png < '${path}' && notify-send -a banditshell -i '${path}' 'Screenshot copied' '${path}'`;
-        return `${Config.values.picker.editor} '${path}'`;
+            return `wl-copy --type image/png < "$1" && notify-send -a banditshell -i "$1" 'Screenshot copied' "$1"`;
+        return `${Config.values.picker.editor} "$1"`;
     }
 
     Process {
@@ -128,6 +131,13 @@ Scope {
                     if (tab > 0)
                         next[line.slice(0, tab)] = line.slice(tab + 1);
                 }
+                if (!root.freezing) {
+                    const late = Object.values(next);
+                    if (late.length)
+                        cleanup.exec(["rm", "-f", ...late]);
+                    return;
+                }
+                root.freezing = false;
                 root.frozenByScreen = next;
                 root.open = true;
             }
