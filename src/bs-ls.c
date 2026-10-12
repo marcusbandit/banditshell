@@ -243,13 +243,29 @@ static void list(const char *path) {
 }
 
 static int sniffs_text(const char *path, long long *bytes) {
-    FILE *f = fopen(path, "rb");
-    if (!f)
+    int fd = open(path, O_RDONLY | O_NONBLOCK | O_CLOEXEC | O_NOCTTY);
+    if (fd < 0)
         return 0;
 
+    struct stat opened;
+    if (fstat(fd, &opened) != 0 || !S_ISREG(opened.st_mode)) {
+        close(fd);
+        return 0;
+    }
+
     unsigned char buf[SNIFF];
-    size_t n = fread(buf, 1, sizeof buf, f);
-    fclose(f);
+    size_t n = 0;
+    while (n < sizeof buf) {
+        ssize_t got = read(fd, buf + n, sizeof buf - n);
+        if (got > 0) {
+            n += (size_t)got;
+            continue;
+        }
+        if (got < 0 && errno == EINTR)
+            continue;
+        break;
+    }
+    close(fd);
     *bytes = (long long)n;
     if (n == 0)
         return 1;
@@ -292,7 +308,7 @@ static void stat_one(const char *path) {
         cls = "program";
 
     long long sniffed = 0;
-    int text = !S_ISDIR(st.st_mode) && !broken && sniffs_text(path, &sniffed);
+    int text = S_ISREG(st.st_mode) && !broken && sniffs_text(path, &sniffed);
 
     if (text && (strcmp(cls, "unknown") == 0 || strcmp(cls, "program") == 0))
         cls = "text";
