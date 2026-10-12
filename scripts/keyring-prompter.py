@@ -222,6 +222,7 @@ class Conversation:
         self.kind = ""
         self.showing = False
         self.watch = 0
+        self.requester = ""
 
     @property
     def key(self) -> "tuple[str, str]":
@@ -235,6 +236,55 @@ class Prompter:
         self._waiting = []
         self._serial = 0
         self._pipe = Pipe(self._answered)
+
+    def program_of(self, name: str) -> str:
+        try:
+            reply = self._bus.call_sync(
+                "org.freedesktop.DBus",
+                "/org/freedesktop/DBus",
+                "org.freedesktop.DBus",
+                "GetConnectionUnixProcessID",
+                GLib.Variant("(s)", (name,)),
+                GLib.VariantType.new("(u)"),
+                Gio.DBusCallFlags.NONE,
+                1000,
+                None,
+            )
+        except GLib.Error:
+            return ""
+        pid = reply.unpack()[0]
+        try:
+            return os.path.basename(os.readlink(f"/proc/{pid}/exe"))
+        except OSError:
+            pass
+        try:
+            with open(f"/proc/{pid}/comm", encoding="utf-8", errors="replace") as handle:
+                return handle.read().strip()
+        except OSError:
+            return ""
+
+    def owner_of(self, name: str) -> str:
+        try:
+            reply = self._bus.call_sync(
+                "org.freedesktop.DBus",
+                "/org/freedesktop/DBus",
+                "org.freedesktop.DBus",
+                "GetNameOwner",
+                GLib.Variant("(s)", (name,)),
+                GLib.VariantType.new("(s)"),
+                Gio.DBusCallFlags.NONE,
+                1000,
+                None,
+            )
+        except GLib.Error:
+            return ""
+        return self.program_of(reply.unpack()[0])
+
+    def acquired(self, name: str) -> None:
+        self._pipe.send(event="acquired", name=name)
+
+    def lost(self, name: str) -> None:
+        self._pipe.send(event="owner", name=name, program=self.owner_of(name))
 
     def _later(self, action) -> None:
         """Run this once the method handler that asked for it has returned."""
@@ -267,6 +317,7 @@ class Prompter:
         if conversation.key in self._conversations:
             raise ValueError("already prompting for this callback")
 
+        conversation.requester = self.program_of(sender)
         self._conversations[conversation.key] = conversation
         conversation.watch = Gio.bus_watch_name_on_connection(
             self._bus,
@@ -382,6 +433,7 @@ class Prompter:
             passwordNew=flag("password-new"),
             continueLabel=text("continue-label"),
             cancelLabel=text("cancel-label"),
+            requester=conversation.requester,
         )
 
     def _answered(self, message) -> None:
@@ -435,10 +487,11 @@ EXIT_LOST_NAME = 3
 
 _exit_code = 0
 
-def _lost(name) -> None:
+def _lost(prompter, name) -> None:
     global _exit_code
     _exit_code = EXIT_LOST_NAME
     print(f"keyring-prompter: lost {name}", file=sys.stderr)
+    prompter.lost(name)
     loop.quit()
 
 def main() -> int:
@@ -458,7 +511,11 @@ def main() -> int:
     )
     for name in (PROMPTER_NAME, PRIVATE_NAME):
         Gio.bus_own_name_on_connection(
-            bus, name, flags, None, lambda _c, n: _lost(n)
+            bus,
+            name,
+            flags,
+            lambda _c, n: prompter.acquired(n),
+            lambda _c, n: _lost(prompter, n),
         )
 
     prompter.start_listening()

@@ -75,8 +75,12 @@ Item {
         }
     }
 
-    onOpenChanged: if (root.open && !root.asksForSecret)
-        Qt.callLater(keys.forceActiveFocus)
+    onOpenChanged: {
+        if (!root.open)
+            Qt.callLater(field.clear);
+        else if (!root.asksForSecret)
+            Qt.callLater(keys.forceActiveFocus);
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -132,8 +136,18 @@ Item {
                 StyledText {
                     width: parent.width
                     wrapMode: Text.WordWrap
+                    textFormat: Text.PlainText
                     text: Keyring.title || "Keyring"
                     font.pixelSize: Appearance.font.size.normal
+                }
+
+                StyledText {
+                    width: parent.width
+                    elide: Text.ElideRight
+                    visible: !!Keyring.requester
+                    textFormat: Text.PlainText
+                    text: Keyring.requester
+                    color: Appearance.colour.textFaint
                 }
 
                 BalancedText {
@@ -169,6 +183,7 @@ Item {
                     width: parent.width
                     elide: Text.ElideRight
                     visible: !!Keyring.warning
+                    textFormat: Text.PlainText
                     text: Keyring.warning
                     color: Appearance.colour.alarm
                 }

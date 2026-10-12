@@ -29,11 +29,17 @@ Singleton {
     property string continueLabel: ""
     property string cancelLabel: ""
 
+    property string requester: ""
+
     property string screenName: ""
 
-    readonly property bool serving: helper.running && !root.blocked
+    readonly property bool serving: helper.running && root.holding
+
+    property bool holding: false
 
     property bool blocked: false
+
+    property string owner: ""
 
     function submit(secret: string): void {
         if (!root.active || root.kind !== "password")
@@ -84,6 +90,14 @@ Singleton {
         root.passwordNew = false;
         root.continueLabel = "";
         root.cancelLabel = "";
+        root.requester = "";
+    }
+
+    function screenFor(wanted: string): string {
+        const names = Quickshell.screens.map(screen => screen.name);
+        if (names.includes(wanted))
+            return wanted;
+        return names.includes(Hypr.focusedScreen) ? Hypr.focusedScreen : names[0] ?? "";
     }
 
     function take(line: string): void {
@@ -96,9 +110,22 @@ Singleton {
         }
 
         if (event.event === "hide") {
-
             if (event.id === root.serial)
                 root.clear();
+            return;
+        }
+
+        if (event.event === "acquired") {
+            if (event.name === "org.gnome.keyring.SystemPrompter") {
+                root.holding = true;
+                root.blocked = false;
+                root.owner = "";
+            }
+            return;
+        }
+
+        if (event.event === "owner") {
+            root.owner = event.program ?? "";
             return;
         }
 
@@ -116,8 +143,9 @@ Singleton {
         root.passwordNew = event.passwordNew ?? false;
         root.continueLabel = event.continueLabel ?? "";
         root.cancelLabel = event.cancelLabel ?? "";
+        root.requester = event.requester ?? "";
 
-        root.screenName = Hypr.focusedScreen || Quickshell.screens[0]?.name || "";
+        root.screenName = root.screenFor(Hypr.focusedScreen);
         root.asked += 1;
         root.active = true;
     }
@@ -134,7 +162,8 @@ Singleton {
         root.passwordNew = false;
         root.continueLabel = "Unlock";
         root.cancelLabel = "Cancel";
-        root.screenName = Hypr.focusedScreen || Quickshell.screens[0]?.name || "";
+        root.requester = "gnome-keyring-daemon";
+        root.screenName = root.screenFor(Hypr.focusedScreen);
         root.asked += 1;
         root.active = true;
     }
@@ -161,9 +190,21 @@ Singleton {
 
         onExited: code => {
             root.clear();
+            root.holding = false;
             root.blocked = code === 3;
             if (root.blocked)
                 retry.restart();
+            else
+                root.owner = "";
+        }
+    }
+
+    Connections {
+        target: Quickshell
+
+        function onScreensChanged(): void {
+            if (root.active)
+                root.screenName = root.screenFor(root.screenName);
         }
     }
 
