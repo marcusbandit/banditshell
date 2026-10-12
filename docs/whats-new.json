@@ -1,6 +1,77 @@
 {
   "entries": [
     {
+      "id": "2026-10-12",
+      "date": "2026-10-12",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Six config.json keys are gone along with what used them: apps.claude (the app-icon asker), cheatsheet.symbols, and volume.grabFraction, volume.linger, volume.meterGlyphs and volume.railWidth (the old volume rail). The shell drops them from your config by itself. If you had changed volume.grabFraction or volume.linger, the value does not carry over: set screen.grabFraction or screen.linger instead."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Streamer mode for a portrait screen: banditshell set stream on DP-1 puts a band across the top of that screen with your OBS controls, each screen's workspaces and windows, network, sound and the clock, and its menus drop down under the item you click. banditshell set stream off ends it, and a restart keeps whichever you set."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The band's OBS deck: go live and end the stream (each takes a second click within three seconds), record, watch the bitrate and dropped frames while live, switch scenes, and show or hide the camera and the screen capture or mute the mic and desktop audio for viewers only. It talks to OBS's WebSocket server with the password OBS already has, and only while streamer mode is on."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "While streaming, every other screen keeps its launcher, notch and pop-ups but reserves no space and draws no frame, so no window moves. Notifications and the keyring prompt go to the band's screen, where viewers cannot read them."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The dictation pill tucks out of the way when the pointer comes near and drops back when it leaves, costs far less to draw while you talk, and shows the language as a small tag beside the bars. While streaming it is a smaller, rounder capsule that floats below the edge."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Quick controls: a card on the right edge with sound, brightness and warmth, in place of the old volume rail."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Security fixes: the 802.1X Wi-Fi password reaches NetworkManager on stdin instead of a command line other programs can read, notification and other untrusted text renders as plain text (notification bodies keep bold, italic and underline), the keyring prompt names the program that asks, and the lock screen checks the account the shell runs as."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The lock screen locks before the machine sleeps, stays locked through a shell reload, and after three wrong passwords makes you wait 5 seconds, doubling up to a minute."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The shell does less while idle: Wi-Fi scans only while a network list is on screen, panels and Settings pages are built when first opened, and timers run only while something is moving."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Files and the built-in terminal: typed paths are quoted for the shell, names read as UTF-8, a paste can no longer break out of bracketed paste, and the terminal redraws only the rows that changed."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Log out ends this session instead of every session you have open."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell completions install sets up zsh and bash completion generated from the CLI's own help, and banditshell check compiles every QML file and runs the tests."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "New config.json keys arrive by themselves: stream (enabled, screen, height) for streamer mode, eight clock settings, cheatsheet.blocked and cheatsheet.keyboard, and screen settings for the quick controls' brightness and warmth. Nothing to do."
+        }
+      ]
+    },
+    {
       "id": "2026-09-30-2",
       "date": "2026-09-30",
       "changes": [
