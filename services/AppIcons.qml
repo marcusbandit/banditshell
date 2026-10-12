@@ -11,8 +11,6 @@ Singleton {
     readonly property string dir: `${Quickshell.env("HOME")}/.local/state/banditshell`
     readonly property string path: `${root.dir}/appicons.json`
 
-    readonly property string store: `${Quickshell.env("HOME")}/.local/share/banditshell/icons`
-
     property bool loaded: false
 
     property var apps: ({})
@@ -36,10 +34,6 @@ Singleton {
     }
 
     readonly property var classes: Object.keys(root.apps).sort()
-
-    function titleOf(cls: string): string {
-        return root.apps[cls]?.title ?? "";
-    }
 
     function specFor(cls: string): string {
         return root.apps[cls]?.spec ?? "";
@@ -71,19 +65,6 @@ Singleton {
             title: title ?? "",
             at: Date.now()
         });
-    }
-
-    function assign(cls: string, spec: string): void {
-        root.write(cls, {
-            spec: spec ?? ""
-        });
-    }
-
-    function forget(cls: string): void {
-        const next = Object.assign({}, root.apps);
-        delete next[cls];
-        root.apps = next;
-        root.save();
     }
 
     readonly property var watching: Hypr.clients
@@ -138,48 +119,6 @@ Singleton {
         return spec.startsWith("mono:") || spec.startsWith("image:");
     }
 
-    property string asking: ""
-    property string askResult: ""
-
-    function ask(cls: string): void {
-        if (!cls || root.asking)
-            return;
-        root.asking = cls;
-        root.askResult = "";
-        claude.cls = cls;
-        claude.running = true;
-    }
-
-    Process {
-        id: claude
-
-        property string cls: ""
-
-        command: {
-            const name = root.titleOf(claude.cls) || claude.cls;
-            const target = `${root.store}/${claude.cls.replace(/[^a-zA-Z0-9_.-]/g, "_")}.svg`;
-            return Config.values.apps.claude.concat([`Find the official logo for the application "${name}" (window class "${claude.cls}") as an SVG, preferring a simple single-colour or monochrome version. Download it to exactly ${target}, creating directories as needed. Do not modify anything else on this machine. Print only that path as the last line of your reply, and nothing else if you fail.`]);
-        }
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const lines = text.trim().split("\n").map(l => l.trim()).filter(l => l);
-                const last = lines[lines.length - 1] ?? "";
-                root.askResult = last.endsWith(".svg") ? last : "";
-            }
-        }
-
-        onExited: (code, status) => {
-            const cls = claude.cls;
-            root.asking = "";
-            if (!root.askResult) {
-                console.warn(`AppIcons: asking Claude for ${cls} came back with nothing (exit ${code}).`);
-                return;
-            }
-
-        }
-    }
-
     FileView {
         id: store
 
@@ -213,7 +152,7 @@ Singleton {
     Process {
         id: mkdir
 
-        command: ["mkdir", "-p", root.dir, root.store]
+        command: ["mkdir", "-p", root.dir]
         onExited: root.loaded = true
     }
 }
