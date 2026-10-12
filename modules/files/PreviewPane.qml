@@ -7,6 +7,7 @@ import qs.config
 import qs.components
 import qs.services
 import "urls.js" as Urls
+import "markdown.js" as Markdown
 
 Item {
     id: root
@@ -64,6 +65,18 @@ Item {
         statter.exec([Files.helper("bs-ls"), "--stat", root.path]);
 
         peek.exec([Files.helper("bs-ls"), root.path]);
+    }
+
+    onVisibleChanged: if (!root.visible)
+        player.stop()
+
+    Connections {
+        target: Files
+
+        function onWindowOpenChanged(): void {
+            if (!Files.windowOpen)
+                player.stop();
+        }
     }
 
     Process {
@@ -351,12 +364,13 @@ Item {
 
                 width: parent.width
 
-                text: body.content
+                text: root.rendered ? Markdown.inert(body.content) : ""
                 textFormat: Text.MarkdownText
                 wrapMode: Text.Wrap
 
                 font.family: Appearance.font.family
                 font.pixelSize: Appearance.sizes.filesText
+                renderType: Text.NativeRendering
                 color: Appearance.colour.text
                 linkColor: Appearance.colour.accent
 
