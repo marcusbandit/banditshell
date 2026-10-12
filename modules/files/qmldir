@@ -11,6 +11,7 @@ NamePrompt 1.0 NamePrompt.qml
 PathBar 1.0 PathBar.qml
 PreviewPane 1.0 PreviewPane.qml
 Properties 1.0 Properties.qml
+SettingChoice 1.0 SettingChoice.qml
 Setting 1.0 Setting.qml
 Sidebar 1.0 Sidebar.qml
 SplitHandle 1.0 SplitHandle.qml

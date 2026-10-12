@@ -32,19 +32,6 @@ Item {
 
     property string rebinding: ""
 
-    component Choice: Segments {
-        id: choice
-
-        property var choices: []
-        property var chosen
-
-        signal chose(var value)
-
-        options: choice.choices.map(c => c.label)
-        current: choice.choices.findIndex(c => c.value === choice.chosen)
-        onPicked: index => choice.chose(choice.choices[index].value)
-    }
-
     readonly property var keyNames: Chords.names(Qt)
 
     function chordOf(event: var): string {
@@ -215,7 +202,7 @@ Item {
                     width: body.width
                     label: "View"
 
-                    Choice {
+                    SettingChoice {
                         choices: [
                             {label: "Icons", value: "icons"},
                             {label: "List", value: "list"}
@@ -230,7 +217,7 @@ Item {
                     label: "Size"
                     detail: `${Math.round(Files.magnification * 100)}% · text ${Files.zoomed(Appearance.font.size.small)}px`
 
-                    Choice {
+                    SettingChoice {
                         choices: [
                             {label: "Smaller", value: -0.1},
                             {label: "Reset", value: 0},
@@ -255,7 +242,7 @@ Item {
                     width: body.width
                     label: "Sort by"
 
-                    Choice {
+                    SettingChoice {
                         choices: [
                             {label: "Name", value: "name"},
                             {label: "Size", value: "size"},
@@ -271,7 +258,7 @@ Item {
                     width: body.width
                     label: "Markdown"
 
-                    Choice {
+                    SettingChoice {
                         choices: [
                             {label: "Rendered", value: "rendered"},
                             {label: "Raw", value: "raw"}
