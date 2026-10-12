@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import "../components/vt.js" as Vt
 import "../components/base64.js" as B64
+import "quoting.js" as Quoting
 
 Singleton {
     id: root
@@ -404,16 +405,46 @@ Singleton {
         pty.write(`i ${B64.encode(B64.utf8(text))}\n`);
     }
 
-    function run(command: string): void {
+    property string failure: ""
 
-        if (!pty.running || root.shellBusy) {
-            runner.exec(["sh", "-c", `cd ${root.quote(root.cwd)} && ${command}`]);
+    function typed(paths: var): var {
+        const out = [];
+        for (const path of paths) {
+            const quoted = Quoting.forShell(root.shellName, path);
+            if (quoted === null)
+                return null;
+            out.push(quoted);
+        }
+        return out;
+    }
+
+    function refusal(path: string): string {
+        return `cannot type this path into ${root.shellName || "the shell"}: ${Quoting.visible(path)}`;
+    }
+
+    function run(words: var, paths: var): void {
+        root.failure = "";
+        const quoted = pty.running && !root.shellBusy ? root.typed(paths) : null;
+
+        if (quoted === null) {
+            runner.exec(["sh", "-c", `cd ${root.quote(root.cwd)} && ${[...words, ...paths.map(root.quote)].join(" ")}`]);
             root.restat();
             return;
         }
 
-        root.send(root.clearLine() + `${command}\r`);
+        root.send(root.clearLine() + `${[...words, ...quoted].join(" ")}\r`);
         root.restat();
+    }
+
+    function typeCd(path: string): bool {
+        const quoted = root.typed([path]);
+        if (quoted === null) {
+            root.failure = root.refusal(path);
+            return false;
+        }
+        root.send(root.clearLine() + `cd ${quoted[0]}\r`);
+        root.restat();
+        return true;
     }
 
     function clearLine(): string {
@@ -436,37 +467,40 @@ Singleton {
         onTriggered: root.refresh()
     }
 
-    function cd(path: string, which: var): void {
+    function cd(path: string, which: var): bool {
         const target = which ?? root.pane;
         if (!target)
-            return;
+            return false;
+
+        if (pty.running && root.typed([path]) === null) {
+            root.failure = root.refusal(path);
+            return false;
+        }
+        root.failure = "";
 
         if (pty.running && root.shellBusy) {
             root.desynced = true;
             target.cwd = path;
-            return;
+            return true;
         }
 
         if (!pty.running) {
 
             root.pending = path;
             target.cwd = path;
-            return;
+            return true;
         }
 
         root.expecting = path;
         root.expectingPane = target;
         expiry.restart();
         target.cwd = path;
-        root.run(`cd ${root.quote(path)}`);
+        root.typeCd(path);
+        return true;
     }
 
     function quote(path: string): string {
-        return `'${path.replace(/'/g, "'\\''")}'`;
-    }
-
-    function move(from: string, to: string): void {
-        root.run(`mv -i -- ${root.quote(from)} ${root.quote(to)}`);
+        return Quoting.posix(path);
     }
 
     Process {
@@ -520,7 +554,7 @@ Singleton {
 
             if (!busy && root.desynced) {
                 root.desynced = false;
-                root.run(`cd ${root.quote(root.cwd)}`);
+                root.typeCd(root.cwd);
             }
             return;
         }
@@ -544,10 +578,8 @@ Singleton {
 
             if (!root.synced) {
                 root.synced = true;
-                if (path !== root.cwd) {
-                    root.run(`cd ${root.quote(root.cwd)}`);
+                if (path !== root.cwd && !root.shellBusy && root.typeCd(root.cwd))
                     return;
-                }
             }
 
             if (root.pane && path !== root.pane.cwd)
@@ -577,12 +609,12 @@ Singleton {
 
     function makeFolder(name: string): void {
         if (name)
-            root.run(`mkdir -p -- ${root.quote(root.join(root.cwd, name))}`);
+            root.run(["mkdir", "-p", "--"], [root.join(root.cwd, name)]);
     }
 
     function makeFile(name: string): void {
         if (name)
-            root.run(`touch -- ${root.quote(root.join(root.cwd, name))}`);
+            root.run(["touch", "--"], [root.join(root.cwd, name)]);
     }
 
     function renameTo(path: string, name: string): void {
@@ -590,27 +622,27 @@ Singleton {
             return;
         const to = root.join(root.parentOf(path), name);
         if (to !== path)
-            root.run(`mv -i -- ${root.quote(path)} ${root.quote(to)}`);
+            root.run(["mv", "-i", "--"], [path, to]);
     }
 
     function trash(paths: var): void {
         if (paths.length > 0)
-            root.run(`gio trash -- ${paths.map(root.quote).join(" ")}`);
+            root.run(["gio", "trash", "--"], paths);
     }
 
     function deleteForever(paths: var): void {
         if (paths.length > 0)
-            root.run(`rm -rf -- ${paths.map(root.quote).join(" ")}`);
+            root.run(["rm", "-rf", "--"], paths);
     }
 
     function copyInto(paths: var, dir: string): void {
         if (paths.length > 0)
-            root.run(`cp -ri -- ${paths.map(root.quote).join(" ")} ${root.quote(dir)}`);
+            root.run(["cp", "-ri", "--"], [...paths, dir]);
     }
 
     function moveInto(paths: var, dir: string): void {
         if (paths.length > 0)
-            root.run(`mv -i -- ${paths.map(root.quote).join(" ")} ${root.quote(dir)}`);
+            root.run(["mv", "-i", "--"], [...paths, dir]);
     }
 
     property var clipboard: []

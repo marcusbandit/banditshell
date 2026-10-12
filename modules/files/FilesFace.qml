@@ -519,7 +519,7 @@ Item {
 
         anchors.left: parent.left
         anchors.top: rule.bottom
-        anchors.bottom: terminal.top
+        anchors.bottom: failure.top
 
         width: Files.sidebarOpen ? Files.sidebarWidth : 0
         visible: width > 0
@@ -533,7 +533,7 @@ Item {
 
         anchors.left: sidebar.right
         anchors.top: rule.bottom
-        anchors.bottom: terminal.top
+        anchors.bottom: failure.top
 
         visible: Files.sidebarOpen
 
@@ -558,7 +558,7 @@ Item {
         anchors.left: Files.sidebarOpen ? sidebarEdge.right : parent.left
         anchors.right: parent.right
         anchors.top: rule.bottom
-        anchors.bottom: terminal.top
+        anchors.bottom: failure.top
 
         readonly property bool roomForBoth: width > Files.previewWidth * 1.8
 
@@ -668,6 +668,31 @@ Item {
 
             entry: Files.current
             path: Files.currentPath
+        }
+    }
+
+    StyledText {
+        id: failure
+
+        anchors.left: parent.left
+        anchors.right: parent.right
+        anchors.bottom: terminal.top
+
+        visible: Files.failure !== ""
+        height: failure.visible ? failure.implicitHeight : 0
+
+        leftPadding: Appearance.padding.normal
+        rightPadding: Appearance.padding.normal
+        topPadding: Appearance.padding.small
+        bottomPadding: Appearance.padding.small
+
+        text: Files.failure
+        textFormat: Text.PlainText
+        color: Appearance.colour.alarm
+        elide: Text.ElideRight
+
+        TapHandler {
+            onTapped: Files.failure = ""
         }
     }
 
