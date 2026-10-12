@@ -322,7 +322,6 @@ Singleton {
         config: "banditshell"
 
         configDirectory: Quickshell.shellPath("assets/pam.d")
-        user: root.user
 
         onResponseRequiredChanged: {
             if (!pam.responseRequired)
