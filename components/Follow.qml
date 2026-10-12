@@ -1,7 +1,7 @@
 import QtQuick
 import qs.config
 
-Item {
+QtObject {
     id: root
 
     property real target: 0
@@ -16,15 +16,13 @@ Item {
         root.value = root.target;
     }
 
-    Timer {
-        interval: 16
-        repeat: true
+    readonly property FrameAnimation driver: FrameAnimation {
         running: !root.settled
 
         onTriggered: {
             const d = root.target - root.value;
 
-            root.value = root.speed <= 0 || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * (interval / 1000)));
+            root.value = root.speed <= 0 || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * root.driver.frameTime));
         }
     }
 }
