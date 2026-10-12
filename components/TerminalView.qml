@@ -15,8 +15,9 @@ Item {
     signal send(string bytes)
     signal resized(int cols, int rows)
 
+    readonly property int textSize: Math.round(Appearance.font.size.small * Appearance.sizes.filesZoom)
     readonly property real cellWidth: metrics.advanceWidth
-    readonly property real cellHeight: Math.round(Appearance.sizes.filesText * 4 / 3)
+    readonly property real cellHeight: Math.round(root.textSize * 4 / 3)
 
     readonly property int cols: Math.max(1, Math.floor(width / Math.max(1, cellWidth)))
     readonly property int rows: Math.max(1, Math.floor(height / Math.max(1, cellHeight)))
@@ -65,7 +66,7 @@ Item {
         id: metrics
 
         font.family: root.face
-        font.pixelSize: Appearance.sizes.filesText
+        font.pixelSize: root.textSize
         text: "0"
     }
 
@@ -121,7 +122,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
 
                     font.family: root.face
-                    font.pixelSize: Appearance.sizes.filesText
+                    font.pixelSize: root.textSize
                     color: Appearance.colour.text
 
                     lineHeight: Math.round(font.pixelSize * 4 / 3)
