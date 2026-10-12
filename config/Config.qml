@@ -206,9 +206,7 @@ Singleton {
             },
 
             apps: {
-                icons: ({}),
-
-                claude: ["claude", "-p", "--permission-mode", "acceptEdits"]
+                icons: ({})
             },
 
             launcher: {
