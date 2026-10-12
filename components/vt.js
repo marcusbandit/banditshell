@@ -134,13 +134,18 @@ Terminal.prototype.scrollUp = function (n) {
     for (var i = 0; i < n; i++) {
         var gone = s.lines.splice(s.top, 1)[0];
 
-        if (!this.altActive && s.top === 0 && s.bottom === this.rows - 1 && this.scrollbackMax > 0) {
-            this.scrollback.push(this.renderLine(gone));
-            if (this.scrollback.length > this.scrollbackMax)
-                this.scrollback.shift();
-        }
+        if (!this.altActive && s.top === 0 && s.bottom === this.rows - 1)
+            this.pushScrollback(gone);
         s.lines.splice(s.bottom, 0, blankRow(this.cols));
     }
+};
+
+Terminal.prototype.pushScrollback = function (row) {
+    if (this.scrollbackMax <= 0)
+        return;
+    this.scrollback.push(this.renderLine(row));
+    if (this.scrollback.length > this.scrollbackMax)
+        this.scrollback.splice(0, this.scrollback.length - this.scrollbackMax);
 };
 
 Terminal.prototype.scrollDown = function (n) {
@@ -237,7 +242,7 @@ Terminal.prototype.resize = function (cols, rows) {
 
         while (s.lines.length > rows) {
             if (s === this.main && this.scrollbackMax > 0 && s.y < s.lines.length - 1)
-                this.scrollback.push(this.renderLine(s.lines.shift()));
+                this.pushScrollback(s.lines.shift());
             else
                 s.lines.pop();
             if (s === this.main)

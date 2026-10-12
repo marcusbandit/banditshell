@@ -548,6 +548,23 @@ test.describe("vt: resize", () => {
         assert.strictEqual(t.screen.y, 0);
     });
 
+    test.it("holds the history to scrollbackMax when shrinking pushes rows into it", () => {
+        const t = term(10, 6, {scrollback: 2});
+        t.write("aa\r\nbb\r\ncc\r\ndd\r\nee");
+        t.resize(10, 1);
+        assert.strictEqual(t.scrollback.length, 2);
+        assert.deepStrictEqual(t.scrollback.map(l => l.markup), ["dd", "ee"]);
+    });
+
+    test.it("keeps the cap when history was already full before the resize", () => {
+        const t = term(10, 3, {scrollback: 3});
+        for (let i = 0; i < 8; i++)
+            t.write(`l${i}\r\n`);
+        assert.strictEqual(t.scrollback.length, 3);
+        t.resize(10, 1);
+        assert.strictEqual(t.scrollback.length, 3);
+    });
+
     test.it("re-lays the tab stops for the new width", () => {
         const t = term(20, 3);
         t.resize(10, 3);
