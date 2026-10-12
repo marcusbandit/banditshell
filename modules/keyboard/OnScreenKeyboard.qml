@@ -116,7 +116,8 @@ Item {
         }
     }
 
-    Component.onCompleted: Qt.callLater(root.follow)
+    Component.onCompleted: if (Tablet.folded)
+        Qt.callLater(root.follow)
 
     function capOf(key: var): string {
         if (key.icon)

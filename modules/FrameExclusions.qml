@@ -11,7 +11,7 @@ Scope {
 
     readonly property var win: Shell.forScreen(root.screen?.name ?? "")
 
-    readonly property int keyboard: root.win?.keyboard?.open && Tablet.docked ? root.win.keyboard.reserveHeight : 0
+    readonly property int keyboard: root.win?.keyboard?.open && Tablet.docked ? root.win.keyboard.item.reserveHeight : 0
 
     readonly property bool bare: Appearance.bare
     readonly property var reserve: ({

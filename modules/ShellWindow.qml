@@ -26,19 +26,19 @@ PanelWindow {
     readonly property Menus menus: menuLayer
     readonly property Launcher launcher: launcherLayer
 
-    readonly property ClipboardPanel clipboard: clipLayer
-    readonly property WallpaperPicker wallpapers: wallpaperLayer
-    readonly property SessionMenu session: sessionLayer
+    readonly property LazyPanel clipboard: clipLayer
+    readonly property LazyPanel wallpapers: wallpaperLayer
+    readonly property LazyPanel session: sessionLayer
 
-    readonly property CalculatorPanel calculator: calcLayer
+    readonly property LazyPanel calculator: calcLayer
 
-    readonly property OnScreenKeyboard keyboard: keyboardLayer
+    readonly property LazyPanel keyboard: keyboardLayer
 
-    readonly property KeyringPrompt keyring: keyringLayer
+    readonly property LazyPanel keyring: keyringLayer
 
-    readonly property CheatSheet hotkeys: cheatLayer
+    readonly property LazyPanel hotkeys: cheatLayer
 
-    readonly property MediaController media: mediaLayer
+    readonly property LazyPanel media: mediaLayer
 
     readonly property NotificationTray notifications: popups
     readonly property SummonZone notch: topNotch
@@ -49,6 +49,7 @@ PanelWindow {
     readonly property bool cursorOnShell: onShell.hovered
 
     readonly property var usage: Usage
+    readonly property var clipboardHistory: Clipboard
 
     readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
 
@@ -113,7 +114,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: keyringLayer.needsKeyboard || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -394,98 +395,122 @@ PanelWindow {
                 win.closeOthers(launcherLayer)
         }
 
-        ClipboardPanel {
+        LazyPanel {
             id: clipLayer
 
             anchors.fill: parent
-            originX: chassis.barWidth
-            inset: win.border
 
             onOpenChanged: if (open)
                 win.closeOthers(clipLayer)
+
+            panel: ClipboardPanel {
+                originX: chassis.barWidth
+                inset: win.border
+            }
         }
 
-        WallpaperPicker {
+        LazyPanel {
             id: wallpaperLayer
 
             anchors.fill: parent
 
-            screen: win.screen?.name ?? ""
-
             onOpenChanged: if (open)
                 win.closeOthers(wallpaperLayer)
-        }
 
-        SessionMenu {
-            id: sessionLayer
-
-            anchors.fill: parent
-            border: win.border
-
-            onOpenChanged: if (open)
-                win.closeOthers(sessionLayer)
-        }
-
-        CalculatorPanel {
-            id: calcLayer
-
-            anchors.fill: parent
-            originX: chassis.barWidth
-
-            onOpenChanged: if (open)
-                win.closeOthers(calcLayer)
-        }
-
-        OnScreenKeyboard {
-            id: keyboardLayer
-
-            anchors.fill: parent
-            originX: chassis.barWidth
-            inset: win.border
-
-            onDismissed: {
-                for (const window of Shell.windows)
-                    window.keyboard.hide();
+            panel: WallpaperPicker {
+                screen: win.screen?.name ?? ""
             }
         }
 
-        CheatSheet {
+        LazyPanel {
+            id: sessionLayer
+
+            anchors.fill: parent
+
+            onOpenChanged: if (open)
+                win.closeOthers(sessionLayer)
+
+            panel: SessionMenu {
+                border: win.border
+            }
+        }
+
+        LazyPanel {
+            id: calcLayer
+
+            anchors.fill: parent
+
+            onOpenChanged: if (open)
+                win.closeOthers(calcLayer)
+
+            panel: CalculatorPanel {
+                originX: chassis.barWidth
+            }
+        }
+
+        LazyPanel {
+            id: keyboardLayer
+
+            anchors.fill: parent
+
+            needed: Tablet.folded && Config.values.tablet.autoKeyboard
+
+            panel: OnScreenKeyboard {
+                originX: chassis.barWidth
+                inset: win.border
+
+                onDismissed: {
+                    for (const window of Shell.windows)
+                        window.keyboard.hide();
+                }
+            }
+        }
+
+        LazyPanel {
             id: cheatLayer
 
             anchors.fill: parent
-            holeX: chassis.holeX
-            holeY: chassis.holeY
-            holeWidth: chassis.holeWidth
-            holeHeight: chassis.holeHeight
 
             onOpenChanged: if (open)
                 win.closeOthers(cheatLayer)
 
-            Component.onCompleted: {
-                cheatLayer.board = Config.get("cheatsheet.board");
-            }
+            panel: CheatSheet {
+                id: cheatSheet
 
-            onBoardChanged: {
-                if (cheatLayer.board !== Config.get("cheatsheet.board"))
-                    Config.set("cheatsheet.board", cheatLayer.board);
+                holeX: chassis.holeX
+                holeY: chassis.holeY
+                holeWidth: chassis.holeWidth
+                holeHeight: chassis.holeHeight
+
+                Component.onCompleted: {
+                    cheatSheet.board = Config.get("cheatsheet.board");
+                }
+
+                onBoardChanged: {
+                    if (cheatSheet.board !== Config.get("cheatsheet.board"))
+                        Config.set("cheatsheet.board", cheatSheet.board);
+                }
+
+                Connections {
+                    target: Config
+
+                    function onValuesChanged(): void {
+                        cheatSheet.board = Config.get("cheatsheet.board");
+                    }
+                }
             }
         }
 
-        MediaController {
+        LazyPanel {
             id: mediaLayer
 
             anchors.fill: parent
-            border: win.border
 
             onOpenChanged: if (open)
                 win.closeOthers(mediaLayer)
-        }
 
-        Connections {
-            target: Config
-
-            function onValuesChanged(): void {
-                cheatLayer.board = Config.get("cheatsheet.board");
+            panel: MediaController {
+                border: win.border
             }
         }
 
@@ -496,7 +521,7 @@ PanelWindow {
 
             anchors.fill: parent
             border: win.border
-            span: launcherLayer.open ? wallpaperLayer.panelWidth : launcherLayer.panelWidth
+            span: launcherLayer.open ? wallpaperLayer.item?.panelWidth ?? wallpaperLayer.width : launcherLayer.panelWidth
 
             armed: true
 
@@ -594,15 +619,19 @@ PanelWindow {
             onActivated: Settings.toggle(win.screen.name)
         }
 
-        KeyringPrompt {
+        LazyPanel {
             id: keyringLayer
 
             anchors.fill: parent
 
-            holeX: chassis.holeX
-            holeY: chassis.holeY
-            holeWidth: chassis.holeWidth
-            holeHeight: chassis.holeHeight
+            needed: Keyring.asked > 0
+
+            panel: KeyringPrompt {
+                holeX: chassis.holeX
+                holeY: chassis.holeY
+                holeWidth: chassis.holeWidth
+                holeHeight: chassis.holeHeight
+            }
         }
 
         Tooltip {

@@ -11,6 +11,8 @@ Item {
 
     readonly property var concept: loader.item
 
+    readonly property bool alphabetical: Config.values.launcher.concept === "niagara"
+
     readonly property bool open: root.concept?.open ?? false
     readonly property var blobs: root.concept?.blobs ?? []
     readonly property Item maskItem: root.concept?.maskItem ?? null
@@ -19,8 +21,13 @@ Item {
     readonly property int resultCount: root.concept?.resultCount ?? 0
     readonly property string scrollInfo: root.concept?.scrollInfo ?? "-"
 
+    function build(): var {
+        loader.active = true;
+        return loader.item;
+    }
+
     function show(): void {
-        root.concept?.show();
+        root.build().show();
     }
 
     function hide(): void {
@@ -28,33 +35,40 @@ Item {
     }
 
     function toggle(): void {
-        root.concept?.toggle();
+        root.build().toggle();
     }
 
-    readonly property real panelWidth: root.concept?.panelWidth ?? 0
+    readonly property real panelWidth: root.concept?.panelWidth ?? (root.alphabetical ? Config.values.launcher.niagara.width : Appearance.sizes.launcherWidth)
 
     function scrub(fraction: real): void {
-        if (root.concept?.scrubTo)
-            root.concept.scrubTo(fraction);
+        const concept = root.build();
+        if (concept.scrubTo)
+            concept.scrubTo(fraction);
     }
 
     function dragTo(fraction: real): void {
-        if (root.concept?.dragTo)
-            root.concept.dragTo(fraction);
+        const concept = root.build();
+        if (concept.dragTo)
+            concept.dragTo(fraction);
     }
 
     function dragEnd(open: bool): void {
-        if (root.concept?.dragEnd)
-            root.concept.dragEnd(open);
+        if (!open && !root.concept)
+            return;
+        const concept = root.build();
+        if (concept.dragEnd)
+            concept.dragEnd(open);
         else if (open)
-            root.show();
+            concept.show();
     }
 
     Loader {
         id: loader
 
         anchors.fill: parent
-        sourceComponent: Config.values.launcher.concept === "niagara" ? niagara : list
+
+        active: false
+        sourceComponent: root.alphabetical ? niagara : list
     }
 
     Component {

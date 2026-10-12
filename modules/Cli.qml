@@ -294,9 +294,9 @@ Scope {
             const win = Shell.showing(w => w.calculator.open);
             if (!win)
                 return "no shell window";
-            if (win.calculator.open && win.calculator.full)
+            if (win.calculator.open && win.calculator.item.full)
                 return close();
-            win.calculator.app();
+            win.calculator.build().app();
             return "open";
         }
 
@@ -304,15 +304,15 @@ Scope {
             const win = Shell.showing(w => w.calculator.open);
             if (!win)
                 return "no shell window";
-            if (win.calculator.open && !win.calculator.full)
+            if (win.calculator.open && !win.calculator.item.full)
                 return close();
-            win.calculator.panel();
+            win.calculator.build().panel();
             return "open";
         }
 
         function status(): string {
             const win = Shell.showing(w => w.calculator.open);
-            return `open=${win?.calculator.open ?? false} shape=${win?.calculator.full ? "app" : "panel"}`;
+            return `open=${win?.calculator.open ?? false} shape=${win?.calculator.item?.full ? "app" : "panel"}`;
         }
 
         function answer(expression: string): string {
@@ -368,7 +368,9 @@ Scope {
             const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.keyboard.open);
             if (!win)
                 return "no shell window";
-            return `${win.keyboard.open ? "open" : "closed"} on "${win.keyboard.page}"`;
+            if (!win.keyboard.item)
+                return "closed";
+            return `${win.keyboard.open ? "open" : "closed"} on "${win.keyboard.item.page}"`;
         }
 
         function dock(): string {
@@ -385,7 +387,7 @@ Scope {
             const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.keyboard.open);
             if (!win)
                 return "no shell window";
-            win.keyboard.page = name;
+            win.keyboard.build().page = name;
             return `page ${name}`;
         }
     }
@@ -409,7 +411,10 @@ Scope {
             const win = screen ? Shell.forScreen(screen) : Shell.showing(w => w.hotkeys.open);
             if (!win)
                 return root.missing(screen);
-            return `open=${win.hotkeys.open} binds=${win.hotkeys.rows.length} woven=${win.hotkeys.woven} groups=${win.hotkeys.sections.length}`;
+            const sheet = win.hotkeys.item;
+            if (!sheet)
+                return "open=false";
+            return `open=${sheet.open} binds=${sheet.rows.length} woven=${sheet.woven} groups=${sheet.sections.length}`;
         }
     }
 
@@ -948,7 +953,7 @@ Scope {
             if (!win)
                 return "no shell window";
             const on = win.screen?.name ?? "";
-            return `${win.wallpapers.open ? "open" : "closed"} on=${on || "?"} scope=${win.wallpapers.everywhere ? "all" : "here"} showing=${Wallpaper.shownNameOn(on) || "-"} set=${Wallpaper.nameOf(Wallpaper.currentOn(on)) || "-"} of ${Wallpaper.available.length}`;
+            return `${win.wallpapers.open ? "open" : "closed"} on=${on || "?"} scope=${win.wallpapers.item?.everywhere ? "all" : "here"} showing=${Wallpaper.shownNameOn(on) || "-"} set=${Wallpaper.nameOf(Wallpaper.currentOn(on)) || "-"} of ${Wallpaper.available.length}`;
         }
     }
 
