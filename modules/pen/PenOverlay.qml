@@ -113,7 +113,7 @@ PanelWindow {
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.namespace: "banditshell-pen"
 
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: PenMap.active ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     visible: PenMap.active
 
@@ -152,12 +152,23 @@ PanelWindow {
         win.grabbed = -1;
     }
 
+    Timer {
+        id: padless
+
+        interval: 30000
+        running: PenMap.active && !PenMap.padConnected
+        onTriggered: PenMap.cancel()
+    }
+
     MouseArea {
         id: pen
 
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
         hoverEnabled: true
+        focus: true
+
+        Keys.onEscapePressed: PenMap.cancel()
 
         readonly property int hot: {
             if (win.mode === "resize")
@@ -199,6 +210,9 @@ PanelWindow {
             const gy = event.y + win.originY;
 
             PenMap.setPointer(gx, gy);
+
+            if (padless.running)
+                padless.restart();
 
             if (win.editable && event.button === Qt.RightButton)
                 return pen.beginResize(win.nearestCorner(gx, gy));
