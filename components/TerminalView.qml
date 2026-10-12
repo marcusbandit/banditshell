@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import qs.config
-import "vt.js" as Vt
+import "vt.js" as TerminalEmulator
 
 Item {
     id: root
@@ -227,7 +227,7 @@ Item {
             if (root.term.altActive) {
                 const key = step > 0 ? "up" : "down";
                 for (let i = 0; i < Math.abs(step) * 3; i++)
-                    root.send(Vt.keySequence(key, false, false, false, root.term.appCursor));
+                    root.send(TerminalEmulator.keySequence(key, false, false, false, root.term.appCursor));
                 return;
             }
 
@@ -276,7 +276,7 @@ Item {
 
         const name = root.keyNames[event.key];
         if (name) {
-            const bytes = Vt.keySequence(name, event.key === Qt.Key_Backtab || shift, alt, ctrl, root.term.appCursor);
+            const bytes = TerminalEmulator.keySequence(name, event.key === Qt.Key_Backtab || shift, alt, ctrl, root.term.appCursor);
             if (bytes) {
                 root.send(bytes);
                 event.accepted = true;
@@ -288,12 +288,12 @@ Item {
             return;
 
         const already = event.text.charCodeAt(0) < 0x20;
-        root.send(already ? (alt ? `\x1b${event.text}` : event.text) : Vt.textSequence(event.text, alt, ctrl));
+        root.send(already ? (alt ? `\x1b${event.text}` : event.text) : TerminalEmulator.textSequence(event.text, alt, ctrl));
         event.accepted = true;
     }
 
     function paste(text: string): void {
         if (root.term)
-            root.send(Vt.pasteSequence(text, root.term.bracketedPaste));
+            root.send(TerminalEmulator.pasteSequence(text, root.term.bracketedPaste));
     }
 }

@@ -338,7 +338,7 @@ ShellRoot {
                 bottomRightRadius: Theme.rLarge
                 color: Theme.plate
 
-                BsText {
+                InstallerText {
                     id: notchLabel
 
                     anchors.centerIn: parent
@@ -405,14 +405,14 @@ ShellRoot {
 
                             opacity: root.finished ? 1 : 0.25
 
-                            BsText {
+                            InstallerText {
                                 text: modelData.k
                                 color: Theme.textFaint
                                 font.capitalization: Font.AllUppercase
                                 font.letterSpacing: 2
                             }
 
-                            BsText {
+                            InstallerText {
                                 text: String(modelData.v)
                                 color: modelData.c
                             }
@@ -426,14 +426,14 @@ ShellRoot {
                 anchors.horizontalCenterOffset: rail.w / 2
                 spacing: Theme.padLarge
 
-                BsText {
+                InstallerText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: "banditshell"
                     font.pixelSize: Theme.large
                     color: Theme.text
                 }
 
-                BsText {
+                InstallerText {
                     anchors.horizontalCenter: parent.horizontalCenter
                     text: root.dryRun ? "rehearsing the install" : "assembling"
                     color: Theme.textFaint
@@ -474,7 +474,7 @@ ShellRoot {
                     anchors.horizontalCenter: parent.horizontalCenter
                     spacing: Theme.padSmall
 
-                    BsText {
+                    InstallerText {
                         anchors.horizontalCenter: parent.horizontalCenter
                         font.pixelSize: Theme.normal
                         color: Theme.text
@@ -487,7 +487,7 @@ ShellRoot {
                         }
                     }
 
-                    BsText {
+                    InstallerText {
                         anchors.horizontalCenter: parent.horizontalCenter
                         color: Theme.textFaint
                         text: {
@@ -499,7 +499,7 @@ ShellRoot {
                         }
                     }
 
-                    BsText {
+                    InstallerText {
                         anchors.horizontalCenter: parent.horizontalCenter
                         color: Theme.ramp[6]
                         text: root.total > 0 ? `${root.resolved} of ${root.total}` : ""

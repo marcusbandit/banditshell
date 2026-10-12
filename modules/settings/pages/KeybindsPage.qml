@@ -7,7 +7,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
-import "../../../services/hyprgen.js" as HyprGen
+import "../../../services/hyprland-lua.js" as HyprlandLua
 
 Item {
     id: root
@@ -78,7 +78,7 @@ Item {
         const id = root.recording;
         const chord = [...root.capMods, root.capKey].join(" + ");
         root.cancelRecord();
-        if (!HyprGen.parseChord(chord).key)
+        if (!HyprlandLua.parseChord(chord).key)
             return console.warn(`HyprConfig: "${chord}" is not a chord; nothing was written.`);
         const b = HyprConfig.binds.find(x => x.id === id);
         if (!b || b.dynamic)
@@ -532,7 +532,7 @@ Item {
             const fields = {
                 chord: chordInput.text.trim(),
 
-                expr: isExec ? `hl.dsp.exec_cmd("${HyprGen.luaString(actionInput.text)}")` : actionInput.text,
+                expr: isExec ? `hl.dsp.exec_cmd("${HyprlandLua.luaString(actionInput.text)}")` : actionInput.text,
                 locked: lockedToggle.checked,
                 repeating: repeatToggle.checked,
                 description: descriptionInput.text
@@ -540,7 +540,7 @@ Item {
 
             if (isAdd) {
                 HyprConfig.addBind(file, fields);
-            } else if (HyprGen.parseChord(fields.chord).key === "") {
+            } else if (HyprlandLua.parseChord(fields.chord).key === "") {
                 console.warn(`HyprConfig: "${fields.chord}" is not a chord; the edit was not written.`);
                 return root.editing = "";
             } else {

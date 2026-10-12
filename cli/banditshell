@@ -945,9 +945,9 @@ gallery)
     h="${size#*x}"
     hyprctl eval "hl.window_rule({ name = \"banditshell-gallery\", match = { title = \"^(banditshell-gallery)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
         hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1 || true
-    start_preview Gallery 0 "GALLERY_SIZE=$size"
+    start_preview GalleryPreview 0 "GALLERY_SIZE=$size"
     sleep 2
-    preview_failed Gallery && exit 1
+    preview_failed GalleryPreview && exit 1
     echo "gallery up at $size"
     ;;
 help | -h | --help)

@@ -4,8 +4,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
-import "../components/vt.js" as Vt
-import "../components/base64.js" as B64
+import "../components/vt.js" as TerminalEmulator
+import "../components/base64.js" as Base64
 import "quoting.js" as Quoting
 
 Singleton {
@@ -512,7 +512,7 @@ Singleton {
 
         pty.workingDirectory = root.cwd;
         root.synced = false;
-        root.term = Vt.create(80, Appearance.sizes.filesTerminalRows, {
+        root.term = TerminalEmulator.create(80, Appearance.sizes.filesTerminalRows, {
             palette: Appearance.colour.terminalPalette,
             scrollback: Appearance.sizes.filesScrollback,
             foreground: String(Appearance.colour.text),
@@ -524,7 +524,7 @@ Singleton {
     function send(text: string): void {
         if (!pty.running)
             return;
-        pty.write(`i ${B64.encode(B64.utf8(text))}\n`);
+        pty.write(`i ${Base64.encode(Base64.utf8(text))}\n`);
     }
 
     property string failure: ""
@@ -688,7 +688,7 @@ Singleton {
         const body = line.slice(2);
 
         if (kind === "o") {
-            root.term.write(B64.decode(body));
+            root.term.write(Base64.decode(body));
             root.revision = root.term.revision;
 
             root.restat();
@@ -700,17 +700,17 @@ Singleton {
         }
 
         if (kind === "s") {
-            root.shellName = B64.decode(body);
+            root.shellName = Base64.decode(body);
             return;
         }
 
         if (kind === "t") {
-            root.tmuxSession = root.fromUtf8(B64.decode(body));
+            root.tmuxSession = root.fromUtf8(Base64.decode(body));
             return;
         }
 
         if (kind === "w") {
-            const rows = root.fromUtf8(B64.decode(body)).split("\n").filter(l => l.length > 0);
+            const rows = root.fromUtf8(Base64.decode(body)).split("\n").filter(l => l.length > 0);
             root.tmuxWindows = rows.map(line => {
                 const parts = line.split("\t");
                 return {id: parts[0], name: parts[1] ?? "", active: parts[2] === "1"};
@@ -730,7 +730,7 @@ Singleton {
         }
 
         if (kind === "c") {
-            const path = root.fromUtf8(B64.decode(body));
+            const path = root.fromUtf8(Base64.decode(body));
             if (!path)
                 return;
 

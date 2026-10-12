@@ -5,14 +5,14 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "components/vt.js"), "utf8");
-const Vt = new Function(src
+const TerminalEmulator = new Function(src
     + "\nreturn { create, keySequence, textSequence, pasteSequence, charWidth };")();
 
 const FG = "#eeeeee";
 const BG = "#111111";
 
 function term(cols, rows, opts) {
-    return Vt.create(cols || 20, rows || 4, Object.assign({foreground: FG, background: BG}, opts));
+    return TerminalEmulator.create(cols || 20, rows || 4, Object.assign({foreground: FG, background: BG}, opts));
 }
 
 function row(t, y) {
@@ -659,14 +659,14 @@ test.describe("vt: UTF-8", () => {
     });
 
     test.it("measures width the way the grid needs it", () => {
-        assert.strictEqual(Vt.charWidth("A".codePointAt(0)), 1);
-        assert.strictEqual(Vt.charWidth(0), 0);
-        assert.strictEqual(Vt.charWidth(0x301), 0);
-        assert.strictEqual(Vt.charWidth(0xfe0f), 0);
-        assert.strictEqual(Vt.charWidth("日".codePointAt(0)), 2);
-        assert.strictEqual(Vt.charWidth("한".codePointAt(0)), 2);
-        assert.strictEqual(Vt.charWidth(0x1f389), 2);
-        assert.strictEqual(Vt.charWidth("é".codePointAt(0)), 1);
+        assert.strictEqual(TerminalEmulator.charWidth("A".codePointAt(0)), 1);
+        assert.strictEqual(TerminalEmulator.charWidth(0), 0);
+        assert.strictEqual(TerminalEmulator.charWidth(0x301), 0);
+        assert.strictEqual(TerminalEmulator.charWidth(0xfe0f), 0);
+        assert.strictEqual(TerminalEmulator.charWidth("日".codePointAt(0)), 2);
+        assert.strictEqual(TerminalEmulator.charWidth("한".codePointAt(0)), 2);
+        assert.strictEqual(TerminalEmulator.charWidth(0x1f389), 2);
+        assert.strictEqual(TerminalEmulator.charWidth("é".codePointAt(0)), 1);
     });
 });
 
@@ -964,119 +964,119 @@ test.describe("vt: strings and modes", () => {
 test.describe("vt: the keyboard", () => {
     test.it("sends CARRIAGE RETURN for Return, not a newline", () => {
 
-        assert.strictEqual(Vt.keySequence("return", false, false, false, false), "\r");
-        assert.strictEqual(Vt.keySequence("enter", false, false, false, false), "\r");
-        assert.notStrictEqual(Vt.keySequence("return", false, false, false, false), "\n");
+        assert.strictEqual(TerminalEmulator.keySequence("return", false, false, false, false), "\r");
+        assert.strictEqual(TerminalEmulator.keySequence("enter", false, false, false, false), "\r");
+        assert.notStrictEqual(TerminalEmulator.keySequence("return", false, false, false, false), "\n");
     });
 
     test.it("sends DEL for Backspace, not BS", () => {
 
-        assert.strictEqual(Vt.keySequence("backspace", false, false, false, false), "\x7f");
-        assert.strictEqual(Vt.keySequence("backspace", false, false, false, false).charCodeAt(0), 0x7f);
-        assert.strictEqual(Vt.keySequence("backspace", false, false, true, false), "\x08");
+        assert.strictEqual(TerminalEmulator.keySequence("backspace", false, false, false, false), "\x7f");
+        assert.strictEqual(TerminalEmulator.keySequence("backspace", false, false, false, false).charCodeAt(0), 0x7f);
+        assert.strictEqual(TerminalEmulator.keySequence("backspace", false, false, true, false), "\x08");
     });
 
     test.it("sends the cursor keys in whichever form the application asked for", () => {
-        assert.strictEqual(Vt.keySequence("up", false, false, false, false), "\x1b[A");
-        assert.strictEqual(Vt.keySequence("up", false, false, false, true), "\x1bOA");
-        assert.strictEqual(Vt.keySequence("left", false, false, false, false), "\x1b[D");
-        assert.strictEqual(Vt.keySequence("home", false, false, false, true), "\x1bOH");
+        assert.strictEqual(TerminalEmulator.keySequence("up", false, false, false, false), "\x1b[A");
+        assert.strictEqual(TerminalEmulator.keySequence("up", false, false, false, true), "\x1bOA");
+        assert.strictEqual(TerminalEmulator.keySequence("left", false, false, false, false), "\x1b[D");
+        assert.strictEqual(TerminalEmulator.keySequence("home", false, false, false, true), "\x1bOH");
     });
 
     test.it("encodes the modifiers as one plus a bitfield", () => {
-        assert.strictEqual(Vt.keySequence("right", true, false, false, false), "\x1b[1;2C");
-        assert.strictEqual(Vt.keySequence("right", false, true, false, false), "\x1b[1;3C");
-        assert.strictEqual(Vt.keySequence("right", false, false, true, false), "\x1b[1;5C");
-        assert.strictEqual(Vt.keySequence("right", true, true, true, false), "\x1b[1;8C");
+        assert.strictEqual(TerminalEmulator.keySequence("right", true, false, false, false), "\x1b[1;2C");
+        assert.strictEqual(TerminalEmulator.keySequence("right", false, true, false, false), "\x1b[1;3C");
+        assert.strictEqual(TerminalEmulator.keySequence("right", false, false, true, false), "\x1b[1;5C");
+        assert.strictEqual(TerminalEmulator.keySequence("right", true, true, true, false), "\x1b[1;8C");
     });
 
     test.it("leaves an unmodified key out of the modifier form entirely", () => {
-        assert.strictEqual(Vt.keySequence("down", false, false, false, false), "\x1b[B");
+        assert.strictEqual(TerminalEmulator.keySequence("down", false, false, false, false), "\x1b[B");
     });
 
     test.it("sends the tilde keys with their numbers", () => {
-        assert.strictEqual(Vt.keySequence("delete", false, false, false, false), "\x1b[3~");
-        assert.strictEqual(Vt.keySequence("pageup", false, false, false, false), "\x1b[5~");
-        assert.strictEqual(Vt.keySequence("pagedown", true, false, false, false), "\x1b[6;2~");
+        assert.strictEqual(TerminalEmulator.keySequence("delete", false, false, false, false), "\x1b[3~");
+        assert.strictEqual(TerminalEmulator.keySequence("pageup", false, false, false, false), "\x1b[5~");
+        assert.strictEqual(TerminalEmulator.keySequence("pagedown", true, false, false, false), "\x1b[6;2~");
     });
 
     test.it("sends the function keys in their two families", () => {
-        assert.strictEqual(Vt.keySequence("f1", false, false, false, false), "\x1bOP");
-        assert.strictEqual(Vt.keySequence("f5", false, false, false, false), "\x1b[15~");
-        assert.strictEqual(Vt.keySequence("f12", false, false, false, false), "\x1b[24~");
-        assert.strictEqual(Vt.keySequence("f4", false, false, true, false), "\x1b[1;5S");
+        assert.strictEqual(TerminalEmulator.keySequence("f1", false, false, false, false), "\x1bOP");
+        assert.strictEqual(TerminalEmulator.keySequence("f5", false, false, false, false), "\x1b[15~");
+        assert.strictEqual(TerminalEmulator.keySequence("f12", false, false, false, false), "\x1b[24~");
+        assert.strictEqual(TerminalEmulator.keySequence("f4", false, false, true, false), "\x1b[1;5S");
     });
 
     test.it("sends the odd ones out", () => {
-        assert.strictEqual(Vt.keySequence("tab", false, false, false, false), "\t");
-        assert.strictEqual(Vt.keySequence("tab", true, false, false, false), "\x1b[Z");
-        assert.strictEqual(Vt.keySequence("escape", false, false, false, false), "\x1b");
-        assert.strictEqual(Vt.keySequence("space", false, false, false, false), " ");
-        assert.strictEqual(Vt.keySequence("space", false, false, true, false), "\x00");
+        assert.strictEqual(TerminalEmulator.keySequence("tab", false, false, false, false), "\t");
+        assert.strictEqual(TerminalEmulator.keySequence("tab", true, false, false, false), "\x1b[Z");
+        assert.strictEqual(TerminalEmulator.keySequence("escape", false, false, false, false), "\x1b");
+        assert.strictEqual(TerminalEmulator.keySequence("space", false, false, false, false), " ");
+        assert.strictEqual(TerminalEmulator.keySequence("space", false, false, true, false), "\x00");
     });
 
     test.it("sends nothing for a key it has no bytes for", () => {
-        assert.strictEqual(Vt.keySequence("f13", false, false, false, false), "");
-        assert.strictEqual(Vt.keySequence("printscreen", false, false, false, false), "");
+        assert.strictEqual(TerminalEmulator.keySequence("f13", false, false, false, false), "");
+        assert.strictEqual(TerminalEmulator.keySequence("printscreen", false, false, false, false), "");
     });
 
     test.it("round-trips a cursor key back through the parser", () => {
         const t = term(20, 4);
         t.write("\x1b[3;3H");
-        t.write(Vt.keySequence("up", false, false, false, false));
+        t.write(TerminalEmulator.keySequence("up", false, false, false, false));
         assert.strictEqual(t.screen.y, 1);
     });
 });
 
 test.describe("vt: typed text", () => {
     test.it("sends the character as it is", () => {
-        assert.strictEqual(Vt.textSequence("a", false, false), "a");
-        assert.strictEqual(Vt.textSequence("", false, false), "");
+        assert.strictEqual(TerminalEmulator.textSequence("a", false, false), "a");
+        assert.strictEqual(TerminalEmulator.textSequence("", false, false), "");
     });
 
     test.it("turns Ctrl+letter into the control code", () => {
-        assert.strictEqual(Vt.textSequence("c", false, true), "\x03");
-        assert.strictEqual(Vt.textSequence("C", false, true), "\x03");
-        assert.strictEqual(Vt.textSequence("d", false, true), "\x04");
-        assert.strictEqual(Vt.textSequence("r", false, true), "\x12");
-        assert.strictEqual(Vt.textSequence("z", false, true), "\x1a");
-        assert.strictEqual(Vt.textSequence("a", false, true), "\x01");
+        assert.strictEqual(TerminalEmulator.textSequence("c", false, true), "\x03");
+        assert.strictEqual(TerminalEmulator.textSequence("C", false, true), "\x03");
+        assert.strictEqual(TerminalEmulator.textSequence("d", false, true), "\x04");
+        assert.strictEqual(TerminalEmulator.textSequence("r", false, true), "\x12");
+        assert.strictEqual(TerminalEmulator.textSequence("z", false, true), "\x1a");
+        assert.strictEqual(TerminalEmulator.textSequence("a", false, true), "\x01");
     });
 
     test.it("turns Ctrl+? into DEL and Ctrl+2..8 into the rest of them", () => {
-        assert.strictEqual(Vt.textSequence("?", false, true), "\x7f");
-        assert.strictEqual(Vt.textSequence("2", false, true), "\x00");
-        assert.strictEqual(Vt.textSequence("3", false, true), "\x1b");
-        assert.strictEqual(Vt.textSequence("7", false, true), "\x1f");
-        assert.strictEqual(Vt.textSequence("8", false, true), "\x7f");
+        assert.strictEqual(TerminalEmulator.textSequence("?", false, true), "\x7f");
+        assert.strictEqual(TerminalEmulator.textSequence("2", false, true), "\x00");
+        assert.strictEqual(TerminalEmulator.textSequence("3", false, true), "\x1b");
+        assert.strictEqual(TerminalEmulator.textSequence("7", false, true), "\x1f");
+        assert.strictEqual(TerminalEmulator.textSequence("8", false, true), "\x7f");
     });
 
     test.it("prefixes Alt with escape, which is what meta-sends-escape means", () => {
-        assert.strictEqual(Vt.textSequence("b", true, false), "\x1bb");
-        assert.strictEqual(Vt.textSequence("c", true, true), "\x1b\x03");
+        assert.strictEqual(TerminalEmulator.textSequence("b", true, false), "\x1bb");
+        assert.strictEqual(TerminalEmulator.textSequence("c", true, true), "\x1b\x03");
     });
 
     test.it("leaves a character with no control code alone", () => {
-        assert.strictEqual(Vt.textSequence("!", false, true), "!");
+        assert.strictEqual(TerminalEmulator.textSequence("!", false, true), "!");
     });
 });
 
 test.describe("vt: paste", () => {
     test.it("wraps a bracketed paste so the shell knows it is data", () => {
-        assert.strictEqual(Vt.pasteSequence("ls", true), "\x1b[200~ls\x1b[201~");
+        assert.strictEqual(TerminalEmulator.pasteSequence("ls", true), "\x1b[200~ls\x1b[201~");
     });
 
     test.it("sends the body bare when the application never asked", () => {
-        assert.strictEqual(Vt.pasteSequence("ls", false), "ls");
+        assert.strictEqual(TerminalEmulator.pasteSequence("ls", false), "ls");
     });
 
     test.it("turns every flavour of newline into a carriage return", () => {
-        assert.strictEqual(Vt.pasteSequence("a\r\nb\nc", false), "a\rb\rc");
-        assert.strictEqual(Vt.pasteSequence("a\r\nb", true), "\x1b[200~a\rb\x1b[201~");
+        assert.strictEqual(TerminalEmulator.pasteSequence("a\r\nb\nc", false), "a\rb\rc");
+        assert.strictEqual(TerminalEmulator.pasteSequence("a\r\nb", true), "\x1b[200~a\rb\x1b[201~");
     });
 
     test.it("cannot close the bracket from inside the pasted text", () => {
-        const out = Vt.pasteSequence("x\x1b[201~\x15touch PWNED\n", true);
+        const out = TerminalEmulator.pasteSequence("x\x1b[201~\x15touch PWNED\n", true);
         assert.strictEqual(out, "\x1b[200~x[201~touch PWNED\r\x1b[201~");
         assert.strictEqual(out.split("\x1b").length - 1, 2);
         assert.ok(out.endsWith("\x1b[201~"));
@@ -1086,27 +1086,27 @@ test.describe("vt: paste", () => {
         const c0 = [];
         for (let c = 0; c < 0x20; c++)
             c0.push(String.fromCharCode(c));
-        const body = Vt.pasteSequence(`a${c0.join("")}b`, true).slice(6, -6);
+        const body = TerminalEmulator.pasteSequence(`a${c0.join("")}b`, true).slice(6, -6);
         assert.strictEqual(body, "a\t\r\rb");
     });
 
     test.it("strips C1 controls from a bracketed body, which UTF-8 would otherwise carry", () => {
-        const body = Vt.pasteSequence("a\u0080b\u009b201~c\u009fd", true).slice(6, -6);
+        const body = TerminalEmulator.pasteSequence("a\u0080b\u009b201~c\u009fd", true).slice(6, -6);
         assert.strictEqual(body, "ab201~cd");
     });
 
     test.it("keeps printable text either side of the C1 range", () => {
-        const body = Vt.pasteSequence("~\u007f é漢", true).slice(6, -6);
+        const body = TerminalEmulator.pasteSequence("~\u007f é漢", true).slice(6, -6);
         assert.strictEqual(body, "~\u007f é漢");
     });
 
     test.it("leaves an unbracketed paste untouched apart from line breaks", () => {
-        assert.strictEqual(Vt.pasteSequence("a\x1bb\u009bc\x15\n", false), "a\x1bb\u009bc\x15\r");
+        assert.strictEqual(TerminalEmulator.pasteSequence("a\x1bb\u009bc\x15\n", false), "a\x1bb\u009bc\x15\r");
     });
 
     test.it("round-trips a pasted block through the parser as text", () => {
         const t = term(20, 4);
-        t.write(Vt.pasteSequence("one\ntwo", false).replace(/\r/g, "\r\n"));
+        t.write(TerminalEmulator.pasteSequence("one\ntwo", false).replace(/\r/g, "\r\n"));
         assert.deepStrictEqual(rows(t).slice(0, 2), ["one", "two"]);
     });
 });

@@ -582,7 +582,7 @@ Item {
                         reuseItems: false
                         cacheBuffer: list.pitch * 6
 
-                        delegate: ClipRow {
+                        delegate: ClipboardRow {
                             required property var modelData
 
                             width: list.width
@@ -694,7 +694,7 @@ Item {
                     }
                 }
 
-                ClipDetail {
+                ClipboardDetail {
                     id: detail
 
                     x: listPage.width

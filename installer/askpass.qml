@@ -169,13 +169,13 @@ ShellRoot {
                     anchors.rightMargin: Theme.padHuge
                     spacing: Theme.padNormal
 
-                    BsText {
+                    InstallerText {
                         text: "banditshell"
                         font.pixelSize: Theme.large
                         color: Theme.text
                     }
 
-                    BsText {
+                    InstallerText {
                         width: parent.width
                         wrapMode: Text.WordWrap
                         color: Theme.textFaint
@@ -229,7 +229,7 @@ ShellRoot {
                             }
                         }
 
-                        BsText {
+                        InstallerText {
                             x: Theme.padLarge
                             y: Theme.padSmall + (1 - floatUp.value) * 8
                             opacity: floatUp.value
@@ -240,7 +240,7 @@ ShellRoot {
                             color: root.errorState ? Theme.alarm : (field.activeFocus ? Theme.mid : Theme.textFaint)
                         }
 
-                        BsText {
+                        InstallerText {
                             x: Theme.padLarge
                             anchors.verticalCenter: parent.verticalCenter
                             opacity: 1 - floatUp.value
@@ -294,7 +294,7 @@ ShellRoot {
                             }
                         }
 
-                        BsText {
+                        InstallerText {
                             id: reveal
 
                             anchors.right: parent.right
@@ -333,7 +333,7 @@ ShellRoot {
                         width: parent.width
                         height: Theme.small * 4 / 3
 
-                        BsText {
+                        InstallerText {
                             color: root.errorState ? Theme.alarm : Theme.ramp[6]
                             text: root.errorState ? `Incorrect password. Attempt ${root.attempt} of 3.` : "Enter to unlock, Escape to cancel the install."
                         }
@@ -355,7 +355,7 @@ ShellRoot {
                             color: Theme.plate
                             opacity: cancelHit.containsMouse ? 1 : 0.75
 
-                            BsText {
+                            InstallerText {
                                 id: cancelLabel
 
                                 anchors.centerIn: parent
@@ -386,7 +386,7 @@ ShellRoot {
                             color: Theme.mid
                             opacity: submit.ready ? (submitHit.containsMouse ? 1 : 0.9) : 0.35
 
-                            BsText {
+                            InstallerText {
                                 id: submitLabel
 
                                 anchors.centerIn: parent

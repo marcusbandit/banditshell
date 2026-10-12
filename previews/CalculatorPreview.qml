@@ -23,7 +23,7 @@ ShellRoot {
         exclusiveZone: 0
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay
-        WlrLayershell.namespace: "banditshell-calcpreview"
+        WlrLayershell.namespace: "banditshell-calculatorpreview"
 
         CalculatorMenu {
             id: calc

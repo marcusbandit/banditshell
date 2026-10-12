@@ -461,7 +461,7 @@ Item {
         anchors.top: path.bottom
     }
 
-    Sidebar {
+    FilesSidebar {
         id: sidebar
 
         anchors.left: parent.left

@@ -219,7 +219,7 @@ test("the scanner sees code, not strings, comments or regex bodies", () => {
 
 test("the engine's file list follows the JavaScript that QML imports", () => {
     const files = engineFiles();
-    assert.ok(files.includes("services/hyprgen.js"));
+    assert.ok(files.includes("services/hyprland-lua.js"));
     assert.ok(files.includes("components/vt.js"));
     assert.ok(files.includes("installer/theme.js"));
     assert.ok(!files.includes("services/cli-migration.js"));

@@ -5,7 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
-import "../../../services/hyprgen.js" as HyprGen
+import "../../../services/hyprland-lua.js" as HyprlandLua
 
 Item {
     id: root
@@ -171,7 +171,7 @@ Item {
     property string bandDraft: ""
     onBandFileSpecChanged: root.bandDraft = root.bandFileSpec
 
-    readonly property bool bandValid: HyprGen.parseBandSpec(root.bandDraft.trim()).ok
+    readonly property bool bandValid: HyprlandLua.parseBandSpec(root.bandDraft.trim()).ok
     readonly property bool bandDirty: root.bandDraft.trim() !== "" && root.bandDraft.trim() !== root.bandFileSpec
 
     function assignBand(spec: string): void {

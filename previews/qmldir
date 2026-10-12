@@ -1,10 +1,10 @@
 module qs.previews
 BatteryPreview 1.0 BatteryPreview.qml
-CalcPreview 1.0 CalcPreview.qml
+CalculatorPreview 1.0 CalculatorPreview.qml
 FilesPreview 1.0 FilesPreview.qml
-Gallery 1.0 Gallery.qml
+GalleryPreview 1.0 GalleryPreview.qml
 LockPreview 1.0 LockPreview.qml
-NotifPreview 1.0 NotifPreview.qml
+NotificationPreview 1.0 NotificationPreview.qml
 QrPreview 1.0 QrPreview.qml
 QuickControlsPreview 1.0 QuickControlsPreview.qml
 SettingsPreview 1.0 SettingsPreview.qml
