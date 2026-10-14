@@ -42,6 +42,8 @@ singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Tray 1.0 Tray.qml
 singleton Update 1.0 Update.qml
+singleton UsageApps 1.0 UsageApps.qml
+singleton UsageLimits 1.0 UsageLimits.qml
 singleton Usage 1.0 Usage.qml
 singleton Wallpaper 1.0 Wallpaper.qml
 singleton WhatsNew 1.0 WhatsNew.qml

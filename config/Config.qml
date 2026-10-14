@@ -316,7 +316,10 @@ Singleton {
 
             usage: {
 
-                capHours: 10
+                capHours: 10,
+                greyAtCap: false,
+                breaks: false,
+                breakEvery: 50
             },
 
             idle: {

@@ -26,9 +26,6 @@ Singleton {
             dndAlarms: true,
             dndNightly: false,
             mode: "none",
-            greyCap: false,
-            breaks: false,
-            breakEvery: 50,
             kbDelay: 300,
             kbRate: 30,
             mouseSpeed: 0,
@@ -208,6 +205,9 @@ Singleton {
             cloud: "clock.cloud",
             cloudSeconds: "clock.cloudSeconds",
             capHours: "usage.capHours",
+            greyCap: "usage.greyAtCap",
+            breaks: "usage.breaks",
+            breakEvery: "usage.breakEvery",
             idleLock: "idle.lock",
             idleOff: "idle.screensOff",
             idleSuspend: "idle.sleep",
@@ -1098,6 +1098,12 @@ Singleton {
     }
 
     readonly property string usedLabel: root.minutesLabel(root.usedMinutes)
+
+    readonly property var usageApps: {
+        const live = UsageApps.revision;
+        const now = root.tick;
+        return UsageApps.appsFor(new Date(now)).slice(0, 5);
+    }
 
     readonly property bool idleHandled: Idle.handledElsewhere
 

@@ -429,13 +429,13 @@ const PAGES_SOURCE = {
         status: s => `${s.usedLabel} of ${s.v("capHours")} h`,
         groups: [
             { t: "Today", rows: [
-                { n: 88, isNew: true, kind: "w", w: "usage", kw: "screen time usage today" }
+                { n: 88, kind: "w", w: "usage", kw: "screen time usage today" }
             ] },
             { t: "Limits", rows: [
                 { n: 88, icon: "hourglass_bottom", label: "Daily cap", k: "capHours", kind: "step", min: 1, max: 16, unit: " h", cfg: "usage.capHours", detail: s => `${s.usedLabel} so far`, kw: "screen time cap" },
-                { n: 88, isNew: true, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", detail: "drains colour once the time is up" },
-                { n: 88, isNew: true, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", detail: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
-                    { n: 88, isNew: true, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min" }
+                { n: 88, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", cfg: "usage.greyAtCap", detail: "drains colour once the time is up · input still works" },
+                { n: 88, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", cfg: "usage.breaks", detail: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
+                    { n: 88, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min", cfg: "usage.breakEvery" }
                 ] }
             ] }
         ]
