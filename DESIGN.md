@@ -493,6 +493,10 @@ banditshell/
 │   │                            tolerantly and accumulated past the
 │   │                            last-shown marker. No QML in it, the way
 │   │                            hyprgen.js has none, tested the same way
+│   ├── update.js                the update's words: git's answer read into
+│   │                            values, and a failure said plainly with the
+│   │                            files in the way named, never git's last
+│   │                            line alone. No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
@@ -590,15 +594,24 @@ banditshell/
 │   │                            direction: idle -> available (red) ->
 │   │                            downloading -> downloaded (blue, and
 │   │                            terminal until a restart). The download is a
-│   │                            fast-forward OR NOTHING, the restart goes
-│   │                            through the CLI, and the branch tracked is
-│   │                            a config choice, never a menu one
+│   │                            fast-forward to THE COMMIT THE CHECK SHOWED
+│   │                            or nothing, the restart goes through the
+│   │                            CLI, and the branch tracked is a config
+│   │                            choice, never a menu one. "Downloaded"
+│   │                            outlives the hot reload the pull itself
+│   │                            sets off. A copy with commits of its own, or
+│   │                            on another branch (a tried worktree), is
+│   │                            told so, not offered a button that cannot
+│   │                            work. A failed fetch is not a check
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
 │   │                            is a file IN the checkout, so only a pull
 │   │                            can bring entries in - the available state
-│   │                            cannot announce what it does not have
+│   │                            cannot announce what it does not have. A
+│   │                            config.json the shell had to create starts
+│   │                            at the newest entry: a first install is not
+│   │                            read the whole history
 │   ├── StreamState.qml          streamer mode: the screen that carries the
 │   │                            band while streaming. Every other screen
 │   │                            floats - it keeps its pop-ups but reserves
@@ -806,7 +819,8 @@ banditshell/
 │   │       └── UpdateMenu.qml   the update's menu: what the check found and
 │   │                            the one deed the state asks for - download
 │   │                            in the red state, restart in the blue one,
-│   │                            search in the quiet one. The branch is
+│   │                            search in the quiet one, and none at all
+│   │                            when the deed could not work. The branch is
 │   │                            named, not chosen: it is a config choice.
 │   │                            The What's new card lives here too, every
 │   │                            entry accumulated past the marker, and it
@@ -867,10 +881,18 @@ banditshell/
 │       ├── WorkspaceBlocks.qml  style: one square per window, on the pixel grid
 │       ├── StatusIcons.qml      the status section, rendered from data
 │       ├── StatusIcon.qml       one indicator, service-agnostic
-│       ├── UpdateIndicator.qml  the update, ABOVE the clock: a grey mark a
-│       │                        size down while nothing is confirmed, red
-│       │                        while a push waits on GitHub, blue once
-│       │                        downloaded. The placement is the alarm - it
+│       ├── UpdateIndicator.qml  the update, ABOVE the clock, and only while
+│       │                        there is something to do: red while a push
+│       │                        waits on GitHub, blue once downloaded, amber
+│       │                        when it failed or cannot fast-forward, the
+│       │                        accent while old binds wait. An update state
+│       │                        always wins over the binds. Quiet, it is
+│       │                        gone and its menu opens from the clock.
+│       │                        That is sidebar.update "new", the default;
+│       │                        "always" keeps a grey mark a size down
+│       │                        instead, "never" hides even the alarms and
+│       │                        leaves Settings to carry the update. The
+│       │                        placement is the alarm - it
 │       │                        stands where the eye already goes, wearing
 │       │                        colours no ramp supplies
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
@@ -1202,8 +1224,8 @@ scanner, the rewriter and the CLI's own fallback all read. Until the user acts, 
 work: the wrapper rewrites any old form through the map on the way in. A command that moved to
 another program is rewritten to that program (`banditshell set volume +` becomes `wpctl
 set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+`), and the fallback runs it and says so on stderr. The
-sidebar's update icon wears a "published_with_changes" glyph while old binds exist, and its
-menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor binds` lists
+sidebar's update icon wears a "published_with_changes" glyph in the accent colour while old
+binds exist (any update state wins over it), and its menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor binds` lists
 them and `banditshell doctor binds rewrite` is the same rewrite. Refusing is a two-click path - the second
 asks, because "no" means "I will fix the config by hand" - and a confirmed refusal is written
 to `cli.bindsDeclined` and never nagged about again.

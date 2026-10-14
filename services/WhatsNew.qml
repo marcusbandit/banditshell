@@ -17,7 +17,17 @@ Singleton {
 
     readonly property bool ready: Config.loaded && root.checked
 
-    readonly property var pending: WhatsNewLog.accumulated(root.entries, Config.values.updates.seen)
+    readonly property bool firstRun: Config.fresh && Config.values.updates.seen === ""
+
+    readonly property var pending: root.firstRun ? [] : WhatsNewLog.accumulated(root.entries, Config.values.updates.seen)
+
+    onReadyChanged: root.startFresh()
+    Component.onCompleted: root.startFresh()
+
+    function startFresh(): void {
+        if (root.ready && root.firstRun)
+            root.markSeen(WhatsNewLog.accumulated(root.entries, "")[0]?.id ?? "");
+    }
 
     function markSeen(id: string): void {
         if (!Config.loaded || !id || id === Config.values.updates.seen)

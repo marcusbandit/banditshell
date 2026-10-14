@@ -12,34 +12,41 @@ Item {
 
     readonly property bool stale: CliMigration.stale
 
+    readonly property bool quiet: root.state === Update.idle && !root.stale
+
+    readonly property bool stuck: root.state === Update.failed || (root.state === Update.available && Update.diverged)
+
     readonly property string glyph: {
-        if (root.stale)
-            return "published_with_changes";
-        if (root.state === Update.idle)
-            return "sync";
         if (root.state === Update.downloaded)
             return "download_done";
         if (root.state === Update.downloading)
             return "cloud_download";
-        if (root.state === Update.failed)
+        if (root.stuck)
             return "sync_problem";
-
-        return "system_update_alt";
+        if (root.state === Update.available)
+            return "system_update_alt";
+        if (root.stale)
+            return "published_with_changes";
+        return "sync";
     }
 
-    readonly property real markSize: root.state === Update.idle && !root.stale ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
+    readonly property real markSize: root.quiet ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
 
     readonly property color tint: {
-        if (root.stale)
-            return Appearance.colour.updateReady;
-        if (root.state === Update.idle)
-            return press.containsMouse ? Appearance.colour.text : Appearance.colour.textDim;
         if (root.state === Update.downloaded)
             return Appearance.colour.updateReady;
-        if (root.state === Update.failed)
+        if (root.stuck)
             return Appearance.colour.updateFailed;
-        return Appearance.colour.updateAvailable;
+        if (root.state !== Update.idle)
+            return Appearance.colour.updateAvailable;
+        if (root.stale)
+            return Appearance.colour.accent;
+        return press.containsMouse ? Appearance.colour.text : Appearance.colour.textDim;
     }
+
+    readonly property string shown: Config.values.sidebar.update
+
+    visible: root.shown === "always" || (root.shown !== "never" && !root.quiet)
 
     width: parent ? parent.width : 0
     height: Math.max(Appearance.sizes.minTarget, mark.implicitHeight)

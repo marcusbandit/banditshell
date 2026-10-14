@@ -38,17 +38,7 @@ Column {
     StyledText {
         width: parent.width
         alignInk: true
-        text: {
-            if (Update.state === Update.downloaded)
-                return "Downloaded - restart to apply";
-            if (Update.state === Update.downloading)
-                return "Downloading from GitHub...";
-            if (Update.state === Update.failed)
-                return "Pull failed - the checkout is unchanged";
-            if (Update.behind > 0)
-                return `${Update.behind} new commit${Update.behind === 1 ? "" : "s"} on ${Update.branch}`;
-            return "You are up to date";
-        }
+        text: Update.headline
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
@@ -75,7 +65,7 @@ Column {
         StyledText {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
-            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${root.ago(Update.checkedAt)}`
+            text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${Update.ago(Update.checkedAt)}`
             color: Appearance.colour.textFaint
         }
     }
@@ -95,8 +85,24 @@ Column {
         wrapMode: Text.WordWrap
     }
 
+    StyledText {
+        width: parent.width
+        visible: Update.diverged
+        text: `It cannot just move forward. To keep this copy's commits, run in a terminal: git -C ${Update.dir} pull --rebase`
+        color: Appearance.colour.updateFailed
+        wrapMode: Text.WordWrap
+    }
+
+    StyledText {
+        width: parent.width
+        visible: Update.ahead > 0 && !Update.diverged
+        text: `${Update.ahead} commit${Update.ahead === 1 ? " here is" : "s here are"} not on GitHub yet`
+        color: Appearance.colour.textFaint
+        wrapMode: Text.WordWrap
+    }
+
     Button {
-        visible: Update.behind > 0 || Update.state === Update.downloaded || Update.state === Update.failed
+        visible: Update.state === Update.downloaded || (!Update.diverged && (Update.behind > 0 || Update.state === Update.failed))
         text: {
             if (Update.state === Update.downloaded)
                 return "Restart the shell";
@@ -263,17 +269,5 @@ Column {
         if (type === "config")
             return "tune";
         return "chevron_right";
-    }
-
-    function ago(when: date): string {
-        const mins = Math.max(0, Math.round((Date.now() - when.getTime()) / 60000));
-        if (mins < 1)
-            return "just now";
-        if (mins < 60)
-            return `${mins} min ago`;
-        const hours = Math.floor(mins / 60);
-        if (hours < 24)
-            return `${hours}h ago`;
-        return `${Math.floor(hours / 24)}d ago`;
     }
 }
