@@ -208,7 +208,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.normal
+                    duration: Appearance.animation.fade.normal
                 }
             }
 
@@ -260,7 +260,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.normal
+                    duration: Appearance.animation.fade.normal
                 }
             }
 

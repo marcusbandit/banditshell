@@ -214,7 +214,7 @@ Item {
 
                                 Behavior on opacity {
                                     NumberAnimation {
-                                        duration: Appearance.animation.normal
+                                        duration: Appearance.animation.fade.normal
                                         easing.type: Easing.OutCubic
                                     }
                                 }

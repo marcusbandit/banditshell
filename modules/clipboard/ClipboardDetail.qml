@@ -55,7 +55,7 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.animation.fast
+                        duration: Appearance.animation.fade.fast
                     }
                 }
             }

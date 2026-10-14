@@ -13,6 +13,12 @@ Singleton {
 
     readonly property bool bare: root.config.edge.bare
 
+    readonly property bool lessMotion: root.config.access.lessMotion
+
+    readonly property real fontBase: root.config.access.largerText ? root.config.access.largerBase : root.config.font.base
+
+    readonly property var labelAlphas: root.config.access.moreContrast ? root.config.access.contrastLabel : root.config.material.label
+
     function tier(base: real, scale: var, i: int): real {
         return base * scale[Math.max(0, Math.min(i, scale.length - 1))];
     }
@@ -31,7 +37,7 @@ Singleton {
     }
 
     function shade(c: color, tier: int): color {
-        const w = root.config.material.label;
+        const w = root.labelAlphas;
         return Qt.rgba(c.r, c.g, c.b, w[Math.max(0, Math.min(tier, w.length - 1))]);
     }
 
@@ -58,11 +64,11 @@ Singleton {
 
         readonly property color surfaceSolid: root.rampAt(root.config.colour.surface, 1)
 
-        readonly property color text: root.veil(root.config.material.label[0])
-        readonly property color textDim: root.veil(root.config.material.label[1])
-        readonly property color textFaint: root.veil(root.config.material.label[2])
+        readonly property color text: root.veil(root.labelAlphas[0])
+        readonly property color textDim: root.veil(root.labelAlphas[1])
+        readonly property color textFaint: root.veil(root.labelAlphas[2])
 
-        readonly property color textGhost: root.veil(root.config.material.label[3])
+        readonly property color textGhost: root.veil(root.labelAlphas[3])
 
         readonly property color fill: root.veil(root.config.material.fill[0])
         readonly property color fillStrong: root.veil(root.config.material.fill[1])
@@ -119,9 +125,9 @@ Singleton {
         readonly property string brand: root.config.font.brand
 
         readonly property QtObject size: QtObject {
-            readonly property int small: Math.round(root.tier(root.config.font.base, root.config.font.scale, 0))
-            readonly property int normal: Math.round(root.tier(root.config.font.base, root.config.font.scale, 1))
-            readonly property int large: Math.round(root.tier(root.config.font.base, root.config.font.scale, 2))
+            readonly property int small: Math.round(root.tier(root.fontBase, root.config.font.scale, 0))
+            readonly property int normal: Math.round(root.tier(root.fontBase, root.config.font.scale, 1))
+            readonly property int large: Math.round(root.tier(root.fontBase, root.config.font.scale, 2))
         }
 
         readonly property real leading: 4 / 3
@@ -134,7 +140,7 @@ Singleton {
 
         readonly property int iconSize: Math.round(size.small * root.config.font.iconScale)
 
-        readonly property int stem: Math.max(1, Math.round(size.small / root.config.font.base))
+        readonly property int stem: Math.max(1, Math.round(size.small / root.fontBase))
     }
 
     readonly property QtObject press: QtObject {
@@ -195,9 +201,15 @@ Singleton {
     }
 
     readonly property QtObject animation: QtObject {
-        readonly property int fast: Math.round(root.tier(root.config.anim.base, root.config.anim.scale, 0))
-        readonly property int normal: Math.round(root.tier(root.config.anim.base, root.config.anim.scale, 1))
-        readonly property int slow: Math.round(root.tier(root.config.anim.base, root.config.anim.scale, 2))
+        readonly property QtObject fade: QtObject {
+            readonly property int fast: Math.round(root.tier(root.config.anim.base, root.config.anim.scale, 0))
+            readonly property int normal: Math.round(root.tier(root.config.anim.base, root.config.anim.scale, 1))
+            readonly property int slow: Math.round(root.tier(root.config.anim.base, root.config.anim.scale, 2))
+        }
+
+        readonly property int fast: root.lessMotion ? root.config.access.stillMs : fade.fast
+        readonly property int normal: root.lessMotion ? root.config.access.stillMs : fade.normal
+        readonly property int slow: root.lessMotion ? root.config.access.stillMs : fade.slow
 
         readonly property real trackSpeed: root.config.anim.trackSpeed
         readonly property real revealSpeed: root.config.anim.revealSpeed
@@ -261,7 +273,7 @@ Singleton {
 
         readonly property int clipboardIcon: Math.round(root.font.iconSize * root.config.clipboard.iconScale)
 
-        readonly property int wallpaperReveal: root.config.wallpaper.reveal
+        readonly property int wallpaperReveal: root.lessMotion ? 0 : root.config.wallpaper.reveal
         readonly property int notchTrack: root.config.notch.trackWidth
 
         readonly property int scrubStroke: root.config.media.stroke
