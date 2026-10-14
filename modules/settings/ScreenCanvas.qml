@@ -382,7 +382,7 @@ FocusScope {
                     }
 
                     StyledText {
-                        visible: !!mon.follows && mon.height > 44 && mon.width > implicitWidth + 24
+                        visible: !!mon.follows && mon.height > 44
                         text: `follows ${mon.follows}`
                         color: Appearance.colour.accent
                         font.pixelSize: Appearance.font.size.small
