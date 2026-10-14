@@ -380,3 +380,41 @@ test("screen rows that wait for apply say so", () => {
         assert.strictEqual(r.detail({ pendingNote: () => "not applied yet" }), "not applied yet", k);
     }
 });
+
+test("the power rows are served by config or by the system, not planned", () => {
+    const backed = { chargeLimit: "battery.holdCharge", chargeMax: "battery.holdAt", lowWarn: "battery.warnAt", lowAction: "battery.nearlyEmpty", lidBattery: "power.lid.onBattery", lidPlugged: "power.lid.pluggedIn", lidDocked: "power.lid.docked" };
+    for (const [k, cfg] of Object.entries(backed)) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.ok(!row.isNew, k);
+        assert.strictEqual(row.cfg, cfg, k);
+        assert.strictEqual(CONFIG_BACKED[k], cfg, k);
+        assert.ok(!(k in PLAN_DEFAULTS), k);
+    }
+    assert.deepStrictEqual([DEFAULTS.battery.holdCharge, DEFAULTS.battery.holdAt, DEFAULTS.battery.warnAt, DEFAULTS.battery.nearlyEmpty], [true, 80, 15, "suspend"]);
+    assert.deepStrictEqual(DEFAULTS.power.lid, { onBattery: "suspend", pluggedIn: "lock", docked: "nothing" });
+    const profile = Catalogue.ROW_BY_KEY.profile;
+    assert.ok(!profile.isNew && !profile.cfg);
+    assert.ok(!("profile" in CONFIG_BACKED) && !("profile" in PLAN_DEFAULTS));
+});
+
+test("hibernate is greyed where the machine cannot do it", () => {
+    const can = { hibernatePossible: true, nearlyEmptyPercent: 5 };
+    const cannot = { hibernatePossible: false, nearlyEmptyPercent: 5 };
+    for (const k of ["lidBattery", "lowAction"]) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.deepStrictEqual(Catalogue.val(row.unavailable, can), [], k);
+        const off = Catalogue.val(row.unavailable, cannot);
+        assert.strictEqual(off.length, 1, k);
+        assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
+    }
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["suspend at 5%", "hibernate at 5%", "nothing"]);
+});
+
+test("the power mode row offers what the daemon offers and greys without one", () => {
+    const row = Catalogue.ROW_BY_KEY.profile;
+    assert.deepStrictEqual(Catalogue.options(row, { profileChoices: ["saver", "balanced"] }).map(o => o[0]), ["saver", "balanced"]);
+    assert.strictEqual(row.dis({ profileChoices: [] }), true);
+    assert.strictEqual(row.dis({ profileChoices: ["balanced"] }), false);
+    const saver = Catalogue.CAT_BY_ID.power.tiles.find(t => t.k === "saver");
+    assert.strictEqual(saver.dis({ profileChoices: [] }), true);
+});

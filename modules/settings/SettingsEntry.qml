@@ -136,6 +136,7 @@ Column {
                 icon: option.chosen ? "check" : "radio_button_unchecked"
                 label: String(option.modelData[1])
                 selected: option.chosen
+                off: (Catalogue.val(root.row.unavailable, SettingsState) ?? []).some(u => Catalogue.same(u, option.modelData[0]))
                 onActivated: {
                     SettingsView.setOpen(root.row.uid, false);
                     root.set(option.modelData[0]);

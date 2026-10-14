@@ -514,16 +514,16 @@ const PAGES_SOURCE = {
     },
     battery: {
         id: "battery", name: "Battery", icon: "battery_5_bar", preview: "battery", off: s => !s.hasBattery, away: s => !s.hasBattery,
-        status: s => !s.hasBattery ? "no battery in this machine" : s.v("chargeLimit") ? `${s.batteryPct}% · held at ${s.v("chargeMax")}%` : `${s.batteryPct}%`,
+        status: s => !s.hasBattery ? "no battery in this machine" : s.v("chargeLimit") && !s.chargeTrouble ? `${s.batteryPct}% · held at ${s.v("chargeMax")}%` : `${s.batteryPct}%`,
         groups: [
             { rows: [
                 { n: 104, kind: "w", w: "battery", kw: "battery charge health history" }
             ] },
             { t: "Charging", rows: [
-                { n: 106, isNew: true, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", detail: "kinder to the cells", kw: "charge limit" },
-                { n: 106, isNew: true, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit"), kw: "charge limit" },
-                { n: 107, isNew: true, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
-                { n: 107, isNew: true, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", o: ["suspend at 5%", "hibernate at 5%", "nothing"], kw: "low battery" }
+                { n: 106, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", cfg: "battery.holdCharge", detail: s => s.chargeTrouble || "kinder to the cells", dis: s => !s.chargeSupported, kw: "charge limit" },
+                { n: 106, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", cfg: "battery.holdAt", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit") || !s.chargeSupported, kw: "charge limit" },
+                { n: 107, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", cfg: "battery.warnAt", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
+                { n: 107, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: s => [`suspend at ${s.nearlyEmptyPercent}%`, `hibernate at ${s.nearlyEmptyPercent}%`, "nothing"], unavailable: s => s.hibernatePossible ? [] : [`hibernate at ${s.nearlyEmptyPercent}%`], detail: s => s.hibernatePossible ? "warns first, then acts" : "hibernate needs swap and a resume setup", kw: "low battery" }
             ] }
         ]
     },
@@ -532,12 +532,12 @@ const PAGES_SOURCE = {
         status: s => s.hasLid ? `${s.v("profile")} · lid ${s.v("lidBattery")}` : s.v("profile"),
         groups: [
             { rows: [
-                { n: 105, isNew: true, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: ["saver", "balanced", "fast"], kw: "power profile performance" }
+                { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, detail: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }
             ] },
             { t: "Lid", away: s => !s.hasLid, rows: [
-                { n: 108, isNew: true, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", o: ["suspend", "hibernate", "lock", "nothing"], kw: "lid close action" },
-                { n: 108, isNew: true, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", o: ["suspend", "lock", "nothing"], kw: "lid close action" },
-                { n: 108, isNew: true, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", o: ["nothing", "lock", "suspend"], kw: "lid close action docked" }
+                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: ["suspend", "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], detail: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action" },
+                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: ["suspend", "lock", "nothing"], kw: "lid close action" },
+                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", "suspend"], kw: "lid close action docked" }
             ] }
         ]
     },
@@ -772,10 +772,10 @@ const CATS = [
         suggest: () => null,
         subs: ["keyboard", "shortcuts", "pointer", "tablet", "pen"] },
     { id: "power", name: "Power", icon: "battery_5_bar",
-        blurb: s => s.hasBattery ? `${s.batteryPct}% · ${s.v("profile")}${s.v("chargeLimit") ? ` · held at ${s.v("chargeMax")}%` : ""}` : `on mains · ${s.v("profile")}`,
+        blurb: s => s.hasBattery ? `${s.batteryPct}% · ${s.v("profile")}${s.v("chargeLimit") && !s.chargeTrouble ? ` · held at ${s.v("chargeMax")}%` : ""}` : `on mains · ${s.v("profile")}`,
         tiles: [
-            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery, det: s => !s.hasBattery ? "no battery" : s.v("chargeLimit") ? `${s.v("chargeMax")}%` : "off" },
-            { k: "saver", icon: "eco", label: "Saver", det: s => s.v("profile") === "saver" ? "on" : "off" }
+            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery || !s.chargeSupported, det: s => !s.hasBattery ? "no battery" : s.v("chargeLimit") ? `${s.v("chargeMax")}%` : "off" },
+            { k: "saver", icon: "eco", label: "Saver", dis: s => s.profileChoices.length === 0, det: s => s.v("profile") === "saver" ? "on" : "off" }
         ],
         suggest: s => s.hasBattery && !s.v("chargeLimit") && s.healthKnown ? { icon: "health_and_safety", label: `Health is at ${s.healthPct}%`, detail: "holding the charge at 80% slows that", set: ["chargeLimit", true] } : null,
         subs: ["battery", "powermode", "lock"] },
