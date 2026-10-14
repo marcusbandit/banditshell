@@ -15,6 +15,8 @@ Scope {
 
     readonly property string bootsTheService: HyprConfig.configPath
 
+    readonly property bool bootsModes: Modes.loaded
+
     function penmapStatus(): string {
         const r = PenMap.region;
         const lock = PenMap.aspectLocked ? "locked" : "free";

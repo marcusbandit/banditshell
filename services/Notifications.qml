@@ -83,10 +83,12 @@ Singleton {
         Config.setMany([["notifications.quiet", on], ["notifications.quietUntil", until]]);
     }
 
-    onQuietChanged: {
+    function dropSpentDeadline(): void {
         if (Config.loaded && root.quietUntil > 0 && (!root.quiet || root.quietUntil <= Date.now()))
             Config.set("notifications.quietUntil", 0);
     }
+
+    onQuietChanged: Qt.callLater(root.dropSpentDeadline)
 
     Timer {
         interval: root.quiet && root.quietUntil > 0 ? 1000 : 20000

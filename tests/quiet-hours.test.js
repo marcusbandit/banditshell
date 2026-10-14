@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/quiet-hours.js"), "utf8");
-const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, nightlyEnd, parseEnds };")();
+const Quiet = new Function(src + "\nreturn { minutesOf, nightlyActive, holding, deadlineFor, endsLabel, clockTime, parseEnds };")();
 
 function inZone(zone, body) {
     const before = process.env.TZ;
@@ -85,12 +85,10 @@ test("a deadline reads back as the choice that made it", () => {
     });
 });
 
-test("the deadline reads as a clock time, the night ends at the second time", () => {
+test("the deadline reads as a clock time", () => {
     inZone("Europe/Copenhagen", () => {
         assert.strictEqual(Quiet.clockTime(at(9, 5)), "09:05");
-        assert.strictEqual(Quiet.nightlyEnd(at(23, 0), "07:30"), at(7, 30, 15));
-        assert.strictEqual(Quiet.nightlyEnd(at(3, 0), "07:30"), at(7, 30));
-        assert.strictEqual(Quiet.nightlyEnd(at(3, 0), "bad"), 0);
+        assert.strictEqual(Quiet.clockTime(at(18, 0)), "18:00");
     });
 });
 

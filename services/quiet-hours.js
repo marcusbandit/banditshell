@@ -75,11 +75,6 @@ function clockTime(at) {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
 }
 
-function nightlyEnd(at, to) {
-    const minutes = minutesOf(to);
-    return minutes < 0 ? 0 : nextOccurrence(at, minutes);
-}
-
 function parseEnds(text) {
     const want = String(text ?? "").trim().toLowerCase().replace(/\s+/g, " ");
     const words = new Map([
