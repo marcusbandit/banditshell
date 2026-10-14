@@ -331,12 +331,27 @@ Singleton {
 
                 badge: 40,
 
-                cornerZone: 120
+                cornerZone: 120,
+
+                placement: "corner"
             },
 
-            notch: {
+            island: {
 
-                trackWidth: 288
+                width: 440,
+
+                glanceSeconds: 6,
+
+                downloads: true,
+
+                nowPlaying: true
+            },
+
+            packages: {
+
+                interval: 360,
+
+                upgrade: "sudo pacman -Syu"
             },
 
             media: {

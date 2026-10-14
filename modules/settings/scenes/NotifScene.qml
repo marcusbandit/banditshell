@@ -9,6 +9,7 @@ Item {
 
     readonly property real stageHeight: 220
     readonly property int timeout: SettingsState.v("notifTimeout")
+    readonly property bool island: SettingsState.v("notifPlace") === "island"
 
     SceneClock {
         id: clock
@@ -34,9 +35,10 @@ Item {
         id: card
 
         readonly property real home: root.width - width - Appearance.padding.card
+        readonly property real away: Frames.at(root.slide, clock.value, Frames.ARRIVE).x
 
-        x: card.home + Frames.at(root.slide, clock.value, Frames.ARRIVE).x * width
-        y: Appearance.padding.card
+        x: root.island ? (root.width - width) / 2 : card.home + card.away * width
+        y: root.island ? Appearance.padding.card - card.away * (height + Appearance.padding.card) : Appearance.padding.card
         width: 300
         height: body.implicitHeight + Appearance.padding.card * 2
         clip: true
@@ -102,6 +104,6 @@ Item {
     }
 
     SceneCaption {
-        text: `stays ${root.timeout} s · ${SettingsState.v("notifPopups")} at once${SettingsState.v("dnd") ? " · quiet now" : ""}`
+        text: `${root.island ? "in the island · " : ""}stays ${root.timeout} s · ${SettingsState.v("notifPopups")} at once${SettingsState.v("dnd") ? " · quiet now" : ""}`
     }
 }

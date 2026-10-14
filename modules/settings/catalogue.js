@@ -161,15 +161,25 @@ const PAGES_SOURCE = {
     },
     notifications: {
         id: "notifications", name: "Notifications", icon: "notifications", preview: "notif",
-        status: s => `${s.v("notifTimeout")} s · ${s.v("notifPopups")} at once`,
+        status: s => `${s.v("notifPlace") === "island" ? "in the island" : "in the corner"} · ${s.v("notifTimeout")} s · ${s.v("notifPopups")} at once`,
         groups: [
             { rows: [
+                { n: [], icon: "call_to_action", label: "Show them", k: "notifPlace", kind: "seg", o: [["corner", "corner"], ["island", "island"]], cfg: "notifications.placement", kw: "notification position place island dynamic island top centre corner",
+                    why: "The corner is the top right, where they always were. The island drops them from the top centre instead, where a wide screen keeps them in view. The corner still opens the history either way." },
                 { n: 77, icon: "timer", label: "Stay for", k: "notifTimeout", kind: "step", min: 1, max: 30, unit: " s", cfg: "notifications.timeout", extra: { icon: "send", tip: "send a test", act: "testNotif" }, kw: "notification timeout" },
                 { n: 78, icon: "stacks", label: "At once", k: "notifPopups", kind: "step", min: 1, max: 8, cfg: "notifications.maxPopups", fmt: v => `${v}`, kw: "notification popups at once" },
                 { n: 79, icon: "history", label: "Remember", k: "notifHistory", kind: "step", min: 10, max: 500, step: 10, cfg: "notifications.maxHistory", fmt: v => `${v}`, kw: "notification history length" }
             ] },
             { t: "By app", rows: [
                 { n: 81, isNew: true, kind: "w", w: "rules", kw: "per-app notification rules" }
+            ] },
+            { t: "The island", rows: [
+                { n: [], icon: "download_done", label: "Downloads", k: "islandDownloads", kind: "toggle", cfg: "island.downloads", detail: s => s.v("islandDownloads") ? "says when a file lands" : "says nothing", kw: "island finished downloads announce",
+                    why: "Watches your downloads folder and says when a file has finished arriving. Needs inotifywait (inotify-tools)." },
+                { n: [], icon: "music_note", label: "Now playing", k: "islandMusic", kind: "toggle", cfg: "island.nowPlaying", detail: s => s.v("islandMusic") ? "shows each new track" : "only when you go up to it", kw: "island now playing track change music song",
+                    why: "When the track changes, the island shows the cover, the title and a moving equalizer for a few seconds. Pressing it opens the media card." },
+                { n: [], icon: "hourglass_bottom", label: "Says it for", k: "islandGlance", kind: "step", min: 2, max: 30, unit: " s", cfg: "island.glanceSeconds", kw: "island notice glance time",
+                    why: "How long a new track, a download, an update or a new kernel shows by itself. Updates and kernels then wait in the island, under the clock, until you deal with them." }
             ] }
         ]
     },
@@ -663,6 +673,11 @@ const PAGES_SOURCE = {
                 { n: 114, icon: "alt_route", label: "Branch", k: "branch", kind: "choice", o: s => s.branches, cfg: "updates.branch", kw: "updates branch" },
                 { n: 114, icon: "cloud", label: "Remote", k: "remote", kind: "text", mono: true, cfg: "updates.remote", kw: "updates remote" },
                 { n: 114, icon: "update", label: "Look every", k: "updEvery", kind: "step", min: 5, max: 240, step: 5, unit: " min", cfg: "updates.interval", kw: "updates interval" }
+            ] },
+            { t: "The system", rows: [
+                { n: [], icon: "memory", label: "New kernel", k: "kernelEvery", kind: "step", min: 0, max: 1440, step: 60, unit: " min", cfg: "packages.interval", detail: s => s.v("kernelEvery") ? "the island says when Linux updates" : "never looks", kw: "kernel linux update pacman checkupdates system",
+                    why: "Asks pacman what is waiting (checkupdates, from pacman-contrib) and tells you in the island when the kernel is in the list. Pressing it runs the command below in a terminal, and once the kernel is replaced the island says it wants a restart." },
+                { n: [], icon: "terminal", label: "Update with", k: "upgradeCmd", kind: "text", mono: true, cfg: "packages.upgrade", kw: "system update command pacman yay paru" }
             ] }
         ]
     },

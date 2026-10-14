@@ -1,2 +1,3 @@
 module qs.components.blob
 BlobField 1.0 BlobField.qml
+IslandField 1.0 IslandField.qml

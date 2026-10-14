@@ -19,6 +19,7 @@ Gauge 1.0 Gauge.qml
 GlideList 1.0 GlideList.qml
 Icon 1.0 Icon.qml
 MenuLayer 1.0 MenuLayer.qml
+ProgressRing 1.0 ProgressRing.qml
 Pull 1.0 Pull.qml
 QrScanner 1.0 QrScanner.qml
 RevealMask 1.0 RevealMask.qml

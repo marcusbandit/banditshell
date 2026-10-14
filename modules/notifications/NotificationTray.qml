@@ -84,7 +84,11 @@ Item {
 
     readonly property bool mine: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
 
-    readonly property var items: root.expanded ? Notifications.history : (root.mine ? Notifications.popups : [])
+    readonly property bool corner: Config.values.notifications.placement !== "island"
+
+    readonly property var shown: root.mine ? Notifications.popups : []
+
+    readonly property var items: root.expanded ? Notifications.history : root.corner ? root.shown : []
 
     readonly property bool any: root.items.length > 0 || root.expanded
 
@@ -98,7 +102,7 @@ Item {
     Component.onDestruction: Notifications.resume(root)
 
     NotificationCopier {
-        entries: root.items
+        entries: root.expanded ? Notifications.history : root.shown
     }
 
     readonly property Item maskItem: tray

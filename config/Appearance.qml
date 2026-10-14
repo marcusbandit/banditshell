@@ -262,7 +262,6 @@ Singleton {
         readonly property int clipboardIcon: Math.round(root.font.iconSize * root.config.clipboard.iconScale)
 
         readonly property int wallpaperReveal: root.config.wallpaper.reveal
-        readonly property int notchTrack: root.config.notch.trackWidth
 
         readonly property int scrubStroke: root.config.media.stroke
         readonly property int scrubWaveLength: root.config.media.waveLength

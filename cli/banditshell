@@ -30,7 +30,7 @@
 #   banditshell panel notifications clear
 #                                empty the notification history
 #   <panel>: launcher|session|clipboard|media|calculator|quickcontrols
-#            keyboard|settings|notifications|notch|hotkeys|files|wallpaper
+#            keyboard|settings|notifications|island|hotkeys|files|wallpaper
 #                                and every menu; banditshell panel lists them all
 #
 # output                         which device plays: the speakers or the headphones
@@ -182,7 +182,7 @@ SHELL_DIR="${BANDITSHELL_DIR:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}"
 SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
 BACKUP="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/lastgood"
 FAILED_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/failed.log"
-SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications notch hotkeys files wallpaper)
+SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
 
 qs_target=()
@@ -627,13 +627,13 @@ builtin_panel() {
     return 1
 }
 
-panel_status_takes_screen() { case "$1" in keyboard | notifications | notch | hotkeys) return 0 ;; *) return 1 ;; esac; }
+panel_status_takes_screen() { case "$1" in keyboard | notifications | island | hotkeys) return 0 ;; *) return 1 ;; esac; }
 
 toggle_panel() {
     local name="$1" rest="${2:-}"
     case "$name" in
     launcher | session | clipboard | media | calculator | quickcontrols | settings) ipc "$name" toggle ;;
-    keyboard | notifications | notch | hotkeys | files) ipc "$name" toggle "$rest" ;;
+    keyboard | notifications | island | hotkeys | files) ipc "$name" toggle "$rest" ;;
     wallpaper) ipc wallpapers toggle "$rest" ;;
     *) ipc menu toggle "$name" "$rest" ;;
     esac
@@ -644,7 +644,7 @@ open_panel() {
     shift
     case "$name" in
     launcher | session | clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
-    keyboard | notifications | notch | hotkeys | files) ipc "$name" open "${1:-}" ;;
+    keyboard | notifications | island | hotkeys | files) ipc "$name" open "${1:-}" ;;
     settings) ipc settings open "${1:-}" "${2:-}" ;;
     wallpaper) ipc wallpapers open "${1:-}" ;;
     *) ipc menu open "$name" "${1:-}" ;;
@@ -655,7 +655,7 @@ close_call() {
     case "$1" in
     wallpaper) call=(wallpapers close) ;;
     penmap) call=(penmap cancel) ;;
-    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | notch | hotkeys | files | picker) call=("$1" close) ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | keyboard | settings | notifications | island | hotkeys | files | picker) call=("$1" close) ;;
     *) call=(menu close) ;;
     esac
 }
@@ -706,6 +706,7 @@ route_panel() {
     case "$name" in
     "") list_panels; return ;;
     close) [ $# -eq 1 ] || nope panel "close ${2:-}"; close_everything; return ;;
+    notch) name=island ;;
     esac
     shift
     action="${1:-status}"
