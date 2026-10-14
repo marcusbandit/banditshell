@@ -459,6 +459,11 @@ Singleton {
         store.setText(JSON.stringify(root.usage));
     }
 
+    function forgetHabits(): void {
+        root.usage = {};
+        store.setText(JSON.stringify(root.usage));
+    }
+
     FileView {
         id: store
 

@@ -19,7 +19,8 @@ Singleton {
             Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "chat", "a test", `stays ${Math.round(Config.values.notifications.timeout / 1000)} s, like the rest`]);
             return;
         case "forgetHabit":
-            return root.later("forgetting what the launcher learned");
+            Apps.forgetHabits();
+            return SettingsView.drop("launcher forgot what you use · a to z again", "history");
         case "clearClip":
             {
                 const kept = Clipboard.entries.slice();
