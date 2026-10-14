@@ -285,6 +285,18 @@ test("a keymap lands on matrix positions and names the keys Hyprland binds", () 
     assert.deepStrictEqual(legends["3,5"].syms, [], "a keycode the sheet cannot name binds nothing");
 });
 
+test("keycodes named after object properties bind nothing and do not throw", () => {
+    const { definition, keymap } = mini();
+    const names = ["constructor", "toString", "hasOwnProperty", "__proto__", "valueOf", "LT(1, constructor)"];
+    const odd = Object.assign({}, keymap, { layer: keymap.layer.map((code, n) => names[n] ?? code) });
+    const made = Keyboards.keymapLegends(definition, odd);
+    assert.strictEqual(made.error, undefined);
+    for (const position of ["0,0", "0,1", "0,2", "0,3", "0,4", "0,5"]) {
+        assert.deepStrictEqual(made.legends[position].syms, [], position);
+        assert.strictEqual(made.legends[position].cap, "", position);
+    }
+});
+
 test("a keymap for another board is refused", () => {
     const { definition, keymap } = mini();
     const other = Object.assign({}, keymap, { vendorProductId: keymap.vendorProductId + 1 });
