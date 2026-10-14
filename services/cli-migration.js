@@ -1,166 +1,114 @@
-const PANELS = [
-    { noun: "launcher" },
-    { noun: "clipboard" },
-    { noun: "session" },
-    { noun: "media" },
-    { noun: "calculator" },
-    { noun: "keyboard" },
-    { noun: "settings" },
-    { noun: "notifications" },
-    { noun: "notch" },
-    { noun: "hotkeys" },
-    { noun: "files", stillAVerb: true },
-    { noun: "wallpapers", rename: "wallpaper" }
-];
+const SINK = "@DEFAULT_AUDIO_SINK@";
 
-function panelRules() {
-    const rules = [];
-    for (const { noun, rename, stillAVerb } of PANELS) {
-        const N = rename ?? noun;
-        if (!stillAVerb)
-            rules.push({
-                re: new RegExp(`^${noun}$`),
-                to: `toggle panel ${N}`,
-                note: "a bare panel noun toggled it"
-            });
-        for (const verb of ["toggle", "open", "status"]) {
-            rules.push({
-                re: new RegExp(`^${noun} ${verb}( .*)?$`),
-                to: verb === "status" ? `status panel ${N}$1` : `${verb} panel ${N}$1`,
-                note: "panel surface verb goes in front of the noun"
-            });
-        }
-        rules.push({
-            re: new RegExp(`^${noun} close$`),
-            to: `close panel ${N}`,
-            note: "panel surface verb goes in front of the noun"
-        });
-    }
-    return rules;
+function percent(value) {
+    return value.includes(".") ? String(Math.round(parseFloat(value) * 100)) : value;
 }
 
+function volumeTo(_, sign, amount) {
+    if (!sign)
+        return `wpctl set-volume -l 1 ${SINK} ${percent(amount)}%`;
+    return `wpctl set-volume -l 1 ${SINK} ${amount ? percent(amount) : "5"}%${sign}`;
+}
+
+const PANEL = "(\\S+)";
+
 const RULES = [
-    { re: /^panic$/, to: "close", note: "panic was already close; drop the alias" },
-    { re: /^calendar$/, to: "toggle panel calendar", note: "calendar was menu sugar" },
-    { re: /^clock$/, to: "toggle panel clock", note: "clock was menu sugar" },
+    { re: /^(toggle|open) panel penmap$/, to: "tablet pen edit", note: "the pen's mapper lives with the tablet" },
+    { re: /^close panel penmap$/, to: "tablet pen cancel", note: "the pen's mapper lives with the tablet" },
+    { re: /^status panel penmap$/, to: "tablet pen", note: "the pen's mapper lives with the tablet" },
+    { re: new RegExp(`^(toggle|open|close|status) panel ${PANEL}( .*)?$`), to: "panel $2 $1$3", note: "the panel first, then what to do with it" },
+    { re: /^(close|panic)$/, to: "panel close", note: "every panel away" },
 
-    { re: /^menu list$/, to: "list menu", note: "the registry of menu keys" },
-    { re: /^menu$/, to: "list menu", note: "bare, it listed" },
-    { re: /^menu (current|hover)$/, to: "dispatch menu $1", note: "bespoke reads" },
-    { re: /^menu (open|toggle)( .*)?$/, to: "$1 panel$2", note: "the key becomes the panel instance" },
-    { re: /^menu close$/, to: "close panel menu", note: "the menu surface" },
+    { re: /^toggle (border|sidebar)( .*)?$/, to: "screen $1 toggle$2", note: "the shell's frame is part of the screen" },
+    { re: /^set (border|sidebar|stream) (.+)$/, to: "screen $1 $2", note: "the shell's frame is part of the screen" },
+    { re: /^status (border|sidebar|stream)$/, to: "screen $1", note: "a bare thing says how it is" },
+    { re: /^status screen$/, to: "screen", note: "a bare thing says how it is" },
+    { re: /^set (brightness|temperature) (.+)$/, to: "screen $1 $2", note: "levels of the screen" },
 
-    { re: /^border toggle$/, to: "toggle border", note: "boolean state" },
-    { re: /^border (on|off)$/, to: "set border $1", note: "boolean state, explicit" },
-    { re: /^border status$/, to: "status border", note: "state read" },
-    { re: /^border$/, to: "toggle border", note: "bare, it toggled" },
+    { re: /^toggle wallpaper$/, to: "wallpaper toggle", note: "everything about the picture starts with wallpaper" },
+    { re: /^set wallpaper (on|off)$/, to: "wallpaper $1", note: "everything about the picture starts with wallpaper" },
+    { re: /^set wallpaper (.+)$/, to: "wallpaper set $1", note: "everything about the picture starts with wallpaper" },
+    { re: /^status wallpaper$/, to: "wallpaper", note: "a bare thing says how it is" },
+    { re: /^list wallpaper( .*)?$/, to: "wallpaper list$1", note: "everything about the picture starts with wallpaper" },
+    { re: /^dispatch wallpaper (.+)$/, to: "wallpaper $1", note: "everything about the picture starts with wallpaper" },
 
-    { re: /^sidebar toggle( .*)?$/, to: "toggle sidebar$1", note: "boolean state, per screen" },
-    { re: /^sidebar (on|off)( .*)?$/, to: "set sidebar $1$2", note: "boolean state, explicit" },
-    { re: /^sidebar status$/, to: "status sidebar", note: "state read" },
+    { re: /^toggle output$/, to: "output toggle", note: "everything about the output starts with output" },
+    { re: /^set output (\S+)$/, to: "output $1", note: "everything about the output starts with output" },
+    { re: /^set output (\S+) (\S+)$/, to: "output assign $1 $2", note: "naming a device is assign" },
+    { re: /^status output$/, to: "output", note: "a bare thing says how it is" },
+    { re: /^list output$/, to: "output list", note: "everything about the output starts with output" },
 
-    { re: /^wallpaper toggle$/, to: "toggle wallpaper", note: "boolean state" },
-    { re: /^wallpaper (on|off)$/, to: "set wallpaper $1", note: "boolean state, explicit" },
-    { re: /^wallpaper status$/, to: "status wallpaper", note: "state read" },
-    { re: /^wallpaper$/, to: "toggle wallpaper", note: "bare, it toggled" },
-    { re: /^wallpaper list( .+)?$/, to: "list wallpaper$1", note: "registry read" },
-    { re: /^wallpaper set (.+)$/, to: "set wallpaper $1", note: "value write" },
-    { re: /^wallpaper (next|prev|clear|palette)( .*)?$/, to: "dispatch wallpaper $1$2", note: "actions on the picture" },
+    { re: /^toggle volume mute$/, to: `wpctl set-mute ${SINK} toggle`, run: true, note: "volume is wpctl's" },
+    { re: /^set volume mute$/, to: `wpctl set-mute ${SINK} toggle`, run: true, note: "volume is wpctl's" },
+    { re: /^set volume mute on$/, to: `wpctl set-mute ${SINK} 1`, run: true, note: "volume is wpctl's" },
+    { re: /^set volume mute off$/, to: `wpctl set-mute ${SINK} 0`, run: true, note: "volume is wpctl's" },
+    { re: /^set volume ([+-]?)([0-9.]*)$/, to: volumeTo, run: true, note: "volume is wpctl's" },
+    { re: /^status volume$/, to: `wpctl get-volume ${SINK}`, run: true, note: "volume is wpctl's" },
 
-    { re: /^volume up(?: +(\d+))?$/, to: "set volume +$1", note: "relative write" },
-    { re: /^volume down(?: +(\d+))?$/, to: "set volume -$1", note: "relative write" },
-    { re: /^volume set (.+)$/, to: "set volume $1", note: "absolute write" },
-    { re: /^volume mute (on|off)$/, to: "set volume mute $1", note: "the boolean part, explicit" },
-    { re: /^volume mute$/, to: "toggle volume mute", note: "the boolean part" },
-    { re: /^volume status$/, to: "status volume", note: "state read" },
-    { re: /^volume$/, to: "status volume", note: "bare, it read the state" },
+    { re: /^(dispatch lock|lock)$/, to: "loginctl lock-session", run: true, note: "locking is logind's; the shell's lock answers it" },
+    { re: /^status lock$/, to: "loginctl show-session auto -p LockedHint", run: true, note: "locking is logind's; the shell's lock answers it" },
 
-    { re: /^output toggle$/, to: "toggle output", note: "flip between the sinks" },
-    { re: /^output (speakers|headphones)$/, to: "set output $1", note: "named sink" },
-    { re: /^output assign (.+)$/, to: "set output $1", note: "role and sink, one write" },
-    { re: /^output list$/, to: "list output", note: "registry read" },
-    { re: /^output status$/, to: "status output", note: "state read" },
-    { re: /^output$/, to: "status output", note: "bare, it read the state" },
+    { re: /^toggle tablet lid( .*)?$/, to: "tablet lid toggle$1", note: "everything about the tablet starts with tablet" },
+    { re: /^toggle tablet( .*)?$/, to: "tablet toggle$1", note: "everything about the tablet starts with tablet" },
+    { re: /^set tablet lid (closed|open)( .*)?$/, to: "tablet lid $1$2", note: "everything about the tablet starts with tablet" },
+    { re: /^set tablet (?!lid )(.+)$/, to: "tablet $1", note: "everything about the tablet starts with tablet" },
+    { re: /^status tablet$/, to: "tablet", note: "a bare thing says how it is" },
+    { re: /^dispatch tablet probe( lid)?$/, to: "tablet probe$1", note: "everything about the tablet starts with tablet" },
+    { re: /^dispatch penmap probe$/, to: "tablet probe", note: "everything about the tablet starts with tablet" },
+    { re: /^set penmap rect (.+)$/, to: "tablet pen area $1", note: "the pen's mapper lives with the tablet" },
+    { re: /^status penmap$/, to: "tablet pen", note: "the pen's mapper lives with the tablet" },
+    { re: /^dispatch penmap (commit|cancel|aspect|centre|follow)$/, to: "tablet pen $1", note: "the pen's mapper lives with the tablet" },
 
-    { re: /^tablet probe-lid$/, to: "dispatch tablet probe lid", note: "hardware ask" },
-    { re: /^tablet probe$/, to: "dispatch tablet probe", note: "hardware ask" },
-    { re: /^tablet lid toggle( .*)?$/, to: "toggle tablet lid$1", note: "the lid's boolean" },
-    { re: /^tablet lid (closed|open)( .*)?$/, to: "set tablet lid $1$2", note: "the lid, explicit" },
-    { re: /^tablet (on|off)( .*)?$/, to: "set tablet $1$2", note: "hinge state, explicit" },
-    { re: /^tablet toggle( .*)?$/, to: "toggle tablet$1", note: "hinge state" },
-    { re: /^tablet status$/, to: "status tablet", note: "state read" },
-    { re: /^tablet$/, to: "status tablet", note: "bare, it read the state" },
+    { re: /^set theme (.+)$/, to: "config theme $1", note: "settings start with config" },
+    { re: /^get theme$/, to: "config theme", note: "settings start with config" },
+    { re: /^list themes$/, to: "config theme list", note: "settings start with config" },
+    { re: /^get (\S+)$/, to: "config get $1", note: "settings start with config" },
+    { re: /^set (?!(?:border|sidebar|stream|wallpaper|volume|brightness|temperature|output|tablet|theme|penmap) )(\S+) (.+)$/, to: "config set $1 $2", note: "settings start with config" },
 
-    { re: /^penmap open$/, to: "open panel penmap", note: "the mapper's surface" },
-    { re: /^penmap status$/, to: "status penmap", note: "state read" },
-    { re: /^penmap (commit|cancel|aspect|follow)$/, to: "dispatch penmap $1", note: "bespoke actions" },
-    { re: /^penmap set (.+)$/, to: "set penmap rect $1", note: "the rectangle, named" },
-    { re: /^penmap$/, to: "status penmap", note: "bare, it read the state" },
+    { re: /^status (timer|alarm)$/, to: "clock $1", note: "a bare thing says how it is" },
+    { re: /^list (alarm|zone)$/, to: "clock $1 list", note: "timers, alarms and zones live in the clock" },
+    { re: /^dispatch (timer|alarm|zone) (.+)$/, to: "clock $1 $2", note: "timers, alarms and zones live in the clock" },
 
-    { re: /^picker (open|freeze|clip|freezeclip)$/, to: "dispatch picker $1", note: "bespoke modes" },
-    { re: /^picker close$/, to: "close panel picker", note: "the surface" },
-    { re: /^picker$/, to: "dispatch picker freezeclip", note: "bare, the frozen shot to the clipboard" },
+    { re: /^dispatch picker open$/, to: "screenshot save", note: "the picker is screenshot" },
+    { re: /^dispatch picker freeze$/, to: "screenshot save --freeze", note: "the picker is screenshot" },
+    { re: /^dispatch picker clip$/, to: "screenshot copy", note: "the picker is screenshot" },
+    { re: /^dispatch picker freezeclip$/, to: "screenshot copy --freeze", note: "the picker is screenshot" },
+    { re: /^dispatch picker close$/, to: "panel close", note: "every panel away" },
+    { re: /^shot( .*)?$/, to: "screenshot full$1", note: "the whole desktop is a screenshot too" },
 
-    { re: /^lock$/, to: "dispatch lock", note: "an action" },
-    { re: /^lock status$/, to: "status lock", note: "state read" },
-    { re: /^keyring status$/, to: "status keyring", note: "state read" },
-    { re: /^keyring (refuse|demo)$/, to: "dispatch keyring $1", note: "actions" },
-    { re: /^keyring$/, to: "status keyring", note: "bare, it read the state" },
+    { re: /^list clipboard$/, to: "panel clipboard list", note: "a panel's own actions follow its name" },
+    { re: /^list menu$/, to: "dev menu list", note: "the menu registry is for working on the shell" },
+    { re: /^dispatch menu (current|hover)$/, to: "dev menu $1", note: "the menu registry is for working on the shell" },
+    { re: /^dispatch calculator app$/, to: "panel calculator full", note: "the calculator's shapes are full and compact" },
+    { re: /^dispatch calculator panel$/, to: "panel calculator compact", note: "the calculator's shapes are full and compact" },
+    { re: /^dispatch launcher scrub (.+)$/, to: "dev launcher scrub $1", note: "scrubbing is for working on the shell" },
+    { re: /^dispatch keyring refuse$/, to: "panel keyring close", note: "refusing the prompt closes it" },
+    { re: /^status keyring$/, to: "panel keyring status", note: "a panel's own actions follow its name" },
+    { re: /^dispatch keyring demo$/, to: "dev keyring demo", note: "the demo is for working on the shell" },
+    { re: /^dispatch (clipboard|calculator|keyboard|settings|launcher|notifications) (.+)$/, to: "panel $1 $2", note: "a panel's own actions follow its name" },
+    { re: /^files$/, to: "panel files toggle", note: "the file browser is a panel" },
+    { re: /^files (toggle|open|close|status)( .*)?$/, to: "panel files $1$2", note: "the file browser is a panel" },
 
-    { re: /^timer status$/, to: "status timer", note: "state read" },
-    { re: /^timer$/, to: "status timer", note: "bare, it read the state" },
-    { re: /^timer (start|pause|resume|toggle|cancel)( .*)?$/, to: "dispatch timer $1$2", note: "actions" },
-    { re: /^alarm list$/, to: "list alarm", note: "registry read" },
-    { re: /^alarm$/, to: "list alarm", note: "bare, it listed" },
-    { re: /^alarm status$/, to: "status alarm", note: "state read" },
-    { re: /^alarm (snooze|stop|enable|disable|remove|add)( .*)?$/, to: "dispatch alarm $1$2", note: "actions" },
+    { re: /^dispatch migration migrate$/, to: "doctor binds", note: "the doctor rewrites old binds" },
+    { re: /^status migration$/, to: "doctor", note: "the doctor reports old binds" },
 
-    { re: /^zone list$/, to: "list zone", note: "registry read" },
-    { re: /^zone$/, to: "list zone", note: "bare, it listed" },
-    { re: /^zone (find|add|remove)( .*)?$/, to: "dispatch zone $1$2", note: "actions" },
-
-    { re: /^themes$/, to: "list themes", note: "registry read" },
-    { re: /^theme$/, to: "get theme", note: "a config read" },
-    { re: /^theme (.+)$/, to: "set theme $1", note: "a config write" },
-
-    { re: /^clipboard (use|pin|remove|clear)( .*)?$/, to: "dispatch clipboard $1$2", note: "history actions" },
-    { re: /^clipboard list$/, to: "list clipboard", note: "registry read" },
-
-    { re: /^notifications clear$/, to: "dispatch notifications clear", note: "an action on the history" },
-
-    { re: /^calculator (app|panel)$/, to: "dispatch calculator $1", note: "shape picks" },
-    { re: /^calculator answer (.+)$/, to: "dispatch calculator answer $1", note: "evaluate without a surface" },
-
-    { re: /^keyboard (page|dock|float)( .*)?$/, to: "dispatch keyboard $1$2", note: "bespoke" },
-    { re: /^settings (page|float)( .*)?$/, to: "dispatch settings $1$2", note: "bespoke" },
-
-    { re: /^launcher (run|scrub)( .*)?$/, to: "dispatch launcher $1$2", note: "bespoke" },
-
-    ...panelRules()
+    { re: /^list worktree$/, to: "dev worktrees", note: "working on the shell starts with dev" },
+    { re: /^(try|back|run|build|shaders|test|check)( .*)?$/, to: "dev $1$2", note: "working on the shell starts with dev" },
+    { re: /^demo (.+)$/, to: "dev preview menu $1", note: "previews live under dev" },
+    { re: /^gallery( .*)?$/, to: "dev preview gallery$1", note: "previews live under dev" },
+    { re: /^(lock|settings|files)preview( .*)?$/, to: "dev preview $1$2", note: "previews live under dev" }
 ];
 
-const ALIAS_NOUN = {
-    calc: "calculator",
-    osk: "keyboard",
-    pen: "penmap"
-};
-
 function migrateArgs(args) {
-    let normalized = String(args ?? "").trim();
-    const words = normalized.split(/[ \t]+/);
-    if (words[0] in ALIAS_NOUN)
-        words[0] = ALIAS_NOUN[words[0]];
-    normalized = words.join(" ");
-
+    const normalized = String(args ?? "").trim().split(/[ \t]+/).join(" ");
     for (const rule of RULES) {
-        const m = normalized.match(rule.re);
-        if (m)
-            return { args: normalized.replace(rule.re, rule.to).trimEnd(), note: rule.note };
+        if (rule.re.test(normalized))
+            return { args: normalized.replace(rule.re, rule.to).trimEnd(), note: rule.note, run: rule.run === true };
     }
     return null;
 }
 
-const CMD_RE = /(^|[^A-Za-z0-9_-])(banditshell(?:[ \t]+(?:"[^"]*"|[^ \t"'&;#\r\n)]+))+)/g;
+const CMD_RE = /(^|[^A-Za-z0-9_-])(banditshell(?:[ \t]+(?:"[^"]*"|[^ \t"'&;#\r\n)<>|]+))+)/g;
 
 const COMMENT_LINE = /^\s*(#|--)/;
 
@@ -171,8 +119,9 @@ function rewriteText(text) {
         const hit = migrateArgs(args);
         if (!hit)
             return whole;
-        changes.push({ from: cmd, to: `banditshell ${hit.args}`, note: hit.note });
-        return prefix + `banditshell ${hit.args}`;
+        const to = hit.run ? hit.args : `banditshell ${hit.args}`;
+        changes.push({ from: cmd, to, note: hit.note });
+        return prefix + to;
     })).join("\n");
     return { text: out, changes };
 }
@@ -199,7 +148,7 @@ function main(argv) {
     if (mode === "--cmd") {
         const hit = migrateArgs(argv.slice(1).join(" "));
         if (hit)
-            process.stdout.write(hit.args + "\n");
+            process.stdout.write((hit.run ? "!" : "") + hit.args + "\n");
         return hit ? 0 : 2;
     }
 

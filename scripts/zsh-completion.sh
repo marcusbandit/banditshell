@@ -131,18 +131,18 @@ _bs_places() {
 _bs_offer() {
     local -a values
     case $1 in
-    panel) values=( $_bs_panel ${(f)"$(_bs_live list menu)"} ) ;;
-    menu) values=( ${(f)"$(_bs_live list menu)"} ) ;;
-    theme) values=( $_bs_theme ${(f)"$(_bs_live list themes)"} ) ;;
+    panel) values=( $_bs_panel ${(f)"$(_bs_live panel)"} ) ;;
+    menu) values=( ${(f)"$(_bs_live dev menu list)"} ) ;;
+    theme) values=( $_bs_theme ${(f)"$(_bs_live config theme list)"} ) ;;
     page) values=( $_bs_page ) ;;
     layer) values=( $_bs_layer ) ;;
     screen) values=( ${(f)"$(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}')"} ) ;;
     key) values=( ${(f)"$(_bs_config_keys)"} ) ;;
     app) values=( ${(f)"$(_bs_desktop_ids)"} ) ;;
     place) values=( ${(f)"$(_bs_places)"} ) ;;
-    worktree) values=( ${(f)"$(banditshell list worktree 2>/dev/null)"} ) ;;
+    worktree) values=( ${(f)"$(banditshell dev worktrees 2>/dev/null)"} ) ;;
     index)
-        values=( ${(f)"$(_bs_live list clipboard | awk -F'\t' 'NF >= 4 {print $1 ":" $3 " " $4}')"} )
+        values=( ${(f)"$(_bs_live panel clipboard list | awk -F'\t' 'NF >= 4 {print $1 ":" $3 " " $4}')"} )
         (( $#values )) && _describe -t entries 'clipboard entry' values
         return
         ;;
@@ -200,6 +200,9 @@ _banditshell() {
         else
             continue
         fi
+        literals+=( ${items:#(@*|\*)} )
+        items=( ${(M)items:#@*} )
+        (( $#items )) || continue
         if (( score > best )); then
             best=$score
             offers=()
@@ -207,10 +210,9 @@ _banditshell() {
         (( score == best )) && offers+=( $items )
     done
 
-    offers=( ${(u)offers} )
-    literals=( ${offers:#(@*|\*)} )
+    literals=( ${(u)literals} )
     (( $#literals )) && compadd -a literals
-    for word in ${(M)offers:#@*}; do
+    for word in ${(u)offers}; do
         _bs_offer ${word#@}
     done
 }

@@ -1,6 +1,32 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-4",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "major",
+          "text": "The banditshell command is regrouped so it starts with the thing you want, then what to do with it: banditshell panel launcher toggle, banditshell screen border off, banditshell wallpaper next, banditshell clock timer start 10m. Plain banditshell lists 17 commands instead of 30, banditshell <command> help shows what one takes, and a command on its own, like banditshell screen, shows how that thing is right now. Your keybinds keep working as they are; the update menu offers to rewrite them to the new form, and banditshell doctor binds does the same."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Volume and locking are no longer banditshell commands, because wpctl and loginctl already do them: an old banditshell volume or lock command, typed or bound, now runs the matching wpctl or loginctl command. The sound menu, the media panel and the lock screen work as before."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The commands for working on the shell moved under banditshell dev: dev try, dev back, dev build, dev test, dev check, and the previews under dev preview."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell screenshot full saves the whole desktop to your screenshots folder, next to the region screenshots from screenshot save and screenshot copy."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-3",
       "date": "2026-10-14",
       "changes": [

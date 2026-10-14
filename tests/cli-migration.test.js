@@ -6,228 +6,263 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/cli-migration.js"), "utf8");
 const Migration = new Function(src
-    + "\nreturn { migrateArgs, rewriteText, RULES, PANELS };")();
+    + "\nreturn { migrateArgs, rewriteText, RULES };")();
 
 function migrate(cmd) {
     const hit = Migration.migrateArgs(cmd);
-    return hit ? hit.args : cmd;
+    if (!hit)
+        return cmd;
+    return hit.run ? `!${hit.args}` : hit.args;
 }
 
-test("lifecycle verbs need nothing", () => {
-    for (const verb of ["start", "stop", "restart", "run", "log"])
-        assert.strictEqual(migrate(verb), verb);
-});
-
-test("get and set were already generic-first", () => {
-    assert.strictEqual(migrate("get theme"), "get theme");
-    assert.strictEqual(migrate("set theme dark"), "set theme dark");
-    assert.strictEqual(migrate("get edge.bare"), "get edge.bare");
-    assert.strictEqual(migrate("set edge.bare true"), "set edge.bare true");
-});
-
-test("dev verbs pass through untouched", () => {
-    for (const cmd of ["build", "test", "shaders", "shot x.png", "demo calendar",
-        "gallery 1280x800", "lockpreview", "settingspreview 400x800 lock",
-        "completions install", "completions status"])
-        assert.strictEqual(migrate(cmd), cmd);
-});
-
-test("every panel's surface verbs move in front of panel", () => {
-    for (const [old, now] of [
-        ["launcher toggle", "toggle panel launcher"],
-        ["launcher open", "open panel launcher"],
-        ["launcher close", "close panel launcher"],
-        ["clipboard toggle", "toggle panel clipboard"],
-        ["session toggle", "toggle panel session"],
-        ["media status", "status panel media"],
-        ["keyboard toggle", "toggle panel keyboard"],
-        ["notifications toggle", "toggle panel notifications"],
-        ["notifications close", "close panel notifications"],
-        ["notch status DP-1", "status panel notch DP-1"],
-        ["hotkeys open DP-1", "open panel hotkeys DP-1"],
-        ["settings status", "status panel settings"],
-        ["files toggle", "toggle panel files"],
-        ["files open ~/docs", "open panel files ~/docs"],
-        ["files close", "close panel files"]
-    ])
+function table(pairs) {
+    for (const [old, now] of pairs)
         assert.strictEqual(migrate(old), now, old);
+}
+
+test("lifecycle words need nothing", () => {
+    for (const verb of ["start", "stop", "restart", "status", "log", "doctor", "completions install"])
+        assert.strictEqual(Migration.migrateArgs(verb), null, verb);
 });
 
-test("the wallpaper picker loses the plural, keeps the panel", () => {
-    assert.strictEqual(migrate("wallpapers toggle"), "toggle panel wallpaper");
-    assert.strictEqual(migrate("wallpapers toggle DP-1"), "toggle panel wallpaper DP-1");
-    assert.strictEqual(migrate("wallpapers open"), "open panel wallpaper");
-    assert.strictEqual(migrate("wallpapers status"), "status panel wallpaper");
-});
-
-test("menu's key becomes the panel instance", () => {
-    assert.strictEqual(migrate("menu list"), "list menu");
-    assert.strictEqual(migrate("menu open calendar"), "open panel calendar");
-    assert.strictEqual(migrate("menu open calendar DP-1"), "open panel calendar DP-1");
-    assert.strictEqual(migrate("menu toggle clock"), "toggle panel clock");
-    assert.strictEqual(migrate("menu close"), "close panel menu");
-    assert.strictEqual(migrate("menu current"), "dispatch menu current");
-    assert.strictEqual(migrate("menu hover"), "dispatch menu hover");
-});
-
-test("the sugar verbs become the panel toggles they always were", () => {
-    assert.strictEqual(migrate("calendar"), "toggle panel calendar");
-    assert.strictEqual(migrate("clock"), "toggle panel clock");
-});
-
-test("bespoke panel verbs go through dispatch", () => {
-    for (const [old, now] of [
-        ["launcher run firefox", "dispatch launcher run firefox"],
-        ["launcher scrub 0.5", "dispatch launcher scrub 0.5"],
-        ["clipboard use 3", "dispatch clipboard use 3"],
-        ["clipboard pin 3", "dispatch clipboard pin 3"],
-        ["clipboard remove 3", "dispatch clipboard remove 3"],
-        ["clipboard clear", "dispatch clipboard clear"],
-        ["clipboard list", "list clipboard"],
-        ["calculator app", "dispatch calculator app"],
-        ["calculator panel", "dispatch calculator panel"],
-        ["calculator answer \"2+3*4\"", "dispatch calculator answer \"2+3*4\""],
-        ["keyboard page letters", "dispatch keyboard page letters"],
-        ["keyboard dock", "dispatch keyboard dock"],
-        ["keyboard float", "dispatch keyboard float"],
-        ["settings page general", "dispatch settings page general"],
-        ["settings float", "dispatch settings float"]
-    ])
-        assert.strictEqual(migrate(old), now, old);
-});
-
-test("notifications clear goes through dispatch", () => {
-    assert.strictEqual(migrate("notifications clear"), "dispatch notifications clear");
-    assert.strictEqual(migrate("dispatch notifications clear"), "dispatch notifications clear");
-    const { text, changes } = Migration.rewriteText('hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd("banditshell notifications clear"))');
-    assert.strictEqual(text, 'hl.bind("SUPER + SHIFT + N", hl.dsp.exec_cmd("banditshell dispatch notifications clear"))');
-    assert.strictEqual(changes.length, 1);
-});
-
-test("the noun aliases still land on the same panel", () => {
-    assert.strictEqual(migrate("calc toggle"), "toggle panel calculator");
-    assert.strictEqual(migrate("osk toggle"), "toggle panel keyboard");
-    assert.strictEqual(migrate("pen open"), "open panel penmap");
-});
-
-test("border", () => {
-    assert.strictEqual(migrate("border toggle"), "toggle border");
-    assert.strictEqual(migrate("border on"), "set border on");
-    assert.strictEqual(migrate("border off"), "set border off");
-    assert.strictEqual(migrate("border status"), "status border");
-});
-
-test("wallpaper state, value and actions", () => {
-    assert.strictEqual(migrate("wallpaper toggle"), "toggle wallpaper");
-    assert.strictEqual(migrate("wallpaper on"), "set wallpaper on");
-    assert.strictEqual(migrate("wallpaper off"), "set wallpaper off");
-    assert.strictEqual(migrate("wallpaper status"), "status wallpaper");
-    assert.strictEqual(migrate("wallpaper list DP-1"), "list wallpaper DP-1");
-    assert.strictEqual(migrate("wallpaper set ~/pics/x.jpg all"), "set wallpaper ~/pics/x.jpg all");
-    assert.strictEqual(migrate("wallpaper next all"), "dispatch wallpaper next all");
-    assert.strictEqual(migrate("wallpaper prev"), "dispatch wallpaper prev");
-    assert.strictEqual(migrate("wallpaper clear"), "dispatch wallpaper clear");
-    assert.strictEqual(migrate("wallpaper palette"), "dispatch wallpaper palette");
-});
-
-test("volume: set is absolute, relative, and mute is the boolean part", () => {
-    assert.strictEqual(migrate("volume set 50"), "set volume 50");
-    assert.strictEqual(migrate("volume set .5"), "set volume .5");
-    assert.strictEqual(migrate("volume up 5"), "set volume +5");
-    assert.strictEqual(migrate("volume down 3"), "set volume -3");
-    assert.strictEqual(migrate("volume up"), "set volume +");
-    assert.strictEqual(migrate("volume mute"), "toggle volume mute");
-    assert.strictEqual(migrate("volume mute on"), "set volume mute on");
-    assert.strictEqual(migrate("volume mute off"), "set volume mute off");
-    assert.strictEqual(migrate("volume status"), "status volume");
-});
-
-test("output", () => {
-    assert.strictEqual(migrate("output toggle"), "toggle output");
-    assert.strictEqual(migrate("output speakers"), "set output speakers");
-    assert.strictEqual(migrate("output headphones"), "set output headphones");
-    assert.strictEqual(migrate("output assign speakers alsa_out"), "set output speakers alsa_out");
-    assert.strictEqual(migrate("output list"), "list output");
-    assert.strictEqual(migrate("output status"), "status output");
-});
-
-test("tablet: hinge, lid, and the probe", () => {
-    assert.strictEqual(migrate("tablet on"), "set tablet on");
-    assert.strictEqual(migrate("tablet off compositor"), "set tablet off compositor");
-    assert.strictEqual(migrate("tablet toggle"), "toggle tablet");
-    assert.strictEqual(migrate("tablet toggle compositor"), "toggle tablet compositor");
-    assert.strictEqual(migrate("tablet status"), "status tablet");
-    assert.strictEqual(migrate("tablet lid closed"), "set tablet lid closed");
-    assert.strictEqual(migrate("tablet lid open"), "set tablet lid open");
-    assert.strictEqual(migrate("tablet lid toggle"), "toggle tablet lid");
-    assert.strictEqual(migrate("tablet probe"), "dispatch tablet probe");
-    assert.strictEqual(migrate("tablet probe-lid"), "dispatch tablet probe lid");
-});
-
-test("penmap, picker, lock, keyring", () => {
-    assert.strictEqual(migrate("penmap open"), "open panel penmap");
-    assert.strictEqual(migrate("penmap commit"), "dispatch penmap commit");
-    assert.strictEqual(migrate("penmap follow"), "dispatch penmap follow");
-    assert.strictEqual(migrate("penmap set 0 0 100 100"), "set penmap rect 0 0 100 100");
-    assert.strictEqual(migrate("penmap status"), "status penmap");
-    assert.strictEqual(migrate("picker freezeclip"), "dispatch picker freezeclip");
-    assert.strictEqual(migrate("picker clip"), "dispatch picker clip");
-    assert.strictEqual(migrate("picker close"), "close panel picker");
-    assert.strictEqual(migrate("lock"), "dispatch lock");
-    assert.strictEqual(migrate("lock status"), "status lock");
-    assert.strictEqual(migrate("keyring status"), "status keyring");
-    assert.strictEqual(migrate("keyring demo"), "dispatch keyring demo");
-});
-
-test("timer, alarm, zone", () => {
-    assert.strictEqual(migrate("timer start 10m tea"), "dispatch timer start 10m tea");
-    assert.strictEqual(migrate("timer pause"), "dispatch timer pause");
-    assert.strictEqual(migrate("timer status"), "status timer");
-    assert.strictEqual(migrate("alarm list"), "list alarm");
-    assert.strictEqual(migrate("alarm status"), "status alarm");
-    assert.strictEqual(migrate("alarm enable 2"), "dispatch alarm enable 2");
-    assert.strictEqual(migrate("alarm add 07:00 --days mon,wed --label standup --run echo hi"),
-        "dispatch alarm add 07:00 --days mon,wed --label standup --run echo hi");
-    assert.strictEqual(migrate("zone list"), "list zone");
-    assert.strictEqual(migrate("zone add new york"), "dispatch zone add new york");
-    assert.strictEqual(migrate("zone find oslo"), "dispatch zone find oslo");
-});
-
-test("theme sugar folds into get/set", () => {
-    assert.strictEqual(migrate("theme"), "get theme");
-    assert.strictEqual(migrate("theme dark"), "set theme dark");
-    assert.strictEqual(migrate("themes"), "list themes");
-});
-
-test("the rescue stays one word", () => {
-    assert.strictEqual(migrate("close"), "close");
-    assert.strictEqual(migrate("panic"), "close");
-});
-
-test("new forms pass through untouched", () => {
-    for (const cmd of ["toggle panel launcher", "set volume 50", "dispatch clipboard use 3",
-        "list wallpaper", "status border", "close panel notifications", "close"])
+test("the new grammar passes through untouched", () => {
+    for (const cmd of ["panel launcher toggle", "panel close", "screen border off", "wallpaper next",
+        "wallpaper", "tablet on compositor", "clock timer start 10m", "output toggle", "config set edge.bare true",
+        "screenshot copy --freeze", "dev try 2", "dev back", "help panel"])
         assert.strictEqual(Migration.migrateArgs(cmd), null, cmd);
+});
+
+test("a panel comes first, then what to do with it", () => {
+    table([
+        ["toggle panel launcher", "panel launcher toggle"],
+        ["open panel clipboard", "panel clipboard open"],
+        ["close panel notifications", "panel notifications close"],
+        ["status panel notch DP-1", "panel notch status DP-1"],
+        ["toggle panel files ~/docs", "panel files toggle ~/docs"],
+        ["open panel settings wifi DP-1", "panel settings open wifi DP-1"],
+        ["toggle panel calendar", "panel calendar toggle"],
+        ["toggle panel wallpaper DP-1", "panel wallpaper toggle DP-1"],
+        ["close", "panel close"],
+        ["panic", "panel close"],
+        ["files", "panel files toggle"],
+        ["files open ~/docs", "panel files open ~/docs"]
+    ]);
+});
+
+test("a panel's own actions follow its name", () => {
+    table([
+        ["dispatch launcher run firefox", "panel launcher run firefox"],
+        ["dispatch settings page wifi", "panel settings page wifi"],
+        ["dispatch settings float", "panel settings float"],
+        ["dispatch keyboard dock", "panel keyboard dock"],
+        ["dispatch keyboard page symbols DP-1", "panel keyboard page symbols DP-1"],
+        ["dispatch clipboard pin 3", "panel clipboard pin 3"],
+        ["dispatch clipboard clear", "panel clipboard clear"],
+        ["list clipboard", "panel clipboard list"],
+        ["dispatch calculator app", "panel calculator full"],
+        ["dispatch calculator panel", "panel calculator compact"],
+        ["dispatch calculator answer 2 + 2", "panel calculator answer 2 + 2"],
+        ["dispatch notifications clear", "panel notifications clear"],
+        ["dispatch keyring refuse", "panel keyring close"],
+        ["status keyring", "panel keyring status"]
+    ]);
+});
+
+test("the screen holds its levels and the shell's frame", () => {
+    table([
+        ["toggle border", "screen border toggle"],
+        ["set border off", "screen border off"],
+        ["status border", "screen border"],
+        ["toggle sidebar", "screen sidebar toggle"],
+        ["toggle sidebar DP-2", "screen sidebar toggle DP-2"],
+        ["set sidebar on all", "screen sidebar on all"],
+        ["status sidebar", "screen sidebar"],
+        ["set stream on DP-1", "screen stream on DP-1"],
+        ["set stream off", "screen stream off"],
+        ["status stream", "screen stream"],
+        ["set brightness +.1", "screen brightness +.1"],
+        ["set temperature off", "screen temperature off"],
+        ["status screen", "screen"]
+    ]);
+});
+
+test("everything about the wallpaper starts with wallpaper", () => {
+    table([
+        ["toggle wallpaper", "wallpaper toggle"],
+        ["set wallpaper off", "wallpaper off"],
+        ["set wallpaper ~/a.png DP-1", "wallpaper set ~/a.png DP-1"],
+        ["status wallpaper", "wallpaper"],
+        ["list wallpaper DP-1", "wallpaper list DP-1"],
+        ["dispatch wallpaper next all", "wallpaper next all"],
+        ["dispatch wallpaper palette", "wallpaper palette"]
+    ]);
+});
+
+test("the output keeps its speakers and headphones", () => {
+    table([
+        ["toggle output", "output toggle"],
+        ["set output headphones", "output headphones"],
+        ["set output speakers alsa_output.pci", "output assign speakers alsa_output.pci"],
+        ["status output", "output"],
+        ["list output", "output list"]
+    ]);
+});
+
+test("volume goes to wpctl, the lock to loginctl", () => {
+    const sink = "@DEFAULT_AUDIO_SINK@";
+    table([
+        ["set volume +", `!wpctl set-volume -l 1 ${sink} 5%+`],
+        ["set volume -", `!wpctl set-volume -l 1 ${sink} 5%-`],
+        ["set volume +10", `!wpctl set-volume -l 1 ${sink} 10%+`],
+        ["set volume -.1", `!wpctl set-volume -l 1 ${sink} 10%-`],
+        ["set volume 40", `!wpctl set-volume -l 1 ${sink} 40%`],
+        ["set volume .5", `!wpctl set-volume -l 1 ${sink} 50%`],
+        ["toggle volume mute", `!wpctl set-mute ${sink} toggle`],
+        ["set volume mute", `!wpctl set-mute ${sink} toggle`],
+        ["set volume mute on", `!wpctl set-mute ${sink} 1`],
+        ["set volume mute off", `!wpctl set-mute ${sink} 0`],
+        ["status volume", `!wpctl get-volume ${sink}`],
+        ["dispatch lock", "!loginctl lock-session"],
+        ["lock", "!loginctl lock-session"],
+        ["status lock", "!loginctl show-session auto -p LockedHint"]
+    ]);
+    assert.strictEqual(Migration.migrateArgs("set volume loud"), null);
+});
+
+test("the tablet holds its hinge, lid, probe and pen", () => {
+    table([
+        ["set tablet on compositor", "tablet on compositor"],
+        ["set tablet off", "tablet off"],
+        ["toggle tablet", "tablet toggle"],
+        ["toggle tablet lid hand", "tablet lid toggle hand"],
+        ["set tablet lid closed", "tablet lid closed"],
+        ["status tablet", "tablet"],
+        ["dispatch tablet probe", "tablet probe"],
+        ["dispatch tablet probe lid", "tablet probe lid"],
+        ["dispatch penmap probe", "tablet probe"],
+        ["open panel penmap", "tablet pen edit"],
+        ["toggle panel penmap", "tablet pen edit"],
+        ["close panel penmap", "tablet pen cancel"],
+        ["status panel penmap", "tablet pen"],
+        ["status penmap", "tablet pen"],
+        ["dispatch penmap commit", "tablet pen commit"],
+        ["set penmap rect 0 0 1920 1080", "tablet pen area 0 0 1920 1080"]
+    ]);
+});
+
+test("timers, alarms and zones live in the clock", () => {
+    table([
+        ["dispatch timer start 10m tea", "clock timer start 10m tea"],
+        ["dispatch timer toggle", "clock timer toggle"],
+        ["status timer", "clock timer"],
+        ["dispatch alarm snooze", "clock alarm snooze"],
+        ["dispatch alarm add 7:00 --days weekdays", "clock alarm add 7:00 --days weekdays"],
+        ["status alarm", "clock alarm"],
+        ["list alarm", "clock alarm list"],
+        ["list zone", "clock zone list"],
+        ["dispatch zone add Tokyo", "clock zone add Tokyo"]
+    ]);
+});
+
+test("the picker is screenshot", () => {
+    table([
+        ["dispatch picker open", "screenshot save"],
+        ["dispatch picker freeze", "screenshot save --freeze"],
+        ["dispatch picker clip", "screenshot copy"],
+        ["dispatch picker freezeclip", "screenshot copy --freeze"],
+        ["dispatch picker close", "panel close"],
+        ["shot", "screenshot full"],
+        ["shot /tmp/a.png", "screenshot full /tmp/a.png"]
+    ]);
+});
+
+test("settings start with config", () => {
+    table([
+        ["get theme", "config theme"],
+        ["set theme slate", "config theme slate"],
+        ["list themes", "config theme list"],
+        ["get edge.bare", "config get edge.bare"],
+        ["set edge.bare true", "config set edge.bare true"]
+    ]);
+});
+
+test("working on the shell starts with dev", () => {
+    table([
+        ["try", "dev try"],
+        ["try wall", "dev try wall"],
+        ["back", "dev back"],
+        ["run", "dev run"],
+        ["build", "dev build"],
+        ["shaders", "dev shaders"],
+        ["test --test-name-pattern x", "dev test --test-name-pattern x"],
+        ["check", "dev check"],
+        ["list worktree", "dev worktrees"],
+        ["list menu", "dev menu list"],
+        ["dispatch menu hover", "dev menu hover"],
+        ["dispatch launcher scrub .5", "dev launcher scrub .5"],
+        ["dispatch keyring demo", "dev keyring demo"],
+        ["demo calendar", "dev preview menu calendar"],
+        ["gallery 1280x800", "dev preview gallery 1280x800"],
+        ["lockpreview", "dev preview lock"],
+        ["settingspreview 400x800 wifi", "dev preview settings 400x800 wifi"],
+        ["filespreview ~/docs /tmp/f.png", "dev preview files ~/docs /tmp/f.png"],
+        ["dispatch migration migrate", "doctor binds"],
+        ["status migration", "doctor"]
+    ]);
+});
+
+test("the map covers every verb and dispatch target the old CLI had", () => {
+    const sources = Migration.RULES.map(r => String(r.re));
+    for (const word of ["toggle", "open", "close", "panic", "status", "set", "get", "list", "files",
+        "menu", "timer", "alarm", "zone", "clipboard", "calculator", "keyboard", "settings", "launcher",
+        "wallpaper", "penmap", "tablet", "keyring", "notifications", "migration", "lock", "picker",
+        "volume", "output", "border", "sidebar", "stream", "brightness", "temperature", "theme", "themes",
+        "worktree", "try", "back", "run", "build", "shaders", "test", "check", "shot", "demo", "gallery", "preview"])
+        assert.ok(sources.some(s => s.includes(word)), `no rule names ${word}`);
 });
 
 test("rewrites inside exec_cmd strings", () => {
     const { text, changes } = Migration.rewriteText(
-        "hl.bind(\"SUPER + M\", hl.dsp.exec_cmd(\"banditshell media toggle\"))");
-    assert.strictEqual(text,
         "hl.bind(\"SUPER + M\", hl.dsp.exec_cmd(\"banditshell toggle panel media\"))");
+    assert.strictEqual(text,
+        "hl.bind(\"SUPER + M\", hl.dsp.exec_cmd(\"banditshell panel media toggle\"))");
     assert.strictEqual(changes.length, 1);
 });
 
-test("leaves the && tail alone", () => {
-    const line = "bind = $mod SHIFT, K, exec, banditshell border toggle && hyprctl eval \"hl.config({ gaps_out = 0 })\"";
+test("a bind that now belongs to another program names that program", () => {
+    const { text } = Migration.rewriteText(
+        "{ \"XF86AudioRaiseVolume\", \"banditshell set volume +\", true },\nhl.bind(\"SUPER + L\", hl.dsp.exec_cmd(\"banditshell dispatch lock\"))");
+    assert.strictEqual(text,
+        "{ \"XF86AudioRaiseVolume\", \"wpctl set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+\", true },\nhl.bind(\"SUPER + L\", hl.dsp.exec_cmd(\"loginctl lock-session\"))");
+});
+
+test("a redirection or a pipe ends the command", () => {
+    const line = 'banditshell set border "$border" >/dev/null 2>&1 || return 1';
     const { text } = Migration.rewriteText(line);
-    assert.ok(text.includes("banditshell toggle border && hyprctl eval"), text);
+    assert.strictEqual(text, 'banditshell screen border "$border" >/dev/null 2>&1 || return 1');
+    assert.strictEqual(Migration.rewriteText("banditshell list menu | head").text, "banditshell dev menu list | head");
+});
+
+test("a named thing never falls through to config set", () => {
+    table([
+        ["set border $mode", "screen border $mode"],
+        ["set tablet $state compositor", "tablet $state compositor"],
+        ["set output $role", "output $role"]
+    ]);
+    for (const name of ["wallpaper", "volume", "brightness", "temperature", "theme", "penmap"])
+        assert.ok(!migrate(`set ${name} "$x"`).startsWith("config set"), name);
+});
+
+test("leaves the && tail alone", () => {
+    const line = "bind = $mod SHIFT, K, exec, banditshell toggle border && hyprctl eval \"hl.config({ gaps_out = 0 })\"";
+    const { text } = Migration.rewriteText(line);
+    assert.ok(text.includes("banditshell screen border toggle && hyprctl eval"), text);
     assert.ok(text.includes("hl.config"), text);
 });
 
 test("quoted arguments survive the span", () => {
-    const { text } = Migration.rewriteText("exec = banditshell calculator answer \"2+3*4\"");
-    assert.ok(text.includes("banditshell dispatch calculator answer \"2+3*4\""), text);
+    const { text } = Migration.rewriteText("exec = banditshell dispatch calculator answer \"2+3*4\"");
+    assert.ok(text.includes("banditshell panel calculator answer \"2+3*4\""), text);
 });
 
 test("does not touch names that merely contain the word", () => {
@@ -238,74 +273,13 @@ test("does not touch names that merely contain the word", () => {
 });
 
 test("rewriting twice changes nothing the second time", () => {
-    const once = Migration.rewriteText("hl.dsp.exec_cmd(\"banditshell wallpapers toggle\")");
-    const twice = Migration.rewriteText(once.text);
-    assert.strictEqual(twice.changes.length, 0);
-    assert.strictEqual(twice.text, once.text);
-});
-
-test("the map covers every noun the old CLI had", () => {
-    const oldNouns = ["menu", "launcher", "clipboard", "session", "media", "calculator",
-        "tablet", "keyboard", "settings", "notifications", "notch", "hotkeys",
-        "timer", "alarm", "zone", "volume", "output", "lock", "keyring", "picker",
-        "wallpaper", "wallpapers", "border", "files", "calendar", "clock", "theme", "themes"];
-    const sources = Migration.RULES.map(r => String(r.re));
-    for (const noun of oldNouns)
-        assert.ok(sources.some(s => s.includes(noun)), `no rule names ${noun}`);
-});
-
-test("the sidebar's old noun-first forms become its generic verbs", () => {
-    assert.strictEqual(migrate("sidebar toggle"), "toggle sidebar");
-    assert.strictEqual(migrate("sidebar toggle DP-2"), "toggle sidebar DP-2");
-    assert.strictEqual(migrate("sidebar toggle all"), "toggle sidebar all");
-    assert.strictEqual(migrate("sidebar on"), "set sidebar on");
-    assert.strictEqual(migrate("sidebar off all"), "set sidebar off all");
-    assert.strictEqual(migrate("sidebar status"), "status sidebar");
-});
-
-test("a bare old noun runs what the old CLI defaulted it to", () => {
-    const bare = {
-        launcher: "toggle panel launcher",
-        clipboard: "toggle panel clipboard",
-        session: "toggle panel session",
-        media: "toggle panel media",
-        calculator: "toggle panel calculator",
-        calc: "toggle panel calculator",
-        keyboard: "toggle panel keyboard",
-        osk: "toggle panel keyboard",
-        settings: "toggle panel settings",
-        notifications: "toggle panel notifications",
-        notch: "toggle panel notch",
-        hotkeys: "toggle panel hotkeys",
-        wallpapers: "toggle panel wallpaper",
-        wallpaper: "toggle wallpaper",
-        border: "toggle border",
-        menu: "list menu",
-        alarm: "list alarm",
-        zone: "list zone",
-        penmap: "status penmap",
-        pen: "status penmap",
-        tablet: "status tablet",
-        timer: "status timer",
-        volume: "status volume",
-        output: "status output",
-        keyring: "status keyring",
-        picker: "dispatch picker freezeclip",
-        lock: "dispatch lock"
-    };
-    for (const old in bare)
-        assert.strictEqual(migrate(old), bare[old], old);
-});
-
-test("bare words that are still verbs stay as they are", () => {
-    for (const verb of ["files", "status", "close", "start", "doctor"])
-        assert.strictEqual(Migration.migrateArgs(verb), null, verb);
-});
-
-test("the sidebar bind is rewritten where it lives in a Lua config", () => {
-    const { text, changes } = Migration.rewriteText('hl.bind("SUPER + K", hl.dsp.exec_cmd("banditshell sidebar toggle"))');
-    assert.strictEqual(changes.length, 1);
-    assert.strictEqual(text, 'hl.bind("SUPER + K", hl.dsp.exec_cmd("banditshell toggle sidebar"))');
+    for (const line of ["hl.dsp.exec_cmd(\"banditshell toggle panel wallpaper\")",
+        "bindel = , XF86AudioRaiseVolume, exec, banditshell set volume +"]) {
+        const once = Migration.rewriteText(line);
+        const twice = Migration.rewriteText(once.text);
+        assert.strictEqual(twice.changes.length, 0, line);
+        assert.strictEqual(twice.text, once.text, line);
+    }
 });
 
 test("the example binds speak only the new grammar", () => {
@@ -315,12 +289,12 @@ test("the example binds speak only the new grammar", () => {
 
 test("comments are prose, not binds: they are never counted or rewritten", () => {
     const conf = [
-        "# the old key ran `banditshell media",
-        "-- banditshell sidebar toggle was the old form",
-        "bind = $mod, Z, exec, banditshell sidebar toggle # the sidebar"
+        "# the old key ran `banditshell toggle panel media",
+        "-- banditshell toggle sidebar was the old form",
+        "bind = $mod, Z, exec, banditshell toggle sidebar # the sidebar"
     ].join("\n");
     const { text, changes } = Migration.rewriteText(conf);
     assert.strictEqual(changes.length, 1);
-    assert.strictEqual(text.split("\n")[2], "bind = $mod, Z, exec, banditshell toggle sidebar # the sidebar");
-    assert.strictEqual(text.split("\n")[1], "-- banditshell sidebar toggle was the old form");
+    assert.strictEqual(text.split("\n")[2], "bind = $mod, Z, exec, banditshell screen sidebar toggle # the sidebar");
+    assert.strictEqual(text.split("\n")[1], "-- banditshell toggle sidebar was the old form");
 });

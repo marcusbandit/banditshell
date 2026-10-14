@@ -517,27 +517,6 @@ Scope {
         }
     }
 
-    function nudgeVolume(sign: int, count: string): string {
-        if (!Audio.ready)
-            return "no audio sink";
-        const n = parseFloat(count);
-        const steps = n > 0 ? n : 1;
-        const target = Audio.quantise(Audio.volume + sign * steps * Config.values.volume.step);
-        Audio.setVolume(target);
-        return `${Math.round(target * 100)}%`;
-    }
-
-    function nudgePercent(sign: real, pct: string): string {
-        if (!Audio.ready)
-            return "no audio sink";
-        const n = parseFloat(pct);
-        if (!isFinite(n))
-            return `not a number: ${pct}`;
-        const target = Audio.quantise(Audio.volume + sign * n / 100);
-        Audio.setVolume(target);
-        return `${Math.round(target * 100)}%`;
-    }
-
     IpcHandler {
         target: "files"
 
@@ -559,54 +538,6 @@ Scope {
         function status(): string {
             const shell = Files.term ? `rows=${Files.term.rows} alt=${Files.term.altActive}` : "no session";
             return `open=${Files.windowOpen} cwd=${Files.cwd} entries=${Files.entries.length} focus=${Files.focus} terminal=[${shell}] error=[${Files.error}]`;
-        }
-    }
-
-    IpcHandler {
-        target: "volume"
-
-        function up(count: string): string {
-            return root.nudgeVolume(1, count);
-        }
-
-        function down(count: string): string {
-            return root.nudgeVolume(-1, count);
-        }
-
-        function upPercent(pct: string): string {
-            return root.nudgePercent(1, pct);
-        }
-
-        function downPercent(pct: string): string {
-            return root.nudgePercent(-1, pct);
-        }
-
-        function set(pct: string): string {
-            if (!Audio.ready)
-                return "no audio sink";
-            const n = parseFloat(pct);
-            if (!isFinite(n))
-                return `not a number: ${pct}`;
-            const target = Audio.quantise(n / 100);
-            Audio.setVolume(target);
-            return `${Math.round(target * 100)}%`;
-        }
-
-        function mute(state: string): string {
-            if (!Audio.ready)
-                return "no audio sink";
-            if (state && state !== "on" && state !== "off")
-                return `mute takes on or off, not: ${state}`;
-            const want = state === "on" || (state !== "off" && !Audio.muted);
-            if (want !== Audio.muted)
-                Audio.toggleMute();
-            return want ? "muted" : "unmuted";
-        }
-
-        function status(): string {
-            if (!Audio.ready)
-                return "no audio sink";
-            return `volume=${Math.round(Audio.volume * 100)}% muted=${Audio.muted} ceiling=${Math.round(Audio.maxVolume * 100)}%`;
         }
     }
 
@@ -1008,21 +939,6 @@ Scope {
     }
 
     IpcHandler {
-        target: "lock"
-
-        function lock(): string {
-            Lock.lock();
-            return "locked";
-        }
-
-        function status(): string {
-            if (!Lock.active)
-                return "unlocked";
-            return Lock.secure ? "locked" : "locking";
-        }
-    }
-
-    IpcHandler {
         target: "keyring"
 
         function status(): string {
@@ -1038,7 +954,7 @@ Scope {
 
         function demo(): string {
             Keyring.demo();
-            return "showing a made-up question; escape or `keyring refuse` puts it away";
+            return "showing a made-up question; escape or `banditshell panel keyring close` puts it away";
         }
     }
 
@@ -1101,7 +1017,7 @@ Scope {
         return root.withClock(() => {
             const alarm = root.pickAlarm(handle);
             if (!alarm)
-                return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
+                return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell clock alarm list)";
             Clock.setAlarmArmed(alarm.id, on);
             return Words.columns([root.alarmFields(alarm, Clock.alarms.indexOf(alarm) + 1, Date.now())]);
         });
@@ -1230,7 +1146,7 @@ Scope {
             return root.withClock(() => {
                 const alarm = root.pickAlarm(handle);
                 if (!alarm)
-                    return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell alarm list)";
+                    return handle ? `no such alarm: ${handle}` : "which alarm? (banditshell clock alarm list)";
                 Clock.removeAlarm(alarm.id);
                 return `removed ${Words.hhmm(alarm.hour, alarm.minute)}${alarm.label ? ` ${alarm.label}` : ""} (${alarm.id})`;
             });
@@ -1296,7 +1212,7 @@ Scope {
                 }
 
                 const pending = Clock.places.filter(id => !Clock.zones.some(z => z.id === id));
-                const table = rows.length > 1 ? Words.columns(rows) : `${Words.columns(rows)}\nno places yet (banditshell zone add <place>)`;
+                const table = rows.length > 1 ? Words.columns(rows) : `${Words.columns(rows)}\nno places yet (banditshell clock zone add <place>)`;
                 return pending.length > 0 ? `${table}\nmeasuring ${pending.join(", ")}` : table;
             });
         }
@@ -1304,7 +1220,7 @@ Scope {
         function find(text: string): string {
             const want = String(text ?? "").trim();
             if (!want)
-                return "which place? (banditshell zone find <text>)";
+                return "which place? (banditshell clock zone find <text>)";
             if (Clock.allZones.length === 0) {
                 Clock.loadZoneList();
                 return "reading this machine's zone list; ask again in a moment";
@@ -1317,16 +1233,16 @@ Scope {
             return root.withClock(() => {
                 const want = String(place ?? "").trim();
                 if (!want)
-                    return "which place? (banditshell zone find <text>)";
+                    return "which place? (banditshell clock zone find <text>)";
                 if (Clock.allZones.length === 0) {
                     Clock.loadZoneList();
                     return "reading this machine's zone list; ask again in a moment";
                 }
                 const near = Words.zoneMatches(want, Clock.allZones);
                 if (near.length === 0)
-                    return `no such place: ${want} (banditshell zone find ${want})`;
+                    return `no such place: ${want} (banditshell clock zone find ${want})`;
                 if (near.length > 1)
-                    return `${want} could be any of ${near.length} (banditshell zone find ${want})`;
+                    return `${want} could be any of ${near.length} (banditshell clock zone find ${want})`;
                 const id = near[0];
 
                 if (id === Clock.localZone)
@@ -1342,12 +1258,12 @@ Scope {
             return root.withClock(() => {
                 const want = Words.zoneKey(place);
                 if (!want)
-                    return "which place? (banditshell zone list)";
+                    return "which place? (banditshell clock zone list)";
                 const hits = Clock.places.filter(id => Words.zoneKey(id) === want || Words.zoneKey(Clock.cityOf(id)) === want);
                 if (hits.length === 0)
-                    return `not on the list: ${place} (banditshell zone list)`;
+                    return `not on the list: ${place} (banditshell clock zone list)`;
                 if (hits.length > 1)
-                    return `${place} is ${hits.length} of them; name the id (banditshell zone list)`;
+                    return `${place} is ${hits.length} of them; name the id (banditshell clock zone list)`;
                 Clock.removeZone(hits[0]);
                 return `removed ${Clock.cityOf(hits[0])} (${hits[0]})`;
             });

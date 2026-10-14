@@ -124,11 +124,24 @@ emit_entry() {
 }
 
 parse() {
-    local line stripped indent spec="" description="" open=0
+    local line stripped indent spec="" description="" open=0 section="" summary="" summary_open=0
     while IFS= read -r line; do
+        if [[ $line =~ ^[a-z][a-z\|]*(\ \ |$) ]]; then
+            [ "$open" -eq 1 ] && emit_entry "$spec" "$(verb_description "$description")"
+            open=0
+            section="${line%% *}"
+            summary=""
+            summary_open=1
+            if [ "${#line}" -gt "$DESCRIPTION_COLUMN" ] && [ "${line:$((DESCRIPTION_COLUMN - 2)):2}" = "  " ]; then
+                summary="$(trim "${line:$DESCRIPTION_COLUMN}")"
+                summary_open=0
+            fi
+            continue
+        fi
         if [[ $line == "  banditshell "* ]] || [[ $line =~ ^\ \ \<[a-z]+\>: ]]; then
-            [ "$open" -eq 1 ] && emit_entry "$spec" "$description"
+            [ "$open" -eq 1 ] && emit_entry "$spec" "$(verb_description "$description")"
             open=1
+            summary_open=0
             if [ "${#line}" -gt "$DESCRIPTION_COLUMN" ] && [ "${line:$((DESCRIPTION_COLUMN - 2)):2}" = "  " ]; then
                 spec="$(trim "${line:0:$DESCRIPTION_COLUMN}")"
                 description="$(trim "${line:$DESCRIPTION_COLUMN}")"
@@ -141,20 +154,33 @@ parse() {
         fi
         stripped="$(trim "$line")"
         if [ -z "$stripped" ]; then
-            [ "$open" -eq 1 ] && emit_entry "$spec" "$description"
+            [ "$open" -eq 1 ] && emit_entry "$spec" "$(verb_description "$description")"
             open=0
+            summary_open=0
+            continue
+        fi
+        indent=$((${#line} - ${#stripped}))
+        if [ "$summary_open" -eq 1 ] && [ "$indent" -ge "$DESCRIPTION_COLUMN" ]; then
+            summary="${summary:+$summary }$stripped"
             continue
         fi
         [ "$open" -eq 1 ] || continue
-        indent=$((${#line} - ${#stripped}))
         if [ "$indent" -ge "$DESCRIPTION_COLUMN" ]; then
             description="${description:+$description }$stripped"
         elif [ "$indent" -gt 0 ]; then
             spec="$spec|$stripped"
         fi
     done < <(header)
-    [ "$open" -eq 1 ] && emit_entry "$spec" "$description"
+    [ "$open" -eq 1 ] && emit_entry "$spec" "$(verb_description "$description")"
     return 0
+}
+
+verb_description() {
+    if [ -n "$summary" ] && [[ $section != *"|"* ]]; then
+        printf '%s' "$summary"
+    else
+        printf '%s' "${1:-$summary}"
+    fi
 }
 
 bake() {
@@ -163,5 +189,5 @@ bake() {
     printf 'values\tlayer\t%s\n' "$(sed -n 's/^ \{12\}\([a-zA-Z]*\): \[$/\1/p' "$REPO/modules/keyboard/Layouts.qml" | paste -sd' ' -)"
 }
 
-parse | awk '!seen[$0]++'
+parse | awk -F'\t' '$1 == "verb" && verbs[$2]++ { next } !seen[$0]++'
 bake

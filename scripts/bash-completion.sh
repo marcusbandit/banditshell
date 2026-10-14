@@ -124,17 +124,17 @@ _bs_offer() {
     local cur=$2
     local -a values=()
     case $1 in
-    panel) mapfile -t values < <(_bs_live list menu); values+=("${_bs_panel[@]}") ;;
-    menu) mapfile -t values < <(_bs_live list menu) ;;
-    theme) mapfile -t values < <(_bs_live list themes); values+=("${_bs_theme[@]}") ;;
+    panel) mapfile -t values < <(_bs_live panel); values+=("${_bs_panel[@]}") ;;
+    menu) mapfile -t values < <(_bs_live dev menu list) ;;
+    theme) mapfile -t values < <(_bs_live config theme list); values+=("${_bs_theme[@]}") ;;
     page) values=("${_bs_page[@]}") ;;
     layer) values=("${_bs_layer[@]}") ;;
     screen) mapfile -t values < <(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}') ;;
     key) mapfile -t values < <(_bs_config_keys) ;;
     app) mapfile -t values < <(_bs_desktop_ids) ;;
     place) mapfile -t values < <(_bs_places) ;;
-    index) mapfile -t values < <(_bs_live list clipboard | awk -F'\t' 'NF >= 1 {print $1}') ;;
-    worktree) mapfile -t values < <(banditshell list worktree 2>/dev/null) ;;
+    index) mapfile -t values < <(_bs_live panel clipboard list | awk -F'\t' 'NF >= 1 {print $1}') ;;
+    worktree) mapfile -t values < <(banditshell dev worktrees 2>/dev/null) ;;
     file)
         compopt -o filenames 2>/dev/null
         mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -f -- "$cur")
@@ -178,7 +178,7 @@ _banditshell() {
     fi
 
     local target=$(( cword - 1 )) rule word item i n score ok best=-1 literal wild
-    local -a parts items flags offers=() literals=()
+    local -a parts items flags holes offers=() literals=()
     local -A seen=()
     for rule in "${_bs_rules[@]}"; do
         read -ra parts <<<"$rule"
@@ -217,21 +217,26 @@ _banditshell() {
         else
             continue
         fi
+        holes=()
+        for item in "${items[@]}"; do
+            case $item in
+            '*') ;;
+            @*) holes+=("$item") ;;
+            *) literals+=("$item") ;;
+            esac
+        done
+        (( ${#holes[@]} )) || continue
         if (( score > best )); then
             best=$score
             offers=()
         fi
-        (( score == best )) && offers+=("${items[@]}")
+        (( score == best )) && offers+=("${holes[@]}")
     done
 
     for item in "${offers[@]}"; do
         [[ -n ${seen[$item]:-} ]] && continue
         seen[$item]=1
-        case $item in
-        '*') ;;
-        @*) _bs_offer "${item#@}" "$cur" ;;
-        *) literals+=("$item") ;;
-        esac
+        _bs_offer "${item#@}" "$cur"
     done
     _bs_add "$cur" "${literals[@]}"
     (( ${#COMPREPLY[@]} > 1 )) && mapfile -t COMPREPLY < <(printf '%s\n' "${COMPREPLY[@]}" | awk '!seen[$0]++')
