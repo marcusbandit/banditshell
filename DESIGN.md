@@ -1076,7 +1076,11 @@ already known to work.
 ```
 banditshell start|stop|restart|run|log
 banditshell try [worktree]|back    a worktree on the live session, and the
-                                   checkout again; restart keeps the worktree
+                                   checkout again; restart keeps the worktree.
+                                   A worktree is its branch, its number in the
+                                   list or any unique part of its name; bare
+                                   takes the one you are in or the only one,
+                                   else asks
 banditshell toggle panel <name> [screen]|border|wallpaper
                                   |sidebar [screen|all]|output|tablet [caller]
                                   |tablet lid [caller]|volume mute
@@ -1092,7 +1096,7 @@ banditshell set border [on|off]|wallpaper [on|off]
                                   |theme [name]|penmap rect <x> <y> <w> <h>
                                   |<key> <value>       the shell's config
 banditshell get <key>|theme
-banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
+banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes|worktree
 banditshell status [thing]         bare, what the shell thinks the compositor said
 banditshell dispatch <target> <action> [args...]
                                    the bespoke tail: timer start <duration>

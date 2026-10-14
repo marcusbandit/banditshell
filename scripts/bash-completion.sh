@@ -134,6 +134,7 @@ _bs_offer() {
     app) mapfile -t values < <(_bs_desktop_ids) ;;
     place) mapfile -t values < <(_bs_places) ;;
     index) mapfile -t values < <(_bs_live list clipboard | awk -F'\t' 'NF >= 1 {print $1}') ;;
+    worktree) mapfile -t values < <(banditshell list worktree 2>/dev/null) ;;
     file)
         compopt -o filenames 2>/dev/null
         mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -f -- "$cur")

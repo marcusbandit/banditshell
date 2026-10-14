@@ -140,6 +140,7 @@ _bs_offer() {
     key) values=( ${(f)"$(_bs_config_keys)"} ) ;;
     app) values=( ${(f)"$(_bs_desktop_ids)"} ) ;;
     place) values=( ${(f)"$(_bs_places)"} ) ;;
+    worktree) values=( ${(f)"$(banditshell list worktree 2>/dev/null)"} ) ;;
     index)
         values=( ${(f)"$(_bs_live list clipboard | awk -F'\t' 'NF >= 4 {print $1 ":" $3 " " $4}')"} )
         (( $#values )) && _describe -t entries 'clipboard entry' values

@@ -4,9 +4,10 @@
 #   banditshell start|stop|restart|run
 #                                the shell itself: detach and prove it, stop it,
 #                                restart it, run it in the foreground
-#   banditshell try [worktree]  run a worktree on the live session in place of
-#                                the checkout; bare, the one you are standing in,
-#                                else every worktree and which one is live
+#   banditshell try [worktree]   run a worktree on the live session in place of
+#                                the checkout: its branch, its number in the
+#                                list or any unique part of its name; bare, the
+#                                one you are in, the only one, or a pick
 #   banditshell back             the checkout again, after try
 #   banditshell log [args]       the running shell's log
 #   banditshell doctor           repair bin/, the helpers and ~/bin/banditshell,
@@ -35,6 +36,7 @@
 #                                50 percent, +n and -n move, a bare + or - steps
 #   banditshell get <key>|theme  a dotted config key, or the theme's name
 #   banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
+#        worktree
 #                                enumerate a registry
 #   banditshell dispatch timer start <duration> [label]
 #        timer [pause|resume|toggle|cancel] [handle]
@@ -171,7 +173,8 @@ live_worktree() {
 }
 
 match_worktree() {
-    local want="$1" home path branch
+    local want="$1" home path branch number=0
+    local -a hits=()
     [ -n "$want" ] || return 1
     home=$(main_dir)
     if [ -d "$want" ]; then
@@ -179,31 +182,53 @@ match_worktree() {
     fi
     while IFS=$'\t' read -r path branch; do
         [ "$path" = "$home" ] && continue
-        case "$want" in
-        "$path" | "$branch" | "${path##*/}") echo "$path"; return 0 ;;
-        esac
+        number=$((number + 1))
+        if [[ $want == /* ]]; then
+            [ "$want" = "$path" ] && hits=("$path") && break
+        elif [[ $want =~ ^[0-9]+$ ]]; then
+            [ "$want" = "$number" ] && hits=("$path") && break
+        elif [ "$want" = "$branch" ] || [ "$want" = "${path##*/}" ]; then
+            hits=("$path")
+            break
+        elif [[ ${branch,,} == *"${want,,}"* || ${path##*/} == *"${want,,}"* ]]; then
+            hits+=("$path")
+        fi
     done < <(worktree_list)
-    return 1
+    [ "${#hits[@]}" -eq 1 ] || return 1
+    echo "${hits[0]}"
 }
 
+other_worktrees() { worktree_list | tail -n +2; }
+
 pick_worktree() {
+    local others
     if [ -n "$1" ]; then
         match_worktree "$1"
-    else
-        match_worktree "$(git rev-parse --show-toplevel 2>/dev/null || true)" || match_worktree "$SHELL_DIR"
+        return
     fi
+    match_worktree "$(git rev-parse --show-toplevel 2>/dev/null || true)" && return 0
+    match_worktree "$SHELL_DIR" && return 0
+    others=$(other_worktrees)
+    [ -n "$others" ] && [ "$(wc -l <<<"$others")" -eq 1 ] || return 1
+    cut -f1 <<<"$others"
 }
 
 list_worktrees() {
-    local live base path branch mark ahead changed
+    local live home base path branch mark label number=0 ahead changed
     live=$(live_dir || true)
-    base=$(branch_of "$(main_dir)")
+    home=$(main_dir)
+    base=$(branch_of "$home")
     while IFS=$'\t' read -r path branch; do
         mark=" "
         [ "$path" = "$live" ] && mark="*"
+        label=" "
+        if [ "$path" != "$home" ]; then
+            number=$((number + 1))
+            label=$number
+        fi
         ahead=$(git -C "$path" rev-list --count "$base..HEAD" 2>/dev/null || echo 0)
         changed=$(git -C "$path" status --porcelain 2>/dev/null | wc -l)
-        printf '%s %-28s +%-3s %3s changed  %s\n' "$mark" "$branch" "$ahead" "$changed" "$path"
+        printf '%s %2s  %-28s +%-3s %3s changed  %s\n' "$mark" "$label" "$branch" "$ahead" "$changed" "${path/#"$HOME"/\~}"
     done < <(worktree_list)
 }
 
@@ -807,7 +832,8 @@ route_verb() {
         alarm) ipc alarm list ;;
         zone) ipc zone list ;;
         themes) ipc shell themes ;;
-        *) echo "banditshell: list menu|clipboard|wallpaper|output|alarm|zone|themes" >&2; exit 2 ;;
+        worktree) other_worktrees | cut -f2 ;;
+        *) echo "banditshell: list menu|clipboard|wallpaper|output|alarm|zone|themes|worktree" >&2; exit 2 ;;
         esac
         ;;
 
@@ -878,16 +904,22 @@ restart)
     start_checkout "restarted"
     ;;
 try)
-    if ! target=$(pick_worktree "${1:-}"); then
-        if [ -n "${1:-}" ]; then
-            echo "banditshell: no worktree called $1" >&2
-            list_worktrees >&2
-            exit 2
-        fi
-        list_worktrees
+    if target=$(pick_worktree "${1:-}"); then
+        try_worktree "$target"
         exit 0
     fi
-    try_worktree "$target"
+    if [ -n "${1:-}" ]; then
+        echo "banditshell: no single worktree matches $1" >&2
+        list_worktrees >&2
+        exit 2
+    fi
+    list_worktrees
+    if [ -t 0 ] && [ -t 1 ] && [ -n "$(other_worktrees)" ]; then
+        read -rp "try which? " answer || exit 0
+        [ -n "$answer" ] || exit 0
+        target=$(match_worktree "$answer") || { echo "banditshell: no single worktree matches $answer" >&2; exit 2; }
+        try_worktree "$target"
+    fi
     ;;
 back)
     stop_shell || true
