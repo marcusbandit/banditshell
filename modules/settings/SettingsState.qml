@@ -530,6 +530,13 @@ Singleton {
         function onFailed(why: string): void {
             root.refused(why, "");
         }
+
+        function onZoneMoved(zone: string): void {
+            SettingsView.drop(`the zone is ${zone} now`, "public", {
+                label: "restart the shell",
+                run: () => Update.restart()
+            });
+        }
     }
 
     property bool boardWanted: false

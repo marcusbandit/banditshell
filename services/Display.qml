@@ -209,6 +209,7 @@ Singleton {
     function holdSchedule(): void {
         if (root.scheduleMode === "off")
             return;
+        root.easing = false;
         const now = Date.now();
         root.heldUntil = Nightlight.nextEdge(now, root.currentWindow(now));
     }
@@ -279,7 +280,8 @@ Singleton {
     }
 
     function commitWarmth(): void {
-        Config.set("screen.warmth", root.kelvin);
+        if (!root.easing)
+            Config.set("screen.warmth", root.kelvin);
         if (root.warm && !root.easing)
             root.lastWarm = root.kelvin;
         root.writeWarmth();

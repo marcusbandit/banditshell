@@ -140,6 +140,7 @@ test("the screen shader slot is only touched when it is ours or empty", () => {
     const ours = "/shell/assets/shaders/desaturate.frag";
     assert.strictEqual(Limits.shaderOwner(JSON.stringify({ option: "decoration:screen_shader", str: "[[EMPTY]]", set: false }), ours), "free");
     assert.strictEqual(Limits.shaderOwner(JSON.stringify({ str: "" }), ours), "free");
+    assert.strictEqual(Limits.shaderOwner(JSON.stringify({ str: "/home/a/.claude/worktrees/x/assets/shaders/desaturate.frag" }), ours), "ours");
     assert.strictEqual(Limits.shaderOwner(JSON.stringify({ str: ours }), ours), "ours");
     assert.strictEqual(Limits.shaderOwner(JSON.stringify({ str: "/home/me/crt.frag" }), ours), "foreign");
     assert.strictEqual(Limits.shaderOwner("not json", ours), "unknown");

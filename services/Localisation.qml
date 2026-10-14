@@ -43,7 +43,10 @@ Singleton {
         return Rules.placeOfZone(root.zoneTable, Clock.localZone);
     }
 
+    property string refusedZone: ""
+
     signal failed(string why)
+    signal zoneMoved(string zone)
 
     function hasLocale(id: string): bool {
         return Rules.hasLocale(root.generated, id);
@@ -82,6 +85,7 @@ Singleton {
         }
         if (!root.geoclueInstalled)
             return;
+        root.refusedZone = "";
         Config.set("region.autoZone", true);
         root.locate();
     }
@@ -106,7 +110,8 @@ Singleton {
             zone: near.zone
         };
         root.remember();
-        root.setZone(near.zone);
+        if (near.zone !== root.refusedZone)
+            root.setZone(near.zone);
     }
 
     function change(kind: string, command: var): void {
@@ -114,6 +119,7 @@ Singleton {
             return;
         root.busy = kind;
         changer.kind = kind;
+        changer.target = kind === "zone" ? command[command.length - 1] : "";
         changer.command = command;
         changer.running = true;
     }
@@ -210,10 +216,8 @@ Singleton {
             const place = Rules.parseWhereAmI(located.text);
             if (place)
                 root.placeFound(place);
-            else {
-                Config.set("region.autoZone", false);
+            else
                 root.failed("geoclue could not say where you are");
-            }
         }
     }
 
@@ -221,6 +225,7 @@ Singleton {
         id: changer
 
         property string kind: ""
+        property string target: ""
 
         stderr: StdioCollector {
             id: complaint
@@ -228,12 +233,39 @@ Singleton {
 
         onExited: code => {
             root.busy = "";
-            if (code !== 0)
+            if (code !== 0) {
+                if (changer.kind === "zone")
+                    root.refusedZone = changer.target;
                 root.failed(complaint.text.trim().split("\n")[0] || "the system would not take it");
+            } else if (changer.kind === "zone") {
+                Date.timeZoneUpdated();
+                root.zoneMoved(changer.target);
+            }
             if (changer.kind === "zone")
                 Clock.readLocalZone();
             else
                 root.readLocale();
         }
+    }
+
+    onGeoclueProbedChanged: {
+        if (root.zoneFollowsNetwork)
+            root.locate();
+    }
+
+    Connections {
+        target: NetworkEvents
+
+        function onChanged(): void {
+            if (root.zoneFollowsNetwork)
+                relocate.restart();
+        }
+    }
+
+    Timer {
+        id: relocate
+
+        interval: 60000
+        onTriggered: root.locate()
     }
 }

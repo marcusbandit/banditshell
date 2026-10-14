@@ -52,7 +52,7 @@ function deadlineFor(choice, at, wake) {
         return nextOccurrence(at, EVENING_MINUTES);
     if (choice === ENDS_TOMORROW) {
         const minutes = minutesOf(wake);
-        return occurrence(at, 1, minutes < 0 ? 0 : minutes);
+        return nextOccurrence(at, minutes < 0 ? 0 : minutes);
     }
     return 0;
 }

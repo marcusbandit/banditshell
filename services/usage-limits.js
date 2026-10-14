@@ -47,6 +47,8 @@ function overCap(usedMinutes, capHours) {
     return usedMinutes > capHours * 60;
 }
 
+const SHADER_SUFFIX = "/assets/shaders/desaturate.frag";
+
 function shaderOwner(optionJson, ours) {
     let current = "";
     try {
@@ -56,7 +58,7 @@ function shaderOwner(optionJson, ours) {
     }
     if (current === "" || current === SHADER_UNSET)
         return "free";
-    return current === ours ? "ours" : "foreign";
+    return current === ours || current.endsWith(SHADER_SUFFIX) ? "ours" : "foreign";
 }
 
 function breakNote(unbrokenMs) {

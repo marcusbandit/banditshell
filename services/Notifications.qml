@@ -88,7 +88,12 @@ Singleton {
             Config.set("notifications.quietUntil", 0);
     }
 
-    onQuietChanged: Qt.callLater(root.dropSpentDeadline)
+    property double quietSince: 0
+
+    onQuietChanged: {
+        root.quietSince = root.quiet && Config.loaded ? Date.now() : 0;
+        Qt.callLater(root.dropSpentDeadline);
+    }
 
     Timer {
         interval: root.quiet && root.quietUntil > 0 ? 1000 : 20000
@@ -98,7 +103,7 @@ Singleton {
 
         onTriggered: {
             root.stamp = Date.now();
-            if (root.quiet && root.quietUntil > 0 && root.stamp >= root.quietUntil)
+            if (root.quiet && root.quietUntil > root.quietSince && root.stamp >= root.quietUntil)
                 Config.setMany([["notifications.quiet", false], ["notifications.quietUntil", 0]]);
         }
     }
@@ -362,7 +367,8 @@ Singleton {
                 root.history = root.history.filter(e => e !== entry);
 
             const kind = root.kindOf(entry);
-            const held = root.holdingAt(Date.now()) && kind !== "battery" && !(kind === "alarm" && root.letAlarms);
+            const ours = (entry?.appName ?? "") === "banditshell";
+            const held = root.holdingAt(Date.now()) && !(ours && kind === "battery") && !(kind === "alarm" && root.letAlarms);
             const rule = root.ruleFor(entry);
 
             if (!held && rule.pop) {

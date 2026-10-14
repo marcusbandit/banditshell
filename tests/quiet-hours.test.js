@@ -71,6 +71,7 @@ test("each choice computes its deadline when it is chosen", () => {
         assert.strictEqual(Quiet.deadlineFor("at 18:00", at(18, 0), "07:30"), at(18, 0, 15));
         assert.strictEqual(Quiet.deadlineFor("at 18:00", at(19, 0), "07:30"), at(18, 0, 15));
         assert.strictEqual(Quiet.deadlineFor("tomorrow", at(23, 0), "07:30"), at(7, 30, 15));
+        assert.strictEqual(Quiet.deadlineFor("tomorrow", at(3, 0), "07:30"), at(7, 30));
         assert.strictEqual(Quiet.deadlineFor("off by hand", at(10, 0), "07:30"), 0);
         assert.strictEqual(Quiet.deadlineFor("nonsense", at(10, 0), "07:30"), 0);
     });

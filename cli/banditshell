@@ -964,7 +964,11 @@ route_quiet() {
     case "${1:-}" in
     "") ipc quiet status ;;
     on | off | toggle)
-        reply=$(ipc quiet "$1" "${2:-}") || return 1
+        if [ "$1" = off ]; then
+            reply=$(ipc quiet off) || return 1
+        else
+            reply=$(ipc quiet "$1" "${2:-}") || return 1
+        fi
         case "$reply" in
         "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
         esac
