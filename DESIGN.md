@@ -721,9 +721,26 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
-│   │   └── WallpaperPicker.qml  no panel at all: the wallpaper you are on as a
-│   │                            half-monitor hero, the rest stacked off the
-│   │                            right edge, the hero live on the real desktop
+│   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
+│   │   │                        you are on as a hero 30% of the height, the
+│   │   │                        rest cropped to strips either side that never
+│   │   │                        overlap, the row held to 80% of the width and
+│   │   │                        collapsing smaller toward its ends. Colour
+│   │   │                        swatches and a `/` search above it, the name,
+│   │   │                        size, kind and the actions below, each on a
+│   │   │                        capsule. While it is up the desktop's
+│   │   │                        wallpaper covers the windows (WallpaperCover),
+│   │   │                        so the pick is seen as it will look;
+│   │   │                        everything but the picker is dimmed by a
+│   │   │                        third, and the cards and capsules cast
+│   │   │                        shadows. A focus ring only after an arrow key
+│   │   ├── WallpaperCover.qml   the wallpaper over the windows while the picker
+│   │   │                        is up, under the chassis: it blooms in from the
+│   │   │                        bottom edge through the reveal blob once the
+│   │   │                        picture is ready, and closes the same way
+│   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
+│   │                            that cross-fade through the reveal blob; the
+│   │                            wallpaper window and the picker share it
 │   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── settings/                the page, always a real window of its own, shaped
 │   │   │                        like a phone's settings app: a list of sections and
