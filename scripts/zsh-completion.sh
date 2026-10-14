@@ -38,7 +38,7 @@ short() {
 
 deps() {
     printf '%s\n' "$REPO/cli/banditshell" "$RULES" "$SELF" \
-        "$REPO/config/Themes.qml" "$REPO/services/Settings.qml" "$REPO/modules/keyboard/Layouts.qml"
+        "$REPO/config/Themes.qml" "$REPO/modules/settings/catalogue.js" "$REPO/modules/keyboard/Layouts.qml"
 }
 
 generate() {
@@ -89,7 +89,7 @@ _bs_stale() {
     [[ -x $REPLY/scripts/completion-rules.sh && -x $REPLY/scripts/zsh-completion.sh ]] || return 1
     local dep
     for dep in $REPLY/cli/banditshell $REPLY/scripts/completion-rules.sh $REPLY/scripts/zsh-completion.sh \
-        $REPLY/config/Themes.qml $REPLY/services/Settings.qml $REPLY/modules/keyboard/Layouts.qml; do
+        $REPLY/config/Themes.qml $REPLY/modules/settings/catalogue.js $REPLY/modules/keyboard/Layouts.qml; do
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
