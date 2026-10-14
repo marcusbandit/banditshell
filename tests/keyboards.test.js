@@ -5,9 +5,11 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/keyboards.js"), "utf8");
-const Keyboards = new Function(src + "\nreturn { TEMPLATE, TEMPLATE_VARIANT, parseVia, alignBoard, blockedMap };")();
+const Keyboards = new Function(src + "\nreturn { TEMPLATE, TEMPLATE_VARIANT, templateSections, shapeNamed, parseVia, alignBoard, blockedMap, parseKeymap, keymapLegends, applyLegends };")();
 
 const GALAXY = path.join(__dirname, "fixtures/Epomaker_Galaxy100.json");
+const MINI_DEFINITION = path.join(__dirname, "fixtures/via_bandit_mini.json");
+const MINI_KEYMAP = path.join(__dirname, "fixtures/via_bandit_mini.layout.json");
 
 function via(keymap, name) {
     return Keyboards.parseVia(JSON.stringify({ name: name ?? "", layouts: { keymap } }));
@@ -183,6 +185,135 @@ test("blocked keys come from a list or a map, and carry their why", () => {
     assert.deepStrictEqual(Keyboards.blockedMap({ "p": "firmware owns it", " 0,4 ": "" }), { "p": "firmware owns it", "0,4": "" });
     assert.deepStrictEqual(Keyboards.blockedMap(undefined), {});
     assert.deepStrictEqual(Keyboards.blockedMap(""), {});
+});
+
+function mainOf(shape) {
+    return Keyboards.templateSections(shape).find(s => s.id === "main");
+}
+
+test("the template draws the shape it is given, and an unknown shape is iso", () => {
+    assert.deepStrictEqual(Keyboards.shapeNamed("split"), "split");
+    assert.deepStrictEqual(Keyboards.shapeNamed("ansi"), "ansi");
+    assert.deepStrictEqual(Keyboards.shapeNamed("dvorak"), "iso");
+    assert.deepStrictEqual(Keyboards.shapeNamed(undefined), "iso");
+    assert.ok(mainOf("iso").keys.some(k => k.id === "LSGT"));
+    assert.ok(!mainOf("ansi").keys.some(k => k.id === "LSGT"));
+    assert.strictEqual(mainOf("iso").keys.find(k => k.id === "RTRN").h, 2);
+    assert.strictEqual(mainOf("ansi").keys.find(k => k.id === "RTRN").h, 1);
+});
+
+test("the split board leaves a gap down the middle of every row", () => {
+    const main = mainOf("split");
+    const edges = [["AE06", "AE07"], ["AD05", "AD06"], ["AC05", "AC06"], ["AB05", "AB06"]];
+    for (const [left, right] of edges) {
+        const a = main.keys.find(k => k.id === left);
+        const b = main.keys.find(k => k.id === right);
+        assert.strictEqual(b.x - (a.x + a.w), 1, `${left} to ${right}`);
+    }
+    const spaces = main.keys.filter(k => k.syms.includes("space"));
+    assert.deepStrictEqual(spaces.map(k => k.w), [3.25, 2.75]);
+    assert.strictEqual(spaces[1].x - (spaces[0].x + spaces[0].w), 1);
+    const ansi = mainOf("ansi");
+    assert.strictEqual(main.keys.length, ansi.keys.length + 1);
+    assert.strictEqual(main.height, ansi.height);
+});
+
+test("the split board keeps the arrows in one cluster", () => {
+    const main = mainOf("split");
+    const at = id => main.keys.find(k => k.id === id);
+    assert.strictEqual(at("UP").x, at("DOWN").x);
+    assert.strictEqual(at("LEFT").x + 1, at("DOWN").x);
+    assert.strictEqual(at("DOWN").x + 1, at("RGHT").x);
+    assert.strictEqual(at("UP").y + 1, at("DOWN").y);
+    for (const k of main.keys)
+        for (const other of main.keys)
+            if (k !== other && k.y === other.y)
+                assert.ok(k.x + k.w <= other.x || other.x + other.w <= k.x, `${k.id} overlaps ${other.id}`);
+});
+
+function mini() {
+    const definition = Keyboards.parseVia(fs.readFileSync(MINI_DEFINITION, "utf8"));
+    const keymap = Keyboards.parseKeymap(fs.readFileSync(MINI_KEYMAP, "utf8"));
+    return { definition, keymap };
+}
+
+test("a VIA definition carries its board id and matrix size", () => {
+    const { definition } = mini();
+    assert.strictEqual(definition.error, undefined);
+    assert.strictEqual(definition.vendorProductId, 3033595905);
+    assert.deepStrictEqual(definition.matrix, { rows: 4, cols: 6 });
+    const galaxy = Keyboards.parseVia(fs.readFileSync(GALAXY, "utf8"));
+    assert.strictEqual(galaxy.vendorProductId, 0x36B0 * 65536 + 0x30D4);
+    assert.deepStrictEqual(galaxy.matrix, { rows: 7, cols: 16 });
+    assert.strictEqual(via([["0,0"]]).vendorProductId, null);
+});
+
+test("a saved VIA keymap is read down to its first layer, and a wrong file says why", () => {
+    const { keymap } = mini();
+    assert.strictEqual(keymap.error, undefined);
+    assert.strictEqual(keymap.name, "Bandit Mini");
+    assert.strictEqual(keymap.layer.length, 24);
+    assert.strictEqual(keymap.layer[0], "KC_ESC");
+    assert.match(Keyboards.parseKeymap("nope").error, /not JSON/);
+    assert.match(Keyboards.parseKeymap("{}").error, /no layers/);
+    assert.match(Keyboards.parseKeymap(JSON.stringify({ layers: [] })).error, /no layers/);
+    assert.match(Keyboards.parseKeymap(JSON.stringify({ layers: [["KC_A"]] })).error, /no vendorProductId/);
+    assert.match(Keyboards.parseKeymap(fs.readFileSync(MINI_DEFINITION, "utf8")).error, /definition, not a keymap/);
+    assert.match(Keyboards.parseVia(fs.readFileSync(MINI_KEYMAP, "utf8")).error, /saved keymap, not a definition/);
+});
+
+test("a keymap lands on matrix positions and names the keys Hyprland binds", () => {
+    const { definition, keymap } = mini();
+    const made = Keyboards.keymapLegends(definition, keymap);
+    assert.strictEqual(made.error, undefined);
+    const legends = made.legends;
+    assert.deepStrictEqual(Object.keys(legends).length, 24);
+    assert.deepStrictEqual(legends["0,0"].syms, ["Escape"]);
+    assert.deepStrictEqual(legends["0,1"].syms, ["q"]);
+    assert.deepStrictEqual(legends["1,5"].syms, ["Return"]);
+    assert.strictEqual(legends["0,5"].role, "BKSP");
+    assert.strictEqual(legends["2,0"].mod, 1);
+    assert.strictEqual(legends["2,0"].label, "shift");
+    assert.strictEqual(legends["3,0"].mod, 4);
+    assert.strictEqual(legends["3,1"].mod, 64);
+    assert.strictEqual(legends["3,1"].label, "super");
+    assert.deepStrictEqual(legends["3,2"].syms, ["a"], "a mod-tap acts as its tap key");
+    assert.deepStrictEqual(legends["3,3"].syms, ["space"], "a layer-tap acts as its tap key");
+    assert.strictEqual(legends["3,4"].cap, "Fn1");
+    assert.deepStrictEqual(legends["3,4"].syms, []);
+    assert.deepStrictEqual(legends["2,5"].syms, [], "KC_NO binds nothing");
+    assert.deepStrictEqual(legends["3,5"].syms, [], "a keycode the sheet cannot name binds nothing");
+});
+
+test("a keymap for another board is refused", () => {
+    const { definition, keymap } = mini();
+    const other = Object.assign({}, keymap, { vendorProductId: keymap.vendorProductId + 1 });
+    assert.match(Keyboards.keymapLegends(definition, other).error, /Bandit Mini, not the imported definition/);
+    const galaxy = Keyboards.parseVia(fs.readFileSync(GALAXY, "utf8"));
+    assert.ok(Keyboards.keymapLegends(galaxy, keymap).error);
+    const short = Object.assign({}, keymap, { layer: keymap.layer.slice(0, 10) });
+    assert.match(Keyboards.keymapLegends(definition, short).error, /10 keys, the definition's matrix holds 24/);
+    const unsized = Object.assign({}, definition, { matrix: { rows: 0, cols: 0 } });
+    assert.match(Keyboards.keymapLegends(unsized, keymap).error, /no matrix size/);
+});
+
+test("a keymap relabels the imported board, and keys it does not name keep their position", () => {
+    const { definition, keymap } = mini();
+    const aligned = Keyboards.alignBoard(definition);
+    const dressed = Keyboards.applyLegends(aligned, Keyboards.keymapLegends(definition, keymap).legends);
+    const keys = byMatrix(dressed);
+    assert.deepStrictEqual(keys["1,2"].syms, ["s"]);
+    assert.strictEqual(keys["0,5"].cap, "Back");
+    assert.strictEqual(keys["3,1"].mod, 64);
+    assert.strictEqual(keys["3,5"].cap, "3,5", "a blank legend falls back to the matrix spot");
+    assert.strictEqual(keys["2,0"].mod, 1);
+    assert.strictEqual(keys["3,1"].cap, "", "a modifier is drawn as its glyph alone");
+    assert.strictEqual(keys["3,3"].cap, "", "space has no legend of its own");
+    assert.strictEqual(dressed.sections[0].keys.length, aligned.sections[0].keys.length);
+    assert.strictEqual(keys["0,0"].x, byMatrix(aligned)["0,0"].x);
+    const partial = Keyboards.applyLegends(aligned, { "0,1": { cap: "Q", syms: ["q"], mod: 0, role: "AD01" } });
+    assert.deepStrictEqual(byMatrix(partial)["1,1"].syms, byMatrix(aligned)["1,1"].syms);
+    assert.deepStrictEqual(byMatrix(partial)["0,1"].syms, ["q"]);
 });
 
 test("keyboards.js uses nothing Quickshell's engine lacks", () => {

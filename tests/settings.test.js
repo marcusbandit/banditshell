@@ -13,7 +13,7 @@ function lib(file, names) {
 
 const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "niagaraAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "nudge", "resize", "fit"]);
-const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit"]);
+const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit", "withLegends", "struck"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
 
 function block(file, opener) {
@@ -287,6 +287,34 @@ test("bound keys light up on the board", () => {
     const lit = Boards.lit(keys, ["super v", "ctrl shift s"]);
     const on = keys.filter((k, i) => lit[i]).map(k => k.label.toLowerCase());
     assert.ok(on.includes("super") && on.includes("v") && on.includes("shift") && on.includes("s"));
+});
+
+test("a keymap's legends light an imported board by the keys it binds", () => {
+    const sample = Boards.readVia(JSON.stringify(Boards.SAMPLE_VIA));
+    assert.strictEqual(sample.keys[0].matrix, "0,0");
+    const legends = {
+        "0,0": { label: "esc", syms: ["Escape"] },
+        "1,1": { label: "Q", syms: ["q"] },
+        "4,2": { label: "alt", syms: [] }
+    };
+    const keys = Boards.withLegends(sample.keys, legends);
+    assert.strictEqual(keys.length, sample.keys.length);
+    assert.strictEqual(keys[0].label, "esc");
+    assert.strictEqual(sample.keys[0].label, "", "the parsed board is left alone");
+    const lit = Boards.lit(keys, ["super q", "alt escape"]);
+    const on = keys.filter((k, i) => lit[i]).map(k => k.matrix);
+    assert.deepStrictEqual(on.sort(), ["0,0", "1,1", "4,2"]);
+    assert.ok(Boards.lit(sample.keys, ["super q"]).every(x => !x), "without a keymap nothing is lit");
+});
+
+test("the sheet shape lives in config, not in planned state", () => {
+    assert.strictEqual(CONFIG_BACKED.sheetShape, "cheatsheet.shape");
+    assert.strictEqual(lookup(DEFAULTS, "cheatsheet.shape"), "iso");
+    assert.strictEqual(lookup(DEFAULTS, "cheatsheet.keymap"), "");
+    assert.ok(!("sheetShape" in PLAN_DEFAULTS));
+    const row = Catalogue.ROW_BY_KEY.sheetKeyboard;
+    assert.deepStrictEqual(row.o.map(o => o[0]), ["ansi", "iso", "split", "file"]);
+    assert.ok(!row.isNew);
 });
 
 test("keyframe curves start at 0, end at 1 and hold between frames", () => {

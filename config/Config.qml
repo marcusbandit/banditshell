@@ -511,6 +511,10 @@ Singleton {
 
                 keyboard: "",
 
+                keymap: "",
+
+                shape: "iso",
+
                 blocked: {}
             },
 
