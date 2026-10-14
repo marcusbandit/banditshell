@@ -379,7 +379,7 @@ const PAGES_SOURCE = {
                 { n: 75, icon: "image", label: "Largest image", k: "clipBlob", kind: "seg", o: [[8388608, "8 MB"], [33554432, "32 MB"], [134217728, "128 MB"]], cfg: "clipboard.maxBlob", dis: s => !s.v("clip"), kw: "clipboard limits" }
             ] },
             { t: "Import", rows: [
-                { n: 76, icon: "move_to_inbox", label: "From clipse", kind: "button", btn: s => s.clipseImported ? "Done" : "Import", act: "importClipse", cfg: "clipboard.importClipse", detail: s => s.clipseDetail, dis: s => s.clipseImported, kw: "import clipse" }
+                { n: 76, icon: "move_to_inbox", label: "From clipse", kind: "button", btn: s => s.clipseWaiting ? "Import" : "Done", act: "importClipse", cfg: "clipboard.importClipse", detail: s => s.clipseDetail, dis: s => !s.clipseWaiting, kw: "import clipse" }
             ] }
         ]
     },

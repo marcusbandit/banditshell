@@ -719,21 +719,23 @@ Singleton {
                     console.warn("Clipboard: clipse's history could not be read; importing nothing.", err);
             }
 
-            root.clipseWaiting = Array.isArray(old) ? old.length : 0;
+            root.clipseHistory = Array.isArray(old) ? old : [];
 
             if (!Config.values.clipboard.importClipse)
                 return;
 
-            root.adopt(Array.isArray(old) ? old : []);
+            root.adopt(root.clipseHistory);
         }
 
         onLoadFailed: {
-            root.clipseWaiting = 0;
+            root.clipseHistory = [];
             root.settleImport();
         }
     }
 
-    property int clipseWaiting: 0
+    property var clipseHistory: []
+
+    readonly property int clipseWaiting: root.fresh(root.clipseHistory).length
 
     function importFromClipse(): void {
         Config.set("clipboard.importClipse", true);
@@ -744,7 +746,7 @@ Singleton {
         return `${root.blobs}/imported-${root.basename(from)}`;
     }
 
-    function adopt(old: var): void {
+    function fresh(old: var): var {
 
         const mine = new Set(root.entries.map(e => root.identity(e)));
         const brought = [];
@@ -769,7 +771,6 @@ Singleton {
                 mimes: [],
                 pinned: !!item.pinned
             };
-            entry.kind = root.classify(entry);
 
             const key = root.identity(entry);
             if (mine.has(key))
@@ -777,6 +778,15 @@ Singleton {
             mine.add(key);
             brought.push(entry);
         }
+
+        return brought;
+    }
+
+    function adopt(old: var): void {
+
+        const brought = root.fresh(old);
+        for (const entry of brought)
+            entry.kind = root.classify(entry);
 
         if (brought.length) {
             root.entries = [...root.entries, ...brought];
@@ -799,7 +809,6 @@ Singleton {
         }
 
         console.log(`Clipboard: imported ${brought.length} entries from clipse (${pics.length} pictures copied).`);
-        root.clipseWaiting = 0;
         root.settleImport();
     }
 

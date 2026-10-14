@@ -1023,7 +1023,7 @@ Singleton {
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse
     readonly property int clipseWaiting: Clipboard.clipseWaiting
-    readonly property string clipseDetail: root.clipseImported ? "brought over" : root.clipseWaiting ? `${root.clipseWaiting} entries waiting` : "nothing waiting in clipse"
+    readonly property string clipseDetail: root.clipseWaiting ? `${root.clipseWaiting} entries waiting` : root.clipseImported ? "brought over" : "nothing waiting in clipse"
 
     readonly property string nextAlarm: {
         const now = Date.now();

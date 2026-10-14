@@ -24,13 +24,17 @@ Done.
 
 `Clipboard.importFromClipse()` sets `clipboard.importClipse` and reloads the
 clipse FileView; the existing `adopt` path brings the history over and clears the
-key, so the button turns to Done. The clipse FileView now also counts the entries
-in clipse's history whether or not the key is set (`Clipboard.clipseWaiting`,
-zeroed once adopted); `SettingsState.clipseWaiting` and the Apps hub suggestion
-read it. The row's detail says "412 entries waiting", or "nothing waiting in
-clipse" when the file is missing or empty. The count is read when the shell
-starts and again on import; it does not watch clipse's file.
+key. `Clipboard.clipseWaiting` counts the entries in clipse's history that are
+not already in ours (the same duplicate test `adopt` uses, split out as
+`fresh()`), so it falls to 0 after an import. `SettingsState.clipseWaiting` and
+the Apps hub suggestion read it. The row's detail says "412 entries waiting";
+the button reads Import while anything is waiting and Done once nothing is, so it
+also works for someone whose first-start import already ran. The hub suggestion
+still only appears while the key says the import has not happened. The history is
+read when the shell starts and again on import; clipse's file is not watched.
 
 To check by hand: with a real clipse history, press Import and see the entries
-and pictures arrive. The toast number is the file's total, not what is left after
-duplicates are dropped.
+and pictures arrive. Tried against a fake clipse file in a throwaway root:
+count 3, Import, three entries, count 0. If clipse holds more than
+`clipboard.maxEntries`, the surplus is pruned on import and keeps counting as
+waiting.
