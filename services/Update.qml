@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "update.js" as Words
 
 Singleton {
     id: root
@@ -17,7 +18,14 @@ Singleton {
     property string state: root.idle
 
     property int behind: 0
-    property string remoteHead: ""
+    property int ahead: 0
+
+    property string target: ""
+    readonly property string remoteHead: root.target.slice(0, 7)
+
+    property string headBranch: ""
+    readonly property bool paused: root.headBranch !== "" && root.headBranch !== root.branch
+    readonly property bool diverged: root.behind > 0 && root.ahead > 0
 
     property string error: ""
 
@@ -41,6 +49,22 @@ Singleton {
     property bool remembered: false
     property bool fetching: false
 
+    readonly property string headline: {
+        if (root.state === root.downloaded)
+            return "Downloaded - restart to apply";
+        if (root.state === root.downloading)
+            return "Updating...";
+        if (root.state === root.failed)
+            return "Update failed - nothing was changed";
+        if (root.paused)
+            return `This copy is on ${root.headBranch === "HEAD" ? "no branch" : root.headBranch}, so it does not follow ${root.branch}`;
+        if (root.diverged)
+            return `${root.behind} new on ${root.branch}, but this copy has ${root.ahead} of its own`;
+        if (root.behind > 0)
+            return `${root.behind} new commit${root.behind === 1 ? "" : "s"} on ${root.branch}`;
+        return "You are up to date";
+    }
+
     function nameable(name: string): bool {
         return !!name && !name.startsWith("-");
     }
@@ -50,6 +74,14 @@ Singleton {
             return false;
         root.error = "the update remote or branch is not a name git can take";
         return true;
+    }
+
+    function commit(sha: string): bool {
+        return /^[0-9a-f]{40,64}$/.test(sha);
+    }
+
+    function ago(when: date): string {
+        return Words.ago(when.getTime(), Date.now());
     }
 
     function check(): void {
@@ -69,12 +101,25 @@ Singleton {
         watchdog.restart();
 
         checker.command = ["sh", "-c", `
-            if [ "$4" = fetch ] && ! out=$(git -C "$1" fetch --quiet -- "$2" "$3" 2>&1); then
-                printf 'error=%s\\n' "$(printf '%s' "$out" | tail -1)"
+            export GIT_TERMINAL_PROMPT=0 LC_ALL=C
+            top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null)
+            if [ -z "$top" ] || [ "$top" != "$(cd "$1" && pwd -P)" ]; then
+                printf 'failed\\n|fatal: not a git repository\\n'
                 exit 0
             fi
-            printf 'count=%s\\n' "$(git -C "$1" rev-list --count --end-of-options "HEAD..$2/$3")"
-            printf 'head=%s\\n' "$(git -C "$1" rev-parse --short --end-of-options "$2/$3")"
+            if [ "$4" = fetch ]; then
+                out=$(timeout -k 10 120 git -C "$1" fetch --quiet -- "$2" "$3" 2>&1)
+                case $? in
+                    0) ;;
+                    124|137) printf 'failed\\n|timed out\\n'; exit 0 ;;
+                    *) echo failed; printf '%s\\n' "$out" | sed 's/^/|/'; exit 0 ;;
+                esac
+            fi
+            printf 'branch=%s\\n' "$(git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)"
+            printf 'head=%s\\n' "$(git -C "$1" rev-parse --verify --quiet HEAD 2>/dev/null)"
+            printf 'target=%s\\n' "$(git -C "$1" rev-parse --verify --quiet --end-of-options "$2/$3^{commit}" 2>/dev/null)"
+            printf 'count=%s\\n' "$(git -C "$1" rev-list --count --end-of-options "HEAD..$2/$3" 2>/dev/null)"
+            printf 'ahead=%s\\n' "$(git -C "$1" rev-list --count --end-of-options "$2/$3..HEAD" 2>/dev/null)"
         `, "sh", root.dir, root.remote, root.branch, fetch ? "fetch" : "local"];
         checker.running = true;
     }
@@ -97,23 +142,28 @@ Singleton {
     }
 
     function download(): void {
-        if (root.busy || root.checking || root.state === root.downloaded)
+        if (root.busy || root.checking || root.paused || root.diverged || root.state === root.downloaded)
             return;
 
         root.error = "";
-        if (root.refuse())
+        if (!root.commit(root.target)) {
+            root.error = "Nothing has been checked yet. Refresh first.";
             return;
+        }
         root.state = root.downloading;
         root.checking = true;
+        kept.installedTo = root.target;
         watchdog.restart();
 
         puller.command = ["sh", "-c", `
-            if out=$(git -C "$1" fetch --quiet -- "$2" "$3" 2>&1) && out=$(git -C "$1" merge --ff-only --quiet FETCH_HEAD 2>&1); then
-                printf 'head=%s\\n' "$(git -C "$1" rev-parse --short HEAD)"
+            export GIT_TERMINAL_PROMPT=0 LC_ALL=C
+            if out=$(git -C "$1" merge --ff-only --quiet "$2" 2>&1); then
+                printf 'head=%s\\n' "$(git -C "$1" rev-parse HEAD)"
             else
-                printf 'error=%s\\n' "$(printf '%s' "$out" | tail -1)"
+                echo failed
+                printf '%s\\n' "$out" | sed 's/^/|/'
             fi
-        `, "sh", root.dir, root.remote, root.branch];
+        `, "sh", root.dir, root.target];
         puller.running = true;
     }
 
@@ -121,6 +171,14 @@ Singleton {
         const cli = `${Quickshell.env("HOME")}/bin/banditshell`;
         Quickshell.execDetached(["sh", "-c",
             `if [ -x '${cli}' ]; then exec '${cli}' restart; else exec banditshell restart; fi`]);
+    }
+
+    PersistentProperties {
+        id: kept
+
+        reloadableId: "update"
+
+        property string installedTo: ""
     }
 
     FileView {
@@ -167,15 +225,19 @@ Singleton {
     Timer {
         id: watchdog
 
-        interval: 300000
+        interval: 180000
 
         onTriggered: {
             if (!root.checking)
                 return;
             root.checking = false;
+            checker.running = false;
+            puller.running = false;
             if (root.state === root.downloading) {
                 root.state = root.failed;
-                root.error = "git gave up halfway";
+                root.error = "git stopped answering and was stopped. Refresh to see where this copy stands.";
+            } else {
+                root.error = "The check stopped answering and was given up.";
             }
         }
     }
@@ -185,24 +247,29 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                if (root.fetching)
+                if (!root.checking)
+                    return;
+                root.checking = false;
+                watchdog.stop();
+
+                const got = Words.report(text);
+                if (!got.failed && root.fetching)
                     root.remember();
                 root.checkedAt = new Date(root.fetchedAt);
 
-                let failure = "";
-                for (const line of text.split("\n")) {
-                    if (line.startsWith("count="))
-                        root.behind = Number(line.slice(6)) || 0;
-                    else if (line.startsWith("head="))
-                        root.remoteHead = line.slice(5).trim();
-                    else if (line.startsWith("error="))
-                        failure = line.slice(6).trim();
+                if (got.failed) {
+                    root.error = Words.explain(got.output, root.branch);
+                    console.warn(`Update: ${got.output.join(" / ")}`);
+                    return;
                 }
 
-                root.error = failure;
+                root.headBranch = got.values.branch ?? "";
+                root.target = root.commit(got.values.target ?? "") ? got.values.target : "";
+                root.behind = root.paused ? 0 : Number(got.values.count) || 0;
+                root.ahead = root.paused ? 0 : Number(got.values.ahead) || 0;
 
-                root.checking = false;
-                watchdog.stop();
+                if (kept.installedTo !== "" && got.values.head === kept.installedTo)
+                    root.state = root.downloaded;
 
                 if (root.behind > 0)
                     root.state = root.available;
@@ -217,24 +284,23 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                let failure = "";
-                for (const line of text.split("\n")) {
-                    if (line.startsWith("head="))
-                        root.remoteHead = line.slice(5).trim();
-                    else if (line.startsWith("error="))
-                        failure = line.slice(6).trim();
-                }
-
+                if (!root.checking)
+                    return;
                 root.checking = false;
                 watchdog.stop();
 
-                if (failure !== "") {
-                    root.error = failure;
+                const got = Words.report(text);
+                if (got.failed) {
+                    kept.installedTo = "";
+                    root.error = Words.explain(got.output, root.branch);
                     root.state = root.failed;
-                } else {
-                    root.behind = 0;
-                    root.state = root.downloaded;
+                    console.warn(`Update: ${got.output.join(" / ")}`);
+                    return;
                 }
+
+                root.behind = 0;
+                root.ahead = 0;
+                root.state = root.downloaded;
             }
         }
     }
