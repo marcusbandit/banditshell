@@ -35,7 +35,11 @@ Singleton {
                 });
             }
         case "importClipse":
-            return SettingsView.drop("clipse’s history comes over the next time the shell starts", "move_to_inbox");
+            {
+                const waiting = Clipboard.clipseWaiting;
+                Clipboard.importFromClipse();
+                return SettingsView.drop(waiting ? `clipse’s history is over · ${waiting} entries` : "clipse had nothing to bring over", "move_to_inbox");
+            }
         case "lockNow":
             Settings.hide();
             return Lock.lock();

@@ -711,20 +711,33 @@ Singleton {
         watchChanges: false
 
         onLoaded: {
-            if (!Config.values.clipboard.importClipse)
-                return;
-
             let old = [];
             try {
                 old = JSON.parse(text())?.clipboardHistory ?? [];
             } catch (err) {
-                console.warn("Clipboard: clipse's history could not be read; importing nothing.", err);
+                if (Config.values.clipboard.importClipse)
+                    console.warn("Clipboard: clipse's history could not be read; importing nothing.", err);
             }
 
-            root.adopt(old);
+            root.clipseWaiting = Array.isArray(old) ? old.length : 0;
+
+            if (!Config.values.clipboard.importClipse)
+                return;
+
+            root.adopt(Array.isArray(old) ? old : []);
         }
 
-        onLoadFailed: root.settleImport()
+        onLoadFailed: {
+            root.clipseWaiting = 0;
+            root.settleImport();
+        }
+    }
+
+    property int clipseWaiting: 0
+
+    function importFromClipse(): void {
+        Config.set("clipboard.importClipse", true);
+        clipse.reload();
     }
 
     function importedPath(from: string): string {
@@ -786,6 +799,7 @@ Singleton {
         }
 
         console.log(`Clipboard: imported ${brought.length} entries from clipse (${pics.length} pictures copied).`);
+        root.clipseWaiting = 0;
         root.settleImport();
     }
 

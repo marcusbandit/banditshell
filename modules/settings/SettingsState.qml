@@ -1028,8 +1028,8 @@ Singleton {
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse
-    readonly property int clipseWaiting: 0
-    readonly property string clipseDetail: root.clipseImported ? "brought over" : "comes over at the next start"
+    readonly property int clipseWaiting: Clipboard.clipseWaiting
+    readonly property string clipseDetail: root.clipseImported ? "brought over" : root.clipseWaiting ? `${root.clipseWaiting} entries waiting` : "nothing waiting in clipse"
 
     readonly property string nextAlarm: {
         const now = Date.now();
