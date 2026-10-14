@@ -688,6 +688,10 @@ Singleton {
 
     readonly property var opaque: ["files.keys", "files.grid"]
 
+    readonly property var literals: ({
+            "files.terminal.palette": ["theme"]
+        })
+
     function get(key: string): var {
         return Configuration.lookup(root.values, key);
     }
@@ -697,7 +701,7 @@ Singleton {
     }
 
     function setMany(pairs: var): void {
-        const result = Configuration.assign(root.values, pairs);
+        const result = Configuration.assign(root.values, pairs, root.literals);
         if (result.refused)
             return console.warn(`Config: no such setting "${result.refused}"`);
 
@@ -749,7 +753,7 @@ Singleton {
             }
 
             root.unreadable = false;
-            root.values = Configuration.merge(root.defaults, parsed, "", root.opaque);
+            root.values = Configuration.merge(root.defaults, parsed, "", root.opaque, root.literals);
             root.loaded = true;
 
             if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {

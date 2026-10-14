@@ -100,7 +100,13 @@ Singleton {
 
         readonly property var spectrum: [root.theme.dim, root.theme.mid, root.theme.bright]
 
-        readonly property var terminalPalette: root.config.files.terminal.palette
+        readonly property var themePalette: {
+            const t = root.theme;
+            const r = t.ramp;
+            return [r[1], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[9], r[6], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[10]].map(c => String(c));
+        }
+
+        readonly property var terminalPalette: root.config.files.terminal.palette === "theme" ? root.colour.themePalette : root.config.files.terminal.palette
 
         readonly property color updateAvailable: root.config.updates.availableColour
         readonly property color updateFailed: root.config.updates.failedColour

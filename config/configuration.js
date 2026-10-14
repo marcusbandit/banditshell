@@ -8,9 +8,24 @@ function owns(node, key) {
     return Object.prototype.hasOwnProperty.call(node, key);
 }
 
-function merge(base, over, path, opaque) {
+function allowedLiteral(literals, path, value) {
+    return typeof value === "string" && (literals?.[path] ?? []).includes(value);
+}
+
+function fits(current, value, literals, key) {
+    if (allowedLiteral(literals, key, value))
+        return true;
+    if (allowedLiteral(literals, key, current))
+        return Array.isArray(value);
+    return sameShape(current, value);
+}
+
+function merge(base, over, path, opaque, literals) {
     if (opaque.includes(path))
         return over && typeof over === "object" ? over : base;
+
+    if (allowedLiteral(literals, path, over))
+        return over;
 
     if (Array.isArray(base))
         return Array.isArray(over) ? over : base;
@@ -22,7 +37,7 @@ function merge(base, over, path, opaque) {
             return over;
         const out = {};
         for (const key of Object.keys(base))
-            out[key] = merge(base[key], owns(over, key) ? over[key] : undefined, path ? `${path}.${key}` : key, opaque);
+            out[key] = merge(base[key], owns(over, key) ? over[key] : undefined, path ? `${path}.${key}` : key, opaque, literals);
         return out;
     }
 
@@ -53,7 +68,7 @@ function lookup(values, key) {
     return node;
 }
 
-function assign(values, pairs) {
+function assign(values, pairs, literals) {
     const next = JSON.parse(JSON.stringify(values));
 
     for (const pair of pairs) {
@@ -70,7 +85,7 @@ function assign(values, pairs) {
         }
 
         const last = segments[segments.length - 1];
-        if (!holds(node, last) || !sameShape(node[last], pair[1]))
+        if (!holds(node, last) || !fits(node[last], pair[1], literals, key))
             return { values: null, refused: key };
 
         node[last] = pair[1];

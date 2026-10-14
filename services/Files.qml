@@ -521,6 +521,18 @@ Singleton {
         pty.running = true;
     }
 
+    Connections {
+        target: Appearance.colour
+
+        function onTerminalPaletteChanged(): void {
+            if (!root.term)
+                return;
+            root.term.palette = Appearance.colour.terminalPalette;
+            root.term.touch();
+            root.revision = root.term.revision;
+        }
+    }
+
     function send(text: string): void {
         if (!pty.running)
             return;

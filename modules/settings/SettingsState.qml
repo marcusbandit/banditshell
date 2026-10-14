@@ -106,8 +106,8 @@ Singleton {
                 write: v => String(v).trim().split(/\s+/).filter(Boolean)
             },
             termColours: {
-                read: v => JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "theme",
-                write: v => v === "one dark" ? Config.defaults.files.terminal.palette : root.themePalette()
+                read: v => v === "theme" ? "theme" : JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "custom",
+                write: v => v === "theme" ? "theme" : Config.defaults.files.terminal.palette
             },
             iconMode: {
                 read: v => v === "colour" ? "colour" : "mono",
@@ -118,12 +118,6 @@ Singleton {
                 write: v => v
             }
         })
-
-    function themePalette(): var {
-        const t = Appearance.theme;
-        const r = t.ramp;
-        return [r[1], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[9], r[6], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[10]].map(c => String(c));
-    }
 
     function rowOf(k: string): var {
         return Catalogue.ROW_BY_KEY[k] ?? null;
