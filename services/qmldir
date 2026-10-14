@@ -14,6 +14,7 @@ singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Display 1.0 Display.qml
 singleton Files 1.0 Files.qml
+singleton Hotspot 1.0 Hotspot.qml
 singleton HyprConfig 1.0 HyprConfig.qml
 singleton Hypr 1.0 Hypr.qml
 singleton Keyboards 1.0 Keyboards.qml
@@ -23,6 +24,7 @@ singleton Launching 1.0 Launching.qml
 singleton Lock 1.0 Lock.qml
 singleton Media 1.0 Media.qml
 singleton Monitors 1.0 Monitors.qml
+singleton NetworkEvents 1.0 NetworkEvents.qml
 singleton Network 1.0 Network.qml
 singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
@@ -40,6 +42,7 @@ singleton Tablet 1.0 Tablet.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Tray 1.0 Tray.qml
+singleton Tunnels 1.0 Tunnels.qml
 singleton Update 1.0 Update.qml
 singleton Usage 1.0 Usage.qml
 singleton Wallpaper 1.0 Wallpaper.qml
