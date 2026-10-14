@@ -118,7 +118,7 @@ Singleton {
     }
 
     function outputKey(): string {
-        return Monitors.outputs.map(o => o.name).sort().join(",");
+        return Monitors.active.map(o => o.name).sort().join(",");
     }
 
     function detect(): void {

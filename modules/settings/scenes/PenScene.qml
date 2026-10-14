@@ -17,7 +17,7 @@ Item {
     readonly property real targetAspect: {
         if (root.target === "all")
             return 3.6;
-        const m = Monitors.outputs.find(o => o.name === root.target);
+        const m = Monitors.active.find(o => o.name === root.target);
         if (!m)
             return root.padAspect;
         const l = Monitors.layoutOf(m);
