@@ -287,7 +287,7 @@ Two hazards in this step, both learned the hard way:
 - The log replays its history, so `grep -i error` will happily show you errors
   from ten minutes ago. Read the **tail**, and touch a file to force a fresh
   reload if you are unsure which pass you are looking at.
-- If you change a setting to test something (`banditshell set ...`), put it back
+- If you change a setting to test something (`banditshell config set ...`), put it back
   the moment you are done. Leaving the user's sidebar in a state they did not
   ask for reads as the change you just made.
 

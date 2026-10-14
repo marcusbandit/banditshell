@@ -28,9 +28,9 @@ folder carries a `qmldir`; after adding, moving or renaming a file run
 Agents work in worktrees, headless; the user feels the result on the live
 session before any PR. Do not restart or replace the live shell yourself.
 End worktree work with the one command that puts it in front of them:
-`banditshell try <branch>` (bare `banditshell try` inside the worktree does
-the same), and `banditshell back` to return. A tried worktree reloads as its
-files change, so further edits land without another `try`.
+`banditshell dev try <branch>` (bare `banditshell dev try` inside the worktree
+does the same), and `banditshell dev back` to return. A tried worktree reloads
+as its files change, so further edits land without another `try`.
 
 ## Agent skills
 

@@ -17,7 +17,7 @@ usage() {
 usage: install.sh [--dry-run] [--no-ui] [--list]
 
 Installs what banditshell needs on Arch: the CLI into bin/, quickshell, the
-font, every package the shell calls, the C helpers (banditshell build) and tab
+font, every package the shell calls, the C helpers (banditshell dev build) and tab
 completion for zsh and bash. Steps already satisfied are skipped, so a re-run
 retries only what failed. Run it as yourself; it asks for sudo when a package
 needs installing.
@@ -128,7 +128,7 @@ helpers_built() {
 }
 
 install_helpers() {
-    STEP_OUTPUT="$("$REPO/bin/banditshell" build 2>&1)"
+    STEP_OUTPUT="$("$REPO/bin/banditshell" dev build 2>&1)"
 }
 
 completion_present() {
@@ -466,10 +466,10 @@ main() {
     fi
 
     say "  banditshell is ready."
-    say "    in a new shell: banditshell <Tab> completes every verb"
+    say "    in a new shell: banditshell <Tab> completes every command"
     say "    run it now:     $REPO/bin/banditshell start"
-    say "    see it live:    $REPO/bin/banditshell run"
-    say "    every verb:     $REPO/bin/banditshell help"
+    say "    see it live:    $REPO/bin/banditshell dev run"
+    say "    what it does:   $REPO/bin/banditshell help"
     return 0
 }
 

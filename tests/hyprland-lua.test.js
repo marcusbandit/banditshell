@@ -88,7 +88,7 @@ test("binds born in loops and functions are dynamic; block depth survives the lo
         "hl.define_submap(\"voice\", function()",
         "    hl.bind(\"J\", hl.dsp.exec_cmd(\"voice lang ja\"))",
         "end)",
-        "hl.bind(\"SUPER + W\", hl.dsp.exec_cmd(\"banditshell toggle wallpaper\"))"
+        "hl.bind(\"SUPER + W\", hl.dsp.exec_cmd(\"banditshell wallpaper toggle\"))"
     ].join("\n"));
     assert.strictEqual(r.binds.length, 4);
 
@@ -114,11 +114,11 @@ test("a submap without a name contributes no submap", () => {
 });
 
 test("a chord built with .. is woven: the source stays the chord, the second argument the expression", () => {
-    const r = HyprlandLua.scanLua('hl.bind("SUPER + " .. key, hl.dsp.exec_cmd("banditshell toggle output"))');
+    const r = HyprlandLua.scanLua('hl.bind("SUPER + " .. key, hl.dsp.exec_cmd("banditshell output toggle"))');
     assert.strictEqual(r.binds.length, 1);
     assert.strictEqual(r.binds[0].chordLiteral, false);
     assert.strictEqual(r.binds[0].chord, '"SUPER + " .. key');
-    assert.strictEqual(r.binds[0].expr, 'hl.dsp.exec_cmd("banditshell toggle output")');
+    assert.strictEqual(r.binds[0].expr, 'hl.dsp.exec_cmd("banditshell output toggle")');
     assert.strictEqual(r.binds[0].dynamic, true);
     assert.deepStrictEqual(r.binds[0].chords, []);
 });
@@ -131,7 +131,7 @@ test("a literal chord is its own and only chord", () => {
 test("loop keys reach only the binds that use the loop variable", () => {
     const r = HyprlandLua.scanLua([
         "for _, key in ipairs({ \"KP_0\", \"KP_Insert\" }) do",
-        "    hl.bind(\"SUPER + \" .. key, hl.dsp.exec_cmd(\"banditshell toggle output\"))",
+        "    hl.bind(\"SUPER + \" .. key, hl.dsp.exec_cmd(\"banditshell output toggle\"))",
         "    hl.bind(\"SUPER + \" .. other, hl.dsp.exec_cmd(\"y\"))",
         "    hl.bind(\"SUPER + W\", hl.dsp.exec_cmd(\"x\"))",
         "end",
