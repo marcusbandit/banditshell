@@ -445,6 +445,12 @@ banditshell/
 │   │                            the two of them travel in (802.1X)
 │   ├── AspectMark.qml           two rectangles: the screen as an outline, the
 │   │                            picture solid inside it, both fitted to one box
+│   ├── DropShadow.qml           the soft shadow under a floating thing, drawn
+│   │                            from its shape rather than its pixels, so it
+│   │                            costs nothing when the thing resizes every frame
+│   ├── FloatingTooltip.qml      a plain label floating above whatever it is
+│   │                            dropped into, after the tooltip delay; for
+│   │                            surfaces with no chassis to melt a tip out of
 │   ├── PathField.qml            a MenuRow until you press it, then a place to
 │   │                            type; the keyboard is claimed on the edit, not
 │   │                            on being visible
