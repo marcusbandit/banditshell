@@ -49,7 +49,7 @@ ticket under `issues/`.
 These are the cheapest and the most visible: the panel's sidebar preview
 already shows them working.
 
-- 01 Sidebar options: clock style, date, update button, status icons, tray
+- 01 Sidebar options: clock style, date, status icons, tray
   switch, specials rack, mode glyph
 - 02 Volume past 100% as a switch
 - 03 Hotkey sheet board shapes: ansi, iso, split

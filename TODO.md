@@ -14,9 +14,10 @@ done-marks go under the item they belong to.
     the shell yet") keep their value in state/settings.json and do nothing
     else; .scratch/settings-backends/ is the plan for each (spec.md, then one
     ticket per backend), and tests/settings.test.js fails if a planned row has
-    no ticket. The sidebar options (clock style, date, update button, status
-    icons, tray, specials rack, mode glyph), volume past 100%, board shapes and
-    the on-screen keyboard's repeat switch are planned too, not built.
+    no ticket. The sidebar options (clock style, date, status icons, tray,
+    specials rack, mode glyph), volume past 100%, board shapes and the
+    on-screen keyboard's repeat switch are planned too, not built. The update
+    button is real: it drives sidebar.update.
   - 2026-10-14: no catcher any more. The panel stays put while the desktop is
     used; the X or the corner closes it (Escape too, when it holds the keys).
     It holds the keyboard only while the pointer is over it, and steps aside

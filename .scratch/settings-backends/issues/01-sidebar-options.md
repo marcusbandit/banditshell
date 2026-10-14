@@ -2,15 +2,17 @@
 
 Status: ready-for-agent
 
-Rows (Desktop › Sidebar): Clock `sbClock`, Date `sbDate`, Update button `sbUpdate`,
-Sound `sbSound`, Network `sbNet`, Bluetooth `sbBt`, Battery `sbBatt`, Tray `tray`,
-Special workspaces `specialsShown`. Modes (ticket 09) also want their glyph here.
+Rows (Desktop › Sidebar): Clock `sbClock`, Date `sbDate`, Sound `sbSound`,
+Network `sbNet`, Bluetooth `sbBt`, Battery `sbBatt`, Tray `tray`, Special
+workspaces `specialsShown`. Modes (ticket 09) also want their glyph here.
+
+Update button `sbUpdate` is done: it shipped with the update loop as
+`sidebar.update` (`always` | `new` | `never`, default `new`).
 
 Proposed keys, from the mockup:
 
 - `sidebar.clock.style`: `stacked` | `small` | `one line` | `off` (default `stacked`)
 - `sidebar.clock.date`: `day and month` | `day` | `off` (default `day and month`)
-- `sidebar.update`: `always` | `new` | `never` (default `always`)
 - `sidebar.status.sound|network|bluetooth|battery`: bool (default true)
 - `sidebar.tray.enabled`: bool (default true). The mockup row has no key; this
   name sits next to `sidebar.tray.max`.
@@ -26,9 +28,6 @@ Proposed keys, from the mockup:
   off hides the time. The date shows "14\nOCT", "14", or nothing, and still
   opens the calendar on tap or pull. The spacer between time and date only
   shows when both do.
-- `modules/sidebar/UpdateIndicator.qml`: `visible` follows the key; `new` means
-  the update state is not idle and not checking (or the CLI is stale).
-  Updates stay reachable from Settings › System › Updates.
 - `modules/sidebar/StatusIcons.qml`: filter `gauges` by the four keys; battery
   still needs `Battery.available`.
 - `modules/sidebar/TrayIcons.qml`: `shown` is empty when the tray is off.

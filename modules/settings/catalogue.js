@@ -316,7 +316,7 @@ const PAGES_SOURCE = {
                     why: "The date under the clock. It still opens the calendar when you tap or pull it." }
             ] },
             { t: "Status", rows: [
-                { n: [], isNew: true, icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide",
+                { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide",
                     why: "When new keeps the sidebar clean until there is something to install. Updates stay reachable from System either way." },
                 { n: [], isNew: true, icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
                 { n: [], isNew: true, icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
