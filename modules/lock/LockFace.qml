@@ -101,14 +101,14 @@ Item {
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                text: Qt.formatDateTime(clock.date, "HH:mm")
+                text: TimeFormat.time(clock.date, false)
                 font.pixelSize: Appearance.font.size.large
             }
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
 
-                text: Qt.formatDateTime(clock.date, "dddd d MMMM").toUpperCase()
+                text: TimeFormat.dateText(clock.date, "headline").toUpperCase()
                 font.pixelSize: Appearance.font.size.small
                 color: Appearance.colour.textFaint
             }
@@ -214,7 +214,7 @@ Item {
 
                                 Behavior on opacity {
                                     NumberAnimation {
-                                        duration: Appearance.animation.normal
+                                        duration: Appearance.animation.fade.normal
                                         easing.type: Easing.OutCubic
                                     }
                                 }
@@ -233,6 +233,20 @@ Item {
                 font.pixelSize: Appearance.font.size.small
                 color: Lock.failed ? Appearance.colour.accent : Appearance.colour.textFaint
                 opacity: verdict.text ? 1 : 0
+            }
+
+            Item {
+                width: 1
+                height: Appearance.padding.huge
+                visible: notices.visible
+            }
+
+            LockNotifications {
+                id: notices
+
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                width: Appearance.sizes.lockField
             }
         }
     }

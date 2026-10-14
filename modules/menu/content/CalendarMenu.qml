@@ -103,7 +103,7 @@ Column {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.fast
+                    duration: Appearance.animation.fade.fast
                 }
             }
         }
@@ -124,7 +124,7 @@ Column {
             anchors.leftMargin: Appearance.padding.small
             anchors.verticalCenter: parent.verticalCenter
 
-            text: Qt.formatDate(new Date(root.shownYear, root.shownMonth, 1), "MMMM yyyy")
+            text: TimeFormat.dateText(new Date(root.shownYear, root.shownMonth, 1), "month")
             font.pixelSize: Appearance.font.size.normal
             font.bold: true
         }

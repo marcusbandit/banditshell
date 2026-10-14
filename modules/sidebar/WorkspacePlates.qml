@@ -39,22 +39,7 @@ Item {
     property int hovered: -1
     property int racked: -1
 
-    readonly property var deck: {
-        const want = Config.values.sidebar.workspaces.specials;
-        const live = Hypr.specials;
-        const out = [];
-        for (const name of want)
-            out.push(live.find(s => s.label === name) ?? ({
-                        id: 0,
-                        name: `special:${name}`,
-                        label: name,
-                        windows: []
-                    }));
-        for (const s of live.slice().sort((a, b) => a.label.localeCompare(b.label)))
-            if (want.indexOf(s.label) < 0)
-                out.push(s);
-        return out;
-    }
+    readonly property var deck: Hypr.specialDeck
 
     readonly property int barStep: root.barMark + root.barGap
 
@@ -349,7 +334,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.fast
+                    duration: Appearance.animation.fade.fast
                 }
             }
         }
@@ -412,7 +397,7 @@ Item {
 
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: Appearance.animation.fast
+                            duration: Appearance.animation.fade.fast
                         }
                     }
                 }
@@ -424,7 +409,7 @@ Item {
 
                 Behavior on opacity {
                     NumberAnimation {
-                        duration: Appearance.animation.fast
+                        duration: Appearance.animation.fade.fast
                     }
                 }
 
@@ -606,7 +591,7 @@ Item {
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Appearance.animation.normal
+                                duration: Appearance.animation.fade.normal
                             }
                         }
 

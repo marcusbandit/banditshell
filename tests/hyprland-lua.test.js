@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
 const HyprlandLua = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprlandLua.parseChord("SUPER + SHIFT + Slash"), {
@@ -514,10 +514,9 @@ test("an entry carries the indent it was written under, and an edit keeps it", (
 
     assert.strictEqual(side.indent, "            ");
 
-    assert.strictEqual(side.trailing, ",");
     const line = HyprlandLua.composeEntry(side, { position: "480x0" });
     assert.ok(line.includes("output = vertical_side"));
-    const edited = HyprlandLua.spliceLines(MONITORS_LUA, side.startLine, side.endLine, [side.indent + line + side.trailing]);
+    const edited = HyprlandLua.spliceLines(MONITORS_LUA, side.startLine, side.endLine, HyprlandLua.entryReplacement(MONITORS_LUA, side, line));
     const second = HyprlandLua.scanLua(edited);
     assert.strictEqual(second.monitors.find(m => m.output === "DP-1").startLine, side.startLine, "the entry is one line now, at the indent it wore");
 
@@ -528,9 +527,8 @@ test("an edit round-trips: scan, edit, splice, rescan", () => {
     const first = HyprlandLua.scanLua(MONITORS_LUA);
     const wide = first.monitors.find(m => m.output === "HDMI-A-1");
 
-    const edited = HyprlandLua.spliceLines(MONITORS_LUA, wide.startLine, wide.endLine, [
-        "            " + HyprlandLua.composeEntry(wide, { position: "1200x172" }) + wide.trailing
-    ]);
+    const edited = HyprlandLua.spliceLines(MONITORS_LUA, wide.startLine, wide.endLine,
+        HyprlandLua.entryReplacement(MONITORS_LUA, wide, HyprlandLua.composeEntry(wide, { position: "1200x172" })));
 
     const second = HyprlandLua.scanLua(edited);
     assert.strictEqual(second.monitors.length, first.monitors.length, "no entry gained or lost");
@@ -630,9 +628,8 @@ test("a band round-trip: scan, edit, splice, rescan", () => {
     const first = HyprlandLua.scanLua(BANDS_LUA);
     const side = first.bands.find(b => b.monitor === "DP-1");
 
-    const edited = HyprlandLua.spliceLines(BANDS_LUA, side.startLine, side.endLine, [
-        "        " + HyprlandLua.composeEntry(side, { workspaces: "6-15" }) + side.trailing
-    ]);
+    const edited = HyprlandLua.spliceLines(BANDS_LUA, side.startLine, side.endLine,
+        HyprlandLua.entryReplacement(BANDS_LUA, side, HyprlandLua.composeEntry(side, { workspaces: "6-15" })));
 
     const second = HyprlandLua.scanLua(edited);
     assert.strictEqual(second.bands.length, first.bands.length);
@@ -713,4 +710,377 @@ test("appending lands after the last line, by line count, keeping the file's fin
     assert.strictEqual(add("", "NEW"), "NEW\n");
     assert.strictEqual(HyprlandLua.appendSplice(src, ["NEW"]).startLine, 3, "a line number, not a character count");
     assert.strictEqual(HyprlandLua.spliceLines(src, src.length + 1, src.length + 1, ["NEW"]), null, "the old character-count call never worked");
+});
+
+const Options = new Function(src
+    + "\nreturn { optionSegments, luaOptionValue, scanOptions, planOption, optionBlocked, optionValue, chordHolder, lineDiff, spliceLines };")();
+
+const INPUT_LUA = [
+    "hl.config({",
+    "    input = {",
+    "        kb_layout  = \"us,dk\",",
+    "        kb_options = \"caps:backspace, grp:switch\",",
+    "",
+    "        follow_mouse = 1,",
+    "        sensitivity  = 0,",
+    "",
+    "        touchpad = {",
+    "            natural_scroll = true,",
+    "        },",
+    "    },",
+    "})",
+    "",
+    "if host.is(\"banditbox\") then",
+    "    hl.config({ cursor = { no_hardware_cursors = true } })",
+    "end",
+    ""
+].join("\n");
+
+function written(files, request) {
+    const plan = Options.planOption(files, request);
+    assert.ok(plan.ok, plan.reason);
+    if (plan.unchanged)
+        return null;
+    const file = files.find(f => f.name === plan.file);
+    return { name: plan.file, text: Options.spliceLines(file.text, plan.startLine, plan.endLine, plan.replacement) };
+}
+
+function change(text, request) {
+    const out = written([{ name: "a.lua", text }], request);
+    return out ? out.text : text;
+}
+
+test("option paths turn into the keys Lua spells", () => {
+    assert.deepStrictEqual(Options.optionSegments("input:touchpad:tap-to-click"), ["input", "touchpad", "tap_to_click"]);
+    assert.deepStrictEqual(Options.optionSegments("input.kb_layout"), ["input", "kb_layout"]);
+    assert.deepStrictEqual(Options.optionSegments(""), []);
+});
+
+test("option values compose as Lua literals", () => {
+    assert.strictEqual(Options.luaOptionValue(true), "true");
+    assert.strictEqual(Options.luaOptionValue(false), "false");
+    assert.strictEqual(Options.luaOptionValue(300), "300");
+    assert.strictEqual(Options.luaOptionValue(0.1 + 0.2), "0.3");
+    assert.strictEqual(Options.luaOptionValue(-0.25), "-0.25");
+    assert.strictEqual(Options.luaOptionValue('dk,"us"'), '"dk,\\"us\\""');
+    assert.strictEqual(Options.luaOptionValue(NaN), null);
+    assert.strictEqual(Options.luaOptionValue(undefined), null);
+    assert.strictEqual(Options.luaOptionValue({}), null);
+});
+
+test("an option already set is rewritten in place and nothing else moves", () => {
+    const out = change(INPUT_LUA, { path: "input:kb_layout", value: "dk,us" });
+    assert.strictEqual(out, INPUT_LUA.replace('kb_layout  = "us,dk"', 'kb_layout  = "dk,us"'));
+    assert.strictEqual(change(INPUT_LUA, { path: "input:sensitivity", value: 0.35 }), INPUT_LUA.replace("sensitivity  = 0,", "sensitivity  = 0.35,"));
+});
+
+test("a nested option is found by its path", () => {
+    const out = change(INPUT_LUA, { path: "input:touchpad:natural_scroll", value: false });
+    assert.strictEqual(out, INPUT_LUA.replace("natural_scroll = true", "natural_scroll = false"));
+});
+
+test("writing the value that is already there asks for no write", () => {
+    assert.deepStrictEqual(Options.planOption([{ name: "a.lua", text: INPUT_LUA }], { path: "input:follow_mouse", value: 1 }), { ok: true, unchanged: true });
+});
+
+test("a trailing comment and the value's own spacing survive a rewrite", () => {
+    const text = "hl.config({ input = {\n    repeat_rate   =   25 , -- keys per second\n} })\n";
+    assert.strictEqual(change(text, { path: "input:repeat_rate", value: 40 }), "hl.config({ input = {\n    repeat_rate   =   40 , -- keys per second\n} })\n");
+});
+
+test("an option missing from a table lands at the end of that table, in its style", () => {
+    const out = change(INPUT_LUA, { path: "input:repeat_delay", value: 250 });
+    assert.strictEqual(out, INPUT_LUA.replace("        },\n    },", "        },\n        repeat_delay = 250,\n    },"));
+    const inner = change(INPUT_LUA, { path: "input:touchpad:tap-to-click", value: true });
+    assert.strictEqual(inner, INPUT_LUA.replace("            natural_scroll = true,\n", "            natural_scroll = true,\n            tap_to_click = true,\n"));
+});
+
+test("a table whose last field has no trailing comma gets one, and the new field follows suit", () => {
+    const text = "hl.config({\n    input = {\n        kb_layout = \"us\" -- lead\n    }\n})\n";
+    assert.strictEqual(change(text, { path: "input:repeat_rate", value: 30 }), "hl.config({\n    input = {\n        kb_layout = \"us\", -- lead\n        repeat_rate = 30\n    }\n})\n");
+});
+
+test("a table on one line grows on that line", () => {
+    assert.strictEqual(change('hl.config({ input = { kb_layout = "us" } })\n', { path: "input:repeat_rate", value: 30 }), 'hl.config({ input = { kb_layout = "us", repeat_rate = 30 } })\n');
+    assert.strictEqual(change('hl.config({ input = { kb_layout = "us", } })\n', { path: "input:repeat_rate", value: 30 }), 'hl.config({ input = { kb_layout = "us", repeat_rate = 30, } })\n');
+    assert.strictEqual(change("hl.config({ input = {} })\n", { path: "input:repeat_rate", value: 30 }), "hl.config({ input = { repeat_rate = 30 } })\n");
+});
+
+test("an empty table that spans lines gets its first field on a line of its own", () => {
+    assert.strictEqual(change("hl.config({\n    input = {\n    },\n})\n", { path: "input:repeat_rate", value: 30 }), "hl.config({\n    input = {\n        repeat_rate = 30,\n    },\n})\n");
+    assert.strictEqual(change("hl.config({\n\tinput = {\n\t},\n})\n", { path: "input:repeat_rate", value: 30 }), "hl.config({\n\tinput = {\n\t\trepeat_rate = 30,\n\t},\n})\n");
+});
+
+test("a missing sub-table is written inside the nearest table that exists", () => {
+    const text = "hl.config({\n    input = {\n        kb_layout = \"us\",\n    },\n})\n";
+    assert.strictEqual(change(text, { path: "input:touchpad:tap-to-click", value: true }), "hl.config({\n    input = {\n        kb_layout = \"us\",\n        touchpad = { tap_to_click = true },\n    },\n})\n");
+});
+
+test("an option with no table anywhere is a new hl.config call after a blank line", () => {
+    const text = "hl.bind(\"SUPER + A\", x)\n";
+    assert.strictEqual(change(text, { path: "general:layout", value: "dwindle" }), "hl.bind(\"SUPER + A\", x)\n\nhl.config({\n    general = {\n        layout = \"dwindle\",\n    },\n})\n");
+    assert.strictEqual(change(text, { path: "input:touchpad:tap-to-click", value: false }), "hl.bind(\"SUPER + A\", x)\n\nhl.config({\n    input = {\n        touchpad = {\n            tap_to_click = false,\n        },\n    },\n})\n");
+    assert.strictEqual(change("", { path: "general:layout", value: "master" }), "hl.config({\n    general = {\n        layout = \"master\",\n    },\n})\n");
+    assert.strictEqual(change("hl.bind(\"SUPER + A\", x)", { path: "general:layout", value: "master" }), "hl.bind(\"SUPER + A\", x)\n\nhl.config({\n    general = {\n        layout = \"master\",\n    },\n})");
+});
+
+test("a new option goes to the file asked for, else the first", () => {
+    const files = [{ name: "root.lua", text: "require(\"x\")\n" }, { name: "x.lua", text: "local a = 1\n" }];
+    assert.strictEqual(Options.planOption(files, { path: "misc:vfr", value: true }).file, "root.lua");
+    assert.strictEqual(Options.planOption(files, { path: "misc:vfr", value: true, appendTo: "x.lua" }).file, "x.lua");
+    assert.strictEqual(Options.planOption([], { path: "misc:vfr", value: true }).ok, false);
+});
+
+test("an option is found in whichever file sets it", () => {
+    const files = [{ name: "root.lua", text: "require(\"lua.input\")\n" }, { name: "lua/input.lua", text: INPUT_LUA }];
+    const out = written(files, { path: "input:kb_layout", value: "de" });
+    assert.strictEqual(out.name, "lua/input.lua");
+    assert.ok(out.text.includes('kb_layout  = "de"'));
+});
+
+test("a value built by code is refused, and so is one set under a condition", () => {
+    const dynamic = "local stage = require(\"lua.stage\")\nhl.config({ general = { layout = stage.name } })\n";
+    const refused = Options.planOption([{ name: "look.lua", text: dynamic }], { path: "general:layout", value: "dwindle" });
+    assert.strictEqual(refused.ok, false);
+    assert.match(refused.reason, /general:layout is generated by code \(look\.lua, line 2\)/);
+
+    const conditional = Options.planOption([{ name: "a.lua", text: INPUT_LUA }], { path: "cursor:no_hardware_cursors", value: false });
+    assert.strictEqual(conditional.ok, false);
+    assert.match(conditional.reason, /under a condition or inside a function \(a\.lua, line 16\)/);
+
+    for (const wrapped of ["function f()", "for i = 1, 2 do", "while x do", "repeat"])
+        assert.strictEqual(Options.optionBlocked([{ name: "a.lua", text: `${wrapped}\n hl.config({ input = { kb_layout = "us" } })\n${wrapped === "repeat" ? "until x" : "end"}\n` }], "input:kb_layout"), `input:kb_layout is set under a condition or inside a function (a.lua, line 2); edit the source.`, wrapped);
+});
+
+test("a category handed over as a variable might hold the option, so it is refused", () => {
+    const text = "local settings = {}\nhl.config({ input = settings })\n";
+    assert.match(Options.optionBlocked([{ name: "a.lua", text }], "input:kb_layout"), /may be generated by code \(a\.lua, line 2\)/);
+    assert.strictEqual(Options.optionBlocked([{ name: "a.lua", text }], "general:layout"), "");
+});
+
+test("an option set in two places is refused rather than guessed at", () => {
+    const files = [{ name: "a.lua", text: 'hl.config({ input = { kb_layout = "us" } })\n' }, { name: "b.lua", text: 'hl.config({ input = { kb_layout = "dk" } })\n' }];
+    const reason = Options.optionBlocked(files, "input:kb_layout");
+    assert.match(reason, /set in 2 places \(a\.lua, line 1; b\.lua, line 1\)/);
+});
+
+test("the flat dotted spelling of a key is the same option", () => {
+    const text = 'hl.config({ ["input.kb_layout"] = "us", ["input:repeat_rate"] = 20 })\n';
+    assert.strictEqual(change(text, { path: "input:kb_layout", value: "dk" }), 'hl.config({ ["input.kb_layout"] = "dk", ["input:repeat_rate"] = 20 })\n');
+    assert.strictEqual(change(text, { path: "input:repeat_rate", value: 30 }), 'hl.config({ ["input.kb_layout"] = "us", ["input:repeat_rate"] = 30 })\n');
+});
+
+test("strings, comments and long brackets that look like calls are not options", () => {
+    const text = [
+        "-- hl.config({ input = { kb_layout = \"commented\" } })",
+        "local note = \"hl.config({ input = { kb_layout = 'quoted' } })\"",
+        "--[[ hl.config({ input = { kb_layout = \"block\" } }) ]]",
+        "local long = [[ hl.config({ input = { kb_layout = 'long' } }) ]]",
+        "hl.config({ input = { kb_layout = \"real\" } })",
+        ""
+    ].join("\n");
+    assert.strictEqual(change(text, { path: "input:kb_layout", value: "dk" }), text.replace('"real"', '"dk"'));
+});
+
+test("a call that is not a table literal is left alone", () => {
+    const text = "hl.config(build())\nhl.config({ input = { repeat_rate = 25 } })\n";
+    assert.strictEqual(change(text, { path: "input:repeat_rate", value: 30 }), text.replace("25", "30"));
+});
+
+test("a device block is found by its name and edited", () => {
+    const text = 'hl.device({ name = "pad", sensitivity = 0.1, natural_scroll = true })\nhl.device({ name = "other", sensitivity = 0.9 })\n';
+    assert.strictEqual(change(text, { path: "input:sensitivity", device: "pad", value: 0.4 }), text.replace("sensitivity = 0.1", "sensitivity = 0.4"));
+    assert.strictEqual(change(text, { path: "sensitivity", device: "other", value: -0.5 }), text.replace("sensitivity = 0.9", "sensitivity = -0.5"));
+});
+
+test("a device block without the key gets it, and an unknown device gets a block", () => {
+    const text = 'hl.device({ name = "pad", natural_scroll = true })\n';
+    assert.strictEqual(change(text, { path: "input:sensitivity", device: "pad", value: 0.4 }), 'hl.device({ name = "pad", natural_scroll = true, sensitivity = 0.4 })\n');
+    assert.strictEqual(change(text, { path: "input:sensitivity", device: "mouse", value: 0.2 }), `${text}\nhl.device({ name = "mouse", sensitivity = 0.2 })\n`);
+});
+
+test("a device set under a condition is refused for a key it sets, and ignored for one it does not", () => {
+    const text = 'if host.is("a") then\n    hl.device({ name = "pad", output = "DP-1" })\nend\n';
+    assert.match(Options.optionBlocked([{ name: "a.lua", text }], "output", "pad"), /under a condition/);
+    assert.strictEqual(Options.optionBlocked([{ name: "a.lua", text }], "sensitivity", "pad"), "");
+    assert.strictEqual(change(text, { path: "sensitivity", device: "pad", value: 0.3 }), `${text}\nhl.device({ name = "pad", sensitivity = 0.3 })\n`);
+});
+
+test("a device whose name is built by code is never matched", () => {
+    const text = 'hl.device({ name = prefix .. "pad", sensitivity = 0.1 })\n';
+    assert.strictEqual(change(text, { path: "sensitivity", device: "pad", value: 0.3 }), `${text}\nhl.device({ name = "pad", sensitivity = 0.3 })\n`);
+});
+
+test("a value that cannot be written is refused", () => {
+    assert.strictEqual(Options.planOption([{ name: "a.lua", text: INPUT_LUA }], { path: "input:kb_layout", value: NaN }).ok, false);
+});
+
+test("the line splice an option write hands back reproduces the whole edit", () => {
+    const before = "a\nb\nc\n";
+    for (const after of ["a\nb\nc\nd\n", "x\na\nb\nc\n", "a\nb\nB\nc\n", "a\nc\n", "a\nb\nc\n\n\n"]) {
+        const d = Options.lineDiff(before, after);
+        assert.strictEqual(Options.spliceLines(before, d.startLine, d.endLine, d.replacement), after, JSON.stringify(after));
+    }
+    assert.strictEqual(Options.lineDiff(before, before), null);
+});
+
+test("writing the same option twice settles, and the file still scans as before", () => {
+    const text = `hl.bind("SUPER + A", hl.dsp.window.close())\n${INPUT_LUA}`;
+    for (const [path, value] of [["input:repeat_delay", 280], ["input:touchpad:tap-to-click", true], ["general:layout", "master"], ["input:kb_layout", "dk"]]) {
+        const once = change(text, { path, value });
+        assert.notStrictEqual(once, text, path);
+        assert.deepStrictEqual(Options.planOption([{ name: "a.lua", text: once }], { path, value }), { ok: true, unchanged: true }, path);
+        assert.strictEqual(HyprlandLua.scanLua(once).binds.length, 1, path);
+    }
+});
+
+test("a real-world input module takes every option the panel writes", () => {
+    let text = INPUT_LUA;
+    const writes = [["input:kb_layout", "dk,us"], ["input:repeat_delay", 300], ["input:repeat_rate", 30], ["input:sensitivity", -0.2], ["input:touchpad:natural_scroll", false], ["input:touchpad:tap-to-click", true]];
+    for (const [path, value] of writes)
+        text = change(text, { path, value });
+    for (const [path, value] of writes)
+        assert.deepStrictEqual(Options.planOption([{ name: "a.lua", text }], { path, value }), { ok: true, unchanged: true }, path);
+    assert.ok(text.includes("hl.config({ cursor = { no_hardware_cursors = true } })"));
+});
+
+test("an option's current value is read back from the file that sets it", () => {
+    const files = [{ name: "a.lua", text: INPUT_LUA }];
+    assert.strictEqual(Options.optionValue(files, "input:kb_layout"), "us,dk");
+    assert.strictEqual(Options.optionValue(files, "input:follow_mouse"), 1);
+    assert.strictEqual(Options.optionValue(files, "input:touchpad:natural_scroll"), true);
+    assert.strictEqual(Options.optionValue(files, "input:repeat_rate"), undefined);
+    assert.strictEqual(Options.optionValue(files, "cursor:no_hardware_cursors"), undefined, "a conditional setting is not the file's answer");
+    const device = [{ name: "a.lua", text: 'hl.device({ name = "pad", sensitivity = -0.25, natural_scroll = false })\n' }];
+    assert.strictEqual(Options.optionValue(device, "sensitivity", "pad"), -0.25);
+    assert.strictEqual(Options.optionValue(device, "natural_scroll", "pad"), false);
+    assert.strictEqual(Options.optionValue(device, "sensitivity", "other"), undefined);
+});
+
+test("a chord is held by the bind that has it, however its key is cased, and submaps do not count", () => {
+    const binds = [
+        { id: "a", chord: "SUPER + SPACE", mask: 64, key: "SPACE", presses: [], submap: "" },
+        { id: "b", chord: "", mask: 0, key: "", presses: [{ mask: 65, key: "Return" }], submap: "" },
+        { id: "c", chord: "SUPER + K", mask: 64, key: "K", presses: [], submap: "resize" }
+    ];
+    assert.strictEqual(Options.chordHolder(binds, "SUPER + space").id, "a");
+    assert.strictEqual(Options.chordHolder(binds, "SUPER + SHIFT + RETURN").id, "b", "a woven bind's resolved chords count");
+    assert.strictEqual(Options.chordHolder(binds, "SUPER + K"), null);
+    assert.strictEqual(Options.chordHolder(binds, "ALT + SPACE"), null);
+    assert.strictEqual(Options.chordHolder([], "SUPER + SPACE"), null);
+});
+
+function editEntry(source, list, output, changed) {
+    const entry = HyprlandLua.scanLua(source)[list].find(e => (e.output ?? e.monitor) === output);
+    const composed = HyprlandLua.composeEntry(entry, changed);
+    return HyprlandLua.spliceLines(source, entry.startLine, entry.endLine, HyprlandLua.entryReplacement(source, entry, composed));
+}
+
+test("an entry knows the byte range of its own braces and the path to its table", () => {
+    const r = HyprlandLua.scanLua(MONITORS_LUA);
+    const side = r.monitors.find(m => m.output === "DP-1");
+    assert.strictEqual(MONITORS_LUA[side.startOffset], "{");
+    assert.strictEqual(MONITORS_LUA[side.endOffset - 1], "}");
+    assert.ok(MONITORS_LUA.slice(side.startOffset, side.endOffset).startsWith("{ output = vertical_side"));
+    assert.deepStrictEqual(side.path, ["hosts", "banditbox", "outputs"]);
+});
+
+test("a monitor edit inside hl.monitor keeps the call around the table", () => {
+    const source = "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x0\", scale = 1 })\n";
+    const next = editEntry(source, "monitors", "eDP-1", { scale: 2 });
+    assert.strictEqual(next, "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x0\", scale = 2 })\n");
+    assert.strictEqual(HyprlandLua.scanLua(next).monitors[0].scale, 2);
+});
+
+test("a monitor edit on a one-line nested table keeps the wrapper and the siblings", () => {
+    const source = "local layout = {\n    outputs = { { output = \"DP-1\", mode = \"1920x1080@60\", position = \"0x0\", scale = 1 }, { output = \"DP-2\", mode = \"1920x1080@60\", position = \"1920x0\", scale = 1 } },\n}\n";
+    const next = editEntry(source, "monitors", "DP-1", { position: "10x0" });
+    assert.ok(next.includes("outputs = { { output = \"DP-1\", mode = \"1920x1080@60\", position = \"10x0\", scale = 1 }, { output = \"DP-2\""));
+    assert.ok(next.endsWith("scale = 1 } },\n}\n"));
+    const after = HyprlandLua.scanLua(next);
+    assert.strictEqual(after.monitors.length, 2);
+    assert.strictEqual(after.outputTables.length, 1);
+});
+
+test("a monitor edit on the multi-line outputs table collapses the entry and keeps its comma and indent", () => {
+    const next = editEntry(MONITORS_LUA, "monitors", "DP-1", { position: "480x0" });
+    assert.ok(next.includes("\n            { output = vertical_side, mode = \"1920x1200@60\", position = \"480x0\", scale = 1, transform = 1 },\n"));
+    assert.strictEqual(next.split("\n").length, MONITORS_LUA.split("\n").length - 1);
+    assert.ok(next.includes("-- The ultrawide, default (SDR) mode."));
+});
+
+test("a band edit keeps whatever shares its line", () => {
+    const source = "local bs_bands = {\n    banditbox = { { monitor = \"DP-1\", workspaces = \"1-5\" }, { monitor = \"DP-2\", workspaces = \"6-10\" } },\n}\n";
+    const next = editEntry(source, "bands", "DP-1", { workspaces: "1-8" });
+    assert.ok(next.includes("banditbox = { { monitor = \"DP-1\", workspaces = \"1-8\" }, { monitor = \"DP-2\""));
+    assert.strictEqual(HyprlandLua.scanLua(next).bands.length, 2);
+});
+
+test("a band edit on the multi-line shape stays one table entry after the splice", () => {
+    const source = "local bs_bands = {\n    banditbox = {\n        { monitor = \"DP-1\",\n          workspaces = \"1-5\" }, -- left\n    },\n}\n";
+    const next = editEntry(source, "bands", "DP-1", { workspaces: "1-9" });
+    assert.strictEqual(next, "local bs_bands = {\n    banditbox = {\n        { monitor = \"DP-1\", workspaces = \"1-9\" }, -- left\n    },\n}\n");
+});
+
+test("entries are chosen for the host they sit under, and host-less ones only when it has none", () => {
+    const entries = [
+        { id: "other", path: ["hosts", "kangaeru", "outputs"] },
+        { id: "mine", path: ["hosts", "banditbox", "outputs"] },
+        { id: "plain", path: [] },
+        { id: "top", path: ["outputs"] }
+    ];
+    assert.deepStrictEqual(HyprlandLua.entriesForHost(entries, "banditbox").map(e => e.id), ["mine"]);
+    assert.deepStrictEqual(HyprlandLua.entriesForHost(entries, "thirdbox").map(e => e.id), ["plain", "top"]);
+    assert.deepStrictEqual(HyprlandLua.entriesForHost(entries.slice(0, 1), "thirdbox"), []);
+});
+
+test("a hostname that matches a host table finds that host's entry, not the first one in the file", () => {
+    const source = [
+        "local hosts = {",
+        "    kangaeru = {",
+        "        outputs = {",
+        "            { output = \"eDP-1\", mode = \"1920x1080@60\", position = \"0x0\", scale = 1 },",
+        "        },",
+        "    },",
+        "    banditbox = {",
+        "        outputs = {",
+        "            { output = \"eDP-1\", mode = \"2560x1440@60\", position = \"0x0\", scale = 2 },",
+        "        },",
+        "    },",
+        "}",
+        ""
+    ].join("\n");
+    const found = HyprlandLua.scanLua(source);
+    const mine = HyprlandLua.entriesForHost(found.monitors.filter(m => m.output === "eDP-1"), "banditbox")[0];
+    assert.strictEqual(mine.scale, 2);
+    const table = HyprlandLua.entriesForHost(found.outputTables, "banditbox")[0];
+    assert.deepStrictEqual(table.path, ["hosts", "banditbox", "outputs"]);
+    assert.strictEqual(HyprlandLua.entriesForHost(found.outputTables, "thirdbox").length, 0);
+});
+
+test("a verify report names the last useful line, or the exit code when Hyprland said nothing", () => {
+    const said = "DEBUG one\n\n======== Config parsing result:\n\nrequire(\"lua.binds\"): error loading module\n\t/tmp/x/hypr/lua/binds.lua:4: unexpected symbol near '+'\n";
+    assert.strictEqual(HyprlandLua.verifyReport(said, 1, false, ["/tmp/x/hypr/"]), "lua/binds.lua:4: unexpected symbol near '+'");
+    assert.strictEqual(HyprlandLua.verifyReport("DEBUG a\nDEBUG b\n", 11, true, []), "Hyprland crashed while checking it (signal 11)");
+    assert.strictEqual(HyprlandLua.verifyReport("", 2, false, []), "Hyprland rejected it (exit 2)");
+    assert.strictEqual(HyprlandLua.verifyReport("config ok", 1, false, []), "Hyprland rejected it (exit 1)");
+});
+
+test("a config that already fails is refused with the reason in the message", () => {
+    const message = HyprlandLua.baselineRefusal("Hyprland crashed while checking it (signal 11)");
+    assert.ok(message.startsWith("your Hyprland config fails Hyprland's own check as it is, so nothing was changed"));
+    assert.ok(message.endsWith("signal 11)"));
+});
+
+test("an entry is found again by its text after lines above it moved", () => {
+    const old = { file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 10 };
+    const now = [
+        { id: "lua/binds.lua:9", file: "lua/binds.lua", raw: "hl.bind(\"B\", y)", startLine: 9 },
+        { id: "lua/binds.lua:3", file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 3 },
+        { id: "lua/binds.lua:9x", file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 9 },
+        { id: "other:10", file: "lua/other.lua", raw: "hl.bind(\"A\", x)", startLine: 10 }
+    ];
+    assert.strictEqual(HyprlandLua.relocateEntry(now, old).id, "lua/binds.lua:9x");
+    assert.strictEqual(HyprlandLua.relocateEntry(now.slice(0, 1), old), null);
+    assert.strictEqual(HyprlandLua.relocateEntry([], old), null);
 });

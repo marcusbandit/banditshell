@@ -9,6 +9,7 @@ BlurredImage 1.0 BlurredImage.qml
 ButtonPair 1.0 ButtonPair.qml
 Button 1.0 Button.qml
 CodeBlock 1.0 CodeBlock.qml
+CommandQueue 1.0 CommandQueue.qml
 CrossfadeText 1.0 CrossfadeText.qml
 DropShadow 1.0 DropShadow.qml
 FittedImage 1.0 FittedImage.qml

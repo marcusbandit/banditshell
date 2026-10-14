@@ -61,13 +61,13 @@ Item {
 
     property real phase: 0
 
-    readonly property int drift: root.charging ? Appearance.animation.slow * 6 : Appearance.animation.slow * 20
+    readonly property int drift: root.charging ? Appearance.animation.fade.slow * 6 : Appearance.animation.fade.slow * 20
 
     Timer {
         interval: 16
         repeat: true
 
-        running: root.visible && charge.value > 0
+        running: root.visible && charge.value > 0 && !Appearance.lessMotion
 
         onTriggered: root.phase = (root.phase + 2 * Math.PI * (interval / root.drift)) % (2 * Math.PI)
     }

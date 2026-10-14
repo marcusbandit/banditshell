@@ -13,15 +13,17 @@ Item {
     readonly property string shape: SettingsState.v("sheetKeyboard")
     property var imported: null
 
-    readonly property var keys: root.shape === "file" && root.imported ? root.imported.keys : Boards.board(root.shape === "file" ? "ansi" : root.shape)
+    readonly property var keys: root.shape === "file" && root.imported ? Boards.withLegends(root.imported.keys, Keyboards.legends) : Boards.board(root.shape === "file" ? Keyboards.shape : root.shape)
 
     readonly property var hot: {
         const out = {};
         const sets = SettingsView.current === "shortcuts" ? SettingsKeys.shell.concat(SettingsKeys.files) : SettingsKeys.shell;
         for (const k of sets)
             for (const part of k.combo.split(" "))
-                if (part)
+                if (part) {
+                    out[part] = true;
                     out[part === "return" ? "enter" : part === "page_up" ? "pgup" : part] = true;
+                }
         return out;
     }
 
@@ -48,6 +50,6 @@ Item {
     }
 
     SceneCaption {
-        text: root.shape === "file" && root.imported ? `${root.imported.name} · ${root.keys.length} keys` : `${root.shape === "file" ? "no file yet · ansi" : `${root.shape} board`} · lit keys are bound`
+        text: root.shape === "file" && root.imported ? `${root.imported.name} · ${root.keys.length} keys` : `${root.shape === "file" ? `no file yet · ${Keyboards.shape}` : `${root.shape} board`} · lit keys are bound`
     }
 }

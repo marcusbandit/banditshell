@@ -493,7 +493,7 @@ Item {
 
                             Behavior on opacity {
                                 NumberAnimation {
-                                    duration: Appearance.animation.fast
+                                    duration: Appearance.animation.fade.fast
                                 }
                             }
 
@@ -617,7 +617,7 @@ Item {
                             NumberAnimation {
                                 property: "opacity"
                                 to: 0
-                                duration: Appearance.animation.fast
+                                duration: Appearance.animation.fade.fast
                                 easing.type: Easing.OutCubic
                             }
                         }

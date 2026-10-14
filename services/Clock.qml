@@ -77,6 +77,11 @@ Singleton {
         root.save();
     }
 
+    function readLocalZone(): void {
+        if (!zoneProc.running)
+            zoneProc.running = true;
+    }
+
     function loadZoneList(): void {
         if (root.allZones.length > 0 || zoneList.running)
             return;
@@ -95,7 +100,7 @@ Singleton {
             hourOfDay: hour + minute / 60,
 
             dayDelta: root.dayNumber(there) - root.dayNumber(here),
-            text: `${root.twoDigits(hour)}:${root.twoDigits(minute)}`
+            text: TimeFormat.clock(hour, minute)
         };
     }
 
@@ -332,7 +337,7 @@ Singleton {
                 continue;
             timer.finished = true;
             changed = true;
-            root.notify("critical", "Timer done", timer.label ? `${timer.label} · ${root.spanLabel(timer.total)}` : root.spanLabel(timer.total));
+            root.notify("critical", "Timer done", timer.label ? `${timer.label} · ${root.spanLabel(timer.total)}` : root.spanLabel(timer.total), "alarm");
             root.timerFinished(timer);
         }
         if (changed) {
@@ -365,7 +370,7 @@ Singleton {
                 alarm.snoozedUntil = 0;
                 if (alarm.days.length === 0)
                     alarm.armed = false;
-                root.notify("normal", root.alarmTitle(alarm, due), `Missed ${root.spanLabel(late)} ago. This machine cannot wake itself for an alarm.`);
+                root.notify("normal", root.alarmTitle(alarm, due), `Missed ${root.spanLabel(late)} ago. This machine cannot wake itself for an alarm.`, "alarm");
                 root.missed(alarm);
                 continue;
             }
@@ -374,7 +379,7 @@ Singleton {
             root.ringing = alarm;
             root.ringingSince = now;
             root.ringingLate = late;
-            root.notify("critical", root.alarmTitle(alarm, due), late > 60000 ? `Late by ${root.spanLabel(late)}. This machine cannot wake itself for an alarm.` : "");
+            root.notify("critical", root.alarmTitle(alarm, due), late > 60000 ? `Late by ${root.spanLabel(late)}. This machine cannot wake itself for an alarm.` : "", "alarm");
             root.run(alarm);
             root.fired(alarm);
             break;
@@ -387,7 +392,7 @@ Singleton {
 
     function alarmTitle(alarm: var, due: double): string {
         const at = new Date(due);
-        const when = `${root.twoDigits(at.getHours())}:${root.twoDigits(at.getMinutes())}`;
+        const when = TimeFormat.time(at, false);
         return alarm.label ? `${when}  ${alarm.label}` : `Alarm ${when}`;
     }
 
@@ -431,13 +436,13 @@ Singleton {
         }
     }
 
-    function notify(urgency: string, summary: string, body: string): void {
-        root.spawn(["notify-send", "-a", "banditshell", "-u", urgency, summary, body ?? ""], null);
+    function notify(urgency: string, summary: string, body: string, kind: string): void {
+        root.spawn(["notify-send", "-a", "banditshell", "-u", urgency, "-c", Notifications.categoryFor(kind), summary, body ?? ""], null);
     }
 
     function report(alarm: var, code: int, output: string): void {
         const detail = (output ?? "").trim().split("\n").filter(l => l.trim()).pop() ?? "";
-        root.notify("critical", `${alarm.mode === "cloud" ? "Cloud message" : "Alarm command"} failed`, detail ? `exit ${code} · ${detail}` : `exit ${code}`);
+        root.notify("critical", `${alarm.mode === "cloud" ? "Cloud message" : "Alarm command"} failed`, detail ? `exit ${code} · ${detail}` : `exit ${code}`, "error");
         root.actionFailed(alarm, code, output ?? "");
     }
 
@@ -474,7 +479,7 @@ Singleton {
                     } else if (task.alarm.mode === "cloud" && task.out.trim()) {
 
                         const reply = task.out.trim();
-                        root.notify("normal", root.alarmTitle(task.alarm, Date.now()), reply.length > root.cloudReplyChars ? `${reply.slice(0, root.cloudReplyChars)}...` : reply);
+                        root.notify("normal", root.alarmTitle(task.alarm, Date.now()), reply.length > root.cloudReplyChars ? `${reply.slice(0, root.cloudReplyChars)}...` : reply, "alarm");
                     }
                 }
 

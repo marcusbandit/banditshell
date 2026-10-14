@@ -1,6 +1,7 @@
 import QtQuick
 import Quickshell
 import qs.config
+import qs.components
 import qs.services as Services
 
 import qs.modules.menu.content
@@ -14,6 +15,8 @@ Item {
     property bool menusShown: false
 
     property real pullSpan: 0
+
+    property string modeIcon: ""
 
     readonly property string screen: QsWindow.window?.screen?.name ?? ""
 
@@ -35,7 +38,7 @@ Item {
 
     readonly property var calendarEntry: ({
             key: "calendar",
-            title: Qt.formatDateTime(clock.now, "dddd d MMMM"),
+            title: Services.TimeFormat.dateText(clock.now, "headline"),
             body: calendarMenu
         })
 
@@ -138,6 +141,22 @@ Item {
             onClockRequested: deliberate => root.clockRequested(deliberate)
             onClockPulled: root.clockPulled()
             onClockPullEnded: open => root.clockPullEnded(open)
+        }
+
+        Item {
+            id: mode
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            height: Appearance.sizes.statusSlot
+            visible: root.modeIcon !== ""
+
+            Icon {
+                anchors.centerIn: parent
+                name: root.modeIcon || "radio_button_unchecked"
+                fill: 1
+                color: Appearance.colour.accent
+            }
         }
 
         StatusIcons {

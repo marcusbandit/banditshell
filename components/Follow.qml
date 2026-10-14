@@ -22,7 +22,7 @@ QtObject {
         onTriggered: {
             const d = root.target - root.value;
 
-            root.value = root.speed <= 0 || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * root.driver.frameTime));
+            root.value = root.speed <= 0 || Appearance.lessMotion || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * root.driver.frameTime));
         }
     }
 }

@@ -9,7 +9,7 @@ SettingsRowFrame {
 
     property var row: ({})
 
-    readonly property real ceiling: SettingsState.v("overAmp") ? Audio.maxVolume : 1
+    readonly property real ceiling: Audio.maxVolume
     readonly property real level: Math.min(Audio.volume, root.ceiling)
 
     width: parent ? parent.width : 0

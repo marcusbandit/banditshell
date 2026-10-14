@@ -95,6 +95,16 @@
 #   banditshell clock zone [find|add|remove] <place>
 #                                the world clocks in the clock menu
 #
+# focus                          modes, and quiet notifications
+#   banditshell focus            the mode, and whether notifications are quiet
+#   banditshell focus mode [none|work|play|stream|sleep|list]
+#                                the mode, or switch to one; none puts back what
+#                                the last one changed
+#   banditshell focus quiet [on|off|toggle] [hour|evening|tomorrow|never]
+#                                quiet notifications still collect in history but
+#                                show no popup and make no sound; the second word
+#                                is when quiet ends
+#
 # tablet                         tablet mode, the lid and the pen's area
 #   banditshell tablet           the hinge, the lid and the pen's area
 #   banditshell tablet [on|off|toggle] [caller]
@@ -935,6 +945,52 @@ route_clock() {
     esac
 }
 
+route_mode() {
+    local reply
+    case "${1:-}" in
+    "") ipc mode status ;;
+    list) ipc mode list ;;
+    *)
+        reply=$(ipc mode choose "$1") || return 1
+        case "$reply" in
+        "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
+        esac
+        printf '%s\n' "$reply" ;;
+    esac
+}
+
+route_quiet() {
+    local reply
+    case "${1:-}" in
+    "") ipc quiet status ;;
+    on | off | toggle)
+        if [ "$1" = off ]; then
+            reply=$(ipc quiet off) || return 1
+        else
+            reply=$(ipc quiet "$1" "${2:-}") || return 1
+        fi
+        case "$reply" in
+        "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
+        esac
+        printf '%s\n' "$reply" ;;
+    *) nope focus "quiet $1" ;;
+    esac
+}
+
+route_focus() {
+    local what="${1:-}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$what" in
+    "")
+        ipc mode status | labelled mode || return 1
+        ipc_quiet quiet status || true
+        ;;
+    mode) route_mode "$@" ;;
+    quiet) route_quiet "$@" ;;
+    *) nope focus "$what" ;;
+    esac
+}
+
 route_tablet() {
     case "${1:-}" in
     "")
@@ -1316,6 +1372,9 @@ screenshot)
     ;;
 clock)
     route_clock "$@"
+    ;;
+focus)
+    route_focus "$@"
     ;;
 tablet)
     route_tablet "$@"

@@ -306,7 +306,7 @@ Item {
         from: 0
         to: 1
 
-        duration: Appearance.animation.slow * 9
+        duration: Appearance.animation.fade.slow * 9
         loops: Animation.Infinite
     }
 
@@ -331,7 +331,7 @@ Item {
         from: 0
         to: 1
 
-        duration: Appearance.animation.slow * 2
+        duration: Appearance.animation.fade.slow * 2
         loops: Animation.Infinite
     }
 

@@ -847,16 +847,24 @@ function scanLua(src) {
             output: out.v,
             dynamic: blockDepth > 0 || !out.literal,
             raws: f.fields,
-            trailing: entryTrailing(at),
+            path,
+            startOffset: f.open,
+            endOffset: at + 1,
 
             aliases
         };
-        for (const key of ["mode", "position", "scale", "transform", "vrr"]) {
+        for (const key of ["mode", "position", "scale", "transform", "vrr", "mirror"]) {
             if (byKey[key] === undefined)
                 continue;
             const r = resolveLuaValue(byKey[key], aliases);
             entry[key] = r.v;
             if (!r.literal)
+                entry.dynamic = true;
+        }
+        if (byKey.disabled !== undefined) {
+            const flag = /^(true|false)$/.exec(byKey.disabled.trim());
+            entry.disabled = flag ? flag[1] === "true" : byKey.disabled.trim();
+            if (!flag)
                 entry.dynamic = true;
         }
         entry.indent = entryIndent(f);
@@ -884,21 +892,15 @@ function scanLua(src) {
             invalid: !parsed.ok,
             dynamic: blockDepth > 0 || !mon.literal || !spec.literal,
             path,
+            startOffset: f.open,
+            endOffset: at + 1,
             raws: f.fields,
-            trailing: entryTrailing(at),
             indent: entryIndent(f),
             startLine: f.line,
             endLine: lineOf(at),
             raw: raw.trim(),
             aliases
         });
-    }
-
-    function entryTrailing(at) {
-        let k = at + 1;
-        while (k < s.length && (s[k] === " " || s[k] === "\t"))
-            k++;
-        return s[k] === "," ? "," : "";
     }
 
     function entryIndent(f) {
@@ -1038,10 +1040,12 @@ function composeEntry(entry, changed) {
     for (const f of entry?.raws ?? []) {
         seen[f.key] = true;
         const c = changed?.[f.key];
+        if (c === null)
+            continue;
         parts.push(`${f.key} = ${c === undefined || entrySame(f.raw, c, entry) ? f.raw : entryLiteral(f.key, c)}`);
     }
     for (const key in changed ?? {})
-        if (!seen[key])
+        if (!seen[key] && changed[key] !== null)
             parts.push(`${key} = ${entryLiteral(key, changed[key])}`);
 
     if (!parts.length)
@@ -1049,7 +1053,31 @@ function composeEntry(entry, changed) {
     return `{ ${parts.join(", ")} }`;
 }
 
-const QUOTED_KEYS = ["output", "mode", "position", "monitor", "workspaces"];
+function entryReplacement(src, entry, composed) {
+    const text = String(src ?? "");
+    const lineStart = text.lastIndexOf("\n", entry.startOffset - 1) + 1;
+    const lineBreak = text.indexOf("\n", entry.endOffset);
+    const lineEnd = lineBreak < 0 ? text.length : lineBreak;
+    return [text.slice(lineStart, entry.startOffset) + composed + text.slice(entry.endOffset, lineEnd)];
+}
+
+function entriesForHost(entries, host) {
+    const own = entries.filter(e => e.path?.[1] === host);
+    return own.length ? own : entries.filter(e => e.path?.[1] === undefined);
+}
+
+function verifyReport(output, code, crashed, prefixes) {
+    const useful = String(output ?? "").split("\n").map(l => (prefixes ?? []).reduce((line, prefix) => line.replace(prefix, ""), l.trim())).filter(l => l && !l.includes("DEBUG") && !l.startsWith("=") && l !== "config ok");
+    if (useful.length)
+        return useful[useful.length - 1];
+    return crashed ? `Hyprland crashed while checking it (signal ${code})` : `Hyprland rejected it (exit ${code})`;
+}
+
+function baselineRefusal(report) {
+    return `your Hyprland config fails Hyprland's own check as it is, so nothing was changed · ${report}`;
+}
+
+const QUOTED_KEYS = ["output", "mode", "position", "mirror", "monitor", "workspaces"];
 
 function entrySame(raw, value, entry) {
     const r = resolveLuaValue(raw, entry?.aliases);
@@ -1157,4 +1185,358 @@ function describeExpr(expr) {
             return e.replace(re, say);
 
     return e;
+}
+
+function optionSegments(path) {
+    return String(path ?? "").split(/[:.]/).filter(Boolean).map(part => part.replace(/-/g, "_"));
+}
+
+function luaOptionValue(value) {
+    if (typeof value === "boolean")
+        return value ? "true" : "false";
+    if (typeof value === "number")
+        return Number.isFinite(value) ? String(Number.isInteger(value) ? value : +value.toFixed(4)) : null;
+    if (typeof value === "string")
+        return `"${luaString(value)}"`;
+    return null;
+}
+
+function literalValue(raw) {
+    const t = String(raw ?? "").trim();
+    return stringLiteral(t) !== null || /^-?(\d+\.?\d*|\.\d+)$/.test(t) || t === "true" || t === "false";
+}
+
+function readTableFields(s, open) {
+    const fields = [];
+    let i = open + 1;
+
+    function skipBlank() {
+        for (;;) {
+            while (i < s.length && /\s/.test(s[i]))
+                i++;
+            if (s[i] === "-" && s[i + 1] === "-") {
+                i = pastComment(s, i);
+                continue;
+            }
+            return;
+        }
+    }
+
+    function skipValue() {
+        let codeEnd = i;
+        while (i < s.length && s[i] !== "," && s[i] !== ";" && s[i] !== "}") {
+            const c = s[i];
+            if (/\s/.test(c)) {
+                i++;
+                continue;
+            }
+            if (c === "-" && s[i + 1] === "-") {
+                i = pastComment(s, i);
+                continue;
+            }
+            if (c === "\"" || c === "'")
+                i = pastString(s, i);
+            else if (longBracketLevel(s, i) >= 0)
+                i = pastLongBracket(s, i + 1, longBracketLevel(s, i));
+            else if (OPENING[c])
+                i = pastBalanced(s, i);
+            else
+                i++;
+            codeEnd = i;
+        }
+        return codeEnd;
+    }
+
+    for (;;) {
+        skipBlank();
+        if (i >= s.length)
+            return { open, close: -1, fields };
+        if (s[i] === "}")
+            return { open, close: i, fields };
+        if (s[i] === "," || s[i] === ";") {
+            i++;
+            continue;
+        }
+        const rest = s.slice(i, i + 256);
+        const named = /^([A-Za-z_]\w*)\s*=(?!=)/.exec(rest);
+        const quoted = /^\[\s*(["'])((?:[^"'\\]|\\.)*)\1\s*\]\s*=(?!=)/.exec(rest);
+        const head = named ?? quoted;
+        const keyStart = i;
+        if (!head) {
+            skipValue();
+            continue;
+        }
+        const key = named ? named[1] : luaUnescape(quoted[2]);
+        i += head[0].length;
+        skipBlank();
+        const field = { key, keyStart, valueStart: i };
+        if (s[i] === "{") {
+            field.table = readTableFields(s, i);
+            field.valueEnd = field.table.close < 0 ? s.length : field.table.close + 1;
+            i = field.valueEnd;
+            skipValue();
+        } else {
+            field.valueEnd = skipValue();
+            field.literal = literalValue(s.slice(field.valueStart, field.valueEnd));
+        }
+        let after = field.valueEnd;
+        while (s[after] === " " || s[after] === "\t")
+            after++;
+        field.comma = s[after] === "," ? after : -1;
+        fields.push(field);
+    }
+}
+
+function scanOptions(src) {
+    const s = String(src ?? "");
+    const configs = [];
+    const devices = [];
+    let depth = 0;
+    let i = 0;
+
+    while (i < s.length) {
+        const c = s[i];
+        if (c === "\"" || c === "'") {
+            i = pastString(s, i);
+            continue;
+        }
+        if (c === "-" && s[i + 1] === "-") {
+            i = pastComment(s, i);
+            continue;
+        }
+        const level = longBracketLevel(s, i);
+        if (level >= 0) {
+            i = pastLongBracket(s, i + 1, level);
+            continue;
+        }
+        if (!isIdentStart(c)) {
+            i++;
+            continue;
+        }
+        let j = i;
+        while (j < s.length && isIdent(s[j]))
+            j++;
+        const word = s.slice(i, j);
+        const call = word === "hl" && s[i - 1] !== "." ? /^\s*\.\s*(config|device)\s*\(/.exec(s.slice(j, j + 64)) : null;
+        if (call) {
+            const open = j + call[0].length - 1;
+            let k = open + 1;
+            while (/\s/.test(s[k] ?? ""))
+                k++;
+            if (s[k] === "{") {
+                const table = readTableFields(s, k);
+                if (table.close >= 0)
+                    (call[1] === "config" ? configs : devices).push({ table, depth });
+            }
+            i = pastBalanced(s, open);
+            continue;
+        }
+        if (OPENERS.includes(word))
+            depth++;
+        else if (CLOSERS.includes(word) || word === "elseif")
+            depth = Math.max(0, depth - 1);
+        i = j;
+    }
+    return { configs, devices };
+}
+
+function lineAt(s, offset) {
+    return s.slice(0, offset).split("\n").length;
+}
+
+function lineDiff(before, after) {
+    const a = String(before ?? "").split("\n");
+    const b = String(after ?? "").split("\n");
+    let head = 0;
+    while (head < a.length && head < b.length && a[head] === b[head])
+        head++;
+    if (head === a.length && head === b.length)
+        return null;
+    let tail = 0;
+    while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail])
+        tail++;
+    if (head + tail === a.length) {
+        if (head > 0)
+            head--;
+        else
+            tail--;
+    }
+    return {
+        startLine: head + 1,
+        endLine: a.length - tail,
+        replacement: b.slice(head, b.length - tail)
+    };
+}
+
+function indentOfLine(s, offset) {
+    return /^[ \t]*/.exec(s.slice(s.lastIndexOf("\n", offset - 1) + 1))[0];
+}
+
+function insertField(s, table, text) {
+    const last = table.fields[table.fields.length - 1];
+    const closeIndent = indentOfLine(s, table.close);
+    const unit = closeIndent.includes("\t") ? "\t" : "    ";
+    const spansLines = s.slice(last ? last.valueEnd : table.open, table.close).includes("\n");
+
+    if (!last)
+        return spansLines ? `${s.slice(0, table.open + 1)}\n${closeIndent}${unit}${text},\n${closeIndent}${s.slice(table.close)}` : `${s.slice(0, table.open + 1)} ${text} ${s.slice(table.close)}`;
+
+    if (!spansLines) {
+        if (last.comma >= 0)
+            return `${s.slice(0, last.comma + 1)} ${text},${s.slice(last.comma + 1)}`;
+        return `${s.slice(0, last.valueEnd)}, ${text}${s.slice(last.valueEnd)}`;
+    }
+
+    const newline = s.indexOf("\n", Math.max(last.comma, last.valueEnd));
+    const lineEnd = newline < 0 || newline > table.close ? table.close : newline;
+    const written = `${s.slice(0, lineEnd)}\n${indentOfLine(s, last.keyStart)}${text}${last.comma >= 0 ? "," : ""}${s.slice(lineEnd)}`;
+    return last.comma >= 0 ? written : `${written.slice(0, last.valueEnd)},${written.slice(last.valueEnd)}`;
+}
+
+function nestedField(segments, value) {
+    return segments.length === 1 ? `${segments[0]} = ${value}` : `${segments[0]} = { ${nestedField(segments.slice(1), value)} }`;
+}
+
+function optionCall(segments, value) {
+    const pad = depth => "    ".repeat(depth);
+    const lines = ["hl.config({"];
+    segments.slice(0, -1).forEach((segment, depth) => lines.push(`${pad(depth + 1)}${segment} = {`));
+    lines.push(`${pad(segments.length)}${segments[segments.length - 1]} = ${value},`);
+    for (let depth = segments.length - 2; depth >= 0; depth--)
+        lines.push(`${pad(depth + 1)}},`);
+    lines.push("})");
+    return lines;
+}
+
+function startsWith(path, prefix) {
+    return prefix.length <= path.length && prefix.every((part, n) => part === path[n]);
+}
+
+function locateOption(files, request) {
+    const segments = optionSegments(request.path);
+    const device = request.device ?? "";
+    const set = [];
+    const blind = [];
+    const homes = [];
+
+    for (const file of files) {
+        const s = String(file.text ?? "");
+        const found = scanOptions(s);
+        if (device) {
+            for (const call of found.devices) {
+                const named = call.table.fields.find(f => f.key === "name" && f.literal);
+                if (!named || stringLiteral(s.slice(named.valueStart, named.valueEnd)) !== device)
+                    continue;
+                const field = call.table.fields.find(f => !f.table && optionSegments(f.key).join(":") === segments[segments.length - 1]);
+                if (field)
+                    set.push({ file, s, depth: call.depth, field });
+                else
+                    homes.push({ file, s, depth: call.depth, table: call.table, path: [] });
+            }
+            continue;
+        }
+        for (const call of found.configs) {
+            const tables = [{ path: [], table: call.table }];
+            for (let at = 0; at < tables.length; at++) {
+                for (const field of tables[at].table.fields) {
+                    const path = tables[at].path.concat(optionSegments(field.key));
+                    if (field.table)
+                        tables.push({ path, table: field.table });
+                    else if (path.join(":") === segments.join(":"))
+                        set.push({ file, s, depth: call.depth, field });
+                    else if (!field.literal && startsWith(segments, path))
+                        blind.push({ file, s, field });
+                }
+                if (tables[at].path.length > 0 && tables[at].path.length < segments.length && startsWith(segments, tables[at].path))
+                    homes.push({ file, s, depth: call.depth, table: tables[at].table, path: tables[at].path });
+            }
+        }
+    }
+
+    const name = request.path;
+    const here = w => `${w.file.name}, line ${lineAt(w.s, w.field.keyStart)}`;
+    if (set.length > 1)
+        return { refusal: `${name} is set in ${set.length} places (${set.map(here).join("; ")}); edit the source.` };
+    if (set.length === 1) {
+        const w = set[0];
+        if (w.depth > 0)
+            return { refusal: `${name} is set under a condition or inside a function (${here(w)}); edit the source.` };
+        if (!w.field.literal)
+            return { refusal: `${name} is generated by code (${here(w)}); edit the source.` };
+        return { found: w };
+    }
+    if (blind.length)
+        return { refusal: `${name} may be generated by code (${here(blind[0])}); edit the source.` };
+    const home = homes.filter(h => h.depth === 0).sort((a, b) => b.path.length - a.path.length)[0];
+    return { home };
+}
+
+function optionBlocked(files, path, device) {
+    return locateOption(files, { path, device }).refusal ?? "";
+}
+
+function planOption(files, request) {
+    const value = luaOptionValue(request.value);
+    if (value === null)
+        return { ok: false, reason: `${request.path} can't be written as ${String(request.value)}.` };
+    const located = locateOption(files, request);
+    if (located.refusal)
+        return { ok: false, reason: located.refusal };
+
+    const segments = optionSegments(request.path);
+    const device = request.device ?? "";
+
+    if (located.found) {
+        const w = located.found;
+        if (w.s.slice(w.field.valueStart, w.field.valueEnd).trim() === value)
+            return { ok: true, unchanged: true };
+        const next = w.s.slice(0, w.field.valueStart) + value + w.s.slice(w.field.valueEnd);
+        return Object.assign({ ok: true, file: w.file.name }, lineDiff(w.s, next));
+    }
+
+    if (located.home) {
+        const h = located.home;
+        const text = device ? `${segments[segments.length - 1]} = ${value}` : nestedField(segments.slice(h.path.length), value);
+        return Object.assign({ ok: true, file: h.file.name }, lineDiff(h.s, insertField(h.s, h.table, text)));
+    }
+
+    const target = files.find(f => f.name === request.appendTo) ?? files[0];
+    if (!target)
+        return { ok: false, reason: "there is no config file to write to." };
+    const text = String(target.text ?? "");
+    const call = device ? [`hl.device({ name = "${luaString(device)}", ${segments[segments.length - 1]} = ${value} })`] : optionCall(segments, value);
+    const at = appendSplice(text, text.trim() ? [""].concat(call) : call);
+    return {
+        ok: true,
+        file: target.name,
+        startLine: at.startLine,
+        endLine: at.endLine,
+        replacement: at.replacement
+    };
+}
+
+function optionValue(files, path, device) {
+    const located = locateOption(files, { path, device });
+    if (!located.found)
+        return undefined;
+    const raw = located.found.s.slice(located.found.field.valueStart, located.found.field.valueEnd).trim();
+    const text = stringLiteral(raw);
+    if (text !== null)
+        return text;
+    return raw === "true" ? true : raw === "false" ? false : +raw;
+}
+
+function chordHolder(binds, chord) {
+    const want = parseChord(chord);
+    const key = want.key.toLowerCase();
+    const same = c => c.mask === want.mask && String(c.key ?? "").toLowerCase() === key;
+    return (binds ?? []).find(b => !b.submap && (same(b) || (b.presses ?? []).some(same))) ?? null;
+}
+
+function relocateEntry(entries, old) {
+    let best = null;
+    for (const entry of entries ?? [])
+        if (entry.file === old.file && entry.raw === old.raw && (!best || Math.abs(entry.startLine - old.startLine) < Math.abs(best.startLine - old.startLine)))
+            best = entry;
+    return best;
 }

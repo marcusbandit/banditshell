@@ -11,10 +11,11 @@ ASKPASS_RUN="$RUNTIME_DIR/banditshell-askpass"
 DRY_RUN=0
 WANT_UI=1
 LIST_ONLY=0
+WANT_CHARGE_LIMIT=0
 
 usage() {
     cat <<EOF
-usage: install.sh [--dry-run] [--no-ui] [--list]
+usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit]
 
 Installs what banditshell needs on Arch: the CLI into bin/, quickshell, the
 font, every package the shell calls, the C helpers (banditshell dev build) and tab
@@ -28,6 +29,13 @@ installing.
   --dry-run   walk every step without installing anything
   --no-ui     stay in the terminal; no progress window
   --list      print the steps and exit
+
+  --charge-limit   opt in to holding the battery charge. Writing the battery's
+                   charge_control_end_threshold needs root, so this installs a
+                   small helper into /usr/local/libexec and a polkit action that
+                   lets you, signed in on this machine, run only that helper. The
+                   helper takes one number from 50 to 100 and writes it to the
+                   battery's threshold; it does nothing else. Needs sudo and polkit.
 EOF
 }
 
@@ -36,6 +44,7 @@ for arg in "$@"; do
     --dry-run) DRY_RUN=1 ;;
     --no-ui) WANT_UI=0 ;;
     --list) LIST_ONLY=1 ;;
+    --charge-limit) WANT_CHARGE_LIMIT=1 ;;
     -h | --help) usage; exit 0 ;;
     *) echo "install.sh: unknown option: $arg" >&2; usage >&2; exit 2 ;;
     esac
@@ -110,6 +119,32 @@ build_table() {
     add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
+
+    if [ "$WANT_CHARGE_LIMIT" -eq 1 ]; then
+        add_step polkit                    "command -v pkexec"                       polkit                        2 "pkexec, to run the charge limit helper without a password"
+        add_step charge-limit              "charge_limit_present"                    @charge-limit                 2 "the helper that writes the battery's charge limit, and its polkit action"
+    fi
+}
+
+CHARGE_HELPER="/usr/local/libexec/banditshell-charge-limit"
+CHARGE_POLICY="/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
+
+charge_limit_present() {
+    if ! ls /sys/class/power_supply/BAT*/charge_control_end_threshold >/dev/null 2>&1; then
+        PROBE_NOTE="no battery here has a charge limit; nothing to install"
+        return 0
+    fi
+    cmp -s "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" || return 1
+    cmp -s "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY"
+}
+
+install_charge_limit() {
+    if ! need_root; then
+        STEP_OUTPUT="no sudo, so the charge limit helper was not installed"
+        return 1
+    fi
+    STEP_OUTPUT="$(sudo -n install -Dm755 -o root -g root "$REPO/scripts/charge-limit.sh" "$CHARGE_HELPER" 2>&1 \
+        && sudo -n install -Dm644 -o root -g root "$REPO/assets/polkit/org.banditshell.charge-limit.policy" "$CHARGE_POLICY" 2>&1)"
 }
 
 cli_installed() {
@@ -522,6 +557,7 @@ run_step() {
         @cli) install_cli && ok=0 ;;
         @helpers) install_helpers && ok=0 ;;
         @spicy) install_spicy_lyrics && ok=0 ;;
+        @charge-limit) install_charge_limit && ok=0 ;;
         *) install_pkg "$pkg" && ok=0 ;;
         esac
     fi

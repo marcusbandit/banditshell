@@ -46,6 +46,14 @@ Item {
         }
     }
 
+    function replay(): void {
+        if (!front.path)
+            return;
+        back.path = "";
+        root.seed = Math.random() * 6.283;
+        sweep.restart();
+    }
+
     Timer {
         id: retire
 

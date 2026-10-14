@@ -455,14 +455,7 @@ Singleton {
     }
 
     function humanTime(epoch: real): string {
-        const when = new Date(epoch * 1000);
-        const now = new Date();
-
-        if (when.toDateString() === now.toDateString())
-            return Qt.formatTime(when, "HH:mm");
-        if (when.getFullYear() === now.getFullYear())
-            return Qt.formatDate(when, "d MMM");
-        return Qt.formatDate(when, "MMM yyyy");
+        return TimeFormat.recent(new Date(epoch * 1000));
     }
 
     function humanMode(mode: int): string {
@@ -519,6 +512,18 @@ Singleton {
             background: String(Appearance.colour.surfaceSolid)
         });
         pty.running = true;
+    }
+
+    Connections {
+        target: Appearance.colour
+
+        function onTerminalPaletteChanged(): void {
+            if (!root.term)
+                return;
+            root.term.palette = Appearance.colour.terminalPalette;
+            root.term.touch();
+            root.revision = root.term.revision;
+        }
     }
 
     function send(text: string): void {

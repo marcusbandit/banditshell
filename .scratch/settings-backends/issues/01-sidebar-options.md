@@ -1,6 +1,6 @@
 # Sidebar options
 
-Status: ready-for-agent
+Status: done
 
 Rows (Desktop › Sidebar): Clock `sbClock`, Date `sbDate`, Sound `sbSound`,
 Network `sbNet`, Bluetooth `sbBt`, Battery `sbBatt`, Tray `tray`, Special
@@ -44,3 +44,20 @@ draws all of these, so it is the reference for the look.
 
 Each row changes the real sidebar live, and the replica and the real sidebar
 agree.
+
+## Built
+
+Every row in Desktop > Sidebar now reads config.json: `sidebar.clock.style`,
+`sidebar.clock.date`, `sidebar.status.sound|network|bluetooth|battery`,
+`sidebar.tray.enabled` and `sidebar.workspaces.rack` (the specials row now
+points at `rack`, not `specials`). `SidebarClock`, `StatusIcons` and
+`TrayIcons` follow them live, and `Hypr.specialDeck` (empty when the rack is
+off) feeds `WorkspacePlates` and the panel's replica, which now draws the real
+specials instead of two stand-in tiles. The mode glyph is `Sidebar.modeIcon`,
+bound in `ShellWindow` to `SettingsState.modeIcon`.
+
+Still to check by hand: the clock in one-line style against the calendar and
+clock menus (they anchor to the time slot), the whole clock block vanishing
+when both time and date are off, and the mode glyph with a real mode on. Turning
+a status icon off also removes its menu from the sidebar, so a keybind that
+opens it has nothing to open.

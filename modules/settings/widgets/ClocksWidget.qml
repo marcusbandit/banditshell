@@ -26,13 +26,6 @@ Column {
         return Clock.offsetMap[id] ?? Clock.localOffset;
     }
 
-    function shown(t: var): string {
-        if (SettingsState.v("clock24"))
-            return t.text;
-        const h = t.hour % 12 || 12;
-        return `${h}:${Clock.twoDigits(t.minute)} ${t.hour < 12 ? "am" : "pm"}`;
-    }
-
     Repeater {
         model: Clock.places
 
@@ -51,7 +44,7 @@ Column {
             lead: Component {
                 StyledText {
                     width: Math.max(76, implicitWidth)
-                    text: root.shown(Clock.zoneTime(root.offsetOf(place.modelData), root.now))
+                    text: Clock.zoneTime(root.offsetOf(place.modelData), root.now).text
                 }
             }
 

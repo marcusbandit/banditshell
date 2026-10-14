@@ -100,13 +100,13 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 y: plates.implicitHeight + Appearance.padding.large
                 spacing: 4
-                visible: SettingsState.v("specialsShown") && SettingsState.v("wsStyle") === "plates"
+                visible: Hypr.specialDeck.length > 0 && SettingsState.v("wsStyle") === "plates"
 
                 Repeater {
-                    model: ["terminal", "music_note"]
+                    model: Hypr.specialDeck
 
                     delegate: SquircleRect {
-                        required property string modelData
+                        required property var modelData
 
                         width: 20
                         height: 20
@@ -115,7 +115,7 @@ Item {
 
                         Icon {
                             anchors.centerIn: parent
-                            name: modelData
+                            name: modelData.windows.length ? Apps.iconFor(Hypr.classOf(modelData.windows[0])) : "stacks"
                             size: 14
                             color: Appearance.colour.textDim
                         }
@@ -175,8 +175,7 @@ Item {
 
                 readonly property string style: SettingsState.v("sbClock")
                 readonly property string dated: SettingsState.v("sbDate")
-                readonly property bool h24: SettingsState.v("clock24")
-                readonly property string hh: clock.h24 ? Qt.formatDateTime(now.date, "HH") : String(now.date.getHours() % 12 || 12).padStart(2, "0")
+                readonly property string hh: TimeFormat.hourPart(now.date)
                 readonly property string mm: Qt.formatDateTime(now.date, "mm")
 
                 width: root.width
@@ -184,13 +183,13 @@ Item {
 
                 Item {
                     width: root.width
-                    height: clock.style === "one line" ? sideways.implicitWidth + 8 : stacked.implicitHeight
+                    height: Math.max(Appearance.sizes.minTarget, clock.style === "one line" ? sideways.implicitWidth : stacked.implicitHeight)
                     visible: clock.style !== "off"
 
                     Column {
                         id: stacked
 
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.centerIn: parent
                         visible: clock.style !== "one line"
 
                         Repeater {
@@ -212,6 +211,7 @@ Item {
                         anchors.centerIn: parent
                         visible: clock.style === "one line"
                         text: `${clock.hh}:${clock.mm}`
+                        font.pixelSize: Appearance.font.size.small
                         rotation: -90
                     }
 
@@ -234,14 +234,15 @@ Item {
 
                 Item {
                     width: root.width
-                    height: dateText.implicitHeight
+                    height: Math.max(Appearance.sizes.minTarget, dateText.implicitHeight)
                     visible: clock.dated !== "off"
 
                     StyledText {
                         id: dateText
 
-                        anchors.horizontalCenter: parent.horizontalCenter
+                        anchors.centerIn: parent
                         horizontalAlignment: Text.AlignHCenter
+                        font.pixelSize: Appearance.font.size.small
                         text: clock.dated === "day" ? `${now.date.getDate()}` : `${now.date.getDate()}\n${Qt.formatDateTime(now.date, "MMM").toUpperCase()}`
                         color: Appearance.colour.textFaint
                     }

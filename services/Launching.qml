@@ -136,6 +136,7 @@ Singleton {
                         rec.state = "lost";
                         rec.done = now;
                         changed = true;
+                        Notifications.alert("error");
                     }
                     kept.push(rec);
                     continue;

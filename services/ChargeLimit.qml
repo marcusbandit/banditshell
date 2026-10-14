@@ -1,0 +1,152 @@
+pragma Singleton
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import qs.config
+import "chargelimit.js" as Logic
+
+Singleton {
+    id: root
+
+    readonly property string helperPath: "/usr/local/libexec/banditshell-charge-limit"
+    readonly property string policyPath: "/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
+    readonly property string installCommand: `bash ${Quickshell.shellPath("install.sh")} --charge-limit`
+
+    readonly property bool hold: Config.values.battery.holdCharge
+    readonly property int wanted: Logic.wanted(root.hold, Config.values.battery.holdAt)
+    readonly property string setting: `${root.hold}:${root.wanted}`
+    readonly property bool ready: Config.loaded && root.probed
+
+    property bool probed: false
+    property bool supported: false
+    property bool helper: false
+    property int current: -1
+    property var refused: null
+    property bool settling: false
+    property bool owed: false
+
+    readonly property var situation: ({
+            probed: root.probed,
+            supported: root.supported,
+            helper: root.helper,
+            current: root.current,
+            wanted: root.wanted,
+            hold: root.hold,
+            owed: root.owed,
+            refused: root.refused,
+            writing: root.settling || writer.running
+        })
+
+    readonly property string trouble: Logic.trouble(root.situation, root.installCommand)
+
+    function request(): void {
+        root.owed = true;
+        root.read();
+    }
+
+    function consider(): void {
+        if (root.owed && root.current === root.wanted)
+            root.owed = false;
+        if (Logic.shouldWrite(root.situation))
+            root.write();
+    }
+
+    function write(): void {
+        root.settling = true;
+        writer.target = root.wanted;
+        writer.command = ["pkexec", root.helperPath, String(root.wanted)];
+        writer.running = true;
+    }
+
+    function read(): void {
+        if (!probe.running)
+            probe.running = true;
+    }
+
+    onReadyChanged: {
+        if (root.ready && root.hold)
+            root.request();
+    }
+
+    onSettingChanged: {
+        if (!root.ready)
+            return;
+        root.refused = null;
+        root.request();
+    }
+
+    Connections {
+        target: Lock
+
+        function onSleepingChanged(): void {
+            if (!Lock.sleeping && root.hold)
+                root.request();
+        }
+    }
+
+    Process {
+        id: writer
+
+        property int target: 100
+
+        onExited: code => {
+            root.settling = false;
+            root.owed = false;
+            probe.after = writer.target;
+            probe.failed = code !== 0;
+            if (probe.failed)
+                console.warn(`ChargeLimit: pkexec ${root.helperPath} ${writer.target} exited ${code}`);
+            root.read();
+        }
+    }
+
+    Process {
+        id: probe
+
+        property int after: -1
+        property bool failed: false
+
+        running: true
+        command: ["sh", "-c", `
+for battery in /sys/class/power_supply/BAT*; do
+  attribute="$battery/charge_control_end_threshold"
+  if [ -e "$attribute" ]; then
+    echo "threshold $(cat "$attribute" 2>/dev/null)"
+    break
+  fi
+done
+if [ -x ${root.helperPath} ] && [ -f ${root.policyPath} ] && command -v pkexec >/dev/null 2>&1; then
+  echo helper
+fi
+`]
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const found = Logic.parseProbe(text);
+                const judged = probe.after;
+                probe.after = -1;
+                root.supported = found.supported;
+                root.helper = found.helper;
+                root.current = found.current;
+                root.probed = true;
+                if (judged >= 0 && found.current !== judged)
+                    root.refused = {
+                        wanted: judged,
+                        got: found.current,
+                        failed: probe.failed
+                    };
+                else if (judged >= 0)
+                    root.refused = null;
+                root.consider();
+            }
+        }
+    }
+
+    Timer {
+        interval: 30000
+        running: root.supported
+        repeat: true
+        onTriggered: root.read()
+    }
+}

@@ -1,0 +1,24 @@
+Id=vesktop.service
+Description=Vesktop (Discord)
+FragmentPath=/home/bandit/.config/systemd/user/vesktop.service
+ExecStart={ path=/usr/bin/vesktop ; argv[]=/usr/bin/vesktop ; ignore_errors=no ; start_time=[n/a] ; stop_time=[n/a] ; pid=0 ; code=(null) ; status=0/0 }
+
+Id=tmux.service
+Description=tmux server
+FragmentPath=/home/bandit/.config/systemd/user/tmux.service
+ExecStart={ path=/usr/bin/tmux ; argv[]=/usr/bin/tmux new-session -d ; ignore_errors=no }
+
+Id=spotify-spare.service
+Description=Spotify, spare
+FragmentPath=/home/bandit/.config/systemd/user/spotify-spare.service
+ExecStart={ path=/usr/bin/spotify ; argv[]=/usr/bin/spotify ; ignore_errors=no }
+
+Id=wireplumber.service
+Description=Multimedia Service Session Manager
+FragmentPath=/usr/lib/systemd/user/wireplumber.service
+ExecStart={ path=/usr/bin/foot ; argv[]=/usr/bin/foot ; ignore_errors=no }
+
+Id=syncthing.service
+Description=Syncthing - Open Source Continuous File Synchronization
+FragmentPath=/usr/lib/systemd/user/syncthing.service
+ExecStart={ path=/usr/bin/syncthing ; argv[]=/usr/bin/syncthing serve ; ignore_errors=no }

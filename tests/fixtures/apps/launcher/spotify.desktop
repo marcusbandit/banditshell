@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Spotify
+Exec=spotify --uri=%U
+Icon=spotify-client
+Type=Application
