@@ -224,14 +224,14 @@ Singleton {
         root.files = root.files.concat([file]);
         root.binds = root.binds.concat(collected);
         root.monitors = root.monitors.concat(r.monitors.map(m => Object.assign({
-                id: `${name}:${m.startLine}`,
+                id: `${name}:${m.startLine}:${m.startOffset}`,
                 file: name
             }, m)));
         root.outputTables = root.outputTables.concat(r.outputTables.map(t => Object.assign({
                 file: name
             }, t)));
         root.bands = root.bands.concat(r.bands.map(b => Object.assign({
-                id: `${name}:${b.startLine}`,
+                id: `${name}:${b.startLine}:${b.startOffset}`,
                 file: name
             }, b)));
         root.bandTables = root.bandTables.concat(r.bandTables.map(t => Object.assign({
@@ -306,6 +306,24 @@ Singleton {
         root.commit(fileName, at.startLine, at.endLine, at.replacement);
     }
 
+    function monitorEntry(output: string): var {
+        return HyprlandLua.entriesForHost(root.monitors.filter(m => !m.dynamic && m.output === output), root.hostName)[0] ?? null;
+    }
+
+    function outputTable(): var {
+        return HyprlandLua.entriesForHost(root.outputTables, root.hostName)[0] ?? null;
+    }
+
+    readonly property var hostBands: HyprlandLua.entriesForHost(root.bands.filter(b => !b.dynamic), root.hostName)
+
+    function bandEntry(monitor: string): var {
+        return root.hostBands.find(b => b.monitor === monitor) ?? null;
+    }
+
+    function bandTable(): var {
+        return HyprlandLua.entriesForHost(root.bandTables, root.hostName)[0] ?? null;
+    }
+
     function updateMonitor(id: string, changed: var): void {
         const m = root.monitors.find(x => x.id === id);
         if (!m)
@@ -316,7 +334,7 @@ Singleton {
         if (!line)
             return console.warn("HyprConfig: nothing to write.");
 
-        root.commit(m.file, m.startLine, m.endLine, [m.indent + line + (m.trailing ?? "")]);
+        root.commit(m.file, m.startLine, m.endLine, HyprlandLua.entryReplacement(root.texts[root.pathOf(m.file)] ?? "", m, line));
     }
 
     function addMonitor(fileName: string, spec: var): void {
@@ -324,20 +342,20 @@ Singleton {
         if (!line)
             return console.warn("HyprConfig: a monitor entry needs an output and a spec.");
 
-        const path = root.pathOf(fileName);
-        const text = root.texts[path] ?? "";
-        const table = root.outputTables.find(t => t.file === fileName);
+        const table = root.outputTable();
 
         if (table) {
+            const text = root.texts[root.pathOf(table.file)] ?? "";
             const closer = text.split("\n")[table.endLine - 1] ?? "";
 
-            const inside = root.monitors.filter(m => m.file === fileName && m.startLine > table.startLine && m.endLine < table.endLine);
+            const inside = root.monitors.filter(m => m.file === table.file && m.startLine > table.startLine && m.endLine < table.endLine);
             const indent = inside.length ? inside[inside.length - 1].indent : /^[ \t]*/.exec(closer)[0] + "    ";
 
-            root.commit(fileName, table.endLine, table.endLine, [`${indent}${line},`, closer]);
+            root.commit(table.file, table.endLine, table.endLine, [`${indent}${line},`, closer]);
             return;
         }
 
+        const text = root.texts[root.pathOf(fileName)] ?? "";
         const at = HyprlandLua.appendSplice(text, [line]);
         root.commit(fileName, at.startLine, at.endLine, at.replacement);
     }
@@ -351,7 +369,7 @@ Singleton {
         const line = HyprlandLua.composeEntry(b, changed);
         if (!line)
             return console.warn("HyprConfig: nothing to write.");
-        root.commit(b.file, b.startLine, b.endLine, [b.indent + line + (b.trailing ?? "")]);
+        root.commit(b.file, b.startLine, b.endLine, HyprlandLua.entryReplacement(root.texts[root.pathOf(b.file)] ?? "", b, line));
     }
 
     function addBand(spec: var): void {
@@ -359,8 +377,7 @@ Singleton {
         if (!line)
             return console.warn("HyprConfig: a band entry needs a monitor and a range.");
 
-        const table = root.bandTables.find(t => t.path[1] === root.hostName)
-            ?? root.bandTables[0];
+        const table = root.bandTable();
         if (!table)
             return console.warn("HyprConfig: no managed band table to add to; edit the source.");
 

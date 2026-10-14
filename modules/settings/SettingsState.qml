@@ -1053,7 +1053,7 @@ Singleton {
     function assignBand(name: string, spec: string): void {
         if (!root.edits())
             return;
-        const entry = HyprConfig.bands.find(b => !b.dynamic && b.monitor === name && b.path?.[1] === HyprConfig.hostName);
+        const entry = HyprConfig.bandEntry(name);
         if (entry)
             HyprConfig.updateBand(entry.id, {
                 workspaces: spec

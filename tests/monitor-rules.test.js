@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const HyprlandLua = new Function(fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8")
-    + "\nreturn { scanLua, composeEntry, spliceLines };")();
+    + "\nreturn { scanLua, composeEntry, entryReplacement, spliceLines };")();
 const Rules = new Function(fs.readFileSync(path.join(ROOT, "services/monitor-rules.js"), "utf8")
     + "\nreturn { mirrorSource, restingFields, entryFields, violation, mirroring, plan, mirrorChoices };")();
 
@@ -33,7 +33,7 @@ const MONITORS_LUA = [
 
 function rewrite(source, output, changed) {
     const entry = HyprlandLua.scanLua(source).monitors.find(m => m.output === output);
-    return HyprlandLua.spliceLines(source, entry.startLine, entry.endLine, [entry.indent + HyprlandLua.composeEntry(entry, changed) + entry.trailing]);
+    return HyprlandLua.spliceLines(source, entry.startLine, entry.endLine, HyprlandLua.entryReplacement(source, entry, HyprlandLua.composeEntry(entry, changed)));
 }
 
 test("turning a screen off writes disabled = true and keeps the rest of the entry", () => {

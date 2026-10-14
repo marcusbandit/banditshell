@@ -18,7 +18,7 @@ Singleton {
 
     readonly property int count: Config.values.sidebar.workspaces.persistent
 
-    readonly property var bands: HyprConfig.bands.filter(b => !b.dynamic && b.path?.[1] === HyprConfig.hostName)
+    readonly property var bands: HyprConfig.hostBands
 
     function bandFor(screen: string): int {
         const b = root.bands.find(x => x.monitor === screen && !x.invalid);

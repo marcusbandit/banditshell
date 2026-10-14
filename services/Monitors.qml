@@ -48,7 +48,7 @@ Singleton {
 
     function specFor(m: var): var {
         if (m.disabled || !(m.width > 0)) {
-            const entry = HyprConfig.monitors.find(e => !e.dynamic && e.output === m.name);
+            const entry = HyprConfig.monitorEntry(m.name);
             return Object.assign({
                 output: m.name
             }, MonitorRules.restingFields(m, entry), {
@@ -155,12 +155,11 @@ Singleton {
         });
 
         const fields = MonitorRules.entryFields(spec);
-        const entry = HyprConfig.monitors.find(m => !m.dynamic && m.output === spec.output);
+        const entry = HyprConfig.monitorEntry(spec.output);
         if (entry)
             HyprConfig.updateMonitor(entry.id, fields);
         else
-
-            HyprConfig.addMonitor((HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), Object.assign({
+            HyprConfig.addMonitor((HyprConfig.outputTable()?.file ?? HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), Object.assign({
                 output: spec.output
             }, fields));
 
