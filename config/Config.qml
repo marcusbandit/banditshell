@@ -172,6 +172,15 @@ Singleton {
                 }
             },
 
+            obs: {
+
+                host: "",
+
+                port: 0,
+
+                password: ""
+            },
+
             stream: {
 
                 enabled: false,
