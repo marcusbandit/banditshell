@@ -108,3 +108,53 @@ test("a device name matches whether it comes from evdev or from Hyprland", () =>
     const run = spawnSync("python3", ["-I", "-c", code, SCRIPT], { encoding: "utf8" });
     assert.strictEqual(run.stdout.trim(), "True True False");
 });
+
+function serve(grabFails, uinputFails) {
+    const code = [
+        "import importlib.util, json, sys, types",
+        "spec = importlib.util.spec_from_file_location('pen_buttons', sys.argv[1])",
+        "module = importlib.util.module_from_spec(spec)",
+        "spec.loader.exec_module(module)",
+        "calls = []",
+        "grab_fails, uinput_fails = sys.argv[2] == '1', sys.argv[3] == '1'",
+        "class Info: vendor = 1; product = 2; version = 3; bustype = 4",
+        "class Device:",
+        "    name = 'pen'",
+        "    info = Info()",
+        "    def input_props(self): return []",
+        "    def fileno(self): return 0",
+        "    def grab(self):",
+        "        calls.append('grab')",
+        "        if grab_fails: raise OSError(16, 'Device or resource busy')",
+        "    def ungrab(self): calls.append('ungrab')",
+        "class Made:",
+        "    def write(self, *args): pass",
+        "    def close(self): calls.append('close')",
+        "class UInput:",
+        "    @staticmethod",
+        "    def from_device(dev, **kwargs):",
+        "        calls.append('uinput')",
+        "        if uinput_fails: raise OSError(13, 'denied')",
+        "        return Made()",
+        "fake = types.SimpleNamespace(UInput=UInput)",
+        "helper = module.Helper('pen', module.Remapper('middle click', 'right click'), False)",
+        "helper.pump = lambda dev, uinput: calls.append('pump')",
+        "helper.serve(fake, Device())",
+        "print(json.dumps({'calls': calls, 'said': helper.last}))"
+    ].join("\n");
+    const run = spawnSync("python3", ["-I", "-c", code, SCRIPT, grabFails ? "1" : "0", uinputFails ? "1" : "0"], { encoding: "utf8" });
+    assert.strictEqual(run.status, 0, run.stderr);
+    return JSON.parse(run.stdout.trim().split("\n").pop());
+}
+
+test("a pen that is already grabbed is left alone and no stand-in is made", () => {
+    assert.deepStrictEqual(serve(true, false), { calls: ["grab"], said: "denied" });
+});
+
+test("the stand-in is made only after the grab, and both are let go in order", () => {
+    assert.deepStrictEqual(serve(false, false), { calls: ["grab", "uinput", "pump", "close", "ungrab"], said: "ready" });
+});
+
+test("a stand-in that cannot be made gives the pen back", () => {
+    assert.deepStrictEqual(serve(false, true), { calls: ["grab", "uinput", "ungrab"], said: "denied" });
+});
