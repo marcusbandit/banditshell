@@ -80,10 +80,8 @@ Singleton {
             Config.set("region.autoZone", false);
             return;
         }
-        if (!root.geoclueInstalled) {
-            root.failed("zone from network needs geoclue, which is not installed");
+        if (!root.geoclueInstalled)
             return;
-        }
         Config.set("region.autoZone", true);
         root.locate();
     }
@@ -212,8 +210,10 @@ Singleton {
             const place = Rules.parseWhereAmI(located.text);
             if (place)
                 root.placeFound(place);
-            else
+            else {
+                Config.set("region.autoZone", false);
                 root.failed("geoclue could not say where you are");
+            }
         }
     }
 

@@ -62,6 +62,9 @@ function fakeState(values) {
         fonts: ["Monocraft"],
         monoFonts: ["Monocraft"],
         zoneChoices: ["Europe/Copenhagen"],
+        languageChoices: [["en_GB.UTF-8", "English (UK)"]],
+        formatChoices: [["da_DK.UTF-8", "Denmark"]],
+        dateChoices: [["slashes", "14/10/2026"]],
         branches: ["main"],
         specialNames: [],
         pendingNote: () => ""
@@ -112,7 +115,7 @@ test("every config key the panel names exists in Config defaults, unless the row
 });
 
 test("rows that name a config key write that same key", () => {
-    const special = new Set(["scr:bar", "wallTarget", "level", "warmth", "sheetKeyboard", "sidebar"]);
+    const special = new Set(["scr:bar", "wallTarget", "level", "warmth", "sheetKeyboard", "sidebar", "autoZone"]);
     for (const r of Catalogue.ROWS)
         if (r.k && r.cfg && !r.isNew && !special.has(r.k))
             assert.strictEqual(CONFIG_BACKED[r.k], r.cfg, `${r.k} shows ${r.cfg} but writes ${CONFIG_BACKED[r.k]}`);
@@ -145,6 +148,26 @@ test("planned settings are not config keys yet", () => {
     for (const r of Catalogue.ROWS)
         if (r.isNew && r.k)
             assert.ok(!(r.k in CONFIG_BACKED), `${r.k} is planned but SettingsState writes it to config`);
+});
+
+test("night light, region and accessibility rows are live: config-backed or owned by a service, never planned", () => {
+    for (const k of ["nightSched", "warmFrom", "warmTo", "clock24", "dateFormat", "reduceMotion", "largerText", "contrast"]) {
+        assert.ok(k in CONFIG_BACKED, `${k} writes to config`);
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
+        assert.ok(!Catalogue.ROW_BY_KEY[k].isNew, `${k} is no longer marked new`);
+    }
+    for (const k of ["autoZone", "zone", "lang", "region"]) {
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
+        assert.ok(!Catalogue.ROW_BY_KEY[k].isNew, `${k} is no longer marked new`);
+    }
+});
+
+test("the new config keys start where the panel's planned values did", () => {
+    assert.deepStrictEqual([lookup(DEFAULTS, "screen.schedule"), lookup(DEFAULTS, "screen.warmFrom"), lookup(DEFAULTS, "screen.warmTo")], ["off", "21:00", "07:00"]);
+    assert.deepStrictEqual([lookup(DEFAULTS, "region.clock24"), lookup(DEFAULTS, "region.dateFormat")], [true, "slashes"]);
+    assert.deepStrictEqual([lookup(DEFAULTS, "access.lessMotion"), lookup(DEFAULTS, "access.largerText"), lookup(DEFAULTS, "access.moreContrast")], [false, false, false]);
+    assert.strictEqual(lookup(DEFAULTS, "access.largerBase"), 11);
+    assert.deepStrictEqual(lookup(DEFAULTS, "access.contrastLabel"), [0.96, 0.8, 0.68, 0.24]);
 });
 
 test("every widget and every preview has its file", () => {

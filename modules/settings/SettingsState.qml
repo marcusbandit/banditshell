@@ -19,7 +19,6 @@ Singleton {
             alerts: true,
             alertSet: "soft",
             alertVol: 0.5,
-            nightSched: "off",
             dnd: false,
             dndUntil: "off by hand",
             dndAlarms: true,
@@ -53,15 +52,6 @@ Singleton {
             defMail: "thunderbird",
             defImages: "loupe",
             defVideo: "mpv",
-            clock24: true,
-            dateFormat: "14/10/2026",
-            autoZone: true,
-            zone: "Europe/Copenhagen",
-            lang: "English (UK)",
-            region: "Denmark",
-            reduceMotion: false,
-            largerText: false,
-            contrast: false,
             layout: "dwindle",
             overAmp: true,
             specialsShown: true,
@@ -97,6 +87,22 @@ Singleton {
     readonly property string path: `${Config.stateDir}/settings.json`
 
     readonly property var transforms: ({
+            nightSched: {
+                read: v => v === "times" ? "set times" : v,
+                write: v => v === "set times" ? "times" : v
+            },
+            warmFrom: {
+                read: v => Display.minutesOf(v),
+                write: v => Display.clockOf(v)
+            },
+            warmTo: {
+                read: v => Display.minutesOf(v),
+                write: v => Display.clockOf(v)
+            },
+            dateFormat: {
+                read: v => TimeFormat.styleOf(v),
+                write: v => TimeFormat.styleOf(v)
+            },
             notifTimeout: {
                 read: v => Math.round(v / 1000),
                 write: v => v * 1000
@@ -142,6 +148,14 @@ Singleton {
             roleSpeakers: "audio.speakers",
             roleHeadphones: "audio.headphones",
             warmest: "screen.warmest",
+            nightSched: "screen.schedule",
+            warmFrom: "screen.warmFrom",
+            warmTo: "screen.warmTo",
+            clock24: "region.clock24",
+            dateFormat: "region.dateFormat",
+            reduceMotion: "access.lessMotion",
+            largerText: "access.largerText",
+            contrast: "access.moreContrast",
             fromWall: "themeFromWallpaper",
             accent: "colour.accent",
             surface: "colour.surface",
@@ -275,6 +289,14 @@ Singleton {
             return Display.levelKnown ? Math.round(Display.level * 100) : 100;
         case "warmth":
             return Display.warm ? Math.round(Math.max(0, Math.min(100, (Display.neutral - Display.kelvin) / Math.max(1, Display.neutral - Display.warmest) * 100))) : 0;
+        case "autoZone":
+            return Localisation.zoneFollowsNetwork;
+        case "zone":
+            return Clock.localZone;
+        case "lang":
+            return Localisation.language;
+        case "region":
+            return Localisation.formatsId;
         case "theme":
             return Config.values.theme;
         case "sidebar":
@@ -385,6 +407,19 @@ Singleton {
             return Display.setWarmth(value > 0 ? Math.round(Display.neutral - value / 100 * (Display.neutral - Display.warmest)) : 0);
         case "warm":
             return Display.toggleWarm();
+        case "autoZone":
+            if (value && !Localisation.geoclueInstalled) {
+                root.denied = true;
+                root.refused("zone from network needs geoclue, which is not installed", "");
+                return;
+            }
+            return Localisation.setAutomaticZone(value);
+        case "zone":
+            return Localisation.setZone(value);
+        case "lang":
+            return root.setLocale(value, Localisation.languages, Localisation.setLanguage);
+        case "region":
+            return root.setLocale(value, Localisation.formats, Localisation.setFormats);
         case "theme":
             return ThemeSwitcher.apply(value);
         case "sidebar":
@@ -423,6 +458,21 @@ Singleton {
         }
         if (root.plannedKey(k))
             root.plan(k, value);
+    }
+
+    function setLocale(id: string, options: var, apply: var): void {
+        if (Localisation.hasLocale(id))
+            return apply(id);
+        root.denied = true;
+        root.refused(`${Localisation.labelOf(options, id)} is not set up on this machine`, "");
+    }
+
+    Connections {
+        target: Localisation
+
+        function onFailed(why: string): void {
+            root.refused(why, "");
+        }
     }
 
     property bool boardWanted: false
@@ -1041,7 +1091,7 @@ Singleton {
             if (at && (!best || at < best))
                 best = at;
         }
-        return best ? `next alarm ${Qt.formatTime(new Date(best), "HH:mm")}` : "no alarms set";
+        return best ? `next alarm ${TimeFormat.time(new Date(best), false)}` : "no alarms set";
     }
 
     property double tick: Date.now()
@@ -1117,14 +1167,43 @@ Singleton {
         return seed.concat(pool.filter(a => a !== seed[0]));
     }
 
-    readonly property var zoneChoices: {
-        const here = Clock.localZone;
-        const out = [];
-        for (const z of [here, "Europe/Copenhagen", "Europe/London", "America/New_York", "Asia/Tokyo"])
-            if (z && out.indexOf(z) < 0)
-                out.push(z);
-        return out;
+    readonly property var zoneChoices: Localisation.zoneChoices
+    readonly property var languageChoices: Localisation.languageChoices
+    readonly property var formatChoices: Localisation.formatChoices
+
+    readonly property string languageLabel: Localisation.labelOf(Localisation.languages, Localisation.language)
+    readonly property string formatsLabel: Localisation.labelOf(Localisation.formats, Localisation.formatsId)
+
+    readonly property var dateChoices: TimeFormat.styles.map(id => [id, TimeFormat.example(id, new Date(root.tick))])
+
+    readonly property string timeExample: TimeFormat.time(new Date(root.tick), false)
+
+    readonly property string moneyExample: ({
+            "da_DK.UTF-8": "1.234,56 kr.",
+            "en_GB.UTF-8": "£1,234.56",
+            "en_US.UTF-8": "$1,234.56"
+        })[Localisation.formatsId] ?? ""
+
+    readonly property int largerBase: Config.values.access.largerBase
+
+    function minuteText(minutes: int): string {
+        return TimeFormat.clock(Math.floor(minutes / 60), minutes % 60);
     }
+
+    readonly property string scheduleDetail: {
+        const mode = Config.values.screen.schedule;
+        const w = Display.warmWindow;
+        if (mode === "off")
+            return "";
+        if (!w)
+            return mode === "sunset" ? "needs a place · pick a zone below" : "pick two different times";
+        if (!isFinite(w.start) || !isFinite(w.end))
+            return mode === "sunset" ? "the sun does not set here now" : "";
+        const span = `${TimeFormat.time(new Date(w.start), false)} to ${TimeFormat.time(new Date(w.end), false)}`;
+        return mode === "sunset" ? `tonight ${span}` : span;
+    }
+
+    readonly property string autoZoneDetail: !Localisation.geoclueProbed ? "" : !Localisation.geoclueInstalled ? "needs geoclue, which is not installed" : "from where you are · password needed"
 
     readonly property var branches: {
         const out = [Config.values.updates.branch];
