@@ -122,7 +122,7 @@ Singleton {
     function themePalette(): var {
         const t = Appearance.theme;
         const r = t.ramp;
-        return [r[1], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[9], r[6], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[10]];
+        return [r[1], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[9], r[6], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[10]].map(c => String(c));
     }
 
     function rowOf(k: string): var {
@@ -488,8 +488,8 @@ Singleton {
         const typed = r?.kind === "text" || r?.kind === "secret";
         if (r && !typed && !root.muteLog && !root.stagedKey(k) && (value === null || typeof value !== "object"))
             root.log(k, r, before, value);
-        if (r?.cfg && !typed) {
-            const t = root.configBacked[k] ? root.transforms[k] : null;
+        if (r?.cfg && !typed && root.configBacked[k]) {
+            const t = root.transforms[k];
             const written = t ? t.write(value) : value;
             root.wrote = {
                 key: r.cfg,
@@ -552,10 +552,10 @@ Singleton {
             return;
         root.muteLog = true;
         if (root.v("mode") !== "none")
-            for (const key of Object.keys(root.modeWas))
+            for (const key of Object.keys(root.modeWas).filter(k => root.plannedKey(k)))
                 root.set(key, root.modeWas[key]);
         const was = {};
-        for (const key of Object.keys(m.set)) {
+        for (const key of Object.keys(m.set).filter(k => root.plannedKey(k))) {
             was[key] = root.v(key);
             root.set(key, m.set[key]);
         }

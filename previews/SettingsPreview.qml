@@ -4,6 +4,7 @@ import qs.config
 import qs.components
 import qs.modules.settings
 import qs.services
+import "../modules/settings/catalogue.js" as SettingsCatalogue
 
 ShellRoot {
     id: root
@@ -20,7 +21,8 @@ ShellRoot {
 
         Component.onCompleted: {
             const page = Quickshell.env("SETTINGS_PAGE");
-            Settings.openAt(win.screen?.name ?? "", page, "");
+            const found = page ? SettingsCatalogue.resolve(page) : null;
+            Settings.openAt(win.screen?.name ?? "", found ? found.page || found.cat : "", found?.row ? page : "");
         }
 
         Item {

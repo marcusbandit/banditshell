@@ -27,7 +27,7 @@ Singleton {
                 return SettingsView.drop("clipboard cleared", "delete_sweep", {
                     label: "undo",
                     run: () => {
-                        Clipboard.entries = kept;
+                        Clipboard.entries = kept.filter(e => e.pinned || !e.file);
                         Clipboard.save();
                         SettingsView.drop("put back", "undo");
                     }
@@ -68,7 +68,9 @@ Singleton {
         exporter.path = file;
         exporter.setText(JSON.stringify({
             config: Config.values,
-            planned: SettingsState.planned
+            planned: Object.assign({}, SettingsState.planned, {
+                hotspotPass: undefined
+            })
         }, null, 4) + "\n");
     }
 

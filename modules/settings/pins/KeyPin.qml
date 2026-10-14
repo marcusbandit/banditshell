@@ -15,6 +15,8 @@ Column {
 
     spacing: Appearance.padding.card
 
+    onPinIdChanged: root.listening = false
+
     readonly property var named: ({
             [Qt.Key_Space]: "space",
             [Qt.Key_Return]: "return",
@@ -98,6 +100,8 @@ Column {
 
             focus: root.listening
             Keys.onPressed: event => root.take(event)
+            onActiveFocusChanged: if (!activeFocus)
+                root.listening = false
         }
     }
 

@@ -21,6 +21,10 @@ Column {
 
     spacing: Appearance.padding.card
 
+    onSsidChanged: {
+        root.password = "";
+        root.error = "";
+    }
     onOnChanged: Network.share(root.on && root.secured)
     Component.onCompleted: Network.share(root.on && root.secured)
     Component.onDestruction: Network.share(false)

@@ -19,7 +19,7 @@ Singleton {
     }
 
     function toFilesKey(combo: string): string {
-        return combo.split(" ").filter(Boolean).map(p => p.length === 1 ? p.toUpperCase() : p.charAt(0).toUpperCase() + p.slice(1)).join("+");
+        return combo.split(" ").filter(Boolean).map(p => p.length === 1 ? p.toUpperCase() : p.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")).join("+");
     }
 
     readonly property var fileActions: {
