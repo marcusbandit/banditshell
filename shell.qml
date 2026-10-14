@@ -10,6 +10,9 @@ import qs.modules.picker
 
 ShellRoot {
     readonly property var compositorSync: CompositorSync
+    readonly property var battery: Battery
+    readonly property var chargeLimit: ChargeLimit
+    readonly property var lid: Lid
 
     LockScreen {}
 
