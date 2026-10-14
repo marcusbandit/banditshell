@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-14",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell try runs a git worktree of the shell on your desktop in place of your installed copy, so you can try a branch before it is merged: banditshell try <branch>, or bare from inside the worktree. Bare anywhere else, it lists every worktree and marks the one running. banditshell back puts your installed copy back. While you are trying one, banditshell restart restarts it, and a worktree that fails to load puts you back on your installed copy by itself."
+        }
+      ]
+    },
+    {
       "id": "2026-10-12-4",
       "date": "2026-10-12",
       "changes": [
