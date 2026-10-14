@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const read = file => fs.readFileSync(path.join(ROOT, file), "utf8");
 const Entries = new Function(read("services/desktop-entries.js") + "\nreturn { parseBundle, indexEntries, indexPrograms, shownIn };")();
-const Startup = new Function(read("services/startup-apps.js") + "\nreturn { shellWords, quoteWord, parseExecLines, wrapperOf, offMarker, hyprlandApps, toggleReplacement, parseUnitFiles, candidateUnits, parseUnitShow, systemdApps, autostartApps, startSummary };")();
+const Startup = new Function(read("services/startup-apps.js") + "\nreturn { shellWords, quoteWord, parseExecLines, wrapperOf, offMarker, hyprlandApps, toggleReplacement, parseUnitFiles, candidateUnits, parseUnitShow, systemdApps, autostartApps, startSummary, launcherEnabled, readOverride, launcherApps, setDisabled, duplicateNotes };")();
 
 const lua = fs.readFileSync(path.join(FIXTURES, "autostart.lua"), "utf8");
 const files = [{ name: "lua/autostart.lua", text: lua }];
@@ -158,6 +158,72 @@ test("autostart apps are the entries this desktop would show, on unless hidden",
     const rows = Startup.autostartApps(Entries.parseBundle(bundle), ["Hyprland"], Entries.shownIn);
     assert.deepStrictEqual(rows.map(r => [r.id, r.on]), [["autostart:off.desktop", false], ["autostart:remmina-applet.desktop", true]]);
     assert.strictEqual(rows[1].path, "/home/bandit/.config/autostart/remmina-applet.desktop");
+});
+
+function launcherBundle(withOverrides) {
+    const dir = path.join(FIXTURES, "launcher");
+    return fs.readdirSync(dir).filter(f => f.endsWith(".desktop")).sort().map(f => {
+        const override = path.join(dir, "overrides", f.replace(/\.desktop$/, ".conf"));
+        const has = withOverrides && fs.existsSync(override);
+        return `\n@@@/home/x/.config/autostart-managed/${f}\n${fs.readFileSync(path.join(dir, f), "utf8")}\n@@@override /home/x/.config/autostart-managed/${f}\n${has ? fs.readFileSync(override, "utf8") : ""}`;
+    }).join("");
+}
+
+test("the launcher counts only while its unit is enabled", () => {
+    assert.strictEqual(Startup.launcherEnabled([{ unit: "autostart-launcher.service", state: "enabled" }]), true);
+    assert.strictEqual(Startup.launcherEnabled([{ unit: "autostart-launcher.service", state: "disabled" }]), false);
+    assert.strictEqual(Startup.launcherEnabled([]), false);
+});
+
+test("an override is read for what the launcher honours, quotes and comments included", () => {
+    const text = fs.readFileSync(path.join(FIXTURES, "launcher/overrides/spotify.conf"), "utf8");
+    assert.deepStrictEqual(Startup.readOverride(text), { disabled: false, delay: 5, extraArgs: "--minimized", extraEnv: "GDK_BACKEND=wayland FOO=bar" });
+    assert.strictEqual(Startup.readOverride("disabled=\"true\"\n").disabled, true);
+    assert.strictEqual(Startup.readOverride("disabled=true\ndisabled=false\n").disabled, false);
+    assert.strictEqual(Startup.readOverride("#disabled=true\n").disabled, false);
+    assert.deepStrictEqual(Startup.readOverride(""), { disabled: false, delay: 0, extraArgs: "", extraEnv: "" });
+});
+
+test("launcher apps pair each entry with the override that follows it", () => {
+    const rows = Startup.launcherApps(Entries.parseBundle(launcherBundle(true)), "/home/x/.config/autostart-managed/overrides");
+    assert.deepStrictEqual(rows.map(r => [r.id, r.on, r.delay]), [["launcher:claude-launcher.desktop", false, 0], ["launcher:spotify.desktop", true, 5]]);
+    assert.strictEqual(rows[1].overridePath, "/home/x/.config/autostart-managed/overrides/spotify.conf");
+    assert.ok(rows[1].overrideText.includes("extra_env"));
+    assert.strictEqual(rows[0].entry.name, "Claude");
+});
+
+test("an app without an override file is on and has nothing to keep", () => {
+    const rows = Startup.launcherApps(Entries.parseBundle(launcherBundle(false)), "/o");
+    assert.deepStrictEqual(rows.map(r => [r.on, r.overrideText]), [[true, ""], [true, ""]]);
+});
+
+test("switching a launcher app off appends disabled after every other line, and creates the file when there is none", () => {
+    const text = fs.readFileSync(path.join(FIXTURES, "launcher/overrides/spotify.conf"), "utf8");
+    const off = Startup.setDisabled(text, true);
+    assert.ok(off.endsWith("extra_env=\"GDK_BACKEND=wayland FOO=bar\"\ndisabled=true\n"));
+    assert.ok(off.includes("#disabled=false\n"));
+    assert.strictEqual(Startup.setDisabled("", true), "disabled=true\n");
+    assert.strictEqual(Startup.readOverride(off).disabled, true);
+    assert.strictEqual(Startup.readOverride(off).delay, 5);
+});
+
+test("switching on updates an active line and leaves a file without one alone", () => {
+    assert.strictEqual(Startup.setDisabled("delay=2\ndisabled=\"true\"\nextra_args=x\n", false), "delay=2\ndisabled=false\nextra_args=x\n");
+    const text = fs.readFileSync(path.join(FIXTURES, "launcher/overrides/spotify.conf"), "utf8");
+    assert.strictEqual(Startup.setDisabled(text, false), text);
+    assert.strictEqual(Startup.setDisabled("", false), "");
+});
+
+test("an app that starts from two sources says so on both rows, and only while both are on", () => {
+    const entries = [
+        { id: "hyprland:spotify", source: "hyprland", desktopId: "spotify.desktop", on: true },
+        { id: "launcher:spotify.desktop", source: "launcher", desktopId: "spotify.desktop", on: true },
+        { id: "launcher:claude.desktop", source: "launcher", desktopId: "claude.desktop", on: true },
+        { id: "systemd:x", source: "systemd", desktopId: "", on: true }
+    ];
+    assert.deepStrictEqual(Startup.duplicateNotes(entries), { "hyprland:spotify": "also starts from launcher", "launcher:spotify.desktop": "also starts from hyprland" });
+    entries[0].on = false;
+    assert.deepStrictEqual(Startup.duplicateNotes(entries), {});
 });
 
 test("the summary counts what starts out of what is listed", () => {

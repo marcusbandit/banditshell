@@ -213,6 +213,90 @@ function autostartApps(files, desktops, shownIn) {
     return out;
 }
 
+const LAUNCHER_UNIT = "autostart-launcher.service";
+const OVERRIDE_MARK = "override ";
+
+function launcherEnabled(unitFiles) {
+    return unitFiles.some(u => u.unit === LAUNCHER_UNIT && u.state === "enabled");
+}
+
+function readOverride(text) {
+    const values = {};
+    for (const raw of String(text ?? "").split("\n")) {
+        const m = /^\s*([A-Za-z_][A-Za-z0-9_]*)=(.*)$/.exec(raw);
+        if (!m)
+            continue;
+        const word = shellWords(m[2])[0];
+        values[m[1]] = word ? word.text : "";
+    }
+    return {
+        disabled: values.disabled === "true",
+        delay: parseInt(values.delay, 10) > 0 ? parseInt(values.delay, 10) : 0,
+        extraArgs: values.extra_args ?? "",
+        extraEnv: values.extra_env ?? ""
+    };
+}
+
+function launcherApps(files, overrideDir) {
+    const out = [];
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (file.path.startsWith(OVERRIDE_MARK) || !file.entry || !file.entry.exec)
+            continue;
+        const name = baseName(file.path);
+        const next = files[i + 1];
+        const hasOverride = next && next.path.startsWith(OVERRIDE_MARK);
+        const overrideText = hasOverride ? next.text : "";
+        const settings = readOverride(overrideText);
+        out.push({
+            id: `launcher:${name}`,
+            file: name,
+            path: file.path,
+            entry: file.entry,
+            overridePath: `${overrideDir}/${name.replace(/\.desktop$/, "")}.conf`,
+            overrideText,
+            delay: settings.delay,
+            extraArgs: settings.extraArgs,
+            extraEnv: settings.extraEnv,
+            on: !settings.disabled
+        });
+    }
+    return out;
+}
+
+function setDisabled(text, disabled) {
+    const lines = String(text ?? "").split("\n");
+    let wrote = false;
+    for (let i = 0; i < lines.length; i++)
+        if (/^\s*disabled=/.test(lines[i])) {
+            lines[i] = `disabled=${disabled}`;
+            wrote = true;
+        }
+    if (wrote)
+        return lines.join("\n");
+    if (!disabled)
+        return String(text ?? "");
+    while (lines.length && lines[lines.length - 1] === "")
+        lines.pop();
+    return lines.concat(["disabled=true", ""]).join("\n");
+}
+
+function duplicateNotes(entries) {
+    const key = e => String(e.desktopId ?? "").replace(/\.desktop$/, "");
+    const out = {};
+    for (const entry of entries) {
+        if (!key(entry) || !entry.on)
+            continue;
+        const others = [];
+        for (const other of entries)
+            if (other.id !== entry.id && other.on && key(other) === key(entry) && !others.includes(other.source))
+                others.push(other.source);
+        if (others.length)
+            out[entry.id] = `also starts from ${others.join(" and ")}`;
+    }
+    return out;
+}
+
 function startSummary(rows) {
     if (!rows.length)
         return "nothing to start yet";

@@ -38,4 +38,14 @@ through HyprConfig (behind `sourceEdits`), `systemctl --user disable`, or
 - Nothing runs XDG autostart on this Hyprland session (no uwsm or dex, and `xdg-desktop-autostart.target` is inactive), so the shell launches the enabled entries itself once per session. `StartupApps` is referenced from `shell.qml` so it runs at boot. The guard is a directory `$XDG_RUNTIME_DIR/banditshell-autostart-$HYPRLAND_INSTANCE_SIGNATURE`; it also stands down when `xdg-desktop-autostart.target` is active, and does nothing outside Hyprland. Entries with `Terminal=true` are listed but not launched.
 - Each row says where it comes from (hyprland, systemd, autostart); the "Add an app" row says how many of the listed apps start.
 
-Still to check by a person: the first time this lands in the live session, remmina-applet (the one entry in `~/.config/autostart`) starts once, since nothing started it before. Not listed: `autostart-launcher.service` starts what is in `~/.config/autostart-managed/` (claude-launcher, spotify), a fourth source outside the three this ticket names. Systemd enable and disable were not run on the live machine; the listing was checked read-only and the write path is two lines.
+Still to check by a person: the first time this lands in the live session, remmina-applet (the one entry in `~/.config/autostart`) starts once, since nothing started it before. Systemd enable and disable were not run on the live machine; the listing was checked read-only and the write path is two lines.
+
+### Fourth source: the launcher
+
+`~/.local/bin/autostart-launcher`, run by the enabled `autostart-launcher.service`, starts every `*.desktop` in `~/.config/autostart-managed/` (symlinks to desktop entries) and sources `overrides/<name>.conf` for each. The script honours `disabled`, `delay` (seconds), `extra_args` and `extra_env`.
+
+- Read only when the directory exists and the unit is enabled; elsewhere nothing shows and nothing breaks. One row per app, source label "launcher", and the row detail adds the delay when there is one ("launcher · 5 s delay").
+- Off sets `disabled=true` in the override, replacing any active `disabled=` line and otherwise appending one, with every other line kept; the file is created when missing. On sets an active line to `disabled=false` and leaves a file without one alone. The symlink is never touched. The override is parsed the way the script sources it: the last assignment wins, quotes are removed, commented lines are ignored.
+- When the same app is on in two sources the detail of both rows says so, e.g. "hyprland · after the shell · also starts from launcher" on Spotify. They are matched by desktop entry.
+- Parsing and toggling are in `startup-apps.js` (`launcherApps`, `readOverride`, `setDisabled`, `duplicateNotes`) with fixtures in `tests/fixtures/apps/launcher`, including an override holding other variables. Checked against a copy of the real directory: read, off and on wrote only the temp overrides.
+- Still to check by a person: switching a launcher app off takes effect at the next login. Launcher rows cannot be removed or added from here.
