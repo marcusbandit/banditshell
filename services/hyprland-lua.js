@@ -1486,3 +1486,21 @@ function planOption(files, request) {
         replacement: at.replacement
     };
 }
+
+function optionValue(files, path, device) {
+    const located = locateOption(files, { path, device });
+    if (!located.found)
+        return undefined;
+    const raw = located.found.s.slice(located.found.field.valueStart, located.found.field.valueEnd).trim();
+    const text = stringLiteral(raw);
+    if (text !== null)
+        return text;
+    return raw === "true" ? true : raw === "false" ? false : +raw;
+}
+
+function chordHolder(binds, chord) {
+    const want = parseChord(chord);
+    const key = want.key.toLowerCase();
+    const same = c => c.mask === want.mask && String(c.key ?? "").toLowerCase() === key;
+    return (binds ?? []).find(b => !b.submap && (same(b) || (b.presses ?? []).some(same))) ?? null;
+}

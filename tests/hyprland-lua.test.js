@@ -716,7 +716,7 @@ test("appending lands after the last line, by line count, keeping the file's fin
 });
 
 const Options = new Function(src
-    + "\nreturn { optionSegments, luaOptionValue, scanOptions, planOption, optionBlocked, lineDiff, spliceLines };")();
+    + "\nreturn { optionSegments, luaOptionValue, scanOptions, planOption, optionBlocked, optionValue, chordHolder, lineDiff, spliceLines };")();
 
 const INPUT_LUA = [
     "hl.config({",
@@ -945,4 +945,30 @@ test("a real-world input module takes every option the panel writes", () => {
     for (const [path, value] of writes)
         assert.deepStrictEqual(Options.planOption([{ name: "a.lua", text }], { path, value }), { ok: true, unchanged: true }, path);
     assert.ok(text.includes("hl.config({ cursor = { no_hardware_cursors = true } })"));
+});
+
+test("an option's current value is read back from the file that sets it", () => {
+    const files = [{ name: "a.lua", text: INPUT_LUA }];
+    assert.strictEqual(Options.optionValue(files, "input:kb_layout"), "us,dk");
+    assert.strictEqual(Options.optionValue(files, "input:follow_mouse"), 1);
+    assert.strictEqual(Options.optionValue(files, "input:touchpad:natural_scroll"), true);
+    assert.strictEqual(Options.optionValue(files, "input:repeat_rate"), undefined);
+    assert.strictEqual(Options.optionValue(files, "cursor:no_hardware_cursors"), undefined, "a conditional setting is not the file's answer");
+    const device = [{ name: "a.lua", text: 'hl.device({ name = "pad", sensitivity = -0.25, natural_scroll = false })\n' }];
+    assert.strictEqual(Options.optionValue(device, "sensitivity", "pad"), -0.25);
+    assert.strictEqual(Options.optionValue(device, "natural_scroll", "pad"), false);
+    assert.strictEqual(Options.optionValue(device, "sensitivity", "other"), undefined);
+});
+
+test("a chord is held by the bind that has it, however its key is cased, and submaps do not count", () => {
+    const binds = [
+        { id: "a", chord: "SUPER + SPACE", mask: 64, key: "SPACE", presses: [], submap: "" },
+        { id: "b", chord: "", mask: 0, key: "", presses: [{ mask: 65, key: "Return" }], submap: "" },
+        { id: "c", chord: "SUPER + K", mask: 64, key: "K", presses: [], submap: "resize" }
+    ];
+    assert.strictEqual(Options.chordHolder(binds, "SUPER + space").id, "a");
+    assert.strictEqual(Options.chordHolder(binds, "SUPER + SHIFT + RETURN").id, "b", "a woven bind's resolved chords count");
+    assert.strictEqual(Options.chordHolder(binds, "SUPER + K"), null);
+    assert.strictEqual(Options.chordHolder(binds, "ALT + SPACE"), null);
+    assert.strictEqual(Options.chordHolder([], "SUPER + SPACE"), null);
 });

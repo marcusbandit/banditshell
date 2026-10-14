@@ -376,6 +376,76 @@ Singleton {
     property var committing: null
     property bool reverting: false
 
+    signal optionSettled(string path, string device, bool ok, string said)
+
+    property var settling: null
+    property string complaint: ""
+
+    function optionFiles(): var {
+        return root.files.map(f => ({
+                    name: f.name,
+                    text: root.texts[f.path] ?? ""
+                }));
+    }
+
+    function optionRefusal(path: string, device: string): string {
+        if (!root.scanned)
+            return "the Hyprland config is still being read";
+        if (root.configPath.endsWith(".conf"))
+            return "this machine uses hyprland.conf, and options are only written to Lua";
+        return HyprlandLua.optionBlocked(root.optionFiles(), path, device);
+    }
+
+    function optionValue(path: string, device: string): var {
+        return HyprlandLua.optionValue(root.optionFiles(), path, device);
+    }
+
+    function holderOf(chord: string): var {
+        return HyprlandLua.chordHolder(root.binds, chord);
+    }
+
+    function settleOption(ok: bool, said: string): void {
+        const s = root.settling;
+        if (!s)
+            return;
+        root.settling = null;
+        root.optionSettled(s.path, s.device, ok, said);
+    }
+
+    function setOption(path: string, value: var, device: string): bool {
+        if (root.applying) {
+            root.optionSettled(path, device, false, "a write is still in flight");
+            return false;
+        }
+        const why = root.optionRefusal(path, device);
+        if (why) {
+            console.warn(`HyprConfig: ${path}: ${why}.`);
+            root.optionSettled(path, device, false, why);
+            return false;
+        }
+        const plan = HyprlandLua.planOption(root.optionFiles(), {
+            path,
+            value,
+            device,
+            appendTo: root.shortName(root.configPath)
+        });
+        if (!plan.ok) {
+            console.warn(`HyprConfig: ${plan.reason}`);
+            root.optionSettled(path, device, false, plan.reason);
+            return false;
+        }
+        if (plan.unchanged) {
+            root.optionSettled(path, device, true, "");
+            return true;
+        }
+        root.settling = {
+            path,
+            device
+        };
+        root.commit(plan.file, plan.startLine, plan.endLine, plan.replacement);
+        return true;
+    }
+
     function commit(file: string, startLine: int, endLine: int, replacement: var): void {
         if (root.applying)
             return console.warn("HyprConfig: a write is still in flight; try again in a moment.");
@@ -401,6 +471,7 @@ Singleton {
         root.applying = false;
         root.committing = null;
         root.rescan();
+        root.settleOption(false, why);
     }
 
     function write(disk: var): void {
@@ -443,12 +514,14 @@ Singleton {
             root.reverting = false;
             root.applying = false;
             root.rescan();
+            root.settleOption(false, root.complaint);
         }
 
         onSaveFailed: {
             console.warn(`HyprConfig: could not write ${root.committing?.path}; ${root.reverting ? "the failed edit is still on disk" : "the edit is not on disk"}.`);
             root.reverting = false;
             root.applying = false;
+            root.settleOption(false, "the file could not be written");
         }
     }
 
@@ -463,6 +536,7 @@ Singleton {
             return;
         }
         console.warn(`HyprConfig: the edit did not verify; putting the previous text back.\n${said}`);
+        root.complaint = said.split("\n").map(l => l.trim().replace(`${root.hyprDir}/`, "")).filter(l => l && !l.includes("DEBUG") && !l.startsWith("=") && l !== "config ok").pop() ?? "Hyprland did not accept it";
         root.reverting = true;
         writer.setText(root.committing.previous);
     }
@@ -502,6 +576,7 @@ Singleton {
                 return;
             root.applying = false;
             root.rescan();
+            root.settleOption(true, "");
         }
     }
 }
