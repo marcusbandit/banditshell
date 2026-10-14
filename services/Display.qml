@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "ddcutil.js" as Ddcutil
+import "nightlight.js" as Nightlight
 
 Singleton {
     id: root
@@ -40,6 +41,21 @@ Singleton {
     property bool gammaLaunched: false
 
     property bool gammaGivenUp: false
+
+    readonly property string scheduleMode: Config.values.screen.schedule
+    readonly property string warmFrom: Config.values.screen.warmFrom
+    readonly property string warmTo: Config.values.screen.warmTo
+    readonly property int easeMs: Config.values.screen.easeMinutes * 60000
+
+    readonly property int scheduleTick: 20000
+
+    property var warmWindow: null
+
+    property double heldUntil: 0
+
+    property real appliedFraction: -1
+
+    property bool easing: false
 
     function status(): string {
         const brightness = !root.brightnessReady ? "none" : root.levelKnown ? `${Math.round(root.level * 100)}%` : "unknown";
@@ -92,12 +108,17 @@ Singleton {
         if (next === root.kelvin && !always)
             return;
         root.kelvin = next;
-        if (root.warm)
+        if (root.warm && !root.easing)
             root.lastWarm = root.kelvin;
         root.writeWarmth();
     }
 
     function setWarmth(k: int): void {
+        root.holdSchedule();
+        root.moveWarmth(k);
+    }
+
+    function moveWarmth(k: int): void {
         const v = Math.max(0, Math.min(root.neutral, Math.round(k)));
         if (v === root.kelvin)
             return;
@@ -169,6 +190,66 @@ Singleton {
         root.enqueue("write", ["sh", "-c", root.displays.map(d => `ddcutil --display ${d.index} setvcp 10 ${Math.round(root.level * d.max)} --noverify 2>/dev/null`).join("; ")]);
     }
 
+    function minutesOf(text: string): int {
+        return Math.max(0, Nightlight.minutesOf(text));
+    }
+
+    function clockOf(minutes: int): string {
+        return Nightlight.clockOf(Math.max(0, Math.min(1439, Math.round(minutes))));
+    }
+
+    function currentWindow(now: double): var {
+        return Nightlight.windowFor(root.scheduleMode, now, {
+            place: Localisation.sunPlace,
+            from: root.warmFrom,
+            to: root.warmTo
+        });
+    }
+
+    function holdSchedule(): void {
+        if (root.scheduleMode === "off")
+            return;
+        const now = Date.now();
+        root.heldUntil = Nightlight.nextEdge(now, root.currentWindow(now));
+    }
+
+    function restartSchedule(): void {
+        root.heldUntil = 0;
+        root.appliedFraction = -1;
+        root.evaluateSchedule();
+    }
+
+    function evaluateSchedule(): void {
+        if (root.scheduleMode === "off") {
+            root.warmWindow = null;
+            root.appliedFraction = -1;
+            root.easing = false;
+            return;
+        }
+        const now = Date.now();
+        root.warmWindow = root.currentWindow(now);
+        if (now < root.heldUntil)
+            return;
+        const fraction = Nightlight.fractionAt(now, root.warmWindow, root.easeMs);
+        if (fraction === root.appliedFraction)
+            return;
+        const before = root.appliedFraction;
+        root.appliedFraction = fraction;
+        if (before < 0 && fraction === 0)
+            return;
+        root.stepSchedule(fraction, fraction > Math.max(0, before));
+    }
+
+    function stepSchedule(fraction: real, rising: bool): void {
+        root.easing = fraction > 0 && fraction < 1;
+        if (fraction <= 0)
+            return root.moveWarmth(0);
+        const next = Nightlight.warmKelvin(fraction, root.neutral, root.lastWarm);
+        if (rising ? root.warm && root.kelvin < next : !root.warm)
+            return;
+        root.moveWarmth(next);
+    }
+
     function writeWarmth(): void {
         warmthFile.setText(`${root.kelvin}\n`);
         root.ensureGamma();
@@ -199,7 +280,7 @@ Singleton {
 
     function commitWarmth(): void {
         Config.set("screen.warmth", root.kelvin);
-        if (root.warm)
+        if (root.warm && !root.easing)
             root.lastWarm = root.kelvin;
         root.writeWarmth();
     }
@@ -212,6 +293,26 @@ Singleton {
         watchChanges: false
 
         onSaveFailed: err => console.warn(`Display: could not write ${root.warmthPath} (${FileViewError.toString(err)})`)
+    }
+
+    onScheduleModeChanged: root.restartSchedule()
+    onWarmFromChanged: root.restartSchedule()
+    onWarmToChanged: root.restartSchedule()
+    onEaseMsChanged: root.restartSchedule()
+
+    Connections {
+        target: Localisation
+
+        function onSunPlaceChanged(): void {
+            root.restartSchedule();
+        }
+    }
+
+    Timer {
+        interval: root.scheduleTick
+        repeat: true
+        running: root.scheduleMode !== "off"
+        onTriggered: root.evaluateSchedule()
     }
 
     Timer {
