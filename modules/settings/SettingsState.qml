@@ -1053,7 +1053,7 @@ Singleton {
     function assignBand(name: string, spec: string): void {
         if (!root.edits())
             return;
-        const entry = HyprConfig.bands.find(b => !b.dynamic && b.monitor === name && b.path?.[1] === HyprConfig.hostName);
+        const entry = HyprConfig.bandEntry(name);
         if (entry)
             HyprConfig.updateBand(entry.id, {
                 workspaces: spec
@@ -1442,6 +1442,10 @@ Singleton {
 
         function onOptionSettled(path: string, device: string, ok: bool, said: string): void {
             root.hyprSettled(path, device, ok, said);
+        }
+
+        function onWriteFailed(said: string): void {
+            root.refused(`not saved · ${said}`, "");
         }
     }
 
@@ -1980,6 +1984,10 @@ Singleton {
 
         function onOutputsChanged(): void {
             root.carryScreens();
+        }
+
+        function onFailed(output: string, said: string): void {
+            root.refused(`${output} was not changed · ${said}`, "");
         }
     }
 

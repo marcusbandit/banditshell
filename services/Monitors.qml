@@ -48,7 +48,7 @@ Singleton {
 
     function specFor(m: var): var {
         if (m.disabled || !(m.width > 0)) {
-            const entry = HyprConfig.monitors.find(e => !e.dynamic && e.output === m.name);
+            const entry = HyprConfig.monitorEntry(m.name);
             return Object.assign({
                 output: m.name
             }, MonitorRules.restingFields(m, entry), {
@@ -104,6 +104,10 @@ Singleton {
             if (HyprConfig.ready)
                 root.flushQueued();
         }
+
+        function onMonitorSettled(output: string, ok: bool, said: string): void {
+            root.settled(output, ok, said);
+        }
     }
 
     function plan(specs: var, name: string, change: var): var {
@@ -123,20 +127,38 @@ Singleton {
     }
 
     function applySpecs(list: var): string {
-        const specs = {};
+        const intents = {};
         for (const m of root.outputs)
-            specs[m.name] = root.intent(m.name);
-        for (const spec of list)
-            if (spec?.output && specs[spec.output])
-                specs[spec.output] = spec;
-        const why = MonitorRules.violation(specs);
+            intents[m.name] = root.intent(m.name);
+        const why = MonitorRules.violation(MonitorRules.guardSpecs(root.outputs, intents, list));
         if (why) {
             console.warn(`Monitors: not applied; ${why}.`);
             return why;
         }
-        for (const spec of list)
+        for (const spec of MonitorRules.writeOrder(list, root.outputs))
             root.write(spec);
         return "";
+    }
+
+    signal failed(string output, string said)
+
+    function settled(output: string, ok: bool, said: string): void {
+        if (ok)
+            return;
+        const attempted = root.pending[output] ?? null;
+        const rest = Object.assign({}, root.pending);
+        delete rest[output];
+        root.pending = rest;
+        let note = said;
+        if (attempted && MonitorRules.turnsOn(attempted, root.outputs)) {
+            const kept = MonitorRules.dropTurnOffs(root.queued);
+            if (Object.keys(kept).length !== Object.keys(root.queued).length) {
+                root.queued = kept;
+                note = `${said} · the screens waiting to turn off stay on`;
+            }
+        }
+        console.warn(`Monitors: ${output} was not written; ${note}.`);
+        root.failed(output, note);
     }
 
     function write(spec: var): void {
@@ -155,12 +177,11 @@ Singleton {
         });
 
         const fields = MonitorRules.entryFields(spec);
-        const entry = HyprConfig.monitors.find(m => !m.dynamic && m.output === spec.output);
+        const entry = HyprConfig.monitorEntry(spec.output);
         if (entry)
             HyprConfig.updateMonitor(entry.id, fields);
         else
-
-            HyprConfig.addMonitor((HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), Object.assign({
+            HyprConfig.addMonitor((HyprConfig.outputTable()?.file ?? HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), Object.assign({
                 output: spec.output
             }, fields));
 

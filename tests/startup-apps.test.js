@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const read = file => fs.readFileSync(path.join(ROOT, file), "utf8");
 const Entries = new Function(read("services/desktop-entries.js") + "\nreturn { parseBundle, indexEntries, indexPrograms, shownIn };")();
-const Startup = new Function(read("services/startup-apps.js") + "\nreturn { shellWords, quoteWord, parseExecLines, wrapperOf, offMarker, hyprlandApps, toggleReplacement, parseUnitFiles, candidateUnits, parseUnitShow, systemdApps, autostartApps, startSummary, launcherEnabled, readOverride, launcherApps, setDisabled, duplicateNotes };")();
+const Startup = new Function(read("services/startup-apps.js") + "\nreturn { shellWords, quoteWord, parseExecLines, wrapperOf, offMarker, hyprlandApps, toggleReplacement, parseUnitFiles, candidateUnits, parseUnitShow, systemdApps, autostartApps, startSummary, launcherEnabled, readOverride, launcherApps, setDisabled, duplicateNotes, fullOrder };")();
 
 const lua = fs.readFileSync(path.join(FIXTURES, "autostart.lua"), "utf8");
 const files = [{ name: "lua/autostart.lua", text: lua }];
@@ -84,7 +84,7 @@ test("switching a commented line on keeps a trailing comment of the user's", () 
 test("switching one app of the wrapper off drops its argument and remembers it on the line", () => {
     const qbit = Startup.hyprlandApps(files).find(r => r.command === "qbittorrent --no-splash");
     const off = apply(lua, qbit, Startup.toggleReplacement(qbit, false));
-    assert.ok(off.includes("    hl.exec_cmd(\"~/.config/hypr/scripts/shell-up spotify\") -- off: 'qbittorrent --no-splash'\n"));
+    assert.ok(off.includes("    hl.exec_cmd(\"~/.config/hypr/scripts/shell-up spotify\") -- off: @0 'qbittorrent --no-splash'\n"));
     const rows = Startup.hyprlandApps([{ name: "x", text: off }]);
     assert.deepStrictEqual(rows.filter(r => r.wrapped).map(r => [r.command, r.on]), [["spotify", true], ["qbittorrent --no-splash", false]]);
 });
@@ -103,25 +103,74 @@ test("switching a wrapper app back on restores its argument and clears the marke
     const off = apply(lua, qbit, Startup.toggleReplacement(qbit, false));
     const row = Startup.hyprlandApps([{ name: "x", text: off }]).find(r => r.command === "qbittorrent --no-splash");
     const on = apply(off, row, Startup.toggleReplacement(row, true));
-    assert.ok(on.includes("hl.exec_cmd(\"~/.config/hypr/scripts/shell-up spotify 'qbittorrent --no-splash'\")\n"));
-    assert.ok(!on.includes("off:"));
+    assert.strictEqual(on, lua);
 });
 
 test("a comment of the user's on a wrapper line survives being switched", () => {
     const text = "hl.exec_cmd(\"shell-up a b\") -- tray apps\n";
     const row = Startup.hyprlandApps([{ name: "x", text }]).find(r => r.command === "a");
     const off = apply(text, row, Startup.toggleReplacement(row, false));
-    assert.strictEqual(off, "hl.exec_cmd(\"shell-up b\") -- off: a | tray apps\n");
+    assert.strictEqual(off, "hl.exec_cmd(\"shell-up b\") -- off: @0 a | tray apps\n");
     const back = Startup.hyprlandApps([{ name: "x", text: off }]).find(r => r.command === "a");
-    assert.deepStrictEqual(Startup.offMarker("off: a | tray apps"), { args: ["a"], foreign: "tray apps" });
-    assert.strictEqual(apply(off, back, Startup.toggleReplacement(back, true)), "hl.exec_cmd(\"shell-up b a\") -- tray apps\n");
+    assert.deepStrictEqual(Startup.offMarker("off: a | tray apps"), { args: ["a"], indexes: [undefined], foreign: "tray apps" });
+    assert.strictEqual(apply(off, back, Startup.toggleReplacement(back, true)), text);
+});
+
+function roundTrip(text, order) {
+    let current = text;
+    for (const [command, on] of order) {
+        const row = Startup.hyprlandApps([{ name: "x", text: current }]).find(r => r.command === command);
+        current = apply(current, row, Startup.toggleReplacement(row, on));
+    }
+    return current;
+}
+
+test("a comment with quotes and pipes comes back verbatim after many toggles", () => {
+    const text = "hl.exec_cmd(\"shell-up a 'b c' d\") -- 'tray' \"apps\" | two  spaces  \n";
+    const toggles = [["a", false], ["d", false], ["a", true], ["d", true], ["b c", false], ["b c", true]];
+    assert.strictEqual(roundTrip(text, toggles.slice(0, 4)), text);
+    assert.strictEqual(roundTrip(text, toggles), text);
+    const mid = roundTrip(text, toggles.slice(0, 2));
+    assert.ok(mid.endsWith("-- off: @0 a @2 d | 'tray' \"apps\" | two  spaces  \n"));
+});
+
+test("an app switched off and on again goes back where it was in the arguments", () => {
+    const text = "hl.exec_cmd(\"shell-up a b c d\")\n";
+    for (const command of ["a", "b", "c", "d"])
+        assert.strictEqual(roundTrip(text, [[command, false], [command, true]]), text);
+    assert.strictEqual(roundTrip(text, [["b", false], ["d", false], ["b", true], ["d", true]]), text);
+    assert.strictEqual(roundTrip(text, [["b", false], ["d", false], ["d", true], ["b", true]]), text);
+    const some = roundTrip(text, [["c", false], ["a", false]]);
+    assert.strictEqual(some, "hl.exec_cmd(\"shell-up b d\") -- off: @0 a @2 c\n");
+    assert.strictEqual(roundTrip(some, [["a", true]]), "hl.exec_cmd(\"shell-up a b d\") -- off: @2 c\n");
+    assert.strictEqual(roundTrip(some, [["c", true], ["a", true]]), text);
+});
+
+test("apps off at the end of the arguments need no positions on the line", () => {
+    const text = "hl.exec_cmd(\"shell-up a b c\")\n";
+    assert.strictEqual(roundTrip(text, [["c", false]]), "hl.exec_cmd(\"shell-up a b\") -- off: c\n");
+    assert.strictEqual(roundTrip(text, [["b", false], ["c", false]]), "hl.exec_cmd(\"shell-up a\") -- off: b c\n");
+    assert.strictEqual(roundTrip(text, [["a", false], ["b", false], ["c", false]]), "hl.exec_cmd(\"shell-up\") -- off: a b c\n");
+});
+
+test("a note written before positions existed still puts its apps back at the end", () => {
+    const text = "hl.exec_cmd(\"shell-up b\") -- off: a c | note\n";
+    const row = Startup.hyprlandApps([{ name: "x", text }]).find(r => r.command === "a");
+    assert.strictEqual(apply(text, row, Startup.toggleReplacement(row, true)), "hl.exec_cmd(\"shell-up b a\") -- off: c | note\n");
+});
+
+test("a word that looks like a position is quoted so it stays a word", () => {
+    assert.strictEqual(Startup.quoteWord("@2"), "'@2'");
+    const text = "hl.exec_cmd(\"shell-up a '@2'\")\n";
+    assert.strictEqual(roundTrip(text, [["a", false], ["a", true]]), text);
+    assert.strictEqual(roundTrip(text, [["@2", false], ["@2", true]]), text);
 });
 
 test("single-quoted lua strings and escaped quotes are written back as they came", () => {
     const text = "hl.exec_cmd('shell-up \"x y\" z')\n";
     const row = Startup.hyprlandApps([{ name: "x", text }]).find(r => r.command === "x y");
     assert.ok(row);
-    assert.strictEqual(apply(text, row, Startup.toggleReplacement(row, false)), "hl.exec_cmd('shell-up z') -- off: 'x y'\n");
+    assert.strictEqual(apply(text, row, Startup.toggleReplacement(row, false)), "hl.exec_cmd('shell-up z') -- off: @0 'x y'\n");
 });
 
 test("a commented wrapper line is left alone", () => {

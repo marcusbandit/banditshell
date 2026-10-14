@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
 const HyprlandLua = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprlandLua.parseChord("SUPER + SHIFT + Slash"), {
@@ -514,10 +514,9 @@ test("an entry carries the indent it was written under, and an edit keeps it", (
 
     assert.strictEqual(side.indent, "            ");
 
-    assert.strictEqual(side.trailing, ",");
     const line = HyprlandLua.composeEntry(side, { position: "480x0" });
     assert.ok(line.includes("output = vertical_side"));
-    const edited = HyprlandLua.spliceLines(MONITORS_LUA, side.startLine, side.endLine, [side.indent + line + side.trailing]);
+    const edited = HyprlandLua.spliceLines(MONITORS_LUA, side.startLine, side.endLine, HyprlandLua.entryReplacement(MONITORS_LUA, side, line));
     const second = HyprlandLua.scanLua(edited);
     assert.strictEqual(second.monitors.find(m => m.output === "DP-1").startLine, side.startLine, "the entry is one line now, at the indent it wore");
 
@@ -528,9 +527,8 @@ test("an edit round-trips: scan, edit, splice, rescan", () => {
     const first = HyprlandLua.scanLua(MONITORS_LUA);
     const wide = first.monitors.find(m => m.output === "HDMI-A-1");
 
-    const edited = HyprlandLua.spliceLines(MONITORS_LUA, wide.startLine, wide.endLine, [
-        "            " + HyprlandLua.composeEntry(wide, { position: "1200x172" }) + wide.trailing
-    ]);
+    const edited = HyprlandLua.spliceLines(MONITORS_LUA, wide.startLine, wide.endLine,
+        HyprlandLua.entryReplacement(MONITORS_LUA, wide, HyprlandLua.composeEntry(wide, { position: "1200x172" })));
 
     const second = HyprlandLua.scanLua(edited);
     assert.strictEqual(second.monitors.length, first.monitors.length, "no entry gained or lost");
@@ -630,9 +628,8 @@ test("a band round-trip: scan, edit, splice, rescan", () => {
     const first = HyprlandLua.scanLua(BANDS_LUA);
     const side = first.bands.find(b => b.monitor === "DP-1");
 
-    const edited = HyprlandLua.spliceLines(BANDS_LUA, side.startLine, side.endLine, [
-        "        " + HyprlandLua.composeEntry(side, { workspaces: "6-15" }) + side.trailing
-    ]);
+    const edited = HyprlandLua.spliceLines(BANDS_LUA, side.startLine, side.endLine,
+        HyprlandLua.entryReplacement(BANDS_LUA, side, HyprlandLua.composeEntry(side, { workspaces: "6-15" })));
 
     const second = HyprlandLua.scanLua(edited);
     assert.strictEqual(second.bands.length, first.bands.length);
@@ -971,4 +968,119 @@ test("a chord is held by the bind that has it, however its key is cased, and sub
     assert.strictEqual(Options.chordHolder(binds, "SUPER + K"), null);
     assert.strictEqual(Options.chordHolder(binds, "ALT + SPACE"), null);
     assert.strictEqual(Options.chordHolder([], "SUPER + SPACE"), null);
+});
+
+function editEntry(source, list, output, changed) {
+    const entry = HyprlandLua.scanLua(source)[list].find(e => (e.output ?? e.monitor) === output);
+    const composed = HyprlandLua.composeEntry(entry, changed);
+    return HyprlandLua.spliceLines(source, entry.startLine, entry.endLine, HyprlandLua.entryReplacement(source, entry, composed));
+}
+
+test("an entry knows the byte range of its own braces and the path to its table", () => {
+    const r = HyprlandLua.scanLua(MONITORS_LUA);
+    const side = r.monitors.find(m => m.output === "DP-1");
+    assert.strictEqual(MONITORS_LUA[side.startOffset], "{");
+    assert.strictEqual(MONITORS_LUA[side.endOffset - 1], "}");
+    assert.ok(MONITORS_LUA.slice(side.startOffset, side.endOffset).startsWith("{ output = vertical_side"));
+    assert.deepStrictEqual(side.path, ["hosts", "banditbox", "outputs"]);
+});
+
+test("a monitor edit inside hl.monitor keeps the call around the table", () => {
+    const source = "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x0\", scale = 1 })\n";
+    const next = editEntry(source, "monitors", "eDP-1", { scale: 2 });
+    assert.strictEqual(next, "hl.monitor({ output = \"eDP-1\", mode = \"preferred\", position = \"0x0\", scale = 2 })\n");
+    assert.strictEqual(HyprlandLua.scanLua(next).monitors[0].scale, 2);
+});
+
+test("a monitor edit on a one-line nested table keeps the wrapper and the siblings", () => {
+    const source = "local layout = {\n    outputs = { { output = \"DP-1\", mode = \"1920x1080@60\", position = \"0x0\", scale = 1 }, { output = \"DP-2\", mode = \"1920x1080@60\", position = \"1920x0\", scale = 1 } },\n}\n";
+    const next = editEntry(source, "monitors", "DP-1", { position: "10x0" });
+    assert.ok(next.includes("outputs = { { output = \"DP-1\", mode = \"1920x1080@60\", position = \"10x0\", scale = 1 }, { output = \"DP-2\""));
+    assert.ok(next.endsWith("scale = 1 } },\n}\n"));
+    const after = HyprlandLua.scanLua(next);
+    assert.strictEqual(after.monitors.length, 2);
+    assert.strictEqual(after.outputTables.length, 1);
+});
+
+test("a monitor edit on the multi-line outputs table collapses the entry and keeps its comma and indent", () => {
+    const next = editEntry(MONITORS_LUA, "monitors", "DP-1", { position: "480x0" });
+    assert.ok(next.includes("\n            { output = vertical_side, mode = \"1920x1200@60\", position = \"480x0\", scale = 1, transform = 1 },\n"));
+    assert.strictEqual(next.split("\n").length, MONITORS_LUA.split("\n").length - 1);
+    assert.ok(next.includes("-- The ultrawide, default (SDR) mode."));
+});
+
+test("a band edit keeps whatever shares its line", () => {
+    const source = "local bs_bands = {\n    banditbox = { { monitor = \"DP-1\", workspaces = \"1-5\" }, { monitor = \"DP-2\", workspaces = \"6-10\" } },\n}\n";
+    const next = editEntry(source, "bands", "DP-1", { workspaces: "1-8" });
+    assert.ok(next.includes("banditbox = { { monitor = \"DP-1\", workspaces = \"1-8\" }, { monitor = \"DP-2\""));
+    assert.strictEqual(HyprlandLua.scanLua(next).bands.length, 2);
+});
+
+test("a band edit on the multi-line shape stays one table entry after the splice", () => {
+    const source = "local bs_bands = {\n    banditbox = {\n        { monitor = \"DP-1\",\n          workspaces = \"1-5\" }, -- left\n    },\n}\n";
+    const next = editEntry(source, "bands", "DP-1", { workspaces: "1-9" });
+    assert.strictEqual(next, "local bs_bands = {\n    banditbox = {\n        { monitor = \"DP-1\", workspaces = \"1-9\" }, -- left\n    },\n}\n");
+});
+
+test("entries are chosen for the host they sit under, and host-less ones only when it has none", () => {
+    const entries = [
+        { id: "other", path: ["hosts", "kangaeru", "outputs"] },
+        { id: "mine", path: ["hosts", "banditbox", "outputs"] },
+        { id: "plain", path: [] },
+        { id: "top", path: ["outputs"] }
+    ];
+    assert.deepStrictEqual(HyprlandLua.entriesForHost(entries, "banditbox").map(e => e.id), ["mine"]);
+    assert.deepStrictEqual(HyprlandLua.entriesForHost(entries, "thirdbox").map(e => e.id), ["plain", "top"]);
+    assert.deepStrictEqual(HyprlandLua.entriesForHost(entries.slice(0, 1), "thirdbox"), []);
+});
+
+test("a hostname that matches a host table finds that host's entry, not the first one in the file", () => {
+    const source = [
+        "local hosts = {",
+        "    kangaeru = {",
+        "        outputs = {",
+        "            { output = \"eDP-1\", mode = \"1920x1080@60\", position = \"0x0\", scale = 1 },",
+        "        },",
+        "    },",
+        "    banditbox = {",
+        "        outputs = {",
+        "            { output = \"eDP-1\", mode = \"2560x1440@60\", position = \"0x0\", scale = 2 },",
+        "        },",
+        "    },",
+        "}",
+        ""
+    ].join("\n");
+    const found = HyprlandLua.scanLua(source);
+    const mine = HyprlandLua.entriesForHost(found.monitors.filter(m => m.output === "eDP-1"), "banditbox")[0];
+    assert.strictEqual(mine.scale, 2);
+    const table = HyprlandLua.entriesForHost(found.outputTables, "banditbox")[0];
+    assert.deepStrictEqual(table.path, ["hosts", "banditbox", "outputs"]);
+    assert.strictEqual(HyprlandLua.entriesForHost(found.outputTables, "thirdbox").length, 0);
+});
+
+test("a verify report names the last useful line, or the exit code when Hyprland said nothing", () => {
+    const said = "DEBUG one\n\n======== Config parsing result:\n\nrequire(\"lua.binds\"): error loading module\n\t/tmp/x/hypr/lua/binds.lua:4: unexpected symbol near '+'\n";
+    assert.strictEqual(HyprlandLua.verifyReport(said, 1, false, ["/tmp/x/hypr/"]), "lua/binds.lua:4: unexpected symbol near '+'");
+    assert.strictEqual(HyprlandLua.verifyReport("DEBUG a\nDEBUG b\n", 11, true, []), "Hyprland crashed while checking it (signal 11)");
+    assert.strictEqual(HyprlandLua.verifyReport("", 2, false, []), "Hyprland rejected it (exit 2)");
+    assert.strictEqual(HyprlandLua.verifyReport("config ok", 1, false, []), "Hyprland rejected it (exit 1)");
+});
+
+test("a config that already fails is refused with the reason in the message", () => {
+    const message = HyprlandLua.baselineRefusal("Hyprland crashed while checking it (signal 11)");
+    assert.ok(message.startsWith("your Hyprland config fails Hyprland's own check as it is, so nothing was changed"));
+    assert.ok(message.endsWith("signal 11)"));
+});
+
+test("an entry is found again by its text after lines above it moved", () => {
+    const old = { file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 10 };
+    const now = [
+        { id: "lua/binds.lua:9", file: "lua/binds.lua", raw: "hl.bind(\"B\", y)", startLine: 9 },
+        { id: "lua/binds.lua:3", file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 3 },
+        { id: "lua/binds.lua:9x", file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 9 },
+        { id: "other:10", file: "lua/other.lua", raw: "hl.bind(\"A\", x)", startLine: 10 }
+    ];
+    assert.strictEqual(HyprlandLua.relocateEntry(now, old).id, "lua/binds.lua:9x");
+    assert.strictEqual(HyprlandLua.relocateEntry(now.slice(0, 1), old), null);
+    assert.strictEqual(HyprlandLua.relocateEntry([], old), null);
 });

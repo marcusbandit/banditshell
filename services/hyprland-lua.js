@@ -847,7 +847,9 @@ function scanLua(src) {
             output: out.v,
             dynamic: blockDepth > 0 || !out.literal,
             raws: f.fields,
-            trailing: entryTrailing(at),
+            path,
+            startOffset: f.open,
+            endOffset: at + 1,
 
             aliases
         };
@@ -890,21 +892,15 @@ function scanLua(src) {
             invalid: !parsed.ok,
             dynamic: blockDepth > 0 || !mon.literal || !spec.literal,
             path,
+            startOffset: f.open,
+            endOffset: at + 1,
             raws: f.fields,
-            trailing: entryTrailing(at),
             indent: entryIndent(f),
             startLine: f.line,
             endLine: lineOf(at),
             raw: raw.trim(),
             aliases
         });
-    }
-
-    function entryTrailing(at) {
-        let k = at + 1;
-        while (k < s.length && (s[k] === " " || s[k] === "\t"))
-            k++;
-        return s[k] === "," ? "," : "";
     }
 
     function entryIndent(f) {
@@ -1055,6 +1051,30 @@ function composeEntry(entry, changed) {
     if (!parts.length)
         return null;
     return `{ ${parts.join(", ")} }`;
+}
+
+function entryReplacement(src, entry, composed) {
+    const text = String(src ?? "");
+    const lineStart = text.lastIndexOf("\n", entry.startOffset - 1) + 1;
+    const lineBreak = text.indexOf("\n", entry.endOffset);
+    const lineEnd = lineBreak < 0 ? text.length : lineBreak;
+    return [text.slice(lineStart, entry.startOffset) + composed + text.slice(entry.endOffset, lineEnd)];
+}
+
+function entriesForHost(entries, host) {
+    const own = entries.filter(e => e.path?.[1] === host);
+    return own.length ? own : entries.filter(e => e.path?.[1] === undefined);
+}
+
+function verifyReport(output, code, crashed, prefixes) {
+    const useful = String(output ?? "").split("\n").map(l => (prefixes ?? []).reduce((line, prefix) => line.replace(prefix, ""), l.trim())).filter(l => l && !l.includes("DEBUG") && !l.startsWith("=") && l !== "config ok");
+    if (useful.length)
+        return useful[useful.length - 1];
+    return crashed ? `Hyprland crashed while checking it (signal ${code})` : `Hyprland rejected it (exit ${code})`;
+}
+
+function baselineRefusal(report) {
+    return `your Hyprland config fails Hyprland's own check as it is, so nothing was changed · ${report}`;
 }
 
 const QUOTED_KEYS = ["output", "mode", "position", "mirror", "monitor", "workspaces"];
@@ -1511,4 +1531,12 @@ function chordHolder(binds, chord) {
     const key = want.key.toLowerCase();
     const same = c => c.mask === want.mask && String(c.key ?? "").toLowerCase() === key;
     return (binds ?? []).find(b => !b.submap && (same(b) || (b.presses ?? []).some(same))) ?? null;
+}
+
+function relocateEntry(entries, old) {
+    let best = null;
+    for (const entry of entries ?? [])
+        if (entry.file === old.file && entry.raw === old.raw && (!best || Math.abs(entry.startLine - old.startLine) < Math.abs(best.startLine - old.startLine)))
+            best = entry;
+    return best;
 }

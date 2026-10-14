@@ -145,9 +145,7 @@ Singleton {
     function switchApp(entry: var, on: bool): void {
         const row = entry.row;
         if (entry.source === "hyprland") {
-            if (HyprConfig.applying)
-                return;
-            HyprConfig.commit(row.file, row.startLine, row.endLine, StartupLog.toggleReplacement(row, on));
+            HyprConfig.toggleStartup(entry.id, on);
         } else if (entry.source === "systemd") {
             unitSwitch.command = ["systemctl", "--user", on ? "enable" : "disable", row.unit];
             unitSwitch.running = true;
