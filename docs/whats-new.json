@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-3",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The wallpaper picker sits lower and smaller. The wallpaper you are on is in the middle, and the others are cropped strips beside it that never overlap and shrink away toward the ends, the whole row within 80% of the screen's width."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "While the picker is open, the wallpaper you are looking at blooms in over your windows from the bottom edge, so you see it exactly as it will look. Everything behind the picker is dimmed, and the cards and controls cast shadows."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Colour swatches above the picker show only the wallpapers of that colour, and the search button (or /) filters them by name."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Below the picker: the wallpaper's name, resolution, kind and position, with shuffle, fits-this-screen, this-or-every-screen and Set buttons. Each has a tooltip."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The ring around the wallpaper you already have is gone. A ring now appears only while you move with the arrow keys."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Set, or Enter, always applies now, so choosing Every screen works without first moving to a different wallpaper."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The shell keeps each wallpaper's colour groups in a small cache file, ~/.cache/banditshell/wallpaper-colours.json."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-2",
       "date": "2026-10-14",
       "changes": [
