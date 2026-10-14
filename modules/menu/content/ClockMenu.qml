@@ -161,7 +161,7 @@ Column {
             anchors.top: parent.top
             anchors.topMargin: Appearance.padding.normal
 
-            text: ringing.visible ? Qt.formatDateTime(new Date(ringing.due), "HH:mm") : ""
+            text: ringing.visible ? TimeFormat.time(new Date(ringing.due), false) : ""
             font.pixelSize: Appearance.font.size.large
             color: Appearance.colour.accent
         }
@@ -234,7 +234,7 @@ Column {
         StyledText {
             id: hereTime
 
-            text: Qt.formatDateTime(clock.date, "HH:mm")
+            text: TimeFormat.time(clock.date, false)
             font.pixelSize: Appearance.font.size.large
         }
 
@@ -242,7 +242,7 @@ Column {
             anchors.right: parent.right
             anchors.baseline: hereTime.baseline
 
-            text: Qt.formatDateTime(clock.date, "ddd d MMM")
+            text: TimeFormat.dateText(clock.date, "brief")
             color: Appearance.colour.textFaint
             font.pixelSize: Appearance.font.size.small
         }
@@ -612,7 +612,7 @@ Column {
 
                     StyledText {
                         width: parent.width
-                        text: `${Clock.twoDigits(alarmCard.modelData.hour)}:${Clock.twoDigits(alarmCard.modelData.minute)}`
+                        text: TimeFormat.clock(alarmCard.modelData.hour, alarmCard.modelData.minute)
                         font.pixelSize: Appearance.font.size.normal
                     }
 

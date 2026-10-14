@@ -24,7 +24,7 @@ SettingsRowFrame {
         case Update.failed:
             return ["sync_problem", "Could not look", Update.error || "the remote did not answer", "Again", true, "", Appearance.colour.updateFailed];
         }
-        return ["sync", "Up to date", `${SettingsState.version} · looked at ${Qt.formatTime(Update.checkedAt, "HH:mm")}`, "Look now", true, "", ""];
+        return ["sync", "Up to date", `${SettingsState.version} · looked at ${TimeFormat.time(Update.checkedAt, false)}`, "Look now", true, "", ""];
     }
 
     width: parent ? parent.width : 0

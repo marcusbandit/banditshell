@@ -175,8 +175,7 @@ Item {
 
                 readonly property string style: SettingsState.v("sbClock")
                 readonly property string dated: SettingsState.v("sbDate")
-                readonly property bool h24: SettingsState.v("clock24")
-                readonly property string hh: clock.h24 ? Qt.formatDateTime(now.date, "HH") : String(now.date.getHours() % 12 || 12).padStart(2, "0")
+                readonly property string hh: TimeFormat.hourPart(now.date)
                 readonly property string mm: Qt.formatDateTime(now.date, "mm")
 
                 width: root.width

@@ -539,6 +539,23 @@ banditshell/
 │   │                            every 300ms) so Hyprland's LUT reset - a
 │   │                            full-brightness flash - never runs at
 │   │                            restart
+│   ├── nightlight.js            when the screens should be warm: sunrise and sunset
+│   │                            from a latitude and longitude, set times, and
+│   │                            how far to ease at any moment. Display's timer
+│   │                            asks it; a hand on the warmth wins to the next
+│   │                            edge. No QML in it, tested in node
+│   ├── TimeFormat.qml           the ONE place a time or a date becomes text,
+│   │                            reading region.clock24 and region.dateFormat;
+│   │                            every clock, calendar, lock face and file date
+│   │                            goes through it, in English whatever the
+│   │                            system language is. timeformat.js is the
+│   │                            maths, tested in node
+│   ├── Localisation.qml         the system's zone, language and formats, changed
+│   │                            only when the panel asks (timedatectl, localectl,
+│   │                            polkit asks for the password) and never at load;
+│   │                            zone from network reads geoclue's demo client and
+│   │                            the nearest zone in zone.tab. localisation.js is
+│   │                            the parsing, tested in node
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, its size, the colour
 │   │                            groups it falls in, and a poster frame per video

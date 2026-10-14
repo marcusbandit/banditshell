@@ -216,7 +216,9 @@ const PAGES_SOURCE = {
                 { n: 33, icon: "nightlight", label: "Warmth", k: "warmth", kind: "slider", min: 0, max: 100, fmtS: kelvin, cfg: "screen.warmth", kw: "night light warmth",
                     why: "Pulls blue out of every screen. All the way over it reaches the warmest point below." },
                 { n: 33, icon: "thermostat", label: "Warmest point", k: "warmest", kind: "step", min: 1500, max: 4000, step: 100, unit: " K", cfg: "screen.warmest", kw: "night light" },
-                { n: 34, isNew: true, icon: "schedule", label: "On a schedule", k: "nightSched", kind: "seg", o: ["off", "sunset", "set times"], detail: s => s.v("nightSched") === "sunset" ? "tonight 18:24 to 07:41" : s.v("nightSched") === "set times" ? "21:00 to 07:00" : "", kw: "night light schedule" }
+                { n: 34, icon: "schedule", label: "On a schedule", k: "nightSched", kind: "seg", o: ["off", "sunset", "set times"], cfg: "screen.schedule", detail: s => s.scheduleDetail, kw: "night light schedule" },
+                { n: 34, icon: "bedtime", label: "Warm from", k: "warmFrom", kind: "slider", min: 0, max: 1425, step: 15, fmtS: (s, v) => s.minuteText(v), cfg: "screen.warmFrom", dis: s => s.v("nightSched") !== "set times", kw: "night light schedule start" },
+                { n: 34, icon: "wb_twilight", label: "Warm until", k: "warmTo", kind: "slider", min: 0, max: 1425, step: 15, fmtS: (s, v) => s.minuteText(v), cfg: "screen.warmTo", dis: s => s.v("nightSched") !== "set times", kw: "night light schedule end" }
             ] }
         ]
     },
@@ -257,7 +259,7 @@ const PAGES_SOURCE = {
     },
     type: {
         id: "type", name: "Text and icons", icon: "text_fields", preview: "chassis",
-        status: s => `${s.v("font")} · ${(s.v("largerText") ? 11 : s.v("fontBase")) * 2} px`,
+        status: s => `${s.v("font")} · ${(s.v("largerText") ? s.largerBase : s.v("fontBase")) * 2} px`,
         groups: [
             { rows: [
                 { n: 47, icon: "text_fields", label: "Font", k: "font", kind: "choice", o: s => s.fonts, cfg: "font.family",
@@ -628,17 +630,21 @@ const PAGES_SOURCE = {
     },
     region: {
         id: "region", name: "Language", icon: "language", preview: "region",
-        status: s => `${s.v("lang")} · ${s.v("region")}`,
+        status: s => `${s.languageLabel} · ${s.formatsLabel}`,
         groups: [
             { t: "Time", rows: [
-                { n: 109, isNew: true, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", detail: s => s.v("clock24") ? "14:32" : "2:32 pm", kw: "time format" },
-                { n: 109, isNew: true, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: ["14/10/2026", "14. okt. 2026", "2026-10-14", "wed 14 oct"], kw: "date format" },
-                { n: 109, isNew: true, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", kw: "time zone" },
-                { n: 109, isNew: true, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone"), kw: "time zone" }
+                { n: 109, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", cfg: "region.clock24", detail: s => s.timeExample, kw: "time format" },
+                { n: 109, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: s => s.dateChoices, cfg: "region.dateFormat", kw: "date format" },
+                { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", detail: s => s.autoZoneDetail, kw: "time zone",
+                    why: "Picks the zone nearest to where geoclue says you are, once, when you turn this on, and sets it with timedatectl. It needs geoclue installed and asks for your password." },
+                { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone"), detail: s => s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",
+                    why: "Sets the system's time zone with timedatectl, which asks for your password. The shell's clocks follow it straight away." }
             ] },
             { t: "Language", rows: [
-                { n: 110, isNew: true, icon: "translate", label: "Language", k: "lang", kind: "choice", o: ["English (UK)", "English (US)", "Dansk"], kw: "language" },
-                { n: 110, isNew: true, icon: "payments", label: "Formats", k: "region", kind: "choice", o: ["Denmark", "United Kingdom", "United States"], detail: s => ({ Denmark: "1.234,56 kr. · monday first", "United Kingdom": "£1,234.56 · monday first", "United States": "$1,234.56 · sunday first" })[s.v("region")] || "", kw: "region numbers currency" }
+                { n: 110, icon: "translate", label: "Language", k: "lang", kind: "choice", o: s => s.languageChoices, detail: "next sign-in", kw: "language",
+                    why: "Sets the system language with localectl, which asks for your password. It takes effect at next sign-in. The shell's own text stays English." },
+                { n: 110, icon: "payments", label: "Formats", k: "region", kind: "choice", o: s => s.formatChoices, detail: s => s.moneyExample || "next sign-in", kw: "region numbers currency",
+                    why: "Numbers, money, units and paper size, set with localectl, which asks for your password. They take effect at next sign-in." }
             ] }
         ]
     },
@@ -647,9 +653,9 @@ const PAGES_SOURCE = {
         status: s => [s.v("reduceMotion") && "less motion", s.v("largerText") && "larger text", s.v("contrast") && "more contrast"].filter(Boolean).join(" · ") || "nothing on",
         groups: [
             { rows: [
-                { n: 113, isNew: true, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", detail: "fades instead of slides", kw: "accessibility reduce motion" },
-                { n: 113, isNew: true, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", detail: "base 9 becomes 11", kw: "accessibility larger text" },
-                { n: 113, isNew: true, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", detail: "faint text gets brighter", kw: "accessibility contrast" }
+                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "fades instead of slides", kw: "accessibility reduce motion" },
+                { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", detail: s => `base ${s.v("fontBase")} becomes ${s.largerBase}`, kw: "accessibility larger text" },
+                { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", detail: "faint text gets brighter", kw: "accessibility contrast" }
             ] }
         ]
     },
@@ -787,7 +793,7 @@ const CATS = [
         suggest: s => !s.clipseImported && s.clipseWaiting > 0 ? { icon: "move_to_inbox", label: "Bring clipse’s history over", detail: `${s.clipseWaiting} entries waiting`, go: "clipboard" } : null,
         subs: ["defaults", "startup", "files", "terminal", "capture"] },
     { id: "system", name: "System", icon: "settings",
-        blurb: s => `${s.version} · ${s.v("lang")}`,
+        blurb: s => `${s.version} · ${s.languageLabel}`,
         tiles: [
             { k: "reduceMotion", icon: "animation", label: "Less motion" },
             { k: "largerText", icon: "format_size", label: "Larger text" },

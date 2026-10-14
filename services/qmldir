@@ -25,6 +25,7 @@ singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
 singleton Launching 1.0 Launching.qml
 singleton Lid 1.0 Lid.qml
+singleton Localisation 1.0 Localisation.qml
 singleton Lock 1.0 Lock.qml
 singleton Media 1.0 Media.qml
 singleton Modes 1.0 Modes.qml
@@ -47,6 +48,7 @@ singleton Suspension 1.0 Suspension.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton Tablet 1.0 Tablet.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
+singleton TimeFormat 1.0 TimeFormat.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Tray 1.0 Tray.qml
 singleton Tunnels 1.0 Tunnels.qml

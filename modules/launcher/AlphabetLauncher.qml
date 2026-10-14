@@ -824,7 +824,7 @@ LauncherConcept {
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Appearance.animation.fast
+                                duration: Appearance.animation.fade.fast
                             }
                         }
                     }
@@ -852,7 +852,7 @@ LauncherConcept {
                             property: "opacity"
                             from: 0
                             to: 1
-                            duration: Appearance.animation.fast
+                            duration: Appearance.animation.fade.fast
                         }
                     }
 
@@ -860,7 +860,7 @@ LauncherConcept {
                         NumberAnimation {
                             property: "opacity"
                             to: 0
-                            duration: Appearance.animation.fast
+                            duration: Appearance.animation.fade.fast
                             easing.type: Easing.OutCubic
                         }
                     }

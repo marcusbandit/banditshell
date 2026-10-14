@@ -38,7 +38,7 @@ Item {
 
     readonly property var calendarEntry: ({
             key: "calendar",
-            title: Qt.formatDateTime(clock.now, "dddd d MMMM"),
+            title: Services.TimeFormat.dateText(clock.now, "headline"),
             body: calendarMenu
         })
 

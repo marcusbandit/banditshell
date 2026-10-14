@@ -195,7 +195,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
                 anchors.top: parent.top
 
-                text: Qt.formatDateTime(clock.date, "HH:mm:ss")
+                text: TimeFormat.time(clock.date, true)
                 font.pixelSize: Appearance.font.size.large
             }
 

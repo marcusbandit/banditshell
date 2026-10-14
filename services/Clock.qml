@@ -77,6 +77,11 @@ Singleton {
         root.save();
     }
 
+    function readLocalZone(): void {
+        if (!zoneProc.running)
+            zoneProc.running = true;
+    }
+
     function loadZoneList(): void {
         if (root.allZones.length > 0 || zoneList.running)
             return;
@@ -95,7 +100,7 @@ Singleton {
             hourOfDay: hour + minute / 60,
 
             dayDelta: root.dayNumber(there) - root.dayNumber(here),
-            text: `${root.twoDigits(hour)}:${root.twoDigits(minute)}`
+            text: TimeFormat.clock(hour, minute)
         };
     }
 
@@ -387,7 +392,7 @@ Singleton {
 
     function alarmTitle(alarm: var, due: double): string {
         const at = new Date(due);
-        const when = `${root.twoDigits(at.getHours())}:${root.twoDigits(at.getMinutes())}`;
+        const when = TimeFormat.time(at, false);
         return alarm.label ? `${when}  ${alarm.label}` : `Alarm ${when}`;
     }
 

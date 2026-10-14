@@ -462,7 +462,38 @@ Singleton {
 
                 sliderWidth: 180,
 
-                valueWidth: 52
+                valueWidth: 52,
+
+                schedule: "off",
+
+                warmFrom: "21:00",
+                warmTo: "07:00",
+
+                easeMinutes: 5
+            },
+
+            access: {
+
+                lessMotion: false,
+
+                largerText: false,
+
+                moreContrast: false,
+
+                largerBase: 11,
+
+                contrastLabel: [0.96, 0.8, 0.68, 0.24],
+
+                stillMs: 1
+            },
+
+            region: {
+
+                clock24: true,
+
+                dateFormat: "words",
+
+                autoZone: false
             },
 
             network: {
