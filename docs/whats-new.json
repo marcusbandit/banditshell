@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-8",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "An open special workspace shows its apps' icons again. Before, the card over your workspace could be an empty box."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A special workspace holding several apps shows each app's icon in the sidebar, one under the other, instead of a generic grid. An open one leaves a small dot where it sits, and its card slides along when you switch workspaces instead of jumping."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-7",
       "date": "2026-10-14",
       "changes": [
