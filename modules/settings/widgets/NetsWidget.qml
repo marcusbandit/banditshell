@@ -12,7 +12,7 @@ Column {
 
     property var row: ({})
 
-    readonly property var list: Network.enabled ? Network.networks : []
+    readonly property var list: Network.enabled && !Hotspot.active ? Network.networks : []
 
     width: parent ? parent.width : 0
 
@@ -31,10 +31,27 @@ Column {
         onPointed: SettingsView.hovered = root.row
     }
 
+    SettingsRowFrame {
+        width: root.width
+        visible: Network.enabled && Hotspot.active
+        interactive: false
+        icon: "wifi_tethering"
+        label: "wi-fi is running your hotspot"
+        detail: "it joins networks again once the hotspot is off"
+        onPointed: SettingsView.hovered = root.row
+
+        Button {
+            anchors.verticalCenter: parent.verticalCenter
+            size: 0
+            text: "Stop it"
+            onClicked: SettingsState.set("hotspot", false)
+        }
+    }
+
     Item {
         width: root.width
         height: tools.height
-        visible: Network.enabled
+        visible: Network.enabled && !Hotspot.active
 
         Row {
             id: tools

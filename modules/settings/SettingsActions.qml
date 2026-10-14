@@ -52,8 +52,6 @@ Singleton {
             return root.exportSettings();
         case "importCfg":
             return root.later("restoring from a file");
-        case "vpnImport":
-            return root.later("importing a tunnel");
         }
         console.warn(`SettingsActions: nothing knows how to ${act}`);
     }
@@ -68,9 +66,7 @@ Singleton {
         exporter.path = file;
         exporter.setText(JSON.stringify({
             config: Config.values,
-            planned: Object.assign({}, SettingsState.planned, {
-                hotspotPass: undefined
-            })
+            planned: SettingsState.planned
         }, null, 4) + "\n");
     }
 

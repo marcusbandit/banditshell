@@ -236,6 +236,7 @@ Column {
 
         SettingsSecret {
             text: String(root.value ?? "")
+            alarm: !!root.row.bad && !!root.row.bad(SettingsState)
             enabled: !root.off
             onEdited: t => root.set(t)
         }

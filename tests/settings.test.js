@@ -141,6 +141,13 @@ test("a setting is either planned or written to config, never both", () => {
         assert.ok(!(k in PLAN_DEFAULTS), `${k} has a planned default and a config key`);
 });
 
+test("what NetworkManager owns is never kept as a planned value, and no password is stored", () => {
+    for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "tunnels"])
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is NetworkManager's, not a planned value`);
+    for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "vpnFirst"])
+        assert.ok(!(k in CONFIG_BACKED), `${k} must not be written to config.json`);
+});
+
 test("planned settings are not config keys yet", () => {
     for (const r of Catalogue.ROWS)
         if (r.isNew && r.k)
@@ -228,7 +235,7 @@ test("steps stay inside the range and off the float crumbs", () => {
 
 test("pages count the settings they cover and the new ones among them", () => {
     assert.deepStrictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.wifi), { settings: 7, fresh: 0 });
-    assert.strictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.vpn).fresh, 2);
+    assert.strictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.vpn).fresh, 0);
 });
 
 test("sidebar rows point the replica at the part they change", () => {
