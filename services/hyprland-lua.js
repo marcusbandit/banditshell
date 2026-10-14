@@ -851,12 +851,18 @@ function scanLua(src) {
 
             aliases
         };
-        for (const key of ["mode", "position", "scale", "transform", "vrr"]) {
+        for (const key of ["mode", "position", "scale", "transform", "vrr", "mirror"]) {
             if (byKey[key] === undefined)
                 continue;
             const r = resolveLuaValue(byKey[key], aliases);
             entry[key] = r.v;
             if (!r.literal)
+                entry.dynamic = true;
+        }
+        if (byKey.disabled !== undefined) {
+            const flag = /^(true|false)$/.exec(byKey.disabled.trim());
+            entry.disabled = flag ? flag[1] === "true" : byKey.disabled.trim();
+            if (!flag)
                 entry.dynamic = true;
         }
         entry.indent = entryIndent(f);
@@ -1038,10 +1044,12 @@ function composeEntry(entry, changed) {
     for (const f of entry?.raws ?? []) {
         seen[f.key] = true;
         const c = changed?.[f.key];
+        if (c === null)
+            continue;
         parts.push(`${f.key} = ${c === undefined || entrySame(f.raw, c, entry) ? f.raw : entryLiteral(f.key, c)}`);
     }
     for (const key in changed ?? {})
-        if (!seen[key])
+        if (!seen[key] && changed[key] !== null)
             parts.push(`${key} = ${entryLiteral(key, changed[key])}`);
 
     if (!parts.length)
@@ -1049,7 +1057,7 @@ function composeEntry(entry, changed) {
     return `{ ${parts.join(", ")} }`;
 }
 
-const QUOTED_KEYS = ["output", "mode", "position", "monitor", "workspaces"];
+const QUOTED_KEYS = ["output", "mode", "position", "mirror", "monitor", "workspaces"];
 
 function entrySame(raw, value, entry) {
     const r = resolveLuaValue(raw, entry?.aliases);
