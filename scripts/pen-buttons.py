@@ -247,7 +247,7 @@ class Helper:
         while True:
             evdev = None
             try:
-                import evdev  # noqa: PLC0415
+                import evdev
             except Exception as exc:
                 self.warn_once("import", f"python-evdev is not usable ({exc}); retrying every {RETRY_SECONDS:g}s.")
             dev = None
