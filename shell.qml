@@ -17,6 +17,7 @@ ShellRoot {
     readonly property var chargeLimit: ChargeLimit
     readonly property var lid: Lid
     readonly property var startupApps: StartupApps
+    readonly property var penButtons: PenButtons
 
     LockScreen {}
 

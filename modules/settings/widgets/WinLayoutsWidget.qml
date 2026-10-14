@@ -14,6 +14,10 @@ Column {
     property var row: ({})
 
     readonly property string picked: SettingsState.v("layout")
+    readonly property string refusal: SettingsState.hyprRefusal("layout")
+    readonly property string refusalWhere: /\(([^)]*)\)/.exec(root.refusal)?.[1] ?? ""
+
+    property bool customOpen: false
     readonly property int columns: Math.max(1, Math.floor((root.width + Appearance.padding.small) / (128 + Appearance.padding.small)))
     readonly property real cell: (root.width - (root.columns - 1) * Appearance.padding.small) / root.columns
 
@@ -43,9 +47,11 @@ Column {
                 required property var modelData
 
                 readonly property bool on: root.picked === card.modelData.id
+                readonly property bool ready: SettingsState.layoutAvailable(card.modelData.id)
 
                 width: root.cell
                 height: Appearance.padding.normal * 2 + mini.height + Appearance.padding.small + Appearance.font.line.small
+                opacity: card.ready ? 1 : 0.5
 
                 SquircleRect {
                     anchors.fill: parent
@@ -90,22 +96,43 @@ Column {
                 MouseArea {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
-                    onClicked: SettingsState.set("layout", card.modelData.id)
+                    onClicked: {
+                        const id = card.modelData.id;
+                        if (id === "custom") {
+                            root.customOpen = !root.customOpen;
+                            return;
+                        }
+                        root.customOpen = false;
+                        if (card.ready)
+                            SettingsState.set("layout", id);
+                        else
+                            SettingsView.drop(`${card.modelData.name} is not loaded · ${SettingsState.layoutHowTo(id)}`, "extension");
+                    }
                 }
             }
         }
     }
 
+    SettingsRowFrame {
+        width: root.width
+        visible: root.refusal !== ""
+        interactive: false
+        icon: "edit_off"
+        label: "Your config sets this"
+        detail: root.refusalWhere ? `${root.refusalWhere} · edit it there` : root.refusal
+        onPointed: SettingsView.hovered = root.row
+    }
+
     MenuLayer {
         width: root.width
-        open: root.picked === "custom"
+        open: root.picked === "custom" || root.customOpen
 
         SettingsRowFrame {
             width: parent.width
             interactive: false
             icon: "extension"
             label: "Custom layout"
-            detail: SettingsState.v("customLayout") || "nothing set up yet"
+            detail: SettingsState.customInUse || SettingsState.v("customLayout") || "nothing set up yet"
 
             SettingsTool {
                 anchors.verticalCenter: parent.verticalCenter

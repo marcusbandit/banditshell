@@ -52,8 +52,8 @@ Item {
         Item {
             id: pad
 
-            width: Math.min(area.padWidth, area.height * 1.5)
-            height: width / 1.5
+            width: Math.min(area.padWidth, area.height * SettingsState.padRatio)
+            height: width / SettingsState.padRatio
             anchors.verticalCenter: parent.verticalCenter
 
             SquircleRect {

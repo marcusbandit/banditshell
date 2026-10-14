@@ -13,17 +13,7 @@ Singleton {
     id: root
 
     readonly property var planDefaults: ({
-            kbDelay: 300,
-            kbRate: 30,
-            mouseSpeed: 0,
-            padSpeed: 0.2,
-            naturalScroll: true,
-            tapClick: true,
-            penBtn1: "right click",
-            penBtn2: "erase",
-            layout: "dwindle",
-            customLayout: "",
-            layouts: []
+            customLayout: ""
         })
 
     readonly property var uiDefaults: ({
@@ -245,7 +235,9 @@ Singleton {
             lidBattery: "power.lid.onBattery",
             lidPlugged: "power.lid.pluggedIn",
             lidDocked: "power.lid.docked",
-            sheetShape: "cheatsheet.shape"
+            sheetShape: "cheatsheet.shape",
+            penBtn1: "pen.lowerButton",
+            penBtn2: "pen.upperButton"
         })
 
     function plannedKey(k: string): bool {
@@ -345,6 +337,16 @@ Singleton {
             return DefaultApps.valueOf(k);
         case "startup":
             return StartupApps.entries;
+        case "kbDelay":
+        case "kbRate":
+        case "mouseSpeed":
+        case "naturalScroll":
+        case "tapClick":
+            return root.hyprRead(k);
+        case "layout":
+            return root.layoutId;
+        case "padSpeed":
+            return root.padSpeedNow;
         }
         if (root.plannedKey(k))
             return root.planned[k] ?? root.planDefaults[k];
@@ -480,6 +482,15 @@ Singleton {
             return SettingsRestore.putBack(value);
         case "mode":
             return root.setMode(value);
+        case "kbDelay":
+        case "kbRate":
+        case "mouseSpeed":
+        case "naturalScroll":
+        case "tapClick":
+        case "layout":
+            return root.hyprWrite(k, value);
+        case "padSpeed":
+            return root.writePadSpeed(value);
         case "vpnFirst":
             return Tunnels.setFirst(value);
         case "hotspot":
@@ -1234,15 +1245,459 @@ Singleton {
 
     readonly property bool idleHandled: Idle.handledElsewhere
 
-    readonly property var kbLayouts: (root.planned.layouts ?? []).length ? root.planned.layouts : root.detectedLayouts
-    property var detectedLayouts: [{
-            name: "english (us)",
-            code: "us"
-        }]
+    readonly property var hyprOptions: ({
+            kbDelay: {
+                path: "input:repeat_delay",
+                integer: true,
+                fallback: 600
+            },
+            kbRate: {
+                path: "input:repeat_rate",
+                integer: true,
+                fallback: 25
+            },
+            mouseSpeed: {
+                path: "input:sensitivity",
+                fallback: 0
+            },
+            naturalScroll: {
+                path: "input:touchpad:natural_scroll",
+                fallback: false
+            },
+            tapClick: {
+                path: "input:touchpad:tap-to-click",
+                fallback: true
+            },
+            layout: {
+                path: "general:layout",
+                fallback: "dwindle"
+            },
+            kbLayout: {
+                path: "input:kb_layout",
+                fallback: "us"
+            },
+            kbVariant: {
+                path: "input:kb_variant",
+                fallback: ""
+            },
+            kbOptions: {
+                path: "input:kb_options",
+                fallback: ""
+            }
+        })
+
+    readonly property var hyprProbeCommand: ["hyprctl", "-j", "--batch", Object.keys(root.hyprOptions).map(k => `getoption ${root.hyprOptions[k].path}`).concat(["getoption scrolling:column_width"]).join(" ; ")]
+
+    property var hyprValues: ({})
+    property var hyprQueue: []
+    property var hyprWriting: null
+    property var hyprRecent: ({})
+    property bool scrollingCore: false
+    property bool optionsProbed: false
+    property bool pluginsProbed: false
+    property var hyprPlugins: []
+    property var hyprMice: []
+    property var pointers: []
+    property var liveBinds: []
+    property bool switchBindWanted: false
+
+    readonly property string switchChord: "SUPER + SPACE"
+
+    readonly property var layoutPool: [["danish", "dk"], ["english (us)", "us"], ["english (uk)", "gb"], ["german", "de"], ["norwegian", "no"], ["swedish", "se"], ["french", "fr"], ["colemak", "us(colemak)"]]
+
+    readonly property var switchOptions: ({
+            "grp:switch": "right alt",
+            "grp:alt_shift_toggle": "alt + shift",
+            "grp:ctrl_shift_toggle": "ctrl + shift",
+            "grp:win_space_toggle": "super + space",
+            "grp:alt_space_toggle": "alt + space",
+            "grp:ctrl_space_toggle": "ctrl + space",
+            "grp:caps_toggle": "caps lock",
+            "grp:menu_toggle": "menu"
+        })
+
+    function hyprAsked(k: string): var {
+        const queued = root.hyprQueue.filter(e => e.key === k);
+        if (queued.length)
+            return queued[queued.length - 1].value;
+        if (root.hyprWriting?.key === k)
+            return root.hyprWriting.value;
+        return root.hyprRecent[k];
+    }
+
+    function hyprRead(k: string): var {
+        const asked = root.hyprAsked(k);
+        if (asked !== undefined)
+            return asked;
+        const spec = root.hyprOptions[k];
+        const live = root.hyprValues[spec.path];
+        return live !== undefined ? live : spec.fallback;
+    }
+
+    function hyprSchedule(): void {
+        hyprFlush.restart();
+    }
+
+    function hyprLabel(k: string): string {
+        const names = {
+            layout: "Layout",
+            kbLayout: "Layouts",
+            kbVariant: "Layouts"
+        };
+        const row = root.rowOf(k);
+        return names[k] ?? (row ? Catalogue.labelOf(row) : k);
+    }
+
+    function hyprRefusal(k: string): string {
+        return HyprConfig.optionRefusal(root.hyprOptions[k].path, "");
+    }
+
+    function hyprEnqueue(entries: var): void {
+        const ids = entries.map(e => e.id);
+        root.hyprQueue = root.hyprQueue.filter(e => ids.indexOf(e.id) < 0).concat(entries);
+        root.hyprSchedule();
+    }
+
+    function hyprWrite(k: string, value: var): void {
+        if (!root.edits())
+            return;
+        const why = root.hyprRefusal(k);
+        if (why) {
+            root.denied = true;
+            root.refused(why, "");
+            return;
+        }
+        const spec = root.hyprOptions[k];
+        root.hyprEnqueue([
+            {
+                id: k,
+                key: k,
+                path: spec.path,
+                device: "",
+                value: spec.integer ? Math.round(value) : value
+            }
+        ]);
+    }
+
+    function hyprNext(): void {
+        if (root.hyprWriting || (!root.hyprQueue.length && !root.switchBindWanted))
+            return;
+        if (HyprConfig.applying || !HyprConfig.scanned)
+            return root.hyprSchedule();
+        if (!root.hyprQueue.length) {
+            root.switchBindWanted = false;
+            return root.addSwitchBind();
+        }
+        const entry = root.hyprQueue[0];
+        root.hyprQueue = root.hyprQueue.slice(1);
+        root.hyprWriting = entry;
+        HyprConfig.setOption(entry.path, entry.value, entry.device);
+    }
+
+    function hyprSettled(path: string, device: string, ok: bool, said: string): void {
+        const done = root.hyprWriting;
+        if (!done || done.path !== path || done.device !== device)
+            return;
+        root.hyprWriting = null;
+        if (ok) {
+            root.hyprRecent = Object.assign({}, root.hyprRecent, {
+                [done.key]: done.value
+            });
+            hyprRecentClear.restart();
+            if (done.then === "bind")
+                root.switchBindWanted = true;
+        } else {
+            root.hyprQueue = root.hyprQueue.filter(e => e.group === undefined || e.group !== done.group);
+            root.refused(`${root.hyprLabel(done.key)} was not saved · ${said}`, "");
+            root.probeHypr();
+        }
+        if (root.hyprQueue.length || root.switchBindWanted)
+            root.hyprSchedule();
+    }
+
+    Timer {
+        id: hyprFlush
+
+        interval: 400
+        onTriggered: root.hyprNext()
+    }
+
+    Timer {
+        id: hyprRecentClear
+
+        interval: 2500
+        onTriggered: root.hyprRecent = ({})
+    }
+
+    Connections {
+        target: HyprConfig
+
+        function onOptionSettled(path: string, device: string, ok: bool, said: string): void {
+            root.hyprSettled(path, device, ok, said);
+        }
+    }
+
+    Connections {
+        target: Hypr
+
+        function onConfigReloaded(): void {
+            if (root.woken)
+                root.probeHypr();
+        }
+    }
+
+    function probeHypr(): void {
+        if (!Compositor.isHyprland)
+            return;
+        optionProbe.running = true;
+        pluginProbe.running = true;
+        mouseProbe.running = true;
+        bindProbe.running = true;
+        pointerProbe.running = true;
+    }
+
+    Process {
+        id: optionProbe
+
+        command: root.hyprProbeCommand
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const next = {};
+                for (const line of text.split("\n")) {
+                    if (!line.trim().startsWith("{"))
+                        continue;
+                    try {
+                        const o = JSON.parse(line);
+                        const raw = o.bool ?? o.int ?? o.float ?? o.str;
+                        if (o.option === "scrolling:column_width")
+                            root.scrollingCore = true;
+                        else if (raw !== undefined)
+                            next[o.option] = raw === "[[EMPTY]]" ? "" : raw;
+                    } catch (e) {}
+                }
+                root.hyprValues = next;
+                root.optionsProbed = true;
+            }
+        }
+    }
+
+    Process {
+        id: pluginProbe
+
+        command: ["hyprctl", "plugin", "list"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.hyprPlugins = text.split("\n").map(line => /^\s*Plugin\s+(.+?)\s+by\s/.exec(line)?.[1]).filter(Boolean);
+                root.pluginsProbed = true;
+            }
+        }
+    }
+
+    Process {
+        id: mouseProbe
+
+        command: ["hyprctl", "-j", "devices"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.hyprMice = (JSON.parse(text).mice ?? []).map(m => m.name);
+                } catch (e) {}
+            }
+        }
+    }
+
+    Process {
+        id: bindProbe
+
+        command: ["hyprctl", "-j", "binds"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.liveBinds = JSON.parse(text);
+                } catch (e) {}
+            }
+        }
+    }
+
+    Process {
+        id: pointerProbe
+
+        command: ["python3", Quickshell.shellPath("scripts/pointing-devices.py")]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.pointers = JSON.parse(text);
+                } catch (e) {}
+            }
+        }
+    }
+
+    readonly property string layoutRaw: String(root.hyprRead("layout"))
+    readonly property string layoutId: ["dwindle", "master", "scrolling", "hy3"].indexOf(root.layoutRaw) >= 0 ? root.layoutRaw : "custom"
+    readonly property string customInUse: root.layoutId === "custom" ? root.layoutRaw.replace(/^lua:/, "") : ""
+
+    readonly property bool layoutsProbed: root.optionsProbed && root.pluginsProbed
+
+    function layoutAvailable(id: string): bool {
+        if (!root.layoutsProbed)
+            return true;
+        if (id === "scrolling")
+            return root.scrollingCore || root.hyprPlugins.some(n => /scrolling/i.test(n));
+        if (id === "hy3")
+            return root.hyprPlugins.some(n => /hy3/i.test(n));
+        return true;
+    }
+
+    function layoutHowTo(id: string): string {
+        if (id === "scrolling")
+            return "built into newer hyprland, or the hyprscrolling plugin · hyprpm add https://github.com/hyprwm/hyprland-plugins";
+        if (id === "hy3")
+            return "a plugin, not loaded · hyprpm add https://github.com/outfoxxed/hy3, then hyprpm enable hy3";
+        return "";
+    }
+
+    function layoutName(code: string): string {
+        return root.layoutPool.find(p => p[1] === code)?.[0] ?? code;
+    }
+
+    function layoutsOf(layouts: string, variants: string): var {
+        const variantList = String(variants).split(",").map(v => v.trim());
+        return String(layouts).split(",").map(c => c.trim()).filter(Boolean).map((c, i) => {
+            const code = variantList[i] ? `${c}(${variantList[i]})` : c;
+            return {
+                name: root.layoutName(code),
+                code
+            };
+        });
+    }
+
+    readonly property var kbLayouts: root.layoutsOf(root.hyprRead("kbLayout"), root.hyprRead("kbVariant"))
+
+    function setLayouts(list: var): bool {
+        if (!list.length || !root.edits())
+            return false;
+        const why = root.hyprRefusal("kbLayout") || root.hyprRefusal("kbVariant");
+        if (why) {
+            root.refused(why, "");
+            return false;
+        }
+        const heads = list.map(l => l.code.replace(/\(.*\)$/, ""));
+        const variants = list.map(l => /\((.*)\)$/.exec(l.code)?.[1] ?? "");
+        const entry = (key, value, extra) => Object.assign({
+                id: key,
+                key,
+                group: "layouts",
+                path: root.hyprOptions[key].path,
+                device: "",
+                value
+            }, extra);
+        const layout = entry("kbLayout", heads.join(","));
+        const variant = entry("kbVariant", variants.some(Boolean) ? variants.join(",") : "");
+        const growing = list.length >= root.kbLayouts.length;
+        const changes = [layout, variant].filter(e => String(e.value) !== String(root.hyprRead(e.key)));
+        if (!changes.length)
+            return true;
+        const ordered = growing ? changes : changes.slice().reverse();
+        if (list.length > 1)
+            ordered[ordered.length - 1].then = "bind";
+        root.hyprEnqueue(ordered);
+        return true;
+    }
+
+    readonly property var switchBind: HyprConfig.binds.find(b => !b.dynamic && /switchxkblayout/.test(b.expr ?? "")) ?? null
+
+    readonly property string switchOption: {
+        const names = String(root.hyprRead("kbOptions")).split(/[,\s]+/).filter(o => o.startsWith("grp:"));
+        return names.length ? (root.switchOptions[names[0]] ?? names[0]) : "";
+    }
+
+    readonly property bool switchChordLive: root.liveBinds.some(b => b.modmask === 64 && String(b.key).toLowerCase() === "space" && !b.submap)
+
+    readonly property string layoutSwitchNote: {
+        const chord = root.switchChord.toLowerCase();
+        if (root.switchBind)
+            return `switch with ${root.switchBind.chord.toLowerCase()}`;
+        if (root.switchOption)
+            return `switch with ${root.switchOption}`;
+        const holder = HyprConfig.holderOf(root.switchChord);
+        if (holder)
+            return `${chord} is taken · ${holder.description || holder.action || "another bind"}`;
+        return root.switchChordLive ? `${chord} is taken` : "no key switches layouts yet";
+    }
+
+    function addSwitchBind(): void {
+        if (root.switchBind || root.switchChordLive || HyprConfig.holderOf(root.switchChord) || root.kbLayouts.length < 2)
+            return;
+        const home = HyprConfig.files.find(f => f.binds.some(b => !b.dynamic && !b.submap))?.name ?? HyprConfig.shortName(HyprConfig.configPath);
+        HyprConfig.addBind(home, {
+            chord: root.switchChord,
+            expr: "hl.dsp.exec_cmd(\"hyprctl switchxkblayout all next\")",
+            description: "Switch keyboard layout"
+        });
+    }
+
+    function hyprDeviceName(label: string): string {
+        const plain = text => String(text).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        return root.hyprMice.find(n => plain(n) === plain(label)) ?? String(label).toLowerCase().replace(/\s+/g, "-");
+    }
+
+    readonly property var touchpads: root.pointers.filter(p => p.kind === "touchpad").map(p => ({
+                label: p.name,
+                name: root.hyprDeviceName(p.name),
+                widthMm: p.widthMm,
+                heightMm: p.heightMm
+            })).filter(t => !root.hyprMice.length || root.hyprMice.indexOf(t.name) >= 0)
+
+    readonly property real padRatio: {
+        const shaped = root.touchpads.find(t => t.widthMm > 0 && t.heightMm > 0);
+        return shaped ? Math.max(1, Math.min(2.2, shaped.widthMm / shaped.heightMm)) : 1.5;
+    }
+
+    readonly property real padSpeedNow: {
+        const asked = root.hyprAsked("padSpeed");
+        if (asked !== undefined)
+            return asked;
+        const own = root.touchpads.length ? HyprConfig.optionValue("input:sensitivity", root.touchpads[0].name) : undefined;
+        return own !== undefined ? own : root.hyprRead("mouseSpeed");
+    }
+
+    function writePadSpeed(value: var): void {
+        if (!root.touchpads.length || !root.edits()) {
+            root.denied = true;
+            return;
+        }
+        const why = root.touchpads.map(t => HyprConfig.optionRefusal("input:sensitivity", t.name)).find(Boolean);
+        if (why) {
+            root.denied = true;
+            root.refused(why, "");
+            return;
+        }
+        root.hyprEnqueue(root.touchpads.map(t => ({
+                    id: `padSpeed:${t.name}`,
+                    key: "padSpeed",
+                    path: "input:sensitivity",
+                    device: t.name,
+                    value: +value
+                })));
+    }
 
     readonly property int keyCount: HyprConfig.binds.length + Object.keys(Config.values.files.keys ?? {}).length
 
     readonly property string repeatDetail: `${Config.values.tablet.repeatDelay} ms, then every ${Config.values.tablet.repeatInterval}`
+
+    readonly property string penButtonNote: {
+        if (!PenButtons.remapped)
+            return "as the pen sends them";
+        switch (PenButtons.state) {
+        case "ready":
+            return "remapped";
+        case "denied":
+            return "can't reach the pen · see the log";
+        case "gone":
+            return "pen not found";
+        }
+        return "starting";
+    }
 
     readonly property string penName: Config.values.pen.device.replace(/-pen$/, "").replace(/-/g, " ")
 
@@ -1389,24 +1844,6 @@ Singleton {
         }
     }
 
-    Process {
-        id: layoutProbe
-
-        command: ["hyprctl", "getoption", "input:kb_layout", "-j"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const codes = String(JSON.parse(text).str ?? "").split(",").map(c => c.trim()).filter(Boolean);
-                    if (codes.length)
-                        root.detectedLayouts = codes.map(c => ({
-                                    name: c,
-                                    code: c
-                                }));
-                } catch (e) {}
-            }
-        }
-    }
-
     property bool woken: false
 
     function wake(): void {
@@ -1415,8 +1852,7 @@ Singleton {
         root.woken = true;
         fontProbe.running = true;
         root.probeCompletions();
-        if (Compositor.isHyprland)
-            layoutProbe.running = true;
+        root.probeHypr();
     }
 
     function withoutRetired(planned: var): var {

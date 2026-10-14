@@ -180,10 +180,13 @@ test.describe("what would change", () => {
     });
 
     test.it("compares a planned setting against its default until it was ever changed", () => {
-        const w = world({ planned: { kbRate: 40 } });
-        const out = Restore.diff(copyOf({}, { kbDelay: 300, kbRate: 40, kbDelay2: 1, customLayout: "orbit" }), w);
-        assert.deepStrictEqual(out.changes, [{ route: "planned", path: "", key: "customLayout", from: "", to: "orbit" }]);
-        assert.deepStrictEqual(out.skipped, [{ key: "kbDelay2", why: "not a setting here" }]);
+        assert.ok("customLayout" in PLAN_DEFAULTS);
+        const untouched = Restore.diff(copyOf({}, { customLayout: "", kbDelay2: 1 }), world());
+        assert.deepStrictEqual(untouched.changes, []);
+        assert.deepStrictEqual(untouched.skipped, [{ key: "kbDelay2", why: "not a setting here" }]);
+        const changed = world({ planned: { customLayout: "orbit" } });
+        assert.deepStrictEqual(Restore.diff(copyOf({}, { customLayout: "orbit" }), changed).changes, []);
+        assert.deepStrictEqual(Restore.diff(copyOf({}, { customLayout: "" }), changed).changes, [{ route: "planned", path: "", key: "customLayout", from: "orbit", to: "" }]);
     });
 
     test.it("refuses a planned value of another kind", () => {

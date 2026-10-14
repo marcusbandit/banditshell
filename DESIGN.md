@@ -471,6 +471,18 @@ banditshell/
 │   │                            is verified (`--verify-config`) before the
 │   │                            compositor reloads, and a failed one is
 │   │                            put back the way it was
+│   │                            One option at a time goes the same way:
+│   │                            `setOption("input:kb_layout", ...)` finds
+│   │                            where hl.config or an hl.device block already
+│   │                            sets it and rewrites that value in place, or
+│   │                            adds it to the nearest table that exists (else
+│   │                            a new hl.config call at the end of the main
+│   │                            file). Options built by code, set under a
+│   │                            condition, or set in two places are refused
+│   │                            with the line they come from. No live
+│   │                            `hyprctl keyword` after it: the Lua parser
+│   │                            refuses that command, and the reload that
+│   │                            follows re-applies the file
 │   ├── hyprgen.js               that model, as text: a Lua-aware scanner
 │   │                            (strings, escapes, long brackets, multi-
 │   │                            line calls, block depth), chord parsing,
@@ -651,6 +663,14 @@ banditshell/
 │   │                            scripts/pen-pad.py, and from `banditshell
 │   │                            penmap` when the tablet is asleep and cannot
 │   │                            ask for itself.
+│   ├── PenButtons.qml           the pen's two side buttons, remapped. Hyprland
+│   │                            has no such setting, and pen-pad.py reads the
+│   │                            pad, not the pen, so scripts/pen-buttons.py
+│   │                            grabs the pen and hands everything on through
+│   │                            a stand-in device of the same name, with the
+│   │                            buttons changed. Runs only while a button is
+│   │                            off its default, so a pen as shipped is never
+│   │                            touched
 │   ├── Keystrokes.qml           the one service that types OUTWARD, and it needs
 │   │                            TWO transports: wtype for characters (the
 │   │                            compositor never acts on them, so no bind can
@@ -992,6 +1012,14 @@ banditshell/
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and
 │   │                            that is the correct failure
+│   ├── pen-buttons.py           the stylus buttons: a Remapper that is pure
+│   │                            (right click, middle click, erase, nothing),
+│   │                            and a loop that serves it from a grabbed pen
+│   │                            to a uinput clone. Names itself `idle` and
+│   │                            grabs nothing on the defaults
+│   ├── pointing-devices.py      the mice and touchpads udev knows, and the
+│   │                            size of each pad in millimetres, read from
+│   │                            /run/udev/data with no privileges
 │   ├── keyring-prompter.py      the keyring's prompter: owns the bus name gcr's
 │   │                            GTK dialog would have been activated for, and
 │   │                            reimplements gcr's `sx-aes-1` secret exchange
