@@ -11,13 +11,13 @@ Column {
 
     property var row: ({})
 
-    readonly property var list: SettingsState.planned.startup ?? []
+    readonly property var list: SettingsState.v("startup")
     property bool adding: false
 
     width: parent ? parent.width : 0
 
-    function save(next: var): void {
-        SettingsState.plan("startup", next);
+    function change(request: var): void {
+        SettingsState.set("startup", request);
     }
 
     Repeater {
@@ -32,10 +32,11 @@ Column {
             width: root.width
             interactive: false
             label: app.modelData.name
+            detail: app.modelData.note
             onPointed: SettingsView.hovered = root.row
             lead: Component {
                 AppMark {
-                    spec: AppIcons.markFor(app.modelData.id, "colour")
+                    spec: app.modelData.mark
                     color: Appearance.colour.textDim
                 }
             }
@@ -43,32 +44,31 @@ Column {
             Toggle {
                 anchors.verticalCenter: parent.verticalCenter
                 checked: !!app.modelData.on
-                onToggled: {
-                    const next = root.list.slice();
-                    next[app.index] = Object.assign({}, app.modelData, {
-                        on: !app.modelData.on
-                    });
-                    root.save(next);
-                }
+                onToggled: root.change({
+                    id: app.modelData.id,
+                    on: !app.modelData.on
+                })
             }
 
             SettingsTool {
                 anchors.verticalCenter: parent.verticalCenter
+                visible: app.modelData.removable
                 icon: "close"
                 tip: "take it off"
                 onClicked: {
                     const gone = app.modelData;
-                    const at = app.index;
-                    const next = root.list.slice();
-                    next.splice(at, 1);
-                    root.save(next);
+                    root.change({
+                        id: gone.id,
+                        remove: true
+                    });
                     SettingsView.drop(`${gone.name.toLowerCase()} stays shut at startup`, "remove_circle", {
                         label: "undo",
-                        run: () => {
-                            const back = root.list.slice();
-                            back.splice(at, 0, gone);
-                            root.save(back);
-                        }
+                        run: () => root.change({
+                            restore: {
+                                path: gone.row.path,
+                                text: gone.row.text
+                            }
+                        })
                     });
                 }
             }
@@ -80,6 +80,7 @@ Column {
         interactive: false
         icon: "add"
         label: "Add an app"
+        detail: StartupApps.summary
         onPointed: SettingsView.hovered = root.row
 
         Button {
@@ -101,13 +102,17 @@ Column {
         AppPicker {
             id: picker
 
-            exclude: root.list.map(a => a.id)
+            exclude: StartupApps.claimed
             onPicked: entry => {
-                root.save(root.list.concat([{
+                root.change({
+                    add: {
                         id: entry.id,
                         name: entry.name,
-                        on: true
-                    }]));
+                        exec: entry.execString,
+                        icon: entry.icon,
+                        terminal: entry.runInTerminal
+                    }
+                });
                 root.adding = false;
             }
         }

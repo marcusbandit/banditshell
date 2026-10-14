@@ -560,24 +560,24 @@ const PAGES_SOURCE = {
     },
     defaults: {
         id: "defaults", name: "Default apps", icon: "open_in_new", preview: "defaults",
-        status: s => `${s.v("defBrowser")} · ${s.v("defTerm")}`,
+        status: s => `${s.defaultName("defBrowser")} · ${s.defaultName("defTerm")}`,
         groups: [
             { rows: [
-                { n: 111, isNew: true, icon: "public", label: "Web", k: "defBrowser", kind: "choice", o: s => s.appsFor("defBrowser"), kw: "default apps browser" },
-                { n: 111, isNew: true, icon: "folder", label: "Files", k: "defFiles", kind: "choice", o: s => s.appsFor("defFiles"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "terminal", label: "Terminal", k: "defTerm", kind: "choice", o: s => s.appsFor("defTerm"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "mail", label: "Mail", k: "defMail", kind: "choice", o: s => s.appsFor("defMail"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "image", label: "Pictures", k: "defImages", kind: "choice", o: s => s.appsFor("defImages"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "movie", label: "Video", k: "defVideo", kind: "choice", o: s => s.appsFor("defVideo"), kw: "default apps" }
+                { n: 111, icon: "public", label: "Web", k: "defBrowser", kind: "choice", o: s => s.appsFor("defBrowser"), detail: s => s.defaultNote("defBrowser"), kw: "default apps browser" },
+                { n: 111, icon: "folder", label: "Files", k: "defFiles", kind: "choice", o: s => s.appsFor("defFiles"), detail: s => s.defaultNote("defFiles"), kw: "default apps" },
+                { n: 111, icon: "terminal", label: "Terminal", k: "defTerm", kind: "choice", o: s => s.appsFor("defTerm"), detail: s => s.defaultNote("defTerm"), kw: "default apps" },
+                { n: 111, icon: "mail", label: "Mail", k: "defMail", kind: "choice", o: s => s.appsFor("defMail"), detail: s => s.defaultNote("defMail"), kw: "default apps" },
+                { n: 111, icon: "image", label: "Pictures", k: "defImages", kind: "choice", o: s => s.appsFor("defImages"), detail: s => s.defaultNote("defImages"), kw: "default apps" },
+                { n: 111, icon: "movie", label: "Video", k: "defVideo", kind: "choice", o: s => s.appsFor("defVideo"), detail: s => s.defaultNote("defVideo"), kw: "default apps" }
             ] }
         ]
     },
     startup: {
         id: "startup", name: "Startup apps", icon: "login", preview: "signin",
-        status: s => `${s.startupOn} apps`,
+        status: s => `${s.startupOn} app${s.startupOn === 1 ? "" : "s"}`,
         groups: [
             { rows: [
-                { n: 112, isNew: true, kind: "w", w: "startup", kw: "startup apps autostart boot login sign-in" }
+                { n: 112, kind: "w", w: "startup", kw: "startup apps autostart boot login sign-in" }
             ] }
         ]
     },
@@ -780,7 +780,7 @@ const CATS = [
         suggest: s => s.hasBattery && !s.v("chargeLimit") && s.healthKnown ? { icon: "health_and_safety", label: `Health is at ${s.healthPct}%`, detail: "holding the charge at 80% slows that", set: ["chargeLimit", true] } : null,
         subs: ["battery", "powermode", "lock"] },
     { id: "apps", name: "Apps", icon: "apps",
-        blurb: s => `${s.v("defBrowser")} · ${s.v("defTerm")} · ${s.startupOn} at startup`,
+        blurb: s => `${s.defaultName("defBrowser")} · ${s.defaultName("defTerm")} · ${s.startupOn} at startup`,
         tiles: [
             { k: "stream", icon: "cast", label: "Streamer mode" },
             { k: "filesHidden", icon: "visibility_off", label: "Hidden files" }
