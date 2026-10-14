@@ -19,7 +19,10 @@ Singleton {
     readonly property real sourceVolume: source?.audio?.volume ?? 0
     readonly property bool sourceMuted: !!source?.audio?.muted
 
-    readonly property real maxVolume: 1.5
+    readonly property real maxVolume: Config.values.volume.boost ? 1.5 : 1
+
+    onMaxVolumeChanged: if (root.volume > root.maxVolume)
+        root.setVolume(root.maxVolume)
 
     readonly property var sinks: Pipewire.nodes.values.filter(n => n.isSink && n.audio && !n.isStream)
     readonly property var sources: Pipewire.nodes.values.filter(n => !n.isSink && n.audio && !n.isStream)

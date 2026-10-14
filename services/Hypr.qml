@@ -107,6 +107,25 @@ Singleton {
         return out;
     }
 
+    readonly property var specialDeck: {
+        if (!Config.values.sidebar.workspaces.rack)
+            return [];
+        const want = Config.values.sidebar.workspaces.specials;
+        const live = root.specials;
+        const out = [];
+        for (const name of want)
+            out.push(live.find(s => s.label === name) ?? ({
+                        id: 0,
+                        name: `special:${name}`,
+                        label: name,
+                        windows: []
+                    }));
+        for (const s of live.slice().sort((a, b) => a.label.localeCompare(b.label)))
+            if (want.indexOf(s.label) < 0)
+                out.push(s);
+        return out;
+    }
+
     property var specialByMonitor: ({})
 
     function specialOn(screen: string): string {

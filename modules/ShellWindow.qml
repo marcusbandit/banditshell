@@ -324,6 +324,8 @@ PanelWindow {
             menusShown: menuLayer.open
 
             pullSpan: Math.hypot(win.width, win.height)
+
+            modeIcon: SettingsState.modeIcon
         }
 
         StreamPanel {

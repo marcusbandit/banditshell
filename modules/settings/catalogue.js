@@ -131,7 +131,7 @@ const PAGES_SOURCE = {
                 { n: 15, icon: "speaker", label: "Play through", k: "output", kind: "choice", o: s => s.outputs, kw: "output device",
                     why: "Where sound goes. The speaker in the sidebar switches it too." },
                 { n: 18, icon: "unfold_more", label: "Keys step by", k: "volStep", kind: "seg", o: [[0.02, "2%"], [0.05, "5%"], [0.1, "10%"]], cfg: "volume.step", kw: "volume step" },
-                { n: 19, isNew: true, icon: "campaign", label: "Past 100%", k: "overAmp", kind: "toggle", detail: "louder, can crackle", kw: "volume above 100 boost",
+                { n: 19, icon: "campaign", label: "Past 100%", k: "overAmp", kind: "toggle", cfg: "volume.boost", detail: "louder, can crackle", kw: "volume above 100 boost",
                     why: "Lets the slider run to 150%. The bead turns accent once it passes the mark at 100%." }
             ] },
             { t: "Speakers and headphones", rows: [
@@ -305,26 +305,26 @@ const PAGES_SOURCE = {
                 { n: 61, icon: "palette", label: "App marks", k: "iconMode", kind: "seg", o: ["colour", "mono"], cfg: "sidebar.workspaces.iconMode", kw: "workspace icons",
                     why: "Plates show the apps inside each workspace. Mono tints the marks to match the text." },
                 { n: 62, icon: "filter_5", label: "Always there", k: "persistent", kind: "step", min: 1, max: 10, cfg: "sidebar.workspaces.persistent", fmt: v => `${v}`, detail: "more show up when busy", kw: "always-shown workspaces" },
-                { n: 63, isNew: true, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.specials", detail: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
+                { n: 63, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.rack", detail: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
                     { n: 63, kind: "w", w: "specials" }
                 ] }
             ] },
             { t: "Clock and date", rows: [
-                { n: [], isNew: true, icon: "schedule", label: "Clock", k: "sbClock", kind: "seg", o: ["stacked", "small", "one line", "off"], cfg: "sidebar.clock.style", kw: "sidebar clock style simplified one line hide",
+                { n: [], icon: "schedule", label: "Clock", k: "sbClock", kind: "seg", o: ["stacked", "small", "one line", "off"], cfg: "sidebar.clock.style", kw: "sidebar clock style simplified one line hide",
                     why: "Stacked is hours over minutes at the normal size. Small is the same at the small size. One line turns the time on its side so it reads as 14:32." },
-                { n: [], isNew: true, icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
+                { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
                     why: "The date under the clock. It still opens the calendar when you tap or pull it." }
             ] },
             { t: "Status", rows: [
                 { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide",
                     why: "When new keeps the sidebar clean until there is something to install. Updates stay reachable from System either way." },
-                { n: [], isNew: true, icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
-                { n: [], isNew: true, icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
-                { n: [], isNew: true, icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
-                { n: [], isNew: true, icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", detail: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
+                { n: [], icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
+                { n: [], icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
+                { n: [], icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
+                { n: [], icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", detail: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
             ] },
             { t: "Tray", rows: [
-                { n: 64, isNew: true, icon: "apps", label: "Tray", k: "tray", kind: "toggle", detail: s => `${s.trayCount} apps`, kw: "tray" },
+                { n: 64, icon: "apps", label: "Tray", k: "tray", kind: "toggle", cfg: "sidebar.tray.enabled", detail: s => `${s.trayCount} apps`, kw: "tray" },
                 { n: 64, icon: "more_horiz", label: "Most icons", k: "trayMax", kind: "step", min: 1, max: 12, cfg: "sidebar.tray.max", fmt: v => `${v}`, detail: "the rest fold away", dis: s => !s.v("tray") }
             ] }
         ]
@@ -495,7 +495,7 @@ const PAGES_SOURCE = {
                 { n: 102, icon: "keyboard_hide", label: "Keyboard on fold", k: "autoKeyboard", kind: "toggle", cfg: "tablet.autoKeyboard" },
                 { n: 102, icon: "vertical_align_bottom", label: "Board takes room", k: "docked", kind: "toggle", cfg: "tablet.docked", detail: s => s.v("docked") ? "windows move up" : "floats over them", dis: s => !s.v("autoKeyboard") },
                 { n: 102, icon: "height", label: "Board height", k: "boardHeight", kind: "slider", min: 0.25, max: 0.5, step: 0.01, fmt: pct, cfg: "tablet.height", dis: s => !s.v("autoKeyboard") },
-                { n: 102, isNew: true, icon: "repeat", label: "Held keys repeat", k: "boardRepeat", kind: "toggle", cfg: "tablet.repeatDelay", detail: s => s.repeatDetail, dis: s => !s.v("autoKeyboard"), kw: "key repeat" }
+                { n: 102, icon: "repeat", label: "Held keys repeat", k: "boardRepeat", kind: "toggle", cfg: "tablet.repeat", detail: s => s.repeatDetail, dis: s => !s.v("autoKeyboard"), kw: "key repeat" }
             ] }
         ]
     },

@@ -137,6 +137,8 @@ Singleton {
 
                     specials: [],
 
+                    rack: true,
+
                     persistent: 5,
 
                     slot: 32,
@@ -157,12 +159,24 @@ Singleton {
                     block: 9,
                     blockGap: 3
                 },
+                clock: {
+                    style: "stacked",
+                    date: "day and month"
+                },
+
                 status: {
                     slot: 29,
-                    gap: 4
+                    gap: 4,
+
+                    sound: true,
+                    network: true,
+                    bluetooth: true,
+                    battery: true
                 },
 
                 tray: {
+                    enabled: true,
+
                     slot: 29,
                     gap: 4,
 
@@ -363,7 +377,9 @@ Singleton {
             },
 
             volume: {
-                step: 0.05
+                step: 0.05,
+
+                boost: true
             },
 
             screen: {
@@ -517,6 +533,8 @@ Singleton {
             tablet: {
 
                 autoKeyboard: true,
+
+                repeat: true,
 
                 docked: true,
 

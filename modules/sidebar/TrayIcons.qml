@@ -57,7 +57,7 @@ Item {
         epsilon: 0.005
     }
 
-    readonly property var shown: Tray.items.slice(0, Config.values.sidebar.tray.max)
+    readonly property var shown: Config.values.sidebar.tray.enabled ? Tray.items.slice(0, Config.values.sidebar.tray.max) : []
 
     function keyFor(item: var): string {
         return `tray:${Tray.keyOf(item)}`;

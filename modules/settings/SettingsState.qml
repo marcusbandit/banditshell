@@ -63,16 +63,6 @@ Singleton {
             largerText: false,
             contrast: false,
             layout: "dwindle",
-            overAmp: true,
-            specialsShown: true,
-            sbClock: "stacked",
-            sbDate: "day and month",
-            sbSound: true,
-            sbNet: true,
-            sbBt: true,
-            sbBatt: true,
-            tray: true,
-            boardRepeat: true,
             sheetShape: "iso",
             customLayout: "",
             startup: [],
@@ -139,6 +129,7 @@ Singleton {
             netCheck: "network.checkForInternet",
             portalUri: "network.portalUri",
             volStep: "volume.step",
+            overAmp: "volume.boost",
             roleSpeakers: "audio.speakers",
             roleHeadphones: "audio.headphones",
             warmest: "screen.warmest",
@@ -169,6 +160,14 @@ Singleton {
             iconMode: "sidebar.workspaces.iconMode",
             persistent: "sidebar.workspaces.persistent",
             trayMax: "sidebar.tray.max",
+            tray: "sidebar.tray.enabled",
+            specialsShown: "sidebar.workspaces.rack",
+            sbClock: "sidebar.clock.style",
+            sbDate: "sidebar.clock.date",
+            sbSound: "sidebar.status.sound",
+            sbNet: "sidebar.status.network",
+            sbBt: "sidebar.status.bluetooth",
+            sbBatt: "sidebar.status.battery",
             sbUpdate: "sidebar.update",
             edgeLift: "windows.edge",
             dropMode: "windows.mode",
@@ -223,6 +222,7 @@ Singleton {
             autoKeyboard: "tablet.autoKeyboard",
             docked: "tablet.docked",
             boardHeight: "tablet.height",
+            boardRepeat: "tablet.repeat",
             pen: "pen.enabled",
             aspectLock: "pen.aspectLock",
             branch: "updates.branch",
@@ -1094,7 +1094,7 @@ Singleton {
 
     readonly property int keyCount: HyprConfig.binds.length + Object.keys(Config.values.files.keys ?? {}).length
 
-    readonly property string repeatDetail: `${Config.defaults.tablet.repeatDelay} ms, then every ${Config.values.tablet.repeatInterval}`
+    readonly property string repeatDetail: `${Config.values.tablet.repeatDelay} ms, then every ${Config.values.tablet.repeatInterval}`
 
     readonly property string penName: Config.values.pen.device.replace(/-pen$/, "").replace(/-/g, " ")
 
