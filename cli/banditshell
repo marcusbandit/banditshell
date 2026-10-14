@@ -4,6 +4,10 @@
 #   banditshell start|stop|restart|run
 #                                the shell itself: detach and prove it, stop it,
 #                                restart it, run it in the foreground
+#   banditshell try [worktree]  run a worktree on the live session in place of
+#                                the checkout; bare, the one you are standing in,
+#                                else every worktree and which one is live
+#   banditshell back             the checkout again, after try
 #   banditshell log [args]       the running shell's log
 #   banditshell doctor           repair bin/, the helpers and ~/bin/banditshell,
 #                                then report quickshell, dkms and failed units
@@ -106,13 +110,101 @@ instance_of() {
     return 1
 }
 
+worktree_list() {
+    git -C "$SHELL_DIR" worktree list --porcelain 2>/dev/null | awk '
+        /^worktree / { path = substr($0, 10); branch = "(detached)" }
+        /^branch / { branch = substr($0, 8); sub(/^refs\/heads\//, "", branch) }
+        /^$/ && path != "" { print path "\t" branch; path = "" }
+        END { if (path != "") print path "\t" branch }
+    '
+}
+
+main_dir() {
+    local path branch
+    if IFS=$'\t' read -r path branch < <(worktree_list) && [ -n "$path" ]; then
+        echo "$path"
+    else
+        echo "$SHELL_DIR"
+    fi
+}
+
+branch_of() {
+    local path branch
+    while IFS=$'\t' read -r path branch; do
+        [ "$path" = "$1" ] && { echo "$branch"; return 0; }
+    done < <(worktree_list)
+    echo "${1##*/}"
+}
+
+known_shells() {
+    printf '%s/shell.qml\n' "$SHELL_DIR" "$BACKUP"
+    worktree_list | cut -f1 | sed 's|$|/shell.qml|'
+}
+
 shell_pids() {
-    local pid path
+    local pid path known
+    known=$(known_shells)
     while IFS=$'\t' read -r pid path; do
-        case "$path" in
-        "$SHELL_DIR/shell.qml" | "$BACKUP/shell.qml") echo "$pid" ;;
-        esac
+        if grep -qxF -- "$path" <<<"$known"; then
+            echo "$pid"
+        fi
     done < <(list_instances)
+}
+
+live_dir() {
+    local pid path known
+    known=$(known_shells)
+    while IFS=$'\t' read -r pid path; do
+        if grep -qxF -- "$path" <<<"$known"; then
+            echo "${path%/shell.qml}"
+            return 0
+        fi
+    done < <(list_instances)
+    return 1
+}
+
+live_worktree() {
+    local live
+    live=$(live_dir) || return 1
+    [ "$live" != "$(main_dir)" ] && [ "$live" != "$BACKUP" ] || return 1
+    echo "$live"
+}
+
+match_worktree() {
+    local want="$1" home path branch
+    [ -n "$want" ] || return 1
+    home=$(main_dir)
+    if [ -d "$want" ]; then
+        want=$(git -C "$want" rev-parse --show-toplevel 2>/dev/null || echo "$want")
+    fi
+    while IFS=$'\t' read -r path branch; do
+        [ "$path" = "$home" ] && continue
+        case "$want" in
+        "$path" | "$branch" | "${path##*/}") echo "$path"; return 0 ;;
+        esac
+    done < <(worktree_list)
+    return 1
+}
+
+pick_worktree() {
+    if [ -n "$1" ]; then
+        match_worktree "$1"
+    else
+        match_worktree "$(git rev-parse --show-toplevel 2>/dev/null || true)" || match_worktree "$SHELL_DIR"
+    fi
+}
+
+list_worktrees() {
+    local live base path branch mark ahead changed
+    live=$(live_dir || true)
+    base=$(branch_of "$(main_dir)")
+    while IFS=$'\t' read -r path branch; do
+        mark=" "
+        [ "$path" = "$live" ] && mark="*"
+        ahead=$(git -C "$path" rev-list --count "$base..HEAD" 2>/dev/null || echo 0)
+        changed=$(git -C "$path" status --porcelain 2>/dev/null | wc -l)
+        printf '%s %-28s +%-3s %3s changed  %s\n' "$mark" "$branch" "$ahead" "$changed" "$path"
+    done < <(worktree_list)
 }
 
 resolve_target() {
@@ -234,6 +326,33 @@ stop_shell() {
         tries=$((tries + 1))
     done
     return 0
+}
+
+start_checkout() {
+    ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
+    if launch "$SHELL_DIR"; then
+        refresh_backup
+        echo "$1"
+    else
+        start_backup || exit 1
+        echo "running from backup - the checkout itself failed to load (errors: $FAILED_LOG)" >&2
+        exit 1
+    fi
+}
+
+try_worktree() {
+    local target="$1" name
+    name=$(branch_of "$target")
+    (SHELL_DIR="$target" && ensure_built) || complain "$name: helpers not built, trying it anyway (run: banditshell build in it)"
+    stop_shell || true
+    if launch "$target"; then
+        echo "trying $name - banditshell back to return"
+        return 0
+    fi
+    complain "$name failed to load - back on the checkout (errors: $FAILED_LOG)"
+    SHELL_DIR=$(main_dir)
+    start_checkout "back on $(branch_of "$SHELL_DIR")"
+    exit 1
 }
 
 usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
@@ -741,15 +860,7 @@ shift || true
 case "$cmd" in
 start)
     running && { echo "already running"; exit 0; }
-    ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
-    if launch "$SHELL_DIR"; then
-        refresh_backup
-        echo "started"
-    else
-        start_backup || exit 1
-        echo "running from backup - the checkout itself failed to load (errors: $FAILED_LOG)" >&2
-        exit 1
-    fi
+    start_checkout "started"
     ;;
 stop)
     if stop_shell; then
@@ -759,23 +870,36 @@ stop)
     fi
     ;;
 restart)
-    stop_shell || true
-    ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
-    if launch "$SHELL_DIR"; then
-        refresh_backup
-        echo "restarted"
-    else
-        start_backup || exit 1
-        echo "running from backup - the checkout itself failed to load (errors: $FAILED_LOG)" >&2
-        exit 1
+    if trial=$(live_worktree); then
+        try_worktree "$trial"
+        exit 0
     fi
+    stop_shell || true
+    start_checkout "restarted"
+    ;;
+try)
+    if ! target=$(pick_worktree "${1:-}"); then
+        if [ -n "${1:-}" ]; then
+            echo "banditshell: no worktree called $1" >&2
+            list_worktrees >&2
+            exit 2
+        fi
+        list_worktrees
+        exit 0
+    fi
+    try_worktree "$target"
+    ;;
+back)
+    stop_shell || true
+    SHELL_DIR=$(main_dir)
+    start_checkout "back on $(branch_of "$SHELL_DIR")"
     ;;
 run)
     cd "$HOME" || exit 1
     exec qs -p "$SHELL_DIR"
     ;;
 log)
-    exec qs -p "$SHELL_DIR" log "$@"
+    exec qs -p "$(live_dir || echo "$SHELL_DIR")" log "$@"
     ;;
 doctor)
     if ensure_built; then

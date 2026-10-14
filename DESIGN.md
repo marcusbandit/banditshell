@@ -1075,6 +1075,8 @@ already known to work.
 
 ```
 banditshell start|stop|restart|run|log
+banditshell try [worktree]|back    a worktree on the live session, and the
+                                   checkout again; restart keeps the worktree
 banditshell toggle panel <name> [screen]|border|wallpaper
                                   |sidebar [screen|all]|output|tablet [caller]
                                   |tablet lid [caller]|volume mute
