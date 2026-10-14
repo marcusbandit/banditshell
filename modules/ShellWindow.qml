@@ -282,6 +282,13 @@ PanelWindow {
                     smooth: b.smooth
                 })) : []
 
+        WallpaperCover {
+            anchors.fill: parent
+
+            output: win.screen?.name ?? ""
+            wanted: wallpaperLayer.open
+        }
+
         Chassis {
             id: chassis
 

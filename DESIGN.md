@@ -445,6 +445,12 @@ banditshell/
 │   │                            the two of them travel in (802.1X)
 │   ├── AspectMark.qml           two rectangles: the screen as an outline, the
 │   │                            picture solid inside it, both fitted to one box
+│   ├── DropShadow.qml           the soft shadow under a floating thing, drawn
+│   │                            from its shape rather than its pixels, so it
+│   │                            costs nothing when the thing resizes every frame
+│   ├── FloatingTooltip.qml      a plain label floating above whatever it is
+│   │                            dropped into, after the tooltip delay; for
+│   │                            surfaces with no chassis to melt a tip out of
 │   ├── PathField.qml            a MenuRow until you press it, then a place to
 │   │                            type; the keyboard is claimed on the edit, not
 │   │                            on being visible
@@ -508,7 +514,8 @@ banditshell/
 │   │                            full-brightness flash - never runs at
 │   │                            restart
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
-│   │                            what kind each file is, and a poster frame per video
+│   │                            what kind each file is, its size, the colour
+│   │                            groups it falls in, and a poster frame per video
 │   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
@@ -661,8 +668,8 @@ banditshell/
 │   │                            the bars; while streaming a smaller capsule that
 │   │                            floats below the edge instead of melting out of it
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
-│   ├── WallpaperWindow.qml      background layer, below every window; two slots
-│   │                            that cross-fade, motion only on an empty workspace
+│   ├── WallpaperWindow.qml      background layer, below every window; a
+│   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field over everything installed
@@ -714,9 +721,26 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
-│   │   └── WallpaperPicker.qml  no panel at all: the wallpaper you are on as a
-│   │                            half-monitor hero, the rest stacked off the
-│   │                            right edge, the hero live on the real desktop
+│   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
+│   │   │                        you are on as a hero 30% of the height, the
+│   │   │                        rest cropped to strips either side that never
+│   │   │                        overlap, the row held to 80% of the width and
+│   │   │                        collapsing smaller toward its ends. Colour
+│   │   │                        swatches and a `/` search above it, the name,
+│   │   │                        size, kind and the actions below, each on a
+│   │   │                        capsule. While it is up the desktop's
+│   │   │                        wallpaper covers the windows (WallpaperCover),
+│   │   │                        so the pick is seen as it will look;
+│   │   │                        everything but the picker is dimmed by a
+│   │   │                        third, and the cards and capsules cast
+│   │   │                        shadows. A focus ring only after an arrow key
+│   │   ├── WallpaperCover.qml   the wallpaper over the windows while the picker
+│   │   │                        is up, under the chassis: it blooms in from the
+│   │   │                        bottom edge through the reveal blob once the
+│   │   │                        picture is ready, and closes the same way
+│   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
+│   │                            that cross-fade through the reveal blob; the
+│   │                            wallpaper window and the picker share it
 │   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── settings/                the page, always a real window of its own, shaped
 │   │   │                        like a phone's settings app: a list of sections and
@@ -854,6 +878,9 @@ banditshell/
 │   │                            bin/banditshell's own `--help` block, so there is
 │   │                            no second list of verbs to fall out of date
 │   ├── palette.py               a wallpaper's dominant colours
+│   ├── wallpaper-colours.py     which colour groups each wallpaper falls in:
+│   │                            one hue if enough of it is vivid, black or white
+│   │                            if it is dark or light; cached by file
 │   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and
@@ -1076,7 +1103,11 @@ already known to work.
 ```
 banditshell start|stop|restart|run|log
 banditshell try [worktree]|back    a worktree on the live session, and the
-                                   checkout again; restart keeps the worktree
+                                   checkout again; restart keeps the worktree.
+                                   A worktree is its branch, its number in the
+                                   list or any unique part of its name; bare
+                                   takes the one you are in or the only one,
+                                   else asks
 banditshell toggle panel <name> [screen]|border|wallpaper
                                   |sidebar [screen|all]|output|tablet [caller]
                                   |tablet lid [caller]|volume mute
@@ -1092,7 +1123,7 @@ banditshell set border [on|off]|wallpaper [on|off]
                                   |theme [name]|penmap rect <x> <y> <w> <h>
                                   |<key> <value>       the shell's config
 banditshell get <key>|theme
-banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
+banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes|worktree
 banditshell status [thing]         bare, what the shell thinks the compositor said
 banditshell dispatch <target> <action> [args...]
                                    the bespoke tail: timer start <duration>

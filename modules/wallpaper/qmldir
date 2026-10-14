@@ -1,3 +1,5 @@
 module qs.modules.wallpaper
+WallpaperCover 1.0 WallpaperCover.qml
 WallpaperPicker 1.0 WallpaperPicker.qml
 WallpaperSource 1.0 WallpaperSource.qml
+WallpaperView 1.0 WallpaperView.qml

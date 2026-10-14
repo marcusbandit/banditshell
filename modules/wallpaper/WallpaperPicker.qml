@@ -20,34 +20,183 @@ Item {
 
     readonly property bool predicted: !root.showAll && root.fitted.length > 0
 
-    readonly property var entries: root.predicted ? root.fitted : Wallpaper.available
+    readonly property var shelf: root.predicted ? root.fitted : Wallpaper.available
+
+    property string colour: ""
+    property string query: ""
+    property bool searching: false
+
+    readonly property var entries: root.shelf.filter(path => root.matches(path))
+
+    readonly property var swatches: [
+        {
+            name: "red",
+            colour: "#e5484d"
+        },
+        {
+            name: "orange",
+            colour: "#f76b15"
+        },
+        {
+            name: "yellow",
+            colour: "#ffc53d"
+        },
+        {
+            name: "green",
+            colour: "#30a46c"
+        },
+        {
+            name: "blue",
+            colour: "#3e63dd"
+        },
+        {
+            name: "purple",
+            colour: "#8e4ec6"
+        },
+        {
+            name: "pink",
+            colour: "#d6409f"
+        },
+        {
+            name: "black",
+            colour: "#111113"
+        },
+        {
+            name: "white",
+            colour: "#eeeef0"
+        }
+    ]
+
+    readonly property var offered: root.swatches.filter(swatch => root.countOf(swatch.name) > 0)
+
+    function countOf(colour: string): int {
+        return root.shelf.filter(path => Wallpaper.coloursOf(path).indexOf(colour) >= 0).length;
+    }
+
+    function titleOf(path: string): string {
+        const file = Wallpaper.nameOf(path);
+        const dot = file.lastIndexOf(".");
+        return dot > 0 ? file.slice(0, dot) : file;
+    }
+
+    function matches(path: string): bool {
+        if (root.colour && Wallpaper.coloursOf(path).indexOf(root.colour) < 0)
+            return false;
+        return !root.query || root.titleOf(path).toLowerCase().indexOf(root.query.toLowerCase()) >= 0;
+    }
+
+    function keepPlace(change: var): void {
+        const kept = strip.currentPath;
+        change();
+        strip.jumpTo(Math.max(0, root.entries.indexOf(kept)));
+        if (strip.currentPath !== kept)
+            root.touched = true;
+    }
+
+    function pickColour(colour: string): void {
+        root.keepPlace(() => {
+            root.colour = root.colour === colour ? "" : colour;
+        });
+    }
+
+    function startSearch(): void {
+        root.searching = true;
+        Qt.callLater(query.forceActiveFocus);
+    }
+
+    function stopSearch(): void {
+        root.searching = false;
+        query.text = "";
+        if (root.shown)
+            Qt.callLater(root.forceActiveFocus);
+    }
+
+    function kindWords(path: string): string {
+        const kind = Wallpaper.kindOf(path);
+        if (kind === "motion")
+            return "animated";
+        if (kind === "video")
+            return "video";
+        if (kind === "audio")
+            return "sound only";
+        return Wallpaper.isFrozen(path) ? "animated SVG, shown still" : "picture";
+    }
+
+    function detailsOf(path: string): string {
+        const parts = [];
+        const size = Wallpaper.sizeOf(path);
+        if (size.width > 0)
+            parts.push(`${size.width} x ${size.height}`);
+        parts.push(root.kindWords(path));
+        parts.push(`${strip.centre + 1} of ${root.entries.length}`);
+        return parts.join("  ·  ");
+    }
+
+    readonly property string emptyWords: root.query ? `Nothing called "${root.query}"` : root.colour ? `No ${root.colour} wallpapers` : `Nothing in ${Wallpaper.dir}`
 
     readonly property real screenAspect: root.height > 0 ? root.width / root.height : 16 / 9
 
-    readonly property real heroHeight: Math.round(root.height * 0.5)
+    readonly property real heroHeight: Math.round(root.height * 0.3)
     readonly property real heroWidth: Math.round(root.heroHeight * root.screenAspect)
 
-    readonly property real pitch: Math.round(root.heroWidth * 0.16)
+    readonly property real pitch: Math.round(root.width * 0.08)
 
-    readonly property real nearScale: 0.92
+    readonly property real rowGap: Appearance.padding.large
+
+    readonly property real dimming: 0.35
+    readonly property real stripCentre: root.height - Appearance.sizes.border - Appearance.padding.huge - details.height - root.rowGap - root.heroHeight / 2
+
+    readonly property real gap: Appearance.padding.normal
+    readonly property real stripWidth: Math.round(root.width * 0.8)
+    readonly property real room: Math.max(0, (root.stripWidth - root.heroWidth - root.gap) / 2)
+
     readonly property real farScale: 0.62
 
-    readonly property real span: root.width + root.heroWidth * root.farScale + root.pitch
+    readonly property int maxSides: 5
+    readonly property int slots: Math.min(root.entries.length, 2 * root.maxSides + 2)
+    readonly property real sides: Math.min(root.maxSides, root.slots / 2 - 1)
 
-    readonly property int slots: Math.max(1, Math.min(root.entries.length - 1, Math.max(3, Math.round(root.span / root.pitch))))
+    function folded(t: real): real {
+        const beyond = Math.abs(t) - 0.5;
+        if (beyond <= 0 || root.sides <= 0)
+            return 0;
+        return 1 - Math.pow(1 - Math.min(beyond / root.sides, 1), 2);
+    }
+
+    function scaleAt(t: real): real {
+        return 1 - (1 - root.farScale) * root.folded(t);
+    }
+
+    function edgeAt(t: real): real {
+        const along = Math.min(Math.abs(t), 0.5) * (root.heroWidth + root.gap) + root.room * root.folded(t);
+        return t < 0 ? -along : along;
+    }
+
+    function gapAt(t: real): real {
+        return root.gap * root.scaleAt(t);
+    }
 
     readonly property real panelWidth: root.width
 
-    readonly property real riseDistance: root.height / 2 + root.heroHeight / 2 + Appearance.padding.large + caption.implicitHeight
+    readonly property real riseDistance: root.height - filters.y
 
     readonly property Item maskItem: catcher
 
     readonly property var blobs: []
 
+    property bool keyboardNavigating: false
+
+    function stepByKey(delta: int): void {
+        root.keyboardNavigating = true;
+        strip.step(delta);
+    }
+
     function show(): void {
         if (root.shown)
             return;
         root.shown = true;
+        root.keyboardNavigating = false;
+        root.touched = false;
 
         Wallpaper.refresh();
 
@@ -61,13 +210,13 @@ Item {
         root.showAll = worn !== "" && root.fitted.indexOf(worn) < 0;
 
         strip.jumpTo(Math.max(0, root.entries.indexOf(worn)));
-        root.settled = strip.goal;
     }
 
-    property real settled: -1
+    property bool touched: false
+    property bool accepted: false
 
     function resettle(): void {
-        if (root.shown && strip.goal === root.settled)
+        if (root.shown && !root.touched)
             root.settle();
     }
 
@@ -89,15 +238,18 @@ Item {
         root.commit();
         root.shown = false;
         root.chosenAt = null;
+        root.accepted = false;
 
         root.everywhere = false;
         root.showAll = false;
+        root.colour = "";
+        root.stopSearch();
     }
 
     Component.onDestruction: Wallpaper.clearPreview(root.screen)
 
     function commit(): void {
-        if (strip.goal === root.settled) {
+        if (!root.touched && !root.accepted) {
             Wallpaper.clearPreview(root.screen);
             return;
         }
@@ -138,6 +290,7 @@ Item {
 
     function acceptAt(at: var): void {
         root.chosenAt = at;
+        root.accepted = true;
         root.hide();
     }
 
@@ -152,11 +305,18 @@ Item {
         return Wallpaper.isFrozen(path) ? "motion_photos_off" : "";
     }
 
-    Keys.onLeftPressed: strip.step(-1)
-    Keys.onRightPressed: strip.step(1)
+    Keys.onLeftPressed: root.stepByKey(-1)
+    Keys.onRightPressed: root.stepByKey(1)
 
     Keys.onReturnPressed: root.accept(null)
     Keys.onEnterPressed: root.accept(null)
+
+    Keys.onPressed: event => {
+        if (event.key === Qt.Key_Slash && !root.searching) {
+            root.startSearch();
+            event.accepted = true;
+        }
+    }
 
     property bool dragging: false
     property real dragProgress: 0
@@ -186,6 +346,13 @@ Item {
         epsilon: 0.005
     }
 
+    Rectangle {
+        anchors.fill: parent
+        color: "black"
+        opacity: root.dimming * root.revealed
+        visible: opacity > 0
+    }
+
     MouseArea {
         id: catcher
 
@@ -203,7 +370,7 @@ Item {
         y: (1 - root.revealed) * root.riseDistance
         visible: root.revealed > 0.001
 
-        PathView {
+        Item {
             id: strip
 
             readonly property string currentPath: root.entries[strip.centre] ?? ""
@@ -211,6 +378,10 @@ Item {
             property real scrubSpent: 0
 
             property real goal: 0
+            property bool placing: false
+
+            onGoalChanged: if (!strip.placing)
+                root.touched = true
 
             Follow {
                 id: glide
@@ -226,61 +397,32 @@ Item {
                 return n ? ((i % n) + n) % n : 0;
             }
 
-            function wrapReal(x: real): real {
-                const n = root.entries.length;
-                return n ? ((x % n) + n) % n : 0;
-            }
-
-            function shortest(i: int): int {
-                const n = root.entries.length;
-                if (!n)
-                    return 0;
-                let d = strip.wrapped(i - strip.centre);
-                return d > n / 2 ? d - n : d;
-            }
-
             function step(delta: int): void {
 
                 strip.goal = Math.round(strip.goal) + delta;
             }
 
             function jumpTo(i: int): void {
+                strip.placing = true;
                 strip.goal = strip.wrapped(i);
                 glide.value = strip.goal;
+                strip.placing = false;
             }
 
-            function place(): void {
-                strip.offset = strip.wrapReal(root.slots / 2 - glide.value);
-            }
-
-            Connections {
-                target: glide
-
-                function onValueChanged(): void {
-                    strip.place();
+            function cardAt(x: real, y: real): Item {
+                for (let i = 0; i < cards.count; i++) {
+                    const card = cards.itemAt(i);
+                    if (card && card.visible && x >= card.x && x < card.x + card.width && y >= card.y && y < card.y + card.height)
+                        return card;
                 }
+                return null;
             }
-
-            Connections {
-                target: root
-
-                function onSlotsChanged(): void {
-                    strip.place();
-                }
-            }
-
-            Component.onCompleted: strip.place()
 
             readonly property int centre: strip.wrapped(Math.round(glide.value))
 
-            anchors.fill: parent
-
-            model: root.entries
-            pathItemCount: root.slots
-
-            highlightRangeMode: PathView.NoHighlightRange
-            snapMode: PathView.NoSnap
-            interactive: false
+            y: root.stripCentre - root.heroHeight / 2
+            width: parent.width
+            height: root.heroHeight
 
             function scrub(dx: real): void {
 
@@ -310,80 +452,6 @@ Item {
                 return strip.notchStep;
             }
 
-            cacheItemCount: Math.max(0, Math.min(root.entries.length, 40) - root.slots)
-
-            path: Path {
-                id: line
-
-                readonly property real span: root.slots * root.pitch
-                readonly property real cy: strip.height / 2
-                readonly property real cx: strip.width / 2
-
-                startX: line.cx - line.span / 2
-                startY: line.cy
-
-                PathAttribute {
-                    name: "cardScale"
-                    value: root.farScale
-                }
-                PathAttribute {
-                    name: "cardZ"
-                    value: 0
-                }
-
-                PathLine {
-                    x: line.cx - root.pitch
-                    y: line.cy
-                }
-                PathAttribute {
-                    name: "cardScale"
-                    value: root.nearScale
-                }
-                PathAttribute {
-                    name: "cardZ"
-                    value: 1
-                }
-
-                PathLine {
-                    x: line.cx
-                    y: line.cy
-                }
-                PathAttribute {
-                    name: "cardScale"
-                    value: 1
-                }
-                PathAttribute {
-                    name: "cardZ"
-                    value: 2
-                }
-
-                PathLine {
-                    x: line.cx + root.pitch
-                    y: line.cy
-                }
-                PathAttribute {
-                    name: "cardScale"
-                    value: root.nearScale
-                }
-                PathAttribute {
-                    name: "cardZ"
-                    value: 1
-                }
-
-                PathLine {
-                    x: line.cx + line.span / 2
-                    y: line.cy
-                }
-                PathAttribute {
-                    name: "cardScale"
-                    value: root.farScale
-                }
-                PathAttribute {
-                    name: "cardZ"
-                    value: 0
-                }
-            }
-
             onCurrentPathChanged: settle.restart()
 
             Timer {
@@ -397,54 +465,79 @@ Item {
                 }
             }
 
-            delegate: Item {
-                id: card
+            Repeater {
+                id: cards
 
-                required property string modelData
-                required property int index
+                model: root.slots
 
-                readonly property bool centred: card.index === strip.centre
+                Item {
+                    id: card
 
-                width: root.heroWidth
-                height: root.heroHeight
+                    required property int index
 
-                scale: card.PathView.cardScale ?? root.farScale
-                z: card.PathView.cardZ ?? 0
+                    readonly property real offset: {
+                        const m = root.slots;
+                        return (((card.index - glide.value + m / 2) % m) + m) % m - m / 2;
+                    }
+                    readonly property int entry: Math.round(glide.value + card.offset)
+                    readonly property string path: root.entries[strip.wrapped(card.entry)] ?? ""
 
-                SquircleRect {
-                    anchors.fill: parent
-                    radius: Appearance.rounding.normal
-                    color: Appearance.colour.fill
+                    readonly property real leftEdge: root.edgeAt(card.offset - 0.5) + root.gapAt(card.offset - 0.5) / 2
+                    readonly property real rightEdge: root.edgeAt(card.offset + 0.5) - root.gapAt(card.offset + 0.5) / 2
+
+                    x: strip.width / 2 + card.leftEdge
+                    y: (strip.height - card.height) / 2
+                    width: Math.max(0, card.rightEdge - card.leftEdge)
+                    height: root.heroHeight * root.scaleAt(card.offset)
+                    visible: card.width >= 1
+
+                    DropShadow {
+                        anchors.fill: parent
+                        radius: Math.min(Appearance.rounding.normal, card.width / 2)
+                        opacity: Math.min(1, card.width / Appearance.padding.huge)
+                    }
+
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colour.fill
+                        visible: !face.ready
+                    }
+
+                    SquircleImage {
+                        id: face
+
+                        anchors.fill: parent
+                        radius: Appearance.rounding.normal
+                        source: Wallpaper.faceOf(card.path)
+                        fillMode: Image.PreserveAspectCrop
+                        decodeWidth: root.heroWidth
+                        decodeHeight: root.heroHeight
+                    }
+
+                    Button {
+                        id: badge
+
+                        anchors.right: parent.right
+                        anchors.bottom: parent.bottom
+                        anchors.margins: Appearance.padding.small
+
+                        visible: !!root.badgeFor(card.path) && card.width >= badge.width + 2 * Appearance.padding.small
+                        interactive: false
+                        paint: Wallpaper.isFrozen(card.path) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
+                        icon: root.badgeFor(card.path)
+                        iconFill: Wallpaper.isFrozen(card.path) ? 0 : 1
+                    }
+
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.normal
+                        color: "transparent"
+                        stroke: Appearance.colour.accent
+                        strokeWidth: Appearance.font.stem * 2
+                        visible: root.keyboardNavigating && card.entry === Math.round(strip.goal)
+                    }
                 }
-
-                SquircleImage {
-                    anchors.fill: parent
-                    radius: Appearance.rounding.normal
-                    source: Wallpaper.faceOf(card.modelData)
-                    fillMode: Image.PreserveAspectCrop
-                }
-
-                Button {
-                    anchors.right: parent.right
-                    anchors.bottom: parent.bottom
-                    anchors.margins: Appearance.padding.small
-
-                    visible: !!root.badgeFor(card.modelData)
-                    interactive: false
-                    paint: Wallpaper.isFrozen(card.modelData) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
-                    icon: root.badgeFor(card.modelData)
-                    iconFill: Wallpaper.isFrozen(card.modelData) ? 0 : 1
-                }
-
-                SquircleRect {
-                    anchors.fill: parent
-                    radius: Appearance.rounding.normal
-                    color: "transparent"
-                    stroke: Appearance.colour.accent
-                    strokeWidth: Appearance.font.stem * 2
-                    visible: card.modelData === Wallpaper.currentOn(root.screen)
-                }
-
             }
         }
 
@@ -464,6 +557,7 @@ Item {
             property real lastAt: 0
 
             onPressed: mouse => {
+                root.keyboardNavigating = false;
                 swipe.from = glide.value;
                 swipe.fromX = mouse.x;
                 swipe.lastX = mouse.x;
@@ -493,16 +587,16 @@ Item {
             onReleased: mouse => {
                 if (!swipe.dragging) {
 
-                    const i = strip.indexAt(mouse.x, mouse.y);
-                    if (i < 0) {
+                    const hit = strip.cardAt(mouse.x, mouse.y - strip.y);
+                    if (!hit) {
                         root.hide();
                         return;
                     }
-                    if (i === strip.centre)
+                    if (hit.entry === Math.round(glide.value))
 
                         root.acceptAt(swipe.mapToItem(root, mouse.x, mouse.y));
                     else
-                        strip.step(strip.shortest(i));
+                        strip.goal = hit.entry;
                     return;
                 }
 
@@ -519,6 +613,7 @@ Item {
 
             WheelHandler {
                 onWheel: event => {
+                    root.keyboardNavigating = false;
 
                     if (scroll.feed(event))
                         return;
@@ -531,62 +626,333 @@ Item {
             }
         }
 
+        HoverHandler {
+            id: pointer
+
+            property point resting: Qt.point(-1, -1)
+
+            onPointChanged: {
+                const at = pointer.point.position;
+                if (at.x === pointer.resting.x && at.y === pointer.resting.y)
+                    return;
+                pointer.resting = at;
+                root.keyboardNavigating = false;
+            }
+        }
+
         ScrollGesture {
             id: scroll
 
-            onBegan: strip.scrubSpent = 0
+            onBegan: {
+                root.keyboardNavigating = false;
+                strip.scrubSpent = 0;
+            }
             onMoved: dx => strip.scrub(dx)
             onEnded: strip.coast(scroll.vx)
         }
 
-        Row {
-            id: caption
+        Item {
+            id: filters
 
             anchors.horizontalCenter: parent.horizontalCenter
-            y: strip.height / 2 + root.heroHeight / 2 + Appearance.padding.large
-            spacing: Appearance.padding.normal
+            y: strip.y - root.rowGap - filters.height
+            width: filterRow.implicitWidth + Appearance.padding.small * 2
+            height: filterRow.implicitHeight + Appearance.padding.small * 2
 
-            AspectMark {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: !!strip.currentPath
-                aspect: Wallpaper.aspectOf(strip.currentPath)
-                reference: root.screenAspect
-                fits: Wallpaper.fits(strip.currentPath, root.screenAspect)
-
-                size: Appearance.font.size.small * 2
+            MouseArea {
+                anchors.fill: parent
             }
 
-            StyledText {
-                anchors.verticalCenter: parent.verticalCenter
-                text: strip.currentPath ? strip.currentPath.split("/").pop() : `nothing in ${Wallpaper.dir}`
-                color: Appearance.colour.text
+            DropShadow {
+                anchors.fill: parent
+                radius: height / 2
             }
 
-            Button {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: root.manyScreens
-                icon: root.everywhere ? "devices" : "monitor"
-                iconFill: root.everywhere ? 1 : 0
-                paint: root.everywhere ? Appearance.colour.accentFill : Appearance.colour.fillStrong
-                onClicked: root.everywhere = !root.everywhere
+            SquircleRect {
+                anchors.fill: parent
+                radius: height / 2
+                cornerPower: 2
+                color: Appearance.colour.surface
             }
 
-            Button {
-                anchors.verticalCenter: parent.verticalCenter
-                visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
-                icon: root.predicted ? "fit_screen" : "photo_library"
-                iconFill: root.predicted ? 1 : 0
-                paint: root.predicted ? Appearance.colour.accentFill : Appearance.colour.fillStrong
-                onClicked: root.showAll = !root.showAll
+            Row {
+                id: filterRow
+
+                anchors.centerIn: parent
+                spacing: Appearance.padding.small
+
+                Repeater {
+                    model: root.offered
+
+                    Item {
+                        id: swatch
+
+                        required property var modelData
+
+                        readonly property bool picked: root.colour === swatch.modelData.name
+
+                        anchors.verticalCenter: parent.verticalCenter
+                        width: Appearance.button.height(0)
+                        height: width
+
+                        SquircleRect {
+                            anchors.fill: parent
+                            radius: width / 2
+                            cornerPower: 2
+                            color: "transparent"
+                            stroke: Appearance.colour.text
+                            strokeWidth: Appearance.font.stem
+                            visible: swatch.picked
+                        }
+
+                        SquircleRect {
+                            anchors.centerIn: parent
+                            width: Math.round(parent.width * 0.6)
+                            height: width
+                            radius: width / 2
+                            cornerPower: 2
+                            color: swatch.modelData.colour
+                            stroke: Appearance.colour.textGhost
+                            strokeWidth: 1
+                            scale: tap.containsMouse ? 1.15 : 1
+
+                            Behavior on scale {
+                                NumberAnimation {
+                                    duration: Appearance.animation.fast
+                                }
+                            }
+                        }
+
+                        MouseArea {
+                            id: tap
+
+                            anchors.fill: parent
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: root.pickColour(swatch.modelData.name)
+                        }
+
+                        FloatingTooltip {
+                            text: swatch.picked ? "Show every colour" : `${swatch.modelData.name[0].toUpperCase()}${swatch.modelData.name.slice(1)} (${root.countOf(swatch.modelData.name)})`
+                            shown: tap.containsMouse
+                        }
+                    }
+                }
+
+                Button {
+                    id: searchButton
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    size: 0
+                    style: "text"
+                    icon: "search"
+                    iconFill: root.searching ? 1 : 0
+                    onClicked: root.searching ? root.stopSearch() : root.startSearch()
+
+                    FloatingTooltip {
+                        text: root.searching ? "Stop searching" : "Search by name   /"
+                        shown: searchButton.hovered
+                    }
+                }
+
+                Item {
+                    id: field
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.searching
+                    width: visible ? Math.round(root.heroWidth * 0.45) : 0
+                    height: Appearance.button.height(0)
+
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: height / 2
+                        cornerPower: 2
+                        color: Appearance.colour.fill
+                    }
+
+                    TextInput {
+                        id: query
+
+                        anchors.fill: parent
+                        anchors.leftMargin: Appearance.padding.normal
+                        anchors.rightMargin: Appearance.padding.normal
+                        verticalAlignment: TextInput.AlignVCenter
+
+                        font.family: Appearance.font.family
+                        font.pixelSize: Appearance.font.size.small
+                        renderType: Text.NativeRendering
+                        color: Appearance.colour.text
+                        selectionColor: Appearance.colour.accent
+                        selectedTextColor: Appearance.colour.accentText
+                        clip: true
+
+                        onTextChanged: root.keepPlace(() => {
+                            root.query = query.text;
+                        })
+
+                        Keys.onEscapePressed: event => {
+                            root.stopSearch();
+                            event.accepted = true;
+                        }
+                        Keys.onReturnPressed: root.forceActiveFocus()
+                        Keys.onEnterPressed: root.forceActiveFocus()
+
+                        StyledText {
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: !query.text
+                            text: "Search by name"
+                            color: Appearance.colour.textGhost
+                        }
+                    }
+                }
+            }
+        }
+
+        Item {
+            id: details
+
+            readonly property real inner: Appearance.padding.large + Appearance.padding.huge + Appearance.padding.small
+
+            anchors.horizontalCenter: parent.horizontalCenter
+            y: strip.y + strip.height + root.rowGap
+            width: Math.min(root.stripWidth, Math.max(root.heroWidth, about.implicitWidth + actions.implicitWidth + details.inner))
+            height: Math.max(about.implicitHeight, actions.implicitHeight) + Appearance.padding.small * 2
+
+            MouseArea {
+                anchors.fill: parent
             }
 
-            Button {
+            DropShadow {
+                anchors.fill: parent
+                radius: height / 2
+            }
+
+            SquircleRect {
+                anchors.fill: parent
+                radius: height / 2
+                cornerPower: 2
+                color: Appearance.colour.surface
+            }
+
+            Row {
+                id: about
+
+                anchors.left: parent.left
+                anchors.leftMargin: Appearance.padding.large
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !!root.badgeFor(strip.currentPath)
-                interactive: false
-                paint: Wallpaper.isFrozen(strip.currentPath) ? Appearance.colour.fillStrong : Appearance.colour.accentFill
-                icon: root.badgeFor(strip.currentPath)
-                iconFill: Wallpaper.isFrozen(strip.currentPath) ? 0 : 1
+                spacing: Appearance.padding.normal
+
+                AspectMark {
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: !!strip.currentPath
+                    aspect: Wallpaper.aspectOf(strip.currentPath)
+                    reference: root.screenAspect
+                    fits: Wallpaper.fits(strip.currentPath, root.screenAspect)
+
+                    size: Appearance.font.size.small * 2
+                }
+
+                Column {
+                    anchors.verticalCenter: parent.verticalCenter
+
+                    StyledText {
+                        width: Math.min(implicitWidth, root.stripWidth - actions.implicitWidth - details.inner - Appearance.font.size.small * 3)
+                        elide: Text.ElideRight
+                        text: strip.currentPath ? root.titleOf(strip.currentPath) : root.emptyWords
+                        color: Appearance.colour.text
+                    }
+
+                    StyledText {
+                        visible: !!strip.currentPath
+                        text: strip.currentPath ? root.detailsOf(strip.currentPath) : ""
+                        color: Appearance.colour.textDim
+                    }
+                }
+            }
+
+            Row {
+                id: actions
+
+                anchors.right: parent.right
+                anchors.rightMargin: Appearance.padding.small
+                anchors.verticalCenter: parent.verticalCenter
+                spacing: Appearance.padding.small
+
+                Button {
+                    id: shuffle
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.entries.length > 2
+                    size: 0
+                    style: "text"
+                    icon: "shuffle"
+                    onClicked: {
+                        const n = root.entries.length;
+                        strip.step(1 + Math.floor(Math.random() * (n - 1)));
+                    }
+
+                    FloatingTooltip {
+                        text: "Jump to a random wallpaper"
+                        shown: shuffle.hovered
+                    }
+                }
+
+                Button {
+                    id: shapes
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.fitted.length > 0 && root.fitted.length < Wallpaper.available.length
+                    size: 0
+                    checkable: true
+                    checked: root.predicted
+                    icon: "fit_screen"
+                    iconFill: root.predicted ? 1 : 0
+                    text: root.predicted ? "Fits this screen" : "Every shape"
+                    onToggled: root.keepPlace(() => {
+                        root.showAll = !root.showAll;
+                    })
+
+                    FloatingTooltip {
+                        text: root.predicted ? `Only the ${root.fitted.length} shaped like this screen; click for all ${Wallpaper.available.length}` : `All ${Wallpaper.available.length}, whatever their shape; click for the ${root.fitted.length} that fit`
+                        shown: shapes.hovered
+                    }
+                }
+
+                Button {
+                    id: scope
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    visible: root.manyScreens
+                    size: 0
+                    checkable: true
+                    checked: root.everywhere
+                    icon: root.everywhere ? "devices" : "monitor"
+                    iconFill: root.everywhere ? 1 : 0
+                    text: root.everywhere ? "Every screen" : "This screen"
+                    onToggled: root.everywhere = !root.everywhere
+
+                    FloatingTooltip {
+                        text: root.everywhere ? "Setting it on every screen; click for just this one" : "Setting it on this screen only; click for every screen"
+                        shown: scope.hovered
+                    }
+                }
+
+                Button {
+                    id: choose
+
+                    anchors.verticalCenter: parent.verticalCenter
+                    interactive: !!strip.currentPath
+                    size: 0
+                    style: "filled"
+                    icon: "check"
+                    text: "Set"
+                    onClicked: root.acceptAt(null)
+
+                    FloatingTooltip {
+                        text: "Set this wallpaper   Enter"
+                        shown: choose.hovered
+                    }
+                }
             }
         }
     }
