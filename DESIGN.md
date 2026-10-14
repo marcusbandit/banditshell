@@ -514,7 +514,8 @@ banditshell/
 │   │                            full-brightness flash - never runs at
 │   │                            restart
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
-│   │                            what kind each file is, and a poster frame per video
+│   │                            what kind each file is, its size, the colour
+│   │                            groups it falls in, and a poster frame per video
 │   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
@@ -860,6 +861,9 @@ banditshell/
 │   │                            bin/banditshell's own `--help` block, so there is
 │   │                            no second list of verbs to fall out of date
 │   ├── palette.py               a wallpaper's dominant colours
+│   ├── wallpaper-colours.py     which colour groups each wallpaper falls in:
+│   │                            one hue if enough of it is vivid, black or white
+│   │                            if it is dark or light; cached by file
 │   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and

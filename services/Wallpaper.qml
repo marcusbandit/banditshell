@@ -99,7 +99,56 @@ Singleton {
     property var shapes: ({})
 
     function aspectOf(path: string): real {
-        return root.shapes[path] ?? 0;
+        const shape = root.shapes[path];
+        return shape ? shape.width / shape.height : 0;
+    }
+
+    function sizeOf(path: string): size {
+        return root.shapes[path] ?? Qt.size(0, 0);
+    }
+
+    property var colours: ({})
+
+    readonly property string coloursCache: `${Config.cacheDir}/wallpaper-colours.json`
+
+    function coloursOf(path: string): var {
+        return root.colours[path] ?? [];
+    }
+
+    function measureColours(): void {
+        if (!root.available.length)
+            return;
+        if (colourer.running) {
+            colourer.again = true;
+            return;
+        }
+        colourer.command = ["python3", Quickshell.shellPath("scripts/wallpaper-colours.py"), root.coloursCache, ...root.available];
+        colourer.running = true;
+    }
+
+    Process {
+        id: colourer
+
+        property bool again: false
+
+        onExited: if (colourer.again) {
+            colourer.again = false;
+            root.measureColours();
+        }
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const out = {};
+                for (const line of text.trim().split("\n")) {
+                    const tab = line.indexOf("\t");
+                    if (tab <= 0)
+                        continue;
+                    const groups = line.slice(tab + 1).trim();
+                    out[line.slice(0, tab)] = groups ? groups.split(" ") : [];
+                }
+                root.colours = out;
+            }
+        }
     }
 
     function fits(path: string, screenAspect: real): bool {
@@ -167,7 +216,7 @@ done`, "sh", ...fresh];
                     const w = parseInt(wh[0], 10);
                     const h = parseInt(wh[1], 10);
                     if (w > 0 && h > 0)
-                        out[line.slice(0, tab)] = w / h;
+                        out[line.slice(0, tab)] = Qt.size(w, h);
                 }
                 root.shapes = out;
             }
@@ -448,6 +497,7 @@ done`, root.posterDir, ...videos];
                 root.makePosters();
                 root.findFrozen();
                 root.measureShapes();
+                root.measureColours();
                 root.reconcile();
             }
         }
