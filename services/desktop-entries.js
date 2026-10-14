@@ -1,7 +1,9 @@
 const ENTRY_HEADER = "[Desktop Entry]";
 const BUNDLE_MARK = "@@@";
 
-function unescapeValue(value) {
+const ESCAPES = { n: "\n", t: "\t", r: "\r", s: " ", "\\": "\\" };
+
+function unescapeValue(value, keepUnknown) {
     let out = "";
     for (let i = 0; i < value.length; i++) {
         if (value[i] !== "\\" || i === value.length - 1) {
@@ -9,7 +11,10 @@ function unescapeValue(value) {
             continue;
         }
         const c = value[++i];
-        out += c === "n" ? "\n" : c === "t" ? "\t" : c === "r" ? "\r" : c === "s" ? " " : c;
+        if (Object.prototype.hasOwnProperty.call(ESCAPES, c))
+            out += ESCAPES[c];
+        else
+            out += keepUnknown ? "\\" + c : c;
     }
     return out;
 }
@@ -65,9 +70,9 @@ function parseEntry(text) {
     return {
         type: keys.Type ?? "Application",
         name: unescapeValue(keys.Name ?? ""),
-        exec: keys.Exec ?? "",
-        tryExec: keys.TryExec ?? "",
-        icon: keys.Icon ?? "",
+        exec: unescapeValue(keys.Exec ?? "", true),
+        tryExec: unescapeValue(keys.TryExec ?? ""),
+        icon: unescapeValue(keys.Icon ?? ""),
         terminal: truthy(keys.Terminal),
         noDisplay: truthy(keys.NoDisplay),
         hidden: truthy(keys.Hidden),
@@ -197,19 +202,24 @@ function setHidden(text, hidden) {
     return lines.join("\n");
 }
 
-function oneLine(value) {
-    return String(value ?? "").replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+function escapeValue(value) {
+    return String(value ?? "")
+        .replace(/\\/g, "\\\\")
+        .replace(/\n/g, "\\n")
+        .replace(/\r/g, "\\r")
+        .replace(/\t/g, "\\t")
+        .replace(/^ +| +$/g, spaces => "\\s".repeat(spaces.length));
 }
 
 function autostartText(app) {
     const lines = [
         ENTRY_HEADER,
         "Type=Application",
-        `Name=${oneLine(app.name)}`,
-        `Exec=${oneLine(stripFieldCodes(app.exec))}`
+        `Name=${escapeValue(app.name)}`,
+        `Exec=${escapeValue(stripFieldCodes(app.exec))}`
     ];
     if (app.icon)
-        lines.push(`Icon=${oneLine(app.icon)}`);
+        lines.push(`Icon=${escapeValue(app.icon)}`);
     lines.push(`Terminal=${app.terminal ? "true" : "false"}`);
     lines.push("Hidden=false");
     return lines.join("\n") + "\n";
