@@ -181,15 +181,22 @@ test.describe("what would change", () => {
 
     test.it("compares a planned setting against its default until it was ever changed", () => {
         const w = world({ planned: { kbRate: 40 } });
-        const out = Restore.diff(copyOf({}, { kbDelay: 300, kbRate: 40, kbDelay2: 1, dnd: true }), w);
-        assert.deepStrictEqual(out.changes, [{ route: "planned", path: "", key: "dnd", from: false, to: true }]);
+        const out = Restore.diff(copyOf({}, { kbDelay: 300, kbRate: 40, kbDelay2: 1, customLayout: "orbit" }), w);
+        assert.deepStrictEqual(out.changes, [{ route: "planned", path: "", key: "customLayout", from: "", to: "orbit" }]);
         assert.deepStrictEqual(out.skipped, [{ key: "kbDelay2", why: "not a setting here" }]);
     });
 
     test.it("refuses a planned value of another kind", () => {
-        const out = Restore.diff(copyOf({}, { dnd: "yes", startup: {} }), world());
+        const out = Restore.diff(copyOf({}, { customLayout: 5, startup: {} }), world());
         assert.deepStrictEqual(out.changes, []);
         assert.strictEqual(out.skipped.length, 2);
+    });
+
+    test.it("refuses a value of another kind for a setting that has moved to config", () => {
+        assert.ok("dnd" in CONFIG_BACKED && !("dnd" in PLAN_DEFAULTS));
+        const out = Restore.diff(copyOf({ volume: { step: "big" } }, { dnd: "yes" }), world());
+        assert.deepStrictEqual(out.changes, []);
+        assert.deepStrictEqual(out.skipped.map(s => s.key), ["volume.step", "dnd"]);
     });
 
     test.it("sends a planned key that has since moved to config through its transform", () => {

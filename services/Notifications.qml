@@ -5,6 +5,8 @@ import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Notifications
 import qs.config
+import "quiet-hours.js" as QuietHours
+import "notification-rules.js" as Rules
 
 Singleton {
     id: root
@@ -26,6 +28,118 @@ Singleton {
     readonly property int maxHistory: Config.values.notifications.maxHistory
     readonly property int defaultTimeout: Config.values.notifications.timeout
     readonly property int maxPopups: Config.values.notifications.maxPopups
+
+    readonly property bool quiet: Config.values.notifications.quiet
+    readonly property double quietUntil: Config.values.notifications.quietUntil
+    readonly property bool letAlarms: Config.values.notifications.letAlarms
+    readonly property bool nightly: Config.values.notifications.nightly
+    readonly property string nightFrom: Config.values.notifications.nightFrom
+    readonly property string nightTo: Config.values.notifications.nightTo
+    readonly property var rules: Config.values.notifications.rules
+
+    readonly property string categoryPrefix: "x-banditshell."
+
+    property double stamp: Date.now()
+
+    readonly property bool nightHolding: root.nightly && QuietHours.nightlyActive(root.stamp, root.nightFrom, root.nightTo)
+
+    readonly property bool quieted: root.holdingAt(root.stamp)
+
+    readonly property string note: {
+        if (root.quiet && root.quietUntil > root.stamp)
+            return `until ${QuietHours.clockTime(root.quietUntil)} · still collects them`;
+        if (!root.quiet && root.nightHolding)
+            return `quiet until ${root.nightTo} · every night`;
+        return "still collects them";
+    }
+
+    readonly property string endsNote: root.quietUntil > Date.now() ? `until ${QuietHours.clockTime(root.quietUntil)}` : "until you turn it off"
+
+    function holdingAt(at: double): bool {
+        return QuietHours.holding({
+            quiet: root.quiet,
+            until: root.quietUntil,
+            nightly: root.nightly,
+            from: root.nightFrom,
+            to: root.nightTo
+        }, at);
+    }
+
+    function deadlineFor(choice: string): double {
+        return QuietHours.deadlineFor(choice, Date.now(), root.nightTo);
+    }
+
+    function endsLabel(until: double): string {
+        return QuietHours.endsLabel(until, Date.now(), root.nightTo);
+    }
+
+    function parseEnds(text: string): string {
+        return QuietHours.parseEnds(text);
+    }
+
+    function setQuiet(on: bool, ends: string): void {
+        const keep = root.quietUntil > Date.now() ? root.quietUntil : 0;
+        const until = !on ? 0 : ends ? root.deadlineFor(ends) : keep;
+        Config.setMany([["notifications.quiet", on], ["notifications.quietUntil", until]]);
+    }
+
+    function dropSpentDeadline(): void {
+        if (Config.loaded && root.quietUntil > 0 && (!root.quiet || root.quietUntil <= Date.now()))
+            Config.set("notifications.quietUntil", 0);
+    }
+
+    onQuietChanged: Qt.callLater(root.dropSpentDeadline)
+
+    Timer {
+        interval: root.quiet && root.quietUntil > 0 ? 1000 : 20000
+        repeat: true
+        running: Config.loaded && (root.nightly || (root.quiet && root.quietUntil > 0))
+        triggeredOnStart: true
+
+        onTriggered: {
+            root.stamp = Date.now();
+            if (root.quiet && root.quietUntil > 0 && root.stamp >= root.quietUntil)
+                Config.setMany([["notifications.quiet", false], ["notifications.quietUntil", 0]]);
+        }
+    }
+
+    function kindOf(entry: var): string {
+        const category = entry?.category ?? "";
+        return category.startsWith(root.categoryPrefix) ? category.slice(root.categoryPrefix.length) : "";
+    }
+
+    function categoryFor(kind: string): string {
+        return `${root.categoryPrefix}${kind}`;
+    }
+
+    function rulesFromList(list: var): var {
+        return Rules.fromList(list);
+    }
+
+    function ruleKeyFor(entry: var): string {
+        return Rules.keyFor(entry?.appName, entry?.desktopEntry, AppNotifications.appIdFor(entry));
+    }
+
+    function ruleFor(entry: var): var {
+        return Rules.ruleFor(root.rules, root.ruleKeyFor(entry));
+    }
+
+    function ruleAt(key: string): var {
+        return Rules.ruleFor(root.rules, key);
+    }
+
+    function setRule(key: string, changes: var): void {
+        Config.set("notifications.rules", Rules.withRule(root.rules, key, changes));
+    }
+
+    readonly property int candidateLimit: 12
+
+    readonly property var candidates: Rules.candidates(root.history.map(e => root.ruleKeyFor(e)), root.rules, root.candidateLimit)
+
+    function alert(kind: string): void {
+        if (!root.holdingAt(Date.now()))
+            AlertSounds.play(kind);
+    }
 
     property var pausedBy: []
 
@@ -247,11 +361,19 @@ Singleton {
             if (notification.transient)
                 root.history = root.history.filter(e => e !== entry);
 
-            const shown = [entry, ...root.popups];
-            root.popups = shown.slice(0, root.maxPopups);
-            for (const old of shown.slice(root.maxPopups))
-                root.expire(old);
+            const kind = root.kindOf(entry);
+            const held = root.holdingAt(Date.now()) && !(kind === "alarm" && root.letAlarms);
+            const rule = root.ruleFor(entry);
 
+            if (!held && rule.pop) {
+                const shown = [entry, ...root.popups];
+                root.popups = shown.slice(0, root.maxPopups);
+                for (const old of shown.slice(root.maxPopups))
+                    root.expire(old);
+            }
+
+            if (!held && rule.snd)
+                AlertSounds.play(AlertSounds.kinds.includes(kind) ? kind : "notification");
         }
     }
 

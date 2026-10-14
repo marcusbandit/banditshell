@@ -92,6 +92,13 @@ function diff(file, world) {
     for (const k of Object.keys(world.configBacked))
         rowKeyOf[world.configBacked[k]] = k;
 
+    function fitsKind(base, path, value) {
+        const kind = kindOf(base);
+        if ((kind === "boolean" || kind === "number" || kind === "string") && kindOf(value) !== kind)
+            return false;
+        return world.fits(path, value);
+    }
+
     function walk(base, over, path) {
         if (plain(base) && Object.keys(base).length > 0 && !world.opaque.includes(path)) {
             if (over !== undefined && !plain(over)) {
@@ -111,7 +118,7 @@ function diff(file, world) {
             skipped.push({ key: path, why: "passwords stay out of copies" });
             return;
         }
-        if (!world.fits(path, over)) {
+        if (!fitsKind(base, path, over)) {
             skipped.push({ key: path, why: CANNOT });
             return;
         }
@@ -142,7 +149,7 @@ function diff(file, world) {
             if (lookup(file.config, path) !== undefined)
                 continue;
             const to = world.transformWrite(k, value);
-            if (!world.fits(path, to)) {
+            if (!fitsKind(lookup(world.defaults, path), path, to)) {
                 skipped.push({ key: k, why: CANNOT });
                 continue;
             }

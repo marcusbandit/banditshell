@@ -1,6 +1,6 @@
 # Notification rules per app
 
-Status: needs-triage
+Status: done
 
 Row: Sound › Notifications › By app `rules` (pop, sound, lock screen per app).
 The list is kept in the panel's planned state.
@@ -12,3 +12,30 @@ The list is kept in the panel's planned state.
   `lock` is off.
 - Key `notifications.rules`: an object keyed by app id, opaque to the schema
   merge (add it to `Config.opaque`).
+
+## Built
+
+`notifications.rules` is an object keyed by app id, `{pop, snd, lock}`, in
+`Config.opaque`. Lookup is `services/notification-rules.js` (tested in
+`tests/notification-rules.test.js`) behind `Notifications.ruleFor(entry)`. The
+key is the desktop entry the sender resolves to, else its desktop-entry hint,
+else its lowercased app name (so `notify-send -a banditshell` is `banditshell`).
+An app with no rule pops, sounds and keeps its body off the lock screen.
+
+- Popup: `pop` off means the notification goes to history only.
+- Sound: `snd` off means no alert sound.
+- Lock screen: the lock screen showed no notifications at all, so there was
+  nothing to hide. I added `modules/lock/LockNotifications.qml`: the newest
+  three, as "app · summary", with the body only when the app's `lock` rule is
+  on, and "n more" beneath. It is under the password field in `LockFace`. This
+  is new on the lock screen; it does show titles by default.
+- `RulesWidget` reads and writes the config key. "Add" offers the apps that have
+  sent a notification (from history), skipping those with a rule; a new rule
+  starts as the defaults above so adding changes nothing until a switch is
+  flipped. Names come from the desktop entries.
+- An old planned list is converted to the keyed object once (transform on
+  `rules` in `SettingsState`).
+
+To check by a person: that the lock screen list looks right on the real lock
+(only photographed offscreen here), and whether titles on the lock screen by
+default are wanted.

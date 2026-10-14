@@ -1,4 +1,5 @@
 module qs.services
+singleton AlertSounds 1.0 AlertSounds.qml
 singleton AppIcons 1.0 AppIcons.qml
 singleton AppNotifications 1.0 AppNotifications.qml
 singleton Apps 1.0 Apps.qml
@@ -26,6 +27,7 @@ singleton Launching 1.0 Launching.qml
 singleton Lid 1.0 Lid.qml
 singleton Lock 1.0 Lock.qml
 singleton Media 1.0 Media.qml
+singleton Modes 1.0 Modes.qml
 singleton Monitors 1.0 Monitors.qml
 singleton NetworkEvents 1.0 NetworkEvents.qml
 singleton Network 1.0 Network.qml

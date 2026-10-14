@@ -130,6 +130,8 @@ Singleton {
     property int toastSerial: 0
 
     function drop(text: string, icon: string, action: var): void {
+        if (icon === "error")
+            Notifications.alert("error");
         root.toast = {
             text,
             icon: icon || "check",

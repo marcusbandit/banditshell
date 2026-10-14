@@ -11,16 +11,12 @@ Column {
 
     property var row: ({})
 
-    readonly property var list: SettingsState.planned.rules ?? []
+    readonly property var keys: Object.keys(Notifications.rules)
     readonly property var fields: [["pop", "popups"], ["snd", "sound"], ["lock", "lock screen"]]
     readonly property real column: 64
     property bool adding: false
 
     width: parent ? parent.width : 0
-
-    function save(next: var): void {
-        SettingsState.plan("rules", next);
-    }
 
     Item {
         width: root.width
@@ -46,21 +42,22 @@ Column {
     }
 
     Repeater {
-        model: root.list
+        model: root.keys
 
         delegate: SettingsRowFrame {
             id: rule
 
-            required property var modelData
-            required property int index
+            required property string modelData
+
+            readonly property var switches: Notifications.ruleAt(rule.modelData)
 
             width: root.width
             interactive: false
-            label: rule.modelData.name
+            label: Apps.nameFor(rule.modelData)
             onPointed: SettingsView.hovered = root.row
             lead: Component {
                 AppMark {
-                    spec: AppIcons.markFor(rule.modelData.id, "colour")
+                    spec: AppIcons.markFor(rule.modelData, "colour")
                     color: Appearance.colour.textDim
                 }
             }
@@ -80,14 +77,10 @@ Column {
 
                         Toggle {
                             anchors.centerIn: parent
-                            checked: !!rule.modelData[modelData[0]]
-                            onToggled: {
-                                const next = root.list.slice();
-                                const changed = Object.assign({}, rule.modelData);
-                                changed[modelData[0]] = !changed[modelData[0]];
-                                next[rule.index] = changed;
-                                root.save(next);
-                            }
+                            checked: rule.switches[modelData[0]]
+                            onToggled: Notifications.setRule(rule.modelData, {
+                                [modelData[0]]: !rule.switches[modelData[0]]
+                            })
                         }
                     }
                 }
@@ -106,11 +99,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             size: 0
             text: "Add"
-            onClicked: {
-                root.adding = !root.adding;
-                if (root.adding)
-                    Qt.callLater(picker.take);
-            }
+            onClicked: root.adding = !root.adding
         }
     }
 
@@ -118,19 +107,40 @@ Column {
         width: root.width
         open: root.adding
 
-        AppPicker {
-            id: picker
+        Column {
+            id: candidates
 
-            exclude: root.list.map(a => a.id)
-            onPicked: entry => {
-                root.save(root.list.concat([{
-                        id: entry.id,
-                        name: entry.name,
-                        pop: true,
-                        snd: false,
-                        lock: false
-                    }]));
-                root.adding = false;
+            width: parent ? parent.width : 0
+
+            Repeater {
+                model: Notifications.candidates
+
+                delegate: SettingsRowFrame {
+                    id: pick
+
+                    required property string modelData
+
+                    width: candidates.width
+                    label: Apps.nameFor(pick.modelData)
+                    detail: "sent a notification"
+                    onActivated: {
+                        Notifications.setRule(pick.modelData, {});
+                        root.adding = false;
+                    }
+                    lead: Component {
+                        AppMark {
+                            spec: AppIcons.markFor(pick.modelData, "colour")
+                            color: Appearance.colour.textDim
+                        }
+                    }
+                }
+            }
+
+            SettingsRowFrame {
+                width: candidates.width
+                visible: Notifications.candidates.length === 0
+                interactive: false
+                label: "No app has sent a notification yet"
             }
         }
     }

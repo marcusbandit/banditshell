@@ -234,6 +234,20 @@ Item {
                 color: Lock.failed ? Appearance.colour.accent : Appearance.colour.textFaint
                 opacity: verdict.text ? 1 : 0
             }
+
+            Item {
+                width: 1
+                height: Appearance.padding.huge
+                visible: notices.visible
+            }
+
+            LockNotifications {
+                id: notices
+
+                anchors.horizontalCenter: parent.horizontalCenter
+
+                width: Appearance.sizes.lockField
+            }
         }
     }
 }

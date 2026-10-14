@@ -4,6 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.services
+import qs.modules.settings
 import "cli.js" as Words
 import "settings/catalogue.js" as SettingsCatalogue
 
@@ -14,12 +15,30 @@ Scope {
 
     readonly property string bootsTheService: HyprConfig.configPath
 
+    readonly property bool bootsModes: Modes.loaded
+
     function penmapStatus(): string {
         const r = PenMap.region;
         const lock = PenMap.aspectLocked ? "locked" : "free";
         const pad = PenMap.padConnected ? "pad" : "no pad";
         const mode = PenMap.followWindow ? ", follow" : "";
         return `${Math.round(r.width)}x${Math.round(r.height)} at ${Math.round(r.x)},${Math.round(r.y)} on ${PenMap.monitorName || "no monitor"} (${lock}, ${pad}${mode})`;
+    }
+
+    function quietState(): string {
+        if (Notifications.quiet)
+            return `on ${Notifications.endsNote}`;
+        return Notifications.holdingAt(Date.now()) ? `on until ${Notifications.nightTo}, every night` : "off";
+    }
+
+    function setQuiet(on: bool, ends: string): string {
+        const label = ends ? Notifications.parseEnds(ends) : "";
+        if (ends && !label)
+            return `refused: ends how? (hour, evening, tomorrow or never; not ${ends})`;
+        if (!Config.writable)
+            return `refused: ${Config.path} has not been read, so nothing can be changed`;
+        Notifications.setQuiet(on, label);
+        return `quiet: ${root.quietState()}`;
     }
 
     function missing(screen: string): string {
@@ -463,6 +482,48 @@ Scope {
             const key = app.toLowerCase();
             const attended = e => e?.held && (e.appName ?? "").toLowerCase() === key;
             return Notifications.popups.some(attended) || Notifications.history.some(attended) ? "1" : "0";
+        }
+    }
+
+    IpcHandler {
+        target: "mode"
+
+        function list(): string {
+            return Words.columns(SettingsCatalogue.MODES.map(m => [m.id === Modes.current ? "*" : " ", m.id, m.detail]));
+        }
+
+        function choose(id: string): string {
+            if (!SettingsCatalogue.MODES.some(m => m.id === id))
+                return `refused: no such mode: ${id} (have: ${SettingsCatalogue.MODES.map(m => m.id).join(", ")})`;
+            if (!Config.writable)
+                return `refused: ${Config.path} has not been read, so nothing can be changed`;
+            SettingsState.setMode(id);
+            return `mode: ${Modes.current}`;
+        }
+
+        function status(): string {
+            const found = SettingsCatalogue.MODES.find(m => m.id === Modes.current);
+            return found ? `${found.id} (${found.detail})` : Modes.current;
+        }
+    }
+
+    IpcHandler {
+        target: "quiet"
+
+        function on(ends: string): string {
+            return root.setQuiet(true, ends);
+        }
+
+        function off(): string {
+            return root.setQuiet(false, "");
+        }
+
+        function toggle(ends: string): string {
+            return root.setQuiet(!Notifications.quiet, ends);
+        }
+
+        function status(): string {
+            return Words.columns([["quiet", root.quietState()], ["every night", Notifications.nightly ? `${Notifications.nightFrom} to ${Notifications.nightTo}` : "off"], ["alarms", Notifications.letAlarms ? "let through" : "held back"]]);
         }
     }
 

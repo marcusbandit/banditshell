@@ -168,7 +168,7 @@ const PAGES_SOURCE = {
                 { n: 79, icon: "history", label: "Remember", k: "notifHistory", kind: "step", min: 10, max: 500, step: 10, cfg: "notifications.maxHistory", fmt: v => `${v}`, kw: "notification history length" }
             ] },
             { t: "By app", rows: [
-                { n: 81, isNew: true, kind: "w", w: "rules", kw: "per-app notification rules" }
+                { n: 81, kind: "w", w: "rules", cfg: "notifications.rules", kw: "per-app notification rules" }
             ] }
         ]
     },
@@ -177,9 +177,9 @@ const PAGES_SOURCE = {
         status: s => s.v("alerts") ? `${s.v("alertSet")} alerts` : "alerts off",
         groups: [
             { t: "Alerts", rows: [
-                { n: 22, isNew: true, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", detail: "notifications · low battery · errors" },
-                { n: 22, isNew: true, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], dis: s => !s.v("alerts") },
-                { n: 22, isNew: true, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, dis: s => !s.v("alerts") }
+                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", detail: "notifications · low battery · errors" },
+                { n: 22, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], cfg: "sound.alertSet", dis: s => !s.v("alerts") },
+                { n: 22, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, cfg: "sound.alertVolume", dis: s => !s.v("alerts") }
             ] },
             { t: "Media", rows: [
                 { n: 82, icon: "swap_vert", label: "Wheel seeks", k: "wheelSeek", kind: "step", min: 0, max: 30, unit: " s", cfg: "media.wheelSeek", detail: s => s.v("wheelSeek") ? "per notch on the player" : "off", kw: "media controls scroll to seek" },
@@ -387,14 +387,14 @@ const PAGES_SOURCE = {
         status: s => s.v("mode") !== "none" ? s.v("mode") : "none",
         groups: [
             { rows: [
-                { n: [], isNew: true, kind: "w", w: "modes", kw: "modes focus work play stream sleep" }
+                { n: [], kind: "w", w: "modes", kw: "modes focus work play stream sleep" }
             ] },
             { t: "Do not disturb", rows: [
-                { n: 80, isNew: true, icon: "do_not_disturb_on", label: "Do not disturb", k: "dnd", kind: "toggle", detail: "still collects them", kw: "dnd focus", layer: [
-                    { n: 80, isNew: true, icon: "timer_off", label: "Ends", k: "dndUntil", kind: "choice", o: ["in an hour", "at 18:00", "tomorrow", "off by hand"] },
-                    { n: 80, isNew: true, icon: "alarm", label: "Let alarms through", k: "dndAlarms", kind: "toggle" }
+                { n: 80, icon: "do_not_disturb_on", label: "Do not disturb", k: "dnd", kind: "toggle", cfg: "notifications.quiet", detail: s => s.quietNote, kw: "dnd focus", layer: [
+                    { n: 80, icon: "timer_off", label: "Ends", k: "dndUntil", kind: "choice", o: ["in an hour", "at 18:00", "tomorrow", "off by hand"], cfg: "notifications.quietUntil", detail: s => s.quietEndsNote },
+                    { n: 80, icon: "alarm", label: "Let alarms through", k: "dndAlarms", kind: "toggle", cfg: "notifications.letAlarms" }
                 ] },
-                { n: 80, isNew: true, icon: "bedtime", label: "Every night", k: "dndNightly", kind: "toggle", detail: "22:00 to 07:30", kw: "do not disturb schedule" }
+                { n: 80, icon: "bedtime", label: "Every night", k: "dndNightly", kind: "toggle", cfg: "notifications.nightly", detail: s => s.nightWindow, kw: "do not disturb schedule" }
             ] }
         ]
     },
@@ -758,7 +758,7 @@ const CATS = [
             { k: "dndNightly", icon: "bedtime", label: "Every night" },
             { k: "breaks", icon: "self_improvement", label: "Breaks", det: s => s.v("breaks") ? `every ${s.v("breakEvery")} min` : "off" }
         ],
-        suggest: s => !s.v("dndNightly") ? { icon: "bedtime", label: "Go quiet every night", detail: "22:00 to 07:30", set: ["dndNightly", true] } : null,
+        suggest: s => !s.v("dndNightly") ? { icon: "bedtime", label: "Go quiet every night", detail: s.nightWindow, set: ["dndNightly", true] } : null,
         subs: ["modes", "clock", "screentime"] },
     { id: "input", name: "Input", icon: "keyboard",
         blurb: s => `${s.kbLayouts.map(l => l.code).join(" · ")} · ${s.v("pen") ? "pen on" : "pen off"}`,
