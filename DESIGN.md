@@ -668,8 +668,8 @@ banditshell/
 │   │                            the bars; while streaming a smaller capsule that
 │   │                            floats below the edge instead of melting out of it
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
-│   ├── WallpaperWindow.qml      background layer, below every window; two slots
-│   │                            that cross-fade, motion only on an empty workspace
+│   ├── WallpaperWindow.qml      background layer, below every window; a
+│   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field over everything installed
