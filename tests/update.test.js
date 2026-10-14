@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { report, explain, ago };")();
+const Update = new Function(src + "\nreturn { report, explain, setAside, ago };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -72,4 +72,10 @@ test("ago rounds to the unit a person reads", () => {
     assert.strictEqual(Update.ago(now - 3 * 3600000, now), "3h ago");
     assert.strictEqual(Update.ago(now - 2 * 24 * 3600000, now), "2d ago");
     assert.strictEqual(Update.ago(now + 60000, now), "just now");
+});
+
+test("edits set aside are named, and nothing set aside says nothing", () => {
+    assert.strictEqual(Update.setAside(""), "");
+    assert.strictEqual(Update.setAside(undefined), "");
+    assert.match(Update.setAside("scripts/zsh-completion.sh\tmodules/Bar.qml"), /zsh-completion\.sh, modules\/Bar\.qml were in the way/);
 });
