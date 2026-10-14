@@ -543,7 +543,7 @@ const PAGES_SOURCE = {
     },
     lock: {
         id: "lock", name: "Lock and idle", icon: "lock", preview: "lock",
-        status: s => `locks after ${s.v("idleLock")}`,
+        status: s => s.idleHandled ? "hypridle sets the timing" : s.v("idleLock") === "never" ? "never locks by itself" : `locks after ${s.v("idleLock")}`,
         groups: [
             { t: "Lock screen", rows: [
                 { n: 90, icon: "blur_on", label: "Blur", k: "lockBlur", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.blur", kw: "lock screen look" },
@@ -552,9 +552,9 @@ const PAGES_SOURCE = {
                 { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow", detail: "your password brings you back" }
             ] },
             { t: "When idle", rows: [
-                { n: 91, isNew: true, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], kw: "auto-lock idle" },
-                { n: 91, isNew: true, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], kw: "screen-off idle" },
-                { n: 91, isNew: true, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], detail: s => s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
+                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", detail: s => s.idleHandled ? "hypridle is handling this" : "", kw: "auto-lock idle" },
+                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", detail: s => s.idleHandled ? "hypridle is handling this" : "a playing video holds it off", kw: "screen-off idle" },
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", detail: s => s.idleHandled ? "hypridle is handling this" : s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
             ] }
         ]
     },

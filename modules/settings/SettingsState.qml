@@ -6,6 +6,7 @@ import Quickshell.Io
 import qs.config
 import qs.services
 import "catalogue.js" as Catalogue
+import "durations.js" as Durations
 import "screens.js" as Screens
 
 Singleton {
@@ -44,9 +45,6 @@ Singleton {
             lidBattery: "suspend",
             lidPlugged: "lock",
             lidDocked: "nothing",
-            idleLock: "5 min",
-            idleOff: "10 min",
-            idleSuspend: "30 min",
             defBrowser: "firefox",
             defFiles: "files",
             defTerm: "kitty",
@@ -116,6 +114,18 @@ Singleton {
             roleSpeakers: {
                 read: v => v,
                 write: v => v
+            },
+            idleLock: {
+                read: v => Durations.choiceFromMinutes(v),
+                write: v => Durations.minutesFromChoice(v)
+            },
+            idleOff: {
+                read: v => Durations.choiceFromMinutes(v),
+                write: v => Durations.minutesFromChoice(v)
+            },
+            idleSuspend: {
+                read: v => Durations.choiceFromMinutes(v),
+                write: v => Durations.minutesFromChoice(v)
             }
         })
 
@@ -198,6 +208,9 @@ Singleton {
             cloud: "clock.cloud",
             cloudSeconds: "clock.cloudSeconds",
             capHours: "usage.capHours",
+            idleLock: "idle.lock",
+            idleOff: "idle.screensOff",
+            idleSuspend: "idle.sleep",
             rightForward: "calendar.rightGoesForward",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
@@ -1085,6 +1098,8 @@ Singleton {
     }
 
     readonly property string usedLabel: root.minutesLabel(root.usedMinutes)
+
+    readonly property bool idleHandled: Idle.handledElsewhere
 
     readonly property var kbLayouts: (root.planned.layouts ?? []).length ? root.planned.layouts : root.detectedLayouts
     property var detectedLayouts: [{

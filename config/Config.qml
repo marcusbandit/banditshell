@@ -319,6 +319,12 @@ Singleton {
                 capHours: 10
             },
 
+            idle: {
+                lock: 5,
+                screensOff: 10,
+                sleep: 30
+            },
+
             notifications: {
 
                 timeout: 5000,
