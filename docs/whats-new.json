@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-11",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "notch.trackWidth in config.json no longer does anything, because the notch it sized is gone. The island that replaces it keeps its settings under island, and the new kernel check reads packages."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The notch at the top of the screen is now the island, a floating pill at the top centre. Opening an app, dictation, a finished download, a shell update and a new kernel all show up in it. Dictation no longer follows the focused window. Resting the pointer at the top centre still opens it, now with the clock, what is playing and anything still waiting for you."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Notifications can drop from the island instead of the top-right corner. Pick island under Sound › Notifications › Show them. The corner stays the default and opens the history either way."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island tells you when a new Linux kernel is waiting. Pressing it runs sudo pacman -Syu in a terminal, or the command you set in System › Updates, and once the new kernel is installed it asks you to restart. The check needs pacman-contrib."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Finished downloads show up in the island if inotify-tools is installed. You can turn them off under Sound › Notifications › The island, along with the cover it shows when the track changes."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "banditshell panel notch is now banditshell panel island. The old name still works."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-10",
       "date": "2026-10-14",
       "changes": [
