@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -171,6 +171,12 @@ test.describe("upgrade", () => {
     test.it("keeps sizes already stored under alphabet and drops the old ones", () => {
         const both = { launcher: { concept: "list", niagara: { width: 700 }, alphabet: { width: 800 } } };
         assert.deepStrictEqual(Configuration.upgrade(both), { launcher: { concept: "list", alphabet: { width: 800 } } });
+    });
+
+    test.it("turns a single old launcher value into the new one and leaves the rest", () => {
+        assert.strictEqual(Configuration.upgradeValue("launcher.concept", "niagara"), "alphabet");
+        assert.strictEqual(Configuration.upgradeValue("launcher.concept", "list"), "list");
+        assert.strictEqual(Configuration.upgradeValue("theme", "niagara"), "niagara");
     });
 
     test.it("leaves a config without a launcher alone", () => {

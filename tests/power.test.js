@@ -8,7 +8,7 @@ const load = (file, names) => new Function(fs.readFileSync(path.join(ROOT, "serv
 
 const Battery = load("battery.js", ["lowStep", "countdownMessage", "afterResume", "nearlyEmptyFraction", "rearmMargin", "graceSeconds"]);
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor"]);
-const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "chooseAction", "closedFrom", "closedFromProperty"]);
+const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "differsFromLogind", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
 const Charge = load("chargelimit.js", ["parseProbe", "wanted", "shouldWrite", "trouble"]);
 
@@ -94,6 +94,12 @@ test("external screens count when they are on, and built-in panels never do", ()
     assert.strictEqual(Lid.externalScreens(OUTPUTS), 1);
     assert.strictEqual(Lid.externalScreens([{ name: "eDP-1" }]), 0);
     assert.strictEqual(Lid.externalScreens([{ name: "HDMI-A-2", disabled: true }]), 0);
+});
+
+test("the lid is left to logind until a choice differs from what logind does", () => {
+    assert.strictEqual(Lid.differsFromLogind({ onBattery: "suspend", pluggedIn: "suspend", docked: "nothing" }), false);
+    assert.strictEqual(Lid.differsFromLogind({ onBattery: "suspend", pluggedIn: "lock", docked: "nothing" }), true);
+    assert.strictEqual(Lid.differsFromLogind({ onBattery: "hibernate", pluggedIn: "suspend", docked: "nothing" }), true);
 });
 
 test("the lid does what the situation says, with screens attached ahead of power", () => {

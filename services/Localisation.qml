@@ -35,7 +35,7 @@ Singleton {
     readonly property var languageChoices: Rules.choices(root.languages, root.generated)
     readonly property var formatChoices: Rules.choices(root.formats, root.generated)
 
-    readonly property var zoneChoices: Rules.zoneChoices(Clock.localZone, Clock.places, Clock.allZones)
+    readonly property var zoneChoices: Rules.zoneChoices(Clock.localZone, [root.suggestedZone].concat(Clock.places), Clock.allZones)
 
     readonly property var sunPlace: {
         if (root.position && root.position.zone === Clock.localZone)
@@ -44,6 +44,7 @@ Singleton {
     }
 
     property string refusedZone: ""
+    property string suggestedZone: ""
 
     signal failed(string why)
     signal zoneMoved(string zone)
@@ -87,18 +88,19 @@ Singleton {
             return;
         root.refusedZone = "";
         Config.set("region.autoZone", true);
-        root.locate();
+        root.locate(false);
     }
 
-    function locate(): void {
+    function locate(quietly: bool): void {
         if (!root.geoclueInstalled || locator.running || root.busy)
             return;
         root.busy = "locating";
+        locator.quietly = quietly;
         locator.command = [root.geocluePath, "-t", "20"];
         locator.running = true;
     }
 
-    function placeFound(place: var): void {
+    function placeFound(place: var, quietly: bool): void {
         const near = Rules.nearestZone(root.zoneTable, place);
         if (!near) {
             root.failed("no zone table to place you with");
@@ -110,7 +112,9 @@ Singleton {
             zone: near.zone
         };
         root.remember();
-        if (near.zone !== root.refusedZone)
+        if (quietly)
+            root.suggestedZone = near.zone !== Clock.localZone ? near.zone : "";
+        else if (near.zone !== root.refusedZone)
             root.setZone(near.zone);
     }
 
@@ -207,6 +211,8 @@ Singleton {
     Process {
         id: locator
 
+        property bool quietly: false
+
         stdout: StdioCollector {
             id: located
         }
@@ -215,8 +221,8 @@ Singleton {
             root.busy = "";
             const place = Rules.parseWhereAmI(located.text);
             if (place)
-                root.placeFound(place);
-            else
+                root.placeFound(place, locator.quietly);
+            else if (!locator.quietly)
                 root.failed("geoclue could not say where you are");
         }
     }
@@ -250,7 +256,16 @@ Singleton {
 
     onGeoclueProbedChanged: {
         if (root.zoneFollowsNetwork)
-            root.locate();
+            root.locate(true);
+    }
+
+    Connections {
+        target: Clock
+
+        function onLocalZoneChanged(): void {
+            if (Clock.localZone === root.suggestedZone)
+                root.suggestedZone = "";
+        }
     }
 
     Connections {
@@ -266,6 +281,6 @@ Singleton {
         id: relocate
 
         interval: 60000
-        onTriggered: root.locate()
+        onTriggered: root.locate(true)
     }
 }

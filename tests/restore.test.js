@@ -225,11 +225,18 @@ test.describe("what would change", () => {
         assert.deepStrictEqual(out.changes, []);
     });
 
-    test.it("sends a key that a service owns through its row", () => {
+    test.it("leaves a planned value for a setting a service now owns alone, since it never took effect", () => {
         const w = world({ rows: { overAmpish: false } });
         const out = Restore.diff(copyOf({}, { overAmpish: true }), w);
-        assert.deepStrictEqual(out.changes, [{ route: "setting", path: "", key: "overAmpish", from: false, to: true }]);
-        assert.deepStrictEqual(Restore.diff(copyOf({}, { overAmpish: false }), w).changes, []);
+        assert.deepStrictEqual(out.changes, []);
+        assert.deepStrictEqual(out.skipped, [{ key: "overAmpish", why: "only planned when this copy was made" }]);
+        assert.deepStrictEqual(Restore.diff(copyOf({}, { overAmpish: false }), w).skipped, []);
+    });
+
+    test.it("keeps this machine's own update source and hyprland permission", () => {
+        const out = Restore.diff(copyOf({ sourceEdits: { acknowledged: true }, updates: { remote: "https://example.invalid/fork.git" } }), world());
+        assert.deepStrictEqual(out.changes, []);
+        assert.deepStrictEqual(out.skipped.map(s => s.key), ["sourceEdits.acknowledged", "updates.remote"]);
     });
 
     test.it("sends the theme through the service that applies it", () => {

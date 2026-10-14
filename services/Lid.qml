@@ -21,6 +21,8 @@ Singleton {
 
     readonly property bool present: Logic.hasLid(root.sensed, Monitors.outputs)
 
+    readonly property bool takesOver: root.present && Logic.differsFromLogind(root.actions)
+
     readonly property var actions: ({
             onBattery: Config.values.power.lid.onBattery,
             pluggedIn: Config.values.power.lid.pluggedIn,
@@ -44,13 +46,13 @@ Singleton {
     }
 
     function engage(): void {
-        monitor.running = root.present;
-        inhibitor.running = root.present;
-        if (root.present)
+        monitor.running = root.takesOver;
+        inhibitor.running = root.takesOver;
+        if (root.takesOver)
             query.running = true;
     }
 
-    onPresentChanged: root.engage()
+    onTakesOverChanged: root.engage()
 
     Component.onCompleted: root.engage()
 
@@ -96,7 +98,7 @@ Singleton {
             onRead: line => root.hear(line)
         }
 
-        onRunningChanged: if (!monitor.running && root.present)
+        onRunningChanged: if (!monitor.running && root.takesOver)
             monitorRestart.restart()
     }
 
@@ -123,7 +125,7 @@ Singleton {
         command: ["systemd-inhibit", "--what=handle-lid-switch", "--mode=block", "--who=banditshell", "--why=closing the lid is handled by the shell", "cat"]
         stdinEnabled: true
 
-        onRunningChanged: if (!inhibitor.running && root.present)
+        onRunningChanged: if (!inhibitor.running && root.takesOver)
             inhibitorRestart.restart()
     }
 

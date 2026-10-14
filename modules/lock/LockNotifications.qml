@@ -23,7 +23,8 @@ Column {
 
             required property var modelData
 
-            readonly property bool showBody: !!card.modelData.body && Notifications.ruleFor(card.modelData).lock
+            readonly property bool open: Notifications.ruleFor(card.modelData).lock
+            readonly property bool showBody: card.open && !!card.modelData.body
 
             width: root.width
 
@@ -31,7 +32,7 @@ Column {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                text: [card.modelData.appName, card.modelData.summary].filter(part => part).join(" · ")
+                text: [card.modelData.appName, card.open ? card.modelData.summary : ""].filter(part => part).join(" · ")
                 color: Appearance.colour.textDim
             }
 

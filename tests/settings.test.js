@@ -474,7 +474,7 @@ test("the power rows are served by config or by the system, not planned", () => 
         assert.ok(!(k in PLAN_DEFAULTS), k);
     }
     assert.deepStrictEqual([DEFAULTS.battery.holdCharge, DEFAULTS.battery.holdAt, DEFAULTS.battery.warnAt, DEFAULTS.battery.nearlyEmpty], [true, 80, 15, "suspend"]);
-    assert.deepStrictEqual(DEFAULTS.power.lid, { onBattery: "suspend", pluggedIn: "lock", docked: "nothing" });
+    assert.deepStrictEqual(DEFAULTS.power.lid, { onBattery: "suspend", pluggedIn: "suspend", docked: "nothing" });
     const profile = Catalogue.ROW_BY_KEY.profile;
     assert.ok(!profile.isNew && !profile.cfg);
     assert.ok(!("profile" in CONFIG_BACKED) && !("profile" in PLAN_DEFAULTS));
@@ -521,7 +521,7 @@ test("quiet, rules and alert sounds are written to config, not kept as plans", (
         assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
     }
     assert.ok(!("mode" in PLAN_DEFAULTS));
-    assert.deepStrictEqual(lookup(DEFAULTS, "sound"), { alerts: true, alertSet: "soft", alertVolume: 0.5 });
+    assert.deepStrictEqual(lookup(DEFAULTS, "sound"), { alerts: false, alertSet: "soft", alertVolume: 0.5 });
 });
 
 test("every mode setting can be written by the panel", () => {

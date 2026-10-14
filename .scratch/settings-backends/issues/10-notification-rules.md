@@ -26,9 +26,9 @@ An app with no rule pops, sounds and keeps its body off the lock screen.
 - Sound: `snd` off means no alert sound.
 - Lock screen: the lock screen showed no notifications at all, so there was
   nothing to hide. I added `modules/lock/LockNotifications.qml`: the newest
-  three, as "app · summary", with the body only when the app's `lock` rule is
-  on, and "n more" beneath. It is under the password field in `LockFace`. This
-  is new on the lock screen; it does show titles by default.
+  three, and "n more" beneath. It is under the password field in `LockFace`.
+  By default each shows only the app's name; the summary and body show only
+  when that app's `lock` rule is on.
 - `RulesWidget` reads and writes the config key. "Add" offers the apps that have
   sent a notification (from history), skipping those with a rule; a new rule
   starts as the defaults above so adding changes nothing until a switch is
@@ -37,5 +37,4 @@ An app with no rule pops, sounds and keeps its body off the lock screen.
   `rules` in `SettingsState`).
 
 To check by a person: that the lock screen list looks right on the real lock
-(only photographed offscreen here), and whether titles on the lock screen by
-default are wanted.
+(only photographed offscreen here).

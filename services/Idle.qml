@@ -10,7 +10,9 @@ import "idle.js" as Plan
 Singleton {
     id: root
 
-    property bool handledElsewhere: false
+    property string handler: ""
+
+    readonly property bool handledElsewhere: root.handler !== ""
 
     property bool idle: false
 
@@ -22,13 +24,13 @@ Singleton {
 
     readonly property int handlerRecheckMs: 60 * 1000
 
-    readonly property var minutes: ({
+    readonly property string planText: root.handledElsewhere ? "[]" : JSON.stringify(Plan.plan({
             lock: Config.values.idle.lock,
             screensOff: Config.values.idle.screensOff,
             sleep: Config.values.idle.sleep
-        })
+        }, Battery.onBattery))
 
-    readonly property var steps: root.handledElsewhere ? [] : Plan.plan(root.minutes, Battery.onBattery)
+    readonly property var steps: JSON.parse(root.planText)
 
     function run(name: string): void {
         if (name === "lock")
@@ -94,13 +96,13 @@ Singleton {
         id: handler
 
         running: true
-        command: ["pgrep", "-x", "hypridle"]
+        command: ["pgrep", "-l", "-x", Plan.IDLE_DAEMONS.join("|")]
 
         stdout: StdioCollector {
             id: handlerOutput
         }
 
-        onExited: root.handledElsewhere = Plan.handledBy(handlerOutput.text)
+        onExited: root.handler = Plan.handlerOf(handlerOutput.text)
     }
 
     Timer {

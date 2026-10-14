@@ -368,7 +368,7 @@ Singleton {
 
                     onBattery: "suspend",
 
-                    pluggedIn: "lock",
+                    pluggedIn: "suspend",
 
                     docked: "nothing"
                 }
@@ -405,7 +405,7 @@ Singleton {
 
             sound: {
 
-                alerts: true,
+                alerts: false,
 
                 alertSet: "soft",
 
@@ -814,6 +814,10 @@ Singleton {
 
     function upgrade(values: var): var {
         return Configuration.upgrade(values);
+    }
+
+    function upgradeValue(key: string, value: var): var {
+        return Configuration.upgradeValue(key, value);
     }
 
     function accepts(key: string, value: var): bool {

@@ -44,6 +44,10 @@ function merge(base, over, path, opaque, literals) {
     return over === undefined || !sameShape(base, over) ? base : over;
 }
 
+function upgradeValue(path, value) {
+    return path === "launcher.concept" && value === "niagara" ? "alphabet" : value;
+}
+
 function upgrade(values) {
     if (!isPlainObject(values) || !isPlainObject(values.launcher))
         return values;
@@ -53,8 +57,8 @@ function upgrade(values) {
             launcher.alphabet = launcher.niagara;
         delete launcher.niagara;
     }
-    if (launcher.concept === "niagara")
-        launcher.concept = "alphabet";
+    if (owns(launcher, "concept"))
+        launcher.concept = upgradeValue("launcher.concept", launcher.concept);
     return Object.assign({}, values, { launcher });
 }
 

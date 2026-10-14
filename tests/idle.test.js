@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const read = file => fs.readFileSync(path.join(ROOT, file), "utf8").replace(/^\.pragma .*$/m, "");
-const Idle = new Function(`${read("services/idle.js")}\nreturn { plan, handledBy };`)();
+const Idle = new Function(`${read("services/idle.js")}\nreturn { plan, handlerOf };`)();
 const Durations = new Function(`${read("modules/settings/durations.js")}\nreturn { minutesFromChoice, choiceFromMinutes };`)();
 
 test("a step with 0 minutes is never planned", () => {
@@ -28,10 +28,12 @@ test("junk minutes plan nothing instead of firing at once", () => {
     assert.deepStrictEqual(Idle.plan({ lock: "x", screensOff: -3, sleep: undefined }, true), []);
 });
 
-test("any pgrep output means hypridle is running", () => {
-    assert.strictEqual(Idle.handledBy("3794\n"), true);
-    assert.strictEqual(Idle.handledBy(""), false);
-    assert.strictEqual(Idle.handledBy("  \n"), false);
+test("a running idle tool is named, and nothing else counts", () => {
+    assert.strictEqual(Idle.handlerOf("3794 hypridle\n"), "hypridle");
+    assert.strictEqual(Idle.handlerOf("812 swayidle\n"), "swayidle");
+    assert.strictEqual(Idle.handlerOf(""), "");
+    assert.strictEqual(Idle.handlerOf("  \n"), "");
+    assert.strictEqual(Idle.handlerOf("44 something-else\n"), "");
 });
 
 test("idle choices map to minutes and back", () => {

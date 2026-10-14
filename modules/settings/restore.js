@@ -1,6 +1,7 @@
 .pragma library
 
 const SECRET_CONFIG = ["obs.password"];
+const KEPT_LOCAL = ["sourceEdits.acknowledged", "updates.remote"];
 const SECRET_PLANNED = ["hotspotPass"];
 const INTERNAL_PLANNED = ["modeWas"];
 
@@ -118,6 +119,11 @@ function diff(file, world) {
             skipped.push({ key: path, why: "passwords stay out of copies" });
             return;
         }
+        if (KEPT_LOCAL.includes(path)) {
+            if (!same(lookup(world.current, path), over))
+                skipped.push({ key: path, why: "this machine keeps its own" });
+            return;
+        }
         if (!fitsKind(base, path, over)) {
             skipped.push({ key: path, why: CANNOT });
             return;
@@ -165,9 +171,8 @@ function diff(file, world) {
             if (!same(from, value))
                 changes.push({ route: "planned", path: "", key: k, from, to: value });
         } else if (world.hasRow(k)) {
-            const from = world.rowValue(k);
-            if (!same(from, value))
-                changes.push({ route: "setting", path: "", key: k, from, to: value });
+            if (!same(world.rowValue(k), value))
+                skipped.push({ key: k, why: "only planned when this copy was made" });
         } else {
             skipped.push({ key: k, why: "not a setting here" });
         }

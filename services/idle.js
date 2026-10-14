@@ -18,6 +18,13 @@ function plan(minutes, onBattery) {
     return steps.sort((a, b) => a.seconds - b.seconds);
 }
 
-function handledBy(pgrepOutput) {
-    return String(pgrepOutput).trim() !== "";
+const IDLE_DAEMONS = ["hypridle", "swayidle", "xidlehook", "xss-lock"];
+
+function handlerOf(pgrepOutput) {
+    for (const line of String(pgrepOutput ?? "").split("\n")) {
+        const name = line.trim().split(/\s+/)[1] ?? "";
+        if (IDLE_DAEMONS.includes(name))
+            return name;
+    }
+    return "";
 }

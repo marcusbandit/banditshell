@@ -1251,6 +1251,7 @@ Singleton {
     }
 
     readonly property bool idleHandled: Idle.handledElsewhere
+    readonly property string idleHandler: Idle.handler
 
     readonly property var hyprOptions: ({
             kbDelay: {
@@ -1762,6 +1763,8 @@ Singleton {
         return mode === "sunset" ? `tonight ${span}` : span;
     }
 
+    readonly property string zoneSuggested: Localisation.suggestedZone
+
     readonly property string autoZoneDetail: !Localisation.geoclueProbed ? "" : !Localisation.geoclueInstalled ? "needs geoclue, which is not installed" : "from where you are · password needed"
 
     readonly property var branches: {
@@ -1862,10 +1865,30 @@ Singleton {
         root.probeHypr();
     }
 
+    function upgradedChange(change: var): var {
+        const cfg = root.configBacked[change?.k];
+        const r = root.rowOf(change?.k);
+        if (!cfg || !r)
+            return change;
+        const old = Config.upgradeValue(cfg, change.old);
+        const value = Config.upgradeValue(cfg, change.v);
+        if (old === change.old && value === change.v)
+            return change;
+        return Object.assign({}, change, {
+            old,
+            v: value,
+            from: root.shown(r, old),
+            to: root.shown(r, value)
+        });
+    }
+
+    readonly property var carriedPlans: ["mode", "modeWas", "screens"]
+
     function withoutRetired(planned: var): var {
-        const kept = Object.assign({}, planned);
-        for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "tunnels"])
-            delete kept[k];
+        const kept = {};
+        for (const k of Object.keys(planned))
+            if (root.plannedKey(k) || root.configBacked[k] || root.carriedPlans.includes(k))
+                kept[k] = planned[k];
         return kept;
     }
 
@@ -1907,7 +1930,11 @@ Singleton {
             if (JSON.stringify(Config.get(cfg)) !== JSON.stringify(root.lookup(Config.defaults, cfg)))
                 continue;
             const t = root.transforms[k];
-            pairs.push([cfg, t ? t.write(root.planned[k]) : root.planned[k]]);
+            const value = t ? t.write(root.planned[k]) : root.planned[k];
+            if (Config.accepts(cfg, value))
+                pairs.push([cfg, value]);
+            else
+                console.warn(`SettingsState: the old planned ${k} does not fit ${cfg}, so it is left behind`);
         }
         if (pairs.length)
             Config.setMany(pairs);
@@ -1993,7 +2020,7 @@ Singleton {
                 if (Object.keys(root.planned).length !== Object.keys(stored).length)
                     saver.restart();
                 root.ui = data.ui ?? {};
-                root.changes = data.changes ?? [];
+                root.changes = (data.changes ?? []).map(c => root.upgradedChange(c));
             } catch (e) {
                 console.warn(`SettingsState: ${root.path} is not valid, starting fresh`);
             }

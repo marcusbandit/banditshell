@@ -11,6 +11,12 @@ function externalScreens(outputs) {
     return outputs.filter(output => !output.disabled && !internalOutput(output.name)).length;
 }
 
+const LOGIND_ACTIONS = { onBattery: "suspend", pluggedIn: "suspend", docked: "nothing" };
+
+function differsFromLogind(actions) {
+    return Object.keys(LOGIND_ACTIONS).some(key => actions[key] !== LOGIND_ACTIONS[key]);
+}
+
 function chooseAction(situation, actions) {
     if (situation.external > 0)
         return actions.docked;

@@ -547,7 +547,7 @@ const PAGES_SOURCE = {
     },
     lock: {
         id: "lock", name: "Lock and idle", icon: "lock", preview: "lock",
-        status: s => s.idleHandled ? "hypridle sets the timing" : s.v("idleLock") === "never" ? "never locks by itself" : `locks after ${s.v("idleLock")}`,
+        status: s => s.idleHandled ? `${s.idleHandler} sets the timing` : s.v("idleLock") === "never" ? "never locks by itself" : `locks after ${s.v("idleLock")}`,
         groups: [
             { t: "Lock screen", rows: [
                 { n: 90, icon: "blur_on", label: "Blur", k: "lockBlur", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.blur", kw: "lock screen look" },
@@ -556,9 +556,9 @@ const PAGES_SOURCE = {
                 { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow", detail: "your password brings you back" }
             ] },
             { t: "When idle", rows: [
-                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", detail: s => s.idleHandled ? "hypridle is handling this" : "", kw: "auto-lock idle" },
-                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", detail: s => s.idleHandled ? "hypridle is handling this" : "a playing video holds it off", kw: "screen-off idle" },
-                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", detail: s => s.idleHandled ? "hypridle is handling this" : s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
+                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", detail: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", kw: "auto-lock idle" },
+                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", detail: s => s.idleHandled ? `${s.idleHandler} is handling this` : "a playing video holds it off", kw: "screen-off idle" },
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", detail: s => s.idleHandled ? `${s.idleHandler} is handling this` : s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
             ] }
         ]
     },
@@ -639,8 +639,8 @@ const PAGES_SOURCE = {
                 { n: 109, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", cfg: "region.clock24", detail: s => s.timeExample, kw: "time format" },
                 { n: 109, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: s => s.dateChoices, cfg: "region.dateFormat", kw: "date format" },
                 { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", detail: s => s.autoZoneDetail, kw: "time zone",
-                    why: "Picks the zone nearest to where geoclue says you are, once, when you turn this on, and sets it with timedatectl. It needs geoclue installed and asks for your password." },
-                { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone"), detail: s => s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",
+                    why: "Picks the zone nearest to where geoclue says you are when you turn this on, and sets it with timedatectl. After that it only looks again when the network changes, and suggests the new zone under Zone for you to pick; it never asks for your password on its own. It needs geoclue installed." },
+                { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, detail: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",
                     why: "Sets the system's time zone with timedatectl, which asks for your password. The shell's clocks follow it straight away." }
             ] },
             { t: "Language", rows: [
