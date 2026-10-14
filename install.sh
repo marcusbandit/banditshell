@@ -18,9 +18,12 @@ usage: install.sh [--dry-run] [--no-ui] [--list]
 
 Installs what banditshell needs on Arch: the CLI into bin/, quickshell, the
 font, every package the shell calls, the C helpers (banditshell dev build) and tab
-completion for zsh and bash. Steps already satisfied are skipped, so a re-run
-retries only what failed. Run it as yourself; it asks for sudo when a package
-needs installing.
+completion for zsh and bash. When the Spotify desktop app is installed it also
+puts Spicetify and Spicy Lyrics into it, for word-timed lyrics in the media
+card; that restarts Spotify if it is running. Steps already satisfied are
+skipped, so a re-run retries only what failed (and re-patches Spotify after a
+Spotify update). Run it as yourself; it asks for sudo when a package needs
+installing.
 
   --dry-run   walk every step without installing anything
   --no-ui     stay in the terminal; no progress window
@@ -106,6 +109,7 @@ build_table() {
     add_step pkgconf                       "command -v pkg-config"                   pkgconf                       2 "finding the wayland client library"
     add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
+    add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
 }
 
 cli_installed() {
@@ -319,6 +323,144 @@ fetch_monocraft() {
     return 0
 }
 
+SPICY_LOADER_URL="https://raw.githubusercontent.com/Spikerko/spicy-lyrics/main/builds/spicy-lyrics.mjs"
+SPICETIFY_RELEASES="https://github.com/spicetify/cli/releases"
+SPICETIFY=""
+
+spotify_dir() {
+    local dir
+    for dir in /opt/spotify /usr/share/spotify /usr/lib/spotify /usr/lib64/spotify \
+        "$HOME/.local/share/flatpak/app/com.spotify.Client/x86_64/stable/active/files/extra/share/spotify" \
+        /var/lib/flatpak/app/com.spotify.Client/x86_64/stable/active/files/extra/share/spotify; do
+        if [ -d "$dir/Apps" ]; then
+            printf '%s\n' "$dir"
+            return 0
+        fi
+    done
+    return 1
+}
+
+spotify_prefs() {
+    local prefs
+    for prefs in "${XDG_CONFIG_HOME:-$HOME/.config}/spotify/prefs" "$HOME/.var/app/com.spotify.Client/config/spotify/prefs"; do
+        if [ -f "$prefs" ]; then
+            printf '%s\n' "$prefs"
+            return 0
+        fi
+    done
+    return 1
+}
+
+find_spicetify() {
+    if command -v spicetify >/dev/null 2>&1; then
+        SPICETIFY="$(command -v spicetify)"
+    elif [ -x "$HOME/.spicetify/spicetify" ]; then
+        SPICETIFY="$HOME/.spicetify/spicetify"
+    else
+        return 1
+    fi
+}
+
+spicy_has_run() {
+    local index
+    for index in "$HOME"/.cache/spotify/*/"Service Worker"/CacheStorage/*/index.txt \
+        "$HOME"/.var/app/com.spotify.Client/cache/spotify/*/"Service Worker"/CacheStorage/*/index.txt; do
+        grep -qs SpicyLyrics_LyricsStore "$index" && return 0
+    done
+    return 1
+}
+
+spicy_lyrics_present() {
+    local dir config
+    if ! dir="$(spotify_dir)"; then
+        if command -v snap >/dev/null 2>&1 && snap list spotify >/dev/null 2>&1; then
+            PROBE_NOTE="Spotify is a snap, which Spicetify cannot patch; lyrics come from lrclib.net"
+        else
+            PROBE_NOTE="no Spotify desktop app; lyrics come from lrclib.net"
+        fi
+        return 0
+    fi
+    find_spicetify || return 1
+    grep -qsi spicetify "$dir/Apps/xpui/index.html" || return 1
+    config="$("$SPICETIFY" -c 2>/dev/null)" || return 1
+    grep -Eq '^extensions[[:space:]]*=.*spicy-lyrics' "$config" && return 0
+    grep -Eq '^custom_apps[[:space:]]*=.*marketplace' "$config" && spicy_has_run && return 0
+    return 1
+}
+
+fetch_spicetify() {
+    local target tag tmp dest="$HOME/.spicetify"
+    case "$(uname -m)" in
+    x86_64) target="linux-amd64" ;;
+    aarch64) target="linux-arm64" ;;
+    *)
+        STEP_OUTPUT="Spicetify has no build for $(uname -m)"
+        return 1
+        ;;
+    esac
+    tag="$(curl -fsSL -H 'Accept: application/json' "$SPICETIFY_RELEASES/latest" | sed -n 's/.*"tag_name":"v\{0,1\}\([^"]*\)".*/\1/p')"
+    if [ -z "$tag" ]; then
+        STEP_OUTPUT="could not find the latest Spicetify release"
+        return 1
+    fi
+    mkdir -p "$dest" || return 1
+    tmp="$(mktemp)" || return 1
+    if ! curl -fsSL -o "$tmp" "$SPICETIFY_RELEASES/download/v$tag/spicetify-$tag-$target.tar.gz" || ! tar xzf "$tmp" -C "$dest"; then
+        rm -f "$tmp"
+        STEP_OUTPUT="could not download Spicetify $tag"
+        return 1
+    fi
+    rm -f "$tmp"
+    chmod +x "$dest/spicetify"
+    SPICETIFY="$dest/spicetify"
+}
+
+install_spicy_lyrics() {
+    local dir prefs config extensions restart=-n
+    dir="$(spotify_dir)" || return 0
+    if ! prefs="$(spotify_prefs)"; then
+        STEP_OUTPUT="open Spotify once and sign in, then run install.sh again"
+        return 1
+    fi
+    find_spicetify || fetch_spicetify || return 1
+
+    if [ ! -w "$dir" ] || [ ! -w "$dir/Apps" ]; then
+        if ! need_root; then
+            STEP_OUTPUT="no sudo, so Spicetify cannot patch $dir"
+            return 1
+        fi
+        if ! sudo -n chmod a+wr "$dir" || ! sudo -n chmod -R a+wr "$dir/Apps"; then
+            STEP_OUTPUT="could not make $dir writable for Spicetify"
+            return 1
+        fi
+    fi
+
+    "$SPICETIFY" -q config spotify_path "$dir" prefs_path "$prefs" >/dev/null 2>&1 </dev/null
+    config="$("$SPICETIFY" -c 2>/dev/null)"
+    if [ ! -f "$config" ]; then
+        STEP_OUTPUT="Spicetify did not write its config"
+        return 1
+    fi
+
+    if ! grep -Eq '^custom_apps[[:space:]]*=.*marketplace' "$config" || ! spicy_has_run; then
+        extensions="$("$SPICETIFY" path userdata 2>/dev/null)/Extensions"
+        mkdir -p "$extensions" || return 1
+        if ! curl -fsSL -o "$extensions/spicy-lyrics.mjs" "$SPICY_LOADER_URL"; then
+            STEP_OUTPUT="could not download Spicy Lyrics"
+            return 1
+        fi
+        grep -Eq '^extensions[[:space:]]*=.*spicy-lyrics' "$config" || "$SPICETIFY" -q config extensions spicy-lyrics.mjs >/dev/null 2>&1 </dev/null
+    fi
+
+    pgrep -x spotify >/dev/null 2>&1 && restart=""
+    if grep -Eq '^version[[:space:]]*=[[:space:]]*[^[:space:]]' "$config"; then
+        STEP_OUTPUT="$("$SPICETIFY" $restart apply 2>&1 </dev/null)" && return 0
+        STEP_OUTPUT="$("$SPICETIFY" $restart restore backup apply 2>&1 </dev/null)"
+    else
+        STEP_OUTPUT="$("$SPICETIFY" $restart backup apply 2>&1 </dev/null)"
+    fi
+}
+
 UI_PID=""
 
 ui_stop() {
@@ -379,6 +521,7 @@ run_step() {
         @completion) install_completion && ok=0 ;;
         @cli) install_cli && ok=0 ;;
         @helpers) install_helpers && ok=0 ;;
+        @spicy) install_spicy_lyrics && ok=0 ;;
         *) install_pkg "$pkg" && ok=0 ;;
         esac
     fi

@@ -21,6 +21,7 @@ singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
 singleton Launching 1.0 Launching.qml
 singleton Lock 1.0 Lock.qml
+singleton Lyrics 1.0 Lyrics.qml
 singleton Media 1.0 Media.qml
 singleton Monitors 1.0 Monitors.qml
 singleton Network 1.0 Network.qml
