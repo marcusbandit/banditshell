@@ -49,3 +49,7 @@ Still to check by a person: the first time this lands in the live session, remmi
 - When the same app is on in two sources the detail of both rows says so, e.g. "hyprland · after the shell · also starts from launcher" on Spotify. They are matched by desktop entry.
 - Parsing and toggling are in `startup-apps.js` (`launcherApps`, `readOverride`, `setDisabled`, `duplicateNotes`) with fixtures in `tests/fixtures/apps/launcher`, including an override holding other variables. Checked against a copy of the real directory: read, off and on wrote only the temp overrides.
 - Still to check by a person: switching a launcher app off takes effect at the next login. Launcher rows cannot be removed or added from here.
+
+The shell starts enabled `~/.config/autostart` entries only after every source
+has been read, and skips any app that Hyprland, systemd or the launcher already
+starts, so nothing is started twice.

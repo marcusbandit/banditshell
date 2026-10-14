@@ -137,3 +137,10 @@ test("a session launches the enabled autostart entries that suit its desktop", (
     const terminal = Entries.parseBundle("@@@t.desktop\n[Desktop Entry]\nName=t\nExec=t\nTerminal=true\n");
     assert.deepStrictEqual(Entries.sessionLaunches(terminal, ["Hyprland"]), []);
 });
+
+test("an autostart entry another source already starts is not started again", () => {
+    const text = Entries.autostartText({ name: "Spotify", exec: "spotify", terminal: false });
+    const files = Entries.parseBundle(`@@@/home/a/.config/autostart/spotify.desktop\n${text}`);
+    assert.deepStrictEqual(Entries.sessionLaunches(files, ["Hyprland"], ["spotify"]), []);
+    assert.deepStrictEqual(Entries.sessionLaunches(files, ["Hyprland"], ["vesktop"]), ["exec spotify"]);
+});

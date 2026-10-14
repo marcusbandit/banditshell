@@ -27,6 +27,16 @@ Singleton {
     property var intents: ({})
     property var writeQueue: []
     property bool sessionHandled: false
+    property bool autostartRead: false
+    property bool launcherRead: false
+    property bool unitsRead: false
+
+    readonly property bool sourcesRead: root.autostartRead && root.launcherRead && root.unitsRead && HyprConfig.scanned && DesktopIndex.loaded
+
+    onSourcesReadChanged: {
+        if (root.sourcesRead)
+            root.launchSession();
+    }
     property string unitsShown: ""
 
     readonly property var hyprlandRows: StartupLog.hyprlandApps(HyprConfig.files.map(f => ({
@@ -209,7 +219,8 @@ Singleton {
         if (root.sessionHandled || !HyprConfig.signature)
             return;
         root.sessionHandled = true;
-        launcher.command = ["sh", "-c", root.launchScript, "sh", HyprConfig.signature].concat(Entries.sessionLaunches(root.autostartFiles, root.desktops));
+        const elsewhere = root.entries.filter(e => e.source !== "autostart" && e.on && e.desktopId).map(e => e.desktopId.replace(/\.desktop$/, ""));
+        launcher.command = ["sh", "-c", root.launchScript, "sh", HyprConfig.signature].concat(Entries.sessionLaunches(root.autostartFiles, root.desktops, elsewhere));
         launcher.running = true;
     }
 
@@ -217,6 +228,12 @@ Singleton {
         root.readAutostart();
         root.readLauncher();
         root.readUnits();
+    }
+
+    Timer {
+        interval: 30000
+        running: !root.sessionHandled
+        onTriggered: root.launchSession()
     }
 
     Timer {
@@ -232,7 +249,7 @@ Singleton {
         stdout: StdioCollector {
             onStreamFinished: {
                 root.autostartFiles = Entries.parseBundle(text);
-                root.launchSession();
+                root.autostartRead = true;
             }
         }
     }
@@ -241,7 +258,10 @@ Singleton {
         id: launcherReader
 
         stdout: StdioCollector {
-            onStreamFinished: root.launcherFiles = Entries.parseBundle(text)
+            onStreamFinished: {
+                root.launcherFiles = Entries.parseBundle(text);
+                root.launcherRead = true;
+            }
         }
     }
 
@@ -271,8 +291,10 @@ Singleton {
                 root.unitFiles = StartupLog.parseUnitFiles(text);
                 const names = StartupLog.candidateUnits(root.unitFiles);
                 const key = names.join(" ");
-                if (!names.length || key === root.unitsShown)
+                if (!names.length || key === root.unitsShown) {
+                    root.unitsRead = true;
                     return;
+                }
                 root.unitsShown = key;
                 unitShower.command = ["systemctl", "--user", "show", "-p", "Id", "-p", "Description", "-p", "FragmentPath", "-p", "ExecStart"].concat(names);
                 unitShower.running = true;
@@ -284,7 +306,10 @@ Singleton {
         id: unitShower
 
         stdout: StdioCollector {
-            onStreamFinished: root.unitShows = StartupLog.parseUnitShow(text)
+            onStreamFinished: {
+                root.unitShows = StartupLog.parseUnitShow(text);
+                root.unitsRead = true;
+            }
         }
     }
 

@@ -234,11 +234,13 @@ function quoteWord(word) {
     return `'${String(word).replace(/'/g, "'\\''")}'`;
 }
 
-function sessionLaunches(files, desktops) {
+function sessionLaunches(files, desktops, startedElsewhere) {
     const out = [];
     for (const file of files) {
         const e = file.entry;
         if (!e || e.type !== "Application" || e.hidden || !e.autostartEnabled || e.terminal)
+            continue;
+        if ((startedElsewhere ?? []).includes(idOf(file.path).replace(/\.desktop$/, "")))
             continue;
         if (!shownIn(e, desktops))
             continue;
