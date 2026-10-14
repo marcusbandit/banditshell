@@ -2,9 +2,9 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
-import Quickshell.Io
 import qs.config
 import qs.components
+import qs.services
 import qs.modules.settings
 
 Column {
@@ -12,39 +12,16 @@ Column {
 
     property var row: ({})
 
-    readonly property var list: SettingsState.planned.tunnels ?? []
+    readonly property var list: Tunnels.list
 
     width: parent ? parent.width : 0
 
-    Component.onCompleted: probe.running = true
+    Connections {
+        target: Tunnels
 
-    Process {
-        id: probe
-
-        command: ["nmcli", "-t", "-f", "NAME,TYPE,DEVICE", "connection", "show"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                const found = [];
-                for (const line of text.split("\n")) {
-                    const parts = line.split(":");
-                    if (parts.length < 2 || !/vpn|wireguard/.test(parts[1]))
-                        continue;
-                    found.push({
-                        name: parts[0],
-                        kind: parts[1].indexOf("wireguard") >= 0 ? "wireguard" : "vpn",
-                        on: !!parts[2]
-                    });
-                }
-                const known = root.list.map(t => t.name);
-                const merged = root.list.map(t => {
-                    const live = found.find(f => f.name === t.name);
-                    return live ? Object.assign({}, t, {
-                        on: live.on
-                    }) : t;
-                }).concat(found.filter(t => known.indexOf(t.name) < 0));
-                if (JSON.stringify(merged) !== JSON.stringify(root.list))
-                    SettingsState.plan("tunnels", merged);
-            }
+        function onImported(name: string): void {
+            pathField.clear();
+            SettingsView.drop(name ? `${name} imported` : "tunnel imported", "upload_file");
         }
     }
 
@@ -59,34 +36,58 @@ Column {
     }
 
     Repeater {
-        model: root.list
+        model: ScriptModel {
+            values: root.list
+            objectProp: "uuid"
+        }
 
         delegate: SettingsRowFrame {
             id: tunnel
 
             required property var modelData
-            required property int index
 
             width: root.width
             icon: "vpn_lock"
             label: tunnel.modelData.name
-            detail: tunnel.modelData.kind
-            onActivated: flip()
+            detail: tunnel.modelData.busy ? (tunnel.modelData.on ? "connecting" : "disconnecting") : tunnel.modelData.trouble || tunnel.modelData.kind
+            detailColour: tunnel.modelData.trouble && !tunnel.modelData.busy ? Appearance.colour.alarm : Appearance.colour.textFaint
+            interactive: !tunnel.modelData.busy
+            onActivated: Tunnels.set(tunnel.modelData, !tunnel.modelData.on)
             onPointed: SettingsView.hovered = root.row
-
-            function flip(): void {
-                const next = root.list.slice();
-                next[tunnel.index] = Object.assign({}, tunnel.modelData, {
-                    on: !tunnel.modelData.on
-                });
-                SettingsState.plan("tunnels", next);
-            }
 
             Toggle {
                 anchors.verticalCenter: parent.verticalCenter
                 checked: !!tunnel.modelData.on
-                onToggled: tunnel.flip()
+                enabled: !tunnel.modelData.busy
+                onToggled: Tunnels.set(tunnel.modelData, !tunnel.modelData.on)
             }
+        }
+    }
+
+    SettingsRowFrame {
+        width: root.width
+        interactive: false
+        icon: "upload_file"
+        label: "Add a tunnel"
+        detail: Tunnels.importTrouble || ".conf or .ovpn"
+        detailColour: Tunnels.importTrouble ? Appearance.colour.alarm : Appearance.colour.textFaint
+        onPointed: SettingsView.hovered = root.row
+
+        SettingsField {
+            id: pathField
+
+            anchors.verticalCenter: parent.verticalCenter
+            placeholder: "file path"
+            mono: true
+            enabled: !Tunnels.importing
+        }
+
+        Button {
+            anchors.verticalCenter: parent.verticalCenter
+            size: 0
+            text: Tunnels.importing ? "Importing" : "Import"
+            interactive: !Tunnels.importing
+            onClicked: Tunnels.importFile(pathField.draft)
         }
     }
 }

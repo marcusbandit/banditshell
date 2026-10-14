@@ -3,12 +3,14 @@ const assert = require("node:assert");
 const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
+const os = require("node:os");
+const { spawnSync } = require("node:child_process");
 
 const ROOT = path.resolve(__dirname, "..");
 const base64Src = fs.readFileSync(path.join(ROOT, "components/base64.js"), "utf8");
 const Base64 = new Function(base64Src + "\nreturn { encode, decode, utf8 };")();
 const src = fs.readFileSync(path.join(ROOT, "services/obs.js"), "utf8");
-const Obs = new Function(src + "\nreturn { sha256, authentication, identify, request, role, sceneNames, health, duration, rate };")();
+const Obs = new Function(src + "\nreturn { sha256, authentication, identify, request, role, sceneNames, health, duration, rate, address, endpoint, savePasswordCommand, withPassword };")();
 
 function nodeSha256(bytes) {
     return crypto.createHash("sha256").update(Buffer.from(bytes, "latin1")).digest("latin1");
@@ -102,5 +104,98 @@ test.describe("obs health", () => {
         assert.strictEqual(Obs.duration(3723000), "1:02:03");
         assert.strictEqual(Obs.rate(6000), "6.0 Mb/s");
         assert.strictEqual(Obs.rate(850.4), "850 kb/s");
+    });
+});
+
+test.describe("obs connection", () => {
+    test.it("reads an address typed by hand", () => {
+        assert.deepStrictEqual(Obs.address("192.168.1.20:4456"), {host: "192.168.1.20", port: 4456});
+        assert.deepStrictEqual(Obs.address(" studio.lan "), {host: "studio.lan", port: 0});
+        assert.deepStrictEqual(Obs.address("ws://studio.lan:4455/"), {host: "studio.lan", port: 4455});
+        assert.deepStrictEqual(Obs.address("[::1]:4455"), {host: "::1", port: 4455});
+        assert.deepStrictEqual(Obs.address("4460"), {host: "", port: 4460});
+    });
+
+    test.it("takes an empty address as follow obs again", () => {
+        assert.deepStrictEqual(Obs.address(""), {host: "", port: 0});
+        assert.deepStrictEqual(Obs.address("   "), {host: "", port: 0});
+    });
+
+    test.it("refuses what is not an address", () => {
+        for (const text of ["two words", "host:", "host:0", "host:70000", "99999", "a/b", "host:port"])
+            assert.strictEqual(Obs.address(text), null, text);
+    });
+
+    test.it("falls back to obs's own file for whatever is not set here", () => {
+        const server = {server_port: 4466, server_password: "from-file"};
+        const read = Obs.endpoint({host: "", port: 0, password: ""}, server);
+        assert.strictEqual(read.url, "ws://127.0.0.1:4466");
+        assert.strictEqual(read.label, "localhost:4466");
+        assert.strictEqual(read.password, "from-file");
+        assert.deepStrictEqual([read.remote, read.addressHere, read.passwordHere], [false, false, false]);
+        const bare = Obs.endpoint({host: "", port: 0, password: ""}, null);
+        assert.strictEqual(bare.url, "ws://127.0.0.1:4455");
+        assert.strictEqual(bare.password, "");
+    });
+
+    test.it("lets what is set here win, piece by piece", () => {
+        const server = {server_port: 4466, server_password: "from-file"};
+        const port = Obs.endpoint({host: "", port: 4470, password: ""}, server);
+        assert.strictEqual(port.url, "ws://127.0.0.1:4470");
+        assert.deepStrictEqual([port.remote, port.addressHere, port.passwordHere], [false, true, false]);
+        const remote = Obs.endpoint({host: "studio.lan", port: 0, password: "mine"}, server);
+        assert.strictEqual(remote.url, "ws://studio.lan:4466");
+        assert.strictEqual(remote.label, "studio.lan:4466");
+        assert.strictEqual(remote.password, "mine");
+        assert.deepStrictEqual([remote.remote, remote.addressHere, remote.passwordHere], [true, true, true]);
+    });
+
+    test.it("brackets an ipv6 host", () => {
+        assert.strictEqual(Obs.endpoint({host: "::1", port: 4455, password: ""}, null).url, "ws://[::1]:4455");
+    });
+});
+
+test.describe("the password kept outside config.json", () => {
+    const keep = (file, password) => {
+        const [program, ...args] = Obs.savePasswordCommand(file, password);
+        return spawnSync(program, args, { input: password, encoding: "utf8" });
+    };
+
+    test.it("is written private, byte for byte, replacing what was there", () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "obs-password-"));
+        const file = path.join(dir, "state", "banditshell", "obs-password");
+        assert.strictEqual(keep(file, "pa ss'wo\"rd $HOME \\n").status, 0);
+        assert.strictEqual(fs.readFileSync(file, "utf8"), "pa ss'wo\"rd $HOME \\n");
+        assert.strictEqual(fs.statSync(file).mode & 0o777, 0o600);
+        fs.chmodSync(file, 0o644);
+        assert.strictEqual(keep(file, "second").status, 0);
+        assert.strictEqual(fs.readFileSync(file, "utf8"), "second");
+        assert.strictEqual(fs.statSync(file).mode & 0o777, 0o600);
+        assert.deepStrictEqual(fs.readdirSync(path.dirname(file)), ["obs-password"]);
+        fs.rmSync(dir, { recursive: true });
+    });
+
+    test.it("never puts the password in the command", () => {
+        assert.ok(!Obs.savePasswordCommand("/x/obs-password", "hunter2").join(" ").includes("hunter2"));
+    });
+
+    test.it("is removed when it is cleared, and clearing nothing is fine", () => {
+        const dir = fs.mkdtempSync(path.join(os.tmpdir(), "obs-password-"));
+        const file = path.join(dir, "obs-password");
+        assert.strictEqual(keep(file, "").status, 0);
+        keep(file, "abc");
+        assert.ok(fs.existsSync(file));
+        assert.strictEqual(keep(file, "").status, 0);
+        assert.ok(!fs.existsSync(file));
+        fs.rmSync(dir, { recursive: true });
+    });
+
+    test.it("joins the endpoint as the password set here", () => {
+        const endpoint = Obs.endpoint(Obs.withPassword({ host: "studio.lan", port: 0, password: "from config" }, "from file"), { server_password: "from obs" });
+        assert.strictEqual(endpoint.password, "from file");
+        assert.strictEqual(endpoint.passwordHere, true);
+        const follows = Obs.endpoint(Obs.withPassword({ host: "", port: 0, password: "" }, ""), { server_password: "from obs" });
+        assert.strictEqual(follows.password, "from obs");
+        assert.strictEqual(follows.passwordHere, false);
     });
 });

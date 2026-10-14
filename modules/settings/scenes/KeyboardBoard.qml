@@ -38,7 +38,7 @@ Item {
 
                 required property var modelData
 
-                readonly property bool on: !!key.modelData.label && !!root.hot[key.modelData.label.toLowerCase()]
+                readonly property bool on: Boards.struck(key.modelData, root.hot)
 
                 x: key.modelData.x * root.unit + root.inset
                 y: key.modelData.y * root.unit + root.inset

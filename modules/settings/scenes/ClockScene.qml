@@ -16,17 +16,10 @@ SceneGauge {
         onTriggered: root.now = Date.now()
     }
 
-    function shown(t: var): string {
-        if (SettingsState.v("clock24"))
-            return t.text;
-        const h = t.hour % 12 || 12;
-        return `${h}:${Clock.twoDigits(t.minute)} ${t.hour < 12 ? "am" : "pm"}`;
-    }
-
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
-        text: root.shown(Clock.zoneTime(Clock.localOffset, root.now))
+        text: Clock.zoneTime(Clock.localOffset, root.now).text
         font.pixelSize: Appearance.font.size.large
     }
 
@@ -34,7 +27,7 @@ SceneGauge {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
         visible: text !== ""
-        text: Clock.places.slice(0, 3).map(z => `${Clock.cityOf(z).toLowerCase()} ${root.shown(Clock.zoneTime(Clock.offsetMap[z] ?? Clock.localOffset, root.now))}`).join(" · ")
+        text: Clock.places.slice(0, 3).map(z => `${Clock.cityOf(z).toLowerCase()} ${Clock.zoneTime(Clock.offsetMap[z] ?? Clock.localOffset, root.now).text}`).join(" · ")
         color: Appearance.colour.textFaint
         wrapMode: Text.WordWrap
     }

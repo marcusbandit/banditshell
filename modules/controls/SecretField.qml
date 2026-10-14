@@ -140,7 +140,7 @@ Item {
 
         Behavior on opacity {
             NumberAnimation {
-                duration: Appearance.animation.fast
+                duration: Appearance.animation.fade.fast
                 easing.type: Easing.OutCubic
             }
         }
@@ -204,7 +204,7 @@ Item {
 
             Behavior on opacity {
                 NumberAnimation {
-                    duration: Appearance.animation.normal
+                    duration: Appearance.animation.fade.normal
                     easing.type: Easing.OutCubic
                 }
             }

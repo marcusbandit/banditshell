@@ -91,7 +91,7 @@ Item {
         onPressedChanged: {
             if (touch.pressed) {
                 root.fired();
-                if (root.repeats)
+                if (root.repeats && Config.values.tablet.repeat)
                     delay.restart();
             } else {
                 delay.stop();

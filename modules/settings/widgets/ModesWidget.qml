@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 import qs.modules.settings
 import "../catalogue.js" as Catalogue
 
@@ -82,9 +83,9 @@ Column {
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
-                        const n = Object.keys(mode.modelData.set).length;
                         SettingsState.setMode(mode.modelData.id);
-                        SettingsView.drop(mode.modelData.id === "none" ? "back to everything as set" : `${mode.modelData.id} mode · ${n} settings changed`, mode.modelData.icon);
+                        const n = Object.keys(Modes.was).length;
+                        SettingsView.drop(mode.modelData.id === "none" ? "back to everything as set" : `${mode.modelData.id} mode · ${n} ${n === 1 ? "setting" : "settings"} changed`, mode.modelData.icon);
                     }
                 }
             }

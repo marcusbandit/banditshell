@@ -711,27 +711,42 @@ Singleton {
         watchChanges: false
 
         onLoaded: {
-            if (!Config.values.clipboard.importClipse)
-                return;
-
             let old = [];
             try {
                 old = JSON.parse(text())?.clipboardHistory ?? [];
             } catch (err) {
-                console.warn("Clipboard: clipse's history could not be read; importing nothing.", err);
+                if (Config.values.clipboard.importClipse)
+                    console.warn("Clipboard: clipse's history could not be read; importing nothing.", err);
             }
 
-            root.adopt(old);
+            root.clipseHistory = Array.isArray(old) ? old : [];
+
+            if (!Config.values.clipboard.importClipse)
+                return;
+
+            root.adopt(root.clipseHistory);
         }
 
-        onLoadFailed: root.settleImport()
+        onLoadFailed: {
+            root.clipseHistory = [];
+            root.settleImport();
+        }
+    }
+
+    property var clipseHistory: []
+
+    readonly property int clipseWaiting: root.fresh(root.clipseHistory).length
+
+    function importFromClipse(): void {
+        Config.set("clipboard.importClipse", true);
+        clipse.reload();
     }
 
     function importedPath(from: string): string {
         return `${root.blobs}/imported-${root.basename(from)}`;
     }
 
-    function adopt(old: var): void {
+    function fresh(old: var): var {
 
         const mine = new Set(root.entries.map(e => root.identity(e)));
         const brought = [];
@@ -756,7 +771,6 @@ Singleton {
                 mimes: [],
                 pinned: !!item.pinned
             };
-            entry.kind = root.classify(entry);
 
             const key = root.identity(entry);
             if (mine.has(key))
@@ -764,6 +778,15 @@ Singleton {
             mine.add(key);
             brought.push(entry);
         }
+
+        return brought;
+    }
+
+    function adopt(old: var): void {
+
+        const brought = root.fresh(old);
+        for (const entry of brought)
+            entry.kind = root.classify(entry);
 
         if (brought.length) {
             root.entries = [...root.entries, ...brought];

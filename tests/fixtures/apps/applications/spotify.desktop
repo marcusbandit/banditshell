@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=Spotify
+Exec=spotify %U
+Icon=spotify-client
+Type=Application

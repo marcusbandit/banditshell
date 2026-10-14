@@ -4,6 +4,7 @@ import QtQuick
 import QtWebSockets
 import Quickshell
 import Quickshell.Io
+import qs.config
 import "obs.js" as ObsProtocol
 import "../components/base64.js" as Base64
 
@@ -16,7 +17,15 @@ Singleton {
 
     property var server: null
 
-    readonly property bool canConnect: root.wanted && (root.server?.server_enabled ?? false)
+    readonly property string passwordPath: `${Config.stateDir}/obs-password`
+    property string ownPassword: ""
+    readonly property string legacyPassword: Config.loaded ? (Config.values.obs?.password ?? "") : ""
+
+    readonly property var endpoint: ObsProtocol.endpoint(ObsProtocol.withPassword(Config.values.obs, root.ownPassword || root.legacyPassword), root.server)
+    readonly property string url: root.endpoint.url
+    readonly property string password: root.endpoint.password
+
+    readonly property bool canConnect: root.wanted && (root.endpoint.remote || (root.server?.server_enabled ?? false))
 
     property string link: "closed"
 
@@ -58,6 +67,8 @@ Singleton {
 
     onCanConnectChanged: root.sync()
     onServerChanged: root.sync()
+    onUrlChanged: root.sync()
+    onPasswordChanged: root.sync()
 
     function sync(): void {
         socket.active = false;
@@ -103,7 +114,7 @@ Singleton {
         const d = message.d ?? {};
         if (message.op === 0) {
             root.identifying = true;
-            socket.sendTextMessage(JSON.stringify(ObsProtocol.identify(d, root.server?.server_password ?? "", Base64)));
+            socket.sendTextMessage(JSON.stringify(ObsProtocol.identify(d, root.password, Base64)));
         } else if (message.op === 2) {
             root.identifying = false;
             root.link = "ready";
@@ -269,6 +280,77 @@ Singleton {
             }, null);
     }
 
+    function setAddress(text: string): bool {
+        const parsed = ObsProtocol.address(text);
+        if (!parsed)
+            return false;
+        Config.setMany([["obs.host", parsed.host], ["obs.port", parsed.port]]);
+        return true;
+    }
+
+    function setPassword(text: string): void {
+        root.keep(text, false);
+    }
+
+    property var queuedKeep: null
+
+    function keep(text: string, migrating: bool): void {
+        if (keeper.running) {
+            root.queuedKeep = { text, migrating };
+            return;
+        }
+        keeper.password = text;
+        keeper.migrating = migrating;
+        keeper.command = ObsProtocol.savePasswordCommand(root.passwordPath, text);
+        keeper.running = true;
+    }
+
+    function migrate(): void {
+        if (root.legacyPassword !== "")
+            root.keep(root.legacyPassword, true);
+    }
+
+    onLegacyPasswordChanged: root.migrate()
+    Component.onCompleted: root.migrate()
+
+    Process {
+        id: keeper
+
+        property string password: ""
+        property bool migrating: false
+
+        stdinEnabled: true
+
+        onStarted: {
+            if (keeper.password !== "")
+                keeper.write(keeper.password);
+            keeper.stdinEnabled = false;
+        }
+
+        onExited: code => {
+            if (code === 0) {
+                root.ownPassword = keeper.password;
+                if (keeper.migrating)
+                    Config.set("obs.password", "");
+            } else {
+                console.warn(`Obs: could not keep the websocket password in ${root.passwordPath}`);
+            }
+            keeper.stdinEnabled = true;
+            const next = root.queuedKeep;
+            root.queuedKeep = null;
+            if (next)
+                root.keep(next.text, next.migrating);
+        }
+    }
+
+    FileView {
+        path: root.passwordPath
+        printErrors: false
+
+        onLoaded: root.ownPassword = text()
+        onLoadFailed: root.ownPassword = ""
+    }
+
     function launch(): void {
         Quickshell.execDetached(["obs"]);
     }
@@ -294,7 +376,7 @@ Singleton {
     WebSocket {
         id: socket
 
-        url: `ws://127.0.0.1:${root.server?.server_port ?? 4455}`
+        url: root.url
         active: false
 
         onStatusChanged: {

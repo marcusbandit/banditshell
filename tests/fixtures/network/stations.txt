@@ -1,0 +1,9 @@
+Station ec:b5:fa:17:a4:63 (on wlp7s0)
+	inactive time:	1230 ms
+	rx bytes:	48211
+	signal:  	-52 dBm
+	authenticated:	yes
+Station dc:e9:94:8e:99:93 (on wlp7s0)
+	inactive time:	80 ms
+	rx bytes:	912
+	signal:  	-61 dBm

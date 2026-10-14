@@ -137,6 +137,8 @@ Singleton {
 
                     specials: [],
 
+                    rack: true,
+
                     persistent: 5,
 
                     slot: 32,
@@ -157,12 +159,24 @@ Singleton {
                     block: 9,
                     blockGap: 3
                 },
+                clock: {
+                    style: "stacked",
+                    date: "day and month"
+                },
+
                 status: {
                     slot: 29,
-                    gap: 4
+                    gap: 4,
+
+                    sound: true,
+                    network: true,
+                    bluetooth: true,
+                    battery: true
                 },
 
                 tray: {
+                    enabled: true,
+
                     slot: 29,
                     gap: 4,
 
@@ -170,6 +184,15 @@ Singleton {
 
                     max: 8
                 }
+            },
+
+            obs: {
+
+                host: "",
+
+                port: 0,
+
+                password: ""
             },
 
             stream: {
@@ -237,7 +260,7 @@ Singleton {
 
                 folders: ({}),
 
-                niagara: {
+                alphabet: {
                     width: 760,
 
                     icon: 48,
@@ -316,7 +339,43 @@ Singleton {
 
             usage: {
 
-                capHours: 10
+                capHours: 10,
+                greyAtCap: false,
+                breaks: false,
+                breakEvery: 50
+            },
+
+            idle: {
+                lock: 0,
+                screensOff: 0,
+                sleep: 0
+            },
+
+            startup: {
+                runAutostart: false
+            },
+
+            battery: {
+
+                holdCharge: true,
+
+                holdAt: 80,
+
+                warnAt: 15,
+
+                nearlyEmpty: "nothing"
+            },
+
+            power: {
+
+                lid: {
+
+                    onBattery: "suspend",
+
+                    pluggedIn: "suspend",
+
+                    docked: "nothing"
+                }
             },
 
             notifications: {
@@ -333,7 +392,30 @@ Singleton {
 
                 cornerZone: 120,
 
-                placement: "corner"
+                placement: "corner",
+
+                quiet: false,
+
+                quietUntil: 0,
+
+                letAlarms: true,
+
+                nightly: false,
+
+                nightFrom: "22:00",
+
+                nightTo: "07:30",
+
+                rules: {}
+            },
+
+            sound: {
+
+                alerts: false,
+
+                alertSet: "soft",
+
+                alertVolume: 0.5
             },
 
             island: {
@@ -381,7 +463,9 @@ Singleton {
             },
 
             volume: {
-                step: 0.05
+                step: 0.05,
+
+                boost: true
             },
 
             screen: {
@@ -400,7 +484,38 @@ Singleton {
 
                 sliderWidth: 180,
 
-                valueWidth: 52
+                valueWidth: 52,
+
+                schedule: "off",
+
+                warmFrom: "21:00",
+                warmTo: "07:00",
+
+                easeMinutes: 5
+            },
+
+            access: {
+
+                lessMotion: false,
+
+                largerText: false,
+
+                moreContrast: false,
+
+                largerBase: 11,
+
+                contrastLabel: [0.96, 0.8, 0.68, 0.24],
+
+                stillMs: 1
+            },
+
+            region: {
+
+                clock24: true,
+
+                dateFormat: "words",
+
+                autoZone: false
             },
 
             network: {
@@ -529,12 +644,18 @@ Singleton {
 
                 keyboard: "",
 
+                keymap: "",
+
+                shape: "iso",
+
                 blocked: {}
             },
 
             tablet: {
 
                 autoKeyboard: true,
+
+                repeat: true,
 
                 docked: true,
 
@@ -569,7 +690,11 @@ Singleton {
 
                 aspectLock: true,
 
-                minSize: 160
+                minSize: 160,
+
+                lowerButton: "right click",
+
+                upperButton: "middle click"
             },
 
             lock: {
@@ -695,7 +820,11 @@ Singleton {
 
     property bool rewatch: false
 
-    readonly property var opaque: ["files.keys", "files.grid"]
+    readonly property var opaque: ["files.keys", "files.grid", "notifications.rules"]
+
+    readonly property var literals: ({
+            "files.terminal.palette": ["theme"]
+        })
 
     function get(key: string): var {
         return Configuration.lookup(root.values, key);
@@ -705,8 +834,20 @@ Singleton {
         root.setMany([[key, value]]);
     }
 
+    function upgrade(values: var): var {
+        return Configuration.upgrade(values);
+    }
+
+    function upgradeValue(key: string, value: var): var {
+        return Configuration.upgradeValue(key, value);
+    }
+
+    function accepts(key: string, value: var): bool {
+        return !Configuration.assign(root.values, [[key, value]], root.literals).refused;
+    }
+
     function setMany(pairs: var): void {
-        const result = Configuration.assign(root.values, pairs);
+        const result = Configuration.assign(root.values, pairs, root.literals);
         if (result.refused)
             return console.warn(`Config: no such setting "${result.refused}"`);
 
@@ -758,7 +899,7 @@ Singleton {
             }
 
             root.unreadable = false;
-            root.values = Configuration.merge(root.defaults, parsed, "", root.opaque);
+            root.values = Configuration.merge(root.defaults, Configuration.upgrade(parsed), "", root.opaque, root.literals);
             root.loaded = true;
 
             if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {

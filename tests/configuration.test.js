@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "config/configuration.js"), "utf8");
-const Configuration = new Function(src + "\nreturn { merge, assign, lookup };")();
+const Configuration = new Function(src + "\nreturn { merge, assign, lookup, upgrade, upgradeValue };")();
 
 const OPAQUE = ["files.keys", "files.grid"];
 
@@ -159,5 +159,61 @@ test.describe("lookup", () => {
         assert.strictEqual(Configuration.lookup(defaults(), "__proto__"), undefined);
         assert.strictEqual(Configuration.lookup(defaults(), "toString"), undefined);
         assert.strictEqual(Configuration.lookup(defaults(), "theme.length"), undefined);
+    });
+});
+
+test.describe("upgrade", () => {
+    test.it("moves the old launcher name and its sizes to alphabet", () => {
+        const old = { launcher: { concept: "niagara", niagara: { width: 700 } }, theme: "slate" };
+        assert.deepStrictEqual(Configuration.upgrade(old), { launcher: { concept: "alphabet", alphabet: { width: 700 } }, theme: "slate" });
+    });
+
+    test.it("keeps sizes already stored under alphabet and drops the old ones", () => {
+        const both = { launcher: { concept: "list", niagara: { width: 700 }, alphabet: { width: 800 } } };
+        assert.deepStrictEqual(Configuration.upgrade(both), { launcher: { concept: "list", alphabet: { width: 800 } } });
+    });
+
+    test.it("turns a single old launcher value into the new one and leaves the rest", () => {
+        assert.strictEqual(Configuration.upgradeValue("launcher.concept", "niagara"), "alphabet");
+        assert.strictEqual(Configuration.upgradeValue("launcher.concept", "list"), "list");
+        assert.strictEqual(Configuration.upgradeValue("theme", "niagara"), "niagara");
+    });
+
+    test.it("leaves a config without a launcher alone", () => {
+        const plain = { theme: "slate" };
+        assert.strictEqual(Configuration.upgrade(plain), plain);
+    });
+});
+
+test.describe("literals", () => {
+    const literals = { "files.terminal.palette": ["theme"] };
+    const base = () => ({ files: { terminal: { palette: ["#000000", "#ffffff"], rows: 16 } } });
+
+    test.it("keeps a spoken word where a list is expected", () => {
+        const out = Configuration.merge(base(), { files: { terminal: { palette: "theme" } } }, "", [], literals);
+        assert.strictEqual(out.files.terminal.palette, "theme");
+    });
+
+    test.it("still refuses any other word", () => {
+        const out = Configuration.merge(base(), { files: { terminal: { palette: "neon" } } }, "", [], literals);
+        assert.deepStrictEqual(out.files.terminal.palette, ["#000000", "#ffffff"]);
+    });
+
+    test.it("falls back to the list when nothing allows the word", () => {
+        const out = Configuration.merge(base(), { files: { terminal: { palette: "theme" } } }, "", []);
+        assert.deepStrictEqual(out.files.terminal.palette, ["#000000", "#ffffff"]);
+    });
+
+    test.it("assigns the word and the list both", () => {
+        const word = Configuration.assign(base(), [["files.terminal.palette", "theme"]], literals);
+        assert.strictEqual(word.refused, "");
+        assert.strictEqual(word.values.files.terminal.palette, "theme");
+        const list = Configuration.assign(word.values, [["files.terminal.palette", ["#111111"]]], literals);
+        assert.deepStrictEqual(list.values.files.terminal.palette, ["#111111"]);
+    });
+
+    test.it("refuses other words, and the word without the allowance", () => {
+        assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "neon"]], literals).refused, "files.terminal.palette");
+        assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "theme"]]).refused, "files.terminal.palette");
     });
 });

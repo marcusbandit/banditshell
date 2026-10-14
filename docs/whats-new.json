@@ -1,6 +1,93 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-10",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "The launcher's second style has a new name, alphabet. A config.json that still uses the old name for launcher.concept, or for the launcher's size settings, is moved over by itself the first time the shell starts. A script or keybind that sets the old name needs alphabet instead."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "Settings you changed back when the panel said \"nothing behind it in the shell yet\" are carried into config.json once and now take effect. For example, a do not disturb switch you left on now really silences popups. Choices that belong to the system or to Hyprland, such as keyboard layouts or the power mode, start from what your machine has now. Settings you never touched keep behaving as they did: the lid, idle locking, alert sounds and startup apps change nothing until you choose something."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Every setting in Settings now does what it says. In Connections, the hotspot and VPN tunnels switch on and off through NetworkManager, and Add a tunnel imports a WireGuard .conf or OpenVPN .ovpn file."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Do not disturb works: popups and sounds stop while notifications still collect, it can end in an hour, at 18:00 or tomorrow morning, and it can come on every night. Alarms can still get through, and so do low battery warnings. Each app can have its own popup, sound and lock screen rule. Modes (work, play, stream, sleep) now change their settings and put them back when you leave, and banditshell focus switches modes and quiet from a terminal or keybind."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Alert sounds play for notifications, low battery and errors when you turn them on, in a soft, clear or wood set at their own volume. They start off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Night light can follow a schedule, at set times or from sunset to sunrise for your time zone, easing in over a few minutes. Less motion, larger text and more contrast now apply to the whole shell. The 24-hour clock and the date style reach every clock and date the shell shows."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Display › Screens can turn a screen off or mirror another one. Like the other screen changes these wait for Apply and come with the countdown to go back. The last screen that is on cannot be turned off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The sidebar can show the clock stacked, small, on one line or not at all, the date as day and month, day or nothing, and each status icon, the tray and the special workspaces can be hidden. A hidden status icon's menu still opens from its keybind. The active mode shows its icon above the status icons."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Volume past 100% is a switch. The launcher can forget what it learned, the clipboard imports clipse's history the moment you press Import, and the wallpaper reveal replays from its button."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Window layout, keyboard layouts, key repeat, mouse and touchpad speed, natural scrolling and tap to click are written to your Hyprland config, behind the existing permission to edit Hyprland files. Pen buttons can be remapped. The hotkey sheet draws an ansi, iso or split board, and an imported VIA keymap lights the keys the shell binds."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Power mode, what closing the lid does, the low battery warning level and what happens when the battery is nearly empty are real settings. Holding the battery's charge needs a small helper installed once with bash install.sh --charge-limit. Lock, screens off and sleep after a time of no use are off until you pick a time, and stand aside when hypridle or swayidle already does it."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Default apps and startup apps are real. Startup apps lists what starts from Hyprland, systemd, ~/.config/autostart and your own autostart launcher, and switches each off where it lives. Time zone, language and formats change the system's, asking for your password. Restore from a file shows what would change before anything is written, OBS's address and password can be set here, and the terminal's colours can follow the theme."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "In Display › Screens, the arrangement snaps back to start at the top-left corner when you let go of a screen, instead of drifting further off with every drag."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "When your Hyprland config fails Hyprland's own check, the shell now says so and changes nothing, instead of writing an edit and quietly undoing it. Edits made close together wait their turn instead of being dropped, and a screen edit lands in the right place on every machine that shares the config."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-14-9",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Updating no longer stops at a file you edited yourself. If an update changes a file you also changed, your edit is set aside in git stash first and the update goes through, and the update menu names the files. git stash list shows them and git stash pop brings them back. Edits to files the update does not touch stay where they are."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-8",
       "date": "2026-10-14",
       "changes": [

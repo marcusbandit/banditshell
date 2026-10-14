@@ -1,6 +1,7 @@
 .pragma library
 
 const pct = v => `${Math.round(v * 100)}%`;
+const PEN_BUTTONS_WHY = "Right click and middle click are what the stylus buttons send as they come. Erase turns the pen to its eraser for as long as the button is held. Changing them makes the shell sit between the pen and Hyprland, so a pen on its defaults is left untouched.";
 const signed = v => Math.abs(v) < 0.01 ? "as is" : (v > 0 ? "+" : "") + v.toFixed(2);
 const kelvin = (s, v) => {
     const top = s.neutral || 6500;
@@ -41,7 +42,7 @@ const SEARCH_TITLES = {
 
 const WIDGET_WHY = {
     winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom is for your own layout; how it plugs in is still being worked out.",
-    via: "Import the .json your keyboard’s maker publishes for VIA. The sheet then draws your exact board, split halves and odd keys included.",
+    via: "Import the .json your keyboard’s maker publishes for VIA. The sheet then draws your exact board, split halves and odd keys included. Add a keymap saved from VIA and the keys you bind light up on it.",
     modes: "Like a focus on a phone. Pick one and it changes a handful of settings; pick none and they go back.",
     usage: "Time with each app in front of you today, counted only while you are active.",
     recent: "Every setting you change lands here with a way back. The search field shows the same list when it is empty.",
@@ -58,10 +59,10 @@ const WIDGET_WHY = {
 const PAGES_SOURCE = {
     wifi: {
         id: "wifi", name: "Wi-Fi", icon: "wifi", preview: "network",
-        status: s => s.v("wifi") ? s.wifiNet || "not connected" : "off",
+        status: s => s.v("wifi") ? s.wifiState : "off",
         groups: [
             { rows: [
-                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", detail: s => s.v("wifi") ? (s.wifiNet || "not connected") : "off",
+                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", detail: s => s.v("wifi") ? s.wifiState : "off",
                     why: "Turns the radio off. Ethernet keeps working." },
                 { n: [2, 3, 6], kind: "w", w: "nets", kw: "networks join password forget qr share scan portal sign in" },
                 { n: 4, icon: "autorenew", label: "Join on its own", k: "autoJoin", kind: "toggle", detail: s => s.v("autoJoin") ? "" : "waits to be told", dis: s => !s.v("wifi"),
@@ -109,16 +110,15 @@ const PAGES_SOURCE = {
         status: s => [s.v("hotspot") ? "sharing" : "not sharing", s.vpnOn ? `vpn ${s.vpnOn}` : "no vpn"].join(" · "),
         groups: [
             { t: "Hotspot", rows: [
-                { n: 9, isNew: true, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", detail: s => s.v("hotspot") ? "on · 0 devices" : "over Wi-Fi",
+                { n: 9, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", detail: s => s.hotspotStatus || "over Wi-Fi", dis: s => s.hotspotBlocked,
                     why: "Lends your ethernet connection to other devices over Wi-Fi. Wi-Fi stops joining networks while it runs.", layer: [
-                        { n: 9, isNew: true, icon: "badge", label: "Name", k: "hotspotName", kind: "text" },
-                        { n: 9, isNew: true, icon: "key", label: "Password", k: "hotspotPass", kind: "secret" },
-                        { n: 9, isNew: true, icon: "settings_input_antenna", label: "Band", k: "hotspotBand", kind: "seg", o: ["2.4 GHz", "5 GHz"] }
+                        { n: 9, icon: "badge", label: "Name", k: "hotspotName", kind: "text" },
+                        { n: 9, icon: "key", label: "Password", k: "hotspotPass", kind: "secret", detail: s => s.hotspotPasswordTrouble, bad: s => s.hotspotPasswordTrouble !== "" },
+                        { n: 9, icon: "settings_input_antenna", label: "Band", k: "hotspotBand", kind: "seg", o: ["2.4 GHz", "5 GHz"] }
                     ] }
             ] },
             { t: "VPN", rows: [
-                { n: 10, isNew: true, kind: "w", w: "tunnels", kw: "vpn wireguard tunnel" },
-                { n: 10, isNew: true, icon: "upload_file", label: "Add a tunnel", kind: "button", btn: "Import", act: "vpnImport", detail: ".conf or .ovpn" }
+                { n: 10, kind: "w", w: "tunnels", kw: "vpn wireguard openvpn tunnel add import" }
             ] }
         ]
     },
@@ -131,7 +131,7 @@ const PAGES_SOURCE = {
                 { n: 15, icon: "speaker", label: "Play through", k: "output", kind: "choice", o: s => s.outputs, kw: "output device",
                     why: "Where sound goes. The speaker in the sidebar switches it too." },
                 { n: 18, icon: "unfold_more", label: "Keys step by", k: "volStep", kind: "seg", o: [[0.02, "2%"], [0.05, "5%"], [0.1, "10%"]], cfg: "volume.step", kw: "volume step" },
-                { n: 19, isNew: true, icon: "campaign", label: "Past 100%", k: "overAmp", kind: "toggle", detail: "louder, can crackle", kw: "volume above 100 boost",
+                { n: 19, icon: "campaign", label: "Past 100%", k: "overAmp", kind: "toggle", cfg: "volume.boost", detail: "louder, can crackle", kw: "volume above 100 boost",
                     why: "Lets the slider run to 150%. The bead turns accent once it passes the mark at 100%." }
             ] },
             { t: "Speakers and headphones", rows: [
@@ -171,7 +171,7 @@ const PAGES_SOURCE = {
                 { n: 79, icon: "history", label: "Remember", k: "notifHistory", kind: "step", min: 10, max: 500, step: 10, cfg: "notifications.maxHistory", fmt: v => `${v}`, kw: "notification history length" }
             ] },
             { t: "By app", rows: [
-                { n: 81, isNew: true, kind: "w", w: "rules", kw: "per-app notification rules" }
+                { n: 81, kind: "w", w: "rules", cfg: "notifications.rules", kw: "per-app notification rules" }
             ] },
             { t: "The island", rows: [
                 { n: [], icon: "download_done", label: "Downloads", k: "islandDownloads", kind: "toggle", cfg: "island.downloads", detail: s => s.v("islandDownloads") ? "says when a file lands" : "says nothing", kw: "island finished downloads announce",
@@ -188,9 +188,9 @@ const PAGES_SOURCE = {
         status: s => s.v("alerts") ? `${s.v("alertSet")} alerts` : "alerts off",
         groups: [
             { t: "Alerts", rows: [
-                { n: 22, isNew: true, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", detail: "notifications · low battery · errors" },
-                { n: 22, isNew: true, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], dis: s => !s.v("alerts") },
-                { n: 22, isNew: true, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, dis: s => !s.v("alerts") }
+                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", detail: "notifications · low battery · errors" },
+                { n: 22, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], cfg: "sound.alertSet", dis: s => !s.v("alerts") },
+                { n: 22, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, cfg: "sound.alertVolume", dis: s => !s.v("alerts") }
             ] },
             { t: "Media", rows: [
                 { n: 82, icon: "swap_vert", label: "Wheel seeks", k: "wheelSeek", kind: "step", min: 0, max: 30, unit: " s", cfg: "media.wheelSeek", detail: s => s.v("wheelSeek") ? "per notch on the player" : "off", kw: "media controls scroll to seek" },
@@ -205,9 +205,9 @@ const PAGES_SOURCE = {
         groups: [
             { t: s => `${s.selMon} · ${s.selMonWhat}`, rows: [
                 { n: 23, icon: "drag_pan", label: "Arrangement", k: "scr:layout", kind: "fact", text: "drag a screen to line it up with your desk. it snaps to edges, corners and centres, and the arrow keys nudge it. nothing changes until you press apply.",
-                    why: "Moves, resolutions, rates, scale and turns wait for Apply, then go to Hyprland's monitor lines together. A change to the picture asks you to keep it, and goes back by itself after 15 seconds if you can't. Hold ctrl while dragging to move freely; shift with the arrows moves 10 px; tab picks the next screen.", kw: "screen arrangement position monitors layout drag snap centre nudge apply" },
-                { n: 29, isNew: true, icon: "power_settings_new", label: "Use this screen", k: "scr:on", kind: "toggle", detail: s => s.onlyOn ? "the last one stays on" : "", dis: s => s.onlyOn, kw: "turn a screen off" },
-                { n: 29, isNew: true, icon: "flip", label: "Mirror", k: "scr:mirror", kind: "choice", o: s => [["", "nothing"]].concat(s.monitorNames.filter(m => m !== s.selMon).map(m => [m, m])), dis: s => !s.v("scr:on") },
+                    why: "Moves, resolutions, rates, scale, turns, turning a screen off and mirroring wait for Apply, then go to Hyprland's monitor lines together. A change to the picture asks you to keep it, and goes back by itself after 15 seconds if you can't. Hold ctrl while dragging to move freely; shift with the arrows moves 10 px; tab picks the next screen.", kw: "screen arrangement position monitors layout drag snap centre nudge apply" },
+                { n: 29, icon: "power_settings_new", label: "Use this screen", k: "scr:on", kind: "toggle", detail: s => s.onlyOn ? "the last one stays on" : s.pendingNote("on"), dis: s => s.onlyOn, kw: "turn a screen off" },
+                { n: 29, icon: "flip", label: "Mirror", k: "scr:mirror", kind: "choice", o: s => [["", "nothing"]].concat(s.mirrorChoices.map(m => [m, m])), detail: s => s.pendingNote("mirror"), dis: s => !s.v("scr:on"), kw: "clone duplicate screen" },
                 { n: 24, icon: "aspect_ratio", label: "Resolution", k: "scr:res", kind: "choice", o: s => s.resolutions, detail: s => s.pendingNote("res"), dis: s => !s.v("scr:on") },
                 { n: 25, icon: "speed", label: "Refresh rate", k: "scr:hz", kind: "choice", o: s => s.rates, detail: s => s.pendingNote("hz"), dis: s => !s.v("scr:on") },
                 { n: 26, icon: "zoom_in", label: "Scale", k: "scr:scale", kind: "seg", o: [[1, "1"], [1.25, "1.25"], [1.5, "1.5"], [2, "2"]], detail: s => s.pendingNote("scale"), dis: s => !s.v("scr:on") },
@@ -227,7 +227,9 @@ const PAGES_SOURCE = {
                 { n: 33, icon: "nightlight", label: "Warmth", k: "warmth", kind: "slider", min: 0, max: 100, fmtS: kelvin, cfg: "screen.warmth", kw: "night light warmth",
                     why: "Pulls blue out of every screen. All the way over it reaches the warmest point below." },
                 { n: 33, icon: "thermostat", label: "Warmest point", k: "warmest", kind: "step", min: 1500, max: 4000, step: 100, unit: " K", cfg: "screen.warmest", kw: "night light" },
-                { n: 34, isNew: true, icon: "schedule", label: "On a schedule", k: "nightSched", kind: "seg", o: ["off", "sunset", "set times"], detail: s => s.v("nightSched") === "sunset" ? "tonight 18:24 to 07:41" : s.v("nightSched") === "set times" ? "21:00 to 07:00" : "", kw: "night light schedule" }
+                { n: 34, icon: "schedule", label: "On a schedule", k: "nightSched", kind: "seg", o: ["off", "sunset", "set times"], cfg: "screen.schedule", detail: s => s.scheduleDetail, kw: "night light schedule" },
+                { n: 34, icon: "bedtime", label: "Warm from", k: "warmFrom", kind: "slider", min: 0, max: 1425, step: 15, fmtS: (s, v) => s.minuteText(v), cfg: "screen.warmFrom", dis: s => s.v("nightSched") !== "set times", kw: "night light schedule start" },
+                { n: 34, icon: "wb_twilight", label: "Warm until", k: "warmTo", kind: "slider", min: 0, max: 1425, step: 15, fmtS: (s, v) => s.minuteText(v), cfg: "screen.warmTo", dis: s => s.v("nightSched") !== "set times", kw: "night light schedule end" }
             ] }
         ]
     },
@@ -268,7 +270,7 @@ const PAGES_SOURCE = {
     },
     type: {
         id: "type", name: "Text and icons", icon: "text_fields", preview: "chassis",
-        status: s => `${s.v("font")} · ${(s.v("largerText") ? 11 : s.v("fontBase")) * 2} px`,
+        status: s => `${s.v("font")} · ${(s.v("largerText") ? s.largerBase : s.v("fontBase")) * 2} px`,
         groups: [
             { rows: [
                 { n: 47, icon: "text_fields", label: "Font", k: "font", kind: "choice", o: s => s.fonts, cfg: "font.family",
@@ -315,26 +317,26 @@ const PAGES_SOURCE = {
                 { n: 61, icon: "palette", label: "App marks", k: "iconMode", kind: "seg", o: ["colour", "mono"], cfg: "sidebar.workspaces.iconMode", kw: "workspace icons",
                     why: "Plates show the apps inside each workspace. Mono tints the marks to match the text." },
                 { n: 62, icon: "filter_5", label: "Always there", k: "persistent", kind: "step", min: 1, max: 10, cfg: "sidebar.workspaces.persistent", fmt: v => `${v}`, detail: "more show up when busy", kw: "always-shown workspaces" },
-                { n: 63, isNew: true, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.specials", detail: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
+                { n: 63, icon: "stacks", label: "Special workspaces", k: "specialsShown", kind: "toggle", cfg: "sidebar.workspaces.rack", detail: s => s.specialNames.join(" · ") || "none yet", kw: "scratchpad special", layer: [
                     { n: 63, kind: "w", w: "specials" }
                 ] }
             ] },
             { t: "Clock and date", rows: [
-                { n: [], isNew: true, icon: "schedule", label: "Clock", k: "sbClock", kind: "seg", o: ["stacked", "small", "one line", "off"], cfg: "sidebar.clock.style", kw: "sidebar clock style simplified one line hide",
+                { n: [], icon: "schedule", label: "Clock", k: "sbClock", kind: "seg", o: ["stacked", "small", "one line", "off"], cfg: "sidebar.clock.style", kw: "sidebar clock style simplified one line hide",
                     why: "Stacked is hours over minutes at the normal size. Small is the same at the small size. One line turns the time on its side so it reads as 14:32." },
-                { n: [], isNew: true, icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
+                { n: [], icon: "calendar_today", label: "Date", k: "sbDate", kind: "seg", o: [["day and month", "14 oct"], ["day", "14"], ["off", "off"]], cfg: "sidebar.clock.date", kw: "sidebar calendar date hide",
                     why: "The date under the clock. It still opens the calendar when you tap or pull it." }
             ] },
             { t: "Status", rows: [
                 { n: [], icon: "sync", label: "Update button", k: "sbUpdate", kind: "seg", o: [["always", "always"], ["new", "when new"], ["never", "never"]], cfg: "sidebar.update", kw: "sidebar update button hide",
                     why: "When new keeps the sidebar clean until there is something to install. Updates stay reachable from System either way." },
-                { n: [], isNew: true, icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
-                { n: [], isNew: true, icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
-                { n: [], isNew: true, icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
-                { n: [], isNew: true, icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", detail: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
+                { n: [], icon: "volume_up", label: "Sound", k: "sbSound", kind: "toggle", cfg: "sidebar.status.sound", kw: "sidebar status icons" },
+                { n: [], icon: "wifi", label: "Network", k: "sbNet", kind: "toggle", cfg: "sidebar.status.network", kw: "sidebar status icons" },
+                { n: [], icon: "bluetooth", label: "Bluetooth", k: "sbBt", kind: "toggle", cfg: "sidebar.status.bluetooth", kw: "sidebar status icons" },
+                { n: [], icon: "battery_5_bar", label: "Battery", k: "sbBatt", kind: "toggle", cfg: "sidebar.status.battery", detail: s => s.hasBattery ? "" : "no battery in this machine", dis: s => !s.hasBattery, kw: "sidebar status icons" }
             ] },
             { t: "Tray", rows: [
-                { n: 64, isNew: true, icon: "apps", label: "Tray", k: "tray", kind: "toggle", detail: s => `${s.trayCount} apps`, kw: "tray" },
+                { n: 64, icon: "apps", label: "Tray", k: "tray", kind: "toggle", cfg: "sidebar.tray.enabled", detail: s => `${s.trayCount} apps`, kw: "tray" },
                 { n: 64, icon: "more_horiz", label: "Most icons", k: "trayMax", kind: "step", min: 1, max: 12, cfg: "sidebar.tray.max", fmt: v => `${v}`, detail: "the rest fold away", dis: s => !s.v("tray") }
             ] }
         ]
@@ -344,7 +346,7 @@ const PAGES_SOURCE = {
         status: s => `${s.v("layout") === "custom" ? "custom layout" : s.v("layout")} · ${s.v("dropMode")} on drop`,
         groups: [
             { t: "Layout", rows: [
-                { n: [], isNew: true, kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom" }
+                { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom" }
             ] },
             { t: "Moving", rows: [
                 { n: 66, icon: "vertical_align_top", label: "Bottom edge lifts windows", k: "edgeLift", kind: "toggle", cfg: "windows.edge", detail: "push down to peek" },
@@ -365,8 +367,8 @@ const PAGES_SOURCE = {
         status: s => `${s.v("concept")} · ${s.starredCount} starred`,
         groups: [
             { t: "Layout", rows: [
-                { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "niagara"], cfg: "launcher.concept", kw: "launcher layout",
-                    why: "List is a plain search list. Niagara is a thumb-sized alphabet rail with favourites on a bow." },
+                { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
+                    why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
                 { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", detail: "apps you use rise", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
             ] },
@@ -389,7 +391,7 @@ const PAGES_SOURCE = {
                 { n: 75, icon: "image", label: "Largest image", k: "clipBlob", kind: "seg", o: [[8388608, "8 MB"], [33554432, "32 MB"], [134217728, "128 MB"]], cfg: "clipboard.maxBlob", dis: s => !s.v("clip"), kw: "clipboard limits" }
             ] },
             { t: "Import", rows: [
-                { n: 76, icon: "move_to_inbox", label: "From clipse", kind: "button", btn: s => s.clipseImported ? "Done" : "Import", act: "importClipse", cfg: "clipboard.importClipse", detail: s => s.clipseDetail, dis: s => s.clipseImported, kw: "import clipse" }
+                { n: 76, icon: "move_to_inbox", label: "From clipse", kind: "button", btn: s => s.clipseWaiting ? "Import" : "Done", act: "importClipse", cfg: "clipboard.importClipse", detail: s => s.clipseDetail, dis: s => !s.clipseWaiting, kw: "import clipse" }
             ] }
         ]
     },
@@ -398,14 +400,14 @@ const PAGES_SOURCE = {
         status: s => s.v("mode") !== "none" ? s.v("mode") : "none",
         groups: [
             { rows: [
-                { n: [], isNew: true, kind: "w", w: "modes", kw: "modes focus work play stream sleep" }
+                { n: [], kind: "w", w: "modes", kw: "modes focus work play stream sleep" }
             ] },
             { t: "Do not disturb", rows: [
-                { n: 80, isNew: true, icon: "do_not_disturb_on", label: "Do not disturb", k: "dnd", kind: "toggle", detail: "still collects them", kw: "dnd focus", layer: [
-                    { n: 80, isNew: true, icon: "timer_off", label: "Ends", k: "dndUntil", kind: "choice", o: ["in an hour", "at 18:00", "tomorrow", "off by hand"] },
-                    { n: 80, isNew: true, icon: "alarm", label: "Let alarms through", k: "dndAlarms", kind: "toggle" }
+                { n: 80, icon: "do_not_disturb_on", label: "Do not disturb", k: "dnd", kind: "toggle", cfg: "notifications.quiet", detail: s => s.quietNote, kw: "dnd focus", layer: [
+                    { n: 80, icon: "timer_off", label: "Ends", k: "dndUntil", kind: "choice", o: ["in an hour", "at 18:00", "tomorrow", "off by hand"], cfg: "notifications.quietUntil", detail: s => s.quietEndsNote },
+                    { n: 80, icon: "alarm", label: "Let alarms through", k: "dndAlarms", kind: "toggle", cfg: "notifications.letAlarms" }
                 ] },
-                { n: 80, isNew: true, icon: "bedtime", label: "Every night", k: "dndNightly", kind: "toggle", detail: "22:00 to 07:30", kw: "do not disturb schedule" }
+                { n: 80, icon: "bedtime", label: "Every night", k: "dndNightly", kind: "toggle", cfg: "notifications.nightly", detail: s => s.nightWindow, kw: "do not disturb schedule" }
             ] }
         ]
     },
@@ -439,13 +441,13 @@ const PAGES_SOURCE = {
         status: s => `${s.usedLabel} of ${s.v("capHours")} h`,
         groups: [
             { t: "Today", rows: [
-                { n: 88, isNew: true, kind: "w", w: "usage", kw: "screen time usage today" }
+                { n: 88, kind: "w", w: "usage", kw: "screen time usage today" }
             ] },
             { t: "Limits", rows: [
                 { n: 88, icon: "hourglass_bottom", label: "Daily cap", k: "capHours", kind: "step", min: 1, max: 16, unit: " h", cfg: "usage.capHours", detail: s => `${s.usedLabel} so far`, kw: "screen time cap" },
-                { n: 88, isNew: true, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", detail: "drains colour once the time is up" },
-                { n: 88, isNew: true, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", detail: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
-                    { n: 88, isNew: true, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min" }
+                { n: 88, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", cfg: "usage.greyAtCap", detail: "drains colour once the time is up · input still works" },
+                { n: 88, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", cfg: "usage.breaks", detail: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
+                    { n: 88, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min", cfg: "usage.breakEvery" }
                 ] }
             ] }
         ]
@@ -455,14 +457,14 @@ const PAGES_SOURCE = {
         status: s => s.kbLayouts.map(l => l.name).join(" · "),
         groups: [
             { rows: [
-                { n: 99, isNew: true, kind: "w", w: "kbLayouts", kw: "keyboard layout" },
-                { n: 99, isNew: true, icon: "keyboard_tab", label: "Repeat after", k: "kbDelay", kind: "slider", min: 150, max: 800, step: 10, fmt: v => `${v} ms`, kw: "key repeat delay" },
-                { n: 99, isNew: true, icon: "fast_forward", label: "Repeat rate", k: "kbRate", kind: "slider", min: 10, max: 60, fmt: v => `${v}/s`, kw: "key repeat rate" }
+                { n: 99, kind: "w", w: "kbLayouts", kw: "keyboard layout" },
+                { n: 99, icon: "keyboard_tab", label: "Repeat after", k: "kbDelay", kind: "slider", min: 150, max: 800, step: 10, fmt: v => `${v} ms`, kw: "key repeat delay" },
+                { n: 99, icon: "fast_forward", label: "Repeat rate", k: "kbRate", kind: "slider", min: 10, max: 60, fmt: v => `${v}/s`, kw: "key repeat rate" }
             ] },
             { t: "Hotkey sheet", rows: [
                 { n: 98, icon: "keyboard_alt", label: "Draw the board", k: "sheetBoard", kind: "toggle", cfg: "cheatsheet.board", detail: "super + /", kw: "hotkey sheet" },
                 { n: 98, icon: "keyboard", label: "Board", k: "sheetKeyboard", kind: "choice", o: [["ansi", "ansi"], ["iso", "iso"], ["split", "split"], ["file", "from file"]], cfg: "cheatsheet.keyboard", dis: s => !s.v("sheetBoard"), kw: "hotkey sheet keyboard via import",
-                    why: "Ansi, iso and split are drawn from built-in layouts. From file draws your own board from a VIA definition, so the sheet matches the keyboard on your desk." },
+                    why: "Ansi, iso and split are drawn from built-in layouts. From file draws your own board from a VIA definition, so the sheet matches the keyboard on your desk. Pick a shape and the file is forgotten; import a file and it wins over the shape." },
                 { n: 98, kind: "w", w: "via", kw: "via file import keyboard layout" },
                 { n: 98, icon: "description", label: "Read keys from", k: "bindsFile", kind: "path", ro: true, kw: "hotkey sheet layout file" }
             ] }
@@ -485,10 +487,10 @@ const PAGES_SOURCE = {
         status: s => s.v("naturalScroll") ? "natural scroll" : "classic scroll",
         groups: [
             { rows: [
-                { n: 100, isNew: true, icon: "mouse", label: "Mouse speed", k: "mouseSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "mouse speed" },
-                { n: 100, isNew: true, icon: "touchpad_mouse", label: "Touchpad speed", k: "padSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "touchpad speed" },
-                { n: 100, isNew: true, icon: "swipe_vertical", label: "Natural scrolling", k: "naturalScroll", kind: "toggle", detail: "content follows your fingers" },
-                { n: 100, isNew: true, icon: "touch_app", label: "Tap to click", k: "tapClick", kind: "toggle" }
+                { n: 100, icon: "mouse", label: "Mouse speed", k: "mouseSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "mouse speed" },
+                { n: 100, icon: "touchpad_mouse", label: "Touchpad speed", k: "padSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, detail: s => s.touchpads.length ? s.touchpads.map(t => t.label).join(" · ") : "no touchpad here", dis: s => !s.touchpads.length, kw: "touchpad speed" },
+                { n: 100, icon: "swipe_vertical", label: "Natural scrolling", k: "naturalScroll", kind: "toggle", detail: "content follows your fingers" },
+                { n: 100, icon: "touch_app", label: "Tap to click", k: "tapClick", kind: "toggle" }
             ] }
         ]
     },
@@ -505,7 +507,7 @@ const PAGES_SOURCE = {
                 { n: 102, icon: "keyboard_hide", label: "Keyboard on fold", k: "autoKeyboard", kind: "toggle", cfg: "tablet.autoKeyboard" },
                 { n: 102, icon: "vertical_align_bottom", label: "Board takes room", k: "docked", kind: "toggle", cfg: "tablet.docked", detail: s => s.v("docked") ? "windows move up" : "floats over them", dis: s => !s.v("autoKeyboard") },
                 { n: 102, icon: "height", label: "Board height", k: "boardHeight", kind: "slider", min: 0.25, max: 0.5, step: 0.01, fmt: pct, cfg: "tablet.height", dis: s => !s.v("autoKeyboard") },
-                { n: 102, isNew: true, icon: "repeat", label: "Held keys repeat", k: "boardRepeat", kind: "toggle", cfg: "tablet.repeatDelay", detail: s => s.repeatDetail, dis: s => !s.v("autoKeyboard"), kw: "key repeat" }
+                { n: 102, icon: "repeat", label: "Held keys repeat", k: "boardRepeat", kind: "toggle", cfg: "tablet.repeat", detail: s => s.repeatDetail, dis: s => !s.v("autoKeyboard"), kw: "key repeat" }
             ] }
         ]
     },
@@ -517,23 +519,25 @@ const PAGES_SOURCE = {
                 { n: 103, icon: "stylus", label: "Pen", k: "pen", kind: "toggle", cfg: "pen.enabled", detail: s => s.v("pen") ? s.penName : "off", kw: "pen device" },
                 { n: 103, icon: "monitor", label: "Maps to", k: "penScreen", kind: "seg", o: s => s.screensOn.concat(["all"]), dis: s => !s.v("pen"), kw: "pen area mapping" },
                 { n: 103, icon: "aspect_ratio", label: "Keep the shape", k: "aspectLock", kind: "toggle", cfg: "pen.aspectLock", detail: "trims the pad to match", dis: s => !s.v("pen"), kw: "pen aspect lock" },
-                { n: 103, isNew: true, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], dis: s => !s.v("pen"), kw: "pen buttons" },
-                { n: 103, isNew: true, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], dis: s => !s.v("pen"), kw: "pen buttons" }
+                { n: 103, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.lowerButton", detail: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons",
+                    why: PEN_BUTTONS_WHY },
+                { n: 103, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.upperButton", detail: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons",
+                    why: PEN_BUTTONS_WHY }
             ] }
         ]
     },
     battery: {
         id: "battery", name: "Battery", icon: "battery_5_bar", preview: "battery", off: s => !s.hasBattery, away: s => !s.hasBattery,
-        status: s => !s.hasBattery ? "no battery in this machine" : s.v("chargeLimit") ? `${s.batteryPct}% · held at ${s.v("chargeMax")}%` : `${s.batteryPct}%`,
+        status: s => !s.hasBattery ? "no battery in this machine" : s.v("chargeLimit") && !s.chargeTrouble ? `${s.batteryPct}% · held at ${s.v("chargeMax")}%` : `${s.batteryPct}%`,
         groups: [
             { rows: [
                 { n: 104, kind: "w", w: "battery", kw: "battery charge health history" }
             ] },
             { t: "Charging", rows: [
-                { n: 106, isNew: true, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", detail: "kinder to the cells", kw: "charge limit" },
-                { n: 106, isNew: true, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit"), kw: "charge limit" },
-                { n: 107, isNew: true, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
-                { n: 107, isNew: true, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", o: ["suspend at 5%", "hibernate at 5%", "nothing"], kw: "low battery" }
+                { n: 106, icon: "battery_charging_80", label: "Hold the charge", k: "chargeLimit", kind: "toggle", cfg: "battery.holdCharge", detail: s => s.chargeTrouble || "kinder to the cells", dis: s => !s.chargeSupported, kw: "charge limit" },
+                { n: 106, icon: "battery_full", label: "Stop at", k: "chargeMax", kind: "slider", cfg: "battery.holdAt", min: 60, max: 100, step: 5, fmt: v => `${v}%`, dis: s => !s.v("chargeLimit") || !s.chargeSupported, kw: "charge limit" },
+                { n: 107, icon: "battery_alert", label: "Warn at", k: "lowWarn", kind: "slider", cfg: "battery.warnAt", min: 5, max: 30, fmt: v => `${v}%`, kw: "low battery warning" },
+                { n: 107, icon: "battery_0_bar", label: "Nearly empty", k: "lowAction", kind: "choice", cfg: "battery.nearlyEmpty", o: s => [`suspend at ${s.nearlyEmptyPercent}%`, `hibernate at ${s.nearlyEmptyPercent}%`, "nothing"], unavailable: s => s.hibernatePossible ? [] : [`hibernate at ${s.nearlyEmptyPercent}%`], detail: s => s.hibernatePossible ? "warns first, then acts" : "hibernate needs swap and a resume setup", kw: "low battery" }
             ] }
         ]
     },
@@ -542,18 +546,18 @@ const PAGES_SOURCE = {
         status: s => s.hasLid ? `${s.v("profile")} · lid ${s.v("lidBattery")}` : s.v("profile"),
         groups: [
             { rows: [
-                { n: 105, isNew: true, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: ["saver", "balanced", "fast"], kw: "power profile performance" }
+                { n: 105, icon: "bolt", label: "Power mode", k: "profile", kind: "seg", o: s => s.profileChoices, detail: s => s.profileTrouble, dis: s => s.profileChoices.length === 0, kw: "power profile performance" }
             ] },
             { t: "Lid", away: s => !s.hasLid, rows: [
-                { n: 108, isNew: true, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", o: ["suspend", "hibernate", "lock", "nothing"], kw: "lid close action" },
-                { n: 108, isNew: true, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", o: ["suspend", "lock", "nothing"], kw: "lid close action" },
-                { n: 108, isNew: true, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", o: ["nothing", "lock", "suspend"], kw: "lid close action docked" }
+                { n: 108, icon: "laptop", label: "On battery", k: "lidBattery", kind: "choice", cfg: "power.lid.onBattery", o: ["suspend", "hibernate", "lock", "nothing"], unavailable: s => s.hibernatePossible ? [] : ["hibernate"], detail: s => s.hibernatePossible ? "" : "hibernate needs swap and a resume setup", kw: "lid close action" },
+                { n: 108, icon: "power", label: "Plugged in", k: "lidPlugged", kind: "choice", cfg: "power.lid.pluggedIn", o: ["suspend", "lock", "nothing"], kw: "lid close action" },
+                { n: 108, icon: "monitor", label: "With screens attached", k: "lidDocked", kind: "choice", cfg: "power.lid.docked", o: ["nothing", "lock", "suspend"], kw: "lid close action docked" }
             ] }
         ]
     },
     lock: {
         id: "lock", name: "Lock and idle", icon: "lock", preview: "lock",
-        status: s => `locks after ${s.v("idleLock")}`,
+        status: s => s.idleHandled ? `${s.idleHandler} sets the timing` : s.v("idleLock") === "never" ? "never locks by itself" : `locks after ${s.v("idleLock")}`,
         groups: [
             { t: "Lock screen", rows: [
                 { n: 90, icon: "blur_on", label: "Blur", k: "lockBlur", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.blur", kw: "lock screen look" },
@@ -562,32 +566,32 @@ const PAGES_SOURCE = {
                 { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow", detail: "your password brings you back" }
             ] },
             { t: "When idle", rows: [
-                { n: 91, isNew: true, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], kw: "auto-lock idle" },
-                { n: 91, isNew: true, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], kw: "screen-off idle" },
-                { n: 91, isNew: true, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], detail: s => s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
+                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", detail: s => s.idleHandled ? `${s.idleHandler} is handling this` : "", kw: "auto-lock idle" },
+                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", detail: s => s.idleHandled ? `${s.idleHandler} is handling this` : "a playing video holds it off", kw: "screen-off idle" },
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", detail: s => s.idleHandled ? `${s.idleHandler} is handling this` : s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
             ] }
         ]
     },
     defaults: {
         id: "defaults", name: "Default apps", icon: "open_in_new", preview: "defaults",
-        status: s => `${s.v("defBrowser")} · ${s.v("defTerm")}`,
+        status: s => `${s.defaultName("defBrowser")} · ${s.defaultName("defTerm")}`,
         groups: [
             { rows: [
-                { n: 111, isNew: true, icon: "public", label: "Web", k: "defBrowser", kind: "choice", o: s => s.appsFor("defBrowser"), kw: "default apps browser" },
-                { n: 111, isNew: true, icon: "folder", label: "Files", k: "defFiles", kind: "choice", o: s => s.appsFor("defFiles"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "terminal", label: "Terminal", k: "defTerm", kind: "choice", o: s => s.appsFor("defTerm"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "mail", label: "Mail", k: "defMail", kind: "choice", o: s => s.appsFor("defMail"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "image", label: "Pictures", k: "defImages", kind: "choice", o: s => s.appsFor("defImages"), kw: "default apps" },
-                { n: 111, isNew: true, icon: "movie", label: "Video", k: "defVideo", kind: "choice", o: s => s.appsFor("defVideo"), kw: "default apps" }
+                { n: 111, icon: "public", label: "Web", k: "defBrowser", kind: "choice", o: s => s.appsFor("defBrowser"), detail: s => s.defaultNote("defBrowser"), kw: "default apps browser" },
+                { n: 111, icon: "folder", label: "Files", k: "defFiles", kind: "choice", o: s => s.appsFor("defFiles"), detail: s => s.defaultNote("defFiles"), kw: "default apps" },
+                { n: 111, icon: "terminal", label: "Terminal", k: "defTerm", kind: "choice", o: s => s.appsFor("defTerm"), detail: s => s.defaultNote("defTerm"), kw: "default apps" },
+                { n: 111, icon: "mail", label: "Mail", k: "defMail", kind: "choice", o: s => s.appsFor("defMail"), detail: s => s.defaultNote("defMail"), kw: "default apps" },
+                { n: 111, icon: "image", label: "Pictures", k: "defImages", kind: "choice", o: s => s.appsFor("defImages"), detail: s => s.defaultNote("defImages"), kw: "default apps" },
+                { n: 111, icon: "movie", label: "Video", k: "defVideo", kind: "choice", o: s => s.appsFor("defVideo"), detail: s => s.defaultNote("defVideo"), kw: "default apps" }
             ] }
         ]
     },
     startup: {
         id: "startup", name: "Startup apps", icon: "login", preview: "signin",
-        status: s => `${s.startupOn} apps`,
+        status: s => `${s.startupOn} app${s.startupOn === 1 ? "" : "s"}`,
         groups: [
             { rows: [
-                { n: 112, isNew: true, kind: "w", w: "startup", kw: "startup apps autostart boot login sign-in" }
+                { n: 112, kind: "w", w: "startup", kw: "startup apps autostart boot login sign-in" }
             ] }
         ]
     },
@@ -639,17 +643,21 @@ const PAGES_SOURCE = {
     },
     region: {
         id: "region", name: "Language", icon: "language", preview: "region",
-        status: s => `${s.v("lang")} · ${s.v("region")}`,
+        status: s => `${s.languageLabel} · ${s.formatsLabel}`,
         groups: [
             { t: "Time", rows: [
-                { n: 109, isNew: true, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", detail: s => s.v("clock24") ? "14:32" : "2:32 pm", kw: "time format" },
-                { n: 109, isNew: true, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: ["14/10/2026", "14. okt. 2026", "2026-10-14", "wed 14 oct"], kw: "date format" },
-                { n: 109, isNew: true, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", kw: "time zone" },
-                { n: 109, isNew: true, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone"), kw: "time zone" }
+                { n: 109, icon: "schedule", label: "24-hour clock", k: "clock24", kind: "toggle", cfg: "region.clock24", detail: s => s.timeExample, kw: "time format" },
+                { n: 109, icon: "calendar_today", label: "Dates", k: "dateFormat", kind: "choice", o: s => s.dateChoices, cfg: "region.dateFormat", kw: "date format" },
+                { n: 109, icon: "my_location", label: "Zone from network", k: "autoZone", kind: "toggle", cfg: "region.autoZone", detail: s => s.autoZoneDetail, kw: "time zone",
+                    why: "Picks the zone nearest to where geoclue says you are when you turn this on, and sets it with timedatectl. After that it only looks again when the network changes, and suggests the new zone under Zone for you to pick; it never asks for your password on its own. It needs geoclue installed." },
+                { n: 109, icon: "public", label: "Zone", k: "zone", kind: "choice", o: s => s.zoneChoices, dis: s => s.v("autoZone") && !s.zoneSuggested, detail: s => s.zoneSuggested ? `the network puts you in ${s.zoneSuggested} · pick it to switch` : s.v("autoZone") ? "set from the network" : "password needed", kw: "time zone",
+                    why: "Sets the system's time zone with timedatectl, which asks for your password. The shell's clocks follow it straight away." }
             ] },
             { t: "Language", rows: [
-                { n: 110, isNew: true, icon: "translate", label: "Language", k: "lang", kind: "choice", o: ["English (UK)", "English (US)", "Dansk"], kw: "language" },
-                { n: 110, isNew: true, icon: "payments", label: "Formats", k: "region", kind: "choice", o: ["Denmark", "United Kingdom", "United States"], detail: s => ({ Denmark: "1.234,56 kr. · monday first", "United Kingdom": "£1,234.56 · monday first", "United States": "$1,234.56 · sunday first" })[s.v("region")] || "", kw: "region numbers currency" }
+                { n: 110, icon: "translate", label: "Language", k: "lang", kind: "choice", o: s => s.languageChoices, detail: "next sign-in", kw: "language",
+                    why: "Sets the system language with localectl, which asks for your password. It takes effect at next sign-in. The shell's own text stays English." },
+                { n: 110, icon: "payments", label: "Formats", k: "region", kind: "choice", o: s => s.formatChoices, detail: s => s.moneyExample || "next sign-in", kw: "region numbers currency",
+                    why: "Numbers, money, units and paper size, set with localectl, which asks for your password. They take effect at next sign-in." }
             ] }
         ]
     },
@@ -658,9 +666,9 @@ const PAGES_SOURCE = {
         status: s => [s.v("reduceMotion") && "less motion", s.v("largerText") && "larger text", s.v("contrast") && "more contrast"].filter(Boolean).join(" · ") || "nothing on",
         groups: [
             { rows: [
-                { n: 113, isNew: true, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", detail: "fades instead of slides", kw: "accessibility reduce motion" },
-                { n: 113, isNew: true, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", detail: "base 9 becomes 11", kw: "accessibility larger text" },
-                { n: 113, isNew: true, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", detail: "faint text gets brighter", kw: "accessibility contrast" }
+                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "fades instead of slides", kw: "accessibility reduce motion" },
+                { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", detail: s => `base ${s.v("fontBase")} becomes ${s.largerBase}`, kw: "accessibility larger text" },
+                { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", detail: "faint text gets brighter", kw: "accessibility contrast" }
             ] }
         ]
     },
@@ -700,7 +708,7 @@ const PAGES_SOURCE = {
             ] },
             { t: "Keep a copy", rows: [
                 { n: [], icon: "upload", label: "Export settings", kind: "button", btn: "Export", act: "exportCfg", detail: "config.json and your lists", kw: "backup export" },
-                { n: [], isNew: true, icon: "download", label: "Restore from a file", kind: "button", btn: "Restore", act: "importCfg", detail: "shows what changes first", kw: "backup import restore" }
+                { n: [], icon: "download", label: "Restore from a file", kind: "button", btn: "Restore", act: "importCfg", detail: "shows what changes first", kw: "backup import restore" }
             ] },
             { t: "Where things live", rows: [
                 { n: 118, icon: "settings", label: "Config", k: "cfgPath", kind: "path", ro: true, kw: "config file" },
@@ -722,11 +730,11 @@ const PAGES_SOURCE = {
 
 const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
-        blurb: s => [s.v("wifi") && s.wifiNet ? s.wifiNet : "wi-fi off", s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
+        blurb: s => [s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off", s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.v("wifi") ? s.wifiNet || "not connected" : "off" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.v("wifi") ? s.wifiState : "off" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
-            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot" },
+            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
             { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
@@ -774,7 +782,7 @@ const CATS = [
             { k: "dndNightly", icon: "bedtime", label: "Every night" },
             { k: "breaks", icon: "self_improvement", label: "Breaks", det: s => s.v("breaks") ? `every ${s.v("breakEvery")} min` : "off" }
         ],
-        suggest: s => !s.v("dndNightly") ? { icon: "bedtime", label: "Go quiet every night", detail: "22:00 to 07:30", set: ["dndNightly", true] } : null,
+        suggest: s => !s.v("dndNightly") ? { icon: "bedtime", label: "Go quiet every night", detail: s.nightWindow, set: ["dndNightly", true] } : null,
         subs: ["modes", "clock", "screentime"] },
     { id: "input", name: "Input", icon: "keyboard",
         blurb: s => `${s.kbLayouts.map(l => l.code).join(" · ")} · ${s.v("pen") ? "pen on" : "pen off"}`,
@@ -787,15 +795,15 @@ const CATS = [
         suggest: () => null,
         subs: ["keyboard", "shortcuts", "pointer", "tablet", "pen"] },
     { id: "power", name: "Power", icon: "battery_5_bar",
-        blurb: s => s.hasBattery ? `${s.batteryPct}% · ${s.v("profile")}${s.v("chargeLimit") ? ` · held at ${s.v("chargeMax")}%` : ""}` : `on mains · ${s.v("profile")}`,
+        blurb: s => s.hasBattery ? `${s.batteryPct}% · ${s.v("profile")}${s.v("chargeLimit") && !s.chargeTrouble ? ` · held at ${s.v("chargeMax")}%` : ""}` : `on mains · ${s.v("profile")}`,
         tiles: [
-            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery, det: s => !s.hasBattery ? "no battery" : s.v("chargeLimit") ? `${s.v("chargeMax")}%` : "off" },
-            { k: "saver", icon: "eco", label: "Saver", det: s => s.v("profile") === "saver" ? "on" : "off" }
+            { k: "chargeLimit", icon: "battery_charging_80", label: "Hold charge", away: s => !s.hasBattery, dis: s => !s.hasBattery || !s.chargeSupported, det: s => !s.hasBattery ? "no battery" : s.v("chargeLimit") ? `${s.v("chargeMax")}%` : "off" },
+            { k: "saver", icon: "eco", label: "Saver", dis: s => s.profileChoices.length === 0, det: s => s.v("profile") === "saver" ? "on" : "off" }
         ],
         suggest: s => s.hasBattery && !s.v("chargeLimit") && s.healthKnown ? { icon: "health_and_safety", label: `Health is at ${s.healthPct}%`, detail: "holding the charge at 80% slows that", set: ["chargeLimit", true] } : null,
         subs: ["battery", "powermode", "lock"] },
     { id: "apps", name: "Apps", icon: "apps",
-        blurb: s => `${s.v("defBrowser")} · ${s.v("defTerm")} · ${s.startupOn} at startup`,
+        blurb: s => `${s.defaultName("defBrowser")} · ${s.defaultName("defTerm")} · ${s.startupOn} at startup`,
         tiles: [
             { k: "stream", icon: "cast", label: "Streamer mode" },
             { k: "filesHidden", icon: "visibility_off", label: "Hidden files" }
@@ -803,7 +811,7 @@ const CATS = [
         suggest: s => !s.clipseImported && s.clipseWaiting > 0 ? { icon: "move_to_inbox", label: "Bring clipse’s history over", detail: `${s.clipseWaiting} entries waiting`, go: "clipboard" } : null,
         subs: ["defaults", "startup", "files", "terminal", "capture"] },
     { id: "system", name: "System", icon: "settings",
-        blurb: s => `${s.version} · ${s.v("lang")}`,
+        blurb: s => `${s.version} · ${s.languageLabel}`,
         tiles: [
             { k: "reduceMotion", icon: "animation", label: "Less motion" },
             { k: "largerText", icon: "format_size", label: "Larger text" },
@@ -1042,16 +1050,16 @@ function dwindleRects(n) {
     return out;
 }
 
-const NIA_LETTERS = "#abcdefghijklmnopqrstuvwxyz".split("");
-const NIA_PATH = [[null, 0, 700], ["a", 220, 600], ["d", 260, 550], ["f", 200, 650], ["k", 300, 550], ["o", 260, 500], ["s", 260, 650], [null, 0, 900]];
+const RAIL_LETTERS = "#abcdefghijklmnopqrstuvwxyz".split("");
+const THUMB_PATH = [[null, 0, 700], ["a", 220, 600], ["d", 260, 550], ["f", 200, 650], ["k", 300, 550], ["o", 260, 500], ["s", 260, 650], [null, 0, 900]];
 
-function niagaraAt(ms) {
-    const total = NIA_PATH.reduce((a, p) => a + p[1] + p[2], 0);
+function alphabetThumbAt(ms) {
+    const total = THUMB_PATH.reduce((a, p) => a + p[1] + p[2], 0);
     let t = ms % total;
-    let prev = NIA_LETTERS.indexOf("a");
+    let prev = RAIL_LETTERS.indexOf("a");
     const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-    for (const p of NIA_PATH) {
-        const to = p[0] ? NIA_LETTERS.indexOf(p[0]) : null;
+    for (const p of THUMB_PATH) {
+        const to = p[0] ? RAIL_LETTERS.indexOf(p[0]) : null;
         if (t < p[1])
             return to === null ? null : prev + (to - prev) * ease(t / p[1]);
         t -= p[1];

@@ -52,8 +52,10 @@ function kle(rows) {
                 p = Object.assign({}, p, item);
                 continue;
             }
-            const label = String(item).split("\n").filter(Boolean).pop() || "";
+            const lines = String(item).split("\n");
+            const label = lines.filter(Boolean).pop() || "";
             keys.push({
+                matrix: /^\d+,\d+$/.test(lines[0].trim()) ? lines[0].trim() : "",
                 x: x,
                 y: y,
                 w: p.w || 1,
@@ -102,8 +104,8 @@ function rects(keys) {
     const out = [];
     for (const k of keys) {
         if (k.w2)
-            out.push({ x: k.x + k.x2, y: k.y + k.y2, w: k.w2, h: k.h2 || 1, label: k.label, second: true });
-        out.push({ x: k.x, y: k.y, w: k.w, h: k.h, label: k.label, second: false });
+            out.push({ x: k.x + k.x2, y: k.y + k.y2, w: k.w2, h: k.h2 || 1, label: k.label, syms: k.syms || [], second: true });
+        out.push({ x: k.x, y: k.y, w: k.w, h: k.h, label: k.label, syms: k.syms || [], second: false });
     }
     return out;
 }
@@ -124,11 +126,21 @@ function keyName(raw) {
     return KEY_NAMES[k] || k;
 }
 
+function withLegends(keys, legends) {
+    return keys.map(k => legends[k.matrix] ? Object.assign({}, k, { label: legends[k.matrix].label, syms: legends[k.matrix].syms }) : k);
+}
+
+function struck(key, hot) {
+    if (key.label && hot[key.label.toLowerCase()])
+        return true;
+    return (key.syms || []).some(s => !!hot[s.toLowerCase()]);
+}
+
 function lit(keys, combos) {
     const hot = {};
     for (const combo of combos)
         for (const part of String(combo).split(" "))
             if (part)
                 hot[part.toLowerCase()] = true;
-    return keys.map(k => !!k.label && !!hot[k.label.toLowerCase()]);
+    return keys.map(k => struck(k, hot));
 }

@@ -68,6 +68,12 @@ FocusScope {
         linger.restart();
     }
 
+    function settled(name: string): void {
+        const now = root.rects.find(r => r.name === name);
+        if (now)
+            root.exact(name, now.x, now.y);
+    }
+
     function nudge(dx: int, dy: int): void {
         const name = Monitors.selected;
         const to = Screens.nudge(root.rects, name, dx, dy);
@@ -78,7 +84,7 @@ FocusScope {
         SettingsState.stageScreen(name, {
             position: `${to.x}x${to.y}`
         });
-        root.exact(name, to.x, to.y);
+        root.settled(name);
     }
 
     function cycle(step: int): void {
@@ -216,6 +222,34 @@ FocusScope {
     Repeater {
         model: root.names
 
+        delegate: Rectangle {
+            id: link
+
+            required property string modelData
+
+            readonly property var from: root.rects.find(r => r.name === link.modelData) ?? null
+            readonly property var to: root.rects.find(r => r.name === link.from?.mirror) ?? null
+            readonly property real fromX: root.toX((link.from?.x ?? 0) + (link.from?.w ?? 0) / 2)
+            readonly property real fromY: root.toY((link.from?.y ?? 0) + (link.from?.h ?? 0) / 2)
+            readonly property real toX: root.toX((link.to?.x ?? 0) + (link.to?.w ?? 0) / 2)
+            readonly property real toY: root.toY((link.to?.y ?? 0) + (link.to?.h ?? 0) / 2)
+
+            visible: !!link.from && !!link.to && !link.from.off
+            x: link.fromX
+            y: link.fromY - height / 2
+            width: Math.hypot(link.toX - link.fromX, link.toY - link.fromY)
+            height: 2
+            rotation: Math.atan2(link.toY - link.fromY, link.toX - link.fromX) * 180 / Math.PI
+            transformOrigin: Item.Left
+            color: Appearance.colour.accent
+            opacity: 0.6
+            z: 4
+        }
+    }
+
+    Repeater {
+        model: root.names
+
         delegate: Item {
             id: mon
 
@@ -226,7 +260,8 @@ FocusScope {
             readonly property bool picked: Monitors.selected === mon.modelData
             readonly property bool changed: root.staged.indexOf(mon.modelData) >= 0
             readonly property bool clashing: root.trouble.clash.some(p => p.indexOf(mon.modelData) >= 0)
-            readonly property bool on: SettingsState.screenRecord(mon.modelData).on
+            readonly property bool on: SettingsState.screenOn(mon.modelData)
+            readonly property string follows: SettingsState.screenMirror(mon.modelData)
 
             Follow {
                 id: fx
@@ -285,7 +320,7 @@ FocusScope {
                 anchors.fill: parent
                 visible: mon.on && SettingsState.v("wallOn")
                 radius: 6
-                source: Wallpaper.faceOf(Wallpaper.currentOn(mon.modelData))
+                source: Wallpaper.faceOf(Wallpaper.currentOn(mon.follows || mon.modelData))
                 fillMode: Image.PreserveAspectCrop
             }
 
@@ -350,6 +385,13 @@ FocusScope {
 
                     StyledText {
                         text: mon.modelData
+                    }
+
+                    StyledText {
+                        visible: !!mon.follows && mon.height > 44
+                        text: `follows ${mon.follows}`
+                        color: Appearance.colour.accent
+                        font.pixelSize: Appearance.font.size.small
                     }
 
                     StyledText {
@@ -420,7 +462,7 @@ FocusScope {
                     SettingsState.stageScreen(mon.modelData, {
                         position: `${spot.x}x${spot.y}`
                     });
-                    root.exact(mon.modelData, spot.x, spot.y);
+                    root.settled(mon.modelData);
                 }
 
                 onCanceled: {

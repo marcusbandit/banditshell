@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Switched off
+Exec=quiet --flag %U
+TryExec=quiet
+Type=Application
+Hidden=true
+X-GNOME-Autostart-enabled=false

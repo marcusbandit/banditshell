@@ -134,3 +134,45 @@ function duration(ms) {
 function rate(kbps) {
     return kbps >= 1000 ? `${(kbps / 1000).toFixed(1)} Mb/s` : `${Math.round(kbps)} kb/s`;
 }
+
+function bracketed(host) {
+    return host.includes(":") ? `[${host}]` : host;
+}
+
+function address(text) {
+    const bare = String(text ?? "").trim().replace(/^wss?:\/\//, "").replace(/\/+$/, "");
+    if (bare === "")
+        return {host: "", port: 0};
+    if (/^\d+$/.test(bare))
+        return Number(bare) >= 1 && Number(bare) <= 65535 ? {host: "", port: Number(bare)} : null;
+    const parts = /^(?:\[([0-9a-f:.]+)\]|([a-z0-9._-]+))(?::(\d+))?$/i.exec(bare);
+    if (!parts)
+        return null;
+    const port = parts[3] === undefined ? 0 : Number(parts[3]);
+    if (parts[3] !== undefined && (port < 1 || port > 65535))
+        return null;
+    return {host: parts[1] ?? parts[2], port: port};
+}
+
+function endpoint(own, server) {
+    const host = own?.host ?? "";
+    const port = own?.port || server?.server_port || 4455;
+    return {
+        url: `ws://${bracketed(host || "127.0.0.1")}:${port}`,
+        label: `${bracketed(host || "localhost")}:${port}`,
+        password: own?.password || server?.server_password || "",
+        remote: host !== "",
+        addressHere: host !== "" || !!own?.port,
+        passwordHere: !!own?.password
+    };
+}
+
+function savePasswordCommand(path, password) {
+    if (password === "")
+        return ["rm", "-f", "--", path];
+    return ["sh", "-c", 'umask 077 && mkdir -p -- "$(dirname -- "$1")" && cat > "$1.new" && mv -f -- "$1.new" "$1"', "sh", path];
+}
+
+function withPassword(own, password) {
+    return Object.assign({}, own ?? {}, { password: password ?? "" });
+}

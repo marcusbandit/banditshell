@@ -116,6 +116,8 @@ Singleton {
             return Bluetooth.deviceAt(p.id)?.name ?? "device";
         case "key":
             return p.title ?? "key";
+        case "restore":
+            return "restore settings";
         }
         return "";
     }
@@ -128,6 +130,8 @@ Singleton {
     property int toastSerial: 0
 
     function drop(text: string, icon: string, action: var): void {
+        if (icon === "error")
+            Notifications.alert("error");
         root.toast = {
             text,
             icon: icon || "check",

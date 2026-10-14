@@ -17,13 +17,13 @@ LauncherConcept {
 
     readonly property bool asking: sheet.open
 
-    readonly property real panelWidth: Config.values.launcher.niagara.width
-    readonly property real railWidth: Config.values.launcher.niagara.rail
-    readonly property int favouriteCount: Config.values.launcher.niagara.favourites
-    readonly property real iconSize: Config.values.launcher.niagara.icon
-    readonly property real bowDepth: Config.values.launcher.niagara.bow
-    readonly property real bowSpread: Config.values.launcher.niagara.bowSpread
-    readonly property real badgeSize: Config.values.launcher.niagara.badge
+    readonly property real panelWidth: Config.values.launcher.alphabet.width
+    readonly property real railWidth: Config.values.launcher.alphabet.rail
+    readonly property int favouriteCount: Config.values.launcher.alphabet.favourites
+    readonly property real iconSize: Config.values.launcher.alphabet.icon
+    readonly property real bowDepth: Config.values.launcher.alphabet.bow
+    readonly property real bowSpread: Config.values.launcher.alphabet.bowSpread
+    readonly property real badgeSize: Config.values.launcher.alphabet.badge
 
     readonly property real gutter: Appearance.font.size.large + Appearance.padding.normal
 
@@ -69,7 +69,7 @@ LauncherConcept {
 
     readonly property var keys: root.opened ? [] : [root.star, ...root.letters, ...(Apps.buried.length ? [root.vault] : [])]
 
-    readonly property int moveDelay: Config.values.launcher.niagara.moveDelay
+    readonly property int moveDelay: Config.values.launcher.alphabet.moveDelay
 
     property var rowKeys: ({})
 
@@ -824,7 +824,7 @@ LauncherConcept {
 
                         Behavior on opacity {
                             NumberAnimation {
-                                duration: Appearance.animation.fast
+                                duration: Appearance.animation.fade.fast
                             }
                         }
                     }
@@ -852,7 +852,7 @@ LauncherConcept {
                             property: "opacity"
                             from: 0
                             to: 1
-                            duration: Appearance.animation.fast
+                            duration: Appearance.animation.fade.fast
                         }
                     }
 
@@ -860,7 +860,7 @@ LauncherConcept {
                         NumberAnimation {
                             property: "opacity"
                             to: 0
-                            duration: Appearance.animation.fast
+                            duration: Appearance.animation.fade.fast
                             easing.type: Easing.OutCubic
                         }
                     }

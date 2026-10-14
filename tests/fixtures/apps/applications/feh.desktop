@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Feh
+Exec=feh --scale-down %U
+Type=Application
+NoDisplay=true
+MimeType=image/gif;image/png;

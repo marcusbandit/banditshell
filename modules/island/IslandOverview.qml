@@ -42,7 +42,7 @@ Item {
 
                 anchors.left: parent.left
                 anchors.leftMargin: Appearance.padding.small
-                text: Qt.formatDateTime(clock.date, "HH:mm")
+                text: `${TimeFormat.hourPart(clock.date)}:${TimeFormat.minutePart(clock.date)}`
                 font.pixelSize: Appearance.font.size.large
             }
 
@@ -57,7 +57,7 @@ Item {
                 anchors.right: parent.right
                 anchors.rightMargin: Appearance.padding.small
                 anchors.baseline: time.baseline
-                text: Qt.formatDateTime(clock.date, "ddd d MMM").toLowerCase()
+                text: TimeFormat.dateText(clock.date, "brief").toLowerCase()
                 color: Appearance.colour.textDim
             }
         }

@@ -10,7 +10,7 @@ Item {
 
     readonly property real stageHeight: 260
 
-    readonly property var output: Monitors.outputs.find(m => m.name.startsWith("eDP")) ?? Monitors.outputs[0] ?? null
+    readonly property var output: Monitors.active.find(m => m.name.startsWith("eDP")) ?? Monitors.active[0] ?? null
     readonly property var shape: root.output ? Monitors.layoutOf(root.output) : {
         w: 16,
         h: 10

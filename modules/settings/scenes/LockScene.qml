@@ -92,7 +92,7 @@ Item {
 
         StyledText {
             anchors.horizontalCenter: parent.horizontalCenter
-            text: Qt.formatTime(new Date(root.now), SettingsState.v("clock24") ? "HH:mm" : "h:mm ap")
+            text: TimeFormat.time(new Date(root.now), false)
             font.pixelSize: Appearance.font.size.large
             color: "white"
         }

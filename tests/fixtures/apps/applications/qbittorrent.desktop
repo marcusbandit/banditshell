@@ -1,0 +1,5 @@
+[Desktop Entry]
+Name=qBittorrent
+Exec=qbittorrent %U
+Icon=qbittorrent
+Type=Application

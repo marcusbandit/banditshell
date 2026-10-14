@@ -50,30 +50,30 @@ Item {
     property real sweep: 0
 
     NumberAnimation on sweep {
-        running: root.charging && charge.value < 1
+        running: root.charging && charge.value < 1 && !Appearance.lessMotion
         loops: Animation.Infinite
         from: 0
         to: 1
-        duration: Appearance.animation.slow * 6
+        duration: Appearance.animation.fade.slow * 6
     }
 
     property real throb: 0
 
     SequentialAnimation on throb {
-        running: root.low
+        running: root.low && !Appearance.lessMotion
         loops: Animation.Infinite
 
         NumberAnimation {
             from: 0
             to: 1
-            duration: Appearance.animation.slow * 4
+            duration: Appearance.animation.fade.slow * 4
             easing.type: Easing.InOutSine
         }
 
         NumberAnimation {
             from: 1
             to: 0
-            duration: Appearance.animation.slow * 4
+            duration: Appearance.animation.fade.slow * 4
             easing.type: Easing.InOutSine
         }
     }

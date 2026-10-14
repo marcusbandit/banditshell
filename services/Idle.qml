@@ -1,0 +1,114 @@
+pragma Singleton
+
+import QtQuick
+import Quickshell
+import Quickshell.Io
+import Quickshell.Wayland
+import qs.config
+import "idle.js" as Plan
+
+Singleton {
+    id: root
+
+    property string handler: ""
+
+    readonly property bool handledElsewhere: root.handler !== ""
+
+    property bool idle: false
+
+    property double idleSince: 0
+
+    property bool screensOff: false
+
+    readonly property int presenceSeconds: 60
+
+    readonly property int handlerRecheckMs: 60 * 1000
+
+    readonly property string planText: root.handledElsewhere ? "[]" : JSON.stringify(Plan.plan({
+            lock: Config.values.idle.lock,
+            screensOff: Config.values.idle.screensOff,
+            sleep: Config.values.idle.sleep
+        }, Battery.onBattery))
+
+    readonly property var steps: JSON.parse(root.planText)
+
+    function run(name: string): void {
+        if (name === "lock")
+            Lock.lock();
+        else if (name === "screensOff")
+            root.switchScreens(false);
+        else if (name === "sleep" && Battery.onBattery)
+            Quickshell.execDetached(["systemctl", "suspend"]);
+    }
+
+    function resume(name: string): void {
+        if (name === "screensOff")
+            root.switchScreens(true);
+    }
+
+    function switchScreens(on: bool): void {
+        if (root.screensOff === !on)
+            return;
+        root.screensOff = !on;
+        Hypr.send(`hl.dsp.dpms({ action = "${on ? "on" : "off"}" })`, `dpms ${on ? "on" : "off"}`);
+    }
+
+    function recheck(): void {
+        if (!handler.running)
+            handler.running = true;
+    }
+
+    IdleMonitor {
+        timeout: root.presenceSeconds
+        respectInhibitors: true
+
+        onIsIdleChanged: {
+            root.idle = isIdle;
+            if (isIdle)
+                root.idleSince = Date.now() - root.presenceSeconds * 1000;
+        }
+    }
+
+    Instantiator {
+        model: root.steps
+
+        delegate: IdleMonitor {
+            required property var modelData
+
+            timeout: modelData.seconds
+            respectInhibitors: true
+
+            onIsIdleChanged: {
+                if (isIdle)
+                    root.run(modelData.name);
+                else
+                    root.resume(modelData.name);
+            }
+        }
+
+        onObjectRemoved: (index, object) => {
+            if (object.modelData.name === "screensOff")
+                root.resume("screensOff");
+        }
+    }
+
+    Process {
+        id: handler
+
+        running: true
+        command: ["pgrep", "-l", "-x", Plan.IDLE_DAEMONS.join("|")]
+
+        stdout: StdioCollector {
+            id: handlerOutput
+        }
+
+        onExited: root.handler = Plan.handlerOf(handlerOutput.text)
+    }
+
+    Timer {
+        interval: root.handlerRecheckMs
+        running: true
+        repeat: true
+        onTriggered: root.recheck()
+    }
+}

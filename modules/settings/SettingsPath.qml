@@ -7,6 +7,7 @@ Row {
 
     property string path: ""
     property bool readOnly: false
+    property string browseTip: "pick a folder"
 
     signal opened
     signal browsed
@@ -24,7 +25,7 @@ Row {
     SettingsTool {
         anchors.verticalCenter: parent.verticalCenter
         icon: root.readOnly ? "open_in_new" : "folder_open"
-        tip: root.readOnly ? "open" : "pick a folder"
+        tip: root.readOnly ? "open" : root.browseTip
         onClicked: root.readOnly ? root.opened() : root.browsed()
     }
 }

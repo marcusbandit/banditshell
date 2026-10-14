@@ -11,9 +11,9 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "niagaraAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
-const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "nudge", "resize", "fit"]);
-const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
+const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
+const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit", "withLegends", "struck"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
 
 function block(file, opener) {
@@ -46,14 +46,18 @@ function lookup(values, key) {
 const NUMERIC = new Set(["neutral", "tunnelCount", "appsPlaying", "btNear", "starredCount", "trayCount", "batteryPct", "healthPct", "startupOn", "keyCount", "changeCount", "clipseWaiting", "usedMinutes"]);
 
 function fakeState(values) {
-    const all = Object.assign({}, PLAN_DEFAULTS, values || {});
+    const all = Object.assign({}, PLAN_DEFAULTS, { mode: "none" }, values || {});
     return new Proxy({
         v: k => all[k] !== undefined ? all[k] : true,
         appsFor: () => [["firefox", "firefox"]],
+        defaultName: k => k,
+        defaultNote: () => "",
         kbLayouts: [{ name: "danish", code: "dk" }],
+        touchpads: [{ label: "Touchpad" }],
         btConnected: ["WH-1000XM5"],
         screensOn: ["DP-1"],
         monitorNames: ["DP-1", "HDMI-A-1"],
+        mirrorChoices: ["HDMI-A-1"],
         outputs: [["a", "A"]],
         inputs: [["b", "B"]],
         resolutions: [["1920x1080", "1920 × 1080"]],
@@ -62,6 +66,9 @@ function fakeState(values) {
         fonts: ["Monocraft"],
         monoFonts: ["Monocraft"],
         zoneChoices: ["Europe/Copenhagen"],
+        languageChoices: [["en_GB.UTF-8", "English (UK)"]],
+        formatChoices: [["da_DK.UTF-8", "Denmark"]],
+        dateChoices: [["slashes", "14/10/2026"]],
         branches: ["main"],
         specialNames: [],
         pendingNote: () => ""
@@ -112,16 +119,15 @@ test("every config key the panel names exists in Config defaults, unless the row
 });
 
 test("rows that name a config key write that same key", () => {
-    const special = new Set(["scr:bar", "wallTarget", "level", "warmth", "sheetKeyboard", "sidebar"]);
+    const special = new Set(["scr:bar", "wallTarget", "level", "warmth", "sheetKeyboard", "sidebar", "autoZone"]);
     for (const r of Catalogue.ROWS)
         if (r.k && r.cfg && !r.isNew && !special.has(r.k))
             assert.strictEqual(CONFIG_BACKED[r.k], r.cfg, `${r.k} shows ${r.cfg} but writes ${CONFIG_BACKED[r.k]}`);
 });
 
 test("settings with nothing behind them yet keep a value of their own", () => {
-    const served = new Set(["scr:on", "scr:mirror"]);
     for (const r of Catalogue.ROWS)
-        if (r.isNew && r.k && !served.has(r.k))
+        if (r.isNew && r.k)
             assert.ok(r.k in PLAN_DEFAULTS, `${r.k} is new but has no planned default`);
 });
 
@@ -136,10 +142,42 @@ test("every planned setting has a ticket in the backend plan", () => {
     }
 });
 
+test("a setting is either planned or written to config, never both", () => {
+    for (const k in CONFIG_BACKED)
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} has a planned default and a config key`);
+});
+
+test("what NetworkManager owns is never kept as a planned value, and no password is stored", () => {
+    for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "tunnels"])
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is NetworkManager's, not a planned value`);
+    for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "vpnFirst"])
+        assert.ok(!(k in CONFIG_BACKED), `${k} must not be written to config.json`);
+});
+
 test("planned settings are not config keys yet", () => {
     for (const r of Catalogue.ROWS)
         if (r.isNew && r.k)
             assert.ok(!(r.k in CONFIG_BACKED), `${r.k} is planned but SettingsState writes it to config`);
+});
+
+test("night light, region and accessibility rows are live: config-backed or owned by a service, never planned", () => {
+    for (const k of ["nightSched", "warmFrom", "warmTo", "clock24", "dateFormat", "reduceMotion", "largerText", "contrast"]) {
+        assert.ok(k in CONFIG_BACKED, `${k} writes to config`);
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
+        assert.ok(!Catalogue.ROW_BY_KEY[k].isNew, `${k} is no longer marked new`);
+    }
+    for (const k of ["autoZone", "zone", "lang", "region"]) {
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
+        assert.ok(!Catalogue.ROW_BY_KEY[k].isNew, `${k} is no longer marked new`);
+    }
+});
+
+test("the new config keys start where the panel's planned values did, and dates keep the shell's old look", () => {
+    assert.deepStrictEqual([lookup(DEFAULTS, "screen.schedule"), lookup(DEFAULTS, "screen.warmFrom"), lookup(DEFAULTS, "screen.warmTo")], ["off", "21:00", "07:00"]);
+    assert.deepStrictEqual([lookup(DEFAULTS, "region.clock24"), lookup(DEFAULTS, "region.dateFormat")], [true, "words"]);
+    assert.deepStrictEqual([lookup(DEFAULTS, "access.lessMotion"), lookup(DEFAULTS, "access.largerText"), lookup(DEFAULTS, "access.moreContrast")], [false, false, false]);
+    assert.strictEqual(lookup(DEFAULTS, "access.largerBase"), 11);
+    assert.deepStrictEqual(lookup(DEFAULTS, "access.contrastLabel"), [0.96, 0.8, 0.68, 0.24]);
 });
 
 test("every widget and every preview has its file", () => {
@@ -223,7 +261,7 @@ test("steps stay inside the range and off the float crumbs", () => {
 
 test("pages count the settings they cover and the new ones among them", () => {
     assert.deepStrictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.wifi), { settings: 7, fresh: 0 });
-    assert.strictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.vpn).fresh, 2);
+    assert.strictEqual(Catalogue.pagesCovered(Catalogue.PAGE_BY_ID.vpn).fresh, 0);
 });
 
 test("sidebar rows point the replica at the part they change", () => {
@@ -248,10 +286,10 @@ test("dwindle splits the last window each time", () => {
     assert.strictEqual(three[2].y, 51);
 });
 
-test("the niagara thumb rests, travels the alphabet and lets go", () => {
-    assert.strictEqual(Catalogue.niagaraAt(0), null);
-    assert.strictEqual(Catalogue.niagaraAt(1000), 1);
-    assert.strictEqual(Catalogue.niagaraAt(6599), null);
+test("the alphabet thumb rests, travels the alphabet and lets go", () => {
+    assert.strictEqual(Catalogue.alphabetThumbAt(0), null);
+    assert.strictEqual(Catalogue.alphabetThumbAt(1000), 1);
+    assert.strictEqual(Catalogue.alphabetThumbAt(6599), null);
     assert.strictEqual(Catalogue.bowAt(5, null, 34, 4.5), 0);
     assert.strictEqual(Catalogue.bowAt(5, 5, 34, 4.5), 1);
     assert.strictEqual(Catalogue.bowAt(20, 5, 34, 4.5), 0);
@@ -282,6 +320,34 @@ test("bound keys light up on the board", () => {
     const lit = Boards.lit(keys, ["super v", "ctrl shift s"]);
     const on = keys.filter((k, i) => lit[i]).map(k => k.label.toLowerCase());
     assert.ok(on.includes("super") && on.includes("v") && on.includes("shift") && on.includes("s"));
+});
+
+test("a keymap's legends light an imported board by the keys it binds", () => {
+    const sample = Boards.readVia(JSON.stringify(Boards.SAMPLE_VIA));
+    assert.strictEqual(sample.keys[0].matrix, "0,0");
+    const legends = {
+        "0,0": { label: "esc", syms: ["Escape"] },
+        "1,1": { label: "Q", syms: ["q"] },
+        "4,2": { label: "alt", syms: [] }
+    };
+    const keys = Boards.withLegends(sample.keys, legends);
+    assert.strictEqual(keys.length, sample.keys.length);
+    assert.strictEqual(keys[0].label, "esc");
+    assert.strictEqual(sample.keys[0].label, "", "the parsed board is left alone");
+    const lit = Boards.lit(keys, ["super q", "alt escape"]);
+    const on = keys.filter((k, i) => lit[i]).map(k => k.matrix);
+    assert.deepStrictEqual(on.sort(), ["0,0", "1,1", "4,2"]);
+    assert.ok(Boards.lit(sample.keys, ["super q"]).every(x => !x), "without a keymap nothing is lit");
+});
+
+test("the sheet shape lives in config, not in planned state", () => {
+    assert.strictEqual(CONFIG_BACKED.sheetShape, "cheatsheet.shape");
+    assert.strictEqual(lookup(DEFAULTS, "cheatsheet.shape"), "iso");
+    assert.strictEqual(lookup(DEFAULTS, "cheatsheet.keymap"), "");
+    assert.ok(!("sheetShape" in PLAN_DEFAULTS));
+    const row = Catalogue.ROW_BY_KEY.sheetKeyboard;
+    assert.deepStrictEqual(row.o.map(o => o[0]), ["ansi", "iso", "split", "file"]);
+    assert.ok(!row.isNew);
 });
 
 test("keyframe curves start at 0, end at 1 and hold between frames", () => {
@@ -370,8 +436,146 @@ test("a desktop without a battery or a lid hides what it can't use", () => {
 });
 
 test("screen rows that wait for apply say so", () => {
-    for (const k of ["scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
+    for (const k of ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);
-        assert.strictEqual(r.detail({ pendingNote: () => "not applied yet" }), "not applied yet", k);
+        assert.strictEqual(r.detail({ pendingNote: () => "not applied yet", onlyOn: false }), "not applied yet", k);
     }
+});
+
+test("the idle rows keep minutes in config and every choice survives the trip", () => {
+    const Durations = lib(path.join(SETTINGS, "durations.js"), ["minutesFromChoice", "choiceFromMinutes"]);
+    const keys = { idleLock: "idle.lock", idleOff: "idle.screensOff", idleSuspend: "idle.sleep" };
+    for (const [k, cfg] of Object.entries(keys)) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.strictEqual(row.cfg, cfg);
+        assert.strictEqual(CONFIG_BACKED[k], cfg);
+        assert.strictEqual(typeof lookup(DEFAULTS, cfg), "number");
+        for (const [choice] of Catalogue.options(row, fakeState()))
+            assert.strictEqual(Durations.choiceFromMinutes(Durations.minutesFromChoice(choice)), choice, `${k}: ${choice}`);
+    }
+});
+
+test("screens that are off or mirrored take no room on the desk", () => {
+    const off = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "600x0", disabled: true });
+    const mirror = Screens.rectOf("DP-2", { mode: "1920x1080@60", position: "0x0", mirror: "HDMI-A-1" });
+    const wide = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "0x0" });
+    assert.deepStrictEqual([off.off, mirror.mirror, wide.off, wide.mirror], [true, "HDMI-A-1", false, ""]);
+    assert.deepStrictEqual(Screens.issues([wide, off, mirror]), { clash: [], loose: [] });
+    assert.deepStrictEqual(Screens.snap([wide, off], "HDMI-A-1", 590, 0, 20), { x: 590, y: 0, guides: [], corner: null });
+});
+
+test("the power rows are served by config or by the system, not planned", () => {
+    const backed = { chargeLimit: "battery.holdCharge", chargeMax: "battery.holdAt", lowWarn: "battery.warnAt", lowAction: "battery.nearlyEmpty", lidBattery: "power.lid.onBattery", lidPlugged: "power.lid.pluggedIn", lidDocked: "power.lid.docked" };
+    for (const [k, cfg] of Object.entries(backed)) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.ok(!row.isNew, k);
+        assert.strictEqual(row.cfg, cfg, k);
+        assert.strictEqual(CONFIG_BACKED[k], cfg, k);
+        assert.ok(!(k in PLAN_DEFAULTS), k);
+    }
+    assert.deepStrictEqual([DEFAULTS.battery.holdCharge, DEFAULTS.battery.holdAt, DEFAULTS.battery.warnAt, DEFAULTS.battery.nearlyEmpty], [true, 80, 15, "nothing"]);
+    assert.deepStrictEqual(DEFAULTS.idle, { lock: 0, screensOff: 0, sleep: 0 });
+    assert.strictEqual(DEFAULTS.startup.runAutostart, false);
+    assert.deepStrictEqual(DEFAULTS.power.lid, { onBattery: "suspend", pluggedIn: "suspend", docked: "nothing" });
+    const profile = Catalogue.ROW_BY_KEY.profile;
+    assert.ok(!profile.isNew && !profile.cfg);
+    assert.ok(!("profile" in CONFIG_BACKED) && !("profile" in PLAN_DEFAULTS));
+});
+
+test("hibernate is greyed where the machine cannot do it", () => {
+    const can = { hibernatePossible: true, nearlyEmptyPercent: 5 };
+    const cannot = { hibernatePossible: false, nearlyEmptyPercent: 5 };
+    for (const k of ["lidBattery", "lowAction"]) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.deepStrictEqual(Catalogue.val(row.unavailable, can), [], k);
+        const off = Catalogue.val(row.unavailable, cannot);
+        assert.strictEqual(off.length, 1, k);
+        assert.ok(Catalogue.options(row, cannot).some(o => o[0] === off[0] && /^hibernate/.test(o[0])), k);
+    }
+    assert.deepStrictEqual(Catalogue.options(Catalogue.ROW_BY_KEY.lowAction, can).map(o => o[1]), ["suspend at 5%", "hibernate at 5%", "nothing"]);
+});
+
+test("the power mode row offers what the daemon offers and greys without one", () => {
+    const row = Catalogue.ROW_BY_KEY.profile;
+    assert.deepStrictEqual(Catalogue.options(row, { profileChoices: ["saver", "balanced"] }).map(o => o[0]), ["saver", "balanced"]);
+    assert.strictEqual(row.dis({ profileChoices: [] }), true);
+    assert.strictEqual(row.dis({ profileChoices: ["balanced"] }), false);
+    const saver = Catalogue.CAT_BY_ID.power.tiles.find(t => t.k === "saver");
+    assert.strictEqual(saver.dis({ profileChoices: [] }), true);
+});
+
+test("the command line names every mode the panel has", () => {
+    const header = fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8");
+    const line = /banditshell focus mode \[([^\]]+)\]/.exec(header);
+    assert.ok(line, "focus mode in the CLI's header");
+    assert.deepStrictEqual(line[1].split("|").filter(w => w !== "list"), Catalogue.MODES.map(m => m.id));
+});
+
+test("rules are opaque to the schema merge and start empty", () => {
+    const opaque = /readonly property var opaque: \[([^\]]*)\]/.exec(fs.readFileSync(path.join(ROOT, "config/Config.qml"), "utf8"));
+    assert.ok(opaque[1].includes('"notifications.rules"'));
+    assert.deepStrictEqual(lookup(DEFAULTS, "notifications.rules"), {});
+});
+
+test("quiet, rules and alert sounds are written to config, not kept as plans", () => {
+    for (const k of ["dnd", "dndUntil", "dndAlarms", "dndNightly", "rules", "alerts", "alertSet", "alertVol"]) {
+        assert.ok(k in CONFIG_BACKED, `${k} is config backed`);
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
+    }
+    assert.ok(!("mode" in PLAN_DEFAULTS));
+    assert.deepStrictEqual(lookup(DEFAULTS, "sound"), { alerts: false, alertSet: "soft", alertVolume: 0.5 });
+});
+
+test("every mode setting can be written by the panel", () => {
+    const served = new Set(["profile", "warmth", "level"]);
+    for (const m of Catalogue.MODES)
+        for (const k of Object.keys(m.set))
+            assert.ok(k in CONFIG_BACKED || served.has(k) || k in PLAN_DEFAULTS, `${m.id} sets ${k}, which nothing writes`);
+});
+
+test("settings Hyprland owns are served by the state: not planned, not stored, read and written by case", () => {
+    const state = fs.readFileSync(STATE, "utf8");
+    for (const k of ["kbDelay", "kbRate", "mouseSpeed", "padSpeed", "naturalScroll", "tapClick", "layout"]) {
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} still has a planned default`);
+        assert.ok(!(k in CONFIG_BACKED), `${k} is stored in config.json`);
+        assert.strictEqual(state.split(`case "${k}":`).length - 1, 2, `${k} should be one case in v() and one in write()`);
+    }
+    for (const k of ["kbDelay", "kbRate", "mouseSpeed", "padSpeed", "naturalScroll", "tapClick"])
+        assert.ok(Catalogue.ROW_BY_KEY[k] && !Catalogue.ROW_BY_KEY[k].isNew, `${k} row is live`);
+    assert.ok(!PLAN_DEFAULTS.layouts, "the keyboard layout list is read from Hyprland");
+});
+
+test("the layout and keyboard rows are live, and the custom layout stays an entry point", () => {
+    for (const r of Catalogue.ROWS.filter(x => ["winLayouts", "kbLayouts"].includes(x.w)))
+        assert.ok(!r.isNew, `${r.w} is still marked new`);
+    assert.strictEqual(PLAN_DEFAULTS.customLayout, "");
+});
+
+test("pen buttons are shell keys that default to what the pen already does", () => {
+    assert.strictEqual(CONFIG_BACKED.penBtn1, "pen.lowerButton");
+    assert.strictEqual(CONFIG_BACKED.penBtn2, "pen.upperButton");
+    assert.strictEqual(lookup(DEFAULTS, "pen.lowerButton"), "right click");
+    assert.strictEqual(lookup(DEFAULTS, "pen.upperButton"), "middle click");
+    for (const k of ["penBtn1", "penBtn2"]) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.ok(!row.isNew, k);
+        assert.ok(Catalogue.options(row, fakeState()).some(o => o[0] === lookup(DEFAULTS, CONFIG_BACKED[k])), `${k}'s default is one of its choices`);
+    }
+});
+
+test("an arrangement always starts at 0,0, wherever it was dropped", () => {
+    const wide = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "10000x-5280" });
+    const tall = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "11040x-6720", transform: 1 });
+    assert.deepStrictEqual(Screens.anchor([wide, tall]), { "HDMI-A-1": { x: 0, y: 1440 }, "DP-1": { x: 1040, y: 0 } });
+    const home = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "0x1440" });
+    const above = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "1040x0", transform: 1 });
+    assert.deepStrictEqual(Screens.anchor([home, above]), {});
+});
+
+test("screens that are off or mirrored do not pull the arrangement", () => {
+    const wide = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "300x200" });
+    const off = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "-4000x-4000", disabled: true });
+    const copy = Screens.rectOf("DP-2", { mode: "1920x1080@60", position: "-9000x0", mirror: "HDMI-A-1" });
+    assert.deepStrictEqual(Screens.anchor([wide, off, copy]), { "HDMI-A-1": { x: 0, y: 0 } });
+    assert.deepStrictEqual(Screens.anchor([off]), {});
 });

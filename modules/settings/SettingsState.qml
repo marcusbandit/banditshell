@@ -6,80 +6,14 @@ import Quickshell.Io
 import qs.config
 import qs.services
 import "catalogue.js" as Catalogue
+import "durations.js" as Durations
 import "screens.js" as Screens
 
 Singleton {
     id: root
 
     readonly property var planDefaults: ({
-            hotspot: false,
-            hotspotName: "banditshell",
-            hotspotPass: "",
-            hotspotBand: "2.4 GHz",
-            alerts: true,
-            alertSet: "soft",
-            alertVol: 0.5,
-            nightSched: "off",
-            dnd: false,
-            dndUntil: "off by hand",
-            dndAlarms: true,
-            dndNightly: false,
-            mode: "none",
-            greyCap: false,
-            breaks: false,
-            breakEvery: 50,
-            kbDelay: 300,
-            kbRate: 30,
-            mouseSpeed: 0,
-            padSpeed: 0.2,
-            naturalScroll: true,
-            tapClick: true,
-            penBtn1: "right click",
-            penBtn2: "erase",
-            chargeLimit: true,
-            chargeMax: 80,
-            lowWarn: 15,
-            lowAction: "suspend at 5%",
-            profile: "balanced",
-            lidBattery: "suspend",
-            lidPlugged: "lock",
-            lidDocked: "nothing",
-            idleLock: "5 min",
-            idleOff: "10 min",
-            idleSuspend: "30 min",
-            defBrowser: "firefox",
-            defFiles: "files",
-            defTerm: "kitty",
-            defMail: "thunderbird",
-            defImages: "loupe",
-            defVideo: "mpv",
-            clock24: true,
-            dateFormat: "14/10/2026",
-            autoZone: true,
-            zone: "Europe/Copenhagen",
-            lang: "English (UK)",
-            region: "Denmark",
-            reduceMotion: false,
-            largerText: false,
-            contrast: false,
-            layout: "dwindle",
-            overAmp: true,
-            specialsShown: true,
-            sbClock: "stacked",
-            sbDate: "day and month",
-            sbSound: true,
-            sbNet: true,
-            sbBt: true,
-            sbBatt: true,
-            tray: true,
-            boardRepeat: true,
-            sheetShape: "iso",
-            customLayout: "",
-            startup: [],
-            rules: [],
-            layouts: [],
-            tunnels: [],
-            screens: ({})
+            customLayout: ""
         })
 
     readonly property var uiDefaults: ({
@@ -90,13 +24,28 @@ Singleton {
     property var ui: ({})
     property var changes: []
     property var wrote: null
-    property var modeWas: ({})
 
     property bool loaded: false
 
     readonly property string path: `${Config.stateDir}/settings.json`
 
     readonly property var transforms: ({
+            nightSched: {
+                read: v => v === "times" ? "set times" : v,
+                write: v => v === "set times" ? "times" : v
+            },
+            warmFrom: {
+                read: v => Display.minutesOf(v),
+                write: v => Display.clockOf(v)
+            },
+            warmTo: {
+                read: v => Display.minutesOf(v),
+                write: v => Display.clockOf(v)
+            },
+            dateFormat: {
+                read: v => TimeFormat.styleOf(v),
+                write: v => TimeFormat.styleOf(v)
+            },
             notifTimeout: {
                 read: v => Math.round(v / 1000),
                 write: v => v * 1000
@@ -106,8 +55,8 @@ Singleton {
                 write: v => String(v).trim().split(/\s+/).filter(Boolean)
             },
             termColours: {
-                read: v => JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "theme",
-                write: v => v === "one dark" ? Config.defaults.files.terminal.palette : root.themePalette()
+                read: v => v === "theme" ? "theme" : JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "custom",
+                write: v => v === "theme" ? "theme" : Config.defaults.files.terminal.palette
             },
             iconMode: {
                 read: v => v === "colour" ? "colour" : "mono",
@@ -116,14 +65,32 @@ Singleton {
             roleSpeakers: {
                 read: v => v,
                 write: v => v
+            },
+            idleLock: {
+                read: v => Durations.choiceFromMinutes(v),
+                write: v => Durations.minutesFromChoice(v)
+            },
+            idleOff: {
+                read: v => Durations.choiceFromMinutes(v),
+                write: v => Durations.minutesFromChoice(v)
+            },
+            idleSuspend: {
+                read: v => Durations.choiceFromMinutes(v),
+                write: v => Durations.minutesFromChoice(v)
+            },
+            lowAction: {
+                read: v => v === "nothing" ? v : `${v} at ${Battery.nearlyEmptyPercent}%`,
+                write: v => String(v).split(" ")[0]
+            },
+            dndUntil: {
+                read: v => Notifications.endsLabel(v),
+                write: v => Notifications.deadlineFor(v)
+            },
+            rules: {
+                read: v => v,
+                write: v => Array.isArray(v) ? Notifications.rulesFromList(v) : v
             }
         })
-
-    function themePalette(): var {
-        const t = Appearance.theme;
-        const r = t.ramp;
-        return [r[1], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[9], r[6], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[10]].map(c => String(c));
-    }
 
     function rowOf(k: string): var {
         return Catalogue.ROW_BY_KEY[k] ?? null;
@@ -139,9 +106,18 @@ Singleton {
             netCheck: "network.checkForInternet",
             portalUri: "network.portalUri",
             volStep: "volume.step",
+            overAmp: "volume.boost",
             roleSpeakers: "audio.speakers",
             roleHeadphones: "audio.headphones",
             warmest: "screen.warmest",
+            nightSched: "screen.schedule",
+            warmFrom: "screen.warmFrom",
+            warmTo: "screen.warmTo",
+            clock24: "region.clock24",
+            dateFormat: "region.dateFormat",
+            reduceMotion: "access.lessMotion",
+            largerText: "access.largerText",
+            contrast: "access.moreContrast",
             fromWall: "themeFromWallpaper",
             accent: "colour.accent",
             surface: "colour.surface",
@@ -169,6 +145,14 @@ Singleton {
             iconMode: "sidebar.workspaces.iconMode",
             persistent: "sidebar.workspaces.persistent",
             trayMax: "sidebar.tray.max",
+            tray: "sidebar.tray.enabled",
+            specialsShown: "sidebar.workspaces.rack",
+            sbClock: "sidebar.clock.style",
+            sbDate: "sidebar.clock.date",
+            sbSound: "sidebar.status.sound",
+            sbNet: "sidebar.status.network",
+            sbBt: "sidebar.status.bluetooth",
+            sbBatt: "sidebar.status.battery",
             sbUpdate: "sidebar.update",
             edgeLift: "windows.edge",
             dropMode: "windows.mode",
@@ -193,6 +177,14 @@ Singleton {
             islandGlance: "island.glanceSeconds",
             kernelEvery: "packages.interval",
             upgradeCmd: "packages.upgrade",
+            dnd: "notifications.quiet",
+            dndUntil: "notifications.quietUntil",
+            dndAlarms: "notifications.letAlarms",
+            dndNightly: "notifications.nightly",
+            rules: "notifications.rules",
+            alerts: "sound.alerts",
+            alertSet: "sound.alertSet",
+            alertVol: "sound.alertVolume",
             wheelSeek: "media.wheelSeek",
             seekSmall: "media.seekSmall",
             seekLarge: "media.seekLarge",
@@ -204,6 +196,12 @@ Singleton {
             cloud: "clock.cloud",
             cloudSeconds: "clock.cloudSeconds",
             capHours: "usage.capHours",
+            greyCap: "usage.greyAtCap",
+            breaks: "usage.breaks",
+            breakEvery: "usage.breakEvery",
+            idleLock: "idle.lock",
+            idleOff: "idle.screensOff",
+            idleSuspend: "idle.sleep",
             rightForward: "calendar.rightGoesForward",
             shotDir: "picker.dir",
             shotEditor: "picker.editor",
@@ -229,12 +227,23 @@ Singleton {
             autoKeyboard: "tablet.autoKeyboard",
             docked: "tablet.docked",
             boardHeight: "tablet.height",
+            boardRepeat: "tablet.repeat",
             pen: "pen.enabled",
             aspectLock: "pen.aspectLock",
             branch: "updates.branch",
             remote: "updates.remote",
             updEvery: "updates.interval",
-            sourceEdits: "sourceEdits.acknowledged"
+            sourceEdits: "sourceEdits.acknowledged",
+            chargeLimit: "battery.holdCharge",
+            chargeMax: "battery.holdAt",
+            lowWarn: "battery.warnAt",
+            lowAction: "battery.nearlyEmpty",
+            lidBattery: "power.lid.onBattery",
+            lidPlugged: "power.lid.pluggedIn",
+            lidDocked: "power.lid.docked",
+            sheetShape: "cheatsheet.shape",
+            penBtn1: "pen.lowerButton",
+            penBtn2: "pen.upperButton"
         })
 
     function plannedKey(k: string): bool {
@@ -281,12 +290,20 @@ Singleton {
             return Display.levelKnown ? Math.round(Display.level * 100) : 100;
         case "warmth":
             return Display.warm ? Math.round(Math.max(0, Math.min(100, (Display.neutral - Display.kelvin) / Math.max(1, Display.neutral - Display.warmest) * 100))) : 0;
+        case "autoZone":
+            return Localisation.zoneFollowsNetwork;
+        case "zone":
+            return Clock.localZone;
+        case "lang":
+            return Localisation.language;
+        case "region":
+            return Localisation.formatsId;
         case "theme":
             return Config.values.theme;
         case "sidebar":
             return SidebarState.enabled;
         case "sheetKeyboard":
-            return Keyboards.stored || root.boardWanted ? "file" : (root.planned.sheetShape ?? root.planDefaults.sheetShape);
+            return Keyboards.stored || root.boardWanted ? "file" : Keyboards.shape;
         case "bindsFile":
             return HyprConfig.configPath;
         case "cfgPath":
@@ -300,11 +317,42 @@ Singleton {
         case "wallTarget":
             return root.ui.wallTarget ?? root.uiDefaults.wallTarget;
         case "vpnFirst":
-            return (root.planned.tunnels ?? []).some(t => t.on);
+            return Tunnels.anyOn;
+        case "hotspot":
+            return Hotspot.on;
+        case "hotspotName":
+            return Hotspot.ssid;
+        case "hotspotPass":
+            return Hotspot.password;
+        case "hotspotBand":
+            return Hotspot.band;
         case "warm":
             return Display.warm;
         case "saver":
             return root.v("profile") === "saver";
+        case "profile":
+            return PowerProfile.profile;
+        case "mode":
+            return Modes.current;
+        case "defBrowser":
+        case "defFiles":
+        case "defTerm":
+        case "defMail":
+        case "defImages":
+        case "defVideo":
+            return DefaultApps.valueOf(k);
+        case "startup":
+            return StartupApps.entries;
+        case "kbDelay":
+        case "kbRate":
+        case "mouseSpeed":
+        case "naturalScroll":
+        case "tapClick":
+            return root.hyprRead(k);
+        case "layout":
+            return root.layoutId;
+        case "padSpeed":
+            return root.padSpeedNow;
         }
         if (root.plannedKey(k))
             return root.planned[k] ?? root.planDefaults[k];
@@ -391,6 +439,19 @@ Singleton {
             return Display.setWarmth(value > 0 ? Math.round(Display.neutral - value / 100 * (Display.neutral - Display.warmest)) : 0);
         case "warm":
             return Display.toggleWarm();
+        case "autoZone":
+            if (value && !Localisation.geoclueInstalled) {
+                root.denied = true;
+                root.refused("zone from network needs geoclue, which is not installed", "");
+                return;
+            }
+            return Localisation.setAutomaticZone(value);
+        case "zone":
+            return Localisation.setZone(value);
+        case "lang":
+            return root.setLocale(value, Localisation.languages, Localisation.setLanguage);
+        case "region":
+            return root.setLocale(value, Localisation.formats, Localisation.setFormats);
         case "theme":
             return ThemeSwitcher.apply(value);
         case "sidebar":
@@ -400,7 +461,7 @@ Singleton {
                 root.boardWanted = false;
                 if (Keyboards.stored)
                     Keyboards.clear();
-                root.plan("sheetShape", value);
+                Config.set(root.configBacked.sheetShape, value);
             } else {
                 root.boardWanted = true;
             }
@@ -417,18 +478,71 @@ Singleton {
             return;
         case "saver":
             return root.set("profile", value ? "saver" : "balanced");
+        case "profile":
+            if (PowerProfile.available)
+                PowerProfile.set(value);
+            else
+                root.denied = true;
+            return;
+        case "restore":
+            return SettingsRestore.putBack(value);
+        case "mode":
+            return root.setMode(value);
+        case "kbDelay":
+        case "kbRate":
+        case "mouseSpeed":
+        case "naturalScroll":
+        case "tapClick":
+        case "layout":
+            return root.hyprWrite(k, value);
+        case "padSpeed":
+            return root.writePadSpeed(value);
         case "vpnFirst":
-            {
-                const list = (root.planned.tunnels ?? []).slice();
-                if (list.length)
-                    list[0] = Object.assign({}, list[0], {
-                        on: value
-                    });
-                return root.plan("tunnels", list);
-            }
+            return Tunnels.setFirst(value);
+        case "hotspot":
+            return Hotspot.setOn(value);
+        case "hotspotName":
+            return Hotspot.setName(value);
+        case "hotspotPass":
+            return Hotspot.setPassword(value);
+        case "hotspotBand":
+            return Hotspot.setBand(value);
+        case "defBrowser":
+        case "defFiles":
+        case "defTerm":
+        case "defMail":
+        case "defImages":
+        case "defVideo":
+            return DefaultApps.choose(k, value);
+        case "startup":
+            if (StartupApps.needsHyprlandEdits(value) && !root.edits())
+                return;
+            return StartupApps.change(value);
         }
         if (root.plannedKey(k))
             root.plan(k, value);
+    }
+
+    function setLocale(id: string, options: var, apply: var): void {
+        if (Localisation.hasLocale(id))
+            return apply(id);
+        root.denied = true;
+        root.refused(`${Localisation.labelOf(options, id)} is not set up on this machine`, "");
+    }
+
+    Connections {
+        target: Localisation
+
+        function onFailed(why: string): void {
+            root.refused(why, "");
+        }
+
+        function onZoneMoved(zone: string): void {
+            SettingsView.drop(`the zone is ${zone} now`, "public", {
+                label: "restart the shell",
+                run: () => Update.restart()
+            });
+        }
     }
 
     property bool boardWanted: false
@@ -490,6 +604,8 @@ Singleton {
         root.write(k, value);
         if (root.denied)
             return;
+        if (k === "alertSet" || k === "alertVol")
+            AlertSounds.preview();
         const r = root.rowOf(k);
         const typed = r?.kind === "text" || r?.kind === "secret";
         if (r && !typed && !root.muteLog && !root.stagedKey(k) && (value === null || typeof value !== "object"))
@@ -554,28 +670,39 @@ Singleton {
 
     function setMode(id: string): void {
         const m = Catalogue.MODES.find(x => x.id === id);
-        if (!m)
+        if (!m || Modes.current === id)
             return;
         root.muteLog = true;
-        if (root.v("mode") !== "none")
-            for (const key of Object.keys(root.modeWas).filter(k => root.plannedKey(k)))
-                root.set(key, root.modeWas[key]);
+        for (const key of Object.keys(Modes.was))
+            root.set(key, Modes.was[key]);
         const was = {};
-        for (const key of Object.keys(m.set).filter(k => root.plannedKey(k))) {
-            was[key] = root.v(key);
+        for (const key of Object.keys(m.set)) {
+            const before = root.v(key);
+            if (JSON.stringify(before) === JSON.stringify(m.set[key]))
+                continue;
+            was[key] = before;
             root.set(key, m.set[key]);
         }
-        root.modeWas = was;
-        root.plan("modeWas", was);
-        root.set("mode", id);
+        Modes.enter(id, m.icon, was);
         root.muteLog = false;
     }
 
-    function screenRecord(name: string): var {
-        return (root.planned.screens ?? {})[name] ?? {
-            on: true,
-            mirror: ""
-        };
+    function screenOn(name: string): bool {
+        return !root.stagedSpec(name)?.disabled;
+    }
+
+    function screenMirror(name: string): string {
+        return root.stagedSpec(name)?.mirror ?? "";
+    }
+
+    function stagedSpecs(): var {
+        const out = {};
+        for (const m of Monitors.outputs) {
+            const spec = root.stagedSpec(m.name);
+            if (spec)
+                out[m.name] = spec;
+        }
+        return out;
     }
 
     function screenValue(sub: string): var {
@@ -583,9 +710,9 @@ Singleton {
         const spec = root.stagedSpec(name);
         switch (sub) {
         case "on":
-            return root.screenRecord(name).on;
+            return root.screenOn(name);
         case "mirror":
-            return root.screenRecord(name).mirror;
+            return root.screenMirror(name);
         case "res":
             return spec ? spec.mode.split("@")[0] : "";
         case "hz":
@@ -606,11 +733,11 @@ Singleton {
 
     function describeMonitor(name: string): string {
         const spec = root.stagedSpec(name);
-        if (!root.screenRecord(name).on)
-            return "disable";
         if (!spec)
             return "";
-        return `${spec.mode}, ${spec.position}, ${Math.round(spec.scale * 100) / 100}${spec.transform ? `, transform ${spec.transform}` : ""}${root.stage[name] ? " · not applied yet" : ""}`;
+        if (spec.disabled)
+            return `disable${root.stage[name] ? " · not applied yet" : ""}`;
+        return `${spec.mode}, ${spec.position}, ${Math.round(spec.scale * 100) / 100}${spec.transform ? `, transform ${spec.transform}` : ""}${spec.mirror ? `, mirror, ${spec.mirror}` : ""}${root.stage[name] ? " · not applied yet" : ""}`;
     }
 
     function bandOf(name: string): string {
@@ -636,13 +763,17 @@ Singleton {
         case "on":
         case "mirror":
             {
-                const all = Object.assign({}, root.planned.screens ?? {});
-                all[name] = Object.assign({}, root.screenRecord(name), sub === "on" ? {
-                    on: value
+                const planned = Monitors.plan(root.stagedSpecs(), name, sub === "on" ? {
+                    disabled: !value
                 } : {
                     mirror: value
                 });
-                root.plan("screens", all);
+                if (planned.why) {
+                    root.denied = true;
+                    root.refused(planned.why, "");
+                    return;
+                }
+                root.restage(planned.fields);
                 return;
             }
         case "res":
@@ -695,7 +826,7 @@ Singleton {
     readonly property int confirmLeft: root.confirm?.left ?? 0
 
     function stagedKey(k: string): bool {
-        return ["scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"].indexOf(k) >= 0;
+        return ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"].indexOf(k) >= 0;
     }
 
     function liveSpec(name: string): var {
@@ -712,11 +843,26 @@ Singleton {
     function sameField(key: string, a: var, b: var): bool {
         if (key === "scale")
             return Math.abs(+a - +b) < 0.001;
+        if (key === "disabled")
+            return !!a === !!b;
+        if (key === "mirror")
+            return (a || "") === (b || "");
         return String(a) === String(b);
     }
 
     function restage(fields: var): void {
-        const next = Object.assign({}, root.stage);
+        const next = root.stagedWith(root.stage, fields);
+        const shift = Screens.anchor(Monitors.outputs.map(m => Screens.rectOf(m.name, Object.assign({}, root.liveSpec(m.name) ?? {}, next[m.name] ?? {}))));
+        const anchored = {};
+        for (const name of Object.keys(shift))
+            anchored[name] = {
+                position: `${shift[name].x}x${shift[name].y}`
+            };
+        root.stage = root.stagedWith(next, anchored);
+    }
+
+    function stagedWith(stage: var, fields: var): var {
+        const next = Object.assign({}, stage);
         for (const name of Object.keys(fields)) {
             const live = root.liveSpec(name);
             if (!live)
@@ -730,7 +876,7 @@ Singleton {
             else
                 delete next[name];
         }
-        root.stage = next;
+        return next;
     }
 
     function stageScreen(name: string, fields: var): void {
@@ -758,7 +904,9 @@ Singleton {
             hz: "mode",
             scale: "scale",
             rot: "transform",
-            vrr: "vrr"
+            vrr: "vrr",
+            on: "disabled",
+            mirror: "mirror"
         }[sub];
         const mine = root.stage[Monitors.selected];
         if (!mine || mine[field] === undefined)
@@ -786,17 +934,21 @@ Singleton {
     }
 
     function differs(a: var, b: var): bool {
-        return ["mode", "position", "scale", "transform", "vrr"].some(key => !root.sameField(key, a[key], b[key]));
+        return ["mode", "position", "scale", "transform", "vrr", "disabled", "mirror"].some(key => !root.sameField(key, a[key], b[key]));
     }
 
     function restore(specs: var): void {
         if (!root.edits())
             return;
+        const list = [];
         for (const name of Object.keys(specs ?? {})) {
             const live = root.liveSpec(name);
             if (live && root.differs(live, specs[name]))
-                Monitors.applySpec(specs[name]);
+                list.push(specs[name]);
         }
+        const why = Monitors.applySpecs(list);
+        if (why)
+            root.refused(why, "");
     }
 
     function summary(before: var, after: var): string {
@@ -813,6 +965,10 @@ Singleton {
                 what.push(`${(b.transform % 4) * 90}°`);
             if (!root.sameField("vrr", a.vrr, b.vrr))
                 what.push(b.vrr ? "vrr on" : "vrr off");
+            if (!root.sameField("disabled", a.disabled, b.disabled))
+                what.push(b.disabled ? "turned off" : "turned on");
+            if (!root.sameField("mirror", a.mirror, b.mirror))
+                what.push(b.mirror ? `mirrors ${b.mirror}` : "stopped mirroring");
             if (!what.length && !root.sameField("position", a.position, b.position))
                 what.push("moved");
             parts.push(`${name} ${what.join(" · ")}`);
@@ -838,14 +994,17 @@ Singleton {
                 continue;
             before[r.name] = live;
             after[r.name] = next;
-            if (["mode", "scale", "transform"].some(key => !root.sameField(key, live[key], next[key])))
+            if (["mode", "scale", "transform", "disabled", "mirror"].some(key => !root.sameField(key, live[key], next[key])))
                 risky = true;
         }
-        root.stage = {};
-        if (!Object.keys(after).length)
+        if (!Object.keys(after).length) {
+            root.stage = {};
             return;
-        for (const name of Object.keys(after))
-            Monitors.applySpec(after[name]);
+        }
+        const why = Monitors.applySpecs(Object.values(after));
+        if (why)
+            return root.refused(why, "");
+        root.stage = {};
         const now = Date.now();
         const list = root.changes.slice();
         list.unshift({
@@ -879,8 +1038,7 @@ Singleton {
         root.confirm = null;
         if (!c)
             return;
-        for (const name of Object.keys(c.before))
-            Monitors.applySpec(c.before[name]);
+        Monitors.applySpecs(Object.values(c.before));
         root.changes = root.changes.filter(x => !(x.k === "scr:layout" && x.t === c.t));
         root.save();
         SettingsView.drop("screens went back", "undo", null);
@@ -912,7 +1070,7 @@ Singleton {
     function assignBand(name: string, spec: string): void {
         if (!root.edits())
             return;
-        const entry = HyprConfig.bands.find(b => !b.dynamic && b.monitor === name && b.path?.[1] === HyprConfig.hostName);
+        const entry = HyprConfig.bandEntry(name);
         if (entry)
             HyprConfig.updateBand(entry.id, {
                 workspaces: spec
@@ -978,9 +1136,10 @@ Singleton {
     }
 
     readonly property var monitorNames: Monitors.outputs.map(m => m.name)
-    readonly property var screensOn: root.monitorNames.filter(n => root.screenRecord(n).on)
+    readonly property var screensOn: root.monitorNames.filter(n => root.screenOn(n))
     readonly property string selMon: Monitors.selected
-    readonly property bool onlyOn: root.screenRecord(Monitors.selected).on && root.screensOn.length === 1
+    readonly property bool onlyOn: root.screenOn(Monitors.selected) && root.screensOn.length === 1
+    readonly property var mirrorChoices: Monitors.mirrorChoices(root.stagedSpecs(), Monitors.selected)
 
     readonly property string selMonWhat: {
         const o = Monitors.outputs.find(m => m.name === Monitors.selected);
@@ -1007,9 +1166,14 @@ Singleton {
     readonly property string wiredDetail: Network.wiredConnected ? `${Network.wiredDeviceName}${Network.wiredLabel ? " · " + Network.wiredLabel : ""}` : Network.wiredAvailable ? "unplugged" : "no port"
     readonly property string wiredFact: [Network.wiredDeviceName, Network.wiredAddress].filter(Boolean).join(" · ")
 
-    readonly property int tunnelCount: (root.planned.tunnels ?? []).length
+    readonly property int tunnelCount: Tunnels.list.length
 
-    readonly property string vpnOn: (root.planned.tunnels ?? []).find(t => t.on)?.name ?? ""
+    readonly property string vpnOn: Tunnels.activeName
+
+    readonly property string hotspotStatus: Hotspot.status
+    readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
+    readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
+    readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
     readonly property var inputs: Audio.sources.map(n => [n.name, Audio.deviceLabel(n)])
@@ -1028,14 +1192,19 @@ Singleton {
 
     readonly property var specialNames: Hypr.specials.map(s => s.label)
     readonly property bool hasBattery: Battery.available
-    property bool lidSeen: false
-    readonly property bool hasLid: root.lidSeen || Monitors.outputs.some(m => m.name.startsWith("eDP") || m.name.startsWith("LVDS") || m.name.startsWith("DSI"))
+    readonly property bool hasLid: Lid.present
+    readonly property bool hibernatePossible: Suspension.hibernatePossible
+    readonly property int nearlyEmptyPercent: Battery.nearlyEmptyPercent
+    readonly property var profileChoices: PowerProfile.choices
+    readonly property string profileTrouble: PowerProfile.trouble
+    readonly property bool chargeSupported: !ChargeLimit.probed || ChargeLimit.supported
+    readonly property string chargeTrouble: ChargeLimit.trouble
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse
-    readonly property int clipseWaiting: 0
-    readonly property string clipseDetail: root.clipseImported ? "brought over" : "comes over at the next start"
+    readonly property int clipseWaiting: Clipboard.clipseWaiting
+    readonly property string clipseDetail: root.clipseWaiting ? `${root.clipseWaiting} entries waiting` : root.clipseImported ? "brought over" : "nothing waiting in clipse"
 
     readonly property string nextAlarm: {
         const now = Date.now();
@@ -1047,7 +1216,7 @@ Singleton {
             if (at && (!best || at < best))
                 best = at;
         }
-        return best ? `next alarm ${Qt.formatTime(new Date(best), "HH:mm")}` : "no alarms set";
+        return best ? `next alarm ${TimeFormat.time(new Date(best), false)}` : "no alarms set";
     }
 
     property double tick: Date.now()
@@ -1092,15 +1261,472 @@ Singleton {
 
     readonly property string usedLabel: root.minutesLabel(root.usedMinutes)
 
-    readonly property var kbLayouts: (root.planned.layouts ?? []).length ? root.planned.layouts : root.detectedLayouts
-    property var detectedLayouts: [{
-            name: "english (us)",
-            code: "us"
-        }]
+    readonly property var usageApps: {
+        const live = UsageApps.revision;
+        const now = root.tick;
+        return UsageApps.appsFor(new Date(now)).slice(0, 5);
+    }
+
+    readonly property bool idleHandled: Idle.handledElsewhere
+    readonly property string idleHandler: Idle.handler
+
+    readonly property var hyprOptions: ({
+            kbDelay: {
+                path: "input:repeat_delay",
+                integer: true,
+                fallback: 600
+            },
+            kbRate: {
+                path: "input:repeat_rate",
+                integer: true,
+                fallback: 25
+            },
+            mouseSpeed: {
+                path: "input:sensitivity",
+                fallback: 0
+            },
+            naturalScroll: {
+                path: "input:touchpad:natural_scroll",
+                fallback: false
+            },
+            tapClick: {
+                path: "input:touchpad:tap-to-click",
+                fallback: true
+            },
+            layout: {
+                path: "general:layout",
+                fallback: "dwindle"
+            },
+            kbLayout: {
+                path: "input:kb_layout",
+                fallback: "us"
+            },
+            kbVariant: {
+                path: "input:kb_variant",
+                fallback: ""
+            },
+            kbOptions: {
+                path: "input:kb_options",
+                fallback: ""
+            }
+        })
+
+    readonly property var hyprProbeCommand: ["hyprctl", "-j", "--batch", Object.keys(root.hyprOptions).map(k => `getoption ${root.hyprOptions[k].path}`).concat(["getoption scrolling:column_width"]).join(" ; ")]
+
+    property var hyprValues: ({})
+    property var hyprQueue: []
+    property var hyprWriting: null
+    property var hyprRecent: ({})
+    property bool scrollingCore: false
+    property bool optionsProbed: false
+    property bool pluginsProbed: false
+    property var hyprPlugins: []
+    property var hyprMice: []
+    property var pointers: []
+    property var liveBinds: []
+    property bool switchBindWanted: false
+
+    readonly property string switchChord: "SUPER + SPACE"
+
+    readonly property var layoutPool: [["danish", "dk"], ["english (us)", "us"], ["english (uk)", "gb"], ["german", "de"], ["norwegian", "no"], ["swedish", "se"], ["french", "fr"], ["colemak", "us(colemak)"]]
+
+    readonly property var switchOptions: ({
+            "grp:switch": "right alt",
+            "grp:alt_shift_toggle": "alt + shift",
+            "grp:ctrl_shift_toggle": "ctrl + shift",
+            "grp:win_space_toggle": "super + space",
+            "grp:alt_space_toggle": "alt + space",
+            "grp:ctrl_space_toggle": "ctrl + space",
+            "grp:caps_toggle": "caps lock",
+            "grp:menu_toggle": "menu"
+        })
+
+    function hyprAsked(k: string): var {
+        const queued = root.hyprQueue.filter(e => e.key === k);
+        if (queued.length)
+            return queued[queued.length - 1].value;
+        if (root.hyprWriting?.key === k)
+            return root.hyprWriting.value;
+        return root.hyprRecent[k];
+    }
+
+    function hyprRead(k: string): var {
+        const asked = root.hyprAsked(k);
+        if (asked !== undefined)
+            return asked;
+        const spec = root.hyprOptions[k];
+        const live = root.hyprValues[spec.path];
+        return live !== undefined ? live : spec.fallback;
+    }
+
+    function hyprSchedule(): void {
+        hyprFlush.restart();
+    }
+
+    function hyprLabel(k: string): string {
+        const names = {
+            layout: "Layout",
+            kbLayout: "Layouts",
+            kbVariant: "Layouts"
+        };
+        const row = root.rowOf(k);
+        return names[k] ?? (row ? Catalogue.labelOf(row) : k);
+    }
+
+    function hyprRefusal(k: string): string {
+        return HyprConfig.optionRefusal(root.hyprOptions[k].path, "");
+    }
+
+    function hyprEnqueue(entries: var): void {
+        const ids = entries.map(e => e.id);
+        root.hyprQueue = root.hyprQueue.filter(e => ids.indexOf(e.id) < 0).concat(entries);
+        root.hyprSchedule();
+    }
+
+    function hyprWrite(k: string, value: var): void {
+        if (!root.edits())
+            return;
+        const why = root.hyprRefusal(k);
+        if (why) {
+            root.denied = true;
+            root.refused(why, "");
+            return;
+        }
+        const spec = root.hyprOptions[k];
+        root.hyprEnqueue([
+            {
+                id: k,
+                key: k,
+                path: spec.path,
+                device: "",
+                value: spec.integer ? Math.round(value) : value
+            }
+        ]);
+    }
+
+    function hyprNext(): void {
+        if (root.hyprWriting || (!root.hyprQueue.length && !root.switchBindWanted))
+            return;
+        if (HyprConfig.applying || !HyprConfig.scanned)
+            return root.hyprSchedule();
+        if (!root.hyprQueue.length) {
+            root.switchBindWanted = false;
+            return root.addSwitchBind();
+        }
+        const entry = root.hyprQueue[0];
+        root.hyprQueue = root.hyprQueue.slice(1);
+        root.hyprWriting = entry;
+        HyprConfig.setOption(entry.path, entry.value, entry.device);
+    }
+
+    function hyprSettled(path: string, device: string, ok: bool, said: string): void {
+        const done = root.hyprWriting;
+        if (!done || done.path !== path || done.device !== device)
+            return;
+        root.hyprWriting = null;
+        if (ok) {
+            root.hyprRecent = Object.assign({}, root.hyprRecent, {
+                [done.key]: done.value
+            });
+            hyprRecentClear.restart();
+            if (done.then === "bind")
+                root.switchBindWanted = true;
+        } else {
+            root.hyprQueue = root.hyprQueue.filter(e => e.group === undefined || e.group !== done.group);
+            root.refused(`${root.hyprLabel(done.key)} was not saved · ${said}`, "");
+            root.probeHypr();
+        }
+        if (root.hyprQueue.length || root.switchBindWanted)
+            root.hyprSchedule();
+    }
+
+    Timer {
+        id: hyprFlush
+
+        interval: 400
+        onTriggered: root.hyprNext()
+    }
+
+    Timer {
+        id: hyprRecentClear
+
+        interval: 2500
+        onTriggered: root.hyprRecent = ({})
+    }
+
+    Connections {
+        target: HyprConfig
+
+        function onOptionSettled(path: string, device: string, ok: bool, said: string): void {
+            root.hyprSettled(path, device, ok, said);
+        }
+
+        function onWriteFailed(said: string): void {
+            root.refused(`not saved · ${said}`, "");
+        }
+    }
+
+    Connections {
+        target: Hypr
+
+        function onConfigReloaded(): void {
+            if (root.woken)
+                root.probeHypr();
+        }
+    }
+
+    function probeHypr(): void {
+        if (!Compositor.isHyprland)
+            return;
+        optionProbe.running = true;
+        pluginProbe.running = true;
+        mouseProbe.running = true;
+        bindProbe.running = true;
+        pointerProbe.running = true;
+    }
+
+    Process {
+        id: optionProbe
+
+        command: root.hyprProbeCommand
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const next = {};
+                for (const line of text.split("\n")) {
+                    if (!line.trim().startsWith("{"))
+                        continue;
+                    try {
+                        const o = JSON.parse(line);
+                        const raw = o.bool ?? o.int ?? o.float ?? o.str;
+                        if (o.option === "scrolling:column_width")
+                            root.scrollingCore = true;
+                        else if (raw !== undefined)
+                            next[o.option] = raw === "[[EMPTY]]" ? "" : raw;
+                    } catch (e) {}
+                }
+                root.hyprValues = next;
+                root.optionsProbed = true;
+            }
+        }
+    }
+
+    Process {
+        id: pluginProbe
+
+        command: ["hyprctl", "plugin", "list"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                root.hyprPlugins = text.split("\n").map(line => /^\s*Plugin\s+(.+?)\s+by\s/.exec(line)?.[1]).filter(Boolean);
+                root.pluginsProbed = true;
+            }
+        }
+    }
+
+    Process {
+        id: mouseProbe
+
+        command: ["hyprctl", "-j", "devices"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.hyprMice = (JSON.parse(text).mice ?? []).map(m => m.name);
+                } catch (e) {}
+            }
+        }
+    }
+
+    Process {
+        id: bindProbe
+
+        command: ["hyprctl", "-j", "binds"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.liveBinds = JSON.parse(text);
+                } catch (e) {}
+            }
+        }
+    }
+
+    Process {
+        id: pointerProbe
+
+        command: ["python3", Quickshell.shellPath("scripts/pointing-devices.py")]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                try {
+                    root.pointers = JSON.parse(text);
+                } catch (e) {}
+            }
+        }
+    }
+
+    readonly property string layoutRaw: String(root.hyprRead("layout"))
+    readonly property string layoutId: ["dwindle", "master", "scrolling", "hy3"].indexOf(root.layoutRaw) >= 0 ? root.layoutRaw : "custom"
+    readonly property string customInUse: root.layoutId === "custom" ? root.layoutRaw.replace(/^lua:/, "") : ""
+
+    readonly property bool layoutsProbed: root.optionsProbed && root.pluginsProbed
+
+    function layoutAvailable(id: string): bool {
+        if (!root.layoutsProbed)
+            return true;
+        if (id === "scrolling")
+            return root.scrollingCore || root.hyprPlugins.some(n => /scrolling/i.test(n));
+        if (id === "hy3")
+            return root.hyprPlugins.some(n => /hy3/i.test(n));
+        return true;
+    }
+
+    function layoutHowTo(id: string): string {
+        if (id === "scrolling")
+            return "built into newer hyprland, or the hyprscrolling plugin · hyprpm add https://github.com/hyprwm/hyprland-plugins";
+        if (id === "hy3")
+            return "a plugin, not loaded · hyprpm add https://github.com/outfoxxed/hy3, then hyprpm enable hy3";
+        return "";
+    }
+
+    function layoutName(code: string): string {
+        return root.layoutPool.find(p => p[1] === code)?.[0] ?? code;
+    }
+
+    function layoutsOf(layouts: string, variants: string): var {
+        const variantList = String(variants).split(",").map(v => v.trim());
+        return String(layouts).split(",").map(c => c.trim()).filter(Boolean).map((c, i) => {
+            const code = variantList[i] ? `${c}(${variantList[i]})` : c;
+            return {
+                name: root.layoutName(code),
+                code
+            };
+        });
+    }
+
+    readonly property var kbLayouts: root.layoutsOf(root.hyprRead("kbLayout"), root.hyprRead("kbVariant"))
+
+    function setLayouts(list: var): bool {
+        if (!list.length || !root.edits())
+            return false;
+        const why = root.hyprRefusal("kbLayout") || root.hyprRefusal("kbVariant");
+        if (why) {
+            root.refused(why, "");
+            return false;
+        }
+        const heads = list.map(l => l.code.replace(/\(.*\)$/, ""));
+        const variants = list.map(l => /\((.*)\)$/.exec(l.code)?.[1] ?? "");
+        const entry = (key, value, extra) => Object.assign({
+                id: key,
+                key,
+                group: "layouts",
+                path: root.hyprOptions[key].path,
+                device: "",
+                value
+            }, extra);
+        const layout = entry("kbLayout", heads.join(","));
+        const variant = entry("kbVariant", variants.some(Boolean) ? variants.join(",") : "");
+        const growing = list.length >= root.kbLayouts.length;
+        const changes = [layout, variant].filter(e => String(e.value) !== String(root.hyprRead(e.key)));
+        if (!changes.length)
+            return true;
+        const ordered = growing ? changes : changes.slice().reverse();
+        if (list.length > 1)
+            ordered[ordered.length - 1].then = "bind";
+        root.hyprEnqueue(ordered);
+        return true;
+    }
+
+    readonly property var switchBind: HyprConfig.binds.find(b => !b.dynamic && /switchxkblayout/.test(b.expr ?? "")) ?? null
+
+    readonly property string switchOption: {
+        const names = String(root.hyprRead("kbOptions")).split(/[,\s]+/).filter(o => o.startsWith("grp:"));
+        return names.length ? (root.switchOptions[names[0]] ?? names[0]) : "";
+    }
+
+    readonly property bool switchChordLive: root.liveBinds.some(b => b.modmask === 64 && String(b.key).toLowerCase() === "space" && !b.submap)
+
+    readonly property string layoutSwitchNote: {
+        const chord = root.switchChord.toLowerCase();
+        if (root.switchBind)
+            return `switch with ${root.switchBind.chord.toLowerCase()}`;
+        if (root.switchOption)
+            return `switch with ${root.switchOption}`;
+        const holder = HyprConfig.holderOf(root.switchChord);
+        if (holder)
+            return `${chord} is taken · ${holder.description || holder.action || "another bind"}`;
+        return root.switchChordLive ? `${chord} is taken` : "no key switches layouts yet";
+    }
+
+    function addSwitchBind(): void {
+        if (root.switchBind || root.switchChordLive || HyprConfig.holderOf(root.switchChord) || root.kbLayouts.length < 2)
+            return;
+        const home = HyprConfig.files.find(f => f.binds.some(b => !b.dynamic && !b.submap))?.name ?? HyprConfig.shortName(HyprConfig.configPath);
+        HyprConfig.addBind(home, {
+            chord: root.switchChord,
+            expr: "hl.dsp.exec_cmd(\"hyprctl switchxkblayout all next\")",
+            description: "Switch keyboard layout"
+        });
+    }
+
+    function hyprDeviceName(label: string): string {
+        const plain = text => String(text).toLowerCase().replace(/[^a-z0-9]+/g, "-");
+        return root.hyprMice.find(n => plain(n) === plain(label)) ?? String(label).toLowerCase().replace(/\s+/g, "-");
+    }
+
+    readonly property var touchpads: root.pointers.filter(p => p.kind === "touchpad").map(p => ({
+                label: p.name,
+                name: root.hyprDeviceName(p.name),
+                widthMm: p.widthMm,
+                heightMm: p.heightMm
+            })).filter(t => !root.hyprMice.length || root.hyprMice.indexOf(t.name) >= 0)
+
+    readonly property real padRatio: {
+        const shaped = root.touchpads.find(t => t.widthMm > 0 && t.heightMm > 0);
+        return shaped ? Math.max(1, Math.min(2.2, shaped.widthMm / shaped.heightMm)) : 1.5;
+    }
+
+    readonly property real padSpeedNow: {
+        const asked = root.hyprAsked("padSpeed");
+        if (asked !== undefined)
+            return asked;
+        const own = root.touchpads.length ? HyprConfig.optionValue("input:sensitivity", root.touchpads[0].name) : undefined;
+        return own !== undefined ? own : root.hyprRead("mouseSpeed");
+    }
+
+    function writePadSpeed(value: var): void {
+        if (!root.touchpads.length || !root.edits()) {
+            root.denied = true;
+            return;
+        }
+        const why = root.touchpads.map(t => HyprConfig.optionRefusal("input:sensitivity", t.name)).find(Boolean);
+        if (why) {
+            root.denied = true;
+            root.refused(why, "");
+            return;
+        }
+        root.hyprEnqueue(root.touchpads.map(t => ({
+                    id: `padSpeed:${t.name}`,
+                    key: "padSpeed",
+                    path: "input:sensitivity",
+                    device: t.name,
+                    value: +value
+                })));
+    }
 
     readonly property int keyCount: HyprConfig.binds.length + Object.keys(Config.values.files.keys ?? {}).length
 
-    readonly property string repeatDetail: `${Config.defaults.tablet.repeatDelay} ms, then every ${Config.values.tablet.repeatInterval}`
+    readonly property string repeatDetail: `${Config.values.tablet.repeatDelay} ms, then every ${Config.values.tablet.repeatInterval}`
+
+    readonly property string penButtonNote: {
+        if (!PenButtons.remapped)
+            return "as the pen sends them";
+        switch (PenButtons.state) {
+        case "ready":
+            return "remapped";
+        case "denied":
+            return "can't reach the pen · see the log";
+        case "gone":
+            return "pen not found";
+        }
+        return "starting";
+    }
 
     readonly property string penName: Config.values.pen.device.replace(/-pen$/, "").replace(/-/g, " ")
 
@@ -1108,29 +1734,59 @@ Singleton {
     readonly property bool healthKnown: Battery.healthKnown
     readonly property int healthPct: Math.round(Battery.health)
 
-    readonly property int startupOn: (root.planned.startup ?? []).filter(s => s.on).length
+    readonly property int startupOn: StartupApps.entries.filter(s => s.on).length
 
     function appsFor(k: string): var {
-        const seed = [root.v(k)];
-        const pool = ({
-                defBrowser: ["firefox", "chromium", "zen"],
-                defFiles: ["files", "nautilus", "thunar"],
-                defTerm: ["kitty", "foot", "alacritty"],
-                defMail: ["thunderbird", "geary"],
-                defImages: ["loupe", "imv", "gwenview"],
-                defVideo: ["mpv", "celluloid", "vlc"]
-            })[k] ?? [];
-        return seed.concat(pool.filter(a => a !== seed[0]));
+        return DefaultApps.offersFor(k);
     }
 
-    readonly property var zoneChoices: {
-        const here = Clock.localZone;
-        const out = [];
-        for (const z of [here, "Europe/Copenhagen", "Europe/London", "America/New_York", "Asia/Tokyo"])
-            if (z && out.indexOf(z) < 0)
-                out.push(z);
-        return out;
+    function defaultName(k: string): string {
+        return DefaultApps.nameFor(k);
     }
+
+    function defaultNote(k: string): string {
+        return DefaultApps.noteFor(k);
+    }
+
+    readonly property var zoneChoices: Localisation.zoneChoices
+    readonly property var languageChoices: Localisation.languageChoices
+    readonly property var formatChoices: Localisation.formatChoices
+
+    readonly property string languageLabel: Localisation.labelOf(Localisation.languages, Localisation.language)
+    readonly property string formatsLabel: Localisation.labelOf(Localisation.formats, Localisation.formatsId)
+
+    readonly property var dateChoices: TimeFormat.styles.map(id => [id, TimeFormat.example(id, new Date(root.tick))])
+
+    readonly property string timeExample: TimeFormat.time(new Date(root.tick), false)
+
+    readonly property string moneyExample: ({
+            "da_DK.UTF-8": "1.234,56 kr.",
+            "en_GB.UTF-8": "£1,234.56",
+            "en_US.UTF-8": "$1,234.56"
+        })[Localisation.formatsId] ?? ""
+
+    readonly property int largerBase: Config.values.access.largerBase
+
+    function minuteText(minutes: int): string {
+        return TimeFormat.clock(Math.floor(minutes / 60), minutes % 60);
+    }
+
+    readonly property string scheduleDetail: {
+        const mode = Config.values.screen.schedule;
+        const w = Display.warmWindow;
+        if (mode === "off")
+            return "";
+        if (!w)
+            return mode === "sunset" ? "needs a place · pick a zone below" : "pick two different times";
+        if (!isFinite(w.start) || !isFinite(w.end))
+            return mode === "sunset" ? "the sun does not set here now" : "";
+        const span = `${TimeFormat.time(new Date(w.start), false)} to ${TimeFormat.time(new Date(w.end), false)}`;
+        return mode === "sunset" ? `tonight ${span}` : span;
+    }
+
+    readonly property string zoneSuggested: Localisation.suggestedZone
+
+    readonly property string autoZoneDetail: !Localisation.geoclueProbed ? "" : !Localisation.geoclueInstalled ? "needs geoclue, which is not installed" : "from where you are · password needed"
 
     readonly property var branches: {
         const out = [Config.values.updates.branch];
@@ -1162,10 +1818,11 @@ Singleton {
 
     readonly property int changeCount: root.changes.length
 
-    readonly property string modeIcon: {
-        const id = root.v("mode");
-        return id && id !== "none" ? (Catalogue.MODES.find(m => m.id === id)?.icon ?? "") : "";
-    }
+    readonly property string modeIcon: Modes.icon
+
+    readonly property string quietNote: Notifications.note
+    readonly property string quietEndsNote: Notifications.endsNote
+    readonly property string nightWindow: `${Notifications.nightFrom} to ${Notifications.nightTo}`
 
     property bool completionsInstalled: false
 
@@ -1218,24 +1875,6 @@ Singleton {
         }
     }
 
-    Process {
-        id: layoutProbe
-
-        command: ["hyprctl", "getoption", "input:kb_layout", "-j"]
-        stdout: StdioCollector {
-            onStreamFinished: {
-                try {
-                    const codes = String(JSON.parse(text).str ?? "").split(",").map(c => c.trim()).filter(Boolean);
-                    if (codes.length)
-                        root.detectedLayouts = codes.map(c => ({
-                                    name: c,
-                                    code: c
-                                }));
-                } catch (e) {}
-            }
-        }
-    }
-
     property bool woken: false
 
     function wake(): void {
@@ -1243,10 +1882,35 @@ Singleton {
             return;
         root.woken = true;
         fontProbe.running = true;
-        lidProbe.running = true;
         root.probeCompletions();
-        if (Compositor.isHyprland)
-            layoutProbe.running = true;
+        root.probeHypr();
+    }
+
+    function upgradedChange(change: var): var {
+        const cfg = root.configBacked[change?.k];
+        const r = root.rowOf(change?.k);
+        if (!cfg || !r)
+            return change;
+        const old = Config.upgradeValue(cfg, change.old);
+        const value = Config.upgradeValue(cfg, change.v);
+        if (old === change.old && value === change.v)
+            return change;
+        return Object.assign({}, change, {
+            old,
+            v: value,
+            from: root.shown(r, old),
+            to: root.shown(r, value)
+        });
+    }
+
+    readonly property var carriedPlans: ["mode", "modeWas", "screens"]
+
+    function withoutRetired(planned: var): var {
+        const kept = {};
+        for (const k of Object.keys(planned))
+            if (root.plannedKey(k) || root.configBacked[k] || root.carriedPlans.includes(k))
+                kept[k] = planned[k];
+        return kept;
     }
 
     function save(): void {
@@ -1254,13 +1918,101 @@ Singleton {
             saver.restart();
     }
 
-    Process {
-        id: lidProbe
+    function adoptMode(): void {
+        if (!root.loaded || !Modes.loaded || root.planned.mode === undefined)
+            return;
+        const id = String(root.planned.mode);
+        Modes.adopt(id, Catalogue.MODES.find(m => m.id === id)?.icon ?? "", root.planned.modeWas);
+        const next = Object.assign({}, root.planned);
+        delete next.mode;
+        delete next.modeWas;
+        root.planned = next;
+        root.save();
+    }
 
-        command: ["sh", "-c", "ls /proc/acpi/button/lid 2>/dev/null"]
+    Connections {
+        target: Modes
 
-        stdout: StdioCollector {
-            onStreamFinished: root.lidSeen = text.trim() !== ""
+        function onLoadedChanged(): void {
+            root.adoptMode();
+        }
+    }
+
+    function adopt(): void {
+        root.adoptMode();
+        if (!root.loaded || !Config.loaded)
+            return;
+        const moved = Object.keys(root.planned).filter(k => root.configBacked[k] && !root.plannedKey(k));
+        if (!moved.length)
+            return;
+        const pairs = [];
+        for (const k of moved) {
+            const cfg = root.configBacked[k];
+            if (JSON.stringify(Config.get(cfg)) !== JSON.stringify(root.lookup(Config.defaults, cfg)))
+                continue;
+            const t = root.transforms[k];
+            const value = t ? t.write(root.planned[k]) : root.planned[k];
+            if (Config.accepts(cfg, value))
+                pairs.push([cfg, value]);
+            else
+                console.warn(`SettingsState: the old planned ${k} does not fit ${cfg}, so it is left behind`);
+        }
+        if (pairs.length)
+            Config.setMany(pairs);
+        const next = Object.assign({}, root.planned);
+        for (const k of moved)
+            delete next[k];
+        root.planned = next;
+        root.save();
+    }
+
+    function carryScreens(): void {
+        const old = root.planned.screens;
+        if (!root.loaded || !old || !Monitors.outputs.length)
+            return;
+        const specs = root.stagedSpecs();
+        const fields = {};
+        const take = (name, change) => {
+            const planned = Monitors.plan(specs, name, change);
+            for (const n of Object.keys(planned.fields)) {
+                specs[n] = Object.assign({}, specs[n], planned.fields[n]);
+                fields[n] = Object.assign({}, fields[n] ?? {}, planned.fields[n]);
+            }
+        };
+        for (const name of Object.keys(old))
+            if (specs[name] && old[name].on === false && !specs[name].disabled)
+                take(name, {
+                    disabled: true
+                });
+        for (const name of Object.keys(old))
+            if (specs[name] && old[name].mirror && old[name].mirror !== specs[name].mirror)
+                take(name, {
+                    mirror: old[name].mirror
+                });
+        root.restage(fields);
+        const next = Object.assign({}, root.planned);
+        delete next.screens;
+        root.planned = next;
+        root.save();
+    }
+
+    Connections {
+        target: Monitors
+
+        function onOutputsChanged(): void {
+            root.carryScreens();
+        }
+
+        function onFailed(output: string, said: string): void {
+            root.refused(`${output} was not changed · ${said}`, "");
+        }
+    }
+
+    Connections {
+        target: Config
+
+        function onLoadedChanged(): void {
+            root.adopt();
         }
     }
 
@@ -1288,14 +2040,18 @@ Singleton {
         onLoaded: {
             try {
                 const data = JSON.parse(store.text());
-                root.planned = data.planned ?? {};
+                const stored = data.planned ?? {};
+                root.planned = root.withoutRetired(stored);
+                if (Object.keys(root.planned).length !== Object.keys(stored).length)
+                    saver.restart();
                 root.ui = data.ui ?? {};
-                root.changes = data.changes ?? [];
-                root.modeWas = root.planned.modeWas ?? {};
+                root.changes = (data.changes ?? []).map(c => root.upgradedChange(c));
             } catch (e) {
                 console.warn(`SettingsState: ${root.path} is not valid, starting fresh`);
             }
             root.loaded = true;
+            root.adopt();
+            root.carryScreens();
         }
 
         onLoadFailed: root.loaded = true

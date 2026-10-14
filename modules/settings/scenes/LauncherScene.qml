@@ -12,7 +12,7 @@ Item {
     id: root
 
     readonly property real stageHeight: 420
-    readonly property bool niagara: SettingsState.v("concept") === "niagara"
+    readonly property bool alphabetical: SettingsState.v("concept") === "alphabet"
     readonly property int size: SettingsState.v("launcherIcon")
 
     SceneClock {
@@ -20,7 +20,7 @@ Item {
 
         duration: 2400
         still: 0.5
-        live: !root.niagara
+        live: !root.alphabetical
     }
 
     SceneClock {
@@ -28,13 +28,13 @@ Item {
 
         duration: 6600
         still: 0.36
-        live: root.niagara
+        live: root.alphabetical
     }
 
     Item {
         id: list
 
-        visible: !root.niagara
+        visible: !root.alphabetical
         x: 16
         y: 16
         width: parent.width - 32
@@ -162,13 +162,13 @@ Item {
     Item {
         id: nia
 
-        visible: root.niagara
+        visible: root.alphabetical
         x: 16
         y: 14
         width: parent.width - 16 - 6
         height: parent.height - 28
 
-        readonly property var letters: Catalogue.NIA_LETTERS
+        readonly property var letters: Catalogue.RAIL_LETTERS
         readonly property var byLetter: {
             const out = {};
             for (const e of Apps.visible) {
@@ -181,10 +181,10 @@ Item {
             }
             return out;
         }
-        readonly property var pos: Catalogue.niagaraAt(railClock.value * 6600)
+        readonly property var pos: Catalogue.alphabetThumbAt(railClock.value * 6600)
         readonly property real step: nia.height / nia.letters.length
-        readonly property real spread: Config.values.launcher.niagara.bowSpread / 2
-        readonly property real bow: Config.values.launcher.niagara.bow / 10
+        readonly property real spread: Config.values.launcher.alphabet.bowSpread / 2
+        readonly property real bow: Config.values.launcher.alphabet.bow / 10
         property string shown: "fav"
 
         readonly property string near: nia.pos === null ? "fav" : (nia.byLetter[nia.letters[Math.round(nia.pos)]] ? nia.letters[Math.round(nia.pos)] : nia.shown)

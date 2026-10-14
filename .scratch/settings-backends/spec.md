@@ -1,6 +1,6 @@
 # Settings backends
 
-Status: needs-triage
+Status: done
 
 The settings panel (`modules/settings/`) is a port of the settings-demo mockup
 (`~/.t3/projects/settings-demo`). Every setting in the mockup has a row in the
@@ -8,8 +8,11 @@ panel. Most rows write something real: a key in config.json, or a call into a
 service the shell already has. The rest have nothing behind them in the shell
 yet. This spec is the plan for giving each of those a backend.
 
-Nothing here has been built. The panel was ported on its own, without touching
-the shell, on purpose.
+All thirty tickets were built on 2026-10-14, on the `settings-backends` branch.
+Each ticket's `## Built` section says what landed and what a person still has to
+check. The one row still planned is the custom tiling layout (ticket 16), which
+waits on a design. Carrying an old planned value into config is generic:
+`SettingsState.adopt()` does it for every key that moves into `configBacked`.
 
 ## How a planned setting works today
 

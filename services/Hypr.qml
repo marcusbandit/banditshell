@@ -18,7 +18,7 @@ Singleton {
 
     readonly property int count: Config.values.sidebar.workspaces.persistent
 
-    readonly property var bands: HyprConfig.bands.filter(b => !b.dynamic && b.path?.[1] === HyprConfig.hostName)
+    readonly property var bands: HyprConfig.hostBands
 
     function bandFor(screen: string): int {
         const b = root.bands.find(x => x.monitor === screen && !x.invalid);
@@ -104,6 +104,25 @@ Singleton {
                 windows: root.clients[ws.id] ?? []
             });
         }
+        return out;
+    }
+
+    readonly property var specialDeck: {
+        if (!Config.values.sidebar.workspaces.rack)
+            return [];
+        const want = Config.values.sidebar.workspaces.specials;
+        const live = root.specials;
+        const out = [];
+        for (const name of want)
+            out.push(live.find(s => s.label === name) ?? ({
+                        id: 0,
+                        name: `special:${name}`,
+                        label: name,
+                        windows: []
+                    }));
+        for (const s of live.slice().sort((a, b) => a.label.localeCompare(b.label)))
+            if (want.indexOf(s.label) < 0)
+                out.push(s);
         return out;
     }
 

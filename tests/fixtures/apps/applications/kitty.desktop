@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=kitty
+Exec=kitty
+Icon=kitty
+Type=Application
+Categories=System;TerminalEmulator;
+MimeType=text/plain;

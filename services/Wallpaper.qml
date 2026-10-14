@@ -279,6 +279,13 @@ done`, "sh", ...fresh];
         root.origins = next;
     }
 
+    signal replayRequested(screen: string)
+
+    function replayOn(screen: string, x: real, y: real): void {
+        root.setOrigin(screen, x, y);
+        root.replayRequested(screen);
+    }
+
     function setOn(screen: string, path: string): void {
 
         const name = root.normalise(path);

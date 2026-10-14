@@ -478,6 +478,18 @@ banditshell/
 │   │                            is verified (`--verify-config`) before the
 │   │                            compositor reloads, and a failed one is
 │   │                            put back the way it was
+│   │                            One option at a time goes the same way:
+│   │                            `setOption("input:kb_layout", ...)` finds
+│   │                            where hl.config or an hl.device block already
+│   │                            sets it and rewrites that value in place, or
+│   │                            adds it to the nearest table that exists (else
+│   │                            a new hl.config call at the end of the main
+│   │                            file). Options built by code, set under a
+│   │                            condition, or set in two places are refused
+│   │                            with the line they come from. No live
+│   │                            `hyprctl keyword` after it: the Lua parser
+│   │                            refuses that command, and the reload that
+│   │                            follows re-applies the file
 │   ├── hyprgen.js               that model, as text: a Lua-aware scanner
 │   │                            (strings, escapes, long brackets, multi-
 │   │                            line calls, block depth), chord parsing,
@@ -490,12 +502,16 @@ banditshell/
 │   │                            same way
 │   ├── Keyboards.qml            the user's own board, when they name one: a
 │   │                            VIA definition copied into the shell's
-│   │                            config and watched, aligned into keys; and
+│   │                            config and watched, aligned into keys, with
+│   │                            the keymap VIA saved for it laid on top;
+│   │                            the built-in shape (cheatsheet.shape); and
 │   │                            the keys struck in cheatsheet.blocked
 │   ├── keyboards.js             the board models as data: the drawn
 │   │                            template (function row, ISO main block,
-│   │                            numpad) and the VIA reader, legends by
-│   │                            position. No QML in it, tested in node
+│   │                            numpad; ansi, iso or split), the VIA reader,
+│   │                            legends by position, and the saved-keymap
+│   │                            reader that names keys by keycode. No QML
+│   │                            in it, tested in node
 │   ├── whatsnew.js               the What's new log as DATA: entries parsed
 │   │                            tolerantly and accumulated past the
 │   │                            last-shown marker. No QML in it, the way
@@ -506,8 +522,55 @@ banditshell/
 │   │                            line alone. No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
+│   ├── DesktopIndex.qml         every installed desktop entry read once: its
+│   │                            name, icon, Exec program, MimeType and
+│   │                            categories, which Quickshell's own list leaves
+│   │                            out
+│   ├── DefaultApps.qml          the default app for links, folders, mail,
+│   │                            pictures, video and terminals, read with
+│   │                            `xdg-mime query default` and written with
+│   │                            `xdg-mime default` for every type in the group
+│   │                            (the terminal goes in xdg-terminals.list when
+│   │                            xdg-terminal-exec is installed)
+│   ├── StartupApps.qml          what starts with the session, from the places
+│   │                            it can: exec lines in Hyprland's Lua
+│   │                            (commented out behind sourceEdits; one app
+│   │                            dropped from a `shell-up` line), enabled
+│   │                            systemd user units, ~/.config/autostart
+│   │                            (`Hidden=true`), and, where its unit is
+│   │                            enabled, ~/.config/autostart-managed (the
+│   │                            launcher's `disabled=true` overrides).
+│   │                            Nothing here runs XDG autostart on
+│   │                            Hyprland, so the shell launches those once
+│   │                            per session, marked in XDG_RUNTIME_DIR
+│   ├── desktop-entries.js       desktop file parsing, the autostart file
+│   │                            text, Hidden toggling. No QML, tested in node
+│   ├── default-apps.js          which entries offer to handle a group of
+│   │                            types, and the terminal list. No QML, tested
+│   │                            in node
+│   ├── startup-apps.js          exec-line parsing and toggling, the `shell-up`
+│   │                            wrapper's arguments, systemd unit listing. No
+│   │                            QML, tested in node
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
-│   ├── Battery.qml              UPower
+│   ├── Battery.qml              UPower, the low warning, and the nearly empty
+│   │                            step: warn once, count down 30 s, then
+│   │                            suspend or hibernate (battery.js is the
+│   │                            pure part, tested in node)
+│   ├── ChargeLimit.qml          battery.holdCharge / holdAt written to the
+│   │                            battery's charge_control_end_threshold
+│   │                            through a pkexec helper the installer puts
+│   │                            in only when asked (install.sh
+│   │                            --charge-limit); read back, never assumed
+│   ├── Lid.qml                  holds a handle-lid-switch block inhibitor
+│   │                            while there is a lid, watches logind's
+│   │                            LidClosed, and does what power.lid.* says
+│   │                            for battery, mains or screens attached;
+│   │                            on a machine with no lid it runs nothing
+│   ├── PowerProfile.qml         the power mode, read back live from
+│   │                            power-profiles-daemon or tuned, never kept
+│   │                            in config because other tools change it
+│   ├── Suspension.qml           suspend, hibernate or lock for whoever asks;
+│   │                            a hibernate the machine cannot do is a suspend
 │   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
 │   ├── Media.qml                MPRIS, with a stable choice of player: the one that
@@ -544,12 +607,36 @@ banditshell/
 │   │                            every 300ms) so Hyprland's LUT reset - a
 │   │                            full-brightness flash - never runs at
 │   │                            restart
+│   ├── nightlight.js            when the screens should be warm: sunrise and sunset
+│   │                            from a latitude and longitude, set times, and
+│   │                            how far to ease at any moment. Display's timer
+│   │                            asks it; a hand on the warmth wins to the next
+│   │                            edge. No QML in it, tested in node
+│   ├── TimeFormat.qml           the ONE place a time or a date becomes text,
+│   │                            reading region.clock24 and region.dateFormat;
+│   │                            every clock, calendar, lock face and file date
+│   │                            goes through it, in English whatever the
+│   │                            system language is. timeformat.js is the
+│   │                            maths, tested in node
+│   ├── Localisation.qml         the system's zone, language and formats, changed
+│   │                            only when the panel asks (timedatectl, localectl,
+│   │                            polkit asks for the password) and never at load;
+│   │                            zone from network reads geoclue's demo client and
+│   │                            the nearest zone in zone.tab. localisation.js is
+│   │                            the parsing, tested in node
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, its size, the colour
 │   │                            groups it falls in, and a poster frame per video
-│   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
+│   ├── Notifications.qml        the notification DAEMON (a server, not a reader);
+│   │                            also where quiet lives: a notification always
+│   │                            lands in history, and quiet, the night window
+│   │                            and the sender's rule decide popup and sound
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
+│   ├── AlertSounds.qml          plays the three alert sounds (notification, low
+│   │                            battery, error) from assets/sounds with pw-play
+│   ├── Modes.qml                which mode is on and what it changed, so leaving
+│   │                            it puts back exactly that; kept in modes.json
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
 │   ├── Clipboard.qml            what has been copied, and what each of them IS;
@@ -603,6 +690,14 @@ banditshell/
 │   │                            scripts/pen-pad.py, and from `banditshell
 │   │                            penmap` when the tablet is asleep and cannot
 │   │                            ask for itself.
+│   ├── PenButtons.qml           the pen's two side buttons, remapped. Hyprland
+│   │                            has no such setting, and pen-pad.py reads the
+│   │                            pad, not the pen, so scripts/pen-buttons.py
+│   │                            grabs the pen and hands everything on through
+│   │                            a stand-in device of the same name, with the
+│   │                            buttons changed. Runs only while a button is
+│   │                            off its default, so a pen as shipped is never
+│   │                            touched
 │   ├── Keystrokes.qml           the one service that types OUTWARD, and it needs
 │   │                            TWO transports: wtype for characters (the
 │   │                            compositor never acts on them, so no bind can
@@ -999,6 +1094,14 @@ banditshell/
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and
 │   │                            that is the correct failure
+│   ├── pen-buttons.py           the stylus buttons: a Remapper that is pure
+│   │                            (right click, middle click, erase, nothing),
+│   │                            and a loop that serves it from a grabbed pen
+│   │                            to a uinput clone. Names itself `idle` and
+│   │                            grabs nothing on the defaults
+│   ├── pointing-devices.py      the mice and touchpads udev knows, and the
+│   │                            size of each pad in millimetres, read from
+│   │                            /run/udev/data with no privileges
 │   ├── keyring-prompter.py      the keyring's prompter: owns the bus name gcr's
 │   │                            GTK dialog would have been activated for, and
 │   │                            reimplements gcr's `sx-aes-1` secret exchange
@@ -1743,7 +1846,10 @@ read as KLE means them: `x` and `y` move the cursor, `w` and `h` size the key. I
 come from the template by POSITION: the board says whether it is ISO (a two-row Enter) or
 ANSI (a wide home-row Enter under a 1.5u backslash), the numpad is found by where its
 columns sit and the arrows by their shape, and keys the template has no opinion about draw
-their matrix spots and wait. A woven bind lights the keys its loop variables and top-level
+their matrix spots and wait. A keymap saved from VIA (Save + Load, Save) is the exact answer
+where position only guesses: its first layer maps each matrix spot to a keycode, which maps to
+the keysym a bind names, so the keys the shell binds light on the user's own board; it must
+carry the definition's vendorProductId, or it is refused. A woven bind lights the keys its loop variables and top-level
 aliases resolve to, and only when its chord names the variable. Keys can also be struck
 from the board in the config (`cheatsheet.blocked`, by keysym or matrix spot, each with an
 optional why): they draw as an empty outline with the legend struck through, never light,
@@ -2429,8 +2535,8 @@ already steps the value and a touchpad steps it the same way down the same path,
 which is the same answer reached without the primitive. The screenshot picker's
 region drag is two absolute corners, and a scroll has no position to give it. A
 tray icon's wheel belongs to the application behind it under the
-StatusNotifierItem protocol and is not ours to reinterpret. The Niagara
-launcher's alphabet rail is the same case as the bead, one level up: it scrubs
+StatusNotifierItem protocol and is not ours to reinterpret. The alphabet
+launcher's letter rail is the same case as the bead, one level up: it scrubs
 the list to the letter UNDER the pointer rather than by a distance, so a stream
 that reports motion and never a position has nothing to give it. It swallows the
 wheel rather than ignoring it, because the launcher's put-away pull lies under

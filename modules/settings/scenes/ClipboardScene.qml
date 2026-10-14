@@ -77,7 +77,7 @@ Item {
 
                     Behavior on opacity {
                         NumberAnimation {
-                            duration: Appearance.animation.slow
+                            duration: Appearance.animation.fade.slow
                         }
                     }
                 }
