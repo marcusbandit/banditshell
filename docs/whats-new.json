@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-2",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell try needs less typing. Bare, it takes the only worktree there is, or lists them numbered and asks which one. With a name, a number from that list or any unique part of a branch name works, so banditshell try 2 or banditshell try wall is enough, and Tab completes worktree names."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14",
       "date": "2026-10-14",
       "changes": [
