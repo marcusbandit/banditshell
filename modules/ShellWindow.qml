@@ -15,6 +15,7 @@ import qs.modules.quickcontrols
 import qs.modules.launcher
 import qs.modules.notifications
 import qs.modules.session
+import qs.modules.settings
 import qs.modules.sidebar
 import qs.modules.stream
 import qs.modules.wallpaper
@@ -40,6 +41,8 @@ PanelWindow {
     readonly property LazyPanel hotkeys: cheatLayer
 
     readonly property LazyPanel media: mediaLayer
+
+    readonly property LazyPanel settings: settingsLayer
 
     readonly property NotificationTray notifications: popups
     readonly property SummonZone notch: topNotch
@@ -116,7 +119,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -177,6 +180,16 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: mediaLayer.open ? mediaLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: settingsLayer.open ? settingsLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Combine
+            item: settingsLayer.open ? (settingsLayer.item?.toastMask ?? null) : null
         }
 
         Region {
@@ -287,7 +300,7 @@ PanelWindow {
 
             anchors.fill: parent
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered([...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs])]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered([...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs])]
         }
 
         Sidebar {
@@ -543,6 +556,24 @@ PanelWindow {
 
             panel: MediaController {
                 border: win.border
+            }
+        }
+
+        LazyPanel {
+            id: settingsLayer
+
+            anchors.fill: parent
+            anchors.topMargin: chassis.streamReach
+
+            needed: Settings.open && Settings.screenName === (win.screen?.name ?? "")
+
+            onOpenChanged: if (open)
+                win.closeOthers(settingsLayer)
+
+            panel: SettingsPanel {
+                originX: chassis.barWidth
+                band: win.border
+                yielded: win.panelOpen || menuLayer.open || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }
 

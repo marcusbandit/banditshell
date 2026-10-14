@@ -517,8 +517,8 @@ banditshell/
 │   ├── Clipboard.qml            what has been copied, and what each of them IS;
 │   │                            runs its own wl-paste watcher, because the type
 │   │                            list is the only place "file" differs from "text"
-│   ├── Settings.qml             the settings page's state: one real window,
-│   │                            kept alive, hidden between uses
+│   ├── Settings.qml             whether the settings panel is open, on which
+│   │                            screen, at which page, and a row to reveal
 │   ├── Power.qml                the ways a session can end, and how each is done
 │   ├── Calculator.qml            arithmetic, once: how a number is written, what an
 │   │                            operator does, and what a TYPED expression means.
@@ -718,43 +718,53 @@ banditshell/
 │   │                            half-monitor hero, the rest stacked off the
 │   │                            right edge, the hero live on the real desktop
 │   ├── picker/                  screenshot: hover a window or drag a region
-│   ├── settings/                the page, always a real window of its own, shaped
-│   │   │                        like a phone's settings app: a list of sections and
-│   │   │                        one section, side by side when wide, stacked when not
-│   │   ├── SettingsFace.qml     the page itself; a plain Item, filled into the window
-│   │   ├── SettingsPane.qml     one scrolling column of it, with drag-right as "back"
-│   │   ├── SettingsCard.qml     a titled box of rows: the grouped-list idiom
-│   │   ├── SettingsRow.qml      one row of a card; wraps, never elides, and its
-│   │   │                        highlight takes the card's own corners
-│   │   ├── SettingsFloat.qml    the window; shell-wide, kept alive, hidden between uses
-│   │   └── pages/               one file per page; Settings.pages is the register,
-│   │       │                    and key "general" loads GeneralPage.qml by convention.
-│   │       │                    Grouped the way a phone groups them; a page with a
-│   │       │                    `parent` is a sub-page reached from its parent's rows
-│   │       ├── WifiPage.qml     the bar's network menu, with room, and the port
-│   │       ├── BluetoothPage.qml  the adapter switch and the bar's device list
-│   │       ├── SoundPage.qml    output, input, and the bar's mixer
-│   │       ├── MonitorsPage.qml  the monitors, drawn as a canvas; each one's
-│   │       │                    workspace band is edited on the picture itself
-│   │       ├── WallpaperPage.qml  the current picture, its two switches, the folder
-│   │       ├── AppearancePage.qml  palette, the font row, the compositor switches
-│   │       ├── FontPage.qml     every installed family, each drawn in itself (sub-page)
-│   │       ├── GeneralPage.qml  behaviour switches: touch, windows, the fold, network
-│   │       ├── BatteryPage.qml  charge and health, and the bar's history
-│   │       ├── DevicePage.qml   the whole machine: board, processor, memory, graphics,
-│   │       │                    storage, software, battery, screens (services/Device.qml)
-│   │       ├── KeybindsPage.qml  every Hyprland bind: the chord as key
-│   │       │                    plates, the command it runs under them,
-│   │       │                    and a record mode that takes the
-│   │       │                    keyboard over (shortcut inhibitor) so a
-│   │       │                    chord is pressed, not typed; edits splice
-│   │       │                    in place, verify, reload; binds the source
-│   │       │                    generates are shown read-only
-│   │       ├── CliPage.qml      the OTHER face of the shell: `banditshell`, and the
-│   │       │                    one thing about it that has to be installed rather
-│   │       │                    than used, which is tab completion
-│   │       ├── DeveloperPage.qml  reload, the files, what the shell currently knows
-│   │       └── AboutPage.qml    banditshell itself: what it is and why, and where to read
+│   ├── settings/                the settings panel: a blob that melts out of the
+│   │   │                        sidebar's edge like the menus do, ported from the
+│   │   │                        settings-demo mockup. Rail, content and pane side
+│   │   │                        by side; the pane slides over the content when
+│   │   │                        narrow and the rail goes to icons when tiny. It
+│   │   │                        has no catcher: the desktop stays usable, the X
+│   │   │                        or the corner closes it, and it steps aside while
+│   │   │                        another panel or a menu is up on its screen
+│   │   ├── catalogue.js         every setting as data: ten categories, their hubs
+│   │   │                        (tiles, one suggestion, page rows) and pages of
+│   │   │                        grouped rows; search, aliases, formats. No QML
+│   │   ├── boards.js            keyboards as KLE data: ansi, iso, split, the VIA
+│   │   │                        reader, and which keys a bind lights
+│   │   ├── screens.js           screens as rects on the desk: snapping to edges,
+│   │   │                        corners and centres, settling a drop against a
+│   │   │                        neighbour, nudging, and keeping a resized screen
+│   │   │                        centred with what sat beside it
+│   │   ├── SettingsState.qml    one value per row key, from config.json, a service
+│   │   │                        or the planned store (settings with nothing behind
+│   │   │                        them yet, see .scratch/settings-backends), plus
+│   │   │                        recent changes with undo, in state/settings.json.
+│   │   │                        Screen changes are staged and go out on Apply;
+│   │   │                        a new picture asks to be kept, or goes back
+│   │   ├── SettingsView.qml     which category or page is up, the hovered row,
+│   │   │                        the pinned detail, search, the toast
+│   │   ├── SettingsActions.qml  what the buttons do
+│   │   ├── SettingsKeys.qml     shell binds and Files keys as rows, and rebinding
+│   │   ├── SettingsPanel.qml    the blob, its reveal, the layout modes; the body
+│   │   │                        unloads once closed so nothing scans behind it.
+│   │   │                        On Screens it widens for the canvas, or, with no
+│   │   │                        room, grows tall and folds the canvas into the page
+│   │   ├── ScreenCanvas.qml     the screens to drag: guides, nudges, the ghost of
+│   │   │                        where a screen is now, Reset and Apply
+│   │   ├── SettingsRail.qml     search, categories unrolling their pages, the plate
+│   │   ├── SettingsContent.qml  head, hub or sections of rows
+│   │   ├── SettingsPane.qml     preview stage, what the hovered row does, or a pin
+│   │   ├── SettingsEntry.qml    a row driven by a catalogue row; SettingsRowFrame
+│   │   │                        is the row itself, wrapping its control when tight
+│   │   ├── widgets/             rows that need more than one control
+│   │   ├── pins/                details that take over the pane: network, scan,
+│   │   │                        device, key (with a recorder)
+│   │   ├── SidebarReplica.qml   the sidebar drawn for the pane at its natural
+│   │   │                        height, wearing the sidebar settings (planned ones
+│   │   │                        included); a tap names the setting it shows
+│   │   └── scenes/              the preview in the pane, one per page. Each loop is
+│   │                            one clock over keyframes copied from the mockup's
+│   │                            CSS (keyframes.js)
 │   ├── notifications/           discrete cards; NOT part of the blob field
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
@@ -902,8 +912,8 @@ Import paths: Quickshell exposes the config root as the module `qs`, so a direct
 it and it is rewritten from the defaults. The `defaults` object in that file *is* the schema:
 a key not in it is not a setting, and a key in it always resolves, so a half-written config
 still boots. `Config.set("sidebar.width", 90)` writes and persists, which is the entire API the
-settings panel needs, and now uses: its pages (modules/settings/pages/) are drawn over exactly
-this call.
+settings panel needs, and now uses: every row in modules/settings/catalogue.js names its key,
+and SettingsState writes it through exactly this call.
 
 Sizes are never listed, they are **derived**: each scale is a `base` and a list of multipliers,
 so `small / normal / large` are indices into data rather than three hardcoded numbers, and
@@ -1172,8 +1182,9 @@ of a second after the command printed `open`.
 The newer targets each follow a rule already stated elsewhere rather than inventing one.
 `notifications` and `notch` write the **pin** and nothing else: presence on both is a derived
 union (section 15), so a keybind and a hand land in the same state and leave by the same doors.
-`settings` drives the service rather than any window, because the page can be held by a real
-window instead of the shell; `open` takes an optional page, and `page` switches it without
+`settings` drives the service rather than any window, because the panel lives in each screen's
+shell window and the service says which one shows it; `open` takes an optional page or any
+setting's key, and `page` switches it without
 touching presence, so a keybind can walk the panel while it stays put. `volume` moves by the
 same configured step the wheel and the sound menu's slider use, so a keybind is the same
 control rather than a second one. `calendar` is sugar for `menu toggle calendar`: the calendar

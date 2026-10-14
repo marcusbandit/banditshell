@@ -129,7 +129,9 @@ Singleton {
                     dim: t.dim,
                     mid: t.mid,
                     bright: t.bright,
-                    alarm: t.alarm
+                    alarm: t.alarm,
+                    background: colour(t.background) ? t.background : "",
+                    foreground: colour(t.foreground) ? t.foreground : ""
                 }));
 
         return kept.length > 0 ? kept : null;

@@ -5,6 +5,7 @@ import Quickshell.Io
 import qs.config
 import qs.services
 import "cli.js" as Words
+import "settings/catalogue.js" as SettingsCatalogue
 
 Scope {
     id: root
@@ -479,22 +480,30 @@ Scope {
         }
     }
 
+    function settingsScreen(screen: string): string {
+        return screen || Shell.offStageScreen || "";
+    }
+
+    function unknownSetting(page: string): string {
+        return page && !SettingsCatalogue.resolve(page) ? `no such page: ${page} (have: ${SettingsCatalogue.CATS.map(c => c.id).concat(SettingsCatalogue.PAGES.map(p => p.id)).join(", ")}, or any setting's key)` : "";
+    }
+
     IpcHandler {
         target: "settings"
 
         function toggle(): string {
-            Settings.toggle();
+            Settings.toggle(root.settingsScreen(""));
             return Settings.open ? "open" : "closed";
         }
 
         function open(page: string, screen: string): string {
-            if (page && !Settings.pages.some(p => p.key === page))
-                return `no such page: ${page} (have: ${Settings.pages.map(p => p.key).join(", ")})`;
+            const wrong = root.unknownSetting(page);
+            if (wrong)
+                return wrong;
             if (screen && !Shell.forScreen(screen))
                 return root.missing(screen);
-            Settings.show(screen, page);
-            if (page)
-                Settings.setPage(page);
+            const found = page ? SettingsCatalogue.resolve(page) : null;
+            Settings.openAt(root.settingsScreen(screen), found ? found.page || found.cat : "", found?.row ? page : "");
             return page ? `open at ${page}` : "open";
         }
 
@@ -506,10 +515,14 @@ Scope {
         function page(key: string): string {
             if (!key)
                 return Settings.page || "no page";
-            if (!Settings.pages.some(p => p.key === key))
-                return `no such page: ${key} (have: ${Settings.pages.map(p => p.key).join(", ")})`;
-            Settings.setPage(key);
-            return `page ${key}`;
+            const wrong = root.unknownSetting(key);
+            if (wrong)
+                return wrong;
+            const found = SettingsCatalogue.resolve(key);
+            Settings.page = found.page || found.cat;
+            if (found.row)
+                Settings.reveal = key;
+            return `page ${Settings.page}`;
         }
 
         function status(): string {
