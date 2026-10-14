@@ -52,7 +52,15 @@ Singleton {
             CompositorSync.refresh();
             return SettingsView.drop(`read hyprland again · rounding ${Math.round(Compositor.rounding)} · gaps ${Compositor.gapsOut}`, "sync");
         case "previewReveal":
-            return root.later("replaying the reveal");
+            {
+                const at = from.mapToItem(null, from.width / 2, from.height / 2);
+                const x = at.x / Math.max(1, from.Window.width);
+                const y = at.y / Math.max(1, from.Window.height);
+                const screens = SettingsState.v("wallTarget") === "everywhere" ? Quickshell.screens.map(s => s.name) : [Settings.screenName];
+                for (const name of screens)
+                    Wallpaper.replayOn(name, x, y);
+                return;
+            }
         case "exportCfg":
             return root.exportSettings();
         case "importCfg":

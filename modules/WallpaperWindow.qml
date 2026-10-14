@@ -30,7 +30,18 @@ PanelWindow {
 
     readonly property bool bare: Hypr.windowsOn(win.output) === 0
 
+    Connections {
+        target: Wallpaper
+
+        function onReplayRequested(screen: string): void {
+            if (screen === win.output)
+                view.replay();
+        }
+    }
+
     WallpaperView {
+        id: view
+
         anchors.fill: parent
         opacity: Wallpaper.enabled ? 1 : 0
 
