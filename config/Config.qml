@@ -700,6 +700,10 @@ Singleton {
         root.setMany([[key, value]]);
     }
 
+    function accepts(key: string, value: var): bool {
+        return !Configuration.assign(root.values, [[key, value]], root.literals).refused;
+    }
+
     function setMany(pairs: var): void {
         const result = Configuration.assign(root.values, pairs, root.literals);
         if (result.refused)

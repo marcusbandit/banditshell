@@ -7,6 +7,7 @@ Item {
 
     property string path: ""
     property bool readOnly: false
+    property string browseTip: "pick a folder"
 
     signal committed(string path)
 
@@ -26,6 +27,7 @@ Item {
         visible: !root.editing
         path: root.path
         readOnly: root.readOnly
+        browseTip: root.browseTip
         onOpened: Quickshell.execDetached(["xdg-open", root.expand(root.path)])
         onBrowsed: {
             root.editing = true;

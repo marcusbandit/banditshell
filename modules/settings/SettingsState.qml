@@ -405,6 +405,8 @@ Singleton {
             return;
         case "saver":
             return root.set("profile", value ? "saver" : "balanced");
+        case "restore":
+            return SettingsRestore.putBack(value);
         case "vpnFirst":
             {
                 const list = (root.planned.tunnels ?? []).slice();

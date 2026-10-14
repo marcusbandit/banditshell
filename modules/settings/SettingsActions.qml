@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.services
+import "restore.js" as Restore
 
 Singleton {
     id: root
@@ -64,7 +65,7 @@ Singleton {
         case "exportCfg":
             return root.exportSettings();
         case "importCfg":
-            return root.later("restoring from a file");
+            return SettingsView.openPin("restore", "", "restore settings");
         case "vpnImport":
             return root.later("importing a tunnel");
         }
@@ -79,12 +80,7 @@ Singleton {
         const dir = `${Quickshell.env("HOME")}/Documents`;
         const file = `${dir}/banditshell-settings-${root.stamp()}.json`;
         exporter.path = file;
-        exporter.setText(JSON.stringify({
-            config: Config.values,
-            planned: Object.assign({}, SettingsState.planned, {
-                hotspotPass: undefined
-            })
-        }, null, 4) + "\n");
+        exporter.setText(JSON.stringify(Restore.exportable(Config.values, SettingsState.planned), null, 4) + "\n");
     }
 
     FileView {

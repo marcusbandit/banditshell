@@ -116,6 +116,8 @@ Singleton {
             return Bluetooth.deviceAt(p.id)?.name ?? "device";
         case "key":
             return p.title ?? "key";
+        case "restore":
+            return "restore settings";
         }
         return "";
     }

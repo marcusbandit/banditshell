@@ -685,7 +685,7 @@ const PAGES_SOURCE = {
             ] },
             { t: "Keep a copy", rows: [
                 { n: [], icon: "upload", label: "Export settings", kind: "button", btn: "Export", act: "exportCfg", detail: "config.json and your lists", kw: "backup export" },
-                { n: [], isNew: true, icon: "download", label: "Restore from a file", kind: "button", btn: "Restore", act: "importCfg", detail: "shows what changes first", kw: "backup import restore" }
+                { n: [], icon: "download", label: "Restore from a file", kind: "button", btn: "Restore", act: "importCfg", detail: "shows what changes first", kw: "backup import restore" }
             ] },
             { t: "Where things live", rows: [
                 { n: 118, icon: "settings", label: "Config", k: "cfgPath", kind: "path", ro: true, kw: "config file" },
