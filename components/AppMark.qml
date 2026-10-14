@@ -59,8 +59,10 @@ Item {
         anchors.centerIn: parent
         width: root.size
         height: root.size
-        visible: root.kind === "image" || root.kind === "mono"
-        source: visible ? root.value : ""
+        readonly property bool wanted: root.kind === "image" || root.kind === "mono"
+
+        visible: wanted
+        source: wanted ? root.value : ""
         tint: root.kind === "mono"
         colour: root.color
 
