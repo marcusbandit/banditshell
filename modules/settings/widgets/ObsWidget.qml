@@ -61,12 +61,21 @@ Column {
             interactive: false
             icon: "dns"
             label: "Address"
+            detail: Obs.endpoint.addressHere ? "set here · clear it to follow obs" : "from obs"
             onPointed: SettingsView.hovered = root.row
 
             SettingsField {
+                id: address
+
                 anchors.verticalCenter: parent.verticalCenter
-                text: `localhost:${Obs.server?.server_port ?? 4455}`
-                onCommitted: SettingsView.drop("obs keeps its address in its own settings", "info")
+                text: Obs.endpoint.label
+                placeholder: "localhost:4455"
+                onCommitted: t => {
+                    if (Obs.setAddress(t))
+                        return;
+                    address.clear();
+                    SettingsView.drop("that is not an address · try host:port", "error");
+                }
             }
         }
 
@@ -75,12 +84,28 @@ Column {
             interactive: false
             icon: "key"
             label: "Password"
+            detail: Obs.endpoint.passwordHere ? "set here · clear it to follow obs" : "from obs"
             onPointed: SettingsView.hovered = root.row
 
             SettingsSecret {
+                id: password
+
+                property var draft: null
+
+                function commit(): void {
+                    if (password.draft === null)
+                        return;
+                    Obs.setPassword(password.draft);
+                    password.draft = null;
+                }
+
                 anchors.verticalCenter: parent.verticalCenter
-                text: Obs.server?.server_password ?? ""
+                text: Obs.password
                 alarm: root.phase === "refused"
+                onEdited: t => password.draft = t
+                onAccepted: password.commit()
+                onEditingChanged: if (!editing)
+                    password.commit()
             }
         }
     }

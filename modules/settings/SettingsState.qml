@@ -76,8 +76,8 @@ Singleton {
                 write: v => String(v).trim().split(/\s+/).filter(Boolean)
             },
             termColours: {
-                read: v => JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "theme",
-                write: v => v === "one dark" ? Config.defaults.files.terminal.palette : root.themePalette()
+                read: v => v === "theme" ? "theme" : JSON.stringify(v) === JSON.stringify(Config.defaults.files.terminal.palette) ? "one dark" : "custom",
+                write: v => v === "theme" ? "theme" : Config.defaults.files.terminal.palette
             },
             iconMode: {
                 read: v => v === "colour" ? "colour" : "mono",
@@ -104,12 +104,6 @@ Singleton {
                 write: v => String(v).split(" ")[0]
             }
         })
-
-    function themePalette(): var {
-        const t = Appearance.theme;
-        const r = t.ramp;
-        return [r[1], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[9], r[6], t.alarm, t.bright, t.mid, t.dim, t.mid, t.bright, r[10]].map(c => String(c));
-    }
 
     function rowOf(k: string): var {
         return Catalogue.ROW_BY_KEY[k] ?? null;
@@ -437,6 +431,8 @@ Singleton {
             else
                 root.denied = true;
             return;
+        case "restore":
+            return SettingsRestore.putBack(value);
         case "vpnFirst":
             return Tunnels.setFirst(value);
         case "hotspot":
@@ -1097,8 +1093,8 @@ Singleton {
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse
-    readonly property int clipseWaiting: 0
-    readonly property string clipseDetail: root.clipseImported ? "brought over" : "comes over at the next start"
+    readonly property int clipseWaiting: Clipboard.clipseWaiting
+    readonly property string clipseDetail: root.clipseWaiting ? `${root.clipseWaiting} entries waiting` : root.clipseImported ? "brought over" : "nothing waiting in clipse"
 
     readonly property string nextAlarm: {
         const now = Date.now();

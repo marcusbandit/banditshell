@@ -178,3 +178,36 @@ test.describe("upgrade", () => {
         assert.strictEqual(Configuration.upgrade(plain), plain);
     });
 });
+
+test.describe("literals", () => {
+    const literals = { "files.terminal.palette": ["theme"] };
+    const base = () => ({ files: { terminal: { palette: ["#000000", "#ffffff"], rows: 16 } } });
+
+    test.it("keeps a spoken word where a list is expected", () => {
+        const out = Configuration.merge(base(), { files: { terminal: { palette: "theme" } } }, "", [], literals);
+        assert.strictEqual(out.files.terminal.palette, "theme");
+    });
+
+    test.it("still refuses any other word", () => {
+        const out = Configuration.merge(base(), { files: { terminal: { palette: "neon" } } }, "", [], literals);
+        assert.deepStrictEqual(out.files.terminal.palette, ["#000000", "#ffffff"]);
+    });
+
+    test.it("falls back to the list when nothing allows the word", () => {
+        const out = Configuration.merge(base(), { files: { terminal: { palette: "theme" } } }, "", []);
+        assert.deepStrictEqual(out.files.terminal.palette, ["#000000", "#ffffff"]);
+    });
+
+    test.it("assigns the word and the list both", () => {
+        const word = Configuration.assign(base(), [["files.terminal.palette", "theme"]], literals);
+        assert.strictEqual(word.refused, "");
+        assert.strictEqual(word.values.files.terminal.palette, "theme");
+        const list = Configuration.assign(word.values, [["files.terminal.palette", ["#111111"]]], literals);
+        assert.deepStrictEqual(list.values.files.terminal.palette, ["#111111"]);
+    });
+
+    test.it("refuses other words, and the word without the allowance", () => {
+        assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "neon"]], literals).refused, "files.terminal.palette");
+        assert.strictEqual(Configuration.assign(base(), [["files.terminal.palette", "theme"]]).refused, "files.terminal.palette");
+    });
+});

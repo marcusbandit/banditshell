@@ -1,6 +1,6 @@
 # Wallpaper: replay the reveal
 
-Status: ready-for-agent
+Status: done
 
 Row: Look › Wallpaper › Reveal, its "play it" tool. It shows a not-built toast
 today.
@@ -18,3 +18,17 @@ today.
 ## Done when
 
 The button replays the reveal at the configured length, from the button.
+
+## Built
+
+`Wallpaper.replayOn(screen, x, y)` sets the origin and emits `replayRequested`.
+`WallpaperWindow` listens for its own screen and calls the new
+`WallpaperView.replay()`, which empties the back slot, picks a fresh seed and
+restarts the sweep, so the current picture grows out of black at the configured
+length. `previewReveal` maps the tool's centre to fractions of the settings
+window and replays on every screen when the wallpaper target is "everywhere", or
+on the settings screen otherwise.
+
+The ticket put the listener in `WallpaperWindow`; the slots and the sweep belong
+to `WallpaperView`, so the window only forwards. To check by hand: the shader
+does not render offscreen, so the look of the replay is unverified.

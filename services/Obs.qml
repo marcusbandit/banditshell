@@ -4,6 +4,7 @@ import QtQuick
 import QtWebSockets
 import Quickshell
 import Quickshell.Io
+import qs.config
 import "obs.js" as ObsProtocol
 import "../components/base64.js" as Base64
 
@@ -16,7 +17,11 @@ Singleton {
 
     property var server: null
 
-    readonly property bool canConnect: root.wanted && (root.server?.server_enabled ?? false)
+    readonly property var endpoint: ObsProtocol.endpoint(Config.values.obs, root.server)
+    readonly property string url: root.endpoint.url
+    readonly property string password: root.endpoint.password
+
+    readonly property bool canConnect: root.wanted && (root.endpoint.remote || (root.server?.server_enabled ?? false))
 
     property string link: "closed"
 
@@ -58,6 +63,8 @@ Singleton {
 
     onCanConnectChanged: root.sync()
     onServerChanged: root.sync()
+    onUrlChanged: root.sync()
+    onPasswordChanged: root.sync()
 
     function sync(): void {
         socket.active = false;
@@ -103,7 +110,7 @@ Singleton {
         const d = message.d ?? {};
         if (message.op === 0) {
             root.identifying = true;
-            socket.sendTextMessage(JSON.stringify(ObsProtocol.identify(d, root.server?.server_password ?? "", Base64)));
+            socket.sendTextMessage(JSON.stringify(ObsProtocol.identify(d, root.password, Base64)));
         } else if (message.op === 2) {
             root.identifying = false;
             root.link = "ready";
@@ -269,6 +276,18 @@ Singleton {
             }, null);
     }
 
+    function setAddress(text: string): bool {
+        const parsed = ObsProtocol.address(text);
+        if (!parsed)
+            return false;
+        Config.setMany([["obs.host", parsed.host], ["obs.port", parsed.port]]);
+        return true;
+    }
+
+    function setPassword(text: string): void {
+        Config.set("obs.password", text);
+    }
+
     function launch(): void {
         Quickshell.execDetached(["obs"]);
     }
@@ -294,7 +313,7 @@ Singleton {
     WebSocket {
         id: socket
 
-        url: `ws://127.0.0.1:${root.server?.server_port ?? 4455}`
+        url: root.url
         active: false
 
         onStatusChanged: {

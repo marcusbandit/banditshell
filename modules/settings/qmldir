@@ -18,6 +18,7 @@ SettingsPane 1.0 SettingsPane.qml
 SettingsPathEdit 1.0 SettingsPathEdit.qml
 SettingsPath 1.0 SettingsPath.qml
 SettingsRail 1.0 SettingsRail.qml
+singleton SettingsRestore 1.0 SettingsRestore.qml
 SettingsRowFrame 1.0 SettingsRowFrame.qml
 SettingsSecret 1.0 SettingsSecret.qml
 SettingsSlider 1.0 SettingsSlider.qml

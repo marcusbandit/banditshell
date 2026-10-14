@@ -2,4 +2,5 @@ module qs.modules.settings.pins
 DevPin 1.0 DevPin.qml
 KeyPin 1.0 KeyPin.qml
 NetPin 1.0 NetPin.qml
+RestorePin 1.0 RestorePin.qml
 ScanPin 1.0 ScanPin.qml
