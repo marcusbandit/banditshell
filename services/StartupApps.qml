@@ -14,11 +14,14 @@ Singleton {
     readonly property string userUnitDir: `${root.xdgConfig}/systemd/user`
     readonly property var desktops: String(Quickshell.env("XDG_CURRENT_DESKTOP") ?? "").split(":").filter(Boolean)
 
-    readonly property string readAutostartScript: "for f in \"$1\"/*.desktop; do [ -f \"$f\" ] || continue; printf '@@@%s\\n' \"$f\"; cat \"$f\"; done"
+    readonly property string readAutostartScript: "for f in \"$1\"/*.desktop; do [ -f \"$f\" ] || continue; printf '\\n@@@%s\\n' \"$f\"; cat \"$f\"; done"
+    readonly property string launcherDir: `${root.xdgConfig}/autostart-managed`
+    readonly property string readLauncherScript: "dir=$1; [ -d \"$dir\" ] || exit 0; for f in \"$dir\"/*.desktop; do [ -f \"$f\" ] || continue; printf '\\n@@@%s\\n' \"$f\"; cat \"$f\"; printf '\\n@@@override %s\\n' \"$f\"; o=\"$dir/overrides/$(basename \"$f\" .desktop).conf\"; [ -f \"$o\" ] && cat \"$o\"; done"
     readonly property string writeFileScript: "mkdir -p \"$(dirname \"$1\")\" && printf '%s' \"$2\" > \"$1\""
     readonly property string launchScript: "[ -n \"$XDG_RUNTIME_DIR\" ] || exit 0; signature=$1; shift; systemctl --user is-active --quiet xdg-desktop-autostart.target && exit 0; mkdir \"$XDG_RUNTIME_DIR/banditshell-autostart-$signature\" 2>/dev/null || exit 0; for command; do setsid -f sh -c \"$command\" </dev/null >/dev/null 2>&1; done"
 
     property var autostartFiles: []
+    property var launcherFiles: []
     property var unitFiles: []
     property var unitShows: []
     property var intents: ({})
@@ -32,6 +35,8 @@ Singleton {
             })))
     readonly property var systemdRows: StartupLog.systemdApps(root.unitFiles, root.unitShows, DesktopIndex.byProgram, root.userUnitDir)
     readonly property var autostartRows: StartupLog.autostartApps(root.autostartFiles, root.desktops, Entries.shownIn)
+
+    readonly property var launcherRows: StartupLog.launcherEnabled(root.unitFiles) ? StartupLog.launcherApps(root.launcherFiles, `${root.launcherDir}/overrides`) : []
 
     function present(row: var, fields: var): var {
         return Object.assign({
@@ -78,7 +83,26 @@ Singleton {
         });
     }
 
-    readonly property var entries: root.hyprlandRows.map(r => root.hyprlandEntry(r)).concat(root.systemdRows.map(r => root.systemdEntry(r)), root.autostartRows.map(r => root.autostartEntry(r)))
+    function launcherEntry(row: var): var {
+        const base = row.file.replace(/\.desktop$/, "");
+        const known = DesktopIndex.entryFor(row.file);
+        return root.present(row, {
+            source: "launcher",
+            name: row.entry.name || base,
+            desktopId: row.file,
+            mark: DesktopIndex.markForIcon(row.entry.icon || known?.icon || "", base),
+            note: row.delay ? `launcher · ${row.delay} s delay` : "launcher",
+            removable: false
+        });
+    }
+
+    readonly property var listed: root.hyprlandRows.map(r => root.hyprlandEntry(r)).concat(root.systemdRows.map(r => root.systemdEntry(r)), root.autostartRows.map(r => root.autostartEntry(r)), root.launcherRows.map(r => root.launcherEntry(r)))
+
+    readonly property var duplicates: StartupLog.duplicateNotes(root.listed)
+
+    readonly property var entries: root.listed.map(e => root.duplicates[e.id] ? Object.assign({}, e, {
+            note: `${e.note} · ${root.duplicates[e.id]}`
+        }) : e)
 
     readonly property var claimed: {
         const out = [];
@@ -127,6 +151,8 @@ Singleton {
         } else if (entry.source === "systemd") {
             unitSwitch.command = ["systemctl", "--user", on ? "enable" : "disable", row.unit];
             unitSwitch.running = true;
+        } else if (entry.source === "launcher") {
+            root.queueWrite(row.overridePath, StartupLog.setDisabled(row.overrideText, !on));
         } else {
             root.queueWrite(row.path, Entries.setHidden(row.text, !on));
         }
@@ -172,6 +198,11 @@ Singleton {
         autostartReader.running = true;
     }
 
+    function readLauncher(): void {
+        launcherReader.command = ["sh", "-c", root.readLauncherScript, "sh", root.launcherDir];
+        launcherReader.running = true;
+    }
+
     function readUnits(): void {
         unitLister.running = true;
     }
@@ -186,6 +217,7 @@ Singleton {
 
     Component.onCompleted: {
         root.readAutostart();
+        root.readLauncher();
         root.readUnits();
     }
 
@@ -208,12 +240,21 @@ Singleton {
     }
 
     Process {
+        id: launcherReader
+
+        stdout: StdioCollector {
+            onStreamFinished: root.launcherFiles = Entries.parseBundle(text)
+        }
+    }
+
+    Process {
         id: fileJob
 
         onRunningChanged: {
             if (fileJob.running)
                 return;
             root.readAutostart();
+            root.readLauncher();
             root.pump();
         }
     }

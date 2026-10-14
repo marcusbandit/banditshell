@@ -509,15 +509,17 @@ banditshell/
 │   │                            `xdg-mime default` for every type in the group
 │   │                            (the terminal goes in xdg-terminals.list when
 │   │                            xdg-terminal-exec is installed)
-│   ├── StartupApps.qml          what starts with the session, from the three
-│   │                            places it can: exec lines in Hyprland's Lua
+│   ├── StartupApps.qml          what starts with the session, from the places
+│   │                            it can: exec lines in Hyprland's Lua
 │   │                            (commented out behind sourceEdits; one app
 │   │                            dropped from a `shell-up` line), enabled
-│   │                            systemd user units, and ~/.config/autostart
-│   │                            (`Hidden=true`). Nothing here runs XDG
-│   │                            autostart on Hyprland, so the shell launches
-│   │                            those once per session, marked in
-│   │                            XDG_RUNTIME_DIR
+│   │                            systemd user units, ~/.config/autostart
+│   │                            (`Hidden=true`), and, where its unit is
+│   │                            enabled, ~/.config/autostart-managed (the
+│   │                            launcher's `disabled=true` overrides).
+│   │                            Nothing here runs XDG autostart on
+│   │                            Hyprland, so the shell launches those once
+│   │                            per session, marked in XDG_RUNTIME_DIR
 │   ├── desktop-entries.js       desktop file parsing, the autostart file
 │   │                            text, Hidden toggling. No QML, tested in node
 │   ├── default-apps.js          which entries offer to handle a group of

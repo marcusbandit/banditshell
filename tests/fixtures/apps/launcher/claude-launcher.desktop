@@ -1,0 +1,4 @@
+[Desktop Entry]
+Name=Claude
+Exec=/home/bandit/.local/bin/claude-launcher.sh
+Type=Application
