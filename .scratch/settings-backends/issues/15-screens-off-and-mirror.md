@@ -39,7 +39,7 @@ Needs a person at a desk with more than one screen to verify.
 Check at a desk with two or more screens, `sourceEdits` on:
 
 - Turn one screen off, press Apply: it goes dark, the others stay, and the
-  15 second prompt appears; Keep it, and the entry in `lua/monitors.lua` reads
+  15 second prompt appears; press Keep, and the entry in `lua/monitors.lua` reads
   `disabled = true`. Wait out the countdown on another try: it comes back.
 - The last screen's switch is disabled. Turn the others off first to see it.
 - Mirror one screen to another, Apply: it shows the source. A screen that is off
@@ -50,7 +50,7 @@ Check at a desk with two or more screens, `sourceEdits` on:
   to test here; the shell falls back to the config entry's mode and position.
 
 To undo: turn the screen on (or set Mirror to nothing) and Apply, or press
-Revert during the 15 seconds. By hand, delete `disabled = true` or
+Go back during the 15 seconds. By hand, delete `disabled = true` or
 `mirror = "..."` from the screen's line in the shell's monitor block in
 `~/.config/hypr/lua/monitors.lua` and run `hyprctl reload`. A write that fails
 `Hyprland --verify-config` is put back automatically.
