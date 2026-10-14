@@ -136,6 +136,11 @@ test("every planned setting has a ticket in the backend plan", () => {
     }
 });
 
+test("a setting is either planned or written to config, never both", () => {
+    for (const k in CONFIG_BACKED)
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} has a planned default and a config key`);
+});
+
 test("planned settings are not config keys yet", () => {
     for (const r of Catalogue.ROWS)
         if (r.isNew && r.k)

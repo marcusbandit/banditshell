@@ -1248,6 +1248,37 @@ Singleton {
             saver.restart();
     }
 
+    function adopt(): void {
+        if (!root.loaded || !Config.loaded)
+            return;
+        const moved = Object.keys(root.planned).filter(k => root.configBacked[k] && !root.plannedKey(k));
+        if (!moved.length)
+            return;
+        const pairs = [];
+        for (const k of moved) {
+            const cfg = root.configBacked[k];
+            if (JSON.stringify(Config.get(cfg)) !== JSON.stringify(root.lookup(Config.defaults, cfg)))
+                continue;
+            const t = root.transforms[k];
+            pairs.push([cfg, t ? t.write(root.planned[k]) : root.planned[k]]);
+        }
+        if (pairs.length)
+            Config.setMany(pairs);
+        const next = Object.assign({}, root.planned);
+        for (const k of moved)
+            delete next[k];
+        root.planned = next;
+        root.save();
+    }
+
+    Connections {
+        target: Config
+
+        function onLoadedChanged(): void {
+            root.adopt();
+        }
+    }
+
     Process {
         id: lidProbe
 
@@ -1290,6 +1321,7 @@ Singleton {
                 console.warn(`SettingsState: ${root.path} is not valid, starting fresh`);
             }
             root.loaded = true;
+            root.adopt();
         }
 
         onLoadFailed: root.loaded = true
