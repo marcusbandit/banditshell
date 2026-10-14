@@ -130,11 +130,11 @@ Item {
                 icon: "visibility"
                 label: "Keep the update icon in the sidebar"
                 detail: "Otherwise it only shows when there is something to do"
-                onActivated: Config.set("updates.alwaysShow", !Config.values.updates.alwaysShow)
+                onActivated: Config.set("sidebar.update", Config.values.sidebar.update === "always" ? "new" : "always")
 
                 Toggle {
-                    checked: Config.values.updates.alwaysShow
-                    onToggled: Config.set("updates.alwaysShow", !Config.values.updates.alwaysShow)
+                    checked: Config.values.sidebar.update === "always"
+                    onToggled: Config.set("sidebar.update", Config.values.sidebar.update === "always" ? "new" : "always")
                 }
             }
         }

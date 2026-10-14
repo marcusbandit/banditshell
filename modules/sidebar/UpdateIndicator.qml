@@ -44,7 +44,9 @@ Item {
         return press.containsMouse ? Appearance.colour.text : Appearance.colour.textDim;
     }
 
-    visible: !root.quiet || Config.values.updates.alwaysShow
+    readonly property string shown: Config.values.sidebar.update
+
+    visible: root.shown === "always" || (root.shown !== "never" && !root.quiet)
 
     width: parent ? parent.width : 0
     height: Math.max(Appearance.sizes.minTarget, mark.implicitHeight)

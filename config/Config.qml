@@ -122,6 +122,8 @@ Singleton {
 
                 enabled: true,
 
+                update: "new",
+
                 perScreen: {},
 
                 flareTier: 2,
@@ -654,8 +656,6 @@ Singleton {
                 interval: 30,
 
                 seen: "",
-
-                alwaysShow: false,
 
                 availableColour: "#ff5252",
                 failedColour: "#ffb454",

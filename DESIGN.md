@@ -877,9 +877,12 @@ banditshell/
 │       │                        when it failed or cannot fast-forward, the
 │       │                        accent while old binds wait. An update state
 │       │                        always wins over the binds. Quiet, it is
-│       │                        gone and its menu opens from the clock;
-│       │                        updates.alwaysShow keeps a grey mark a size
-│       │                        down instead. The placement is the alarm - it
+│       │                        gone and its menu opens from the clock.
+│       │                        That is sidebar.update "new", the default;
+│       │                        "always" keeps a grey mark a size down
+│       │                        instead, "never" hides even the alarms and
+│       │                        leaves Settings to carry the update. The
+│       │                        placement is the alarm - it
 │       │                        stands where the eye already goes, wearing
 │       │                        colours no ramp supplies
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
