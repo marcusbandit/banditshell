@@ -1442,6 +1442,10 @@ Singleton {
         function onOptionSettled(path: string, device: string, ok: bool, said: string): void {
             root.hyprSettled(path, device, ok, said);
         }
+
+        function onWriteFailed(said: string): void {
+            root.refused(`not saved · ${said}`, "");
+        }
     }
 
     Connections {

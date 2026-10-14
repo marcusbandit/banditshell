@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
 const HyprlandLua = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, entryReplacement, entriesForHost, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprlandLua.parseChord("SUPER + SHIFT + Slash"), {
@@ -1061,13 +1061,26 @@ test("a hostname that matches a host table finds that host's entry, not the firs
 test("a verify report names the last useful line, or the exit code when Hyprland said nothing", () => {
     const said = "DEBUG one\n\n======== Config parsing result:\n\nrequire(\"lua.binds\"): error loading module\n\t/tmp/x/hypr/lua/binds.lua:4: unexpected symbol near '+'\n";
     assert.strictEqual(HyprlandLua.verifyReport(said, 1, false, ["/tmp/x/hypr/"]), "lua/binds.lua:4: unexpected symbol near '+'");
-    assert.strictEqual(HyprlandLua.verifyReport("DEBUG a\nDEBUG b\n", 139, true, []), "Hyprland crashed while checking it (exit 139)");
+    assert.strictEqual(HyprlandLua.verifyReport("DEBUG a\nDEBUG b\n", 11, true, []), "Hyprland crashed while checking it (signal 11)");
     assert.strictEqual(HyprlandLua.verifyReport("", 2, false, []), "Hyprland rejected it (exit 2)");
     assert.strictEqual(HyprlandLua.verifyReport("config ok", 1, false, []), "Hyprland rejected it (exit 1)");
 });
 
 test("a config that already fails is refused with the reason in the message", () => {
-    const message = HyprlandLua.baselineRefusal("Hyprland crashed while checking it (exit 139)");
+    const message = HyprlandLua.baselineRefusal("Hyprland crashed while checking it (signal 11)");
     assert.ok(message.startsWith("your Hyprland config fails Hyprland's own check as it is, so nothing was changed"));
-    assert.ok(message.endsWith("exit 139)"));
+    assert.ok(message.endsWith("signal 11)"));
+});
+
+test("an entry is found again by its text after lines above it moved", () => {
+    const old = { file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 10 };
+    const now = [
+        { id: "lua/binds.lua:9", file: "lua/binds.lua", raw: "hl.bind(\"B\", y)", startLine: 9 },
+        { id: "lua/binds.lua:3", file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 3 },
+        { id: "lua/binds.lua:9x", file: "lua/binds.lua", raw: "hl.bind(\"A\", x)", startLine: 9 },
+        { id: "other:10", file: "lua/other.lua", raw: "hl.bind(\"A\", x)", startLine: 10 }
+    ];
+    assert.strictEqual(HyprlandLua.relocateEntry(now, old).id, "lua/binds.lua:9x");
+    assert.strictEqual(HyprlandLua.relocateEntry(now.slice(0, 1), old), null);
+    assert.strictEqual(HyprlandLua.relocateEntry([], old), null);
 });

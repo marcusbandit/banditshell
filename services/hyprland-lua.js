@@ -1070,7 +1070,7 @@ function verifyReport(output, code, crashed, prefixes) {
     const useful = String(output ?? "").split("\n").map(l => (prefixes ?? []).reduce((line, prefix) => line.replace(prefix, ""), l.trim())).filter(l => l && !l.includes("DEBUG") && !l.startsWith("=") && l !== "config ok");
     if (useful.length)
         return useful[useful.length - 1];
-    return crashed ? `Hyprland crashed while checking it (exit ${code})` : `Hyprland rejected it (exit ${code})`;
+    return crashed ? `Hyprland crashed while checking it (signal ${code})` : `Hyprland rejected it (exit ${code})`;
 }
 
 function baselineRefusal(report) {
@@ -1531,4 +1531,12 @@ function chordHolder(binds, chord) {
     const key = want.key.toLowerCase();
     const same = c => c.mask === want.mask && String(c.key ?? "").toLowerCase() === key;
     return (binds ?? []).find(b => !b.submap && (same(b) || (b.presses ?? []).some(same))) ?? null;
+}
+
+function relocateEntry(entries, old) {
+    let best = null;
+    for (const entry of entries ?? [])
+        if (entry.file === old.file && entry.raw === old.raw && (!best || Math.abs(entry.startLine - old.startLine) < Math.abs(best.startLine - old.startLine)))
+            best = entry;
+    return best;
 }
