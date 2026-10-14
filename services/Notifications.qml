@@ -362,7 +362,7 @@ Singleton {
                 root.history = root.history.filter(e => e !== entry);
 
             const kind = root.kindOf(entry);
-            const held = root.holdingAt(Date.now()) && !(kind === "alarm" && root.letAlarms);
+            const held = root.holdingAt(Date.now()) && kind !== "battery" && !(kind === "alarm" && root.letAlarms);
             const rule = root.ruleFor(entry);
 
             if (!held && rule.pop) {

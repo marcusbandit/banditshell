@@ -62,5 +62,5 @@ is on. The date maths is in `services/quiet-hours.js`, tested in
 To check by a person: the `sleep` and `stream` modes drive warmth, brightness
 and the streamer band for real now, and were not run here (they touch the
 display). The sidebar glyph still reads `SettingsState.modeIcon`, which now
-forwards to `Modes.icon`. Low-battery warnings are notifications too, so quiet
-silences them; say if they should always get through.
+forwards to `Modes.icon`. Low-battery warnings always get through quiet, like
+alarms with the switch on.
