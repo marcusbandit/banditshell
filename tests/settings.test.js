@@ -12,7 +12,7 @@ function lib(file, names) {
 }
 
 const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
-const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "nudge", "resize", "fit"]);
+const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit", "withLegends", "struck"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
 
@@ -559,4 +559,21 @@ test("pen buttons are shell keys that default to what the pen already does", () 
         assert.ok(!row.isNew, k);
         assert.ok(Catalogue.options(row, fakeState()).some(o => o[0] === lookup(DEFAULTS, CONFIG_BACKED[k])), `${k}'s default is one of its choices`);
     }
+});
+
+test("an arrangement always starts at 0,0, wherever it was dropped", () => {
+    const wide = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "10000x-5280" });
+    const tall = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "11040x-6720", transform: 1 });
+    assert.deepStrictEqual(Screens.anchor([wide, tall]), { "HDMI-A-1": { x: 0, y: 1440 }, "DP-1": { x: 1040, y: 0 } });
+    const home = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "0x1440" });
+    const above = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "1040x0", transform: 1 });
+    assert.deepStrictEqual(Screens.anchor([home, above]), {});
+});
+
+test("screens that are off or mirrored do not pull the arrangement", () => {
+    const wide = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "300x200" });
+    const off = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "-4000x-4000", disabled: true });
+    const copy = Screens.rectOf("DP-2", { mode: "1920x1080@60", position: "-9000x0", mirror: "HDMI-A-1" });
+    assert.deepStrictEqual(Screens.anchor([wide, off, copy]), { "HDMI-A-1": { x: 0, y: 0 } });
+    assert.deepStrictEqual(Screens.anchor([off]), {});
 });

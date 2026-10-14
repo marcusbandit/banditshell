@@ -140,6 +140,20 @@ function settle(rects, name, x, y, reach) {
     return { x: Math.max.apply(null, others.map(o => o.x + o.w)), y: Math.min.apply(null, others.map(o => o.y)) };
 }
 
+function anchor(rects) {
+    const placed = rects.filter(r => !r.off && !r.mirror);
+    if (!placed.length)
+        return {};
+    const left = Math.min.apply(null, placed.map(r => r.x));
+    const top = Math.min.apply(null, placed.map(r => r.y));
+    const out = {};
+    if (left === 0 && top === 0)
+        return out;
+    for (const r of placed)
+        out[r.name] = { x: r.x - left, y: r.y - top };
+    return out;
+}
+
 function nudge(rects, name, dx, dy) {
     const me = rects.find(r => r.name === name);
     if (!me)

@@ -845,7 +845,18 @@ Singleton {
     }
 
     function restage(fields: var): void {
-        const next = Object.assign({}, root.stage);
+        const next = root.stagedWith(root.stage, fields);
+        const shift = Screens.anchor(Monitors.outputs.map(m => Screens.rectOf(m.name, Object.assign({}, root.liveSpec(m.name) ?? {}, next[m.name] ?? {}))));
+        const anchored = {};
+        for (const name of Object.keys(shift))
+            anchored[name] = {
+                position: `${shift[name].x}x${shift[name].y}`
+            };
+        root.stage = root.stagedWith(next, anchored);
+    }
+
+    function stagedWith(stage: var, fields: var): var {
+        const next = Object.assign({}, stage);
         for (const name of Object.keys(fields)) {
             const live = root.liveSpec(name);
             if (!live)
@@ -859,7 +870,7 @@ Singleton {
             else
                 delete next[name];
         }
-        root.stage = next;
+        return next;
     }
 
     function stageScreen(name: string, fields: var): void {

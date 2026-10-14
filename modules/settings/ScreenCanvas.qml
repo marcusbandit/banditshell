@@ -68,6 +68,12 @@ FocusScope {
         linger.restart();
     }
 
+    function settled(name: string): void {
+        const now = root.rects.find(r => r.name === name);
+        if (now)
+            root.exact(name, now.x, now.y);
+    }
+
     function nudge(dx: int, dy: int): void {
         const name = Monitors.selected;
         const to = Screens.nudge(root.rects, name, dx, dy);
@@ -78,7 +84,7 @@ FocusScope {
         SettingsState.stageScreen(name, {
             position: `${to.x}x${to.y}`
         });
-        root.exact(name, to.x, to.y);
+        root.settled(name);
     }
 
     function cycle(step: int): void {
@@ -456,7 +462,7 @@ FocusScope {
                     SettingsState.stageScreen(mon.modelData, {
                         position: `${spot.x}x${spot.y}`
                     });
-                    root.exact(mon.modelData, spot.x, spot.y);
+                    root.settled(mon.modelData);
                 }
 
                 onCanceled: {
