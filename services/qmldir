@@ -29,6 +29,7 @@ singleton Launching 1.0 Launching.qml
 singleton Lid 1.0 Lid.qml
 singleton Localisation 1.0 Localisation.qml
 singleton Lock 1.0 Lock.qml
+singleton Lyrics 1.0 Lyrics.qml
 singleton Media 1.0 Media.qml
 singleton Modes 1.0 Modes.qml
 singleton Monitors 1.0 Monitors.qml

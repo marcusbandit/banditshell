@@ -60,6 +60,13 @@ function explain(output, branch) {
     return said ? said.replace(/^(fatal|error): /, "").trim() : "git failed without saying why.";
 }
 
+function setAside(list) {
+    const files = String(list ?? "").split("\t").filter(Boolean);
+    if (files.length === 0)
+        return "";
+    return `Your edits to ${named(files)} were in the way, so they were set aside in git stash before updating. git stash list shows them; git stash pop brings them back.`;
+}
+
 function ago(when, now) {
     const mins = Math.max(0, Math.round((now - when) / 60000));
     if (mins < 1)

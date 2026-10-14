@@ -19,7 +19,17 @@ Item {
     readonly property real artSize: stack.implicitHeight
 
     implicitWidth: root.artSize + Appearance.padding.normal + root.columnWidth
-    implicitHeight: block.height + (progress.visible ? Appearance.padding.normal + progress.height : 0)
+    implicitHeight: block.height + (progress.visible ? Appearance.padding.normal + progress.height : 0) + (lyric.visible ? Appearance.padding.normal + lyric.height : 0)
+
+    readonly property bool singing: root.watched && Lyrics.synced
+
+    property int current: -1
+
+    FrameAnimation {
+        running: root.singing && root.visible
+
+        onTriggered: root.current = Lyrics.indexAt(Media.now())
+    }
 
     TextMetrics {
         id: titleSize
@@ -51,7 +61,7 @@ Item {
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
 
-            SquircleImage {
+            ArtCrossfade {
                 id: cover
 
                 anchors.fill: parent
@@ -140,10 +150,26 @@ Item {
     Scrubber {
         id: progress
 
-        anchors.bottom: parent.bottom
+        anchors.top: block.bottom
+        anchors.topMargin: Appearance.padding.normal
         anchors.horizontalCenter: parent.horizontalCenter
         width: block.width
         visible: Media.length > 0
         watched: root.watched
+    }
+
+    CrossfadeText {
+        id: lyric
+
+        readonly property var line: root.current >= 0 ? Lyrics.lines[root.current] : null
+
+        anchors.bottom: parent.bottom
+        anchors.horizontalCenter: parent.horizontalCenter
+        width: block.width
+        height: Appearance.font.line.small
+        visible: root.singing
+        text: lyric.line && !lyric.line.gap ? lyric.line.text : ""
+        color: Appearance.colour.textDim
+        horizontalAlignment: Text.AlignHCenter
     }
 }

@@ -95,8 +95,24 @@ Item {
         wide.snap();
         tall.snap();
 
-        Media.active?.positionChanged();
+        Media.sync();
     }
+
+    readonly property bool wantsLyrics: root.active && root.showsMedia
+    property bool holding: false
+
+    onWantsLyricsChanged: {
+        if (root.wantsLyrics === root.holding)
+            return;
+        root.holding = root.wantsLyrics;
+        if (root.holding)
+            Lyrics.hold();
+        else
+            Lyrics.release();
+    }
+
+    Component.onDestruction: if (root.holding)
+        Lyrics.release()
 
     Follow {
         id: drop

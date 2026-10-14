@@ -384,6 +384,9 @@ banditshell/
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
+│   ├── BlurredImage.qml         the same cut, the picture blurred to colour: album art
+│   │                            as the light a card is lit by
+│   ├── CrossfadeText.qml        a line whose old words fade out under the new ones
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell dev shaders`
@@ -566,7 +569,27 @@ banditshell/
 │   │                            a hibernate the machine cannot do is a suspend
 │   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
-│   ├── Media.qml                MPRIS, with a stable choice of player
+│   ├── Media.qml                MPRIS, with a stable choice of player: the one that
+│   │                            last STARTED playing, or the one you picked. Keeps
+│   │                            its own clock, re-anchored on every honest report
+│   │                            (seeks made in the app, pause, a new track, a
+│   │                            rate change), deaf for 2.5s after its own seek and
+│   │                            then asking the bus once, so a bridge's stale
+│   │                            answer neither moves the bar nor sticks
+│   ├── Lyrics.qml               the words to what is playing. A Spotify track is
+│   │                            looked up first in what Spicy Lyrics already
+│   │                            cached inside Spotify (word timing, backing
+│   │                            vocals, duet sides); everything else, and
+│   │                            whatever Spicy does not have, from lrclib.net.
+│   │                            Asked only while something on screen holds it
+│   │                            (the media card, the notch). install.sh puts
+│   │                            Spicetify and Spicy Lyrics into Spotify when
+│   │                            Spotify is there, and re-patches it after a
+│   │                            Spotify update
+│   ├── lyrics.js                LRC or Spicy's JSON in, one model out: lines of
+│   │                            timed words, a parenthesis lifted onto a backing
+│   │                            line of its own, the music between lines as a
+│   │                            break; line-only lyrics get their words paced
 │   ├── SystemInfo.qml            /proc and /sys: cpu, memory, temperature
 │   ├── Display.qml              the screen's comfort: brightness over DDC/CI
 │   │                            (ddcutil, one strictly serial queue,
@@ -735,12 +758,31 @@ banditshell/
 │   ├── SummonZone.qml            summon zone: cursor to top-centre -> the time descends
 │   ├── media/
 │   │   ├── MediaController.qml  Super+M's card, floating in the middle:
-│   │   │                        keyboard-driven (space, arrows, shift+arrows),
-│   │   │                        pops in and out; the CheatSheet's kind of
-│   │   │                        object, the power panel's kind of guest
-│   │   ├── MediaPreview.qml     what is playing, the launcher's block, under the time
-│   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs
-│   │   └── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
+│   │   │                        keyboard-driven (space, arrows, shift+arrows,
+│   │   │                        l lyrics, s shuffle, r repeat, tab the next
+│   │   │                        player), pops in and out; the cover on top, lit
+│   │   │                        from behind by its own blur, and the lyrics
+│   │   │                        widening it to the right when there are any; the
+│   │   │                        CheatSheet's kind of object, the power panel's
+│   │   │                        kind of guest
+│   │   ├── MediaPreview.qml     what is playing, the launcher's block, under the time,
+│   │   │                        with the line being sung under the bar
+│   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs,
+│   │   │                        shuffle and repeat at its ends on the card
+│   │   ├── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
+│   │   ├── ArtCrossfade.qml     the cover, sharp or blurred, fading into the next one
+│   │   │                        only once the next one has loaded
+│   │   ├── LyricsView.qml       the card's right half: the sung line held a third of
+│   │   │                        the way down, wheel to read ahead, it comes back
+│   │   ├── LyricLine.qml        one line: the lead, its backing vocals smaller
+│   │   │                        under it, or three dots that fill through a
+│   │   │                        break; the other singer's lines on the right; a
+│   │   │                        click seeks to it
+│   │   ├── LyricBlock.qml       words laid out into rows by hand (FontMetrics
+│   │   │                        measures exactly what StyledText draws), lit word
+│   │   │                        by word in reading order, the sung part glowing
+│   │   ├── PlayerChips.qml      every player, the shown one by name, the rest by mark
+│   │   └── Equalizer.qml        three bars that move while something plays
 │   ├── VolumeRail.qml           the volume pill on the right edge; DISABLED
 │   │                            2026-10-09 (not mounted in ShellWindow), kept
 │   │                            because the QuickControls edge grew out of it
@@ -1005,6 +1047,9 @@ banditshell/
 │   │                            bin/banditshell's own `--help` block, so there is
 │   │                            no second list of verbs to fall out of date
 │   ├── palette.py               a wallpaper's dominant colours
+│   ├── spicy-lyrics.py          reads one track's lyrics out of Spicy Lyrics'
+│   │                            cache in Spotify's own profile, by the cache's
+│   │                            file name for that key; reads, never writes
 │   ├── wallpaper-colours.py     which colour groups each wallpaper falls in:
 │   │                            one hue if enough of it is vivid, black or white
 │   │                            if it is dark or light; cached by file

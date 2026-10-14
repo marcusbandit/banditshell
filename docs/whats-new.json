@@ -1,6 +1,33 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-9",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Updating no longer stops at a file you edited yourself. If an update changes a file you also changed, your edit is set aside in git stash first and the update goes through, and the update menu names the files. git stash list shows them and git stash pop brings them back. Edits to files the update does not touch stay where they are."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-14-8",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "An open special workspace shows its apps' icons again. Before, the card over your workspace could be an empty box."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A special workspace holding several apps shows each app's icon in the sidebar, one under the other, instead of a generic grid. An open one leaves a small dot where it sits, and its card slides along when you switch workspaces instead of jumping."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-7",
       "date": "2026-10-14",
       "changes": [

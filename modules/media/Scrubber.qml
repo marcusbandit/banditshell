@@ -12,6 +12,8 @@ Item {
 
     property bool watched: true
 
+    property color ink: Appearance.colour.text
+
     readonly property real stroke: Appearance.sizes.scrubStroke
     readonly property real amp: Appearance.sizes.scrubWaveAmplitude
     readonly property real wavelength: Appearance.sizes.scrubWaveLength
@@ -29,17 +31,39 @@ Item {
     readonly property bool active: pointer.pressed || pointer.containsMouse
 
     property real dragged: 0
+    property real hoverX: 0
     readonly property real shown: pointer.pressed ? root.dragged : glide.value
+
+    property real live: Media.progress
 
     implicitWidth: Appearance.sizes.menuWidth / 2
     implicitHeight: root.band + Appearance.padding.small + elapsed.implicitHeight
 
+    FrameAnimation {
+        running: root.watched && root.visible && Media.playing && root.timed
+
+        onTriggered: root.live = Math.max(0, Math.min(1, Media.now() / Media.length))
+    }
+
+    Connections {
+        target: Media
+
+        function onPositionChanged(): void {
+            if (!Media.playing || !root.watched)
+                root.live = Media.progress;
+        }
+
+        function onTrackKeyChanged(): void {
+            root.live = Media.progress;
+        }
+    }
+
     Follow {
         id: glide
 
-        target: Media.progress
+        target: root.live
         speed: Appearance.animation.trackSpeed
-        epsilon: 0.001
+        epsilon: 0.0005
     }
 
     Follow {
@@ -80,7 +104,7 @@ Item {
 
         ShapePath {
             fillColor: "transparent"
-            strokeColor: Appearance.colour.text
+            strokeColor: root.ink
             strokeWidth: root.stroke
             capStyle: ShapePath.RoundCap
             joinStyle: ShapePath.RoundJoin
@@ -97,7 +121,7 @@ Item {
         width: root.stroke
         height: root.band
         radius: width / 2
-        color: Appearance.colour.text
+        color: root.ink
         visible: root.timed
 
         scale: pointer.pressed ? 1.15 : root.active ? 1.3 : 1
@@ -105,7 +129,7 @@ Item {
         Behavior on scale {
             NumberAnimation {
                 duration: Appearance.animation.fast
-                easing.type: Easing.OutBack
+                easing.type: Easing.OutCubic
             }
         }
     }
@@ -125,7 +149,7 @@ Item {
 
         anchors.left: parent.left
         anchors.bottom: parent.bottom
-        text: Media.timeLabel(root.timed ? (pointer.pressed ? root.dragged : root.shown) * Media.length : Media.position)
+        text: Media.timeLabel(root.timed ? root.shown * Media.length : Media.position)
         color: Appearance.colour.textDim
     }
 
@@ -135,6 +159,31 @@ Item {
         text: Media.timeLabel(Media.length)
         color: Appearance.colour.textDim
         visible: root.timed
+    }
+
+    Item {
+        id: peek
+
+        readonly property real at: Math.max(0, Math.min(1, (root.hoverX - root.stroke / 2) / root.travel))
+
+        visible: root.timed && pointer.containsMouse && !pointer.pressed && Media.canSeek
+        x: Math.max(0, Math.min(root.width - width, root.hoverX - width / 2))
+        y: -height - Appearance.padding.small
+        width: peekText.implicitWidth + Appearance.padding.normal * 2
+        height: peekText.implicitHeight + Appearance.padding.small
+
+        SquircleRect {
+            anchors.fill: parent
+            radius: Appearance.rounding.small
+            color: Appearance.colour.surfaceSolid
+        }
+
+        StyledText {
+            id: peekText
+
+            anchors.centerIn: parent
+            text: Media.timeLabel(peek.at * Media.length)
+        }
     }
 
     MouseArea {
@@ -160,12 +209,14 @@ Item {
 
         onPressed: mouse => place(mouse.x)
         onPositionChanged: mouse => {
+            root.hoverX = pointer.mapToItem(root, mouse.x, 0).x;
             if (pressed)
                 place(mouse.x);
         }
 
         onReleased: {
             glide.value = root.dragged;
+            root.live = root.dragged;
             Media.seekTo(root.dragged * Media.length);
         }
 

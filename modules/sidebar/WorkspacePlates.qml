@@ -41,36 +41,40 @@ Item {
 
     readonly property var deck: Hypr.specialDeck
 
+    readonly property int barStep: root.barMark + root.barGap
+
     readonly property real rackTop: layout.total + root.rackGap
-    readonly property real rackHeight: root.deck.length ? root.deck.length * root.barH + (root.deck.length - 1) * root.barGap : 0
+    readonly property real rackHeight: root.deck.reduce((sum, entry, i) => sum + root.barHeight(entry) + (i ? root.barGap : 0), 0)
 
     function barY(i: int): real {
-        return root.rackTop + i * (root.barH + root.barGap);
+        let y = root.rackTop;
+        for (let k = 0; k < i; k++)
+            y += root.barHeight(root.deck[k]) + root.barGap;
+        return y;
     }
 
-    function barClass(entry: var): string {
-        const classes = entry.windows.map(w => Hypr.classOf(w));
-        if (!classes.length)
-            return "";
-        return classes.every(c => c === classes[0]) ? classes[0] : "";
+    function barClasses(entry: var): var {
+        const out = [];
+        for (const w of entry.windows) {
+            const cls = Hypr.classOf(w);
+            if (out.indexOf(cls) < 0)
+                out.push(cls);
+        }
+        return out;
     }
 
-    function barSpec(entry: var): string {
-        const cls = root.barClass(entry);
-        return cls ? AppIcons.markFor(cls, root.iconMode) : "";
+    function barHeight(entry: var): real {
+        return root.barH + Math.max(0, root.barClasses(entry).length - 1) * root.barStep;
     }
 
-    function barGlyph(entry: var): string {
-        const icons = entry.windows.map(w => Apps.iconFor(Hypr.classOf(w)));
-        if (!icons.length)
-            return "";
-        return icons.every(i => i === icons[0]) ? icons[0] : Apps.genericIcon;
+    function barRowY(row: int, size: real): real {
+        return Math.round(root.barH / 2 + row * root.barStep - size / 2);
     }
 
     function barName(entry: var): string {
-        const cls = root.barClass(entry);
-        if (cls)
-            return Apps.nameFor(cls);
+        const classes = root.barClasses(entry);
+        if (classes.length === 1)
+            return Apps.nameFor(classes[0]);
         const label = entry.label ?? "";
         return label ? label.charAt(0).toUpperCase() + label.slice(1) : "";
     }
@@ -101,8 +105,6 @@ Item {
             h: root.slot
         })
 
-    readonly property var activeGeom: layout.at(root.held)
-
     onActiveIndexChanged: {
         if (!root.onColumn)
             return;
@@ -125,7 +127,7 @@ Item {
             const e = root.deck[root.heldBar];
             return {
                 y: root.barY(root.heldBar),
-                h: root.barH,
+                h: e ? root.barHeight(e) : root.barH,
                 w: e ? root.barWidth(e) : root.dot
             };
         }
@@ -359,34 +361,44 @@ Item {
             openSpecial: layout.special
 
             readonly property string name: root.barName(bar.entry)
+            readonly property var classes: root.barClasses(bar.entry)
 
             x: Math.round((root.width - width) / 2)
             y: root.barY(bar.index)
-            width: bar.open ? root.dot : root.barWidth(bar.entry)
-            height: root.barH
-
-            Behavior on width {
-                NumberAnimation {
-                    duration: Appearance.animation.normal
-                    easing.type: Easing.OutCubic
-                }
-            }
+            width: root.barWidth(bar.entry)
+            height: root.barHeight(bar.entry)
 
             SquircleRect {
-                anchors.fill: parent
+                anchors.centerIn: parent
+                width: bar.open ? root.dot : bar.width
+                height: bar.open ? root.dot : bar.height
                 radius: root.radius
                 color: Appearance.colour.fill
-            }
 
-            SquircleRect {
-                anchors.fill: parent
-                radius: root.radius
-                color: Appearance.colour.accentFill
-                opacity: bar.open ? 1 : 0
-
-                Behavior on opacity {
+                Behavior on width {
                     NumberAnimation {
-                        duration: Appearance.animation.fade.fast
+                        duration: Appearance.animation.normal
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                Behavior on height {
+                    NumberAnimation {
+                        duration: Appearance.animation.normal
+                        easing.type: Easing.OutCubic
+                    }
+                }
+
+                SquircleRect {
+                    anchors.fill: parent
+                    radius: root.radius
+                    color: Appearance.colour.accentFill
+                    opacity: bar.open ? 1 : 0
+
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Appearance.animation.fade.fast
+                        }
                     }
                 }
             }
@@ -401,20 +413,25 @@ Item {
                     }
                 }
 
-                AppMark {
-                    anchors.centerIn: parent
-                    visible: bar.entry.windows.length > 0
-                    size: root.barMark
-                    spec: root.barSpec(bar.entry)
-                    fits: AppIcons.fits
-                    onMeasured: (path, box) => AppIcons.recordFit(path, box)
-                    fallback: root.barGlyph(bar.entry)
-                    color: Appearance.colour.textDim
+                Repeater {
+                    model: ScriptModel {
+                        values: bar.classes
+                    }
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.fast
-                        }
+                    delegate: AppMark {
+                        id: classMark
+
+                        required property string modelData
+                        required property int index
+
+                        x: Math.round((bar.width - root.barMark) / 2)
+                        y: root.barRowY(classMark.index, root.barMark)
+                        size: root.barMark
+                        spec: AppIcons.markFor(classMark.modelData, root.iconMode)
+                        fits: AppIcons.fits
+                        onMeasured: (path, box) => AppIcons.recordFit(path, box)
+                        fallback: Apps.iconFor(classMark.modelData)
+                        color: Appearance.colour.textDim
                     }
                 }
             }
@@ -661,8 +678,9 @@ Item {
 
             readonly property real full: root.slot + (pad.rows - 1) * root.pitch
             readonly property real cardW: root.slot - root.overhang * 2
-            readonly property real cardY: root.activeGeom.y + (root.activeGeom.h - pad.full) / 2
+            readonly property real cardY: markY.value + (markH.value - pad.full) / 2
             readonly property real barW: root.barWidth(pad.entry)
+            readonly property var classes: root.barClasses(pad.entry)
 
             property real shown: pad.open ? 1 : 0
 
@@ -672,7 +690,7 @@ Item {
 
             x: Math.round((root.width - width) / 2)
             width: pad.reach(pad.barW, pad.cardW)
-            height: pad.reach(root.barH, pad.full)
+            height: pad.reach(root.barHeight(pad.entry), pad.full)
             y: pad.reach(root.barY(pad.index), pad.cardY)
             visible: pad.shown > 0
 
@@ -745,9 +763,10 @@ Item {
                         required property int index
 
                         readonly property real markSize: pad.reach(root.barMark, root.iconSize)
+                        readonly property int barRow: Math.max(0, pad.classes.indexOf(Hypr.classOf(mark.modelData)))
 
                         x: Math.round((pad.width - mark.markSize) / 2)
-                        y: pad.reach(Math.round((root.barH - mark.markSize) / 2), root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
+                        y: pad.reach(root.barRowY(mark.barRow, mark.markSize), root.slot / 2 + mark.index * root.pitch - mark.markSize / 2)
                         size: Math.round(mark.markSize)
 
                         spec: AppIcons.markFor(Hypr.classOf(mark.modelData), root.iconMode)

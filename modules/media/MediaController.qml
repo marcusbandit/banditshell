@@ -21,11 +21,12 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property real cardWidth: Appearance.sizes.mediaPanelWidth
     readonly property real pad: Appearance.padding.large
-    readonly property real innerWidth: root.cardWidth - root.pad * 2
+    readonly property real artSize: Math.round(Appearance.sizes.mediaPanelWidth * 4 / 7)
+    readonly property real lyricsWidth: Math.round(Appearance.sizes.mediaPanelWidth * 15 / 14)
+    readonly property real gutter: Appearance.padding.huge
 
-    readonly property real artSize: Math.round(root.innerWidth / 4)
+    readonly property bool showsLyrics: Lyrics.enabled && Lyrics.ready && Media.available
 
     readonly property var quips: [
         "enjoy the silence",
@@ -98,6 +99,8 @@ Item {
 
     property string quip: "nothing is playing"
 
+    property bool holding: false
+
     function show(): void {
         if (root.shown)
             return;
@@ -105,6 +108,8 @@ Item {
         root.quip = root.quips[Math.floor(Math.random() * root.quips.length)];
         root.restoreTo = Hypr.focusedOn(root.screenName);
         root.shown = true;
+        root.hold(true);
+        Media.sync();
 
         Qt.callLater(keys.forceActiveFocus);
     }
@@ -113,6 +118,7 @@ Item {
         if (!root.shown)
             return;
         root.shown = false;
+        root.hold(false);
         keys.focus = false;
         Hypr.restoreFocus(root.restoreTo);
         root.restoreTo = "";
@@ -125,6 +131,18 @@ Item {
             root.show();
     }
 
+    function hold(want: bool): void {
+        if (want === root.holding)
+            return;
+        root.holding = want;
+        if (want)
+            Lyrics.hold();
+        else
+            Lyrics.release();
+    }
+
+    Component.onDestruction: root.hold(false)
+
     function volume(dir: int): void {
         if (!Audio.ready)
             return;
@@ -136,12 +154,36 @@ Item {
         Media.seekBy(dir * amount);
     }
 
+    function toggleLyrics(): void {
+        Config.set("media.lyrics", !Lyrics.enabled);
+    }
+
     Follow {
         id: reveal
 
         speed: Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
         epsilon: 0.005
+    }
+
+    Follow {
+        id: stage
+
+        speed: Appearance.animation.resizeSpeed
+        target: root.showsLyrics ? 1 : 0
+        epsilon: 0.002
+    }
+
+    Follow {
+        id: tall
+
+        speed: Appearance.animation.resizeSpeed
+        target: column.height
+    }
+
+    onShownChanged: if (root.shown && reveal.value < 0.01) {
+        stage.snap();
+        tall.snap();
     }
 
     Item {
@@ -180,6 +222,24 @@ Item {
                 if (!event.isAutoRepeat)
                     Audio.toggleMute();
                 break;
+            case Qt.Key_L:
+                if (!event.isAutoRepeat)
+                    root.toggleLyrics();
+                break;
+            case Qt.Key_S:
+                if (!event.isAutoRepeat)
+                    Media.toggleShuffle();
+                break;
+            case Qt.Key_R:
+                if (!event.isAutoRepeat)
+                    Media.cycleLoop();
+                break;
+            case Qt.Key_Tab:
+                Media.cycle(1);
+                break;
+            case Qt.Key_Backtab:
+                Media.cycle(-1);
+                break;
             case Qt.Key_Return:
             case Qt.Key_Enter:
                 Media.raise();
@@ -207,10 +267,10 @@ Item {
 
         readonly property real restY: (root.height - panel.height) / 2
 
-        x: (root.width - panel.width) / 2
+        x: Math.round((root.width - panel.width) / 2)
         y: root.border + panel.restY + (1 - reveal.value) * Appearance.padding.huge * 2
-        width: root.cardWidth
-        height: column.height + root.pad * 2
+        width: root.pad * 2 + root.artSize + stage.value * (root.gutter + root.lyricsWidth)
+        height: tall.value + root.pad * 2
         visible: reveal.value > 0.001
         enabled: root.open
 
@@ -224,10 +284,24 @@ Item {
 
         opacity: Math.min(1, reveal.value * 1.6)
 
+        MouseArea {
+            anchors.fill: parent
+        }
+
         SquircleRect {
             anchors.fill: parent
             radius: Appearance.rounding.large
             color: Appearance.colour.surface
+        }
+
+        ArtCrossfade {
+            anchors.fill: parent
+            radius: Appearance.rounding.large
+            blurred: true
+            brightness: -0.32
+            tame: 0.85
+            source: Media.available ? Media.artUrl : ""
+            opacity: 0.62
         }
 
         Column {
@@ -235,72 +309,110 @@ Item {
 
             x: root.pad
             y: root.pad
-            width: root.innerWidth
+            width: root.artSize
             spacing: root.pad
 
             Item {
                 width: parent.width
-                height: Math.max(root.artSize, trackText.height)
+                height: width
                 visible: Media.available
 
+                DropShadow {
+                    anchors.fill: art
+                    radius: Appearance.rounding.normal
+                    blur: Appearance.padding.normal
+                    offset.y: Appearance.padding.small / 2
+                    opacity: art.ready ? 0.7 : 0
+                }
+
                 SquircleRect {
-                    id: art
-
-                    anchors.verticalCenter: parent.verticalCenter
-
-                    width: root.artSize
-                    height: width
+                    anchors.fill: parent
                     radius: Appearance.rounding.normal
                     color: Appearance.colour.fill
-
-                    SquircleImage {
-                        anchors.fill: parent
-                        source: Media.artUrl
-                        radius: art.radius
-                    }
+                    visible: !art.ready
 
                     Icon {
                         anchors.centerIn: parent
-                        visible: !Media.artUrl
-                        size: Math.round(root.artSize / 2)
+                        size: Math.round(root.artSize / 3)
                         name: "music_note"
                         color: Appearance.colour.textFaint
                     }
                 }
 
-                Column {
-                    id: trackText
+                ArtCrossfade {
+                    id: art
 
-                    anchors.verticalCenter: parent.verticalCenter
-                    anchors.left: art.right
-                    anchors.leftMargin: root.pad
-                    anchors.right: parent.right
-                    spacing: Appearance.padding.small
+                    anchors.fill: parent
+                    radius: Appearance.rounding.normal
+                    source: Media.artUrl
+                }
 
-                    StyledText {
-                        width: parent.width
-                        text: Media.title
-                        font.pixelSize: Appearance.font.size.large
-                        wrapMode: Text.Wrap
-                        elide: Text.ElideRight
-                        maximumLineCount: 2
+                SquircleRect {
+                    anchors.fill: parent
+                    visible: Media.canRaise
+                    radius: Appearance.rounding.normal
+                    color: Appearance.colour.scrim
+                    opacity: raise.containsMouse ? 1 : 0
+
+                    Behavior on opacity {
+                        NumberAnimation {
+                            duration: Appearance.animation.fast
+                        }
                     }
 
-                    StyledText {
-                        width: parent.width
-                        text: Media.artist
-                        color: Appearance.colour.textDim
-                        visible: !!Media.artist
-                        elide: Text.ElideRight
-                    }
+                    Column {
+                        anchors.centerIn: parent
+                        spacing: Appearance.padding.small
 
-                    StyledText {
-                        width: parent.width
-                        text: !!Media.album ? Media.album : Media.app
-                        color: Appearance.colour.textFaint
-                        visible: !!Media.album || !!Media.app
-                        elide: Text.ElideRight
+                        Icon {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            size: Appearance.font.iconSize * 1.6
+                            name: "open_in_new"
+                        }
+
+                        StyledText {
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            text: `open ${Media.app}`
+                        }
                     }
+                }
+
+                MouseArea {
+                    id: raise
+
+                    anchors.fill: parent
+                    hoverEnabled: true
+                    enabled: Media.canRaise
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: Media.raise()
+                }
+            }
+
+            Column {
+                width: parent.width
+                spacing: Appearance.padding.small / 2
+                visible: Media.available
+
+                CrossfadeText {
+                    width: parent.width
+                    text: Media.title
+                    pixelSize: Appearance.font.size.normal
+                    wrapMode: Text.Wrap
+                    maximumLineCount: 2
+                }
+
+                CrossfadeText {
+                    width: parent.width
+                    text: Media.artist
+                    color: Appearance.colour.textDim
+                    visible: !!Media.artist
+                }
+
+                CrossfadeText {
+                    width: parent.width
+                    text: Media.album || Media.app
+                    color: Appearance.colour.textFaint
+                    visible: !!Media.album || !!Media.app
                 }
             }
 
@@ -313,48 +425,102 @@ Item {
             MediaTransport {
                 width: parent.width
                 visible: Media.available
-                zoom: 1.4
+                zoom: 1.3
+                extended: true
             }
 
-            Separator {
+            Item {
                 width: parent.width
+                height: Math.max(chips.height, lyricsButton.height)
                 visible: Media.available
-            }
 
-            StyledText {
-                width: parent.width
-                visible: Media.available && Media.players.length > 1
-                text: "ALSO PLAYING"
-                color: Appearance.colour.textFaint
-            }
+                PlayerChips {
+                    id: chips
 
-            Repeater {
-                model: Media.available ? Media.players.filter(p => p !== Media.active) : []
-
-                delegate: MenuRow {
-                    required property var modelData
-
-                    width: root.innerWidth
-                    icon: modelData.isPlaying ? "play_arrow" : "pause"
-                    label: modelData.identity || "player"
-                    detail: modelData.trackTitle || ""
-                    onActivated: Media.choose(modelData)
-                }
-            }
-
-            Row {
-                width: parent.width
-                visible: Media.available && Media.players.length <= 1
-                spacing: Appearance.padding.small
-
-                Icon {
-                    name: "queue_music"
-                    color: Appearance.colour.textGhost
+                    anchors.left: parent.left
+                    anchors.right: lyricsButton.left
+                    anchors.rightMargin: Appearance.padding.small
+                    anchors.verticalCenter: parent.verticalCenter
                 }
 
-                StyledText {
-                    text: `the queue lives in ${Media.app}`
-                    color: Appearance.colour.textGhost
+                Item {
+                    id: lyricsButton
+
+                    readonly property string tip: {
+                        if (!Lyrics.enabled)
+                            return "show lyrics";
+                        switch (Lyrics.state) {
+                        case "synced":
+                        case "plain":
+                            return "hide lyrics";
+                        case "loading":
+                            return "looking for lyrics";
+                        case "instrumental":
+                            return "instrumental, no lyrics";
+                        case "failed":
+                            return "could not reach lrclib.net";
+                        case "missing":
+                            return "no lyrics found for this one";
+                        default:
+                            return Media.isAdvert || Media.isEpisode ? "no lyrics for this" : "lyrics";
+                        }
+                    }
+
+                    anchors.right: parent.right
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: Math.max(Appearance.sizes.minTarget, lyricsIcon.implicitWidth + Appearance.padding.small * 2)
+                    height: width
+
+                    scale: lyricsPress.pressed ? Appearance.press.ring : lyricsPress.containsMouse ? Appearance.press.ringHover : 1
+
+                    Behavior on scale {
+                        NumberAnimation {
+                            duration: Appearance.animation.fast
+                            easing.type: Easing.OutCubic
+                        }
+                    }
+
+                    Icon {
+                        id: lyricsIcon
+
+                        anchors.centerIn: parent
+                        name: "lyrics"
+                        fill: Lyrics.enabled && Lyrics.ready ? 1 : 0
+                        color: !Lyrics.enabled ? Appearance.colour.textFaint : Lyrics.ready ? Appearance.colour.text : Appearance.colour.textGhost
+
+                        SequentialAnimation on opacity {
+                            running: Lyrics.loading && root.open
+                            loops: Animation.Infinite
+                            alwaysRunToEnd: true
+
+                            NumberAnimation {
+                                to: 0.35
+                                duration: Appearance.animation.slow
+                            }
+                            NumberAnimation {
+                                to: 1
+                                duration: Appearance.animation.slow
+                            }
+                        }
+                    }
+
+                    MouseArea {
+                        id: lyricsPress
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            if (Lyrics.state === "failed")
+                                Lyrics.retry();
+                            else
+                                root.toggleLyrics();
+                        }
+                    }
+
+                    HoverTip {
+                        text: lyricsPress.containsMouse ? lyricsButton.tip : ""
+                    }
                 }
             }
 
@@ -367,47 +533,57 @@ Item {
                     id: emptyColumn
 
                     width: parent.width
-                    spacing: Appearance.padding.normal
+                    spacing: root.pad
 
-                    Row {
-                        spacing: root.pad
+                    SquircleRect {
+                        width: parent.width
+                        height: Math.round(parent.width * 0.6)
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colour.fill
 
-                        SquircleRect {
-                            id: emptyArt
+                        Icon {
+                            anchors.centerIn: parent
+                            size: Math.round(root.artSize / 4)
+                            name: "music_off"
+                            color: Appearance.colour.textGhost
+                        }
+                    }
 
-                            width: root.artSize
-                            height: width
-                            radius: Appearance.rounding.normal
-                            color: Appearance.colour.fill
+                    Column {
+                        width: parent.width
+                        spacing: Appearance.padding.small
 
-                            Icon {
-                                anchors.centerIn: parent
-                                size: Math.round(root.artSize / 2)
-                                name: "music_note"
-                                color: Appearance.colour.textGhost
-                            }
+                        StyledText {
+                            width: parent.width
+                            text: "nothing is playing"
+                            font.pixelSize: Appearance.font.size.normal
+                            wrapMode: Text.Wrap
                         }
 
-                        Column {
-                            anchors.verticalCenter: emptyArt.verticalCenter
-                            width: root.innerWidth - root.artSize - root.pad
-                            spacing: Appearance.padding.small
-
-                            StyledText {
-                                width: parent.width
-                                text: "nothing is playing"
-                                wrapMode: Text.Wrap
-                            }
-
-                            StyledText {
-                                width: parent.width
-                                text: `\"${root.quip}\"`
-                                color: Appearance.colour.textFaint
-                                wrapMode: Text.Wrap
-                            }
+                        StyledText {
+                            width: parent.width
+                            text: `"${root.quip}"`
+                            color: Appearance.colour.textFaint
+                            wrapMode: Text.Wrap
                         }
                     }
                 }
+            }
+        }
+
+        Item {
+            x: root.pad + root.artSize + root.gutter * stage.value
+            y: root.pad
+            width: Math.max(0, panel.width - x - root.pad)
+            height: column.height
+            clip: true
+            visible: stage.value > 0.01
+
+            LyricsView {
+                width: root.lyricsWidth
+                height: parent.height
+                opacity: stage.value * stage.value
+                live: root.open && root.showsLyrics
             }
         }
     }
