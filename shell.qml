@@ -10,6 +10,7 @@ import qs.modules.picker
 
 ShellRoot {
     readonly property var compositorSync: CompositorSync
+    readonly property var penButtons: PenButtons
 
     LockScreen {}
 

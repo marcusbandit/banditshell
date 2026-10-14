@@ -1537,6 +1537,20 @@ Singleton {
 
     readonly property string repeatDetail: `${Config.defaults.tablet.repeatDelay} ms, then every ${Config.values.tablet.repeatInterval}`
 
+    readonly property string penButtonNote: {
+        if (!PenButtons.remapped)
+            return "as the pen sends them";
+        switch (PenButtons.state) {
+        case "ready":
+            return "remapped";
+        case "denied":
+            return "can't reach the pen · see the log";
+        case "gone":
+            return "pen not found";
+        }
+        return "starting";
+    }
+
     readonly property string penName: Config.values.pen.device.replace(/-pen$/, "").replace(/-/g, " ")
 
     readonly property int batteryPct: Battery.percent

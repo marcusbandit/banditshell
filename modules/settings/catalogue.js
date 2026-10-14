@@ -1,6 +1,7 @@
 .pragma library
 
 const pct = v => `${Math.round(v * 100)}%`;
+const PEN_BUTTONS_WHY = "Right click and middle click are what the stylus buttons send as they come. Erase turns the pen to its eraser for as long as the button is held. Changing them makes the shell sit between the pen and Hyprland, so a pen on its defaults is left untouched.";
 const signed = v => Math.abs(v) < 0.01 ? "as is" : (v > 0 ? "+" : "") + v.toFixed(2);
 const kelvin = (s, v) => {
     const top = s.neutral || 6500;
@@ -507,8 +508,10 @@ const PAGES_SOURCE = {
                 { n: 103, icon: "stylus", label: "Pen", k: "pen", kind: "toggle", cfg: "pen.enabled", detail: s => s.v("pen") ? s.penName : "off", kw: "pen device" },
                 { n: 103, icon: "monitor", label: "Maps to", k: "penScreen", kind: "seg", o: s => s.screensOn.concat(["all"]), dis: s => !s.v("pen"), kw: "pen area mapping" },
                 { n: 103, icon: "aspect_ratio", label: "Keep the shape", k: "aspectLock", kind: "toggle", cfg: "pen.aspectLock", detail: "trims the pad to match", dis: s => !s.v("pen"), kw: "pen aspect lock" },
-                { n: 103, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.lowerButton", dis: s => !s.v("pen"), kw: "pen buttons" },
-                { n: 103, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.upperButton", dis: s => !s.v("pen"), kw: "pen buttons" }
+                { n: 103, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.lowerButton", detail: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons",
+                    why: PEN_BUTTONS_WHY },
+                { n: 103, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.upperButton", detail: s => s.penButtonNote, dis: s => !s.v("pen"), kw: "pen buttons",
+                    why: PEN_BUTTONS_WHY }
             ] }
         ]
     },

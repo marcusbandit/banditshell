@@ -28,6 +28,7 @@ singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
 singleton Notifications 1.0 Notifications.qml
 singleton Obs 1.0 Obs.qml
+singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
 singleton Power 1.0 Power.qml
 singleton Prompts 1.0 Prompts.qml
