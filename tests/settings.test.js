@@ -380,3 +380,16 @@ test("screen rows that wait for apply say so", () => {
         assert.strictEqual(r.detail({ pendingNote: () => "not applied yet" }), "not applied yet", k);
     }
 });
+
+test("the idle rows keep minutes in config and every choice survives the trip", () => {
+    const Durations = lib(path.join(SETTINGS, "durations.js"), ["minutesFromChoice", "choiceFromMinutes"]);
+    const keys = { idleLock: "idle.lock", idleOff: "idle.screensOff", idleSuspend: "idle.sleep" };
+    for (const [k, cfg] of Object.entries(keys)) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.strictEqual(row.cfg, cfg);
+        assert.strictEqual(CONFIG_BACKED[k], cfg);
+        assert.strictEqual(typeof lookup(DEFAULTS, cfg), "number");
+        for (const [choice] of Catalogue.options(row, fakeState()))
+            assert.strictEqual(Durations.choiceFromMinutes(Durations.minutesFromChoice(choice)), choice, `${k}: ${choice}`);
+    }
+});

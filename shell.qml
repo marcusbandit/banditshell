@@ -10,6 +10,9 @@ import qs.modules.picker
 
 ShellRoot {
     readonly property var compositorSync: CompositorSync
+    readonly property var idle: Idle
+    readonly property var screenTimeApps: UsageApps
+    readonly property var screenTimeLimits: UsageLimits
 
     LockScreen {}
 

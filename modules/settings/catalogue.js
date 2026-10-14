@@ -429,13 +429,13 @@ const PAGES_SOURCE = {
         status: s => `${s.usedLabel} of ${s.v("capHours")} h`,
         groups: [
             { t: "Today", rows: [
-                { n: 88, isNew: true, kind: "w", w: "usage", kw: "screen time usage today" }
+                { n: 88, kind: "w", w: "usage", kw: "screen time usage today" }
             ] },
             { t: "Limits", rows: [
                 { n: 88, icon: "hourglass_bottom", label: "Daily cap", k: "capHours", kind: "step", min: 1, max: 16, unit: " h", cfg: "usage.capHours", detail: s => `${s.usedLabel} so far`, kw: "screen time cap" },
-                { n: 88, isNew: true, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", detail: "drains colour once the time is up" },
-                { n: 88, isNew: true, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", detail: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
-                    { n: 88, isNew: true, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min" }
+                { n: 88, icon: "filter_b_and_w", label: "Grey at the cap", k: "greyCap", kind: "toggle", cfg: "usage.greyAtCap", detail: "drains colour once the time is up · input still works" },
+                { n: 88, icon: "self_improvement", label: "Breaks", k: "breaks", kind: "toggle", cfg: "usage.breaks", detail: s => s.v("breaks") ? `a nudge every ${s.v("breakEvery")} min` : "off", layer: [
+                    { n: 88, icon: "timer", label: "Every", k: "breakEvery", kind: "step", min: 15, max: 120, step: 5, unit: " min", cfg: "usage.breakEvery" }
                 ] }
             ] }
         ]
@@ -543,7 +543,7 @@ const PAGES_SOURCE = {
     },
     lock: {
         id: "lock", name: "Lock and idle", icon: "lock", preview: "lock",
-        status: s => `locks after ${s.v("idleLock")}`,
+        status: s => s.idleHandled ? "hypridle sets the timing" : s.v("idleLock") === "never" ? "never locks by itself" : `locks after ${s.v("idleLock")}`,
         groups: [
             { t: "Lock screen", rows: [
                 { n: 90, icon: "blur_on", label: "Blur", k: "lockBlur", kind: "slider", min: 0, max: 1, step: 0.05, fmt: pct, cfg: "lock.blur", kw: "lock screen look" },
@@ -552,9 +552,9 @@ const PAGES_SOURCE = {
                 { n: 90, icon: "lock", label: "Try it", kind: "button", btn: "Lock", act: "lockNow", detail: "your password brings you back" }
             ] },
             { t: "When idle", rows: [
-                { n: 91, isNew: true, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], kw: "auto-lock idle" },
-                { n: 91, isNew: true, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], kw: "screen-off idle" },
-                { n: 91, isNew: true, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], detail: s => s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
+                { n: 91, icon: "lock_clock", label: "Lock after", k: "idleLock", kind: "choice", o: ["1 min", "5 min", "15 min", "never"], cfg: "idle.lock", detail: s => s.idleHandled ? "hypridle is handling this" : "", kw: "auto-lock idle" },
+                { n: 91, icon: "monitor", label: "Screens off after", k: "idleOff", kind: "choice", o: ["5 min", "10 min", "30 min", "never"], cfg: "idle.screensOff", detail: s => s.idleHandled ? "hypridle is handling this" : "a playing video holds it off", kw: "screen-off idle" },
+                { n: 91, icon: "bedtime", label: "Sleep after", k: "idleSuspend", kind: "choice", o: ["15 min", "30 min", "1 h", "never"], cfg: "idle.sleep", detail: s => s.idleHandled ? "hypridle is handling this" : s.hasBattery ? "on battery only" : "", kw: "suspend idle" }
             ] }
         ]
     },
