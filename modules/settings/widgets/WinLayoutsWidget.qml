@@ -15,6 +15,7 @@ Column {
 
     readonly property string picked: SettingsState.v("layout")
     readonly property string refusal: SettingsState.hyprRefusal("layout")
+    readonly property string refusalWhere: /\(([^)]*)\)/.exec(root.refusal)?.[1] ?? ""
 
     property bool customOpen: false
     readonly property int columns: Math.max(1, Math.floor((root.width + Appearance.padding.small) / (128 + Appearance.padding.small)))
@@ -118,7 +119,7 @@ Column {
         interactive: false
         icon: "edit_off"
         label: "Your config sets this"
-        detail: root.refusal
+        detail: root.refusalWhere ? `${root.refusalWhere} · edit it there` : root.refusal
         onPointed: SettingsView.hovered = root.row
     }
 
