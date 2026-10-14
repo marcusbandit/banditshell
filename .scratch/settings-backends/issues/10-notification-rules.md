@@ -38,3 +38,7 @@ An app with no rule pops, sounds and keeps its body off the lock screen.
 
 To check by a person: that the lock screen list looks right on the real lock
 (only photographed offscreen here).
+
+The lock screen list holds only notifications from apps whose `lock` rule is
+on, with their summary and body; with no such rule the lock screen looks as it
+did before.

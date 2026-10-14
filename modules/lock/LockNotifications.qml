@@ -9,8 +9,9 @@ Column {
     id: root
 
     readonly property int limit: 3
-    readonly property var latest: Notifications.history.slice(0, root.limit)
-    readonly property int more: Notifications.history.length - root.latest.length
+    readonly property var allowed: Notifications.history.filter(n => Notifications.ruleFor(n).lock)
+    readonly property var latest: root.allowed.slice(0, root.limit)
+    readonly property int more: root.allowed.length - root.latest.length
 
     visible: root.latest.length > 0
     spacing: Appearance.padding.small
@@ -23,8 +24,7 @@ Column {
 
             required property var modelData
 
-            readonly property bool open: Notifications.ruleFor(card.modelData).lock
-            readonly property bool showBody: card.open && !!card.modelData.body
+            readonly property bool showBody: !!card.modelData.body
 
             width: root.width
 
@@ -32,7 +32,7 @@ Column {
                 width: parent.width
                 horizontalAlignment: Text.AlignHCenter
                 elide: Text.ElideRight
-                text: [card.modelData.appName, card.open ? card.modelData.summary : ""].filter(part => part).join(" · ")
+                text: [card.modelData.appName, card.modelData.summary].filter(part => part).join(" · ")
                 color: Appearance.colour.textDim
             }
 

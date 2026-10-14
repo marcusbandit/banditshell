@@ -53,3 +53,8 @@ Still to check by a person: the first time this lands in the live session, remmi
 The shell starts enabled `~/.config/autostart` entries only after every source
 has been read, and skips any app that Hyprland, systemd or the launcher already
 starts, so nothing is started twice.
+
+The shell runs `~/.config/autostart` entries only after `startup.runAutostart`
+is on, which happens the first time an autostart app is switched on or added in
+the panel. Until then those rows read "autostart · not started here yet", so
+updating never starts apps that nothing used to start.

@@ -63,3 +63,6 @@ Needs a laptop to verify.
   the countdown notification, then suspend; plug in during the 30 s and
   nothing should happen.
 - Hibernate: the choice should be greyed without swap and `resume=`.
+
+Nearly empty defaults to `nothing`, so updating never suspends anyone's laptop
+by surprise; choose suspend or hibernate in the panel to turn it on.

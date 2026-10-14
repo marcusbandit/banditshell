@@ -346,9 +346,13 @@ Singleton {
             },
 
             idle: {
-                lock: 5,
-                screensOff: 10,
-                sleep: 30
+                lock: 0,
+                screensOff: 0,
+                sleep: 0
+            },
+
+            startup: {
+                runAutostart: false
             },
 
             battery: {
@@ -359,7 +363,7 @@ Singleton {
 
                 warnAt: 15,
 
-                nearlyEmpty: "suspend"
+                nearlyEmpty: "nothing"
             },
 
             power: {

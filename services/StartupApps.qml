@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.config
 import "desktop-entries.js" as Entries
 import "startup-apps.js" as StartupLog
 
@@ -88,7 +89,7 @@ Singleton {
             name: row.entry.name || base,
             desktopId: row.file,
             mark: DesktopIndex.markForIcon(row.entry.icon, base),
-            note: row.entry.terminal ? "autostart · needs a terminal" : "autostart",
+            note: row.entry.terminal ? "autostart · needs a terminal" : Config.values.startup.runAutostart ? "autostart" : "autostart · not started here yet",
             removable: true
         });
     }
@@ -163,6 +164,8 @@ Singleton {
             root.queueWrite(row.overridePath, StartupLog.setDisabled(row.overrideText, !on));
         } else {
             root.queueWrite(row.path, Entries.setHidden(row.text, !on));
+            if (on)
+                root.runAutostart();
         }
         root.remember(entry.id, on);
     }
@@ -180,6 +183,12 @@ Singleton {
         if (known)
             return root.switchApp(known, true);
         root.queueWrite(`${root.autostartDir}/${file}`, Entries.autostartText(app));
+        root.runAutostart();
+    }
+
+    function runAutostart(): void {
+        if (!Config.values.startup.runAutostart)
+            Config.set("startup.runAutostart", true);
     }
 
     function queueWrite(path: string, text: var): void {
@@ -216,7 +225,7 @@ Singleton {
     }
 
     function launchSession(): void {
-        if (root.sessionHandled || !HyprConfig.signature)
+        if (root.sessionHandled || !HyprConfig.signature || !Config.values.startup.runAutostart)
             return;
         root.sessionHandled = true;
         const elsewhere = root.entries.filter(e => e.source !== "autostart" && e.on && e.desktopId).map(e => e.desktopId.replace(/\.desktop$/, ""));

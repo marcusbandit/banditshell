@@ -39,3 +39,6 @@ To check by hand: with hypridle stopped, that screens off really goes dark and
 wakes on the first key or mouse move. The Lua form of the dpms dispatch,
 `hl.dsp.dpms({ action = "off" })`, is a best reading of the Hyprland stubs and
 was not run. Sleep on battery was not run either.
+
+Defaults are `never` for all three, so updating changes nothing for someone
+who has not set them; pick a time in the panel to turn a step on.

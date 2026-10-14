@@ -473,7 +473,9 @@ test("the power rows are served by config or by the system, not planned", () => 
         assert.strictEqual(CONFIG_BACKED[k], cfg, k);
         assert.ok(!(k in PLAN_DEFAULTS), k);
     }
-    assert.deepStrictEqual([DEFAULTS.battery.holdCharge, DEFAULTS.battery.holdAt, DEFAULTS.battery.warnAt, DEFAULTS.battery.nearlyEmpty], [true, 80, 15, "suspend"]);
+    assert.deepStrictEqual([DEFAULTS.battery.holdCharge, DEFAULTS.battery.holdAt, DEFAULTS.battery.warnAt, DEFAULTS.battery.nearlyEmpty], [true, 80, 15, "nothing"]);
+    assert.deepStrictEqual(DEFAULTS.idle, { lock: 0, screensOff: 0, sleep: 0 });
+    assert.strictEqual(DEFAULTS.startup.runAutostart, false);
     assert.deepStrictEqual(DEFAULTS.power.lid, { onBattery: "suspend", pluggedIn: "suspend", docked: "nothing" });
     const profile = Catalogue.ROW_BY_KEY.profile;
     assert.ok(!profile.isNew && !profile.cfg);
