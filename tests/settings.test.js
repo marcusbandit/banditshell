@@ -54,6 +54,7 @@ function fakeState(values) {
         btConnected: ["WH-1000XM5"],
         screensOn: ["DP-1"],
         monitorNames: ["DP-1", "HDMI-A-1"],
+        mirrorChoices: ["HDMI-A-1"],
         outputs: [["a", "A"]],
         inputs: [["b", "B"]],
         resolutions: [["1920x1080", "1920 × 1080"]],
@@ -119,9 +120,8 @@ test("rows that name a config key write that same key", () => {
 });
 
 test("settings with nothing behind them yet keep a value of their own", () => {
-    const served = new Set(["scr:on", "scr:mirror"]);
     for (const r of Catalogue.ROWS)
-        if (r.isNew && r.k && !served.has(r.k))
+        if (r.isNew && r.k)
             assert.ok(r.k in PLAN_DEFAULTS, `${r.k} is new but has no planned default`);
 });
 
@@ -375,8 +375,17 @@ test("a desktop without a battery or a lid hides what it can't use", () => {
 });
 
 test("screen rows that wait for apply say so", () => {
-    for (const k of ["scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
+    for (const k of ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);
-        assert.strictEqual(r.detail({ pendingNote: () => "not applied yet" }), "not applied yet", k);
+        assert.strictEqual(r.detail({ pendingNote: () => "not applied yet", onlyOn: false }), "not applied yet", k);
     }
+});
+
+test("screens that are off or mirrored take no room on the desk", () => {
+    const off = Screens.rectOf("DP-1", { mode: "1920x1200@60", position: "600x0", disabled: true });
+    const mirror = Screens.rectOf("DP-2", { mode: "1920x1080@60", position: "0x0", mirror: "HDMI-A-1" });
+    const wide = Screens.rectOf("HDMI-A-1", { mode: "5120x1440@144", position: "0x0" });
+    assert.deepStrictEqual([off.off, mirror.mirror, wide.off, wide.mirror], [true, "HDMI-A-1", false, ""]);
+    assert.deepStrictEqual(Screens.issues([wide, off, mirror]), { clash: [], loose: [] });
+    assert.deepStrictEqual(Screens.snap([wide, off], "HDMI-A-1", 590, 0, 20), { x: 590, y: 0, guides: [], corner: null });
 });

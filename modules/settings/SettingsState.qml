@@ -78,8 +78,7 @@ Singleton {
             startup: [],
             rules: [],
             layouts: [],
-            tunnels: [],
-            screens: ({})
+            tunnels: []
         })
 
     readonly property var uiDefaults: ({
@@ -565,11 +564,22 @@ Singleton {
         root.muteLog = false;
     }
 
-    function screenRecord(name: string): var {
-        return (root.planned.screens ?? {})[name] ?? {
-            on: true,
-            mirror: ""
-        };
+    function screenOn(name: string): bool {
+        return !root.stagedSpec(name)?.disabled;
+    }
+
+    function screenMirror(name: string): string {
+        return root.stagedSpec(name)?.mirror ?? "";
+    }
+
+    function stagedSpecs(): var {
+        const out = {};
+        for (const m of Monitors.outputs) {
+            const spec = root.stagedSpec(m.name);
+            if (spec)
+                out[m.name] = spec;
+        }
+        return out;
     }
 
     function screenValue(sub: string): var {
@@ -577,9 +587,9 @@ Singleton {
         const spec = root.stagedSpec(name);
         switch (sub) {
         case "on":
-            return root.screenRecord(name).on;
+            return root.screenOn(name);
         case "mirror":
-            return root.screenRecord(name).mirror;
+            return root.screenMirror(name);
         case "res":
             return spec ? spec.mode.split("@")[0] : "";
         case "hz":
@@ -600,11 +610,11 @@ Singleton {
 
     function describeMonitor(name: string): string {
         const spec = root.stagedSpec(name);
-        if (!root.screenRecord(name).on)
-            return "disable";
         if (!spec)
             return "";
-        return `${spec.mode}, ${spec.position}, ${Math.round(spec.scale * 100) / 100}${spec.transform ? `, transform ${spec.transform}` : ""}${root.stage[name] ? " · not applied yet" : ""}`;
+        if (spec.disabled)
+            return `disable${root.stage[name] ? " · not applied yet" : ""}`;
+        return `${spec.mode}, ${spec.position}, ${Math.round(spec.scale * 100) / 100}${spec.transform ? `, transform ${spec.transform}` : ""}${spec.mirror ? `, mirror, ${spec.mirror}` : ""}${root.stage[name] ? " · not applied yet" : ""}`;
     }
 
     function bandOf(name: string): string {
@@ -630,13 +640,17 @@ Singleton {
         case "on":
         case "mirror":
             {
-                const all = Object.assign({}, root.planned.screens ?? {});
-                all[name] = Object.assign({}, root.screenRecord(name), sub === "on" ? {
-                    on: value
+                const planned = Monitors.plan(root.stagedSpecs(), name, sub === "on" ? {
+                    disabled: !value
                 } : {
                     mirror: value
                 });
-                root.plan("screens", all);
+                if (planned.why) {
+                    root.denied = true;
+                    root.refused(planned.why, "");
+                    return;
+                }
+                root.restage(planned.fields);
                 return;
             }
         case "res":
@@ -689,7 +703,7 @@ Singleton {
     readonly property int confirmLeft: root.confirm?.left ?? 0
 
     function stagedKey(k: string): bool {
-        return ["scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"].indexOf(k) >= 0;
+        return ["scr:on", "scr:mirror", "scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"].indexOf(k) >= 0;
     }
 
     function liveSpec(name: string): var {
@@ -706,6 +720,10 @@ Singleton {
     function sameField(key: string, a: var, b: var): bool {
         if (key === "scale")
             return Math.abs(+a - +b) < 0.001;
+        if (key === "disabled")
+            return !!a === !!b;
+        if (key === "mirror")
+            return (a || "") === (b || "");
         return String(a) === String(b);
     }
 
@@ -752,7 +770,9 @@ Singleton {
             hz: "mode",
             scale: "scale",
             rot: "transform",
-            vrr: "vrr"
+            vrr: "vrr",
+            on: "disabled",
+            mirror: "mirror"
         }[sub];
         const mine = root.stage[Monitors.selected];
         if (!mine || mine[field] === undefined)
@@ -780,17 +800,21 @@ Singleton {
     }
 
     function differs(a: var, b: var): bool {
-        return ["mode", "position", "scale", "transform", "vrr"].some(key => !root.sameField(key, a[key], b[key]));
+        return ["mode", "position", "scale", "transform", "vrr", "disabled", "mirror"].some(key => !root.sameField(key, a[key], b[key]));
     }
 
     function restore(specs: var): void {
         if (!root.edits())
             return;
+        const list = [];
         for (const name of Object.keys(specs ?? {})) {
             const live = root.liveSpec(name);
             if (live && root.differs(live, specs[name]))
-                Monitors.applySpec(specs[name]);
+                list.push(specs[name]);
         }
+        const why = Monitors.applySpecs(list);
+        if (why)
+            root.refused(why, "");
     }
 
     function summary(before: var, after: var): string {
@@ -807,6 +831,10 @@ Singleton {
                 what.push(`${(b.transform % 4) * 90}°`);
             if (!root.sameField("vrr", a.vrr, b.vrr))
                 what.push(b.vrr ? "vrr on" : "vrr off");
+            if (!root.sameField("disabled", a.disabled, b.disabled))
+                what.push(b.disabled ? "turned off" : "turned on");
+            if (!root.sameField("mirror", a.mirror, b.mirror))
+                what.push(b.mirror ? `mirrors ${b.mirror}` : "stopped mirroring");
             if (!what.length && !root.sameField("position", a.position, b.position))
                 what.push("moved");
             parts.push(`${name} ${what.join(" · ")}`);
@@ -832,14 +860,17 @@ Singleton {
                 continue;
             before[r.name] = live;
             after[r.name] = next;
-            if (["mode", "scale", "transform"].some(key => !root.sameField(key, live[key], next[key])))
+            if (["mode", "scale", "transform", "disabled", "mirror"].some(key => !root.sameField(key, live[key], next[key])))
                 risky = true;
         }
-        root.stage = {};
-        if (!Object.keys(after).length)
+        if (!Object.keys(after).length) {
+            root.stage = {};
             return;
-        for (const name of Object.keys(after))
-            Monitors.applySpec(after[name]);
+        }
+        const why = Monitors.applySpecs(Object.values(after));
+        if (why)
+            return root.refused(why, "");
+        root.stage = {};
         const now = Date.now();
         const list = root.changes.slice();
         list.unshift({
@@ -873,8 +904,7 @@ Singleton {
         root.confirm = null;
         if (!c)
             return;
-        for (const name of Object.keys(c.before))
-            Monitors.applySpec(c.before[name]);
+        Monitors.applySpecs(Object.values(c.before));
         root.changes = root.changes.filter(x => !(x.k === "scr:layout" && x.t === c.t));
         root.save();
         SettingsView.drop("screens went back", "undo", null);
@@ -972,9 +1002,10 @@ Singleton {
     }
 
     readonly property var monitorNames: Monitors.outputs.map(m => m.name)
-    readonly property var screensOn: root.monitorNames.filter(n => root.screenRecord(n).on)
+    readonly property var screensOn: root.monitorNames.filter(n => root.screenOn(n))
     readonly property string selMon: Monitors.selected
-    readonly property bool onlyOn: root.screenRecord(Monitors.selected).on && root.screensOn.length === 1
+    readonly property bool onlyOn: root.screenOn(Monitors.selected) && root.screensOn.length === 1
+    readonly property var mirrorChoices: Monitors.mirrorChoices(root.stagedSpecs(), Monitors.selected)
 
     readonly property string selMonWhat: {
         const o = Monitors.outputs.find(m => m.name === Monitors.selected);
@@ -1271,6 +1302,44 @@ Singleton {
         root.save();
     }
 
+    function carryScreens(): void {
+        const old = root.planned.screens;
+        if (!root.loaded || !old || !Monitors.outputs.length)
+            return;
+        const specs = root.stagedSpecs();
+        const fields = {};
+        const take = (name, change) => {
+            const planned = Monitors.plan(specs, name, change);
+            for (const n of Object.keys(planned.fields)) {
+                specs[n] = Object.assign({}, specs[n], planned.fields[n]);
+                fields[n] = Object.assign({}, fields[n] ?? {}, planned.fields[n]);
+            }
+        };
+        for (const name of Object.keys(old))
+            if (specs[name] && old[name].on === false && !specs[name].disabled)
+                take(name, {
+                    disabled: true
+                });
+        for (const name of Object.keys(old))
+            if (specs[name] && old[name].mirror && old[name].mirror !== specs[name].mirror)
+                take(name, {
+                    mirror: old[name].mirror
+                });
+        root.restage(fields);
+        const next = Object.assign({}, root.planned);
+        delete next.screens;
+        root.planned = next;
+        root.save();
+    }
+
+    Connections {
+        target: Monitors
+
+        function onOutputsChanged(): void {
+            root.carryScreens();
+        }
+    }
+
     Connections {
         target: Config
 
@@ -1322,6 +1391,7 @@ Singleton {
             }
             root.loaded = true;
             root.adopt();
+            root.carryScreens();
         }
 
         onLoadFailed: root.loaded = true

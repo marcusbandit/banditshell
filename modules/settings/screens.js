@@ -20,7 +20,9 @@ function rectOf(name, spec) {
         ph: ph,
         hz: m && m[3] ? Math.round(+m[3]) : 0,
         scale: scale,
-        transform: transform
+        transform: transform,
+        off: !!(spec && spec.disabled),
+        mirror: spec && spec.mirror || ""
     };
 }
 
@@ -42,7 +44,12 @@ function moved(r, x, y) {
     return Object.assign({}, r, { x: x, y: y });
 }
 
-function issues(rects) {
+function placedOthers(rects, name) {
+    return rects.filter(r => r.name !== name && !r.off && !r.mirror);
+}
+
+function issues(everything) {
+    const rects = everything.filter(r => !r.off && !r.mirror);
     const clash = [];
     const loose = [];
     for (let i = 0; i < rects.length; i++)
@@ -83,7 +90,7 @@ function snap(rects, name, x, y, reach) {
     const me = rects.find(r => r.name === name);
     if (!me)
         return { x: Math.round(x), y: Math.round(y), guides: [], corner: null };
-    const others = rects.filter(r => r.name !== name);
+    const others = placedOthers(rects, name);
     const bx = nearest(others, me.w, x, reach, "x");
     const by = nearest(others, me.h, y, reach, "y");
     const nx = bx ? bx.v : Math.round(x);
@@ -99,7 +106,7 @@ function snap(rects, name, x, y, reach) {
 
 function settle(rects, name, x, y, reach) {
     const me = rects.find(r => r.name === name);
-    const others = rects.filter(r => r.name !== name);
+    const others = placedOthers(rects, name);
     if (!me || !others.length)
         return { x: Math.round(x), y: Math.round(y) };
     const free = c => !others.some(o => overlaps(c, o));
@@ -137,7 +144,7 @@ function nudge(rects, name, dx, dy) {
     const me = rects.find(r => r.name === name);
     if (!me)
         return null;
-    const others = rects.filter(r => r.name !== name);
+    const others = placedOthers(rects, name);
     const next = moved(me, me.x + dx, me.y + dy);
     if (others.some(o => overlaps(next, o) && !overlaps(me, o)))
         return null;
