@@ -4,11 +4,14 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Hyprland
+import "monitor-rules.js" as MonitorRules
 
 Singleton {
     id: root
 
     property var outputs: []
+
+    readonly property var active: root.outputs.filter(m => !m.disabled)
 
     property string selected: ""
 
@@ -44,6 +47,15 @@ Singleton {
     }
 
     function specFor(m: var): var {
+        if (m.disabled || !(m.width > 0)) {
+            const entry = HyprConfig.monitors.find(e => !e.dynamic && e.output === m.name);
+            return Object.assign({
+                output: m.name
+            }, MonitorRules.restingFields(m, entry), {
+                disabled: !!m.disabled,
+                mirror: m.mirror ?? ""
+            });
+        }
         let mode = root.modeString(m.width, m.height, m.refreshRate);
         for (const s of m.availableModes ?? []) {
             const p = root.parseMode(s);
@@ -58,7 +70,9 @@ Singleton {
             position: `${m.x}x${m.y}`,
             scale: m.scale,
             transform: m.transform,
-            vrr: m.vrr ? 1 : 0
+            vrr: m.vrr ? 1 : 0,
+            disabled: false,
+            mirror: m.mirror ?? ""
         };
     }
 
@@ -80,7 +94,7 @@ Singleton {
         const rest = Object.assign({}, root.queued);
         delete rest[name];
         root.queued = rest;
-        root.applySpec(spec);
+        root.write(spec);
     }
 
     Connections {
@@ -92,7 +106,40 @@ Singleton {
         }
     }
 
-    function applySpec(spec: var): void {
+    function plan(specs: var, name: string, change: var): var {
+        return MonitorRules.plan(specs, name, change);
+    }
+
+    function mirrorChoices(specs: var, name: string): var {
+        return MonitorRules.mirrorChoices(specs, name);
+    }
+
+    function intent(name: string): var {
+        return root.queued[name] ?? root.displaySpec(name);
+    }
+
+    function applySpec(spec: var): string {
+        return root.applySpecs([spec]);
+    }
+
+    function applySpecs(list: var): string {
+        const specs = {};
+        for (const m of root.outputs)
+            specs[m.name] = root.intent(m.name);
+        for (const spec of list)
+            if (spec?.output && specs[spec.output])
+                specs[spec.output] = spec;
+        const why = MonitorRules.violation(specs);
+        if (why) {
+            console.warn(`Monitors: not applied; ${why}.`);
+            return why;
+        }
+        for (const spec of list)
+            root.write(spec);
+        return "";
+    }
+
+    function write(spec: var): void {
         if (!spec?.output)
             return;
 
@@ -107,18 +154,15 @@ Singleton {
             [spec.output]: spec
         });
 
+        const fields = MonitorRules.entryFields(spec);
         const entry = HyprConfig.monitors.find(m => !m.dynamic && m.output === spec.output);
         if (entry)
-            HyprConfig.updateMonitor(entry.id, {
-                mode: spec.mode,
-                position: spec.position,
-                scale: spec.scale,
-                transform: spec.transform,
-                vrr: spec.vrr
-            });
+            HyprConfig.updateMonitor(entry.id, fields);
         else
 
-            HyprConfig.addMonitor((HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), spec);
+            HyprConfig.addMonitor((HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), Object.assign({
+                output: spec.output
+            }, fields));
 
         settle.restart();
 
@@ -149,7 +193,7 @@ Singleton {
     Process {
         id: probe
 
-        command: ["hyprctl", "-j", "monitors"]
+        command: ["hyprctl", "-j", "monitors", "all"]
 
         stdout: StdioCollector {
             onStreamFinished: {
@@ -160,6 +204,7 @@ Singleton {
                 if (!mons.length)
                     return;
                 root.outputs = mons.map(m => ({
+                        id: m.id,
                         name: m.name,
                         description: [m.make, m.model].filter(p => p).join(" "),
                         x: m.x,
@@ -172,7 +217,8 @@ Singleton {
                         refreshRate: m.refreshRate,
                         availableModes: m.availableModes ?? [],
                         focused: !!m.focused,
-                        disabled: !!m.disabled
+                        disabled: !!m.disabled,
+                        mirror: MonitorRules.mirrorSource(m, mons)
                     }));
 
                 if (!root.outputs.some(m => m.name === root.selected))
@@ -184,7 +230,8 @@ Singleton {
                     if (m) {
                         const s = still[name];
                         const cur = root.specFor(m);
-                        if (s.mode === cur.mode && s.position === cur.position && Math.abs(s.scale - cur.scale) < 0.001 && s.transform === cur.transform && s.vrr === cur.vrr)
+                        const same = !!s.disabled === !!cur.disabled && (s.mirror ?? "") === (cur.mirror ?? "");
+                        if (same && (s.disabled || s.mode === cur.mode && s.position === cur.position && Math.abs(s.scale - cur.scale) < 0.001 && s.transform === cur.transform && s.vrr === cur.vrr))
                             delete still[name];
                     } else {
                         delete still[name];
