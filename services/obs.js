@@ -166,3 +166,13 @@ function endpoint(own, server) {
         passwordHere: !!own?.password
     };
 }
+
+function savePasswordCommand(path, password) {
+    if (password === "")
+        return ["rm", "-f", "--", path];
+    return ["sh", "-c", 'umask 077 && mkdir -p -- "$(dirname -- "$1")" && cat > "$1.new" && mv -f -- "$1.new" "$1"', "sh", path];
+}
+
+function withPassword(own, password) {
+    return Object.assign({}, own ?? {}, { password: password ?? "" });
+}

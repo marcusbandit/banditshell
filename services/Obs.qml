@@ -17,7 +17,11 @@ Singleton {
 
     property var server: null
 
-    readonly property var endpoint: ObsProtocol.endpoint(Config.values.obs, root.server)
+    readonly property string passwordPath: `${Config.stateDir}/obs-password`
+    property string ownPassword: ""
+    readonly property string legacyPassword: Config.loaded ? (Config.values.obs?.password ?? "") : ""
+
+    readonly property var endpoint: ObsProtocol.endpoint(ObsProtocol.withPassword(Config.values.obs, root.ownPassword || root.legacyPassword), root.server)
     readonly property string url: root.endpoint.url
     readonly property string password: root.endpoint.password
 
@@ -285,7 +289,66 @@ Singleton {
     }
 
     function setPassword(text: string): void {
-        Config.set("obs.password", text);
+        root.keep(text, false);
+    }
+
+    property var queuedKeep: null
+
+    function keep(text: string, migrating: bool): void {
+        if (keeper.running) {
+            root.queuedKeep = { text, migrating };
+            return;
+        }
+        keeper.password = text;
+        keeper.migrating = migrating;
+        keeper.command = ObsProtocol.savePasswordCommand(root.passwordPath, text);
+        keeper.running = true;
+    }
+
+    function migrate(): void {
+        if (root.legacyPassword !== "")
+            root.keep(root.legacyPassword, true);
+    }
+
+    onLegacyPasswordChanged: root.migrate()
+    Component.onCompleted: root.migrate()
+
+    Process {
+        id: keeper
+
+        property string password: ""
+        property bool migrating: false
+
+        stdinEnabled: true
+
+        onStarted: {
+            if (keeper.password !== "")
+                keeper.write(keeper.password);
+            keeper.stdinEnabled = false;
+        }
+
+        onExited: code => {
+            if (code === 0) {
+                root.ownPassword = keeper.password;
+                if (keeper.migrating)
+                    Config.set("obs.password", "");
+            } else {
+                console.warn(`Obs: could not keep the websocket password in ${root.passwordPath}`);
+            }
+            keeper.stdinEnabled = true;
+            const next = root.queuedKeep;
+            root.queuedKeep = null;
+            if (next)
+                root.keep(next.text, next.migrating);
+        }
+    }
+
+    FileView {
+        path: root.passwordPath
+        printErrors: false
+
+        onLoaded: root.ownPassword = text()
+        onLoadFailed: root.ownPassword = ""
     }
 
     function launch(): void {
