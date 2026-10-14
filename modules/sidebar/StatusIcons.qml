@@ -57,36 +57,39 @@ Item {
         epsilon: 0.005
     }
 
-    readonly property var gauges: [
+    readonly property var allGauges: [
         {
             key: "audio",
             title: "Sound",
             reading: sound,
-            present: Config.values.sidebar.status.sound,
+            shown: Config.values.sidebar.status.sound,
             body: soundMenu
         },
         {
             key: "network",
             title: "Network",
             reading: network,
-            present: Config.values.sidebar.status.network,
+            shown: Config.values.sidebar.status.network,
             body: networkMenu
         },
         {
             key: "bluetooth",
             title: "Bluetooth",
             reading: bluetooth,
-            present: Config.values.sidebar.status.bluetooth,
+            shown: Config.values.sidebar.status.bluetooth,
             body: bluetoothMenu
         },
         {
             key: "battery",
             title: "Battery",
             reading: battery,
-            present: Battery.available && Config.values.sidebar.status.battery,
+            present: Battery.available,
+            shown: Config.values.sidebar.status.battery,
             body: batteryMenu
         }
     ].filter(g => g.present ?? true)
+
+    readonly property var gauges: root.allGauges.filter(g => g.shown ?? true)
 
     QtObject {
         id: sound
@@ -123,7 +126,7 @@ Item {
         readonly property bool alarm: Battery.low
     }
 
-    readonly property var items: root.gauges.filter(g => g.body !== undefined)
+    readonly property var items: root.allGauges.filter(g => g.body !== undefined)
 
     function iconFor(key: string): Item {
         for (let i = 0; i < repeater.count; i++) {
@@ -131,7 +134,7 @@ Item {
             if (item?.key === key)
                 return item;
         }
-        return null;
+        return root.entryFor(key) ? column : null;
     }
 
     function entryFor(key: string): var {
