@@ -1958,6 +1958,10 @@ Singleton {
         function onOutputsChanged(): void {
             root.carryScreens();
         }
+
+        function onFailed(output: string, said: string): void {
+            root.refused(`${output} was not changed · ${said}`, "");
+        }
     }
 
     Connections {

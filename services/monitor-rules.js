@@ -84,3 +84,42 @@ function mirrorChoices(specs, name) {
         return [];
     return Object.keys(specs).filter(n => n !== name && !specs[n].disabled && !specs[n].mirror);
 }
+
+function findOutput(outputs, name) {
+    return (outputs ?? []).find(o => o.name === name) ?? null;
+}
+
+function turnsOn(spec, outputs) {
+    const live = findOutput(outputs, spec?.output);
+    return !!live && !!live.disabled && !spec.disabled;
+}
+
+function turnsOff(spec, outputs) {
+    const live = findOutput(outputs, spec?.output);
+    return !!live && !live.disabled && !!spec.disabled;
+}
+
+function writeOrder(list, outputs) {
+    const rank = spec => turnsOn(spec, outputs) ? 0 : turnsOff(spec, outputs) ? 2 : 1;
+    return list.map((spec, index) => ({ spec, index, rank: rank(spec) })).sort((a, b) => a.rank - b.rank || a.index - b.index).map(e => e.spec);
+}
+
+function dropTurnOffs(queued) {
+    const kept = {};
+    for (const name of Object.keys(queued ?? {}))
+        if (!queued[name].disabled)
+            kept[name] = queued[name];
+    return kept;
+}
+
+function guardSpecs(outputs, intents, list) {
+    const specs = {};
+    for (const live of outputs ?? []) {
+        const intent = intents?.[live.name] ?? {};
+        specs[live.name] = Object.assign({}, intent, { disabled: !!live.disabled || !!intent.disabled });
+    }
+    for (const spec of list ?? [])
+        if (spec?.output && specs[spec.output])
+            specs[spec.output] = spec;
+    return specs;
+}

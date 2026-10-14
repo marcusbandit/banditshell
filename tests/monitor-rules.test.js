@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const HyprlandLua = new Function(fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8")
     + "\nreturn { scanLua, composeEntry, entryReplacement, spliceLines };")();
 const Rules = new Function(fs.readFileSync(path.join(ROOT, "services/monitor-rules.js"), "utf8")
-    + "\nreturn { mirrorSource, restingFields, entryFields, violation, mirroring, plan, mirrorChoices };")();
+    + "\nreturn { mirrorSource, restingFields, entryFields, violation, mirroring, plan, mirrorChoices, turnsOn, turnsOff, writeOrder, dropTurnOffs, guardSpecs };")();
 
 const DESK = {
     "HDMI-A-1": { output: "HDMI-A-1", mode: "5120x1440@144", position: "1200x240", scale: 1, transform: 0, vrr: 1, disabled: false, mirror: "" },
@@ -134,4 +134,51 @@ test("a screen that is off still has a mode and a place on the desk", () => {
     const entry = { mode: "2560x1440@144", position: "1200x0", scale: 1.5, transform: 1, vrr: 1 };
     assert.deepStrictEqual(Rules.restingFields(reported, entry), { mode: "2560x1440@144", position: "1200x0", scale: 1.5, transform: 1, vrr: 1 });
     assert.strictEqual(Rules.restingFields({ availableModes: [] }, null).mode, "preferred");
+});
+
+const LIVE = [{ name: "HDMI-A-1", disabled: false }, { name: "DP-1", disabled: true }];
+
+test("a write that brings a screen back is ordered before one that turns another off", () => {
+    const off = Object.assign({}, DESK["HDMI-A-1"], { disabled: true });
+    const on = Object.assign({}, DESK["DP-1"], { disabled: false });
+    const tweak = Object.assign({}, DESK["HDMI-A-1"], { scale: 2 });
+    assert.strictEqual(Rules.turnsOn(on, LIVE), true);
+    assert.strictEqual(Rules.turnsOff(off, LIVE), true);
+    assert.strictEqual(Rules.turnsOn(tweak, LIVE), false);
+    assert.deepStrictEqual(Rules.writeOrder([off, on], LIVE).map(s => s.output), ["DP-1", "HDMI-A-1"]);
+    assert.deepStrictEqual(Rules.writeOrder([off, tweak, on], LIVE).map(s => s.output + s.disabled), ["DP-1false", "HDMI-A-1false", "HDMI-A-1true"]);
+});
+
+test("writes of the same kind keep the order they came in", () => {
+    const live = [{ name: "A", disabled: false }, { name: "B", disabled: false }, { name: "C", disabled: false }];
+    const list = ["C", "A", "B"].map(output => ({ output, disabled: true }));
+    assert.deepStrictEqual(Rules.writeOrder(list, live).map(s => s.output), ["C", "A", "B"]);
+});
+
+test("when a turn-on fails the queued turn-offs are dropped and the rest stay", () => {
+    const queued = { A: { output: "A", disabled: true }, B: { output: "B", disabled: false, scale: 2 } };
+    assert.deepStrictEqual(Object.keys(Rules.dropTurnOffs(queued)), ["B"]);
+    assert.deepStrictEqual(Rules.dropTurnOffs({}), {});
+});
+
+test("the last-screen guard counts what Hyprland has on, not what a failed write once asked for", () => {
+    const outputs = [{ name: "HDMI-A-1", disabled: false }, { name: "DP-1", disabled: true }];
+    const stale = { "HDMI-A-1": DESK["HDMI-A-1"], "DP-1": Object.assign({}, DESK["DP-1"], { disabled: false }) };
+    const off = Object.assign({}, DESK["HDMI-A-1"], { disabled: true });
+    assert.ok(Rules.violation(Rules.guardSpecs(outputs, stale, [off])));
+    const both = Rules.guardSpecs(outputs, stale, [off, Object.assign({}, DESK["DP-1"], { disabled: false })]);
+    assert.strictEqual(Rules.violation(both), "");
+});
+
+test("a screen already on its way off does not count as on for the next turn-off", () => {
+    const outputs = [{ name: "HDMI-A-1", disabled: false }, { name: "DP-1", disabled: false }];
+    const intents = { "HDMI-A-1": Object.assign({}, DESK["HDMI-A-1"], { disabled: true }), "DP-1": DESK["DP-1"] };
+    const off = Object.assign({}, DESK["DP-1"], { disabled: true });
+    assert.ok(Rules.violation(Rules.guardSpecs(outputs, intents, [off])));
+});
+
+test("with every live screen on, one turn-off is fine", () => {
+    const outputs = [{ name: "HDMI-A-1", disabled: false }, { name: "DP-1", disabled: false }];
+    const off = Object.assign({}, DESK["DP-1"], { disabled: true });
+    assert.strictEqual(Rules.violation(Rules.guardSpecs(outputs, DESK, [off])), "");
 });
