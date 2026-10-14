@@ -551,7 +551,11 @@ Singleton {
 
                 aspectLock: true,
 
-                minSize: 160
+                minSize: 160,
+
+                lowerButton: "right click",
+
+                upperButton: "middle click"
             },
 
             lock: {

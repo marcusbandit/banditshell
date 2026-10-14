@@ -11,12 +11,12 @@ Column {
     property var row: ({})
 
     readonly property var list: SettingsState.kbLayouts
-    readonly property var pool: [["danish", "dk"], ["english (us)", "us"], ["english (uk)", "gb"], ["german", "de"], ["norwegian", "no"], ["swedish", "se"], ["french", "fr"], ["colemak", "us(colemak)"]]
+    readonly property var pool: SettingsState.layoutPool
 
     width: parent ? parent.width : 0
 
-    function save(next: var): void {
-        SettingsState.plan("layouts", next);
+    function save(next: var): bool {
+        return SettingsState.setLayouts(next);
     }
 
     Repeater {
@@ -31,7 +31,7 @@ Column {
             width: root.width
             interactive: false
             label: lay.modelData.name
-            detail: lay.index ? "super + space" : "leads"
+            detail: lay.index ? SettingsState.layoutSwitchNote : "leads"
             onPointed: SettingsView.hovered = root.row
             lead: Component {
                 KeyCaps {
@@ -49,8 +49,8 @@ Column {
                     const first = next[0];
                     next[0] = next[lay.index];
                     next[lay.index] = first;
-                    root.save(next);
-                    SettingsView.drop(`${next[0].name} leads now`, "keyboard");
+                    if (root.save(next))
+                        SettingsView.drop(`${next[0].name} leads now`, "keyboard");
                 }
             }
 
@@ -63,15 +63,15 @@ Column {
                     const next = root.list.slice();
                     const gone = next.splice(lay.index, 1)[0];
                     const at = lay.index;
-                    root.save(next);
-                    SettingsView.drop(`dropped ${gone.name}`, "keyboard", {
-                        label: "undo",
-                        run: () => {
-                            const back = root.list.slice();
-                            back.splice(at, 0, gone);
-                            root.save(back);
-                        }
-                    });
+                    if (root.save(next))
+                        SettingsView.drop(`dropped ${gone.name}`, "keyboard", {
+                            label: "undo",
+                            run: () => {
+                                const back = root.list.slice();
+                                back.splice(at, 0, gone);
+                                root.save(back);
+                            }
+                        });
                 }
             }
         }

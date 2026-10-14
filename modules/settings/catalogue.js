@@ -334,7 +334,7 @@ const PAGES_SOURCE = {
         status: s => `${s.v("layout") === "custom" ? "custom layout" : s.v("layout")} · ${s.v("dropMode")} on drop`,
         groups: [
             { t: "Layout", rows: [
-                { n: [], isNew: true, kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom" }
+                { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom" }
             ] },
             { t: "Moving", rows: [
                 { n: 66, icon: "vertical_align_top", label: "Bottom edge lifts windows", k: "edgeLift", kind: "toggle", cfg: "windows.edge", detail: "push down to peek" },
@@ -445,9 +445,9 @@ const PAGES_SOURCE = {
         status: s => s.kbLayouts.map(l => l.name).join(" · "),
         groups: [
             { rows: [
-                { n: 99, isNew: true, kind: "w", w: "kbLayouts", kw: "keyboard layout" },
-                { n: 99, isNew: true, icon: "keyboard_tab", label: "Repeat after", k: "kbDelay", kind: "slider", min: 150, max: 800, step: 10, fmt: v => `${v} ms`, kw: "key repeat delay" },
-                { n: 99, isNew: true, icon: "fast_forward", label: "Repeat rate", k: "kbRate", kind: "slider", min: 10, max: 60, fmt: v => `${v}/s`, kw: "key repeat rate" }
+                { n: 99, kind: "w", w: "kbLayouts", kw: "keyboard layout" },
+                { n: 99, icon: "keyboard_tab", label: "Repeat after", k: "kbDelay", kind: "slider", min: 150, max: 800, step: 10, fmt: v => `${v} ms`, kw: "key repeat delay" },
+                { n: 99, icon: "fast_forward", label: "Repeat rate", k: "kbRate", kind: "slider", min: 10, max: 60, fmt: v => `${v}/s`, kw: "key repeat rate" }
             ] },
             { t: "Hotkey sheet", rows: [
                 { n: 98, icon: "keyboard_alt", label: "Draw the board", k: "sheetBoard", kind: "toggle", cfg: "cheatsheet.board", detail: "super + /", kw: "hotkey sheet" },
@@ -475,10 +475,10 @@ const PAGES_SOURCE = {
         status: s => s.v("naturalScroll") ? "natural scroll" : "classic scroll",
         groups: [
             { rows: [
-                { n: 100, isNew: true, icon: "mouse", label: "Mouse speed", k: "mouseSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "mouse speed" },
-                { n: 100, isNew: true, icon: "touchpad_mouse", label: "Touchpad speed", k: "padSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "touchpad speed" },
-                { n: 100, isNew: true, icon: "swipe_vertical", label: "Natural scrolling", k: "naturalScroll", kind: "toggle", detail: "content follows your fingers" },
-                { n: 100, isNew: true, icon: "touch_app", label: "Tap to click", k: "tapClick", kind: "toggle" }
+                { n: 100, icon: "mouse", label: "Mouse speed", k: "mouseSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, kw: "mouse speed" },
+                { n: 100, icon: "touchpad_mouse", label: "Touchpad speed", k: "padSpeed", kind: "slider", min: -1, max: 1, step: 0.05, fmt: signed, detail: s => s.touchpads.length ? s.touchpads.map(t => t.label).join(" · ") : "no touchpad here", dis: s => !s.touchpads.length, kw: "touchpad speed" },
+                { n: 100, icon: "swipe_vertical", label: "Natural scrolling", k: "naturalScroll", kind: "toggle", detail: "content follows your fingers" },
+                { n: 100, icon: "touch_app", label: "Tap to click", k: "tapClick", kind: "toggle" }
             ] }
         ]
     },
@@ -507,8 +507,8 @@ const PAGES_SOURCE = {
                 { n: 103, icon: "stylus", label: "Pen", k: "pen", kind: "toggle", cfg: "pen.enabled", detail: s => s.v("pen") ? s.penName : "off", kw: "pen device" },
                 { n: 103, icon: "monitor", label: "Maps to", k: "penScreen", kind: "seg", o: s => s.screensOn.concat(["all"]), dis: s => !s.v("pen"), kw: "pen area mapping" },
                 { n: 103, icon: "aspect_ratio", label: "Keep the shape", k: "aspectLock", kind: "toggle", cfg: "pen.aspectLock", detail: "trims the pad to match", dis: s => !s.v("pen"), kw: "pen aspect lock" },
-                { n: 103, isNew: true, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], dis: s => !s.v("pen"), kw: "pen buttons" },
-                { n: 103, isNew: true, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], dis: s => !s.v("pen"), kw: "pen buttons" }
+                { n: 103, icon: "radio_button_unchecked", label: "Lower button", k: "penBtn1", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.lowerButton", dis: s => !s.v("pen"), kw: "pen buttons" },
+                { n: 103, icon: "radio_button_checked", label: "Upper button", k: "penBtn2", kind: "choice", o: ["right click", "middle click", "erase", "nothing"], cfg: "pen.upperButton", dis: s => !s.v("pen"), kw: "pen buttons" }
             ] }
         ]
     },

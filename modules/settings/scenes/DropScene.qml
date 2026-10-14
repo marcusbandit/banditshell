@@ -143,6 +143,6 @@ Item {
     }
 
     SceneCaption {
-        text: root.dropping ? (root.swap ? "they trade places" : "moves in, the rest shuffle") : `${root.about.name} · ${root.about.detail}`
+        text: root.dropping ? (root.swap ? "they trade places" : "moves in, the rest shuffle") : `${root.about.name} · ${SettingsState.layoutAvailable(root.about.id) ? root.about.detail : SettingsState.layoutHowTo(root.about.id)}`
     }
 }

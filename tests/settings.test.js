@@ -51,6 +51,7 @@ function fakeState(values) {
         v: k => all[k] !== undefined ? all[k] : true,
         appsFor: () => [["firefox", "firefox"]],
         kbLayouts: [{ name: "danish", code: "dk" }],
+        touchpads: [{ label: "Touchpad" }],
         btConnected: ["WH-1000XM5"],
         screensOn: ["DP-1"],
         monitorNames: ["DP-1", "HDMI-A-1"],
@@ -378,5 +379,35 @@ test("screen rows that wait for apply say so", () => {
     for (const k of ["scr:res", "scr:hz", "scr:scale", "scr:rot", "scr:vrr"]) {
         const r = Catalogue.ROWS.find(x => x.k === k);
         assert.strictEqual(r.detail({ pendingNote: () => "not applied yet" }), "not applied yet", k);
+    }
+});
+
+test("settings Hyprland owns are served by the state: not planned, not stored, read and written by case", () => {
+    const state = fs.readFileSync(STATE, "utf8");
+    for (const k of ["kbDelay", "kbRate", "mouseSpeed", "padSpeed", "naturalScroll", "tapClick", "layout"]) {
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} still has a planned default`);
+        assert.ok(!(k in CONFIG_BACKED), `${k} is stored in config.json`);
+        assert.strictEqual(state.split(`case "${k}":`).length - 1, 2, `${k} should be one case in v() and one in write()`);
+    }
+    for (const k of ["kbDelay", "kbRate", "mouseSpeed", "padSpeed", "naturalScroll", "tapClick"])
+        assert.ok(Catalogue.ROW_BY_KEY[k] && !Catalogue.ROW_BY_KEY[k].isNew, `${k} row is live`);
+    assert.ok(!PLAN_DEFAULTS.layouts, "the keyboard layout list is read from Hyprland");
+});
+
+test("the layout and keyboard rows are live, and the custom layout stays an entry point", () => {
+    for (const r of Catalogue.ROWS.filter(x => ["winLayouts", "kbLayouts"].includes(x.w)))
+        assert.ok(!r.isNew, `${r.w} is still marked new`);
+    assert.strictEqual(PLAN_DEFAULTS.customLayout, "");
+});
+
+test("pen buttons are shell keys that default to what the pen already does", () => {
+    assert.strictEqual(CONFIG_BACKED.penBtn1, "pen.lowerButton");
+    assert.strictEqual(CONFIG_BACKED.penBtn2, "pen.upperButton");
+    assert.strictEqual(lookup(DEFAULTS, "pen.lowerButton"), "right click");
+    assert.strictEqual(lookup(DEFAULTS, "pen.upperButton"), "middle click");
+    for (const k of ["penBtn1", "penBtn2"]) {
+        const row = Catalogue.ROW_BY_KEY[k];
+        assert.ok(!row.isNew, k);
+        assert.ok(Catalogue.options(row, fakeState()).some(o => o[0] === lookup(DEFAULTS, CONFIG_BACKED[k])), `${k}'s default is one of its choices`);
     }
 });
