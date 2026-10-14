@@ -354,7 +354,10 @@ Singleton {
                 panelWidth: 560,
 
                 seekSmall: 5,
-                seekLarge: 30
+                seekLarge: 30,
+
+                lyrics: true,
+                lyricsLead: 0.15
             },
 
             audio: {
