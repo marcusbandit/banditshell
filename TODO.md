@@ -5,6 +5,32 @@ not batched. Update this file as work happens: notes, decisions, and
 done-marks go under the item they belong to.
 
 - [ ] Settings menu
+  - 2026-10-14: rebuilt as a port of the settings-demo mockup (~/.t3/projects/
+    settings-demo is the truth for how it looks). It is a blob melting out of the
+    sidebar now, not a floating window; ten categories with hubs; every row of the
+    121-item list plus the extras (modes, screen time, recent changes, layouts,
+    sidebar clock/date/update/status options, VIA import).
+  - Scope is the panel only. Rows marked new in the pane ("nothing behind it in
+    the shell yet") keep their value in state/settings.json and do nothing
+    else; .scratch/settings-backends/ is the plan for each (spec.md, then one
+    ticket per backend), and tests/settings.test.js fails if a planned row has
+    no ticket. The sidebar options (clock style, date, status icons, tray,
+    specials rack, mode glyph), volume past 100%, board shapes and the
+    on-screen keyboard's repeat switch are planned too, not built. The update
+    button is real: it drives sidebar.update.
+  - 2026-10-14: no catcher any more. The panel stays put while the desktop is
+    used; the X or the corner closes it (Escape too, when it holds the keys).
+    It holds the keyboard only while the pointer is over it, and steps aside
+    while another panel or a menu is up on its screen. Screens page: the panel widens for the
+    arrangement canvas, or grows tall and folds the canvas into the page; drag
+    snaps to edges, corners and centres with guides, arrows nudge, and every
+    screen change waits for Apply. A new mode, scale or turn asks to be kept and
+    goes back by itself after 15 s, or at once if settings is closed first.
+  - Not verified by hand yet: the key recorder over a layer surface (shortcut
+    inhibitor), dragging screens on a real pointer, Apply writing two monitors
+    in one go and the keep-or-go-back countdown on a live mode change, the
+    keyboard going back to the window under the pointer when it leaves the panel,
+    the QR scanner in the pane, the stage corner mask (GPU only).
 - [ ] Peak
 - [ ] Media Viewer
   - 2026-09-24: empty state reworked — no MPRIS player at all now keeps the

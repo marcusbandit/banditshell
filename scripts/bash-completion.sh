@@ -29,7 +29,7 @@ quote() { printf "'%s'" "${1//\'/\'\\\'\'}"; }
 
 deps() {
     printf '%s\n' "$REPO/cli/banditshell" "$RULES" "$SELF" \
-        "$REPO/config/Themes.qml" "$REPO/services/Settings.qml" "$REPO/modules/keyboard/Layouts.qml"
+        "$REPO/config/Themes.qml" "$REPO/modules/settings/catalogue.js" "$REPO/modules/keyboard/Layouts.qml"
 }
 
 generate() {
@@ -73,7 +73,7 @@ _bs_stale() {
     _bs_repo=${cli%/*/*}
     [[ -x $_bs_repo/scripts/completion-rules.sh && -x $_bs_repo/scripts/bash-completion.sh ]] || return 1
     for dep in "$_bs_repo/cli/banditshell" "$_bs_repo/scripts/completion-rules.sh" "$_bs_repo/scripts/bash-completion.sh" \
-        "$_bs_repo/config/Themes.qml" "$_bs_repo/services/Settings.qml" "$_bs_repo/modules/keyboard/Layouts.qml"; do
+        "$_bs_repo/config/Themes.qml" "$_bs_repo/modules/settings/catalogue.js" "$_bs_repo/modules/keyboard/Layouts.qml"; do
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1

@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-7",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Settings is rebuilt. It grows out of the sidebar on the screen you are using instead of opening as a separate window, and it stays open while you work in other windows. Its X or the settings corner closes it. Settings are sorted into ten categories, each opening on an overview, and the search box finds any setting by name."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Pointing at a setting shows what it does, the config.json key it writes if it has one, and a moving preview of that part of the shell. The last changes you made are listed with an undo button."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Changes to your screens' arrangement, resolution, scale and rotation wait until you press Apply. A new resolution, scale or rotation then asks to be kept, and goes back by itself after 15 seconds if you do not answer."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Some settings are marked new. You can set them and the panel remembers your choice, but nothing in the shell acts on them yet. They start working in later updates."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell panel settings open takes a category, a page or any setting's config key, so banditshell panel settings open sidebar.update opens straight at that row. The old page names, like wifi or keybinds, still work."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The shell keeps the values of the new settings, and your recent changes, in ~/.local/state/banditshell/settings.json."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-6",
       "date": "2026-10-14",
       "changes": [
@@ -12,7 +48,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The update icon above the clock now shows only when there is something to do: an update to get, a restart to finish one, or a problem. The rest of the time it is hidden, and What's new opens from the clock instead. To keep the icon all the time, turn on Keep the update icon in the sidebar under Settings, About. That page also has a button to check for updates."
+          "text": "The update icon above the clock now shows only when there is something to do: an update to get, a restart to finish one, or a problem. The rest of the time it is hidden, and What's new opens from the clock instead. To keep the icon all the time, or hide it even then, set Update button under Settings, Desktop, Sidebar. Settings, System, Updates has a button to check for updates."
         },
         {
           "type": "config",

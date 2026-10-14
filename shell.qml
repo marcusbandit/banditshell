@@ -7,7 +7,6 @@ import qs.modules.files
 import qs.modules.lock
 import qs.modules.pen
 import qs.modules.picker
-import qs.modules.settings
 
 ShellRoot {
     readonly property var compositorSync: CompositorSync
@@ -23,8 +22,6 @@ ShellRoot {
     Cli {
         picker: picker
     }
-
-    SettingsFloat {}
 
     Variants {
         model: Quickshell.screens
