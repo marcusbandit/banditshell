@@ -57,7 +57,7 @@ Item {
             {label: "Where", value: Files.parentOf(s.path)},
             {label: "Kind", value: s.kind === "dir" ? "Folder" : `${s.class}${s.ext ? ` (.${s.ext})` : ""}`},
             {label: "Size", value: Files.humanSize(s.size)},
-            {label: "Modified", value: Qt.formatDateTime(new Date(s.mtime * 1000), "d MMM yyyy  HH:mm")},
+            {label: "Modified", value: TimeFormat.stamp(new Date(s.mtime * 1000))},
             {label: "Owner", value: `${s.owner}:${s.group}`},
             {label: "Mode", value: `${Files.humanMode(s.mode)}  (${s.mode.toString(8)})`}
         ];

@@ -38,6 +38,7 @@ singleton StreamState 1.0 StreamState.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton Tablet 1.0 Tablet.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
+singleton TimeFormat 1.0 TimeFormat.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Tray 1.0 Tray.qml
 singleton Update 1.0 Update.qml

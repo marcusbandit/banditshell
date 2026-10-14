@@ -80,7 +80,7 @@ Column {
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: Qt.formatDateTime(clock.date, "HH")
+                text: Services.TimeFormat.hourPart(clock.date)
                 font.pixelSize: Appearance.font.size.normal
             }
 

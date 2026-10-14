@@ -231,13 +231,13 @@ Item {
 
                 StyledText {
                     anchors.right: parent.right
-                    text: Qt.formatDateTime(time.date, "HH:mm")
+                    text: TimeFormat.time(time.date, false)
                     font.pixelSize: Appearance.font.size.large
                 }
 
                 StyledText {
                     anchors.right: parent.right
-                    text: Qt.formatDateTime(time.date, "ddd d MMMM")
+                    text: TimeFormat.dateText(time.date, "brief")
                     color: Appearance.colour.textDim
                 }
             }

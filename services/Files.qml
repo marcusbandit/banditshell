@@ -455,14 +455,7 @@ Singleton {
     }
 
     function humanTime(epoch: real): string {
-        const when = new Date(epoch * 1000);
-        const now = new Date();
-
-        if (when.toDateString() === now.toDateString())
-            return Qt.formatTime(when, "HH:mm");
-        if (when.getFullYear() === now.getFullYear())
-            return Qt.formatDate(when, "d MMM");
-        return Qt.formatDate(when, "MMM yyyy");
+        return TimeFormat.recent(new Date(epoch * 1000));
     }
 
     function humanMode(mode: int): string {
