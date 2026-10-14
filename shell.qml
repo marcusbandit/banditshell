@@ -13,6 +13,9 @@ ShellRoot {
     readonly property var idle: Idle
     readonly property var screenTimeApps: UsageApps
     readonly property var screenTimeLimits: UsageLimits
+    readonly property var battery: Battery
+    readonly property var chargeLimit: ChargeLimit
+    readonly property var lid: Lid
 
     LockScreen {}
 

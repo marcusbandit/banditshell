@@ -342,6 +342,29 @@ Singleton {
                 sleep: 30
             },
 
+            battery: {
+
+                holdCharge: true,
+
+                holdAt: 80,
+
+                warnAt: 15,
+
+                nearlyEmpty: "suspend"
+            },
+
+            power: {
+
+                lid: {
+
+                    onBattery: "suspend",
+
+                    pluggedIn: "lock",
+
+                    docked: "nothing"
+                }
+            },
+
             notifications: {
 
                 timeout: 5000,

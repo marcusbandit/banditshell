@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import Quickshell.Services.UPower
+import "battery.js" as LowBattery
 
 Singleton {
     id: root
@@ -38,31 +39,41 @@ Singleton {
     readonly property int secondsLeft: charging ? (device?.timeToFull ?? 0) : (device?.timeToEmpty ?? 0)
     readonly property bool estimating: available && secondsLeft <= 0 && !full
 
-    readonly property real lowThreshold: 0.15
-    readonly property real rearmThreshold: 0.2
+    readonly property real lowThreshold: Config.values.battery.warnAt / 100
+    readonly property real rearmThreshold: root.lowThreshold + LowBattery.rearmMargin
+    readonly property int nearlyEmptyPercent: Math.round(LowBattery.nearlyEmptyFraction * 100)
+    readonly property string nearlyEmpty: Config.values.battery.nearlyEmpty
 
     readonly property bool low: available && onBattery && percentage <= lowThreshold
 
     readonly property bool reading: available && capacity > 0 && energy > 0
 
-    property bool warned: false
+    property string stage: "ok"
 
     function considerWarning(): void {
-        if (!root.reading)
-            return;
+        const step = LowBattery.lowStep(root.stage, {
+            reading: root.reading,
+            onBattery: root.onBattery,
+            percentage: root.percentage,
+            warnAt: root.lowThreshold,
+            action: root.nearlyEmpty
+        });
+        root.stage = step.stage;
 
-        if (root.percentage > root.rearmThreshold) {
-            root.warned = false;
-            return;
-        }
-
-        if (!root.low || root.warned)
-            return;
-
-        root.warned = true;
+        grace.running = step.stage === "counting";
 
         const left = root.timeLabel();
-        root.notify("critical", `Battery low, ${root.percent}%`, left && left !== "estimating" ? `${left}. Find a charger.` : "Find a charger.");
+        if (step.say === "warn")
+            root.notify("critical", `Battery low, ${root.percent}%`, left && left !== "estimating" ? `${left}. Find a charger.` : "Find a charger.");
+        else if (step.say === "countdown")
+            root.notify("critical", `Battery nearly empty, ${root.percent}%`, LowBattery.countdownMessage(root.nearlyEmpty, LowBattery.graceSeconds));
+    }
+
+    function actNearlyEmpty(): void {
+        if (root.stage !== "counting")
+            return;
+        root.stage = "acted";
+        Suspension.perform(root.nearlyEmpty);
     }
 
     function notify(urgency: string, summary: string, body: string): void {
@@ -74,6 +85,24 @@ Singleton {
         id: warner
     }
 
+    Timer {
+        id: grace
+
+        interval: LowBattery.graceSeconds * 1000
+        onTriggered: root.actNearlyEmpty()
+    }
+
+    Connections {
+        target: Lock
+
+        function onSleepingChanged(): void {
+            root.stage = LowBattery.afterResume(root.stage);
+            root.considerWarning();
+        }
+    }
+
+    onLowThresholdChanged: root.considerWarning()
+    onNearlyEmptyChanged: root.considerWarning()
     onPercentageChanged: root.considerWarning()
     onOnBatteryChanged: root.considerWarning()
     onReadingChanged: root.considerWarning()

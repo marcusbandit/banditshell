@@ -34,14 +34,6 @@ Singleton {
             tapClick: true,
             penBtn1: "right click",
             penBtn2: "erase",
-            chargeLimit: true,
-            chargeMax: 80,
-            lowWarn: 15,
-            lowAction: "suspend at 5%",
-            profile: "balanced",
-            lidBattery: "suspend",
-            lidPlugged: "lock",
-            lidDocked: "nothing",
             defBrowser: "firefox",
             defFiles: "files",
             defTerm: "kitty",
@@ -112,6 +104,10 @@ Singleton {
             idleSuspend: {
                 read: v => Durations.choiceFromMinutes(v),
                 write: v => Durations.minutesFromChoice(v)
+            },
+            lowAction: {
+                read: v => v === "nothing" ? v : `${v} at ${Battery.nearlyEmptyPercent}%`,
+                write: v => String(v).split(" ")[0]
             }
         })
 
@@ -240,7 +236,14 @@ Singleton {
             branch: "updates.branch",
             remote: "updates.remote",
             updEvery: "updates.interval",
-            sourceEdits: "sourceEdits.acknowledged"
+            sourceEdits: "sourceEdits.acknowledged",
+            chargeLimit: "battery.holdCharge",
+            chargeMax: "battery.holdAt",
+            lowWarn: "battery.warnAt",
+            lowAction: "battery.nearlyEmpty",
+            lidBattery: "power.lid.onBattery",
+            lidPlugged: "power.lid.pluggedIn",
+            lidDocked: "power.lid.docked"
         })
 
     function plannedKey(k: string): bool {
@@ -311,6 +314,8 @@ Singleton {
             return Display.warm;
         case "saver":
             return root.v("profile") === "saver";
+        case "profile":
+            return PowerProfile.profile;
         }
         if (root.plannedKey(k))
             return root.planned[k] ?? root.planDefaults[k];
@@ -423,6 +428,12 @@ Singleton {
             return;
         case "saver":
             return root.set("profile", value ? "saver" : "balanced");
+        case "profile":
+            if (PowerProfile.available)
+                PowerProfile.set(value);
+            else
+                root.denied = true;
+            return;
         case "vpnFirst":
             {
                 const list = (root.planned.tunnels ?? []).slice();
@@ -1066,8 +1077,13 @@ Singleton {
 
     readonly property var specialNames: Hypr.specials.map(s => s.label)
     readonly property bool hasBattery: Battery.available
-    property bool lidSeen: false
-    readonly property bool hasLid: root.lidSeen || Monitors.outputs.some(m => m.name.startsWith("eDP") || m.name.startsWith("LVDS") || m.name.startsWith("DSI"))
+    readonly property bool hasLid: Lid.present
+    readonly property bool hibernatePossible: Suspension.hibernatePossible
+    readonly property int nearlyEmptyPercent: Battery.nearlyEmptyPercent
+    readonly property var profileChoices: PowerProfile.choices
+    readonly property string profileTrouble: PowerProfile.trouble
+    readonly property bool chargeSupported: !ChargeLimit.probed || ChargeLimit.supported
+    readonly property string chargeTrouble: ChargeLimit.trouble
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
 
@@ -1289,7 +1305,6 @@ Singleton {
             return;
         root.woken = true;
         fontProbe.running = true;
-        lidProbe.running = true;
         root.probeCompletions();
         if (Compositor.isHyprland)
             layoutProbe.running = true;
@@ -1366,16 +1381,6 @@ Singleton {
 
         function onLoadedChanged(): void {
             root.adopt();
-        }
-    }
-
-    Process {
-        id: lidProbe
-
-        command: ["sh", "-c", "ls /proc/acpi/button/lid 2>/dev/null"]
-
-        stdout: StdioCollector {
-            onStreamFinished: root.lidSeen = text.trim() !== ""
         }
     }
 

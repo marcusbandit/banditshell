@@ -500,7 +500,25 @@ banditshell/
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
-│   ├── Battery.qml              UPower
+│   ├── Battery.qml              UPower, the low warning, and the nearly empty
+│   │                            step: warn once, count down 30 s, then
+│   │                            suspend or hibernate (battery.js is the
+│   │                            pure part, tested in node)
+│   ├── ChargeLimit.qml          battery.holdCharge / holdAt written to the
+│   │                            battery's charge_control_end_threshold
+│   │                            through a pkexec helper the installer puts
+│   │                            in only when asked (install.sh
+│   │                            --charge-limit); read back, never assumed
+│   ├── Lid.qml                  holds a handle-lid-switch block inhibitor
+│   │                            while there is a lid, watches logind's
+│   │                            LidClosed, and does what power.lid.* says
+│   │                            for battery, mains or screens attached;
+│   │                            on a machine with no lid it runs nothing
+│   ├── PowerProfile.qml         the power mode, read back live from
+│   │                            power-profiles-daemon or tuned, never kept
+│   │                            in config because other tools change it
+│   ├── Suspension.qml           suspend, hibernate or lock for whoever asks;
+│   │                            a hibernate the machine cannot do is a suspend
 │   ├── Network.qml              NetworkManager: the wire and the radio, one entry per SSID
 │   ├── Bluetooth.qml            bluez: adapter and devices
 │   ├── Media.qml                MPRIS, with a stable choice of player
