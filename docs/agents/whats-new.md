@@ -72,6 +72,8 @@ for most of your readers there was no last time.
 (`updates.seen` in the user's config.json) accumulate and surface in the
 update menu, and the shell summons that menu once at launch when there is
 anything pending. Entries are marked seen when the card has been believed on
-screen, not when it is dismissed. The example entry in the file is skipped by
+screen, not when it is dismissed. A config.json the shell creates on a first
+start begins at the newest entry, so a new install shows nothing until the
+next push. The example entry in the file is skipped by
 the shell and exists only to show the shape; replace it at the first push
 under this rule.

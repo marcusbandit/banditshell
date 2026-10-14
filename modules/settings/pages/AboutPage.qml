@@ -116,6 +116,30 @@ Item {
         }
 
         SettingsCard {
+            title: "Updates"
+
+            SettingsRow {
+                icon: "sync"
+                label: Update.checking ? "Checking..." : "Check for updates"
+                detail: Update.error !== "" ? Update.error : Update.headline + (Update.checkedAt.getTime() === 0 ? "" : ` · checked ${Update.ago(Update.checkedAt)}`)
+                interactive: !Update.checking
+                onActivated: Update.check()
+            }
+
+            SettingsRow {
+                icon: "visibility"
+                label: "Keep the update icon in the sidebar"
+                detail: "Otherwise it only shows when there is something to do"
+                onActivated: Config.set("updates.alwaysShow", !Config.values.updates.alwaysShow)
+
+                Toggle {
+                    checked: Config.values.updates.alwaysShow
+                    onToggled: Config.set("updates.alwaysShow", !Config.values.updates.alwaysShow)
+                }
+            }
+        }
+
+        SettingsCard {
             title: "Read more"
 
             SettingsRow {

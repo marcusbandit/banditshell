@@ -655,6 +655,8 @@ Singleton {
 
                 seen: "",
 
+                alwaysShow: false,
+
                 availableColour: "#ff5252",
                 failedColour: "#ffb454",
                 readyColour: "#4da3ff"
@@ -666,6 +668,8 @@ Singleton {
     property bool loaded: false
 
     property bool unreadable: false
+
+    property bool fresh: false
 
     readonly property bool writable: root.loaded && !root.unreadable
 
@@ -751,6 +755,7 @@ Singleton {
                 return console.warn(`Config: could not read ${root.path} (${FileViewError.toString(err)}), so it is left untouched and the shell keeps ${root.loaded ? "the values it had" : "the defaults"}.`);
             }
             root.unreadable = false;
+            root.fresh = true;
             root.loaded = true;
             root.rewatch = true;
             Qt.callLater(root.save);
