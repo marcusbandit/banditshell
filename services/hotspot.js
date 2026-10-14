@@ -1,4 +1,5 @@
-const PROFILE = "Hotspot";
+const PROFILE = "banditshell hotspot";
+const LEGACY_PROFILE = "Hotspot";
 const MINIMUM_PASSWORD = 8;
 const MAXIMUM_PASSWORD = 63;
 const BANDS = {
@@ -54,25 +55,63 @@ function blocker(facts) {
     return passwordProblem(facts.password);
 }
 
+function oneLine(value) {
+    return String(value ?? "").replace(/[\r\n]+/g, " ");
+}
+
+function newUuid() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, mark => {
+        const digit = Math.floor(Math.random() * 16);
+        return (mark === "x" ? digit : (digit & 3) | 8).toString(16);
+    });
+}
+
+function passwordCommand(uuid, password) {
+    return {
+        command: ["nmcli", "connection", "edit", "uuid", uuid],
+        input: `set wifi-sec.psk ${oneLine(password)}\nsave\nquit\n`
+    };
+}
+
 function editCommands(profile) {
-    const args = ["nmcli", "connection", "modify", "id", PROFILE, "802-11-wireless.ssid", profile.ssid, "802-11-wireless.band", bandCode(profile.band)];
+    const commands = [["nmcli", "connection", "modify", "uuid", profile.uuid, "802-11-wireless.ssid", profile.ssid, "802-11-wireless.band", bandCode(profile.band)]];
     if (profile.password)
-        args.push("802-11-wireless-security.psk", profile.password);
-    return [args];
+        commands.push(passwordCommand(profile.uuid, profile.password));
+    return commands;
+}
+
+function createCommands(profile) {
+    return [
+        ["nmcli", "connection", "add", "type", "wifi", "con-name", PROFILE, "connection.uuid", profile.uuid, "ifname", profile.device, "ssid", profile.ssid, "connection.autoconnect", "no", "802-11-wireless.mode", "ap", "802-11-wireless.band", bandCode(profile.band), "ipv4.method", "shared", "ipv6.method", "shared", "wifi-sec.key-mgmt", "wpa-psk", "wifi-sec.proto", "rsn", "wifi-sec.pairwise", "ccmp", "wifi-sec.group", "ccmp"],
+        passwordCommand(profile.uuid, profile.password)
+    ];
+}
+
+function upCommand(profile) {
+    return ["nmcli", "--wait", "30", "connection", "up", "uuid", profile.uuid, "ifname", profile.device];
 }
 
 function startCommands(profile, profileExists) {
-    if (!profileExists)
-        return [["nmcli", "device", "wifi", "hotspot", "ifname", profile.device, "ssid", profile.ssid, "password", profile.password, "band", bandCode(profile.band)]];
-    return editCommands(profile).concat([["nmcli", "--wait", "30", "connection", "up", "id", PROFILE, "ifname", profile.device]]);
+    return (profileExists ? editCommands(profile) : createCommands(profile)).concat([upCommand(profile)]);
 }
 
-function stopCommands() {
-    return [["nmcli", "connection", "down", "id", PROFILE]];
+function stopCommands(uuid) {
+    return [["nmcli", "connection", "down", "uuid", uuid]];
 }
 
 function restartCommands(profile) {
-    return editCommands(profile).concat([["nmcli", "connection", "down", "id", PROFILE], ["nmcli", "--wait", "30", "connection", "up", "id", PROFILE, "ifname", profile.device]]);
+    return editCommands(profile).concat([["nmcli", "connection", "down", "uuid", profile.uuid], upCommand(profile)]);
+}
+
+function candidates(connections) {
+    return connections
+        .filter(connection => connection.type === "802-11-wireless" && (connection.name === PROFILE || connection.name === LEGACY_PROFILE))
+        .sort((a, b) => (a.name === PROFILE ? 0 : 1) - (b.name === PROFILE ? 0 : 1));
+}
+
+function readingCommand(uuids) {
+    const script = 'for uuid in "$@"; do echo "uuid:$uuid"; nmcli -s -t -e no -f 802-11-wireless.mode,802-11-wireless.ssid,802-11-wireless.band,802-11-wireless-security.psk connection show uuid "$uuid"; done';
+    return ["sh", "-c", script, "sh"].concat(uuids);
 }
 
 function readProfile(fields) {
@@ -81,6 +120,37 @@ function readProfile(fields) {
         band: bandLabel(fields["802-11-wireless.band"]),
         password: fields["802-11-wireless-security.psk"] ?? ""
     };
+}
+
+function readProfiles(text) {
+    const found = [];
+    let current = null;
+    for (const line of String(text ?? "").split("\n")) {
+        if (line.startsWith("uuid:")) {
+            current = { uuid: line.slice(5).trim(), lines: [] };
+            found.push(current);
+        } else if (current) {
+            current.lines.push(line);
+        }
+    }
+    return found.map(entry => {
+        const fields = {};
+        for (const line of entry.lines) {
+            const cut = line.indexOf(":");
+            if (cut > 0)
+                fields[line.slice(0, cut)] = line.slice(cut + 1);
+        }
+        return Object.assign({ uuid: entry.uuid, mode: fields["802-11-wireless.mode"] ?? "" }, readProfile(fields));
+    });
+}
+
+function ownProfile(connections, profiles) {
+    for (const connection of candidates(connections)) {
+        const profile = profiles.find(read => read.uuid === connection.uuid);
+        if (profile && profile.mode === "ap")
+            return Object.assign({}, profile, { name: connection.name, active: connection.active });
+    }
+    return null;
 }
 
 function countClients(text) {

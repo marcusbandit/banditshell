@@ -7,6 +7,7 @@ Item {
     property var pending: []
     property string output: ""
     property bool began: false
+    property string input: ""
 
     readonly property bool busy: worker.running || root.pending.length > 0
 
@@ -24,7 +25,9 @@ Item {
         const next = root.pending[0];
         root.pending = root.pending.slice(1);
         root.began = false;
-        worker.exec(next);
+        root.input = Array.isArray(next) ? "" : next.input ?? "";
+        worker.stdinEnabled = root.input !== "";
+        worker.exec(Array.isArray(next) ? next : next.command);
     }
 
     function settle(code: int, said: string, complained: string): void {
@@ -51,7 +54,14 @@ Item {
             id: complained
         }
 
-        onStarted: root.began = true
+        onStarted: {
+            root.began = true;
+            if (root.input === "")
+                return;
+            worker.write(root.input);
+            root.input = "";
+            worker.stdinEnabled = false;
+        }
 
         onExited: code => root.settle(code, said.text, complained.text)
 

@@ -198,46 +198,48 @@ class Helper:
 
     def serve(self, evdev, dev):
         try:
-            uinput = evdev.UInput.from_device(
-                dev,
-                name=dev.name,
-                vendor=dev.info.vendor,
-                product=dev.info.product,
-                version=dev.info.version,
-                bustype=dev.info.bustype,
-                phys=CLONE_MARK,
-                input_props=dev.input_props(),
-            )
+            dev.grab()
         except Exception as exc:
-            self.warn_once("uinput", f"could not make a stand-in for the pen ({exc}). /dev/uinput needs to be writable by this user; the pen is left as it is.")
+            self.warn_once("grab", f"could not take the pen over ({exc}); the pen is left as it is.")
             self.say("denied")
             return
         try:
             try:
-                dev.grab()
+                uinput = evdev.UInput.from_device(
+                    dev,
+                    name=dev.name,
+                    vendor=dev.info.vendor,
+                    product=dev.info.product,
+                    version=dev.info.version,
+                    bustype=dev.info.bustype,
+                    phys=CLONE_MARK,
+                    input_props=dev.input_props(),
+                )
             except Exception as exc:
-                self.warn_once("grab", f"could not take the pen over ({exc}); the pen is left as it is.")
+                self.warn_once("uinput", f"could not make a stand-in for the pen ({exc}). /dev/uinput needs to be writable by this user; the pen is left as it is.")
                 self.say("denied")
                 return
-            self.log("the pen is now read through a stand-in")
-            self.say("ready")
             try:
-                self.pump(dev, uinput)
-            except OSError as exc:
-                self.log(f"read ended: {exc}")
+                self.log("the pen is now read through a stand-in")
+                self.say("ready")
+                try:
+                    self.pump(dev, uinput)
+                except OSError as exc:
+                    self.log(f"read ended: {exc}")
+                finally:
+                    try:
+                        for out in self.remapper.release():
+                            uinput.write(*out)
+                    except Exception:
+                        pass
             finally:
                 try:
-                    for out in self.remapper.release():
-                        uinput.write(*out)
-                except Exception:
-                    pass
-                try:
-                    dev.ungrab()
+                    uinput.close()
                 except Exception:
                     pass
         finally:
             try:
-                uinput.close()
+                dev.ungrab()
             except Exception:
                 pass
 

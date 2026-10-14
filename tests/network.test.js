@@ -16,7 +16,7 @@ function fixture(name) {
 }
 
 const Nmcli = load("nmcli.js", ["splitFromRight", "connections", "fields"]);
-const Hotspot = load("hotspot.js", ["bandCode", "bandLabel", "passwordProblem", "capabilities", "blocker", "editCommands", "startCommands", "stopCommands", "restartCommands", "readProfile", "countClients", "clientsLabel", "explainFailure"]);
+const Hotspot = load("hotspot.js", ["bandCode", "bandLabel", "passwordProblem", "capabilities", "blocker", "editCommands", "createCommands", "startCommands", "stopCommands", "restartCommands", "candidates", "readingCommand", "readProfile", "readProfiles", "ownProfile", "newUuid", "countClients", "clientsLabel", "explainFailure"]);
 const Tunnels = load("tunnels.js", ["tunnelsFrom", "merge", "switchCommand", "explainSwitch", "resolvePath", "importKind", "importProblem", "importCommand", "importedName", "explainImport"]);
 
 test.describe("nmcli output", () => {
@@ -86,29 +86,93 @@ test.describe("hotspot", () => {
         assert.strictEqual(Hotspot.blocker({ ...ready, password: "short", profileExists: true }), "needs 8 characters or more");
     });
 
-    const profile = { device: "wlp7s0", ssid: "my net", password: "hunter2hunter2", band: "5 GHz" };
+    const uuid = "0d0a5b1c-3c1e-4d1e-9c55-3f4b9f0c5a11";
+    const profile = { device: "wlp7s0", uuid, ssid: "my net", password: "hunter2hunter2", band: "5 GHz" };
+    const modifyArgs = ["nmcli", "connection", "modify", "uuid", uuid, "802-11-wireless.ssid", "my net", "802-11-wireless.band", "a"];
+    const passwordEdit = { command: ["nmcli", "connection", "edit", "uuid", uuid], input: "set wifi-sec.psk hunter2hunter2\nsave\nquit\n" };
+    const up = ["nmcli", "--wait", "30", "connection", "up", "uuid", uuid, "ifname", "wlp7s0"];
 
-    test("a first start asks nmcli to make the hotspot", () => {
-        assert.deepStrictEqual(Hotspot.startCommands(profile, false), [["nmcli", "device", "wifi", "hotspot", "ifname", "wlp7s0", "ssid", "my net", "password", "hunter2hunter2", "band", "a"]]);
+    const argvOf = commands => commands.flatMap(command => Array.isArray(command) ? command : command.command);
+
+    test("a first start adds an access point profile under its own name, then brings it up by uuid", () => {
+        const commands = Hotspot.startCommands(profile, false);
+        assert.strictEqual(commands.length, 3);
+        const add = commands[0];
+        assert.deepStrictEqual(add.slice(0, 8), ["nmcli", "connection", "add", "type", "wifi", "con-name", "banditshell hotspot", "connection.uuid"]);
+        assert.strictEqual(add[8], uuid);
+        assert.ok(add.join(" ").includes("802-11-wireless.mode ap"));
+        assert.ok(add.join(" ").includes("ipv4.method shared"));
+        assert.deepStrictEqual(commands.slice(1), [passwordEdit, up]);
+    });
+
+    test("the password never appears in an argument list", () => {
+        for (const commands of [Hotspot.startCommands(profile, false), Hotspot.startCommands(profile, true), Hotspot.restartCommands(profile), Hotspot.editCommands(profile)])
+            assert.ok(!argvOf(commands).some(word => word.includes("hunter2hunter2")));
+    });
+
+    test("a password with a line break cannot smuggle in editor commands", () => {
+        const [, edit] = Hotspot.editCommands({ ...profile, password: "abcdefgh\nsave\nquit" });
+        assert.strictEqual(edit.input, "set wifi-sec.psk abcdefgh save quit\nsave\nquit\n");
     });
 
     test("a start with a saved profile edits it, then brings it up", () => {
-        assert.deepStrictEqual(Hotspot.startCommands(profile, true), [
-            ["nmcli", "connection", "modify", "id", "Hotspot", "802-11-wireless.ssid", "my net", "802-11-wireless.band", "a", "802-11-wireless-security.psk", "hunter2hunter2"],
-            ["nmcli", "--wait", "30", "connection", "up", "id", "Hotspot", "ifname", "wlp7s0"]
-        ]);
+        assert.deepStrictEqual(Hotspot.startCommands(profile, true), [modifyArgs, passwordEdit, up]);
     });
 
     test("an unreadable password is left alone in the profile", () => {
-        const [modify] = Hotspot.editCommands({ ...profile, password: "" });
-        assert.ok(!modify.includes("802-11-wireless-security.psk"));
+        assert.deepStrictEqual(Hotspot.editCommands({ ...profile, password: "" }), [modifyArgs]);
     });
 
-    test("stopping and restarting go through the same profile", () => {
-        assert.deepStrictEqual(Hotspot.stopCommands(), [["nmcli", "connection", "down", "id", "Hotspot"]]);
+    test("stopping and restarting go through the same profile by uuid", () => {
+        assert.deepStrictEqual(Hotspot.stopCommands(uuid), [["nmcli", "connection", "down", "uuid", uuid]]);
         const restart = Hotspot.restartCommands(profile);
-        assert.deepStrictEqual(restart.slice(1), [["nmcli", "connection", "down", "id", "Hotspot"], ["nmcli", "--wait", "30", "connection", "up", "id", "Hotspot", "ifname", "wlp7s0"]]);
-        assert.strictEqual(restart[0][2], "modify");
+        assert.deepStrictEqual(restart, [modifyArgs, passwordEdit, ["nmcli", "connection", "down", "uuid", uuid], up]);
+    });
+
+    test("fresh uuids look like version 4 uuids and differ", () => {
+        const first = Hotspot.newUuid();
+        assert.match(first, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+        assert.notStrictEqual(first, Hotspot.newUuid());
+    });
+
+    const wifi = (name, id, active = false) => ({ name, uuid: id, type: "802-11-wireless", active });
+
+    test("only wifi profiles with the hotspot names are candidates, ours first", () => {
+        const found = Hotspot.candidates([wifi("Hotspot", "a"), { name: "Hotspot", uuid: "b", type: "vpn", active: false }, wifi("Home", "c"), wifi("banditshell hotspot", "d")]);
+        assert.deepStrictEqual(found.map(c => c.uuid), ["d", "a"]);
+        assert.deepStrictEqual(Hotspot.candidates([]), []);
+    });
+
+    test("one read asks about every candidate by uuid", () => {
+        const command = Hotspot.readingCommand(["a", "b"]);
+        assert.deepStrictEqual(command.slice(0, 2), ["sh", "-c"]);
+        assert.deepStrictEqual(command.slice(3), ["sh", "a", "b"]);
+    });
+
+    const readOut = [
+        "uuid:a", "802-11-wireless.mode:infrastructure", "802-11-wireless.ssid:phone", "802-11-wireless.band:", "802-11-wireless-security.psk:phonepass1",
+        "uuid:b", "802-11-wireless.mode:ap", "802-11-wireless.ssid:my net", "802-11-wireless.band:a", "802-11-wireless-security.psk:pa:ss word"
+    ].join("\n");
+
+    test("the read output splits per profile and keeps the mode", () => {
+        const profiles = Hotspot.readProfiles(readOut);
+        assert.deepStrictEqual(profiles.map(p => p.mode), ["infrastructure", "ap"]);
+        assert.deepStrictEqual(profiles[1], { uuid: "b", mode: "ap", ssid: "my net", band: "5 GHz", password: "pa:ss word" });
+        assert.deepStrictEqual(Hotspot.readProfiles(""), []);
+    });
+
+    test("a client profile called Hotspot is never taken as ours", () => {
+        const connections = [wifi("Hotspot", "a", true)];
+        assert.strictEqual(Hotspot.ownProfile(connections, Hotspot.readProfiles(readOut)), null);
+    });
+
+    test("an access point profile called Hotspot still is, and ours wins over it", () => {
+        const profiles = Hotspot.readProfiles(readOut);
+        const legacy = Hotspot.ownProfile([wifi("Hotspot", "b", true)], profiles);
+        assert.strictEqual(legacy.uuid, "b");
+        assert.strictEqual(legacy.active, true);
+        const both = Hotspot.ownProfile([wifi("Hotspot", "b"), wifi("banditshell hotspot", "c")], profiles.concat([{ ...profiles[1], uuid: "c" }]));
+        assert.strictEqual(both.uuid, "c");
     });
 
     test("the profile reads back with its name, band and password", () => {

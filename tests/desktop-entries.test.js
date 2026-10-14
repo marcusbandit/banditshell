@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const src = fs.readFileSync(path.join(ROOT, "services/desktop-entries.js"), "utf8");
-const Entries = new Function(src + "\nreturn { parseEntry, parseBundle, indexEntries, indexPrograms, programOf, stripFieldCodes, shownIn, setHidden, autostartText, autostartName, sessionLaunches, splitList, idOf };")();
+const Entries = new Function(src + "\nreturn { unescapeValue, escapeValue, parseEntry, parseBundle, indexEntries, indexPrograms, programOf, stripFieldCodes, shownIn, setHidden, autostartText, autostartName, sessionLaunches, splitList, idOf };")();
 
 function bundleOf(dir) {
     return fs.readdirSync(dir).filter(f => f.endsWith(".desktop")).sort().map(f => `@@@${f}\n${fs.readFileSync(path.join(dir, f), "utf8")}`).join("");
@@ -103,6 +103,30 @@ test("an autostart file is written from a chosen app, without field codes", () =
     assert.strictEqual(Entries.autostartName("firefox"), "firefox.desktop");
     assert.strictEqual(Entries.autostartName("org.x.App.desktop"), "org.x.App.desktop");
     assert.strictEqual(Entries.autostartName(""), "");
+});
+
+test("an exec line with quotes and backslashes survives being written and read", () => {
+    const exec = 'sh -c "echo \\"hi\\""';
+    const text = Entries.autostartText({ name: "Greeter", exec, icon: "", terminal: false });
+    assert.ok(text.includes('Exec=sh -c "echo \\\\"hi\\\\""\n'));
+    assert.strictEqual(Entries.parseEntry(text).exec, exec);
+    const files = Entries.parseBundle(`@@@greeter.desktop\n${text}`);
+    assert.deepStrictEqual(Entries.sessionLaunches(files, ["Hyprland"]), [`exec ${exec}`]);
+});
+
+test("a written exec line, run the way a session runs it, does what it says", () => {
+    const text = Entries.autostartText({ name: "Greeter", exec: 'sh -c "echo \\"hi\\" %u"', terminal: false });
+    const [launch] = Entries.sessionLaunches(Entries.parseBundle(`@@@greeter.desktop\n${text}`), ["Hyprland"]);
+    const ran = require("node:child_process").spawnSync("sh", ["-c", launch], { encoding: "utf8" });
+    assert.strictEqual(ran.stdout, "hi\n");
+});
+
+test("escapes follow the desktop entry spec both ways, and an exec line keeps escapes the spec does not know", () => {
+    assert.strictEqual(Entries.escapeValue("a\\b\nc\td"), "a\\\\b\\nc\\td");
+    assert.strictEqual(Entries.escapeValue(" lead"), "\\slead");
+    assert.strictEqual(Entries.unescapeValue(Entries.escapeValue(" a\\b\n\t\r ")), " a\\b\n\t\r ");
+    assert.strictEqual(Entries.parseEntry("[Desktop Entry]\nExec=a \\\\ \\$HOME\n").exec, "a \\ \\$HOME");
+    assert.strictEqual(Entries.parseEntry("[Desktop Entry]\nName=a\\$b\nIcon=x\\sy\n").name, "a$b");
 });
 
 test("a session launches the enabled autostart entries that suit its desktop", () => {

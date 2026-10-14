@@ -513,15 +513,19 @@ function keycodeLegends() {
 
 const KEYCODES = keycodeLegends();
 
+function knownKeycode(text) {
+    return Object.prototype.hasOwnProperty.call(KEYCODES, text);
+}
+
 function legendOf(code) {
     const text = String(code ?? "").trim();
-    if (KEYCODES[text])
+    if (knownKeycode(text))
         return KEYCODES[text];
     const layer = /^(?:MO|TG|TO|TT|OSL|DF)\(\s*(\d+)\s*\)$/.exec(text);
     if (layer)
         return legendFrom(`Fn${layer[1]}`, [], 0, "");
     const tapped = /^(?:LT\(\s*\d+\s*,|MT\([^,()]+,|[A-Z_]+_T\()\s*(KC_[A-Z0-9_]+)\s*\)$/.exec(text);
-    if (tapped && KEYCODES[tapped[1]])
+    if (tapped && knownKeycode(tapped[1]))
         return KEYCODES[tapped[1]];
     return BLANK_LEGEND;
 }

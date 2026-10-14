@@ -1,4 +1,5 @@
 const TERMINAL_SCHEME = "x-scheme-handler/terminal";
+const TERMINAL_LIST = "xdg-terminals.list";
 
 const GROUPS = {
     defBrowser: { types: ["x-scheme-handler/http", "x-scheme-handler/https"] },
@@ -115,4 +116,30 @@ function terminalListSet(text, id) {
     while (kept.length && kept[kept.length - 1] === "")
         kept.pop();
     return [id].concat(kept).join("\n") + "\n";
+}
+
+function terminalListNames(desktops) {
+    const names = [];
+    for (const raw of String(desktops ?? "").split(":")) {
+        const desktop = raw.trim();
+        if (!desktop || desktop.includes("/"))
+            continue;
+        for (const form of [desktop, desktop.toLowerCase()]) {
+            const name = `${form}-${TERMINAL_LIST}`;
+            if (!names.includes(name))
+                names.push(name);
+        }
+    }
+    return names.concat([TERMINAL_LIST]);
+}
+
+function effectiveTerminalList(lists) {
+    const found = lists.find(list => list.exists && terminalListEntries(list.text).length > 0);
+    return found ? found.text : "";
+}
+
+function terminalWrites(lists, id) {
+    return lists
+        .filter(list => list.readable && (list.exists || list.name === TERMINAL_LIST))
+        .map(list => ({ name: list.name, text: terminalListSet(list.text, id) }));
 }
