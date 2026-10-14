@@ -1,0 +1,8 @@
+192.168.88.242 INCOMPLETE 
+192.168.88.247 lladdr ec:b5:fa:17:a4:63 STALE 
+192.168.88.1 lladdr 08:55:31:90:3b:e9 REACHABLE 
+192.168.88.235 lladdr dc:e9:94:8e:99:93 REACHABLE 
+192.168.88.226 lladdr e4:5f:01:6d:b3:d1 DELAY 
+fe80::1c2b:9aff:fe3d:11 lladdr dc:e9:94:8e:99:93 STALE 
+fe80::5a1:77ff:fe02:4 lladdr 52:0a:77:02:00:04 DELAY 
+192.168.88.60 FAILED 

@@ -1,0 +1,13 @@
+Wired connection 1:56bda55e-6828-3a85-9a06-28704adfb980:802-3-ethernet:yes
+tailscale0:5fffeb20-3122-47f9-bf17-0656a589400c:tun:yes
+br-052b20fb2bf5:451be077-b8d0-41fa-a557-95e381166905:bridge:yes
+lo:cf3d432b-1db4-4ab1-b9e8-d56787f6a4db:loopback:yes
+br-c0b12c10d83b:2e8c7b29-1393-4dfb-95fa-2f270eaec874:bridge:yes
+docker0:74c06fc7-ec12-4dfe-8aab-ec9b20634cf7:bridge:yes
+NetworkBandit:ac07a39a-dcdc-4a28-adbf-47c059db61e6:802-11-wireless:no
+NetworkBandit 1:3960c514-0303-4de3-9b7b-5b8aff7816c5:802-11-wireless:no
+Pixelman:88e21ed5-40bf-4f3e-bede-0ed08bea1d84:802-11-wireless:no
+WiFimodem-691A:bf0cd344-7c9c-4cbd-b683-ef72a9879413:802-11-wireless:no
+Hotspot:0d0a5b1c-3c1e-4d1e-9c55-3f4b9f0c5a11:802-11-wireless:no
+home: wg:7a3f0b6e-52c8-4a6e-8d4e-2d6bb7a0e0c1:wireguard:yes
+work-vpn:c1a8d5f2-96f4-4f0f-8e0e-6f0c57d1a9b3:vpn:no
