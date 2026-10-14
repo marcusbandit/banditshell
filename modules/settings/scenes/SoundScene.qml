@@ -12,7 +12,7 @@ SceneGauge {
     id: root
 
     readonly property real v: Audio.muted ? 0 : Audio.volume
-    readonly property real ceiling: SettingsState.v("overAmp") ? Audio.maxVolume : 1
+    readonly property real ceiling: Audio.maxVolume
     readonly property bool over: root.ceiling > 1 && root.v > 1
     readonly property real g: Math.min(1, root.v / root.ceiling)
 

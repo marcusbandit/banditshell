@@ -20,6 +20,12 @@ Column {
 
     readonly property Item timeItem: timeSlot
 
+    readonly property string timeStyle: Config.values.sidebar.clock.style
+    readonly property string dateStyle: Config.values.sidebar.clock.date
+
+    readonly property bool timeShown: root.timeStyle !== "off"
+    readonly property bool dateShown: root.dateStyle !== "off"
+
     signal calendarRequested(bool deliberate)
     signal calendarPulled
     signal calendarPullEnded(bool open)
@@ -30,6 +36,8 @@ Column {
 
     spacing: 0
 
+    visible: root.timeShown || root.dateShown
+
     SystemClock {
         id: clock
         precision: SystemClock.Minutes
@@ -39,7 +47,8 @@ Column {
         id: timeSlot
 
         width: parent.width
-        height: Math.max(Appearance.sizes.minTarget, drawnTime.implicitHeight)
+        height: !root.timeShown ? 0 : Math.max(Appearance.sizes.minTarget, root.timeStyle === "one line" ? sideways.implicitWidth : drawnTime.implicitHeight)
+        visible: root.timeShown
 
         Pull {
             id: clockSummon
@@ -68,6 +77,7 @@ Column {
 
             anchors.centerIn: parent
             spacing: 0
+            visible: root.timeStyle !== "one line"
 
             scale: clockSummon.pressed ? Appearance.press.plate : 1
 
@@ -79,15 +89,39 @@ Column {
             }
 
             StyledText {
+                id: hourText
+
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDateTime(clock.date, "HH")
-                font.pixelSize: Appearance.font.size.normal
+                font.pixelSize: root.timeStyle === "small" ? Appearance.font.size.small : Appearance.font.size.normal
             }
 
             StyledText {
+                id: minuteText
+
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDateTime(clock.date, "mm")
-                font.pixelSize: Appearance.font.size.normal
+                font.pixelSize: root.timeStyle === "small" ? Appearance.font.size.small : Appearance.font.size.normal
+            }
+        }
+
+        StyledText {
+            id: sideways
+
+            anchors.centerIn: parent
+            visible: root.timeStyle === "one line"
+
+            text: `${hourText.text}:${minuteText.text}`
+            font.pixelSize: Appearance.font.size.small
+            rotation: -90
+
+            scale: clockSummon.pressed ? Appearance.press.plate : 1
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: Appearance.animation.fast
+                    easing.type: Easing.OutCubic
+                }
             }
         }
     }
@@ -95,13 +129,15 @@ Column {
     Item {
         width: 1
         height: Appearance.padding.normal
+        visible: root.timeShown && root.dateShown
     }
 
     Item {
         id: dateSlot
 
         width: parent.width
-        height: Math.max(Appearance.sizes.minTarget, drawn.implicitHeight)
+        height: root.dateShown ? Math.max(Appearance.sizes.minTarget, drawn.implicitHeight) : 0
+        visible: root.dateShown
 
         Pull {
             id: summon
@@ -146,6 +182,7 @@ Column {
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
+                visible: root.dateStyle !== "day"
                 text: Qt.formatDateTime(clock.date, "MMM").toUpperCase()
                 font.pixelSize: Appearance.font.size.small
                 color: summon.pressed ? Appearance.colour.text : Appearance.colour.textFaint
