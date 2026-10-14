@@ -187,7 +187,7 @@ Singleton {
         }
         root.gammaGivenUp = code !== 1 || root.gammaLaunched;
         if (code === 10)
-            return console.warn(`Display: ${root.gammaPath} is missing, so warmth is off until \`banditshell build\``);
+            return console.warn(`Display: ${root.gammaPath} is missing, so warmth is off until \`banditshell dev build\``);
         if (code !== 1)
             return console.warn(`Display: could not look for a running bs-gamma (exit ${code}), so warmth is off`);
         if (root.gammaGivenUp)

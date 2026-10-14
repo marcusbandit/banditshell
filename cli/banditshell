@@ -1,83 +1,180 @@
 #!/usr/bin/env bash
-# banditshell - run and drive the shell.
+# banditshell - drive the shell from a terminal or a keybind
 #
-#   banditshell start|stop|restart|run
-#                                the shell itself: detach and prove it, stop it,
-#                                restart it, run it in the foreground
-#   banditshell try [worktree]  run a worktree on the live session in place of
-#                                the checkout; bare, the one you are standing in,
-#                                else every worktree and which one is live
-#   banditshell back             the checkout again, after try
+# panel                          the launcher, menus and every other panel
+#   banditshell panel            every panel and menu by name
+#   banditshell panel close      every panel away
+#   banditshell panel <panel> [toggle|open|close|status] [screen]
+#                                one panel; bare, whether it is open
+#   banditshell panel files [toggle|open] [dir]
+#                                the file browser, in a folder
+#   banditshell panel settings open [page] [screen]
+#   banditshell panel settings page <page>
+#   banditshell panel settings float
+#                                settings on a page, another page while it stays
+#                                put, or settings as a window
+#   banditshell panel launcher run <app>
+#                                start an app the way the launcher does
+#   banditshell panel keyboard [dock|float]
+#   banditshell panel keyboard page <layer> [screen]
+#                                dock or float the on-screen keyboard, or show one
+#                                of its layers
+#   banditshell panel clipboard list
+#   banditshell panel clipboard [use|pin|remove] <index>
+#   banditshell panel clipboard clear
+#                                the clipboard's history
+#   banditshell panel calculator [full|compact]
+#   banditshell panel calculator answer <expression>
+#                                open the calculator in a shape, or answer without
+#                                opening it
+#   banditshell panel notifications clear
+#                                empty the notification history
+#   <panel>: launcher|session|clipboard|media|calculator|quickcontrols
+#            keyboard|settings|notifications|notch|hotkeys|files|wallpaper
+#                                and every menu; banditshell panel lists them all
+#
+# output                         which device plays: the speakers or the headphones
+#   banditshell output           what plays, and which device is which
+#   banditshell output [speakers|headphones|toggle]
+#                                play through one, or flip between them
+#   banditshell output list      every device that can play
+#   banditshell output assign [speakers|headphones] <device>
+#                                name the device that is the speakers or the
+#                                headphones
+#
+# screen                         brightness, temperature, border, sidebar, stream
+#   banditshell screen           all of it at once
+#   banditshell screen brightness [<percent>|+n|-n]
+#                                every display that answers DDC; .5 is 50 percent,
+#                                a bare + or - moves 10
+#   banditshell screen temperature [<kelvin>|off]
+#                                warm the colours, or stop
+#   banditshell screen border [on|off|toggle]
+#                                the shell's frame; off is the bare desktop
+#   banditshell screen sidebar [on|off|toggle] [<screen>|all]
+#                                the sidebar, on one screen or on every one
+#   banditshell screen stream on [screen]
+#   banditshell screen stream off
+#                                streamer mode: a band with the OBS deck across
+#                                one screen
+#
+# wallpaper                      the picture: next, previous, a file, on or off
+#   banditshell wallpaper        what each screen wears; the picker is banditshell
+#                                panel wallpaper
+#   banditshell wallpaper [on|off|toggle]
+#   banditshell wallpaper [next|prev|clear] [<screen>|all]
+#   banditshell wallpaper set <file> [<screen>|all]
+#                                wear a file, on one screen or on every one
+#   banditshell wallpaper list [screen]
+#   banditshell wallpaper palette
+#                                every picture, or the colours of the one worn
+#
+# screenshot                     a region saved or copied, or the whole desktop
+#   banditshell screenshot save [--freeze]
+#                                pick a region, save it and open the editor;
+#                                --freeze stills the screen before the pick
+#   banditshell screenshot copy [--freeze]
+#                                pick a region onto the clipboard. Without the
+#                                shell, save and copy fall back on grim and slurp
+#   banditshell screenshot full [file]
+#                                the whole desktop, no picking
+#
+# clock                          timers, alarms and world clocks
+#   banditshell clock            the timers and the alarms
+#   banditshell clock timer start <duration> [label]
+#   banditshell clock timer [pause|resume|toggle|cancel] [handle]
+#                                a duration is 10 (minutes), 90s or 1h30m; bare,
+#                                the running timers
+#   banditshell clock alarm add <time> [--days <days>] [--label <text>] [--run <command>|--ask <message>]
+#                                when it rings, --run runs a command and --ask
+#                                sends the message through clock.cloud
+#   banditshell clock alarm [list|snooze|stop]
+#   banditshell clock alarm [enable|disable|remove] <handle>
+#                                bare, the next alarm and what is ringing
+#   banditshell clock zone list
+#   banditshell clock zone [find|add|remove] <place>
+#                                the world clocks in the clock menu
+#
+# tablet                         tablet mode, the lid and the pen's area
+#   banditshell tablet           the hinge, the lid and the pen's area
+#   banditshell tablet [on|off|toggle] [caller]
+#   banditshell tablet lid [open|closed|toggle] [caller]
+#                                tablet mode and the lid as the shell believes
+#                                them; caller names who said so
+#   banditshell tablet probe
+#   banditshell tablet probe lid
+#                                ask the hardware, and say how it answered
+#   banditshell tablet pen [edit|commit|cancel|aspect|centre|follow]
+#                                edit opens the mapper over the screen; the rest
+#                                act on it
+#   banditshell tablet pen area <x> <y> <width> <height>
+#                                map the pen to a rectangle without the mapper
+#
+# config                         read and write settings, pick a theme
+#   banditshell config get <key>
+#                                a dotted key in config.json
+#   banditshell config set <key> <value>
+#                                write one; the shell takes it at once
+#   banditshell config theme [<theme>|list]
+#                                the theme; bare, its name
+#
+# start|stop|restart|status|log|doctor
+#                                the shell itself
+#   banditshell start            start the shell and wait until it is up
+#   banditshell stop             stop it, a tried worktree included
+#   banditshell restart          stop it and start it again, a tried worktree
+#                                included
+#   banditshell status           what the shell thinks the compositor said
 #   banditshell log [args]       the running shell's log
 #   banditshell doctor           repair bin/, the helpers and ~/bin/banditshell,
-#                                then report quickshell, dkms and failed units
-#   banditshell toggle panel <panel> [screen]|panel files [dir]|border|wallpaper
-#        sidebar [<screen>|all]|output|tablet [caller]|tablet lid [caller]
-#        volume mute
-#                                flip a surface or a boolean
-#   banditshell open panel <panel> [screen]|panel settings [page] [screen]
-#        panel files [dir]
-#                                open a surface
-#   banditshell close panel <panel>
-#                                put one surface away; bare, every surface
-#   banditshell panic            every surface away
-#   banditshell status panel <panel> [screen]|border|sidebar|volume|output|tablet
-#        penmap|wallpaper|timer|alarm|lock|keyring|migration|screen|stream
-#                                what a thing is doing; bare, the shell
-#   banditshell set border [on|off]|wallpaper [on|off]|wallpaper <file> [<screen>|all]
-#        sidebar [on|off] [<screen>|all]|stream on [<screen>]|stream off
-#        tablet [on|off] [caller]|tablet lid [closed|open] [caller]
-#        volume [<percent>|+n|-n]
-#        volume mute [on|off]|output [speakers|headphones]|output <role> <sink>
-#        brightness [<percent>|+n|-n]|temperature [<kelvin>|off]|theme [theme]
-#        penmap rect <x> <y> <width> <height>|<key> <value>
-#                                a state, a level or a dotted config key; .5 is
-#                                50 percent, +n and -n move, a bare + or - steps
-#   banditshell get <key>|theme  a dotted config key, or the theme's name
-#   banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
-#                                enumerate a registry
-#   banditshell dispatch timer start <duration> [label]
-#        timer [pause|resume|toggle|cancel] [handle]
-#        alarm [list|status|snooze|stop]|alarm [enable|disable|remove] <handle>
-#        alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]
-#        zone list|zone [find|add|remove] <place>
-#        clipboard [use|pin|remove] <index>|clipboard clear
-#        calculator [app|panel]|calculator answer <expression>
-#        keyboard [dock|float]|keyboard page <layer> [screen]
-#        settings float|settings page <page>
-#        launcher run <app>|launcher scrub <fraction>
-#        wallpaper [next|prev|clear] [<screen>|all]|wallpaper palette
-#        menu [current|hover]|penmap [commit|cancel|aspect|centre|follow]
-#        keyring [refuse|demo]|tablet probe|tablet probe lid
-#        notifications clear|migration migrate|lock
-#        picker [open|freeze|clip|freezeclip|close]
-#                                the bespoke tail, target by target; the picker
-#                                falls back to grim and slurp without the shell
-#   banditshell files [toggle|open] [dir]|close|status
-#                                the file browser
-#   banditshell completions [install|status|remove|print] [zsh|bash]
-#                                tab completion for zsh and bash, generated
-#                                from this text
-#   banditshell build            compile src/*.c into bin/
-#   banditshell shaders          compile components/**/*.frag to .qsb
-#   banditshell test [args]      run tests/*.test.js in node
-#   banditshell check            compile every QML file in a fresh engine, then
-#                                run the tests
-#   banditshell shot [file]      a plain screenshot
-#   banditshell demo <menu> [file]
-#                                open a menu, shoot it, put it away
-#   banditshell gallery [WxH]    every component the shell owns, in a window
-#   banditshell lockpreview [file]
-#                                the lock face, photographed
-#   banditshell settingspreview [WxH] [page] [file]
-#                                the settings face at a size, photographed
-#   banditshell filespreview [dir] [file]
-#                                the file browser in a window; with a file, shot
-#   banditshell help             this text
+#                                then report quickshell, dkms, failed units and
+#                                binds in an old form
+#   banditshell doctor binds     the binds still in an old form, and where
+#   banditshell doctor binds rewrite
+#                                rewrite them, a .bak beside each file
 #
-#   <panel>: launcher|session|clipboard|media|calculator|quickcontrols|keyboard
-#        settings|notifications|notch|hotkeys|files|wallpaper|penmap
-#                                or any menu key (list menu)
+# completions                    tab completion for zsh and bash
+#   banditshell completions [install|status|remove|print] [zsh|bash]
+#                                built from this text, and rebuilt on the first
+#                                Tab after it changes
+#
+# dev                            working on banditshell: try, build, test, preview
+#   banditshell dev try [worktree]
+#                                run a worktree on the live session in place of
+#                                the checkout: its branch, its number in the list
+#                                or any unique part of its name; bare, the one you
+#                                are in, the only one, or a pick
+#   banditshell dev back         the checkout again, after try
+#   banditshell dev worktrees    every worktree's branch
+#   banditshell dev run          the shell in the foreground
+#   banditshell dev build        compile src/*.c into bin/
+#   banditshell dev shaders      compile components/**/*.frag to .qsb
+#   banditshell dev test [args]  run tests/*.test.js in node
+#   banditshell dev check        compile every QML file in a fresh engine, then
+#                                run the tests
+#   banditshell dev preview lock [file]
+#                                the lock face, photographed
+#   banditshell dev preview settings [WxH] [page] [file]
+#                                the settings face at a size, photographed
+#   banditshell dev preview files [dir] [file]
+#                                the file browser in a window; with a file,
+#                                photographed
+#   banditshell dev preview gallery [WxH]
+#                                every component the shell owns, in a window
+#   banditshell dev preview menu <menu> [file]
+#                                open a menu, photograph it, put it away
+#   banditshell dev menu [current|hover|list]
+#                                the open menu, the one under the pointer, or
+#                                every menu
+#   banditshell dev launcher scrub <fraction>
+#                                hold the launcher's letter rail at 0 to 1; below
+#                                0 lets go
+#   banditshell dev keyring [status|demo|close]
+#                                the keyring's password prompt: what it asks, a
+#                                made-up question, or refuse it
+#
+# help                           this list; banditshell help <command> for one
+#   banditshell help [<command>]
 
 set -euo pipefail
 
@@ -85,11 +182,13 @@ SHELL_DIR="${BANDITSHELL_DIR:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}"
 SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
 BACKUP="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/lastgood"
 FAILED_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/failed.log"
-SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications notch hotkeys files wallpaper penmap)
+SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications notch hotkeys files wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
 
 qs_target=()
 qs_target_resolved=0
+migrated="${BANDITSHELL_MIGRATED:-}"
+unset BANDITSHELL_MIGRATED
 
 list_instances() {
     qs list --all 2>/dev/null | awk '
@@ -171,7 +270,8 @@ live_worktree() {
 }
 
 match_worktree() {
-    local want="$1" home path branch
+    local want="$1" home path branch folder number=0
+    local -a hits=()
     [ -n "$want" ] || return 1
     home=$(main_dir)
     if [ -d "$want" ]; then
@@ -179,31 +279,54 @@ match_worktree() {
     fi
     while IFS=$'\t' read -r path branch; do
         [ "$path" = "$home" ] && continue
-        case "$want" in
-        "$path" | "$branch" | "${path##*/}") echo "$path"; return 0 ;;
-        esac
+        number=$((number + 1))
+        folder="${path##*/}"
+        if [[ $want == /* ]]; then
+            [ "$want" = "$path" ] && hits=("$path") && break
+        elif [[ $want =~ ^[0-9]+$ ]]; then
+            [ "$want" = "$number" ] && hits=("$path") && break
+        elif [ "$want" = "$branch" ] || [ "$want" = "$folder" ]; then
+            hits=("$path")
+            break
+        elif [[ ${branch,,} == *"${want,,}"* || ${folder,,} == *"${want,,}"* ]]; then
+            hits+=("$path")
+        fi
     done < <(worktree_list)
-    return 1
+    [ "${#hits[@]}" -eq 1 ] || return 1
+    echo "${hits[0]}"
 }
 
+other_worktrees() { worktree_list | tail -n +2; }
+
 pick_worktree() {
+    local others
     if [ -n "$1" ]; then
         match_worktree "$1"
-    else
-        match_worktree "$(git rev-parse --show-toplevel 2>/dev/null || true)" || match_worktree "$SHELL_DIR"
+        return
     fi
+    match_worktree "$(git rev-parse --show-toplevel 2>/dev/null || true)" && return 0
+    match_worktree "$SHELL_DIR" && return 0
+    others=$(other_worktrees)
+    [ -n "$others" ] && [ "$(wc -l <<<"$others")" -eq 1 ] || return 1
+    cut -f1 <<<"$others"
 }
 
 list_worktrees() {
-    local live base path branch mark ahead changed
+    local live home base path branch mark label number=0 ahead changed
     live=$(live_dir || true)
-    base=$(branch_of "$(main_dir)")
+    home=$(main_dir)
+    base=$(branch_of "$home")
     while IFS=$'\t' read -r path branch; do
         mark=" "
         [ "$path" = "$live" ] && mark="*"
+        label=" "
+        if [ "$path" != "$home" ]; then
+            number=$((number + 1))
+            label=$number
+        fi
         ahead=$(git -C "$path" rev-list --count "$base..HEAD" 2>/dev/null || echo 0)
         changed=$(git -C "$path" status --porcelain 2>/dev/null | wc -l)
-        printf '%s %-28s +%-3s %3s changed  %s\n' "$mark" "$branch" "$ahead" "$changed" "$path"
+        printf '%s %2s  %-28s +%-3s %3s changed  %s\n' "$mark" "$label" "$branch" "$ahead" "$changed" "${path/#"$HOME"/\~}"
     done < <(worktree_list)
 }
 
@@ -343,10 +466,10 @@ start_checkout() {
 try_worktree() {
     local target="$1" name
     name=$(branch_of "$target")
-    (SHELL_DIR="$target" && ensure_built) || complain "$name: helpers not built, trying it anyway (run: banditshell build in it)"
+    (SHELL_DIR="$target" && ensure_built) || complain "$name: helpers not built, trying it anyway (run: banditshell dev build in it)"
     stop_shell || true
     if launch "$target"; then
-        echo "trying $name - banditshell back to return"
+        echo "trying $name - banditshell dev back to return"
         return 0
     fi
     complain "$name failed to load - back on the checkout (errors: $FAILED_LOG)"
@@ -355,7 +478,90 @@ try_worktree() {
     exit 1
 }
 
-usage() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
+header() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
+
+usage() {
+    header | awk '
+        function emit() {
+            if (name == "")
+                return
+            if (length(name) > 12)
+                printf "  %s\n%15s%s\n", name, "", text
+            else
+                printf "  %-12s %s\n", name, text
+            name = ""
+        }
+        NR == 1 { print; print ""; next }
+        /^[a-z][a-z|]*( |$)/ && !/^[a-z]+ [^ ]/ {
+            emit()
+            name = $1
+            gsub(/\|/, "  ", name)
+            text = substr($0, 30, 2) == "  " ? substr($0, 32) : ""
+            sub(/^ +/, "", text)
+            if (text != "")
+                emit()
+            next
+        }
+        name != "" && match($0, /^ +/) && RLENGTH == 31 {
+            text = substr($0, 32)
+            emit()
+            next
+        }
+        { emit() }
+        END { emit() }
+    '
+}
+
+group_help() {
+    header | awk -v want="$1" '
+        function title() {
+            if (titled)
+                return
+            printf "banditshell %s%s\n\n", name, text == "" ? "" : " - " text
+            titled = 1
+        }
+        done { next }
+        /^[a-z][a-z|]*( |$)/ && !/^[a-z]+ [^ ]/ {
+            if (inside) {
+                done = 1
+                next
+            }
+            n = split($1, words, "|")
+            for (i = 1; i <= n; i++)
+                if (words[i] == want)
+                    inside = 1
+            if (inside) {
+                name = $1
+                gsub(/\|/, ", ", name)
+                text = substr($0, 30, 2) == "  " ? substr($0, 32) : ""
+                sub(/^ +/, "", text)
+            }
+            next
+        }
+        !inside { next }
+        /^$/ {
+            done = 1
+            next
+        }
+        !titled && text == "" && match($0, /^ +/) && RLENGTH == 31 {
+            text = substr($0, 32)
+            next
+        }
+        { title(); print }
+        END { exit inside ? 0 : 1 }
+    '
+}
+
+nope() {
+    echo "banditshell: $1 has no ${2:-<nothing>}" >&2
+    group_help "${1%% *}" >&2
+    exit 2
+}
+
+say_usage() {
+    echo "usage: banditshell $1" >&2
+    exit 2
+}
 
 helpers_current() {
     local helper
@@ -373,10 +579,29 @@ ensure_built() {
         install -Dm755 "$SHELL_DIR/cli/banditshell" "$SHELL_DIR/bin/banditshell" || return 1
     fi
     helpers_current && return 0
-    "$SHELL_DIR/bin/banditshell" build >/dev/null 2>&1 || return 1
+    "$SHELL_DIR/bin/banditshell" dev build >/dev/null 2>&1 || "$SHELL_DIR/bin/banditshell" build >/dev/null 2>&1 || return 1
 }
 
 pct_of() { awk -v v="$1" 'BEGIN{printf "%d", v * 100 + 0.5}'; }
+
+level_of() {
+    local sign="" n="$1"
+    case "$n" in
+    [+-]*) sign="${n:0:1}" n="${n:1}" ;;
+    esac
+    case "$n" in
+    "") [ -n "$sign" ] && n=10 ;;
+    *.*) n=$(pct_of "$n") ;;
+    esac
+    printf '%s%s' "$sign" "$n"
+}
+
+labelled() {
+    local out
+    out=$(cat)
+    [ -n "$out" ] || return 0
+    awk -v label="$1" '{ printf "%-11s %s\n", NR == 1 ? label : "", $0 }' <<<"$out"
+}
 
 stream_on() {
     local reply
@@ -387,8 +612,6 @@ stream_on() {
     printf '%s\n' "$reply"
 }
 
-rel_of() { case "$1" in *.*) pct_of "$1" ;; *) printf '%s' "$1" ;; esac; }
-
 panel_ipc() {
     case "$1" in
     wallpaper) echo wallpapers ;;
@@ -396,20 +619,22 @@ panel_ipc() {
     esac
 }
 
-panel_status_ok() { case "$1" in clipboard | media | calculator | keyboard | settings | notifications | notch | hotkeys | files | wallpaper | penmap | quickcontrols) return 0 ;; *) return 1 ;; esac; }
+builtin_panel() {
+    local surface
+    for surface in "${SURFACES[@]}"; do
+        [ "$surface" = "$1" ] && return 0
+    done
+    return 1
+}
+
 panel_status_takes_screen() { case "$1" in keyboard | notifications | notch | hotkeys) return 0 ;; *) return 1 ;; esac; }
 
 toggle_panel() {
     local name="$1" rest="${2:-}"
     case "$name" in
-    launcher | session) ipc "$(panel_ipc "$name")" toggle ;;
-    clipboard | media | calculator | quickcontrols) ipc "$name" toggle ;;
-    keyboard) ipc keyboard toggle "$rest" ;;
-    settings) ipc settings toggle ;;
-    notifications | notch | hotkeys) ipc "$name" toggle "$rest" ;;
-    files) ipc files toggle "$rest" ;;
+    launcher | session | clipboard | media | calculator | quickcontrols | settings) ipc "$name" toggle ;;
+    keyboard | notifications | notch | hotkeys | files) ipc "$name" toggle "$rest" ;;
     wallpaper) ipc wallpapers toggle "$rest" ;;
-    penmap) ipc penmap open ;;
     *) ipc menu toggle "$name" "$rest" ;;
     esac
 }
@@ -418,14 +643,10 @@ open_panel() {
     local name="$1"
     shift
     case "$name" in
-    launcher | session) ipc "$(panel_ipc "$name")" open ;;
-    clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
-    keyboard) ipc keyboard open "${1:-}" ;;
+    launcher | session | clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
+    keyboard | notifications | notch | hotkeys | files) ipc "$name" open "${1:-}" ;;
     settings) ipc settings open "${1:-}" "${2:-}" ;;
-    notifications | notch | hotkeys) ipc "$name" open "${1:-}" ;;
-    files) ipc files open "${1:-}" ;;
     wallpaper) ipc wallpapers open "${1:-}" ;;
-    penmap) ipc penmap open ;;
     *) ipc menu open "$name" "${1:-}" ;;
     esac
 }
@@ -448,7 +669,7 @@ close_panel() {
 close_everything() {
     local -a call
     local name closed=0
-    for name in menu picker "${SURFACES[@]}"; do
+    for name in menu picker penmap "${SURFACES[@]}"; do
         close_call "$name"
         if ipc_quiet "${call[@]}" >/dev/null; then
             closed=1
@@ -462,365 +683,395 @@ close_everything() {
 }
 
 status_panel() {
-    panel_status_ok "$1" || { echo "banditshell: $1 has no status" >&2; return 1; }
-    if panel_status_takes_screen "$1"; then
-        ipc "$(panel_ipc "$1")" status "${2:-}"
+    local current
+    if builtin_panel "$1"; then
+        if panel_status_takes_screen "$1"; then
+            ipc "$(panel_ipc "$1")" status "${2:-}"
+        else
+            ipc "$(panel_ipc "$1")" status
+        fi
+        return
+    fi
+    current=$(ipc menu current) || return 1
+    if [ "$current" = "$1" ]; then echo open; else echo closed; fi
+}
+
+list_panels() {
+    printf '%s\n' "${SURFACES[@]}"
+    ipc_quiet menu list || true
+}
+
+route_panel() {
+    local name="${1:-}" action
+    case "$name" in
+    "") list_panels; return ;;
+    close) [ $# -eq 1 ] || nope panel "close ${2:-}"; close_everything; return ;;
+    esac
+    shift
+    action="${1:-status}"
+    if [ $# -gt 0 ]; then shift; fi
+
+    case "$name:$action" in
+    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app>"; ipc launcher run "$1" ;;
+    settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
+    settings:float) ipc settings float ;;
+    keyboard:dock | keyboard:float) ipc keyboard "$action" ;;
+    keyboard:page) [ $# -ge 1 ] || say_usage "panel keyboard page <layer> [screen]"; ipc keyboard page "$1" "${2:-}" ;;
+    clipboard:list | clipboard:clear) ipc clipboard "$action" ;;
+    clipboard:use | clipboard:pin | clipboard:remove) [ $# -ge 1 ] || say_usage "panel clipboard $action <index>"; ipc clipboard "$action" "$1" ;;
+    calculator:full) ipc calculator app ;;
+    calculator:compact) ipc calculator panel ;;
+    calculator:answer) [ $# -ge 1 ] || say_usage "panel calculator answer <expression>"; ipc calculator answer "$*" ;;
+    notifications:clear) ipc notifications clear ;;
+    *:toggle) toggle_panel "$name" "${1:-}" ;;
+    *:open) open_panel "$name" "$@" ;;
+    *:close) close_panel "$name" ;;
+    *:status) status_panel "$name" "${1:-}" ;;
+    *) nope panel "$name $action" ;;
+    esac
+}
+
+route_output() {
+    case "${1:-}" in
+    "") ipc output status ;;
+    speakers | headphones | toggle | list) ipc output "$1" ;;
+    assign) [ $# -ge 3 ] || say_usage "output assign speakers|headphones <device>"; ipc output assign "$2" "$3" ;;
+    *) nope output "$1" ;;
+    esac
+}
+
+route_screen() {
+    local what="${1:-}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$what" in
+    "")
+        ipc screen status | labelled display || return 1
+        ipc_quiet border status | labelled border || true
+        ipc_quiet sidebar status | labelled sidebar || true
+        ipc_quiet stream status | labelled stream || true
+        ;;
+    brightness)
+        if [ -z "${1:-}" ]; then ipc screen status; else ipc screen brightness "$(level_of "$1")"; fi ;;
+    temperature)
+        if [ -z "${1:-}" ]; then ipc screen status; else ipc screen temperature "$1"; fi ;;
+    border)
+        case "${1:-}" in
+        "") ipc border status ;;
+        on | off | toggle) ipc border "$1" ;;
+        *) nope screen "border $1" ;;
+        esac ;;
+    sidebar)
+        case "${1:-}" in
+        "") ipc sidebar status ;;
+        on | off | toggle) ipc sidebar "$1" "${2:-}" ;;
+        *) nope screen "sidebar $1" ;;
+        esac ;;
+    stream)
+        case "${1:-}" in
+        "") ipc stream status ;;
+        on) stream_on "${2:-}" ;;
+        off) ipc stream off ;;
+        *) nope screen "stream $1" ;;
+        esac ;;
+    *) nope screen "$what" ;;
+    esac
+}
+
+route_wallpaper() {
+    case "${1:-}" in
+    "") ipc wallpaper status ;;
+    on | off | toggle | palette) ipc wallpaper "$1" ;;
+    next | prev | clear) ipc wallpaper "$1" "${2:-}" ;;
+    set) [ $# -ge 2 ] || say_usage "wallpaper set <file> [screen|all]"
+        ipc wallpaper set "$(realpath -s -m -- "$2")" "${3:-}" ;;
+    list) ipc wallpaper list "${2:-}" ;;
+    *) nope wallpaper "$1" ;;
+    esac
+}
+
+screenshot_dir() {
+    local cfg dir
+    cfg="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+    dir=$(jq -r '.picker.dir // empty' "$cfg" 2>/dev/null || true)
+    dir="${dir:-~/Pictures/Screenshots}"
+    printf '%s' "${dir/#\~/$HOME}"
+}
+
+pick_region() {
+    local action="$1" region note dir editor out
+    if ipc_quiet picker "$action"; then
+        return 0
+    fi
+    if ! command -v slurp >/dev/null || ! command -v grim >/dev/null; then
+        complain "not running, and no grim/slurp to fall back on"
+        exit 1
+    fi
+    complain "not running - falling back to grim/slurp (try: banditshell start)"
+    # shellcheck disable=SC2086
+    region=$(slurp ${SLURP_ARGS:-}) || exit 0
+    if [ -z "$region" ]; then
+        exit 0
+    fi
+    note="banditshell was not running"
+    case "$action" in
+    freeze*) note="$note; taken live, nothing could be frozen" ;;
+    esac
+    case "$action" in
+    *clip)
+        grim -g "$region" - | wl-copy --type image/png
+        notice "Screenshot copied" "$note"
+        ;;
+    *)
+        dir=$(screenshot_dir)
+        editor=$(jq -r '.picker.editor // empty' "${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json" 2>/dev/null || true)
+        editor="${editor:-swappy -f}"
+        mkdir -p "$dir"
+        out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
+        grim -g "$region" "$out"
+        notice "Screenshot saved" "$out ($note)"
+        # shellcheck disable=SC2086
+        ${editor} "$out" >/dev/null 2>&1 || true
+        echo "$out"
+        ;;
+    esac
+}
+
+notice() {
+    notify-send -a banditshell "$1" "$2" 2>/dev/null ||
+        hyprctl notify -1 5000 "rgb(e5c07b)" "$1 - $2" >/dev/null 2>&1 || true
+}
+
+route_screenshot() {
+    local mode="${1:-}" freeze=0 arg dir out
+    if [ $# -gt 0 ]; then shift; fi
+    case "$mode" in
+    "") group_help screenshot; return ;;
+    full)
+        if [ -n "${1:-}" ]; then
+            out="$1"
+        else
+            dir=$(screenshot_dir)
+            mkdir -p "$dir"
+            out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
+        fi
+        grim "$out"
+        echo "$out"
+        return
+        ;;
+    save | copy) ;;
+    *) nope screenshot "$mode" ;;
+    esac
+    for arg in "$@"; do
+        case "$arg" in
+        --freeze) freeze=1 ;;
+        *) nope screenshot "$mode $arg" ;;
+        esac
+    done
+    case "$mode:$freeze" in
+    save:0) pick_region open ;;
+    save:1) pick_region freeze ;;
+    copy:0) pick_region clip ;;
+    copy:1) pick_region freezeclip ;;
+    esac
+}
+
+route_timer() {
+    case "${1:-}" in
+    "") ipc timer status ;;
+    start) [ $# -ge 2 ] || say_usage "clock timer start <duration> [label]"; ipc timer start "$2" "${3:-}" ;;
+    pause | resume | toggle | cancel) ipc timer "$1" "${2:-}" ;;
+    *) nope clock "timer $1" ;;
+    esac
+}
+
+route_alarm() {
+    local action="${1:-}" when days="" label="" mode="" payload=""
+    case "$action" in
+    "") ipc alarm status ;;
+    list | snooze | stop) ipc alarm "$action" ;;
+    enable | disable | remove) [ $# -ge 2 ] || say_usage "clock alarm $action <handle>"; ipc alarm "$action" "$2" ;;
+    add)
+        [ $# -ge 2 ] || say_usage "clock alarm add <time> [--days <days>] [--label <text>] [--run <command>|--ask <message>]"
+        when="$2"
+        shift 2
+        while [ $# -gt 0 ]; do
+            [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
+            case "$1" in
+            --days) days="$2" ;;
+            --label) label="$2" ;;
+            --run) mode="command" payload="$2" ;;
+            --ask) mode="cloud" payload="$2" ;;
+            *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
+            esac
+            shift 2
+        done
+        ipc alarm add "$when" "$days" "$label" "$mode" "$payload"
+        ;;
+    *) nope clock "alarm $action" ;;
+    esac
+}
+
+route_zone() {
+    local action="${1:-list}"
+    case "$action" in
+    list) ipc zone list ;;
+    find | add | remove) [ $# -ge 2 ] || say_usage "clock zone $action <place>"; shift; ipc zone "$action" "$*" ;;
+    *) nope clock "zone $action" ;;
+    esac
+}
+
+route_clock() {
+    local what="${1:-}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$what" in
+    "")
+        ipc timer status | labelled timers || return 1
+        ipc_quiet alarm status | labelled alarms || true
+        ;;
+    timer) route_timer "$@" ;;
+    alarm) route_alarm "$@" ;;
+    zone) route_zone "$@" ;;
+    *) nope clock "$what" ;;
+    esac
+}
+
+route_tablet() {
+    case "${1:-}" in
+    "")
+        ipc tablet status | labelled tablet || return 1
+        ipc_quiet penmap status | labelled pen || true
+        ;;
+    on | off | toggle) ipc tablet "$1" "${2:-}" ;;
+    lid)
+        case "${2:-}" in
+        "") ipc tablet status ;;
+        open | closed | toggle) ipc tablet lid "$2" "${3:-}" ;;
+        *) nope tablet "lid $2" ;;
+        esac ;;
+    probe)
+        case "${2:-}" in
+        "") python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
+        lid) python3 "$SHELL_DIR/scripts/tablet-state.py" --lid --verbose ;;
+        *) nope tablet "probe $2" ;;
+        esac ;;
+    pen)
+        case "${2:-}" in
+        "") ipc penmap status ;;
+        edit) ipc penmap open ;;
+        commit | cancel | aspect | centre | follow) ipc penmap "$2" ;;
+        area) [ $# -ge 6 ] || say_usage "tablet pen area <x> <y> <width> <height>"; ipc penmap set "$3" "$4" "$5" "$6" ;;
+        *) nope tablet "pen $2" ;;
+        esac ;;
+    *) nope tablet "$1" ;;
+    esac
+}
+
+route_config() {
+    case "${1:-}" in
+    "") group_help config ;;
+    get) [ $# -ge 2 ] || say_usage "config get <key>"; ipc shell get "$2" ;;
+    set) [ $# -ge 3 ] || say_usage "config set <key> <value>"; ipc shell set "$2" "$3" ;;
+    theme)
+        case "${2:-}" in
+        "") ipc shell get theme ;;
+        list) ipc shell themes ;;
+        *) ipc shell set theme "\"$2\"" ;;
+        esac ;;
+    *) nope config "$1" ;;
+    esac
+}
+
+doctor() {
+    local failed binds
+    if ensure_built; then
+        echo "bin/ current, helpers in place"
     else
-        ipc "$(panel_ipc "$1")" status
+        complain "bin/ not rebuilt (run: bash $SHELL_DIR/install.sh)"
+    fi
+    mkdir -p "$HOME/bin"
+    if [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$SHELL_DIR/bin/banditshell" ]; then
+        ln -sfn "$SHELL_DIR/bin/banditshell" "$HOME/bin/banditshell"
+        echo "exec symlink restored: ~/bin/banditshell"
+    fi
+    if command -v qs >/dev/null 2>&1; then
+        echo "quickshell $(qs --version 2>/dev/null | head -1)"
+    else
+        complain "quickshell missing (run: bash $SHELL_DIR/install.sh)"
+    fi
+    if command -v dkms >/dev/null 2>&1 && dkms status 2>/dev/null | grep -q . && ! dkms status 2>/dev/null | grep -q "$(uname -r)"; then
+        complain "no dkms module built for the running kernel $(uname -r); a reboot may come up without graphics (update again, or boot the older kernel)"
+    fi
+    failed=$(systemctl --failed --no-pager 2>/dev/null | sed -n 's/^\(.*\.service\).*/\1/p' | tr '\n' ' ')
+    if [ -n "$failed" ]; then
+        echo "failed units (machine state, not the shell): $failed"
+    fi
+    if running; then
+        echo "the shell itself: running"
+        binds=$(ipc_quiet migration status || true)
+        case "$binds" in
+        "" | "all binds"* | "not scanned"*) ;;
+        *) echo "binds: $binds (rewrite them: banditshell doctor binds rewrite)" ;;
+        esac
+    else
+        echo "the shell itself: not running (try: banditshell start)"
     fi
 }
 
-route_dispatch() {
-    local target="$1"
-    shift
-    local action="${1:-}"
-
-    case "$target" in
-    menu)
-        case "$action" in
-        current | hover) ipc menu "$action" ;;
-        *) echo "banditshell: dispatch menu current|hover" >&2; exit 2 ;;
-        esac
-        ;;
-
-    timer)
-        case "$action" in
-        pause | resume | toggle | cancel) ipc timer "$action" "${2:-}" ;;
-        start) [ $# -ge 2 ] || { echo "usage: banditshell dispatch timer start <duration> [label]" >&2; exit 2; }
-            ipc timer start "$2" "${3:-}" ;;
-        *) echo "banditshell: dispatch timer start|pause|resume|toggle|cancel" >&2; exit 2 ;;
-        esac
-        ;;
-
-    alarm)
-        case "$action" in
-        list | status | snooze | stop) ipc alarm "$action" ;;
-        enable | disable | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch alarm $action <handle>" >&2; exit 2; }
-            ipc alarm "$action" "$2" ;;
-        add)
-            [ $# -ge 2 ] || { echo "usage: banditshell dispatch alarm add <time> [--days <spec>] [--label <text>] [--run <cmd> | --ask <message>]" >&2; exit 2; }
-            local when="$2"
-            shift 2
-            local days="" label="" mode="" payload=""
-            while [ $# -gt 0 ]; do
-                [ $# -ge 2 ] || { echo "banditshell: $1 needs a value" >&2; exit 2; }
-                case "$1" in
-                --days) days="$2" ;;
-                --label) label="$2" ;;
-                --run) mode="command"; payload="$2" ;;
-                --ask) mode="cloud"; payload="$2" ;;
-                *) echo "banditshell: unknown option: $1" >&2; exit 2 ;;
-                esac
-                shift 2
-            done
-            ipc alarm add "$when" "$days" "$label" "$mode" "$payload"
-            ;;
-        *) echo "banditshell: dispatch alarm list|status|snooze|stop|enable|disable|remove|add" >&2; exit 2 ;;
-        esac
-        ;;
-
-    zone)
-        case "$action" in
-        list) ipc zone list ;;
-        find | add | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch zone $action <place>" >&2; exit 2; }
-            shift
-            ipc zone "$action" "$*" ;;
-        *) echo "banditshell: dispatch zone list|find|add|remove" >&2; exit 2 ;;
-        esac
-        ;;
-
-    clipboard)
-        case "$action" in
-        clear) ipc clipboard clear ;;
-        use | pin | remove) [ $# -ge 2 ] || { echo "usage: banditshell dispatch clipboard $action <index>" >&2; exit 2; }
-            ipc clipboard "$action" "$2" ;;
-        *) echo "banditshell: dispatch clipboard use|pin|remove <index>|clear" >&2; exit 2 ;;
-        esac
-        ;;
-
-    calculator)
-        case "$action" in
-        app | panel) ipc calculator "$action" ;;
-        answer) [ $# -ge 2 ] || { echo "usage: banditshell dispatch calculator answer <expression>" >&2; exit 2; }
-            shift
-            ipc calculator answer "$*" ;;
-        *) echo "banditshell: dispatch calculator app|panel|answer <expression>" >&2; exit 2 ;;
-        esac
-        ;;
-
-    keyboard)
-        case "$action" in
-        dock | float) ipc keyboard "$action" ;;
-        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch keyboard page <layer> [screen]" >&2; exit 2; }
-            ipc keyboard page "$2" "${3:-}" ;;
-        *) echo "banditshell: dispatch keyboard page <layer>|dock|float" >&2; exit 2 ;;
-        esac
-        ;;
-
-    settings)
-        case "$action" in
-        float) ipc settings float ;;
-        page) [ $# -ge 2 ] || { echo "usage: banditshell dispatch settings page <page>" >&2; exit 2; }
-            ipc settings page "$2" ;;
-        *) echo "banditshell: dispatch settings page <page>|float" >&2; exit 2 ;;
-        esac
-        ;;
-
-    launcher)
-        case "$action" in
-        run) ipc launcher run "${2:-}" ;;
-        scrub) ipc launcher scrub "${2:-0}" ;;
-        *) echo "banditshell: dispatch launcher run <app>|scrub <fraction>" >&2; exit 2 ;;
-        esac
-        ;;
-
-    wallpaper)
-        case "$action" in
-        next | prev | clear) ipc wallpaper "$action" "${2:-}" ;;
-        palette) ipc wallpaper palette ;;
-        *) echo "banditshell: dispatch wallpaper next|prev|clear [screen|all]|palette" >&2; exit 2 ;;
-        esac
-        ;;
-
-    penmap)
-        case "$action" in
-        commit | cancel | aspect | centre | follow) ipc penmap "$action" ;;
-        probe) python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose ;;
-        *) echo "banditshell: dispatch penmap commit|cancel|aspect|centre|follow" >&2; exit 2 ;;
-        esac
-        ;;
-
-    tablet)
-        case "$action" in
-        probe)
-            if [ "${2:-}" = lid ]; then
-                python3 "$SHELL_DIR/scripts/tablet-state.py" --lid --verbose
-            else
-                python3 "$SHELL_DIR/scripts/tablet-state.py" --verbose
-            fi
-            ;;
-        *) echo "banditshell: dispatch tablet probe [lid]" >&2; exit 2 ;;
-        esac
-        ;;
-
-    keyring)
-        case "$action" in
-        refuse | demo) ipc keyring "$action" ;;
-        *) echo "banditshell: dispatch keyring refuse|demo" >&2; exit 2 ;;
-        esac
-        ;;
-
-    notifications)
-        case "$action" in
-        clear) ipc notifications clear ;;
-        *) echo "banditshell: dispatch notifications clear" >&2; exit 2 ;;
-        esac
-        ;;
-
-    migration)
-        case "$action" in
-        migrate) ipc migration migrate ;;
-        *) echo "banditshell: dispatch migration migrate" >&2; exit 2 ;;
-        esac
-        ;;
-
-    lock) ipc lock lock ;;
-
-    picker)
-        if ipc_quiet picker "$action" && [ "$action" != close ]; then
-            exit 0
-        fi
-        case "$action" in
-        close) ipc picker close; exit 0 ;;
-        esac
-        if ! command -v slurp >/dev/null || ! command -v grim >/dev/null; then
-            complain "not running, and no grim/slurp to fall back on"
-            exit 1
-        fi
-        complain "not running - falling back to grim/slurp (try: banditshell start)"
-        # shellcheck disable=SC2086
-        region=$(slurp ${SLURP_ARGS:-}) || exit 0
-        if [ -z "$region" ]; then
-            exit 0
-        fi
-        note="banditshell was not running"
-        case "$action" in
-        freeze*) note="$note; taken live, nothing could be frozen" ;;
-        esac
-        say2() {
-            notify-send -a banditshell "$1" "$2" 2>/dev/null ||
-                hyprctl notify -1 5000 "rgb(e5c07b)" "$1 - $2" >/dev/null 2>&1 || true
-        }
-        case "$action" in
-        *clip)
-            grim -g "$region" - | wl-copy --type image/png
-            say2 "Screenshot copied" "$note"
-            ;;
-        *)
-            cfg="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
-            dir=$(jq -r '.picker.dir // empty' "$cfg" 2>/dev/null || true)
-            editor=$(jq -r '.picker.editor // empty' "$cfg" 2>/dev/null || true)
-            dir="${dir:-~/Pictures/Screenshots}"
-            dir="${dir/#\~/$HOME}"
-            editor="${editor:-swappy -f}"
-            mkdir -p "$dir"
-            out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
-            grim -g "$region" "$out"
-            say2 "Screenshot saved" "$out ($note)"
-            # shellcheck disable=SC2086
-            ${editor} "$out" >/dev/null 2>&1 || true
-            echo "$out"
-            ;;
-        esac
-        ;;
-
-    *)
-        echo "banditshell: no dispatch target: $target" >&2
-        exit 2
-        ;;
-    esac
+build_helpers() {
+    local cc="${CC:-gcc}"
+    local -a cflags ldflags wayland
+    command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
+    read -ra cflags <<<"-O2 -Wall -Wextra -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE ${CFLAGS:-}"
+    read -ra ldflags <<<"-pie -Wl,-z,relro,-z,now ${LDFLAGS:-}"
+    read -ra wayland <<<"$(pkg-config --libs wayland-client 2>/dev/null || echo -lwayland-client)"
+    mkdir -p "$SHELL_DIR/bin"
+    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" "${ldflags[@]}" -lutil
+    echo "src/bs-pty.c -> bin/bs-pty"
+    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c" "${ldflags[@]}"
+    echo "src/bs-ls.c -> bin/bs-ls"
+    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-gamma" "$SHELL_DIR/src/bs-gamma.c" "$SHELL_DIR/src/gamma-client-protocol.c" "${ldflags[@]}" "${wayland[@]}" -lm
+    echo "src/bs-gamma.c -> bin/bs-gamma"
 }
 
-route_verb() {
-    local verb="$1"
-    shift
-    local obj="${1:-}"
-    if [ "$#" -gt 0 ]; then shift; fi
+build_shaders() {
+    local qsb="${QSB:-/usr/lib/qt6/bin/qsb}" f
+    [ -x "$qsb" ] || { echo "banditshell: qsb not found (install qt6-shadertools)" >&2; exit 1; }
+    while IFS= read -r f; do
+        "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
+        echo "${f#"$SHELL_DIR/"} -> ${f#"$SHELL_DIR/"}.qsb"
+    done < <(find "$SHELL_DIR/components" -name '*.frag' | sort)
+}
 
-    case "$verb" in
-    toggle)
-        case "$obj" in
-        panel) [ $# -ge 1 ] || { echo "usage: banditshell toggle panel <panel> [screen]" >&2; exit 2; }
-            toggle_panel "$1" "${2:-}" ;;
-        border) ipc border toggle ;;
-        wallpaper) ipc wallpaper toggle ;;
-        sidebar) ipc sidebar toggle "${1:-}" ;;
-        output) ipc output toggle ;;
-        tablet)
-            if [ "${1:-}" = lid ]; then
-                ipc tablet lid toggle "${2:-}"
-            else
-                ipc tablet toggle "${1:-}"
-            fi ;;
-        volume)
-            [ "${1:-}" = mute ] || { echo "banditshell: the level is a number; use 'set volume <percent>'. Only mute toggles." >&2; exit 2; }
-            ipc volume mute "" ;;
-        *) echo "banditshell: nothing to toggle: ${obj:-<none>} (try: toggle panel <panel>|border|wallpaper|sidebar|output|tablet|volume mute)" >&2; exit 2 ;;
-        esac
-        ;;
+check_everything() {
+    local status=0
+    "$SHELL_DIR/scripts/qml-compile-check.sh" "$SHELL_DIR" || status=1
+    if command -v node >/dev/null; then
+        (cd "$SHELL_DIR" && node --test 'tests/*.test.js') || status=1
+    else
+        echo "banditshell: node not found" >&2
+        status=1
+    fi
+    exit "$status"
+}
 
-    open)
-        case "$obj" in
-        panel) [ $# -ge 1 ] || { echo "usage: banditshell open panel <panel> [args]" >&2; exit 2; }
-            open_panel "$@" ;;
-        "") echo "usage: banditshell open panel <panel> [args]" >&2; exit 2 ;;
-        *) echo "banditshell: only panels open: open panel <panel>" >&2; exit 2 ;;
-        esac
-        ;;
-
-    close)
-        if [ -z "$obj" ]; then
-            close_everything
-            return
-        fi
-        [ "$obj" = panel ] && [ $# -ge 1 ] || { echo "usage: banditshell close panel <panel> (bare 'close' shuts everything)" >&2; exit 2; }
-        close_panel "$1"
-        ;;
-
-    set)
-        case "$obj" in
-        border) [ $# -ge 1 ] || { echo "usage: banditshell set border on|off" >&2; exit 2; }
-            case "$1" in on | off) ipc border "$1" ;; *) echo "banditshell: set border on|off" >&2; exit 2 ;; esac ;;
-        sidebar) [ $# -ge 1 ] || { echo "usage: banditshell set sidebar on|off [screen|all]" >&2; exit 2; }
-            case "$1" in on | off) ipc sidebar "$1" "${2:-}" ;; *) echo "banditshell: set sidebar on|off [screen|all]" >&2; exit 2 ;; esac ;;
-        stream)
-            case "${1:-}" in
-            on) stream_on "${2:-}" ;;
-            off) ipc stream off ;;
-            *) echo "usage: banditshell set stream on [screen]|off" >&2; exit 2 ;;
-            esac ;;
-        wallpaper)
-            [ $# -ge 1 ] || { echo "usage: banditshell set wallpaper on|off|<file> [screen|all]" >&2; exit 2; }
-            case "$1" in
-            on | off) ipc wallpaper "$1" ;;
-            "") echo "usage: banditshell set wallpaper on|off|<file> [screen|all]" >&2; exit 2 ;;
-            *) ipc wallpaper set "$(realpath -s -m -- "$1")" "${2:-}" ;;
-            esac ;;
-        volume)
-            [ $# -ge 1 ] || { echo "usage: banditshell set volume <percent>|+n|-n|mute on|off" >&2; exit 2; }
-            if [ "$1" = mute ]; then
-                case "${2:-}" in
-                on | off) ipc volume mute "$2" ;;
-                "") echo "banditshell: set volume mute on|off (or: toggle volume mute)" >&2; exit 2 ;;
-                *) echo "banditshell: set volume mute on|off" >&2; exit 2 ;;
-                esac
-                return 0
-            fi
-            case "$1" in
-            +*) n="${1#+}"; if [ -z "$n" ]; then ipc volume up ""; else ipc volume upPercent "$(rel_of "$n")"; fi ;;
-            -*) n="${1#-}"; if [ -z "$n" ]; then ipc volume down ""; else ipc volume downPercent "$(rel_of "$n")"; fi ;;
-            *.*) ipc volume set "$(pct_of "$1")" ;;
-            *) ipc volume set "$1" ;;
-            esac ;;
-        brightness)
-            [ $# -ge 1 ] || { echo "usage: banditshell set brightness <percent>|+n|-n" >&2; exit 2; }
-            case "$1" in
-            *.*) ipc screen brightness "$(pct_of "$1")" ;;
-            *) ipc screen brightness "$1" ;;
-            esac ;;
-        temperature)
-            [ $# -ge 1 ] || { echo "usage: banditshell set temperature <kelvin>|off" >&2; exit 2; }
-            ipc screen temperature "$1" ;;
-        output)
-            [ $# -ge 1 ] || { echo "usage: banditshell set output speakers|headphones|<role> <sink>" >&2; exit 2; }
-            case "$1" in
-            speakers | headphones) ipc output "$1" ;;
-            "") echo "usage: banditshell set output speakers|headphones|<role> <sink>" >&2; exit 2 ;;
-            *) [ $# -ge 2 ] || { echo "usage: banditshell set output <role> <sink>" >&2; exit 2; }
-                ipc output assign "$1" "${2:-}" ;;
-            esac ;;
-        theme) [ $# -ge 1 ] || { echo "usage: banditshell set theme <theme>" >&2; exit 2; }
-            ipc shell set theme "\"$1\"" ;;
-        penmap)
-            [ "${1:-}" = rect ] && [ $# -ge 5 ] || { echo "usage: banditshell set penmap rect <x> <y> <width> <height>" >&2; exit 2; }
-            ipc penmap set "$2" "$3" "$4" "$5" ;;
-        "") echo "usage: banditshell set <key> <value>" >&2; exit 2 ;;
-        *) [ $# -ge 1 ] || { echo "usage: banditshell set <key> <value>" >&2; exit 2; }
-            ipc shell set "$obj" "$1" ;;
-        esac
-        ;;
-
-    get)
-        case "$obj" in
-        "") echo "usage: banditshell get <key>|theme" >&2; exit 2 ;;
-        theme) ipc shell get theme ;;
-        *) ipc shell get "$obj" ;;
-        esac
-        ;;
-
-    list)
-        case "$obj" in
-        menu) ipc menu list ;;
-        clipboard) ipc clipboard list ;;
-        wallpaper) ipc wallpaper list "${1:-}" ;;
-        output) ipc output list ;;
-        alarm) ipc alarm list ;;
-        zone) ipc zone list ;;
-        themes) ipc shell themes ;;
-        *) echo "banditshell: list menu|clipboard|wallpaper|output|alarm|zone|themes" >&2; exit 2 ;;
-        esac
-        ;;
-
-    status)
-        case "$obj" in
-        "") ipc shell status ;;
-        panel) [ $# -ge 1 ] || { echo "usage: banditshell status panel <panel> [screen]" >&2; exit 2; }
-            status_panel "$1" "${2:-}" ;;
-        border | sidebar | volume | output | tablet | penmap | wallpaper | timer | alarm | lock | keyring | migration | screen | stream) ipc "$obj" status ;;
-        *) echo "banditshell: no status for: $obj" >&2; exit 2 ;;
-        esac
-        ;;
-    esac
+try_command() {
+    local target answer
+    if target=$(pick_worktree "${1:-}"); then
+        try_worktree "$target"
+        exit 0
+    fi
+    if [ -n "${1:-}" ]; then
+        echo "banditshell: no single worktree matches $1" >&2
+        list_worktrees >&2
+        exit 2
+    fi
+    list_worktrees
+    if [ -t 0 ] && [ -t 1 ] && [ -n "$(other_worktrees)" ]; then
+        read -rp "try which? " answer || exit 0
+        [ -n "$answer" ] || exit 0
+        target=$(match_worktree "$answer") || { echo "banditshell: no single worktree matches $answer" >&2; exit 2; }
+        try_worktree "$target"
+    fi
 }
 
 preview_pid=""
@@ -854,10 +1105,224 @@ window_rect() {
     hyprctl -j clients | jq -r --arg title "$1" '.[] | select(.title == $title) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1
 }
 
+route_preview() {
+    local face="${1:-}" where out size page w h ws rect
+    if [ $# -gt 0 ]; then shift; fi
+    case "$face" in
+    lock)
+        mkdir -p "$SHOT_DIR"
+        out="${1:-$SHOT_DIR/lock.png}"
+        start_preview LockPreview 9
+        sleep 4
+        preview_failed LockPreview && exit 1
+        grim "$out"
+        wait "$preview_pid" || true
+        echo "$out"
+        ;;
+    settings)
+        mkdir -p "$SHOT_DIR"
+        size="${1:-1920x1080}"
+        page="${2:-}"
+        out="${3:-$SHOT_DIR/settings-$size${page:+-$page}.png}"
+        w="${size%x*}"
+        h="${size#*x}"
+        ws="${PREVIEW_WORKSPACE:-6}"
+        hyprctl eval "hl.window_rule({ name = \"banditshell-settingspreview\", match = { title = \"^(banditshell-settingspreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true, workspace = \"$ws silent\", no_initial_focus = true, no_focus = true })" >/dev/null 2>&1 ||
+            hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule center on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule workspace $ws silent, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_initial_focus on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_focus on, match:title ^(banditshell-settingspreview)\$" >/dev/null 2>&1 || true
+        start_preview SettingsPreview 9 "SETTINGS_PREVIEW=$size" "SETTINGS_PAGE=$page"
+        sleep 4
+        preview_failed SettingsPreview && exit 1
+        rect=$(window_rect banditshell-settingspreview)
+        if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
+        wait "$preview_pid" || true
+        echo "$out"
+        ;;
+    files)
+        where="${1:-$HOME}"
+        out="${2:-}"
+        resolve_target
+        w=$(ipc_quiet shell get files.width || echo 1200)
+        h=$(ipc_quiet shell get files.height || echo 760)
+        hyprctl eval "hl.window_rule({ name = \"banditshell-filespreview\", match = { title = \"^(banditshell-filespreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
+            hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1 || true
+        start_preview FilesPreview 0 "FILES_PREVIEW=$where"
+        if [ -n "$out" ]; then
+            sleep 4
+            preview_failed FilesPreview && exit 1
+            rect=$(window_rect banditshell-filespreview)
+            if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
+            kill "$preview_pid" 2>/dev/null || true
+            echo "$out"
+        else
+            sleep 2
+            preview_failed FilesPreview && exit 1
+            wait "$preview_pid"
+        fi
+        ;;
+    gallery)
+        size="${1:-1280x800}"
+        w="${size%x*}"
+        h="${size#*x}"
+        hyprctl eval "hl.window_rule({ name = \"banditshell-gallery\", match = { title = \"^(banditshell-gallery)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
+            hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1 || true
+        start_preview GalleryPreview 0 "GALLERY_SIZE=$size"
+        sleep 2
+        preview_failed GalleryPreview && exit 1
+        echo "gallery up at $size"
+        ;;
+    menu)
+        [ $# -ge 1 ] || say_usage "dev preview menu <menu> [file]"
+        mkdir -p "$SHOT_DIR"
+        out="${2:-$SHOT_DIR/menu-$1.png}"
+        ipc menu open "$1" "" >/dev/null
+        sleep 0.6
+        grim "$out"
+        ipc menu close >/dev/null
+        echo "$out"
+        ;;
+    *) nope dev "preview $face" ;;
+    esac
+}
+
+route_dev() {
+    local what="${1:-}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$what" in
+    "") group_help dev ;;
+    try) try_command "${1:-}" ;;
+    back)
+        stop_shell || true
+        SHELL_DIR=$(main_dir)
+        start_checkout "back on $(branch_of "$SHELL_DIR")"
+        ;;
+    worktrees) other_worktrees | cut -f2 ;;
+    run) cd "$HOME" || exit 1; exec qs -p "$SHELL_DIR" ;;
+    build) build_helpers ;;
+    shaders) build_shaders ;;
+    test)
+        command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+        cd "$SHELL_DIR" || exit 1
+        exec node --test 'tests/*.test.js' "$@"
+        ;;
+    check) check_everything ;;
+    preview) route_preview "$@" ;;
+    menu)
+        case "${1:-current}" in
+        current | hover | list) ipc menu "${1:-current}" ;;
+        *) nope dev "menu $1" ;;
+        esac ;;
+    launcher)
+        [ "${1:-}" = scrub ] || nope dev "launcher ${1:-}"
+        ipc launcher scrub "${2:-0}" ;;
+    keyring)
+        case "${1:-status}" in
+        status | demo) ipc keyring "${1:-status}" ;;
+        close) ipc keyring refuse ;;
+        *) nope dev "keyring $1" ;;
+        esac ;;
+    *) nope dev "$what" ;;
+    esac
+}
+
+route_completions() {
+    local sub="${1:-status}" generator code status=0
+    local -a generators=(zsh bash)
+    if [ $# -gt 0 ]; then shift; fi
+    case "$sub" in
+    install | status | remove)
+        case "${1:-}" in
+        zsh | bash)
+            generators=("$1")
+            shift
+            ;;
+        esac
+        for generator in "${generators[@]}"; do
+            "$SHELL_DIR/scripts/$generator-completion.sh" "$sub" "$@" || {
+                code=$?
+                [ "$code" -gt "$status" ] && status=$code
+            }
+        done
+        exit "$status"
+        ;;
+    print)
+        case "${1:-zsh}" in
+        zsh | bash) exec "$SHELL_DIR/scripts/${1:-zsh}-completion.sh" print ;;
+        *) say_usage "completions print [zsh|bash]" ;;
+        esac
+        ;;
+    *) say_usage "completions [install|status|remove|print] [zsh|bash]" ;;
+    esac
+}
+
+migrate_or_fail() {
+    local rewritten lead i suffix
+    local -a words kept lead_words external
+    if [ -z "$migrated" ] && command -v node >/dev/null &&
+        rewritten=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$*" 2>/dev/null) &&
+        [ -n "$rewritten" ]; then
+        if [[ $rewritten == "!"* ]]; then
+            read -ra external <<<"${rewritten#!}"
+            echo "banditshell: that is ${external[0]}'s job now: ${rewritten#!}" >&2
+            exec "${external[@]}"
+        fi
+        words=("$@")
+        lead="$rewritten"
+        kept=()
+        for ((i = 0; i < ${#words[@]}; i++)); do
+            kept=("${words[@]:i}")
+            suffix="${kept[*]}"
+            if [ "$rewritten" = "$suffix" ]; then
+                lead=""
+                break
+            elif [[ $rewritten == *" $suffix" ]]; then
+                lead="${rewritten% "$suffix"}"
+                break
+            fi
+            kept=()
+        done
+        read -ra lead_words <<<"$lead"
+        BANDITSHELL_MIGRATED=1 exec "${BASH_SOURCE[0]}" "${lead_words[@]}" "${kept[@]}"
+    fi
+    echo "banditshell: no command $*" >&2
+    usage >&2
+    exit 2
+}
+
 cmd="${1:-help}"
 shift || true
 
+if [ "$cmd" != help ] && [ "$cmd" != -h ] && [ "$cmd" != --help ]; then
+    case "$cmd:${1:-}" in
+    log:-h | log:--help) ;;
+    *:help | *:-h | *:--help) group_help "$cmd" && exit 0 ;;
+    esac
+fi
+
 case "$cmd" in
+panel)
+    route_panel "$@"
+    ;;
+output)
+    route_output "$@"
+    ;;
+screen)
+    route_screen "$@"
+    ;;
+wallpaper)
+    route_wallpaper "$@"
+    ;;
+screenshot)
+    route_screenshot "$@"
+    ;;
+clock)
+    route_clock "$@"
+    ;;
+tablet)
+    route_tablet "$@"
+    ;;
+config)
+    route_config "$@"
+    ;;
 start)
     running && { echo "already running"; exit 0; }
     start_checkout "started"
@@ -877,246 +1342,39 @@ restart)
     stop_shell || true
     start_checkout "restarted"
     ;;
-try)
-    if ! target=$(pick_worktree "${1:-}"); then
-        if [ -n "${1:-}" ]; then
-            echo "banditshell: no worktree called $1" >&2
-            list_worktrees >&2
-            exit 2
-        fi
-        list_worktrees
-        exit 0
-    fi
-    try_worktree "$target"
-    ;;
-back)
-    stop_shell || true
-    SHELL_DIR=$(main_dir)
-    start_checkout "back on $(branch_of "$SHELL_DIR")"
-    ;;
-run)
-    cd "$HOME" || exit 1
-    exec qs -p "$SHELL_DIR"
+status)
+    [ $# -eq 0 ] || migrate_or_fail status "$@"
+    ipc shell status
     ;;
 log)
     exec qs -p "$(live_dir || echo "$SHELL_DIR")" log "$@"
     ;;
 doctor)
-    if ensure_built; then
-        echo "bin/ current, helpers in place"
-    else
-        complain "bin/ not rebuilt (run: bash $SHELL_DIR/install.sh)"
-    fi
-    mkdir -p "$HOME/bin"
-    if [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$SHELL_DIR/bin/banditshell" ]; then
-        ln -sfn "$SHELL_DIR/bin/banditshell" "$HOME/bin/banditshell"
-        echo "exec symlink restored: ~/bin/banditshell"
-    fi
-    if command -v qs >/dev/null 2>&1; then
-        echo "quickshell $(qs --version 2>/dev/null | head -1)"
-    else
-        complain "quickshell missing (run: bash $SHELL_DIR/install.sh)"
-    fi
-    if command -v dkms >/dev/null 2>&1 && dkms status 2>/dev/null | grep -q . && ! dkms status 2>/dev/null | grep -q "$(uname -r)"; then
-        complain "no dkms module built for the running kernel $(uname -r); a reboot may come up without graphics (update again, or boot the older kernel)"
-    fi
-    failed=$(systemctl --failed --no-pager 2>/dev/null | sed -n 's/^\(.*\.service\).*/\1/p' | tr '\n' ' ')
-    if [ -n "$failed" ]; then
-        echo "failed units (machine state, not the shell): $failed"
-    fi
-    echo "the shell itself: $(running && echo running || echo 'not running (try: banditshell start)')"
-    ;;
-toggle | open | set | get | list | status | close)
-    route_verb "$cmd" "$@"
-    ;;
-panic)
-    close_everything
-    ;;
-dispatch)
-    [ $# -ge 1 ] || { echo "usage: banditshell dispatch <target> <action> [args...]" >&2; exit 2; }
-    route_dispatch "$@"
+    case "${1:-}" in
+    "") doctor ;;
+    binds)
+        case "${2:-}" in
+        "") ipc migration status ;;
+        rewrite) ipc migration migrate ;;
+        *) nope doctor "binds $2" ;;
+        esac ;;
+    *) nope doctor "$1" ;;
+    esac
     ;;
 completions)
-    sub="${1:-status}"
-    shift || true
-    case "$sub" in
-    install | status | remove)
-        generators=(zsh bash)
-        case "${1:-}" in
-        zsh | bash)
-            generators=("$1")
-            shift
-            ;;
-        esac
-        status=0
-        for generator in "${generators[@]}"; do
-            "$SHELL_DIR/scripts/$generator-completion.sh" "$sub" "$@" || {
-                code=$?
-                [ "$code" -gt "$status" ] && status=$code
-            }
-        done
-        exit "$status"
-        ;;
-    print)
-        case "${1:-zsh}" in
-        zsh | bash) exec "$SHELL_DIR/scripts/${1:-zsh}-completion.sh" print ;;
-        *) echo "usage: banditshell completions print [zsh|bash]" >&2; exit 2 ;;
-        esac
-        ;;
-    *) echo "usage: banditshell completions [install|status|remove|print] [zsh|bash]" >&2; exit 2 ;;
-    esac
+    route_completions "$@"
     ;;
-shot)
-    mkdir -p "$SHOT_DIR"
-    out="${1:-$SHOT_DIR/shot.png}"
-    grim "$out"
-    echo "$out"
-    ;;
-files)
-    sub="${1:-toggle}"
-    shift || true
-    case "$sub" in
-    toggle | open) ipc files "$sub" "${1:-}" ;;
-    close | status) ipc files "$sub" ;;
-    *) echo "usage: banditshell files toggle|open [dir]|close|status" >&2; exit 2 ;;
-    esac
-    ;;
-build)
-    cc="${CC:-gcc}"
-    command -v "$cc" >/dev/null || { echo "banditshell: no C compiler (set \$CC, or install gcc)" >&2; exit 1; }
-    read -ra cflags <<<"-O2 -Wall -Wextra -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=3 -fstack-protector-strong -fstack-clash-protection -fPIE ${CFLAGS:-}"
-    read -ra ldflags <<<"-pie -Wl,-z,relro,-z,now ${LDFLAGS:-}"
-    read -ra wayland <<<"$(pkg-config --libs wayland-client 2>/dev/null || echo -lwayland-client)"
-    mkdir -p "$SHELL_DIR/bin"
-    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-pty" "$SHELL_DIR/src/bs-pty.c" "${ldflags[@]}" -lutil
-    echo "src/bs-pty.c -> bin/bs-pty"
-    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-ls" "$SHELL_DIR/src/bs-ls.c" "${ldflags[@]}"
-    echo "src/bs-ls.c -> bin/bs-ls"
-    "$cc" "${cflags[@]}" -o "$SHELL_DIR/bin/bs-gamma" "$SHELL_DIR/src/bs-gamma.c" "$SHELL_DIR/src/gamma-client-protocol.c" "${ldflags[@]}" "${wayland[@]}" -lm
-    echo "src/bs-gamma.c -> bin/bs-gamma"
-    ;;
-shaders)
-    qsb="${QSB:-/usr/lib/qt6/bin/qsb}"
-    [ -x "$qsb" ] || { echo "banditshell: qsb not found (install qt6-shadertools)" >&2; exit 1; }
-    while IFS= read -r f; do
-        "$qsb" --glsl "100es,120,150" --hlsl 50 --msl 12 -o "$f.qsb" "$f"
-        echo "${f#"$SHELL_DIR/"} -> ${f#"$SHELL_DIR/"}.qsb"
-    done < <(find "$SHELL_DIR/components" -name '*.frag' | sort)
-    ;;
-test)
-    command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
-    cd "$SHELL_DIR" || exit 1
-    exec node --test 'tests/*.test.js' "$@"
-    ;;
-check)
-    status=0
-    "$SHELL_DIR/scripts/qml-compile-check.sh" "$SHELL_DIR" || status=1
-    if command -v node >/dev/null; then
-        (cd "$SHELL_DIR" && node --test 'tests/*.test.js') || status=1
-    else
-        echo "banditshell: node not found" >&2
-        status=1
-    fi
-    exit "$status"
-    ;;
-demo)
-    [ $# -ge 1 ] || { echo "usage: banditshell demo <menu> [file]" >&2; exit 2; }
-    mkdir -p "$SHOT_DIR"
-    out="${2:-$SHOT_DIR/menu-$1.png}"
-    ipc menu open "$1" "" >/dev/null
-    sleep 0.6
-    grim "$out"
-    ipc menu close >/dev/null
-    echo "$out"
-    ;;
-filespreview)
-    where="${1:-$HOME}"
-    out="${2:-}"
-    resolve_target
-    w=$(ipc_quiet shell get files.width || echo 1200)
-    h=$(ipc_quiet shell get files.height || echo 760)
-    hyprctl eval "hl.window_rule({ name = \"banditshell-filespreview\", match = { title = \"^(banditshell-filespreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
-        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-filespreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-filespreview)\$ ; keyword windowrule center on, match:title ^(banditshell-filespreview)\$" >/dev/null 2>&1 || true
-    start_preview FilesPreview 0 "FILES_PREVIEW=$where"
-    if [ -n "$out" ]; then
-        sleep 4
-        preview_failed FilesPreview && exit 1
-        rect=$(window_rect banditshell-filespreview)
-        if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
-        kill "$preview_pid" 2>/dev/null || true
-        echo "$out"
-    else
-        sleep 2
-        preview_failed FilesPreview && exit 1
-        wait "$preview_pid"
-    fi
-    ;;
-lockpreview)
-    mkdir -p "$SHOT_DIR"
-    out="${1:-$SHOT_DIR/lock.png}"
-    start_preview LockPreview 9
-    sleep 4
-    preview_failed LockPreview && exit 1
-    grim "$out"
-    wait "$preview_pid" || true
-    echo "$out"
-    ;;
-settingspreview)
-    mkdir -p "$SHOT_DIR"
-    size="${1:-1920x1080}"
-    page="${2:-}"
-    out="${3:-$SHOT_DIR/settings-$size${page:+-$page}.png}"
-    w="${size%x*}"
-    h="${size#*x}"
-    ws="${PREVIEW_WORKSPACE:-6}"
-    hyprctl eval "hl.window_rule({ name = \"banditshell-settingspreview\", match = { title = \"^(banditshell-settingspreview)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true, workspace = \"$ws silent\", no_initial_focus = true, no_focus = true })" >/dev/null 2>&1 ||
-        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule center on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule workspace $ws silent, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_initial_focus on, match:title ^(banditshell-settingspreview)\$ ; keyword windowrule no_focus on, match:title ^(banditshell-settingspreview)\$" >/dev/null 2>&1 || true
-    start_preview SettingsPreview 9 "SETTINGS_PREVIEW=$size" "SETTINGS_PAGE=$page"
-    sleep 4
-    preview_failed SettingsPreview && exit 1
-    rect=$(window_rect banditshell-settingspreview)
-    if [ -n "$rect" ]; then grim -g "$rect" "$out"; else grim "$out"; fi
-    wait "$preview_pid" || true
-    echo "$out"
-    ;;
-gallery)
-    size="${1:-1280x800}"
-    w="${size%x*}"
-    h="${size#*x}"
-    hyprctl eval "hl.window_rule({ name = \"banditshell-gallery\", match = { title = \"^(banditshell-gallery)\$\" }, float = true, size = { $w, $h }, center = true, no_anim = true })" >/dev/null 2>&1 ||
-        hyprctl --batch "keyword windowrule float on, match:title ^(banditshell-gallery)\$ ; keyword windowrule size $w $h, match:title ^(banditshell-gallery)\$ ; keyword windowrule center on, match:title ^(banditshell-gallery)\$" >/dev/null 2>&1 || true
-    start_preview GalleryPreview 0 "GALLERY_SIZE=$size"
-    sleep 2
-    preview_failed GalleryPreview && exit 1
-    echo "gallery up at $size"
+dev)
+    route_dev "$@"
     ;;
 help | -h | --help)
-    usage
+    if [ $# -gt 0 ]; then
+        group_help "$1" || { echo "banditshell: no command $1" >&2; usage >&2; exit 2; }
+    else
+        usage
+    fi
     ;;
 *)
-    if [ -z "${BANDITSHELL_MIGRATED:-}" ] && command -v node >/dev/null &&
-        migrated=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$cmd${*:+ $*}" 2>/dev/null) &&
-        [ -n "$migrated" ]; then
-        words=("$cmd" "$@")
-        lead="$migrated"
-        kept=()
-        for ((i = 0; i < ${#words[@]}; i++)); do
-            kept=("${words[@]:i}")
-            suffix="${kept[*]}"
-            if [ "$migrated" = "$suffix" ]; then
-                lead=""
-                break
-            elif [[ $migrated == *" $suffix" ]]; then
-                lead="${migrated% "$suffix"}"
-                break
-            fi
-            kept=()
-        done
-        read -ra lead_words <<<"$lead"
-        export BANDITSHELL_MIGRATED=1
-        exec "${BASH_SOURCE[0]}" "${lead_words[@]}" "${kept[@]}"
-    fi
-    usage >&2
-    exit 2
+    migrate_or_fail "$cmd" "$@"
     ;;
 esac

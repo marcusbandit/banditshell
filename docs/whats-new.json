@@ -1,6 +1,95 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-5",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Tab completion for banditshell now stays current in every terminal. Until now, after an update only the first terminal to press Tab learned the new commands, and terminals already open kept suggesting old ones, like banditshell try, until you restarted them. A terminal opened before this update needs exec zsh or exec bash once; after that it keeps up by itself."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-14-4",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "major",
+          "text": "The banditshell command is regrouped so it starts with the thing you want, then what to do with it: banditshell panel launcher toggle, banditshell screen border off, banditshell wallpaper next, banditshell clock timer start 10m. Plain banditshell lists 17 commands instead of 30, banditshell <command> help shows what one takes, and a command on its own, like banditshell screen, shows how that thing is right now. Your keybinds keep working as they are; the update menu offers to rewrite them to the new form, and banditshell doctor binds rewrite does the same."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Volume and locking are no longer banditshell commands, because wpctl and loginctl already do them: an old banditshell volume or lock command, typed or bound, now runs the matching wpctl or loginctl command. The sound menu, the media panel and the lock screen work as before."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The commands for working on the shell moved under banditshell dev: dev try, dev back, dev build, dev test, dev check, and the previews under dev preview."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell screenshot full saves the whole desktop to your screenshots folder, next to the region screenshots from screenshot save and screenshot copy."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-14-3",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The wallpaper picker sits lower and smaller. The wallpaper you are on is in the middle, and the others are cropped strips beside it that never overlap and shrink away toward the ends, the whole row within 80% of the screen's width."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "While the picker is open, the wallpaper you are looking at blooms in over your windows from the bottom edge, so you see it exactly as it will look. Everything behind the picker is dimmed, and the cards and controls cast shadows."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Colour swatches above the picker show only the wallpapers of that colour, and the search button (or /) filters them by name."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Below the picker: the wallpaper's name, resolution, kind and position, with shuffle, fits-this-screen, this-or-every-screen and Set buttons. Each has a tooltip."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The ring around the wallpaper you already have is gone. A ring now appears only while you move with the arrow keys."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Set, or Enter, always applies now, so choosing Every screen works without first moving to a different wallpaper."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "The shell keeps each wallpaper's colour groups in a small cache file, ~/.cache/banditshell/wallpaper-colours.json."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-14-2",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell try needs less typing. Bare, it takes the only worktree there is, or lists them numbered and asks which one. With a name, a number from that list or any unique part of a branch name works, so banditshell try 2 or banditshell try wall is enough, and Tab completes worktree names."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14",
       "date": "2026-10-14",
       "changes": [

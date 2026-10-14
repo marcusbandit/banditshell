@@ -360,7 +360,7 @@ banditshell/
 │                                their own - battery, calculator, files, the lock
 │                                face, notifications, qr, settings, the terminal
 │                                workbench, windows, the gallery (`banditshell
-│                                gallery`, `banditshell lockpreview`, ...). They
+│                                dev preview gallery`, `... preview lock`). They
 │                                sit in a folder so the root stays just the two
 │                                entry points, and the folder holds because a
 │                                quickshell import path may point here: the `qs`
@@ -386,7 +386,7 @@ banditshell/
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
-│   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell shaders`
+│   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell dev shaders`
 │   │   └── BlobField.qml        the ShaderEffect that draws it
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
@@ -445,6 +445,12 @@ banditshell/
 │   │                            the two of them travel in (802.1X)
 │   ├── AspectMark.qml           two rectangles: the screen as an outline, the
 │   │                            picture solid inside it, both fitted to one box
+│   ├── DropShadow.qml           the soft shadow under a floating thing, drawn
+│   │                            from its shape rather than its pixels, so it
+│   │                            costs nothing when the thing resizes every frame
+│   ├── FloatingTooltip.qml      a plain label floating above whatever it is
+│   │                            dropped into, after the tooltip delay; for
+│   │                            surfaces with no chassis to melt a tip out of
 │   ├── PathField.qml            a MenuRow until you press it, then a place to
 │   │                            type; the keyboard is claimed on the edit, not
 │   │                            on being visible
@@ -508,7 +514,8 @@ banditshell/
 │   │                            full-brightness flash - never runs at
 │   │                            restart
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
-│   │                            what kind each file is, and a poster frame per video
+│   │                            what kind each file is, its size, the colour
+│   │                            groups it falls in, and a poster frame per video
 │   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
@@ -661,8 +668,8 @@ banditshell/
 │   │                            the bars; while streaming a smaller capsule that
 │   │                            floats below the edge instead of melting out of it
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
-│   ├── WallpaperWindow.qml      background layer, below every window; two slots
-│   │                            that cross-fade, motion only on an empty workspace
+│   ├── WallpaperWindow.qml      background layer, below every window; a
+│   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field over everything installed
@@ -714,9 +721,26 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
-│   │   └── WallpaperPicker.qml  no panel at all: the wallpaper you are on as a
-│   │                            half-monitor hero, the rest stacked off the
-│   │                            right edge, the hero live on the real desktop
+│   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
+│   │   │                        you are on as a hero 30% of the height, the
+│   │   │                        rest cropped to strips either side that never
+│   │   │                        overlap, the row held to 80% of the width and
+│   │   │                        collapsing smaller toward its ends. Colour
+│   │   │                        swatches and a `/` search above it, the name,
+│   │   │                        size, kind and the actions below, each on a
+│   │   │                        capsule. While it is up the desktop's
+│   │   │                        wallpaper covers the windows (WallpaperCover),
+│   │   │                        so the pick is seen as it will look;
+│   │   │                        everything but the picker is dimmed by a
+│   │   │                        third, and the cards and capsules cast
+│   │   │                        shadows. A focus ring only after an arrow key
+│   │   ├── WallpaperCover.qml   the wallpaper over the windows while the picker
+│   │   │                        is up, under the chassis: it blooms in from the
+│   │   │                        bottom edge through the reveal blob once the
+│   │   │                        picture is ready, and closes the same way
+│   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
+│   │                            that cross-fade through the reveal blob; the
+│   │                            wallpaper window and the picker share it
 │   ├── picker/                  screenshot: hover a window or drag a region
 │   ├── settings/                the settings panel: a blob that melts out of the
 │   │   │                        sidebar's edge like the menus do, ported from the
@@ -864,6 +888,9 @@ banditshell/
 │   │                            bin/banditshell's own `--help` block, so there is
 │   │                            no second list of verbs to fall out of date
 │   ├── palette.py               a wallpaper's dominant colours
+│   ├── wallpaper-colours.py     which colour groups each wallpaper falls in:
+│   │                            one hue if enough of it is vivid, black or white
+│   │                            if it is dark or light; cached by file
 │   ├── tablet-state.py          is the hinge folded RIGHT NOW: the one question
 │   │                            that needs an ioctl, so it needs a process.
 │   │                            Prints `unknown` without the `input` group, and
@@ -879,8 +906,8 @@ banditshell/
 │   └── clip-record.sh           one clipboard event, as one line of JSON: the
 │                                MIME types, and the bytes when they are not text
 ├── src/                         the parts that need C (section 1), built by
-│   │                            `banditshell build` for the same reason the
-│   │                            shaders are: QML is loaded from a directory and
+│   │                            `banditshell dev build` for the same reason
+│   │                            the shaders are: QML is loaded from a directory and
 │   │                            has nowhere to run a build step
 │   ├── bs-pty.c                 forkpty the user's own $SHELL, with the user's
 │   │                            own config. QML has no pty, and down a pipe a
@@ -1015,7 +1042,7 @@ keyed by output name exactly like `wallpaper.perScreen` (`{ "DP-1": false }`), a
 promised: the chassis's left edge becomes the band the other three edges wear, the left
 reservation (`FrameExclusions`) gives the width back to the windows, the column draws nothing
 and takes no presses, and the lock face draws the same band-only shape because it instantiates
-the same `Chassis`. `sidebar toggle` flips the monitor the keyboard is on, and it is bound
+the same `Chassis`. `screen sidebar toggle` flips the monitor the keyboard is on, and it is bound
 (`SUPER + K`, taking the calculator panel's old seat, which fell back to `SUPER + Z`). Two
 things are still honest scaffolding: the change
 is instant rather than the promised slide behind the left edge, which is still to come, and an
@@ -1046,11 +1073,11 @@ boot, not after a reload. `applyBare` and `reassertBare` are gone from Composito
 the CLI's border verb is the chrome half only. The zeros and the reload live in the user's
 own Lua bind (Hyprland 0.56's config Lua runs `hl.config` at keypress time as a dynamic call,
 and `hl.exec_cmd("hyprctl reload")` takes the way back), which reads the flag out of
-config.json and drives the shell's idempotent `border on`/`border off` beside it - the flag
+config.json and drives the shell's idempotent `screen border on`/`screen border off` beside it - the flag
 is the pair's ONE authority and the compositor's numbers only follow, so a drifted pair
 converges on the next press instead of flipping over together and staying inverted forever. The cost is said plainly: a machine that reboots bare boots with
 look.lua's gaps and rounding and the chrome still down, because the flag was only ever the
-chrome's and the numbers were never the shell's to remember. `border status` still reads the
+chrome's and the numbers were never the shell's to remember. `screen border` still reads the
 compositor live, so the two halves can be compared when they disagree.
 
 **BUT THE TOGGLE'S OWN HALF CANNOT RUN IN THE SHELL.** A toggle writes the flag, the write
@@ -1084,128 +1111,175 @@ without reproducing the gesture, and a change to the gesture can be checked agai
 already known to work.
 
 ```
-banditshell start|stop|restart|run|log
-banditshell try [worktree]|back    a worktree on the live session, and the
-                                   checkout again; restart keeps the worktree
-banditshell toggle panel <name> [screen]|border|wallpaper
-                                  |sidebar [screen|all]|output|tablet [caller]
-                                  |tablet lid [caller]|volume mute
-banditshell open panel <name> [args]
-banditshell close panel <name>     bare `close` shuts every surface - the rescue
-banditshell status panel <name> [screen]
-banditshell set border [on|off]|wallpaper [on|off]
-                                  |sidebar [on|off] [screen|all]
-                                  |tablet [on|off] [caller]
-                                  |tablet lid [closed|open] [caller]
-                                  |volume [<pct>|+n|-n]|volume mute [on|off]
-                                  |output [speakers|headphones]
-                                  |theme [name]|penmap rect <x> <y> <w> <h>
-                                  |<key> <value>       the shell's config
-banditshell get <key>|theme
-banditshell list menu|clipboard|wallpaper [screen]|output|alarm|zone|themes
-banditshell status [thing]         bare, what the shell thinks the compositor said
-banditshell dispatch <target> <action> [args...]
-                                   the bespoke tail: timer start <duration>
-                                   [label]|pause|resume|toggle|cancel [handle];
-                                   alarm snooze|stop|enable|disable|remove
-                                   <handle>|add <time> [--days <spec>] [--label
-                                   <text>] [--run <cmd> | --ask <message>]; zone
-                                   find|add|remove <place>; clipboard use|pin|
-                                   remove <n>|clear; calculator answer
-                                   <expression>|app|panel; keyboard page <name>|
-                                   dock|float; settings page <key>|float; launcher
-                                   run <id>|scrub <0..1>; wallpaper next|prev|clear
-                                   [screen|all]|palette; menu current|hover; penmap
-                                   commit|cancel|aspect|follow; keyring refuse|demo;
-                                   tablet probe [lid]; picker open|freeze|clip|
-                                   freezeclip|close (grim/slurp when the shell is
-                                   down); migration migrate; lock
-banditshell completions install|print|status|remove   tab completion, in zsh
-banditshell shot [file]|demo <key>|gallery [WxH]
-banditshell lockpreview|settingspreview [WxH] [page] [file]|filespreview [dir]
-banditshell shaders                recompile components/**/*.frag
-banditshell build                  compile src/*.c into bin/ (bs-pty, bs-ls)
-banditshell test                   node --test over tests/*.test.js
+banditshell                        the commands, one line each
+banditshell <command> help         one command's page
+banditshell panel                  every panel and menu by name
+banditshell panel <name> [toggle|open|close|status] [screen]
+banditshell panel close            every panel away - the rescue
+banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
+                                   open [page]|page <page>|float; files open
+                                   [dir]; keyboard dock|float|page <layer>;
+                                   clipboard list|use|pin|remove <n>|clear;
+                                   calculator full|compact|answer <expression>;
+                                   notifications clear
+banditshell output [speakers|headphones|toggle|list]|assign <role> <device>
+banditshell screen [brightness [<pct>|+n|-n]|temperature [<kelvin>|off]
+                   |border [on|off|toggle]|sidebar [on|off|toggle] [screen|all]
+                   |stream on [screen]|stream off]
+banditshell wallpaper [on|off|toggle|next|prev|clear [screen|all]
+                      |set <file> [screen|all]|list [screen]|palette]
+banditshell screenshot save|copy [--freeze]|full [file]
+banditshell clock [timer start <duration> [label]|pause|resume|toggle|cancel
+                  [handle]]|[alarm add <time> [--days ..] [--label ..] [--run
+                  ..|--ask ..]|list|snooze|stop|enable|disable|remove <handle>]
+                  |[zone list|find|add|remove <place>]
+banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
+                   |probe [lid]|pen [edit|commit|cancel|aspect|centre|follow
+                   |area <x> <y> <w> <h>]]
+banditshell config get <key>|set <key> <value>|theme [<name>|list]
+banditshell start|stop|restart|status|log|doctor [binds [rewrite]]
+banditshell completions install|print|status|remove [zsh|bash]
+banditshell dev try [worktree]|back|worktrees|run|build|shaders|test|check
+banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
+banditshell dev menu current|hover|list|launcher scrub <0..1>
+                                   |keyring [status|demo|close]
 ```
 
-The grammar is **generic-first: verb, then object, then the args that define it** -
-`banditshell toggle panel notifications` reads off the front, and every panel answers
-to the same four verbs (`toggle`/`open`/`close`/`status panel <name>`). The bespoke
-tail that no generic verb can carry lives one level down, behind `dispatch`, and is
-the ONLY place it is allowed to live: adding a verb to a panel means adding a line to
-the dispatch router, not a second top-level word.
+**REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
+fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by
+verb class. The wallpaper lived under five top-level verbs (`toggle`, `set`, `status`,
+`list`, `dispatch`) plus the panel; `dispatch` had grown to seventeen targets, including the
+most everyday things there are, locking and taking a screenshot; and the top level carried
+twenty-nine words, thirteen of them for working on the shell rather than using it. To find a
+command you first had to know how the shell implemented the thing. Now the grammar names the
+THING first and the action after it, and the things come in groups, so `banditshell` alone
+prints seventeen commands where there were thirty: seven everyday groups, `config`, the
+lifecycle, `completions`, `dev` and `help`. Every one has a page of its own behind
+`banditshell <command> help`.
 
-Two grammar laws, said plainly. **Booleans answer to both `toggle` and `set`, and the
-road is one-way**: everything toggleable can be set explicitly (`toggle border` and
-`set border on` are the same door), but a thing that is not on/off - the volume's
-number, a wallpaper's path - answers to `set` alone. **A fraction is a percent**:
-`set volume .5` is 50%, `+.5` is +50, and a bare `+` or `-` is one step of the
-shell's own size, which is what the wheel uses.
+Five rules hold it together, said plainly.
 
-**The picker lost its plural.** The old grammar named the worn picture `wallpaper`
-and the panel that picks it `wallpapers`, one letter apart, and both meant "the
-wallpaper" to everybody who typed them. The new grammar has the one noun:
-`set wallpaper <path>` wears it, `toggle panel wallpaper` opens the picker for it.
-The IPC target stays `wallpapers`; only the words changed.
+- **Typing less never acts.** A bare group says how it is: `banditshell screen` prints
+  brightness, warmth, the border, the sidebar and streamer mode; `banditshell panel media`
+  says whether the media panel is open. Only the words that are verbs themselves (`start`,
+  `stop`, `restart`) act alone. This is the noun-first grammar's mistake not repeated: its
+  bare nouns toggled some things, read others and listed others.
+- **The same action words everywhere.** `on|off|toggle` for anything with two states,
+  `toggle|open|close|status` for a panel, `list` for anything with many, and a level takes a
+  number, `+n` or `-n`.
+- **A fraction is a percent.** `screen brightness .5` is 50%, `+.1` is +10, and a bare `+` or
+  `-` moves 10.
+- **Panel or group.** This is what replaced `dispatch`. If a thing only exists inside a panel
+  (the clipboard's history, the keyboard's layers, a settings page, the calculator's answer),
+  its actions follow the panel's name: `panel clipboard pin 3`. If it goes on existing when
+  the panel closes (the wallpaper, a running timer, the tablet's hinge), it is a group of its
+  own. `panel wallpaper` is the picker; `wallpaper` is the picture.
+- **Help at every level.** `banditshell <command> help` and `-h` print that command's page,
+  and a word a command does not take prints the same page, not the whole list.
+
+**The shell does not own what a standard tool already does.** Volume and mute are wpctl's,
+the media keys playerctl's, and locking is logind's (`loginctl lock-session`; the lock screen
+answers logind's Lock and sets LockedHint itself). The shell shows all three, in the sound
+menu, the media panel and the lock screen, but a second CLI for them was a second thing to
+maintain with nothing to add, so `set volume`, `toggle volume mute` and `dispatch lock` are
+gone, with the IPC handlers behind them. What stays is what only the shell knows. `output`
+switches between "the speakers" and "the headphones", roles set in `audio.speakers` and
+`audio.headphones` that wpctl's node ids cannot name. `screen brightness` sets every DDC
+display at once through the shell's own queue, and `screen temperature` moves a gamma ramp
+the shell holds. Those two are also the shell's words for whatever backend comes next: a
+machine that dims some other way gets a new backend under the same command, not a new
+command.
+
+**The picker lost its plural** in the verb-first rewrite and keeps it lost. The grammar before
+that named the worn picture `wallpaper` and the panel that picks it `wallpapers`, one letter
+apart. Now `wallpaper set <path>` wears it and `panel wallpaper toggle` opens the picker for
+it. The IPC target stays `wallpapers`; only the words changed.
 
 **Old binds are not dead, and the user is not sent to a manual.** Every shell start,
-`services/CliMigration.qml` scans the config files `HyprConfig` read for binds still speaking the
-old grammar - `services/cli-migration.js` is the ONE authority on old → new, a rule
-table the scanner, the rewriter and the CLI's own fallback all read. Until the user
-acts, those binds work: the wrapper rewrites any old form through the map on the way
-in. The sidebar's update icon wears a "published_with_changes" glyph while old binds
-exist, and its menu offers the one-click rewrite (a .bak beside the file). Refusing
-is a two-click path - the second asks, because "no" means "I will fix the config by
-hand" - and a confirmed refusal is written to `cli.bindsDeclined` and never nagged
-about again.
+`services/CliMigration.qml` scans the config files `HyprConfig` read for binds still in an old
+form. `services/cli-migration.js` is the ONE authority on old → new, a rule table that the
+scanner, the rewriter and the CLI's own fallback all read. Until the user acts, those binds
+work: the wrapper rewrites any old form through the map on the way in. A command that moved to
+another program is rewritten to that program (`banditshell set volume +` becomes `wpctl
+set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+`), and the fallback runs it and says so on stderr. The
+sidebar's update icon wears a "published_with_changes" glyph while old binds exist, and its
+menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor binds` lists
+them and `banditshell doctor binds rewrite` is the same rewrite. Refusing is a two-click path - the second
+asks, because "no" means "I will fix the config by hand" - and a confirmed refusal is written
+to `cli.bindsDeclined` and never nagged about again.
 
-**Tab completion is generated, not written.** `scripts/zsh-completion.sh` parses the comment
-block at the top of `bin/banditshell` (the same block `banditshell help` prints) and emits the
-zsh function from what it finds, so there is no second list of verbs anywhere and no way for
-one to drift from the other. The header's shape is therefore a contract, spelled out at the
-bottom of it: two spaces, `banditshell`, the verb, alternatives separated by `|`, and a
-description starting at column 31. The structure is entirely derived; the only hand-written
-part is a small table saying what a *value* is, because no amount of parsing prose separates
-`menu open <key>` from `set <key>`.
+The table maps the verb-first forms only. The noun-first rules were retired with this
+revision, because every bind had already been through them and three of their nouns
+(`wallpaper`, `tablet`, `clock`) are groups again with a different bare meaning: a noun-first
+rule would now rewrite a correct bind into a wrong one. Two more guards keep the rewriter from
+inventing commands: it stops at a redirection or a pipe, so `banditshell set border "$x"
+>/dev/null` keeps its tail, and a named thing (`border`, `tablet`, `volume`...) never falls
+through to `config set`, whatever its value looks like.
+
+**Tab completion is generated, not written.** `scripts/completion-rules.sh` parses the comment
+block at the top of `cli/banditshell` (the same block `banditshell help` reads) into a table,
+and `scripts/zsh-completion.sh` and `scripts/bash-completion.sh` emit their functions from it,
+so there is no second list of commands anywhere and no way for one to drift from the other.
+The header's shape is therefore a contract. A section starts with a heading at column 0: the
+command, or several separated by `|`, and a one-line summary at column 31. `banditshell help`
+prints the headings and nothing else, `banditshell <command> help` prints one section, and
+the summary is what completion shows beside the command. Under the heading come the lines:
+two spaces, `banditshell`, the words, alternatives separated by `|`, and a description
+starting at column 31. A word in `[...]` alone is a placeholder, so an optional literal is
+written on a line of its own. The structure is entirely derived; the only hand-written part
+is a small table saying what a *value* is, because no amount of parsing prose separates
+`panel <panel>` from `config get <key>`.
+
+Matching follows the grammar. Where several rules fit what has been typed, the words they
+offer are offered together, so after `panel launcher` the launcher's own `run` sits beside
+the `toggle|open|close|status` every panel has. A value is offered only from the most specific
+rule, so after `panel settings open` the pages are offered and the screen names are not. And
+a command that ends where the typing ends is not also read as a placeholder: `panel close`
+is the rescue, not a panel called close, so nothing is offered after it.
+
+The migration map is held to one more rule, learned the hard way during review: **a form that
+only read must never be rewritten into one that acts.** `status migration` first mapped to
+`doctor`, which repairs `bin/` and repoints `~/bin/banditshell`; a test now walks every
+read-only old form and checks where it lands, and `doctor binds` reports while `doctor binds
+rewrite` acts, the same split as every bare group.
 
 It also **maintains itself**. The generated function stats its sources on the first Tab of a
-shell and rebuilds when any of them is newer, so a verb added to the CLI is complete-able on
-the next Tab with nothing run and nothing clicked. `banditshell completions install` and the
-row on the settings page's Terminal page exist for the first time, and for a machine where the
-file cannot be rewritten in place. The same script is a row in `install.sh`'s table, which is
-why a fresh install arrives with it already working.
+shell and rebuilds when any of them is newer, so a command added to the CLI is complete-able
+on the next Tab with nothing run and nothing clicked. `banditshell completions install` and
+the row on the settings page's Terminal page exist for the first time, and for a machine where
+the file cannot be rewritten in place. The same script is a row in `install.sh`'s table, which
+is why a fresh install arrives with it already working.
 
 A CLI open is always a **pinned** open. Nobody driving a terminal has a pointer resting on
 anything, so an unpinned menu opened from here would be taken away by the grace timer a fifth
 of a second after the command printed `open`.
 
-The newer targets each follow a rule already stated elsewhere rather than inventing one.
+The panels each follow a rule already stated elsewhere rather than inventing one.
 `notifications` and `notch` write the **pin** and nothing else: presence on both is a derived
 union (section 15), so a keybind and a hand land in the same state and leave by the same doors.
 `settings` drives the service rather than any window, because the panel lives in each screen's
 shell window and the service says which one shows it; `open` takes an optional page or any
-setting's key, and `page` switches it without
-touching presence, so a keybind can walk the panel while it stays put. `volume` moves by the
-same configured step the wheel and the sound menu's slider use, so a keybind is the same
-control rather than a second one. `calendar` is sugar for `menu toggle calendar`: the calendar
-is an ordinary menu registered in the sidebar, and the thing you bind to a key deserves a
-shorter name than the thing it is implemented as. `docs/hyprland-binds.example.conf` is a
-worked set of Hyprland binds onto all of it.
+setting's key, and `page` switches it without touching presence, so a keybind can walk the
+panel while it stays put. A menu answers to the same words as a built-in panel: `panel calendar
+toggle` toggles an ordinary menu registered in the sidebar, and `panel calendar` says whether it
+is the open one.
+`docs/hyprland-binds.example.conf` is a worked set of Hyprland binds onto all of it.
 
-`wallpaper` is the one target whose whole job is **reading before writing**. Every verb on it
-is a write to `config.json` that `set wallpaper.enabled` or `set wallpaper.current` could make
-by hand, so on the face of it the target is redundant; what a key cannot do is ask for the
-opposite of a value it has not read, or the next one along a list. `toggle` and `next` are
-those two questions, and the rest are there so the target answers the whole thing rather than
-only the halves a hotkey needs. Turning it off is a **light going out, not a surface going
-away**: the window stays, the images keep their sources, `current` keeps its path, so what is
-left is the black `WallpaperWindow` was already painting behind the picture and coming back is
-a fade rather than a decode. The lock screen follows the same flag, because its ground is made
-of this same picture and `LockSurface` is black underneath it.
+`wallpaper` is the one group whose whole job is **reading before writing**. Every action on it
+is a write to `config.json` that `config set wallpaper.enabled` or `config set
+wallpaper.current` could make by hand, so on the face of it the group is redundant; what a key
+cannot do is ask for the opposite of a value it has not read, or the next one along a list.
+`wallpaper toggle` and `wallpaper next` are those two questions, and the rest are there so the
+group answers the whole thing rather than only the halves a hotkey needs. Turning it off is a
+**light going out, not a surface going away**: the window stays, the images keep their
+sources, `current` keeps its path, so what is left is the black `WallpaperWindow` was already
+painting behind the picture and coming back is a fade rather than a decode. The lock screen
+follows the same flag, because its ground is made of this same picture and `LockSurface` is
+black underneath it.
 
-`wallpapers`, plural, is the picker, and it is a **surface** rather than a setting: everything
-on it opens and closes something on the screen and writes nothing, where everything on the
-singular target writes something and draws nothing.
+`panel wallpaper`, the picker, is a **surface** rather than a setting: everything on it opens
+and closes something on the screen and writes nothing, where everything on `wallpaper` writes
+something and draws nothing.
 
 ### One wallpaper per monitor: a default, plus the screens that disagree
 
@@ -1302,7 +1376,7 @@ no options, so a flag would be a second parameter that is meaningless whenever t
 set, and two arguments that can contradict each other are two arguments somebody will make
 contradict each other.
 
-`wallpaper set <path> [screen]` exists because `set wallpaper.current` **cannot** be it. That
+`wallpaper set <path> [screen]` exists because `config set wallpaper.current` **cannot** be it. That
 key is the default and writing it moves every screen that has not been given its own; the
 per-screen map is keyed by output name, and `Config.set` refuses a dotted path its defaults do
 not name. `clear` is the verb the picker has nowhere sensible to put: the picker gives a
@@ -1636,10 +1710,10 @@ Consequences worth knowing:
   field with the chassis rects plus the panel rect. caelestia does the same. Input does not need
   to follow a fillet.
 - **`blob.frag.qsb` is build output committed next to its source.** Quickshell loads QML from a
-  directory and has nowhere to run a build step, so `banditshell shaders` is that step. Run it
+  directory and has nowhere to run a build step, so `banditshell dev shaders` is that step. Run it
   after editing any `.frag`.
 - **A rebuilt `.qsb` needs the PROCESS restarted, not a QML reload.** Qt caches the compiled
-  shader program by URL for the life of the process, so `banditshell shaders` followed by the
+  shader program by URL for the life of the process, so `banditshell dev shaders` followed by the
   usual hot reload leaves the OLD shader running while the new QML properties bind to uniforms
   it does not have. It fails in the worst possible way: the config reloads, the properties
   exist, nothing errors, and nothing on screen changes, so you conclude the shader edit is
@@ -1712,7 +1786,7 @@ name-verification path), and `sidebar.workspaces.iconMode` picks between:
   every application.
 - `apps.icons` beats all three: `{ "^zen$": "web" }`, regex against the window class. A MAP, not
   a list, because Quickshell's IPC reads a bracketed argument as an argument LIST and splats it,
-  so `banditshell set apps.icons '[...]'` can never arrive as an array. `Config.merge` grew the
+  so `banditshell config set apps.icons '[...]'` can never arrive as an array. `Config.merge` grew the
   matching rule for both shapes: an empty default array or object is DATA, not a schema, so the
   user's keys survive instead of being walked away.
 
@@ -2128,7 +2202,7 @@ so the only evidence in both cases is silence. The end is therefore a timer
 restarted by every event and lapsing at `anim.fast`, which is precisely what
 `GlideList`'s coast already does for the identical question, under a floor of
 fifty milliseconds that no setting can get below: every duration in this shell is
-a tier off `anim.base`, `banditshell set anim.base 0` is accepted as written, and
+a tier off `anim.base`, `banditshell config set anim.base 0` is accepted as written, and
 a lapse of zero would make every single event its own complete gesture and stop
 every touchpad gesture in the shell working with nothing in the logs. A feel
 token is allowed to be zero; a gesture timer is not. It also tells the
@@ -2359,7 +2433,7 @@ way out and the keyboard is the other: **Escape closes whatever is open, however
 it was opened.** One sentence covers the launcher, the power panel, the hotkey
 sheet, a pinned menu, a pinned notification tray and a pinned notch, and it has
 to hold for the routes that have no pointer in them at all, because a keybind
-running `banditshell notch open` leaves the cursor resting on somebody else's
+running `banditshell panel notch open` leaves the cursor resting on somebody else's
 window.
 
 **Pinned is the whole set, and hover is deliberately not in it.** A tray the
@@ -2497,7 +2571,7 @@ taking a copy, or it is not importing.
 
 The honest cost is a second watcher on the session if the old manager is left
 running. That is harmless (both see every selection, neither can disturb the
-other's store) and it is why `clipboard status` reports whether this one is
+other's store) and it is why `panel clipboard` reports whether this one is
 actually recording: a history that has quietly stopped growing looks exactly like
 an afternoon in which nothing was copied, and it is the one failure the panel
 itself cannot show.

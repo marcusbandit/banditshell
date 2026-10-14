@@ -41,7 +41,7 @@ Item {
 
                 anchors.centerIn: parent
 
-                text: "banditshell build"
+                text: "banditshell dev build"
                 color: Appearance.colour.accent
             }
         }

@@ -85,37 +85,56 @@ test("every value source a rule names is offered by both shells", () => {
     }
 });
 
-test("verbs that share a header line stay separate verbs", () => {
-    for (const verb of ["demo", "gallery", "settingspreview", "lockpreview", "filespreview", "shot"])
-        assert.ok(tableVerbs.includes(verb), verb);
-    assert.deepStrictEqual(bashComplete("shot", "demo"), []);
-});
-
-test("the top level offers every verb, including the ones the audit found missing", () => {
+test("the top level offers every command and none of the retired ones", () => {
     const offered = bashComplete("");
-    for (const verb of ["files", "panic", "help", "check", "demo", "gallery", "settingspreview"])
-        assert.ok(offered.includes(verb), verb);
+    assert.deepStrictEqual(offered, tableVerbs);
+    for (const gone of ["toggle", "open", "set", "get", "list", "dispatch", "panic", "files", "try", "back", "shot", "demo", "lockpreview"])
+        assert.ok(!offered.includes(gone), gone);
 });
 
-test("a sub-argument set never overwrites its sibling", () => {
-    assert.deepStrictEqual(bashComplete("set", "volume", ""), ["mute"]);
-    assert.deepStrictEqual(bashComplete("set", "volume", "mute", ""), ["off", "on"]);
-    assert.deepStrictEqual(bashComplete("set", "tablet", ""), ["lid", "off", "on"]);
-    assert.deepStrictEqual(bashComplete("set", "tablet", "lid", ""), ["closed", "open"]);
+test("after a panel's name, its own actions sit beside the shared ones", () => {
+    assert.deepStrictEqual(bashComplete("panel", "launcher", ""), ["close", "open", "run", "status", "toggle"]);
+    assert.deepStrictEqual(bashComplete("panel", "keyboard", ""), ["close", "dock", "float", "open", "page", "status", "toggle"]);
+    assert.deepStrictEqual(bashComplete("panel", "media", ""), ["close", "open", "status", "toggle"]);
 });
 
-test("dispatch offers its targets and each target's actions", () => {
-    assert.ok(bashComplete("dispatch", "").includes("notifications"));
-    assert.deepStrictEqual(bashComplete("dispatch", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
-    assert.deepStrictEqual(bashComplete("dispatch", "notifications", ""), ["clear"]);
-    assert.deepStrictEqual(bashComplete("dispatch", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
+test("a command that ends here is not also read as a placeholder", () => {
+    assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
+    assert.deepStrictEqual(bashComplete("doctor", ""), ["binds"]);
+    assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
 });
 
-test("get offers the theme and the config keys", () => {
+test("help offers the commands", () => {
+    assert.deepStrictEqual(bashComplete("help", ""), tableVerbs);
+});
+
+test("a literal beats a wildcard at the same position", () => {
+    const pages = table.find(r => r[0] === "values" && r[1] === "page")[2].split(" ").sort();
+    assert.deepStrictEqual(bashComplete("panel", "settings", "open", ""), pages);
+});
+
+test("each group offers its parts, and each part its actions", () => {
+    assert.deepStrictEqual(bashComplete("screen", ""), ["border", "brightness", "sidebar", "stream", "temperature"]);
+    assert.deepStrictEqual(bashComplete("screen", "border", ""), ["off", "on", "toggle"]);
+    assert.deepStrictEqual(bashComplete("output", ""), ["assign", "headphones", "list", "speakers", "toggle"]);
+    assert.deepStrictEqual(bashComplete("clock", ""), ["alarm", "timer", "zone"]);
+    assert.deepStrictEqual(bashComplete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
+    assert.deepStrictEqual(bashComplete("tablet", ""), ["lid", "off", "on", "pen", "probe", "toggle"]);
+    assert.deepStrictEqual(bashComplete("tablet", "lid", ""), ["closed", "open", "toggle"]);
+    assert.deepStrictEqual(bashComplete("dev", "preview", ""), ["files", "gallery", "lock", "menu", "settings"]);
+    assert.deepStrictEqual(bashComplete("dev", "keyring", ""), ["close", "demo", "status"]);
+});
+
+test("flags complete after the words they belong to", () => {
+    assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
+    assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);
+});
+
+test("config offers the theme and the config keys", () => {
     fs.mkdirSync(path.join(HOME, ".config/banditshell"), { recursive: true });
     fs.writeFileSync(path.join(HOME, ".config/banditshell/config.json"), JSON.stringify({ edge: { bare: true }, theme: "slate" }));
-    const offered = bashComplete("get", "");
-    assert.ok(offered.includes("theme"));
+    assert.deepStrictEqual(bashComplete("config", ""), ["get", "set", "theme"]);
+    assert.ok(bashComplete("config", "theme", "").includes("list"));
     let jq = true;
     try {
         run("jq", ["--version"]);
@@ -123,18 +142,13 @@ test("get offers the theme and the config keys", () => {
         jq = false;
     }
     if (jq)
-        assert.ok(offered.includes("edge.bare"));
+        assert.ok(bashComplete("config", "get", "").includes("edge.bare"));
 });
 
-test("panels include quickcontrols, files and penmap, once each", () => {
-    const offered = bashComplete("toggle", "panel", "");
-    for (const panel of ["quickcontrols", "files", "penmap", "wallpaper"])
+test("panels include quickcontrols, files and wallpaper, once each", () => {
+    const offered = bashComplete("panel", "");
+    for (const panel of ["quickcontrols", "files", "wallpaper", "close"])
         assert.strictEqual(offered.filter(p => p === panel).length, 1, panel);
-});
-
-test("a literal beats a wildcard at the same position", () => {
-    const pages = table.find(r => r[0] === "values" && r[1] === "page")[2].split(" ").sort();
-    assert.deepStrictEqual(bashComplete("open", "panel", "settings", ""), pages);
 });
 
 test("the zsh file parses and matches the same way", { skip: !hasZsh() && "no zsh" }, () => {
@@ -153,9 +167,54 @@ words=(banditshell "$@")
 CURRENT=$#words
 _banditshell`;
     const complete = (...words) => run("zsh", ["-fc", script, "_", dir, ...words]).split("\n").filter(Boolean).sort();
-    assert.deepStrictEqual(complete("set", "volume", "mute", ""), ["off", "on"]);
-    assert.deepStrictEqual(complete("dispatch", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
+    assert.deepStrictEqual(complete("screen", "border", ""), ["off", "on", "toggle"]);
+    assert.deepStrictEqual(complete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
+    assert.deepStrictEqual(complete("panel", "launcher", ""), ["close", "open", "run", "status", "toggle"]);
+    assert.deepStrictEqual(complete("panel", "close", ""), []);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
+});
+
+test("a shell left open takes up the file another shell rebuilt", () => {
+    const dir = fs.mkdtempSync(path.join(HOME, "rebuilt-"));
+    const env = { ...ENV, BASH_COMPLETION_USER_DIR: dir };
+    const build = () => execFileSync("bash", ["scripts/bash-completion.sh", "print"], { cwd: ROOT, env, encoding: "utf8" });
+    const file = path.join(dir, "completions/banditshell");
+    fs.mkdirSync(path.dirname(file));
+    fs.writeFileSync(file, build());
+    const rebuilt = build().replace(/^_bs_verbs=\(/m, "$&zz-rebuilt ");
+    const script = `source "$1"; COMP_WORDS=(banditshell zz); COMP_CWORD=1
+_banditshell; printf '%s\\n' "\${COMPREPLY[@]}" ==
+printf '%s' "$2" >"$1"
+_banditshell; printf '%s\\n' "\${COMPREPLY[@]}" ==
+_bs_moved && echo moved || echo settled`;
+    const [before, after, state] = execFileSync("bash", ["--norc", "--noprofile", "-c", script, "_", file, rebuilt], { cwd: ROOT, env, encoding: "utf8" }).split("==\n");
+    assert.ok(!before.includes("zz-rebuilt"));
+    assert.ok(after.includes("zz-rebuilt"));
+    assert.strictEqual(state, "settled\n");
+});
+
+test("a zsh left open takes up the file another zsh rebuilt", { skip: !hasZsh() && "no zsh" }, () => {
+    const dir = fs.mkdtempSync(path.join(HOME, "zsh-rebuilt-"));
+    const env = { ...ENV, BANDITSHELL_ZSH_COMPDIR: dir };
+    const build = () => execFileSync("bash", ["scripts/zsh-completion.sh", "print"], { cwd: ROOT, env, encoding: "utf8" });
+    fs.writeFileSync(path.join(dir, "_banditshell"), build());
+    const rebuilt = build().replace(/^_bs_verbs=\($/m, "$&\n    'zz-rebuilt:rebuilt'");
+    const script = `
+compadd() { [[ $1 == -a ]] && print -rl -- \${(P)2} }
+_describe() { local -a v; v=( "\${(@P)\${@[-1]}}" ); print -rl -- \${v%%:*} }
+compdef() { : }
+fpath=("$1" $fpath)
+autoload -Uz _banditshell
+words=(banditshell zz)
+CURRENT=2
+_banditshell; print -r -- '=='
+print -rn -- "$2" >"$1/_banditshell"
+_banditshell; print -r -- '=='
+_bs_moved && print moved || print settled`;
+    const [before, after, state] = execFileSync("zsh", ["-fc", script, "_", dir, rebuilt], { cwd: ROOT, env, encoding: "utf8" }).split("==\n");
+    assert.ok(!before.includes("zz-rebuilt"));
+    assert.ok(after.includes("zz-rebuilt"));
+    assert.strictEqual(state, "settled\n");
 });
 
 test("completions install, status and remove can take one shell", () => {

@@ -51,6 +51,7 @@ generate() {
     done <<<"$table"
 
     cat <<EOF
+_bs_built=$EPOCHREALTIME
 _bs_file=$(quote "$TARGET")
 
 _bs_verbs=(${verbs# })
@@ -76,6 +77,12 @@ _bs_stale() {
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
+}
+
+_bs_moved() {
+    local built
+    IFS= read -r built 2>/dev/null <"$_bs_file" || return 1
+    [[ ${built#*=} != "$_bs_built" ]]
 }
 
 _bs_live() {
@@ -124,16 +131,18 @@ _bs_offer() {
     local cur=$2
     local -a values=()
     case $1 in
-    panel) mapfile -t values < <(_bs_live list menu); values+=("${_bs_panel[@]}") ;;
-    menu) mapfile -t values < <(_bs_live list menu) ;;
-    theme) mapfile -t values < <(_bs_live list themes); values+=("${_bs_theme[@]}") ;;
+    panel) mapfile -t values < <(_bs_live panel); values+=("${_bs_panel[@]}") ;;
+    menu) mapfile -t values < <(_bs_live dev menu list) ;;
+    theme) mapfile -t values < <(_bs_live config theme list); values+=("${_bs_theme[@]}") ;;
     page) values=("${_bs_page[@]}") ;;
+    command) values=("${_bs_verbs[@]}") ;;
     layer) values=("${_bs_layer[@]}") ;;
     screen) mapfile -t values < <(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}') ;;
     key) mapfile -t values < <(_bs_config_keys) ;;
     app) mapfile -t values < <(_bs_desktop_ids) ;;
     place) mapfile -t values < <(_bs_places) ;;
-    index) mapfile -t values < <(_bs_live list clipboard | awk -F'\t' 'NF >= 1 {print $1}') ;;
+    index) mapfile -t values < <(_bs_live panel clipboard list | awk -F'\t' 'NF >= 1 {print $1}') ;;
+    worktree) mapfile -t values < <(banditshell dev worktrees 2>/dev/null) ;;
     file)
         compopt -o filenames 2>/dev/null
         mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -f -- "$cur")
@@ -160,15 +169,13 @@ _banditshell() {
     fi
     COMPREPLY=()
 
-    if [[ -z ${_bs_reloading:-} ]] && _bs_stale; then
-        if "$_bs_repo/scripts/bash-completion.sh" install --quiet 2>/dev/null; then
-            _bs_reloading=1
-            # shellcheck disable=SC1090
-            source "$_bs_file"
-            unset _bs_reloading
-            _banditshell "$@"
-            return
-        fi
+    if [[ -z ${_bs_reloading:-} ]] && { _bs_stale && "$_bs_repo/scripts/bash-completion.sh" install --quiet 2>/dev/null || _bs_moved; }; then
+        _bs_reloading=1
+        # shellcheck disable=SC1090
+        source "$_bs_file"
+        unset _bs_reloading
+        _banditshell "$@"
+        return
     fi
 
     if (( cword == 1 )); then
@@ -176,9 +183,24 @@ _banditshell() {
         return
     fi
 
-    local target=$(( cword - 1 )) rule word item i n score ok best=-1 literal wild
-    local -a parts items flags offers=() literals=()
+    local target=$(( cword - 1 )) rule word item i n score ok best=-1 literal wild exact=0
+    local -a parts items flags holes offers=() literals=()
     local -A seen=()
+    for rule in "${_bs_rules[@]}"; do
+        read -ra parts <<<"$rule"
+        [[ ${parts[-1]} == --* ]] && unset 'parts[-1]'
+        (( ${#parts[@]} == target )) || continue
+        ok=1
+        for (( i = 0; i < target; i++ )); do
+            IFS=, read -ra items <<<"${parts[i]}"
+            literal=0
+            for item in "${items[@]}"; do
+                [[ $item == "${words[i + 1]}" ]] && literal=1
+            done
+            (( literal )) || { ok=0; break; }
+        done
+        (( ok )) && { exact=1; break; }
+    done
     for rule in "${_bs_rules[@]}"; do
         read -ra parts <<<"$rule"
         flags=()
@@ -209,6 +231,7 @@ _banditshell() {
             fi
         done
         (( ok )) || continue
+        (( exact && score < target )) && continue
         if (( target < n )); then
             IFS=, read -ra items <<<"${parts[target]}"
         elif (( ${#flags[@]} )) && [[ ${words[cword - 1]} != --* ]]; then
@@ -216,21 +239,26 @@ _banditshell() {
         else
             continue
         fi
+        holes=()
+        for item in "${items[@]}"; do
+            case $item in
+            '*') ;;
+            @*) holes+=("$item") ;;
+            *) literals+=("$item") ;;
+            esac
+        done
+        (( ${#holes[@]} )) || continue
         if (( score > best )); then
             best=$score
             offers=()
         fi
-        (( score == best )) && offers+=("${items[@]}")
+        (( score == best )) && offers+=("${holes[@]}")
     done
 
     for item in "${offers[@]}"; do
         [[ -n ${seen[$item]:-} ]] && continue
         seen[$item]=1
-        case $item in
-        '*') ;;
-        @*) _bs_offer "${item#@}" "$cur" ;;
-        *) literals+=("$item") ;;
-        esac
+        _bs_offer "${item#@}" "$cur"
     done
     _bs_add "$cur" "${literals[@]}"
     (( ${#COMPREPLY[@]} > 1 )) && mapfile -t COMPREPLY < <(printf '%s\n' "${COMPREPLY[@]}" | awk '!seen[$0]++')

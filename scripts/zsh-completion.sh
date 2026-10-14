@@ -61,7 +61,7 @@ generate() {
 
     cat <<EOF
 #compdef banditshell
-
+typeset -g _bs_built=$EPOCHREALTIME
 typeset -ga _bs_verbs _bs_rules _bs_panel _bs_theme _bs_page _bs_layer
 typeset -g _bs_file=$(quote "$TARGET")
 
@@ -93,6 +93,12 @@ _bs_stale() {
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
+}
+
+_bs_moved() {
+    local compdef built
+    { read -r compdef; read -r built } 2>/dev/null <$_bs_file || return 1
+    [[ ${built#*=} != "$_bs_built" ]]
 }
 
 _bs_live() {
@@ -131,17 +137,19 @@ _bs_places() {
 _bs_offer() {
     local -a values
     case $1 in
-    panel) values=( $_bs_panel ${(f)"$(_bs_live list menu)"} ) ;;
-    menu) values=( ${(f)"$(_bs_live list menu)"} ) ;;
-    theme) values=( $_bs_theme ${(f)"$(_bs_live list themes)"} ) ;;
+    panel) values=( $_bs_panel ${(f)"$(_bs_live panel)"} ) ;;
+    menu) values=( ${(f)"$(_bs_live dev menu list)"} ) ;;
+    theme) values=( $_bs_theme ${(f)"$(_bs_live config theme list)"} ) ;;
     page) values=( $_bs_page ) ;;
+    command) values=( ${_bs_verbs%%:*} ) ;;
     layer) values=( $_bs_layer ) ;;
     screen) values=( ${(f)"$(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}')"} ) ;;
     key) values=( ${(f)"$(_bs_config_keys)"} ) ;;
     app) values=( ${(f)"$(_bs_desktop_ids)"} ) ;;
     place) values=( ${(f)"$(_bs_places)"} ) ;;
+    worktree) values=( ${(f)"$(banditshell dev worktrees 2>/dev/null)"} ) ;;
     index)
-        values=( ${(f)"$(_bs_live list clipboard | awk -F'\t' 'NF >= 4 {print $1 ":" $3 " " $4}')"} )
+        values=( ${(f)"$(_bs_live panel clipboard list | awk -F'\t' 'NF >= 4 {print $1 ":" $3 " " $4}')"} )
         (( $#values )) && _describe -t entries 'clipboard entry' values
         return
         ;;
@@ -153,14 +161,12 @@ _bs_offer() {
 }
 
 _banditshell() {
-    if [[ -z $_bs_reloading ]] && _bs_stale; then
-        if $REPLY/scripts/zsh-completion.sh install --quiet 2>/dev/null; then
-            typeset -g _bs_reloading=1
-            source $_bs_file
-            unset _bs_reloading
-            _banditshell "$@"
-            return
-        fi
+    if [[ -z $_bs_reloading ]] && { _bs_stale && $REPLY/scripts/zsh-completion.sh install --quiet 2>/dev/null || _bs_moved }; then
+        typeset -g _bs_reloading=1
+        source $_bs_file
+        unset _bs_reloading
+        _banditshell "$@"
+        return
     fi
 
     if (( CURRENT == 2 )); then
@@ -168,9 +174,20 @@ _banditshell() {
         return
     fi
 
-    local target=$(( CURRENT - 1 )) rule word i n score ok best=-1
+    local target=$(( CURRENT - 1 )) rule word i n score ok best=-1 exact=0
     local -a typed parts items flags offers literals
     typed=( "${(@)words[2,CURRENT-1]}" )
+    for rule in $_bs_rules; do
+        parts=( ${(s: :)rule} )
+        [[ $parts[-1] == --* ]] && parts[-1]=()
+        (( $#parts == target - 1 )) || continue
+        ok=1
+        for (( i = 1; i < target; i++ )); do
+            items=( ${(s:,:)parts[i]} )
+            (( ${items[(Ie)$typed[i]]} )) || { ok=0; break }
+        done
+        (( ok )) && { exact=1; break }
+    done
     for rule in $_bs_rules; do
         parts=( ${(s: :)rule} )
         flags=()
@@ -192,6 +209,7 @@ _banditshell() {
             fi
         done
         (( ok )) || continue
+        (( exact && score < target - 1 )) && continue
         if (( target <= n )); then
             items=( ${(s:,:)parts[target]} )
         elif (( $#flags )) && [[ $typed[-1] != --* ]]; then
@@ -199,6 +217,9 @@ _banditshell() {
         else
             continue
         fi
+        literals+=( ${items:#(@*|\*)} )
+        items=( ${(M)items:#@*} )
+        (( $#items )) || continue
         if (( score > best )); then
             best=$score
             offers=()
@@ -206,10 +227,9 @@ _banditshell() {
         (( score == best )) && offers+=( $items )
     done
 
-    offers=( ${(u)offers} )
-    literals=( ${offers:#(@*|\*)} )
+    literals=( ${(u)literals} )
     (( $#literals )) && compadd -a literals
-    for word in ${(M)offers:#@*}; do
+    for word in ${(u)offers}; do
         _bs_offer ${word#@}
     done
 }
