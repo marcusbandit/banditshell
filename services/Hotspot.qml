@@ -13,6 +13,9 @@ Singleton {
     readonly property string deviceName: Network.deviceName
 
     property bool profileExists: false
+    property string profileUuid: ""
+    property var listed: []
+    property bool dirty: false
     property bool active: false
     property bool starting: false
     property bool stopping: false
@@ -68,6 +71,7 @@ Singleton {
     function details(): var {
         return {
             device: root.deviceName,
+            uuid: root.profileUuid || HotspotLogic.newUuid(),
             ssid: root.ssid,
             password: root.password,
             band: root.band
@@ -83,8 +87,10 @@ Singleton {
     }
 
     function stop(): void {
+        if (!root.profileUuid)
+            return;
         root.stopping = true;
-        commands.run(HotspotLogic.stopCommands());
+        commands.run(HotspotLogic.stopCommands(root.profileUuid));
     }
 
     function setName(name: string): void {
@@ -104,6 +110,8 @@ Singleton {
 
     function edited(): void {
         root.failure = "";
+        root.dirty = true;
+        abandon.restart();
         if (root.profileExists)
             apply.restart();
     }
@@ -156,6 +164,13 @@ Singleton {
     }
 
     Timer {
+        id: abandon
+
+        interval: 120000
+        onTriggered: root.dirty = false
+    }
+
+    Timer {
         id: apply
 
         interval: 1500
@@ -178,6 +193,10 @@ Singleton {
                 root.active = false;
             if (!ok && !root.stopping)
                 root.failure = HotspotLogic.explainFailure(error);
+            if (ok && !apply.running) {
+                root.dirty = false;
+                abandon.stop();
+            }
             root.starting = false;
             root.stopping = false;
             root.refresh();
@@ -191,12 +210,17 @@ Singleton {
 
         stdout: StdioCollector {
             onStreamFinished: {
-                const found = Nmcli.connections(text).find(c => c.type === "802-11-wireless" && c.name === "Hotspot");
-                root.profileExists = !!found;
-                if (!commands.busy)
-                    root.active = !!found?.active;
-                if (found)
-                    reading.running = true;
+                root.listed = Nmcli.connections(text);
+                const candidates = HotspotLogic.candidates(root.listed);
+                if (!candidates.length) {
+                    root.profileExists = false;
+                    root.profileUuid = "";
+                    if (!commands.busy)
+                        root.active = false;
+                    return;
+                }
+                reading.command = HotspotLogic.readingCommand(candidates.map(candidate => candidate.uuid));
+                reading.running = true;
             }
         }
     }
@@ -204,18 +228,20 @@ Singleton {
     Process {
         id: reading
 
-        command: ["nmcli", "-s", "-t", "-e", "no", "-f", "802-11-wireless.ssid,802-11-wireless.band,802-11-wireless-security.psk", "connection", "show", "id", "Hotspot"]
-
         stdout: StdioCollector {
             onStreamFinished: {
-                if (apply.running || commands.busy)
+                const found = HotspotLogic.ownProfile(root.listed, HotspotLogic.readProfiles(text));
+                root.profileExists = !!found;
+                root.profileUuid = found?.uuid ?? "";
+                if (!commands.busy)
+                    root.active = !!found?.active;
+                if (!found || root.dirty || apply.running || commands.busy)
                     return;
-                const saved = HotspotLogic.readProfile(Nmcli.fields(text));
-                if (saved.ssid)
-                    root.ssid = saved.ssid;
-                root.band = saved.band;
-                if (saved.password)
-                    root.password = saved.password;
+                if (found.ssid)
+                    root.ssid = found.ssid;
+                root.band = found.band;
+                if (found.password)
+                    root.password = found.password;
             }
         }
     }
