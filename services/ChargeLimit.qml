@@ -13,7 +13,10 @@ Singleton {
     readonly property string policyPath: "/usr/share/polkit-1/actions/org.banditshell.charge-limit.policy"
     readonly property string installCommand: `bash ${Quickshell.shellPath("install.sh")} --charge-limit`
 
-    readonly property int wanted: Logic.wanted(Config.values.battery.holdCharge, Config.values.battery.holdAt)
+    readonly property bool hold: Config.values.battery.holdCharge
+    readonly property int wanted: Logic.wanted(root.hold, Config.values.battery.holdAt)
+    readonly property string setting: `${root.hold}:${root.wanted}`
+    readonly property bool ready: Config.loaded && root.probed
 
     property bool probed: false
     property bool supported: false
@@ -21,6 +24,7 @@ Singleton {
     property int current: -1
     property var refused: null
     property bool settling: false
+    property bool owed: false
 
     readonly property var situation: ({
             probed: root.probed,
@@ -28,13 +32,22 @@ Singleton {
             helper: root.helper,
             current: root.current,
             wanted: root.wanted,
+            hold: root.hold,
+            owed: root.owed,
             refused: root.refused,
             writing: root.settling || writer.running
         })
 
     readonly property string trouble: Logic.trouble(root.situation, root.installCommand)
 
+    function request(): void {
+        root.owed = true;
+        root.read();
+    }
+
     function consider(): void {
+        if (root.owed && root.current === root.wanted)
+            root.owed = false;
         if (Logic.shouldWrite(root.situation))
             root.write();
     }
@@ -51,13 +64,26 @@ Singleton {
             probe.running = true;
     }
 
-    onWantedChanged: {
-        root.refused = null;
-        root.consider();
+    onReadyChanged: {
+        if (root.ready && root.hold)
+            root.request();
     }
-    onCurrentChanged: root.consider()
-    onHelperChanged: root.consider()
-    onSupportedChanged: root.consider()
+
+    onSettingChanged: {
+        if (!root.ready)
+            return;
+        root.refused = null;
+        root.request();
+    }
+
+    Connections {
+        target: Lock
+
+        function onSleepingChanged(): void {
+            if (!Lock.sleeping && root.hold)
+                root.request();
+        }
+    }
 
     Process {
         id: writer
@@ -66,6 +92,7 @@ Singleton {
 
         onExited: code => {
             root.settling = false;
+            root.owed = false;
             probe.after = writer.target;
             probe.failed = code !== 0;
             if (probe.failed)

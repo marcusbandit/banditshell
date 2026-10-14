@@ -13,12 +13,20 @@ function wanted(holdCharge, holdAt) {
     return holdCharge ? Math.max(50, Math.min(100, Math.round(holdAt))) : 100;
 }
 
+function held(state) {
+    return !!state.refused && state.refused.wanted === state.wanted && state.refused.got === state.current;
+}
+
 function shouldWrite(state) {
-    if (!state.supported || !state.helper || state.writing || state.current < 0)
+    if (!state.owed || !state.supported || !state.helper || state.writing || state.current < 0)
         return false;
     if (state.current === state.wanted)
         return false;
-    return !(state.refused && state.refused.wanted === state.wanted && state.refused.got === state.current);
+    return !held(state);
+}
+
+function elsewhere(state) {
+    return state.hold && state.probed && state.supported && state.helper && !state.owed && !state.writing && state.current >= 0 && state.current !== state.wanted && !held(state);
 }
 
 function trouble(state, installCommand) {
@@ -28,10 +36,11 @@ function trouble(state, installCommand) {
         return "this battery has no charge limit in its firmware";
     if (!state.helper)
         return `needs the helper · run ${installCommand}`;
-    const stuck = state.refused && state.refused.wanted === state.wanted && state.refused.got === state.current;
-    if (stuck && state.refused.failed)
+    if (held(state) && state.refused.failed)
         return "the helper was refused · check polkit is running";
-    if (stuck)
+    if (held(state))
         return `the firmware kept it at ${state.current}%`;
+    if (elsewhere(state))
+        return `something else set it to ${state.current}%`;
     return "";
 }

@@ -10,7 +10,7 @@ const Battery = load("battery.js", ["lowStep", "countdownMessage", "afterResume"
 const Suspension = load("suspension.js", ["parseHibernate", "resolve", "commandFor"]);
 const Lid = load("lid.js", ["internalOutput", "hasLid", "externalScreens", "chooseAction", "closedFrom", "closedFromProperty"]);
 const Profile = load("powerprofile.js", ["nameFor", "profileFor", "parseProbe", "parseActive", "choices"]);
-const Charge = load("chargelimit.js", ["parseProbe", "wanted", "shouldWrite", "trouble"]);
+const Charge = load("chargelimit.js", ["parseProbe", "wanted", "shouldWrite", "elsewhere", "trouble"]);
 
 const onBattery = (percentage, extra) => Object.assign({ reading: true, onBattery: true, percentage, warnAt: 0.15, action: "suspend" }, extra);
 
@@ -176,7 +176,7 @@ test("holding off the charge writes 100, and the hold stays inside what the help
     assert.strictEqual(Charge.wanted(true, 120), 100);
 });
 
-const base = { probed: true, supported: true, helper: true, current: 100, wanted: 80, refused: null, writing: false };
+const base = { probed: true, supported: true, helper: true, current: 100, wanted: 80, hold: true, owed: true, refused: null, writing: false };
 
 test("the limit is written when it is possible and different, and not twice for a firmware that says no", () => {
     assert.strictEqual(Charge.shouldWrite(base), true);
@@ -191,6 +191,18 @@ test("the limit is written when it is possible and different, and not twice for 
     assert.strictEqual(Charge.shouldWrite(Object.assign({}, base, { refused: stuck, wanted: 70 })), true);
 });
 
+test("nothing is written unless a write is owed, so another tool's value is left alone", () => {
+    assert.strictEqual(Charge.shouldWrite(Object.assign({}, base, { owed: false })), false);
+    assert.strictEqual(Charge.shouldWrite(Object.assign({}, base, { owed: false, current: 60 })), false);
+    assert.strictEqual(Charge.shouldWrite(Object.assign({}, base, { hold: false, wanted: 100, current: 60, owed: false })), false);
+});
+
+test("turning the hold off owes one write of 100, and that write is skipped when it is already 100", () => {
+    const off = Object.assign({}, base, { hold: false, wanted: 100, current: 80 });
+    assert.strictEqual(Charge.shouldWrite(off), true);
+    assert.strictEqual(Charge.shouldWrite(Object.assign({}, off, { current: 100 })), false);
+});
+
 test("the row says why the limit is not holding and what to run", () => {
     const command = "bash install.sh --charge-limit";
     assert.strictEqual(Charge.trouble(Object.assign({}, base, { probed: false }), command), "");
@@ -199,6 +211,19 @@ test("the row says why the limit is not holding and what to run", () => {
     assert.strictEqual(Charge.trouble(base, command), "");
     assert.match(Charge.trouble(Object.assign({}, base, { refused: { wanted: 80, got: 100, failed: false } }), command), /kept it at 100%/);
     assert.match(Charge.trouble(Object.assign({}, base, { refused: { wanted: 80, got: 100, failed: true } }), command), /refused/);
+});
+
+test("a value changed by something else is shown in the row instead of being fought", () => {
+    const command = "bash install.sh --charge-limit";
+    const settled = Object.assign({}, base, { owed: false, current: 60 });
+    assert.strictEqual(Charge.trouble(settled, command), "something else set it to 60%");
+    assert.strictEqual(Charge.elsewhere(settled), true);
+    assert.strictEqual(Charge.elsewhere(Object.assign({}, settled, { current: 80 })), false);
+    assert.strictEqual(Charge.elsewhere(Object.assign({}, settled, { hold: false, wanted: 100 })), false);
+    assert.strictEqual(Charge.elsewhere(Object.assign({}, settled, { writing: true })), false);
+    assert.strictEqual(Charge.elsewhere(Object.assign({}, settled, { owed: true })), false);
+    assert.strictEqual(Charge.elsewhere(Object.assign({}, settled, { current: -1 })), false);
+    assert.match(Charge.trouble(Object.assign({}, settled, { refused: { wanted: 80, got: 60, failed: false } }), command), /kept it at 60%/);
 });
 
 test("the charge helper takes one number from 50 to 100 and nothing else", () => {
