@@ -12,10 +12,6 @@ Singleton {
     id: root
 
     readonly property var planDefaults: ({
-            hotspot: false,
-            hotspotName: "banditshell",
-            hotspotPass: "",
-            hotspotBand: "2.4 GHz",
             alerts: true,
             alertSet: "soft",
             alertVol: 0.5,
@@ -78,7 +74,6 @@ Singleton {
             startup: [],
             rules: [],
             layouts: [],
-            tunnels: [],
             screens: ({})
         })
 
@@ -294,7 +289,15 @@ Singleton {
         case "wallTarget":
             return root.ui.wallTarget ?? root.uiDefaults.wallTarget;
         case "vpnFirst":
-            return (root.planned.tunnels ?? []).some(t => t.on);
+            return Tunnels.anyOn;
+        case "hotspot":
+            return Hotspot.on;
+        case "hotspotName":
+            return Hotspot.ssid;
+        case "hotspotPass":
+            return Hotspot.password;
+        case "hotspotBand":
+            return Hotspot.band;
         case "warm":
             return Display.warm;
         case "saver":
@@ -412,14 +415,15 @@ Singleton {
         case "saver":
             return root.set("profile", value ? "saver" : "balanced");
         case "vpnFirst":
-            {
-                const list = (root.planned.tunnels ?? []).slice();
-                if (list.length)
-                    list[0] = Object.assign({}, list[0], {
-                        on: value
-                    });
-                return root.plan("tunnels", list);
-            }
+            return Tunnels.setFirst(value);
+        case "hotspot":
+            return Hotspot.setOn(value);
+        case "hotspotName":
+            return Hotspot.setName(value);
+        case "hotspotPass":
+            return Hotspot.setPassword(value);
+        case "hotspotBand":
+            return Hotspot.setBand(value);
         }
         if (root.plannedKey(k))
             root.plan(k, value);
@@ -1001,9 +1005,14 @@ Singleton {
     readonly property string wiredDetail: Network.wiredConnected ? `${Network.wiredDeviceName}${Network.wiredLabel ? " · " + Network.wiredLabel : ""}` : Network.wiredAvailable ? "unplugged" : "no port"
     readonly property string wiredFact: [Network.wiredDeviceName, Network.wiredAddress].filter(Boolean).join(" · ")
 
-    readonly property int tunnelCount: (root.planned.tunnels ?? []).length
+    readonly property int tunnelCount: Tunnels.list.length
 
-    readonly property string vpnOn: (root.planned.tunnels ?? []).find(t => t.on)?.name ?? ""
+    readonly property string vpnOn: Tunnels.activeName
+
+    readonly property string hotspotStatus: Hotspot.status
+    readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
+    readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
+    readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
 
     readonly property var outputs: Audio.sinks.map(n => [n.name, Audio.deviceLabel(n)])
     readonly property var inputs: Audio.sources.map(n => [n.name, Audio.deviceLabel(n)])
@@ -1243,6 +1252,13 @@ Singleton {
             layoutProbe.running = true;
     }
 
+    function withoutRetired(planned: var): var {
+        const kept = Object.assign({}, planned);
+        for (const k of ["hotspot", "hotspotName", "hotspotPass", "hotspotBand", "tunnels"])
+            delete kept[k];
+        return kept;
+    }
+
     function save(): void {
         if (root.loaded)
             saver.restart();
@@ -1313,7 +1329,10 @@ Singleton {
         onLoaded: {
             try {
                 const data = JSON.parse(store.text());
-                root.planned = data.planned ?? {};
+                const stored = data.planned ?? {};
+                root.planned = root.withoutRetired(stored);
+                if (Object.keys(root.planned).length !== Object.keys(stored).length)
+                    saver.restart();
                 root.ui = data.ui ?? {};
                 root.changes = data.changes ?? [];
                 root.modeWas = root.planned.modeWas ?? {};

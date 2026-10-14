@@ -58,10 +58,10 @@ const WIDGET_WHY = {
 const PAGES_SOURCE = {
     wifi: {
         id: "wifi", name: "Wi-Fi", icon: "wifi", preview: "network",
-        status: s => s.v("wifi") ? s.wifiNet || "not connected" : "off",
+        status: s => s.v("wifi") ? s.wifiState : "off",
         groups: [
             { rows: [
-                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", detail: s => s.v("wifi") ? (s.wifiNet || "not connected") : "off",
+                { n: 1, icon: "wifi", label: "Wi-Fi", k: "wifi", kind: "toggle", detail: s => s.v("wifi") ? s.wifiState : "off",
                     why: "Turns the radio off. Ethernet keeps working." },
                 { n: [2, 3, 6], kind: "w", w: "nets", kw: "networks join password forget qr share scan portal sign in" },
                 { n: 4, icon: "autorenew", label: "Join on its own", k: "autoJoin", kind: "toggle", detail: s => s.v("autoJoin") ? "" : "waits to be told", dis: s => !s.v("wifi"),
@@ -109,16 +109,15 @@ const PAGES_SOURCE = {
         status: s => [s.v("hotspot") ? "sharing" : "not sharing", s.vpnOn ? `vpn ${s.vpnOn}` : "no vpn"].join(" · "),
         groups: [
             { t: "Hotspot", rows: [
-                { n: 9, isNew: true, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", detail: s => s.v("hotspot") ? "on · 0 devices" : "over Wi-Fi",
+                { n: 9, icon: "wifi_tethering", label: "Share this connection", k: "hotspot", kind: "toggle", detail: s => s.hotspotStatus || "over Wi-Fi", dis: s => s.hotspotBlocked,
                     why: "Lends your ethernet connection to other devices over Wi-Fi. Wi-Fi stops joining networks while it runs.", layer: [
-                        { n: 9, isNew: true, icon: "badge", label: "Name", k: "hotspotName", kind: "text" },
-                        { n: 9, isNew: true, icon: "key", label: "Password", k: "hotspotPass", kind: "secret" },
-                        { n: 9, isNew: true, icon: "settings_input_antenna", label: "Band", k: "hotspotBand", kind: "seg", o: ["2.4 GHz", "5 GHz"] }
+                        { n: 9, icon: "badge", label: "Name", k: "hotspotName", kind: "text" },
+                        { n: 9, icon: "key", label: "Password", k: "hotspotPass", kind: "secret", detail: s => s.hotspotPasswordTrouble, bad: s => s.hotspotPasswordTrouble !== "" },
+                        { n: 9, icon: "settings_input_antenna", label: "Band", k: "hotspotBand", kind: "seg", o: ["2.4 GHz", "5 GHz"] }
                     ] }
             ] },
             { t: "VPN", rows: [
-                { n: 10, isNew: true, kind: "w", w: "tunnels", kw: "vpn wireguard tunnel" },
-                { n: 10, isNew: true, icon: "upload_file", label: "Add a tunnel", kind: "button", btn: "Import", act: "vpnImport", detail: ".conf or .ovpn" }
+                { n: 10, kind: "w", w: "tunnels", kw: "vpn wireguard openvpn tunnel add import" }
             ] }
         ]
     },
@@ -707,11 +706,11 @@ const PAGES_SOURCE = {
 
 const CATS = [
     { id: "connections", name: "Connections", icon: "wifi",
-        blurb: s => [s.v("wifi") && s.wifiNet ? s.wifiNet : "wi-fi off", s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
+        blurb: s => [s.v("wifi") && s.wifiNet ? s.wifiNet : s.v("hotspot") ? "hotspot on" : "wi-fi off", s.v("bt") ? `${s.btConnected.length} devices` : "bluetooth off", s.vpnOn ? "vpn on" : ""].filter(Boolean).join(" · "),
         tiles: [
-            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.v("wifi") ? s.wifiNet || "not connected" : "off" },
+            { k: "wifi", icon: "wifi", label: "Wi-Fi", det: s => s.v("wifi") ? s.wifiState : "off" },
             { k: "bt", icon: "bluetooth", label: "Bluetooth", det: s => s.v("bt") ? "on" : "off" },
-            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot" },
+            { k: "hotspot", icon: "wifi_tethering", label: "Hotspot", det: s => s.hotspotStatus || "off", dis: s => s.hotspotBlocked },
             { k: "vpnFirst", icon: "vpn_lock", label: "VPN", det: s => s.vpnOn || (s.tunnelCount ? "off" : "no tunnels"), dis: s => !s.tunnelCount }
         ],
         suggest: s => s.v("bt") && s.btNear > 0 ? { icon: "bluetooth_searching", label: `${s.btNear} devices nearby`, detail: "ready to pair", go: "bluetooth" } : null,
