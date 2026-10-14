@@ -9,18 +9,45 @@ Singleton {
     id: root
 
     readonly property string xdgConfig: Quickshell.env("XDG_CONFIG_HOME") || `${Quickshell.env("HOME")}/.config`
-    readonly property string terminalListPath: `${root.xdgConfig}/xdg-terminals.list`
+    readonly property var terminalNames: DefaultAppsLog.terminalListNames(Quickshell.env("XDG_CURRENT_DESKTOP"))
 
     readonly property var groups: DefaultAppsLog.GROUPS
 
     property var answers: ({})
     property var chosen: ({})
-    property string terminalList: ""
+    property var terminalLists: ({})
+    property var terminalViews: ({})
+    property string pendingTerminal: ""
     property bool terminalListed: false
     property bool probed: false
     property var writes: []
 
     readonly property bool listsTerminals: root.terminalListed
+    readonly property bool terminalListsRead: Object.keys(root.terminalLists).length === root.terminalNames.length
+    readonly property string terminalList: DefaultAppsLog.effectiveTerminalList(root.orderedLists())
+
+    function orderedLists(): var {
+        return root.terminalNames.map(name => Object.assign({ name, text: "", exists: false, readable: false }, root.terminalLists[name]));
+    }
+
+    function settleList(name: string, text: string, exists: bool, readable: bool): void {
+        root.terminalLists = Object.assign({}, root.terminalLists, {
+            [name]: { text, exists, readable }
+        });
+    }
+
+    function flushTerminal(): void {
+        if (!root.pendingTerminal || !root.terminalListsRead)
+            return;
+        const writes = DefaultAppsLog.terminalWrites(root.orderedLists(), root.pendingTerminal);
+        root.pendingTerminal = "";
+        for (const write of writes) {
+            root.settleList(write.name, write.text, true, true);
+            root.terminalViews[write.name]?.setText(write.text);
+        }
+    }
+
+    onTerminalListsReadChanged: root.flushTerminal()
 
     function groupOf(key: string): var {
         return root.groups[key] ?? null;
@@ -61,9 +88,8 @@ Singleton {
             [key]: id
         });
         if (key === "defTerm" && root.listsTerminals) {
-            const text = DefaultAppsLog.terminalListSet(root.terminalList, id);
-            root.terminalList = text;
-            terminalFile.setText(text);
+            root.pendingTerminal = id;
+            root.flushTerminal();
             return;
         }
         root.writes = root.writes.concat([["sh", "-c", "id=$1; shift; for type; do xdg-mime default \"$id\" \"$type\"; done", "sh", id].concat(group.types)]);
@@ -121,13 +147,22 @@ Singleton {
         }
     }
 
-    FileView {
-        id: terminalFile
+    Instantiator {
+        model: root.terminalNames
 
-        path: root.terminalListPath
-        printErrors: false
+        delegate: FileView {
+            id: file
 
-        onLoaded: root.terminalList = text()
-        onLoadFailed: root.terminalList = ""
+            required property string modelData
+
+            path: `${root.xdgConfig}/${modelData}`
+            printErrors: false
+            watchChanges: true
+
+            Component.onCompleted: root.terminalViews[modelData] = file
+            onFileChanged: file.reload()
+            onLoaded: root.settleList(modelData, file.text(), true, true)
+            onLoadFailed: err => root.settleList(modelData, "", false, err === FileViewError.FileNotFound)
+        }
     }
 }

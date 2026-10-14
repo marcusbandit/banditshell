@@ -7,7 +7,7 @@ const ROOT = path.resolve(__dirname, "..");
 const FIXTURES = path.join(__dirname, "fixtures/apps");
 const read = file => fs.readFileSync(path.join(ROOT, file), "utf8");
 const Entries = new Function(read("services/desktop-entries.js") + "\nreturn { parseBundle, indexEntries };")();
-const Defaults = new Function(read("services/default-apps.js") + "\nreturn { GROUPS, allTypes, typeMatches, handledTypes, offers, parseDefaults, groupValue, strays, terminalListFirst, terminalListSet, terminalListEntries };")();
+const Defaults = new Function(read("services/default-apps.js") + "\nreturn { GROUPS, allTypes, typeMatches, handledTypes, offers, parseDefaults, groupValue, strays, terminalListFirst, terminalListSet, terminalListEntries, terminalListNames, effectiveTerminalList, terminalWrites };")();
 
 const applications = fs.readdirSync(path.join(FIXTURES, "applications")).sort().map(f => `@@@${f}\n${fs.readFileSync(path.join(FIXTURES, "applications", f), "utf8")}`).join("");
 const entries = Entries.indexEntries(Entries.parseBundle(applications));
@@ -82,4 +82,37 @@ test("choosing a terminal moves it to the top of the list and keeps the rest", (
     assert.strictEqual(Defaults.terminalListSet(text, "foot.desktop"), "foot.desktop\n# preferred first\norg.gnome.Terminal.desktop\n");
     assert.strictEqual(Defaults.terminalListSet("", "kitty.desktop"), "kitty.desktop\n");
     assert.strictEqual(Defaults.terminalListSet("kitty.desktop\n", "kitty.desktop"), "kitty.desktop\n");
+});
+
+test("the lists xdg-terminal-exec reads are the desktop ones first, in both cases, then the plain one", () => {
+    assert.deepStrictEqual(Defaults.terminalListNames("Hyprland"), ["Hyprland-xdg-terminals.list", "hyprland-xdg-terminals.list", "xdg-terminals.list"]);
+    assert.deepStrictEqual(Defaults.terminalListNames("niri:GNOME"), ["niri-xdg-terminals.list", "GNOME-xdg-terminals.list", "gnome-xdg-terminals.list", "xdg-terminals.list"]);
+    assert.deepStrictEqual(Defaults.terminalListNames(""), ["xdg-terminals.list"]);
+    assert.deepStrictEqual(Defaults.terminalListNames(undefined), ["xdg-terminals.list"]);
+    assert.deepStrictEqual(Defaults.terminalListNames("../evil"), ["xdg-terminals.list"]);
+});
+
+test("the list in effect is the first existing one that names a terminal", () => {
+    const lists = [
+        { name: "Hyprland-xdg-terminals.list", text: "", exists: false, readable: true },
+        { name: "hyprland-xdg-terminals.list", text: "# nothing yet\n", exists: true, readable: true },
+        { name: "xdg-terminals.list", text: "foot.desktop\n", exists: true, readable: true }
+    ];
+    assert.strictEqual(Defaults.effectiveTerminalList(lists), "foot.desktop\n");
+    assert.strictEqual(Defaults.effectiveTerminalList(lists.slice(0, 2)), "");
+    assert.strictEqual(Defaults.effectiveTerminalList([Object.assign({}, lists[2], { text: "kitty.desktop\n" }), lists[2]]), "kitty.desktop\n");
+});
+
+test("a choice goes into every list that exists and the plain one, and never into one that could not be read", () => {
+    const lists = [
+        { name: "Hyprland-xdg-terminals.list", text: "kitty.desktop\n# mine\n", exists: true, readable: true },
+        { name: "hyprland-xdg-terminals.list", text: "", exists: false, readable: true },
+        { name: "locked-xdg-terminals.list", text: "", exists: true, readable: false },
+        { name: "xdg-terminals.list", text: "", exists: false, readable: true }
+    ];
+    assert.deepStrictEqual(Defaults.terminalWrites(lists, "foot.desktop"), [
+        { name: "Hyprland-xdg-terminals.list", text: "foot.desktop\nkitty.desktop\n# mine\n" },
+        { name: "xdg-terminals.list", text: "foot.desktop\n" }
+    ]);
+    assert.deepStrictEqual(Defaults.terminalWrites([{ name: "xdg-terminals.list", text: "", exists: true, readable: false }], "foot.desktop"), []);
 });
