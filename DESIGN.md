@@ -483,12 +483,16 @@ banditshell/
 │   │                            same way
 │   ├── Keyboards.qml            the user's own board, when they name one: a
 │   │                            VIA definition copied into the shell's
-│   │                            config and watched, aligned into keys; and
+│   │                            config and watched, aligned into keys, with
+│   │                            the keymap VIA saved for it laid on top;
+│   │                            the built-in shape (cheatsheet.shape); and
 │   │                            the keys struck in cheatsheet.blocked
 │   ├── keyboards.js             the board models as data: the drawn
 │   │                            template (function row, ISO main block,
-│   │                            numpad) and the VIA reader, legends by
-│   │                            position. No QML in it, tested in node
+│   │                            numpad; ansi, iso or split), the VIA reader,
+│   │                            legends by position, and the saved-keymap
+│   │                            reader that names keys by keycode. No QML
+│   │                            in it, tested in node
 │   ├── whatsnew.js               the What's new log as DATA: entries parsed
 │   │                            tolerantly and accumulated past the
 │   │                            last-shown marker. No QML in it, the way
@@ -1679,7 +1683,10 @@ read as KLE means them: `x` and `y` move the cursor, `w` and `h` size the key. I
 come from the template by POSITION: the board says whether it is ISO (a two-row Enter) or
 ANSI (a wide home-row Enter under a 1.5u backslash), the numpad is found by where its
 columns sit and the arrows by their shape, and keys the template has no opinion about draw
-their matrix spots and wait. A woven bind lights the keys its loop variables and top-level
+their matrix spots and wait. A keymap saved from VIA (Save + Load, Save) is the exact answer
+where position only guesses: its first layer maps each matrix spot to a keycode, which maps to
+the keysym a bind names, so the keys the shell binds light on the user's own board; it must
+carry the definition's vendorProductId, or it is refused. A woven bind lights the keys its loop variables and top-level
 aliases resolve to, and only when its chord names the variable. Keys can also be struck
 from the board in the config (`cheatsheet.blocked`, by keysym or matrix spot, each with an
 optional why): they draw as an empty outline with the legend struck through, never light,

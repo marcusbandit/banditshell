@@ -71,15 +71,54 @@ const BOTTOM_ROW = [
 
 const RIGHT_SHIFT = key("RTSH", "Shift", [], { mod: 1, units: 2.75 });
 
+const SPLIT_GAP = 1;
+
+const SPLIT_BOTTOM_ROW = [
+    key("LCTL", "Ctrl", [], { mod: 4, units: 1.25 }),
+    key("LWIN", "", [], { mod: 64, units: 1.25 }),
+    key("LALT", "Alt", [], { mod: 8, units: 1.25 }),
+    key("SPCE", "", ["space"], { units: 3.25 }),
+    { gap: SPLIT_GAP },
+    key("SPCR", "", ["space"], { units: 2.75 }),
+    key("RALT", "Alt", [], { mod: 8, units: 1.25 }),
+    key("RWIN", "", [], { mod: 64, units: 1.25 }),
+    key("MENU", "Menu", ["Menu"], { units: 1.25 }),
+    key("RCTL", "Ctrl", [], { mod: 4, units: 1.25 }),
+    { gap: 0.5 },
+    key("LEFT", "←", ["Left"]),
+    key("DOWN", "↓", ["Down"]),
+    key("RGHT", "→", ["Right"])
+];
+
+function splitAfter(row, leftCount) {
+    const out = [];
+    let seen = 0;
+    for (const cell of row) {
+        out.push(cell);
+        if (cell.gap === undefined && ++seen === leftCount)
+            out.push({ gap: SPLIT_GAP });
+    }
+    return out;
+}
+
 function mainRows(variant) {
-    if (variant === "ansi")
-        return [
+    if (variant === "ansi" || variant === "split") {
+        const rows = [
             NUMBER_ROW,
             UPPER_LETTERS.concat([key("BKSL", "\\", ["backslash"], { units: 1.5 })]),
             HOME_LETTERS.concat([key("RTRN", "Enter", ["Return"], { units: 2.25 })]),
-            [key("LFSH", "", [], { mod: 1, units: 2.25 })].concat(LOWER_LETTERS, [RIGHT_SHIFT], ARROW_UP),
-            BOTTOM_ROW
+            [key("LFSH", "", [], { mod: 1, units: 2.25 })].concat(LOWER_LETTERS, [RIGHT_SHIFT])
         ];
+        if (variant === "ansi")
+            return rows.slice(0, 3).concat([rows[3].concat(ARROW_UP), BOTTOM_ROW]);
+        return [
+            splitAfter(rows[0], 7),
+            splitAfter(rows[1], 6),
+            splitAfter(rows[2], 6),
+            splitAfter(rows[3], 6).concat(ARROW_UP),
+            SPLIT_BOTTOM_ROW
+        ];
+    }
     return [
         NUMBER_ROW,
         UPPER_LETTERS.concat([key("RTRN", "Enter", ["Return"], { units: 1.5, span: 2, foot: 1.25 })]),
@@ -166,7 +205,13 @@ function templateSections(variant) {
     ];
 }
 
+const SHAPES = ["ansi", "iso", "split"];
 const TEMPLATE_VARIANT = "iso";
+
+function shapeNamed(value) {
+    return SHAPES.indexOf(value) >= 0 ? value : TEMPLATE_VARIANT;
+}
+
 const TEMPLATE = templateSections(TEMPLATE_VARIANT);
 const MAIN_WIDTH = place([NUMBER_ROW]).width;
 
@@ -203,7 +248,7 @@ function parseVia(text) {
 
     const keymap = data?.layouts?.keymap;
     if (!Array.isArray(keymap) || keymap.length === 0)
-        return { error: "the file has no layouts.keymap, so it is not a VIA keyboard definition" };
+        return { error: Array.isArray(data?.layers) ? "the file is a saved keymap, not a definition · import it under VIA keymap" : "the file has no layouts.keymap, so it is not a VIA keyboard definition" };
 
     const rows = [];
     let y = 0;
@@ -256,8 +301,18 @@ function parseVia(text) {
 
     return {
         name: String(data.name ?? ""),
+        vendorProductId: definitionId(data),
+        matrix: { rows: Number(data.matrix?.rows) || 0, cols: Number(data.matrix?.cols) || 0 },
         rows
     };
+}
+
+function definitionId(data) {
+    if (typeof data.vendorProductId === "number")
+        return data.vendorProductId;
+    const vendor = parseInt(String(data.vendorId ?? ""), 16);
+    const product = parseInt(String(data.productId ?? ""), 16);
+    return isNaN(vendor) || isNaN(product) ? null : vendor * 65536 + product;
 }
 
 function variantOf(main) {
@@ -393,6 +448,131 @@ function alignBoard(parsed) {
                 height
             }]
     };
+}
+
+const KEYCODE_ROLES = {
+    KC_ESC: "ESC", KC_GRV: "TLDE", KC_MINS: "AE11", KC_EQL: "AE12", KC_BSPC: "BKSP",
+    KC_TAB: "TAB", KC_LBRC: "AD11", KC_RBRC: "AD12", KC_BSLS: "BKSL",
+    KC_CAPS: "CAPS", KC_SCLN: "AC10", KC_QUOT: "AC11", KC_ENT: "RTRN",
+    KC_LSFT: "LFSH", KC_NUBS: "LSGT", KC_COMM: "AB08", KC_DOT: "AB09", KC_SLSH: "AB10", KC_RSFT: "RTSH",
+    KC_LCTL: "LCTL", KC_LGUI: "LWIN", KC_LALT: "LALT", KC_SPC: "SPCE",
+    KC_RALT: "RALT", KC_RGUI: "RWIN", KC_APP: "MENU", KC_RCTL: "RCTL",
+    KC_UP: "UP", KC_LEFT: "LEFT", KC_DOWN: "DOWN", KC_RGHT: "RGHT",
+    KC_NUM: "NMLK", KC_PSLS: "KPDV", KC_PAST: "KPMU", KC_PMNS: "KPSU", KC_PPLS: "KPAD", KC_PENT: "KPEN", KC_PDOT: "KPDL",
+    KC_P7: "KP7", KC_P8: "KP8", KC_P9: "KP9", KC_P4: "KP4", KC_P5: "KP5", KC_P6: "KP6",
+    KC_P1: "KP1", KC_P2: "KP2", KC_P3: "KP3", KC_P0: "KP0"
+};
+
+const KEYCODE_EXTRAS = {
+    KC_NUHS: ["#", ["numbersign"]],
+    KC_DEL: ["Del", ["Delete"]],
+    KC_INS: ["Ins", ["Insert"]],
+    KC_HOME: ["Home", ["Home"]],
+    KC_END: ["End", ["End"]],
+    KC_PGUP: ["PgUp", ["Prior", "Page_Up"]],
+    KC_PGDN: ["PgDn", ["Next", "Page_Down"]],
+    KC_PSCR: ["Print", ["Print"]],
+    KC_SCRL: ["ScrLk", ["Scroll_Lock"]],
+    KC_PAUS: ["Pause", ["Pause"]],
+    KC_MUTE: ["Mute", ["XF86AudioMute"]],
+    KC_VOLU: ["Vol+", ["XF86AudioRaiseVolume"]],
+    KC_VOLD: ["Vol-", ["XF86AudioLowerVolume"]],
+    KC_MPLY: ["Play", ["XF86AudioPlay"]],
+    KC_MNXT: ["Next", ["XF86AudioNext"]],
+    KC_MPRV: ["Prev", ["XF86AudioPrev"]],
+    KC_MSTP: ["Stop", ["XF86AudioStop"]],
+    KC_BRIU: ["Bright+", ["XF86MonBrightnessUp"]],
+    KC_BRID: ["Bright-", ["XF86MonBrightnessDown"]]
+};
+
+function legendFrom(cap, syms, mod, role) {
+    return { cap, syms, mod, role };
+}
+
+const BLANK_LEGEND = legendFrom("", [], 0, "");
+
+function keycodeLegends() {
+    const byId = {};
+    for (const section of TEMPLATE)
+        for (const k of section.keys)
+            byId[k.id] = k;
+    const out = {};
+    for (const code in KEYCODE_ROLES) {
+        const k = byId[KEYCODE_ROLES[code]];
+        out[code] = legendFrom(k.cap, k.syms, k.mod, k.id);
+    }
+    for (const k of TEMPLATE[1].keys)
+        if (/^[A-Z0-9]$/.test(k.cap) && /^A[BCDE]\d\d$/.test(k.id))
+            out[`KC_${k.cap}`] = legendFrom(k.cap, k.syms, 0, k.id);
+    for (let n = 1; n <= 24; n++)
+        out[`KC_F${n}`] = legendFrom(`F${n}`, [`F${n}`], 0, byId[`F${n}`] ? `F${n}` : "");
+    for (const code in KEYCODE_EXTRAS)
+        out[code] = legendFrom(KEYCODE_EXTRAS[code][0], KEYCODE_EXTRAS[code][1], 0, "");
+    return out;
+}
+
+const KEYCODES = keycodeLegends();
+
+function legendOf(code) {
+    const text = String(code ?? "").trim();
+    if (KEYCODES[text])
+        return KEYCODES[text];
+    const layer = /^(?:MO|TG|TO|TT|OSL|DF)\(\s*(\d+)\s*\)$/.exec(text);
+    if (layer)
+        return legendFrom(`Fn${layer[1]}`, [], 0, "");
+    const tapped = /^(?:LT\(\s*\d+\s*,|MT\([^,()]+,|[A-Z_]+_T\()\s*(KC_[A-Z0-9_]+)\s*\)$/.exec(text);
+    if (tapped && KEYCODES[tapped[1]])
+        return KEYCODES[tapped[1]];
+    return BLANK_LEGEND;
+}
+
+const MOD_LABELS = { 1: "shift", 4: "ctrl", 8: "alt", 64: "super" };
+
+function parseKeymap(text) {
+    let data;
+    try {
+        data = JSON.parse(String(text ?? ""));
+    } catch (e) {
+        return { error: "the file is not JSON" };
+    }
+
+    const layers = data?.layers;
+    if (!Array.isArray(layers) || layers.length === 0 || !Array.isArray(layers[0]) || layers[0].length === 0)
+        return { error: Array.isArray(data?.layouts?.keymap) ? "the file is a definition, not a keymap · import it under VIA layout" : "the file has no layers, so it is not a VIA keymap" };
+    if (typeof data.vendorProductId !== "number")
+        return { error: "the file has no vendorProductId, so it is not a VIA keymap" };
+
+    return {
+        name: String(data.name ?? ""),
+        vendorProductId: data.vendorProductId,
+        layer: layers[0].map(code => String(code ?? ""))
+    };
+}
+
+function keymapLegends(definition, keymap) {
+    if (definition.vendorProductId !== null && definition.vendorProductId !== keymap.vendorProductId)
+        return { error: `that keymap is for ${keymap.name || "another board"}, not the imported definition` };
+    const rows = definition.matrix.rows;
+    const cols = definition.matrix.cols;
+    if (!cols)
+        return { error: "the definition has no matrix size, so the keymap cannot be placed" };
+    if (rows && keymap.layer.length !== rows * cols)
+        return { error: `the keymap has ${keymap.layer.length} keys, the definition's matrix holds ${rows * cols}` };
+
+    const legends = {};
+    for (let n = 0; n < keymap.layer.length; n++) {
+        const legend = legendOf(keymap.layer[n]);
+        legends[`${Math.floor(n / cols)},${n % cols}`] = Object.assign({ label: legend.mod ? MOD_LABELS[legend.mod] : legend.cap || legend.syms[0] || "" }, legend);
+    }
+    return { legends };
+}
+
+function applyLegends(board, legends) {
+    const keys = board.sections[0].keys.map(cell => {
+        const legend = cell.encoder ? undefined : legends[cell.matrix];
+        return legend ? Object.assign({}, cell, { role: legend.role, cap: legend.cap || (legend.syms.length || legend.mod ? "" : cell.matrix), syms: legend.syms, mod: legend.mod }) : cell;
+    });
+    return Object.assign({}, board, { sections: [Object.assign({}, board.sections[0], { keys })] });
 }
 
 function blockedMap(value) {

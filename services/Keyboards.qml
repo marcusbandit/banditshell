@@ -15,15 +15,29 @@ Singleton {
 
     readonly property string path: root.stored ? `${root.dir}/${root.stored}` : ""
 
+    readonly property string storedKeymap: Config.values.cheatsheet.keymap ?? ""
+
+    readonly property string keymapPath: root.storedKeymap ? `${root.dir}/${root.storedKeymap}` : ""
+
+    property var definition: null
+
+    property var keymap: null
+
     property var board: null
+
+    property var legends: ({})
 
     property string error: ""
 
     property string pending: ""
 
-    readonly property var template: KeyboardsJs.TEMPLATE
+    property string pendingKeymap: ""
 
-    readonly property string variant: root.board ? root.board.variant : KeyboardsJs.TEMPLATE_VARIANT
+    readonly property string shape: KeyboardsJs.shapeNamed(Config.values.cheatsheet.shape)
+
+    readonly property var template: KeyboardsJs.templateSections(root.shape)
+
+    readonly property string variant: root.board ? root.board.variant : root.shape
 
     readonly property var blocked: KeyboardsJs.blockedMap(Config.values.cheatsheet.blocked)
 
@@ -55,6 +69,47 @@ Singleton {
         root.error = "";
     }
 
+    function useKeymap(rawPath: string): void {
+        const trimmed = String(rawPath ?? "").trim();
+        if (!trimmed)
+            return root.clearKeymap();
+        if (!root.definition)
+            return root.fail("import the board's VIA layout first, the keymap is placed on it");
+        const expanded = trimmed === "~" || trimmed.startsWith("~/") ? `${Quickshell.env("HOME")}${trimmed.slice(1)}` : trimmed;
+
+        root.error = "";
+        if (keymapReader.path === expanded)
+            keymapReader.reload();
+        else
+            keymapReader.path = expanded;
+    }
+
+    function clearKeymap(): void {
+        Config.set("cheatsheet.keymap", "");
+        root.error = "";
+    }
+
+    function assemble(): void {
+        root.legends = ({});
+        if (!root.definition) {
+            root.board = null;
+            return;
+        }
+        const aligned = KeyboardsJs.alignBoard(root.definition);
+        if (!root.keymap) {
+            root.board = aligned;
+            return;
+        }
+        const made = KeyboardsJs.keymapLegends(root.definition, root.keymap);
+        if (made.error) {
+            root.board = aligned;
+            root.clearKeymap();
+            return root.fail(made.error);
+        }
+        root.legends = made.legends;
+        root.board = KeyboardsJs.applyLegends(aligned, made.legends);
+    }
+
     function fail(said: string): void {
         root.error = said;
         console.warn(`Keyboards: ${said}`);
@@ -62,7 +117,8 @@ Singleton {
 
     function read(): void {
         if (!root.path) {
-            root.board = null;
+            root.definition = null;
+            root.assemble();
             return;
         }
         if (keeper.path === root.path)
@@ -71,9 +127,26 @@ Singleton {
             keeper.path = root.path;
     }
 
+    function readKeymap(): void {
+        if (!root.keymapPath) {
+            root.keymap = null;
+            root.assemble();
+            return;
+        }
+        if (mapKeeper.path === root.keymapPath)
+            mapKeeper.reload();
+        else
+            mapKeeper.path = root.keymapPath;
+    }
+
     onPathChanged: root.read()
 
-    Component.onCompleted: root.read()
+    onKeymapPathChanged: root.readKeymap()
+
+    Component.onCompleted: {
+        root.read();
+        root.readKeymap();
+    }
 
     FileView {
         id: reader
@@ -109,15 +182,66 @@ Singleton {
             const parsed = KeyboardsJs.parseVia(keeper.text());
             if (parsed.error)
                 return root.fail(parsed.error);
-            root.board = KeyboardsJs.alignBoard(parsed);
+            root.definition = parsed;
+            root.assemble();
             root.error = "";
         }
 
         onLoadFailed: {
             if (!root.stored)
                 return;
-            root.board = null;
+            root.definition = null;
+            root.assemble();
             root.fail(`${root.stored} is missing from ${root.dir}`);
+        }
+    }
+
+    FileView {
+        id: keymapReader
+
+        watchChanges: false
+        printErrors: false
+
+        onLoaded: {
+            const parsed = KeyboardsJs.parseKeymap(keymapReader.text());
+            if (parsed.error)
+                return root.fail(parsed.error);
+            const made = KeyboardsJs.keymapLegends(root.definition, parsed);
+            if (made.error)
+                return root.fail(made.error);
+
+            root.pendingKeymap = `${root.stored.replace(/\.json$/i, "")}.keymap.json`;
+            keymapWriter.path = `${root.dir}/${root.pendingKeymap}`;
+            keymapWriter.setText(keymapReader.text());
+        }
+
+        onLoadFailed: root.fail(`could not read ${keymapReader.path}`)
+    }
+
+    FileView {
+        id: mapKeeper
+
+        watchChanges: true
+        printErrors: false
+
+        onFileChanged: mapKeeper.reload()
+
+        onLoaded: {
+            if (!root.storedKeymap)
+                return;
+            const parsed = KeyboardsJs.parseKeymap(mapKeeper.text());
+            if (parsed.error)
+                return root.fail(parsed.error);
+            root.keymap = parsed;
+            root.assemble();
+        }
+
+        onLoadFailed: {
+            if (!root.storedKeymap)
+                return;
+            root.keymap = null;
+            root.assemble();
+            root.fail(`${root.storedKeymap} is missing from ${root.dir}`);
         }
     }
 
@@ -130,5 +254,16 @@ Singleton {
         onSaved: Config.set("cheatsheet.keyboard", root.pending)
 
         onSaveFailed: root.fail(`could not write ${writer.path}`)
+    }
+
+    FileView {
+        id: keymapWriter
+
+        watchChanges: false
+        printErrors: false
+
+        onSaved: Config.set("cheatsheet.keymap", root.pendingKeymap)
+
+        onSaveFailed: root.fail(`could not write ${keymapWriter.path}`)
     }
 }

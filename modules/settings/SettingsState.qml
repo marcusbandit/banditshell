@@ -46,7 +46,6 @@ Singleton {
             largerText: false,
             contrast: false,
             layout: "dwindle",
-            sheetShape: "iso",
             customLayout: "",
             startup: [],
             rules: [],
@@ -238,7 +237,8 @@ Singleton {
             lowAction: "battery.nearlyEmpty",
             lidBattery: "power.lid.onBattery",
             lidPlugged: "power.lid.pluggedIn",
-            lidDocked: "power.lid.docked"
+            lidDocked: "power.lid.docked",
+            sheetShape: "cheatsheet.shape"
         })
 
     function plannedKey(k: string): bool {
@@ -290,7 +290,7 @@ Singleton {
         case "sidebar":
             return SidebarState.enabled;
         case "sheetKeyboard":
-            return Keyboards.stored || root.boardWanted ? "file" : (root.planned.sheetShape ?? root.planDefaults.sheetShape);
+            return Keyboards.stored || root.boardWanted ? "file" : Keyboards.shape;
         case "bindsFile":
             return HyprConfig.configPath;
         case "cfgPath":
@@ -414,7 +414,7 @@ Singleton {
                 root.boardWanted = false;
                 if (Keyboards.stored)
                     Keyboards.clear();
-                root.plan("sheetShape", value);
+                Config.set(root.configBacked.sheetShape, value);
             } else {
                 root.boardWanted = true;
             }
