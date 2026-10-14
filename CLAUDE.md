@@ -28,9 +28,23 @@ folder carries a `qmldir`; after adding, moving or renaming a file run
 Agents work in worktrees, headless; the user feels the result on the live
 session before any PR. Do not restart or replace the live shell yourself.
 End worktree work with the one command that puts it in front of them:
-`banditshell dev try <branch>` (bare `banditshell dev try` inside the worktree
-does the same), and `banditshell dev back` to return. A tried worktree reloads
-as its files change, so further edits land without another `try`.
+`banditshell dev try <worktree-name>`, and `banditshell dev back` to return.
+A tried worktree reloads as its files change, so further edits land without
+another `try`.
+
+`<worktree-name>` is the worktree's current branch name, a few hyphenated
+words like `media-player-polish-lyrics`. Run `git branch --show-current` in
+the worktree right before handing over, and put exactly what it prints after
+`try`. The opening git status of a session is a stale snapshot: T3 starts each
+worktree on a placeholder branch like `t3/e9329e47` and renames it once the
+work has a name, so that placeholder reads like a commit hash and matches
+nothing. `try` runs the files as they are, so nothing has to be committed
+first.
+
+A worktree ends with its PR. Once the PR is merged or closed, remove the
+worktree (`git worktree remove <path>`, run from the main checkout) and delete
+its local branch, in the same turn that settles it. Left alone they pile up in
+`git worktree list` and `banditshell dev try`'s picker.
 
 ## Agent skills
 
