@@ -51,6 +51,7 @@ generate() {
     done <<<"$table"
 
     cat <<EOF
+_bs_built=$EPOCHREALTIME
 _bs_file=$(quote "$TARGET")
 
 _bs_verbs=(${verbs# })
@@ -76,6 +77,12 @@ _bs_stale() {
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
+}
+
+_bs_moved() {
+    local built
+    IFS= read -r built 2>/dev/null <"$_bs_file" || return 1
+    [[ ${built#*=} != "$_bs_built" ]]
 }
 
 _bs_live() {
@@ -162,15 +169,13 @@ _banditshell() {
     fi
     COMPREPLY=()
 
-    if [[ -z ${_bs_reloading:-} ]] && _bs_stale; then
-        if "$_bs_repo/scripts/bash-completion.sh" install --quiet 2>/dev/null; then
-            _bs_reloading=1
-            # shellcheck disable=SC1090
-            source "$_bs_file"
-            unset _bs_reloading
-            _banditshell "$@"
-            return
-        fi
+    if [[ -z ${_bs_reloading:-} ]] && { _bs_stale && "$_bs_repo/scripts/bash-completion.sh" install --quiet 2>/dev/null || _bs_moved; }; then
+        _bs_reloading=1
+        # shellcheck disable=SC1090
+        source "$_bs_file"
+        unset _bs_reloading
+        _banditshell "$@"
+        return
     fi
 
     if (( cword == 1 )); then

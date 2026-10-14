@@ -174,6 +174,49 @@ _banditshell`;
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 
+test("a shell left open takes up the file another shell rebuilt", () => {
+    const dir = fs.mkdtempSync(path.join(HOME, "rebuilt-"));
+    const env = { ...ENV, BASH_COMPLETION_USER_DIR: dir };
+    const build = () => execFileSync("bash", ["scripts/bash-completion.sh", "print"], { cwd: ROOT, env, encoding: "utf8" });
+    const file = path.join(dir, "completions/banditshell");
+    fs.mkdirSync(path.dirname(file));
+    fs.writeFileSync(file, build());
+    const rebuilt = build().replace(/^_bs_verbs=\(/m, "$&zz-rebuilt ");
+    const script = `source "$1"; COMP_WORDS=(banditshell zz); COMP_CWORD=1
+_banditshell; printf '%s\\n' "\${COMPREPLY[@]}" ==
+printf '%s' "$2" >"$1"
+_banditshell; printf '%s\\n' "\${COMPREPLY[@]}" ==
+_bs_moved && echo moved || echo settled`;
+    const [before, after, state] = execFileSync("bash", ["--norc", "--noprofile", "-c", script, "_", file, rebuilt], { cwd: ROOT, env, encoding: "utf8" }).split("==\n");
+    assert.ok(!before.includes("zz-rebuilt"));
+    assert.ok(after.includes("zz-rebuilt"));
+    assert.strictEqual(state, "settled\n");
+});
+
+test("a zsh left open takes up the file another zsh rebuilt", { skip: !hasZsh() && "no zsh" }, () => {
+    const dir = fs.mkdtempSync(path.join(HOME, "zsh-rebuilt-"));
+    const env = { ...ENV, BANDITSHELL_ZSH_COMPDIR: dir };
+    const build = () => execFileSync("bash", ["scripts/zsh-completion.sh", "print"], { cwd: ROOT, env, encoding: "utf8" });
+    fs.writeFileSync(path.join(dir, "_banditshell"), build());
+    const rebuilt = build().replace(/^_bs_verbs=\($/m, "$&\n    'zz-rebuilt:rebuilt'");
+    const script = `
+compadd() { [[ $1 == -a ]] && print -rl -- \${(P)2} }
+_describe() { local -a v; v=( "\${(@P)\${@[-1]}}" ); print -rl -- \${v%%:*} }
+compdef() { : }
+fpath=("$1" $fpath)
+autoload -Uz _banditshell
+words=(banditshell zz)
+CURRENT=2
+_banditshell; print -r -- '=='
+print -rn -- "$2" >"$1/_banditshell"
+_banditshell; print -r -- '=='
+_bs_moved && print moved || print settled`;
+    const [before, after, state] = execFileSync("zsh", ["-fc", script, "_", dir, rebuilt], { cwd: ROOT, env, encoding: "utf8" }).split("==\n");
+    assert.ok(!before.includes("zz-rebuilt"));
+    assert.ok(after.includes("zz-rebuilt"));
+    assert.strictEqual(state, "settled\n");
+});
+
 test("completions install, status and remove can take one shell", () => {
     const home = fs.mkdtempSync(path.join(HOME, "one-shell-"));
     const env = { ...ENV, HOME: home };

@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-5",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Tab completion for banditshell now stays current in every terminal. Until now, after an update only the first terminal to press Tab learned the new commands, and terminals already open kept suggesting old ones, like banditshell try, until you restarted them. A terminal opened before this update needs exec zsh or exec bash once; after that it keeps up by itself."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-4",
       "date": "2026-10-14",
       "changes": [
