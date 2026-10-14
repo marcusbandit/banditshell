@@ -121,6 +121,9 @@ Singleton {
             HyprConfig.addMonitor((HyprConfig.outputTables[0]?.file ?? "lua/monitors.lua"), spec);
 
         settle.restart();
+
+        if (!HyprConfig.applying)
+            root.flushQueued();
     }
 
     property var pending: ({})

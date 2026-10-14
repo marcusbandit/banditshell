@@ -1,167 +1,266 @@
 pragma ComponentBehavior: Bound
 
 import QtQuick
+import QtQuick.Effects
 import qs.config
 import qs.components
+import qs.services
+import "catalogue.js" as Catalogue
 
 Item {
     id: root
 
-    property bool backable: false
+    property bool compact: false
 
-    property real inset: 0
+    readonly property var s: SettingsState
+    readonly property var pin: SettingsView.pin
+    readonly property var row: SettingsView.hovered
 
-    default property alias content: holder.data
+    readonly property string sceneName: SettingsView.fold && SettingsView.preview === "arrange" ? "" : SettingsView.preview
+    readonly property string pinName: root.pin ? root.pin.type : ""
 
-    property real target: 0
-    readonly property real position: flow.value
-    readonly property real limit: Math.max(0, holder.childrenRect.height + holder.childrenRect.y + root.inset - root.height)
-
-    readonly property bool backing: swipe.backing
-    readonly property real backFraction: Math.max(0, Math.min(1, swipe.backX / Math.max(1, root.width)))
-
-    signal backed(bool committed)
-
-    clip: true
-
-    function scrollTo(y: real): void {
-        root.target = Math.max(0, Math.min(y, root.limit));
+    function esc(t: var): string {
+        return String(t ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
 
-    function drag(y: real): void {
-        root.scrollTo(y);
-        flow.value = root.target;
+    function tone(c: color, t: string): string {
+        return `<font color="${c}">${root.esc(t)}</font>`;
     }
 
-    function coast(v: real): void {
-        root.scrollTo(flow.value + v * Config.values.control.coastMs);
+    function defaultText(r: var): string {
+        if (!r?.k || !r.cfg)
+            return "";
+        const d = SettingsState.defaultOf(r.k);
+        if (d === undefined)
+            return "";
+        if (r.kind === "toggle")
+            return d ? "on" : "off";
+        if (r.o) {
+            const hit = Catalogue.options(r, root.s).find(o => Catalogue.same(o[0], d));
+            if (hit)
+                return String(hit[1]);
+        }
+        return Catalogue.format(r, d, root.s);
     }
 
-    onLimitChanged: root.scrollTo(root.target)
+    Column {
+        id: top
 
-    Follow {
-        id: flow
+        width: parent.width
+        spacing: 0
 
-        target: root.target
-        speed: Appearance.animation.scrollSpeed
-        epsilon: 0.5
-    }
+        Item {
+            width: parent.width
+            height: 36
 
-    MouseArea {
-        id: swipe
+            StyledText {
+                anchors.verticalCenter: parent.verticalCenter
+                width: parent.width - close.width - Appearance.padding.normal
+                text: (root.pin ? SettingsView.pinTitle(root.pin) : SettingsView.title).toUpperCase()
+                color: Appearance.colour.textDim
+                elide: Text.ElideRight
+            }
 
-        property real anchorX: 0
-        property real anchorY: 0
-        property real fromScroll: 0
+            SettingsTool {
+                id: close
 
-        property bool scrolling: false
-        property bool backing: false
-        property bool spent: false
-
-        property real backX: 0
-        property real velocity: 0
-        property real lastEvent: 0
-
-        anchors.fill: parent
-
-        function begin(): void {
-
-            root.drag(root.position);
-            swipe.fromScroll = root.position;
-            swipe.scrolling = false;
-            swipe.backing = false;
-            swipe.spent = false;
-            swipe.backX = 0;
-            swipe.velocity = 0;
-            swipe.lastEvent = Date.now();
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                icon: "close"
+                tip: root.pin ? "put it away" : root.compact ? "put it away" : "close settings"
+                onClicked: {
+                    if (root.pin)
+                        SettingsView.unpin();
+                    else if (root.compact)
+                        SettingsView.paneOut = false;
+                    else
+                        Settings.hide();
+                }
+            }
         }
 
-        function advance(dx: real, dy: real): void {
-            if (swipe.spent)
-                return;
-            if (!swipe.scrolling && !swipe.backing) {
-                if (Math.abs(dx) < Config.values.control.dragThreshold && Math.abs(dy) < Config.values.control.dragThreshold)
-                    return;
-                if (Math.abs(dy) > Math.abs(dx))
-                    swipe.scrolling = true;
-                else if (root.backable && dx > 0)
-                    swipe.backing = true;
-                else {
-                    swipe.spent = true;
-                    return;
+        Item {
+            width: parent.width
+            height: Appearance.padding.card * 2 + 1
+
+            Rectangle {
+                y: Appearance.padding.card
+                width: parent.width
+                height: 1
+                color: Appearance.colour.separator
+            }
+        }
+    }
+
+    Flickable {
+        id: scroll
+
+        y: top.height
+        width: parent.width
+        height: parent.height - y
+        contentHeight: body.implicitHeight
+        clip: true
+        boundsBehavior: Flickable.StopAtBounds
+
+        Column {
+            id: body
+
+            width: scroll.width
+            spacing: Appearance.padding.card
+
+            Loader {
+                width: parent.width
+                active: !!root.pin
+                visible: active
+                source: root.pin?.type ? Qt.resolvedUrl(`pins/${root.pin.type.charAt(0).toUpperCase()}${root.pin.type.slice(1)}Pin.qml`) : ""
+
+                onLoaded: item.width = Qt.binding(() => width)
+            }
+
+            Item {
+                id: stage
+
+                readonly property real wanted: scene.item?.stageHeight ?? 220
+                readonly property bool fills: scene.item?.fills ?? false
+                readonly property bool rounded: GraphicsInfo.api !== GraphicsInfo.Software && !!scene.item
+
+                visible: !root.pin && root.sceneName !== ""
+                width: parent.width
+                height: stage.fills ? Math.max(stage.wanted, scroll.height - info.implicitHeight - body.spacing) : Math.max(220, stage.wanted)
+
+                SquircleRect {
+                    anchors.fill: parent
+                    radius: Appearance.rounding.large
+                    color: Appearance.colour.fill
+                }
+
+                Item {
+                    id: stageMask
+
+                    anchors.fill: parent
+                    visible: false
+                    layer.enabled: stage.rounded
+
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.large
+                        color: "black"
+                    }
+                }
+
+                Item {
+                    anchors.fill: parent
+                    clip: true
+                    layer.enabled: stage.rounded
+                    layer.effect: MultiEffect {
+                        maskEnabled: true
+                        maskSource: stageMask
+                        maskThresholdMin: 0.5
+                        maskSpreadAtMin: 1
+                    }
+
+                    Loader {
+                        id: scene
+
+                        anchors.fill: parent
+                        active: !root.pin && root.sceneName !== "" && (!root.compact || SettingsView.paneOut)
+                        source: root.sceneName ? Qt.resolvedUrl(`scenes/${root.sceneName.charAt(0).toUpperCase()}${root.sceneName.slice(1)}Scene.qml`) : ""
+                    }
                 }
             }
 
-            if (swipe.scrolling) {
+            Column {
+                id: info
 
-                const now = Date.now();
-                const dt = Math.max(1, Math.min(100, now - swipe.lastEvent));
-                swipe.lastEvent = now;
-                const before = root.position;
-                root.drag(swipe.fromScroll - dy);
-                swipe.velocity += ((root.position - before) / dt - swipe.velocity) * 0.4;
-                return;
+                visible: !root.pin
+                width: parent.width
+                spacing: Appearance.padding.small
+
+                readonly property var r: root.row && root.row.page === SettingsView.current ? root.row : null
+                readonly property string title: info.r ? Catalogue.labelOf(info.r) : ""
+                readonly property string why: info.r ? Catalogue.whyOf(info.r, root.s) : ""
+                readonly property string fallback: {
+                    if (SettingsView.hub)
+                        return "Tiles flip the things you reach for most. Rows open the rest.";
+                    return "Point at a row to see what it does and where it lives in config.json.";
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: info.title !== ""
+                    text: info.title
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: info.r ? info.why !== "" : true
+                    text: info.r ? info.why : info.fallback
+                    color: Appearance.colour.textDim
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: text !== ""
+                    textFormat: Text.StyledText
+                    wrapMode: Text.WordWrap
+                    color: Appearance.colour.textFaint
+                    text: {
+                        const r = info.r;
+                        if (r) {
+                            if (r.cfg)
+                                return `config ${root.tone(Appearance.colour.textDim, r.cfg)}`;
+                            if (r.k && r.k.startsWith("scr:"))
+                                return `hyprland ${root.tone(Appearance.colour.textDim, `monitor = ${SettingsState.selMon}, ${SettingsState.describeMonitor(SettingsState.selMon)}`)}`;
+                            return "";
+                        }
+                        if (SettingsView.hub) {
+                            const c = SettingsView.cat;
+                            return `${c.pages.length} pages ${root.tone(Appearance.colour.textDim, `${Catalogue.rowCount(c)} rows`)}`;
+                        }
+                        const cover = Catalogue.pagesCovered(SettingsView.page);
+                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} settings`)}${cover.fresh ? ` · ${cover.fresh} new` : ""}`;
+                    }
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: !!info.r?.isNew
+                    text: "new · nothing behind it in the shell yet"
+                    color: Appearance.colour.textFaint
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    readonly property string d: root.defaultText(info.r)
+
+                    width: parent.width
+                    visible: d !== ""
+                    textFormat: Text.StyledText
+                    text: `default ${root.tone(Appearance.colour.textDim, d)}`
+                    color: Appearance.colour.textFaint
+                    wrapMode: Text.WordWrap
+                }
+
+                StyledText {
+                    width: parent.width
+                    textFormat: Text.StyledText
+                    wrapMode: Text.WordWrap
+                    color: Appearance.colour.textFaint
+                    readonly property var w: SettingsState.wrote
+                    readonly property var last: SettingsState.changes[0] ?? null
+                    visible: text !== ""
+                    text: {
+                        const r = info.r;
+                        if (r)
+                            return w && r.cfg === w.key ? `wrote ${root.tone(Appearance.colour.accent, `${w.key} = ${w.value}`)}` : "";
+                        if (SettingsView.hub)
+                            return last ? `last changed ${root.tone(Appearance.colour.accent, `${last.label} · ${last.to}`)}` : "";
+                        return w ? `last wrote ${root.tone(Appearance.colour.accent, `${w.key} = ${w.value}`)}` : "";
+                    }
+                }
             }
-
-            const next = Math.max(0, dx);
-            swipe.velocity += (next - swipe.backX - swipe.velocity) * 0.4;
-            swipe.backX = next;
-        }
-
-        function settle(meant: bool): void {
-            if (swipe.backing) {
-
-                const thrown = swipe.velocity >= Config.values.control.flickVelocity;
-                const far = root.backFraction >= Config.values.control.pullCommit;
-                swipe.backing = false;
-                root.backed(meant && (thrown || far));
-            } else if (swipe.scrolling && meant) {
-                root.coast(swipe.velocity);
-            }
-            swipe.scrolling = false;
-            swipe.spent = false;
-        }
-
-        onPressed: mouse => {
-
-            scroll.finish();
-            swipe.anchorX = swipe.x + mouse.x;
-            swipe.anchorY = swipe.y + mouse.y;
-            swipe.begin();
-        }
-
-        onPositionChanged: mouse => {
-            if (swipe.pressed)
-                swipe.advance(swipe.x + mouse.x - swipe.anchorX, swipe.y + mouse.y - swipe.anchorY);
-        }
-
-        onReleased: swipe.settle(true)
-        onCanceled: swipe.settle(false)
-
-        onWheel: wheel => {
-            if (scroll.feed(wheel))
-                return;
-            wheel.accepted = true;
-            const step = wheel.pixelDelta.y !== 0 ? wheel.pixelDelta.y : wheel.angleDelta.y / 120 * Appearance.sizes.rowHeight * Config.values.control.wheelRows;
-            root.scrollTo(root.target - step);
-        }
-
-        ScrollGesture {
-            id: scroll
-
-            armed: !swipe.pressed
-
-            onBegan: swipe.begin()
-            onMoved: (dx, dy) => swipe.advance(dx, dy)
-            onEnded: swipe.settle(true)
         }
     }
-
-    Item {
-        id: holder
-
-        width: root.width
-        y: -root.position
-    }
-
 }

@@ -20,6 +20,8 @@ Item {
 
     property bool interactive: true
 
+    property bool alarm: false
+
     readonly property bool hovered: root.interactive && press.containsMouse
     readonly property bool pressed: root.interactive && press.pressed
 
@@ -158,7 +160,7 @@ Item {
     property real radiusLeft: -1
     property real radiusRight: -1
 
-    readonly property color fg: root.skin.fg
+    readonly property color fg: root.alarm ? Appearance.colour.alarm : root.skin.fg
     readonly property color ring: root.skin.ring
     readonly property real ringW: root.skin.ringW
 

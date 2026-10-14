@@ -1,9 +1,29 @@
 module qs.modules.settings
-MonitorCanvas 1.0 MonitorCanvas.qml
-SettingsCard 1.0 SettingsCard.qml
-SettingsFace 1.0 SettingsFace.qml
-SettingsFloat 1.0 SettingsFloat.qml
-SettingsGroup 1.0 SettingsGroup.qml
+AppPicker 1.0 AppPicker.qml
+KeyCaps 1.0 KeyCaps.qml
+MiniWorkspaces 1.0 MiniWorkspaces.qml
+ScreenCanvas 1.0 ScreenCanvas.qml
+singleton SettingsActions 1.0 SettingsActions.qml
+SettingsBars 1.0 SettingsBars.qml
+SettingsCell 1.0 SettingsCell.qml
+SettingsChip 1.0 SettingsChip.qml
+SettingsContent 1.0 SettingsContent.qml
+SettingsEntry 1.0 SettingsEntry.qml
+SettingsFacts 1.0 SettingsFacts.qml
+SettingsField 1.0 SettingsField.qml
+SettingsHub 1.0 SettingsHub.qml
+singleton SettingsKeys 1.0 SettingsKeys.qml
+SettingsPanel 1.0 SettingsPanel.qml
 SettingsPane 1.0 SettingsPane.qml
-SettingsRow 1.0 SettingsRow.qml
-SourceEditSheet 1.0 SourceEditSheet.qml
+SettingsPathEdit 1.0 SettingsPathEdit.qml
+SettingsPath 1.0 SettingsPath.qml
+SettingsRail 1.0 SettingsRail.qml
+SettingsRowFrame 1.0 SettingsRowFrame.qml
+SettingsSecret 1.0 SettingsSecret.qml
+SettingsSlider 1.0 SettingsSlider.qml
+singleton SettingsState 1.0 SettingsState.qml
+SettingsStepper 1.0 SettingsStepper.qml
+SettingsToast 1.0 SettingsToast.qml
+SettingsTool 1.0 SettingsTool.qml
+singleton SettingsView 1.0 SettingsView.qml
+SidebarReplica 1.0 SidebarReplica.qml

@@ -1063,7 +1063,7 @@ lockpreview)
     ;;
 settingspreview)
     mkdir -p "$SHOT_DIR"
-    size="${1:-560x560}"
+    size="${1:-1920x1080}"
     page="${2:-}"
     out="${3:-$SHOT_DIR/settings-$size${page:+-$page}.png}"
     w="${size%x*}"
