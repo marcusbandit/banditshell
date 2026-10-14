@@ -4,7 +4,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 CLI="${1:-$REPO/cli/banditshell}"
 DESCRIPTION_COLUMN=31
-SOURCES=" panel menu screen theme key file dir page layer app place index worktree "
+SOURCES=" panel menu screen theme key file dir page layer app place index worktree command "
 
 case "${1:-}" in
 -h | --help)

@@ -150,6 +150,11 @@ Scope {
             return root.closePanel("launcher");
         }
 
+        function status(): string {
+            const win = Shell.showing(w => w.launcher.open);
+            return `open=${win?.launcher.open ?? false}`;
+        }
+
         function run(id: string): string {
             const entry = Apps.entryById(id) ?? Apps.search(id)[0];
             if (!entry)
@@ -249,6 +254,11 @@ Scope {
 
         function close(): string {
             return root.closePanel("session");
+        }
+
+        function status(): string {
+            const win = Shell.showing(w => w.session.open);
+            return `open=${win?.session.open ?? false}`;
         }
     }
 

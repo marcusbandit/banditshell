@@ -25,6 +25,14 @@ test("lifecycle words need nothing", () => {
         assert.strictEqual(Migration.migrateArgs(verb), null, verb);
 });
 
+test("a read-only old form never becomes one that acts", () => {
+    const acting = /^(doctor$|doctor binds rewrite|start|stop|restart|dev (try|back|run|build|shaders)|panel close|screen \S+ (on|off|toggle)|wallpaper (on|off|toggle|next|prev|clear|set))( |$)/;
+    for (const old of ["status migration", "status border", "status panel media", "status keyring", "status tablet",
+        "status penmap", "status timer", "status alarm", "status wallpaper", "status output", "status screen",
+        "list menu", "list clipboard", "list themes", "list worktree", "get theme", "dispatch alarm status"])
+        assert.ok(!acting.test(migrate(old)), `${old} -> ${migrate(old)}`);
+});
+
 test("the new grammar passes through untouched", () => {
     for (const cmd of ["panel launcher toggle", "panel close", "screen border off", "wallpaper next",
         "wallpaper", "tablet on compositor", "clock timer start 10m", "output toggle", "config set edge.bare true",
@@ -63,8 +71,8 @@ test("a panel's own actions follow its name", () => {
         ["dispatch calculator panel", "panel calculator compact"],
         ["dispatch calculator answer 2 + 2", "panel calculator answer 2 + 2"],
         ["dispatch notifications clear", "panel notifications clear"],
-        ["dispatch keyring refuse", "panel keyring close"],
-        ["status keyring", "panel keyring status"]
+        ["dispatch keyring refuse", "dev keyring close"],
+        ["status keyring", "dev keyring status"]
     ]);
 });
 
@@ -126,7 +134,8 @@ test("volume goes to wpctl, the lock to loginctl", () => {
         ["lock", "!loginctl lock-session"],
         ["status lock", "!loginctl show-session auto -p LockedHint"]
     ]);
-    assert.strictEqual(Migration.migrateArgs("set volume loud"), null);
+    for (const bad of ["set volume loud", "set volume .", "set volume +.", "set volume 1.2.3"])
+        assert.strictEqual(Migration.migrateArgs(bad), null, bad);
 });
 
 test("the tablet holds its hinge, lid, probe and pen", () => {
@@ -158,6 +167,8 @@ test("timers, alarms and zones live in the clock", () => {
         ["dispatch alarm snooze", "clock alarm snooze"],
         ["dispatch alarm add 7:00 --days weekdays", "clock alarm add 7:00 --days weekdays"],
         ["status alarm", "clock alarm"],
+        ["dispatch alarm status", "clock alarm"],
+        ["dispatch alarm list", "clock alarm list"],
         ["list alarm", "clock alarm list"],
         ["list zone", "clock zone list"],
         ["dispatch zone add Tokyo", "clock zone add Tokyo"]
@@ -170,7 +181,7 @@ test("the picker is screenshot", () => {
         ["dispatch picker freeze", "screenshot save --freeze"],
         ["dispatch picker clip", "screenshot copy"],
         ["dispatch picker freezeclip", "screenshot copy --freeze"],
-        ["dispatch picker close", "panel close"],
+        ["dispatch picker close", "panel picker close"],
         ["shot", "screenshot full"],
         ["shot /tmp/a.png", "screenshot full /tmp/a.png"]
     ]);
@@ -206,8 +217,8 @@ test("working on the shell starts with dev", () => {
         ["lockpreview", "dev preview lock"],
         ["settingspreview 400x800 wifi", "dev preview settings 400x800 wifi"],
         ["filespreview ~/docs /tmp/f.png", "dev preview files ~/docs /tmp/f.png"],
-        ["dispatch migration migrate", "doctor binds"],
-        ["status migration", "doctor"]
+        ["dispatch migration migrate", "doctor binds rewrite"],
+        ["status migration", "doctor binds"]
     ]);
 });
 
@@ -241,6 +252,7 @@ test("a redirection or a pipe ends the command", () => {
     const { text } = Migration.rewriteText(line);
     assert.strictEqual(text, 'banditshell screen border "$border" >/dev/null 2>&1 || return 1');
     assert.strictEqual(Migration.rewriteText("banditshell list menu | head").text, "banditshell dev menu list | head");
+    assert.strictEqual(Migration.rewriteText("banditshell dispatch picker freeze 2>/dev/null").text, "banditshell screenshot save --freeze 2>/dev/null");
 });
 
 test("a named thing never falls through to config set", () => {

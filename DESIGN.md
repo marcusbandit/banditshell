@@ -1111,7 +1111,7 @@ banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
                                    [dir]; keyboard dock|float|page <layer>;
                                    clipboard list|use|pin|remove <n>|clear;
                                    calculator full|compact|answer <expression>;
-                                   notifications clear; keyring close
+                                   notifications clear
 banditshell output [speakers|headphones|toggle|list]|assign <role> <device>
 banditshell screen [brightness [<pct>|+n|-n]|temperature [<kelvin>|off]
                    |border [on|off|toggle]|sidebar [on|off|toggle] [screen|all]
@@ -1127,11 +1127,12 @@ banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
                    |probe [lid]|pen [edit|commit|cancel|aspect|centre|follow
                    |area <x> <y> <w> <h>]]
 banditshell config get <key>|set <key> <value>|theme [<name>|list]
-banditshell start|stop|restart|status|log|doctor [binds]
+banditshell start|stop|restart|status|log|doctor [binds [rewrite]]
 banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test|check
 banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
-banditshell dev menu current|hover|list|launcher scrub <0..1>|keyring demo
+banditshell dev menu current|hover|list|launcher scrub <0..1>
+                                   |keyring [status|demo|close]
 ```
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
@@ -1192,8 +1193,8 @@ work: the wrapper rewrites any old form through the map on the way in. A command
 another program is rewritten to that program (`banditshell set volume +` becomes `wpctl
 set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+`), and the fallback runs it and says so on stderr. The
 sidebar's update icon wears a "published_with_changes" glyph while old binds exist, and its
-menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor` counts them
-and `banditshell doctor binds` is the same rewrite. Refusing is a two-click path - the second
+menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor binds` lists
+them and `banditshell doctor binds rewrite` is the same rewrite. Refusing is a two-click path - the second
 asks, because "no" means "I will fix the config by hand" - and a confirmed refusal is written
 to `cli.bindsDeclined` and never nagged about again.
 
@@ -1222,7 +1223,15 @@ is a small table saying what a *value* is, because no amount of parsing prose se
 Matching follows the grammar. Where several rules fit what has been typed, the words they
 offer are offered together, so after `panel launcher` the launcher's own `run` sits beside
 the `toggle|open|close|status` every panel has. A value is offered only from the most specific
-rule, so after `panel settings open` the pages are offered and the screen names are not.
+rule, so after `panel settings open` the pages are offered and the screen names are not. And
+a command that ends where the typing ends is not also read as a placeholder: `panel close`
+is the rescue, not a panel called close, so nothing is offered after it.
+
+The migration map is held to one more rule, learned the hard way during review: **a form that
+only read must never be rewritten into one that acts.** `status migration` first mapped to
+`doctor`, which repairs `bin/` and repoints `~/bin/banditshell`; a test now walks every
+read-only old form and checks where it lands, and `doctor binds` reports while `doctor binds
+rewrite` acts, the same split as every bare group.
 
 It also **maintains itself**. The generated function stats its sources on the first Tab of a
 shell and rebuilds when any of them is newer, so a command added to the CLI is complete-able

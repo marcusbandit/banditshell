@@ -128,6 +128,7 @@ _bs_offer() {
     menu) mapfile -t values < <(_bs_live dev menu list) ;;
     theme) mapfile -t values < <(_bs_live config theme list); values+=("${_bs_theme[@]}") ;;
     page) values=("${_bs_page[@]}") ;;
+    command) values=("${_bs_verbs[@]}") ;;
     layer) values=("${_bs_layer[@]}") ;;
     screen) mapfile -t values < <(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}') ;;
     key) mapfile -t values < <(_bs_config_keys) ;;
@@ -177,9 +178,24 @@ _banditshell() {
         return
     fi
 
-    local target=$(( cword - 1 )) rule word item i n score ok best=-1 literal wild
+    local target=$(( cword - 1 )) rule word item i n score ok best=-1 literal wild exact=0
     local -a parts items flags holes offers=() literals=()
     local -A seen=()
+    for rule in "${_bs_rules[@]}"; do
+        read -ra parts <<<"$rule"
+        [[ ${parts[-1]} == --* ]] && unset 'parts[-1]'
+        (( ${#parts[@]} == target )) || continue
+        ok=1
+        for (( i = 0; i < target; i++ )); do
+            IFS=, read -ra items <<<"${parts[i]}"
+            literal=0
+            for item in "${items[@]}"; do
+                [[ $item == "${words[i + 1]}" ]] && literal=1
+            done
+            (( literal )) || { ok=0; break; }
+        done
+        (( ok )) && { exact=1; break; }
+    done
     for rule in "${_bs_rules[@]}"; do
         read -ra parts <<<"$rule"
         flags=()
@@ -210,6 +226,7 @@ _banditshell() {
             fi
         done
         (( ok )) || continue
+        (( exact && score < target )) && continue
         if (( target < n )); then
             IFS=, read -ra items <<<"${parts[target]}"
         elif (( ${#flags[@]} )) && [[ ${words[cword - 1]} != --* ]]; then

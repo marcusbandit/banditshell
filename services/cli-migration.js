@@ -42,7 +42,7 @@ const RULES = [
     { re: /^set volume mute$/, to: `wpctl set-mute ${SINK} toggle`, run: true, note: "volume is wpctl's" },
     { re: /^set volume mute on$/, to: `wpctl set-mute ${SINK} 1`, run: true, note: "volume is wpctl's" },
     { re: /^set volume mute off$/, to: `wpctl set-mute ${SINK} 0`, run: true, note: "volume is wpctl's" },
-    { re: /^set volume ([+-]?)([0-9.]*)$/, to: volumeTo, run: true, note: "volume is wpctl's" },
+    { re: /^set volume ([+-]?)((?:\d+(?:\.\d*)?|\.\d+)?)$/, to: volumeTo, run: true, note: "volume is wpctl's" },
     { re: /^status volume$/, to: `wpctl get-volume ${SINK}`, run: true, note: "volume is wpctl's" },
 
     { re: /^(dispatch lock|lock)$/, to: "loginctl lock-session", run: true, note: "locking is logind's; the shell's lock answers it" },
@@ -67,13 +67,14 @@ const RULES = [
 
     { re: /^status (timer|alarm)$/, to: "clock $1", note: "a bare thing says how it is" },
     { re: /^list (alarm|zone)$/, to: "clock $1 list", note: "timers, alarms and zones live in the clock" },
+    { re: /^dispatch alarm status$/, to: "clock alarm", note: "a bare thing says how it is" },
     { re: /^dispatch (timer|alarm|zone) (.+)$/, to: "clock $1 $2", note: "timers, alarms and zones live in the clock" },
 
     { re: /^dispatch picker open$/, to: "screenshot save", note: "the picker is screenshot" },
     { re: /^dispatch picker freeze$/, to: "screenshot save --freeze", note: "the picker is screenshot" },
     { re: /^dispatch picker clip$/, to: "screenshot copy", note: "the picker is screenshot" },
     { re: /^dispatch picker freezeclip$/, to: "screenshot copy --freeze", note: "the picker is screenshot" },
-    { re: /^dispatch picker close$/, to: "panel close", note: "every panel away" },
+    { re: /^dispatch picker close$/, to: "panel picker close", note: "the picker closes like a panel" },
     { re: /^shot( .*)?$/, to: "screenshot full$1", note: "the whole desktop is a screenshot too" },
 
     { re: /^list clipboard$/, to: "panel clipboard list", note: "a panel's own actions follow its name" },
@@ -82,15 +83,15 @@ const RULES = [
     { re: /^dispatch calculator app$/, to: "panel calculator full", note: "the calculator's shapes are full and compact" },
     { re: /^dispatch calculator panel$/, to: "panel calculator compact", note: "the calculator's shapes are full and compact" },
     { re: /^dispatch launcher scrub (.+)$/, to: "dev launcher scrub $1", note: "scrubbing is for working on the shell" },
-    { re: /^dispatch keyring refuse$/, to: "panel keyring close", note: "refusing the prompt closes it" },
-    { re: /^status keyring$/, to: "panel keyring status", note: "a panel's own actions follow its name" },
+    { re: /^dispatch keyring refuse$/, to: "dev keyring close", note: "the keyring prompt is for working on the shell" },
+    { re: /^status keyring$/, to: "dev keyring status", note: "the keyring prompt is for working on the shell" },
     { re: /^dispatch keyring demo$/, to: "dev keyring demo", note: "the demo is for working on the shell" },
     { re: /^dispatch (clipboard|calculator|keyboard|settings|launcher|notifications) (.+)$/, to: "panel $1 $2", note: "a panel's own actions follow its name" },
     { re: /^files$/, to: "panel files toggle", note: "the file browser is a panel" },
     { re: /^files (toggle|open|close|status)( .*)?$/, to: "panel files $1$2", note: "the file browser is a panel" },
 
-    { re: /^dispatch migration migrate$/, to: "doctor binds", note: "the doctor rewrites old binds" },
-    { re: /^status migration$/, to: "doctor", note: "the doctor reports old binds" },
+    { re: /^dispatch migration migrate$/, to: "doctor binds rewrite", note: "the doctor rewrites old binds" },
+    { re: /^status migration$/, to: "doctor binds", note: "the doctor reports old binds" },
 
     { re: /^list worktree$/, to: "dev worktrees", note: "working on the shell starts with dev" },
     { re: /^(try|back|run|build|shaders|test|check)( .*)?$/, to: "dev $1$2", note: "working on the shell starts with dev" },
@@ -108,7 +109,7 @@ function migrateArgs(args) {
     return null;
 }
 
-const CMD_RE = /(^|[^A-Za-z0-9_-])(banditshell(?:[ \t]+(?:"[^"]*"|[^ \t"'&;#\r\n)<>|]+))+)/g;
+const CMD_RE = /(^|[^A-Za-z0-9_-])(banditshell(?:[ \t]+(?!\d+[<>])(?:"[^"]*"|[^ \t"'&;#\r\n)<>|]+))+)/g;
 
 const COMMENT_LINE = /^\s*(#|--)/;
 

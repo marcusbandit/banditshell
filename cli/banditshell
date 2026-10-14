@@ -29,8 +29,6 @@
 #                                opening it
 #   banditshell panel notifications clear
 #                                empty the notification history
-#   banditshell panel keyring [status|close]
-#                                the keyring's password prompt; close refuses it
 #   <panel>: launcher|session|clipboard|media|calculator|quickcontrols
 #            keyboard|settings|notifications|notch|hotkeys|files|wallpaper
 #                                and every menu; banditshell panel lists them all
@@ -131,7 +129,9 @@
 #   banditshell doctor           repair bin/, the helpers and ~/bin/banditshell,
 #                                then report quickshell, dkms, failed units and
 #                                binds in an old form
-#   banditshell doctor binds     rewrite those binds, a .bak beside each file
+#   banditshell doctor binds     the binds still in an old form, and where
+#   banditshell doctor binds rewrite
+#                                rewrite them, a .bak beside each file
 #
 # completions                    tab completion for zsh and bash
 #   banditshell completions [install|status|remove|print] [zsh|bash]
@@ -169,11 +169,12 @@
 #   banditshell dev launcher scrub <fraction>
 #                                hold the launcher's letter rail at 0 to 1; below
 #                                0 lets go
-#   banditshell dev keyring demo
-#                                a made-up keyring question
+#   banditshell dev keyring [status|demo|close]
+#                                the keyring's password prompt: what it asks, a
+#                                made-up question, or refuse it
 #
 # help                           this list; banditshell help <command> for one
-#   banditshell help [command]
+#   banditshell help [<command>]
 
 set -euo pipefail
 
@@ -186,6 +187,8 @@ HELPERS=(bs-pty bs-ls bs-gamma)
 
 qs_target=()
 qs_target_resolved=0
+migrated="${BANDITSHELL_MIGRATED:-}"
+unset BANDITSHELL_MIGRATED
 
 list_instances() {
     qs list --all 2>/dev/null | awk '
@@ -529,7 +532,7 @@ group_help() {
                     inside = 1
             if (inside) {
                 name = $1
-                gsub(/\|/, "  ", name)
+                gsub(/\|/, ", ", name)
                 text = substr($0, 30, 2) == "  " ? substr($0, 32) : ""
                 sub(/^ +/, "", text)
             }
@@ -681,9 +684,6 @@ close_everything() {
 
 status_panel() {
     local current
-    case "$1" in
-    launcher | session) echo "banditshell: the $1 says nothing about itself; toggle, open or close it" >&2; return 1 ;;
-    esac
     if builtin_panel "$1"; then
         if panel_status_takes_screen "$1"; then
             ipc "$(panel_ipc "$1")" status "${2:-}"
@@ -723,9 +723,6 @@ route_panel() {
     calculator:compact) ipc calculator panel ;;
     calculator:answer) [ $# -ge 1 ] || say_usage "panel calculator answer <expression>"; ipc calculator answer "$*" ;;
     notifications:clear) ipc notifications clear ;;
-    keyring:status) ipc keyring status ;;
-    keyring:close) ipc keyring refuse ;;
-    keyring:*) nope panel "keyring $action" ;;
     *:toggle) toggle_panel "$name" "${1:-}" ;;
     *:open) open_panel "$name" "$@" ;;
     *:close) close_panel "$name" ;;
@@ -749,9 +746,9 @@ route_screen() {
     case "$what" in
     "")
         ipc screen status | labelled display || return 1
-        ipc_quiet border status | labelled border
-        ipc_quiet sidebar status | labelled sidebar
-        ipc_quiet stream status | labelled stream
+        ipc_quiet border status | labelled border || true
+        ipc_quiet sidebar status | labelled sidebar || true
+        ipc_quiet stream status | labelled stream || true
         ;;
     brightness)
         if [ -z "${1:-}" ]; then ipc screen status; else ipc screen brightness "$(level_of "$1")"; fi ;;
@@ -929,7 +926,7 @@ route_clock() {
     case "$what" in
     "")
         ipc timer status | labelled timers || return 1
-        ipc_quiet alarm status | labelled alarms
+        ipc_quiet alarm status | labelled alarms || true
         ;;
     timer) route_timer "$@" ;;
     alarm) route_alarm "$@" ;;
@@ -942,7 +939,7 @@ route_tablet() {
     case "${1:-}" in
     "")
         ipc tablet status | labelled tablet || return 1
-        ipc_quiet penmap status | labelled pen
+        ipc_quiet penmap status | labelled pen || true
         ;;
     on | off | toggle) ipc tablet "$1" "${2:-}" ;;
     lid)
@@ -1013,7 +1010,7 @@ doctor() {
         binds=$(ipc_quiet migration status || true)
         case "$binds" in
         "" | "all binds"* | "not scanned"*) ;;
-        *) echo "binds: $binds (rewrite them: banditshell doctor binds)" ;;
+        *) echo "binds: $binds (rewrite them: banditshell doctor binds rewrite)" ;;
         esac
     else
         echo "the shell itself: not running (try: banditshell start)"
@@ -1218,8 +1215,11 @@ route_dev() {
         [ "${1:-}" = scrub ] || nope dev "launcher ${1:-}"
         ipc launcher scrub "${2:-0}" ;;
     keyring)
-        [ "${1:-}" = demo ] || nope dev "keyring ${1:-}"
-        ipc keyring demo ;;
+        case "${1:-status}" in
+        status | demo) ipc keyring "${1:-status}" ;;
+        close) ipc keyring refuse ;;
+        *) nope dev "keyring $1" ;;
+        esac ;;
     *) nope dev "$what" ;;
     esac
 }
@@ -1255,34 +1255,33 @@ route_completions() {
 }
 
 migrate_or_fail() {
-    local migrated lead i suffix
+    local rewritten lead i suffix
     local -a words kept lead_words external
-    if [ -z "${BANDITSHELL_MIGRATED:-}" ] && command -v node >/dev/null &&
-        migrated=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$*" 2>/dev/null) &&
-        [ -n "$migrated" ]; then
-        if [[ $migrated == "!"* ]]; then
-            read -ra external <<<"${migrated#!}"
-            echo "banditshell: that is ${external[0]}'s job now: ${migrated#!}" >&2
+    if [ -z "$migrated" ] && command -v node >/dev/null &&
+        rewritten=$(node "$SHELL_DIR/services/cli-migration.js" --cmd "$*" 2>/dev/null) &&
+        [ -n "$rewritten" ]; then
+        if [[ $rewritten == "!"* ]]; then
+            read -ra external <<<"${rewritten#!}"
+            echo "banditshell: that is ${external[0]}'s job now: ${rewritten#!}" >&2
             exec "${external[@]}"
         fi
         words=("$@")
-        lead="$migrated"
+        lead="$rewritten"
         kept=()
         for ((i = 0; i < ${#words[@]}; i++)); do
             kept=("${words[@]:i}")
             suffix="${kept[*]}"
-            if [ "$migrated" = "$suffix" ]; then
+            if [ "$rewritten" = "$suffix" ]; then
                 lead=""
                 break
-            elif [[ $migrated == *" $suffix" ]]; then
-                lead="${migrated% "$suffix"}"
+            elif [[ $rewritten == *" $suffix" ]]; then
+                lead="${rewritten% "$suffix"}"
                 break
             fi
             kept=()
         done
         read -ra lead_words <<<"$lead"
-        export BANDITSHELL_MIGRATED=1
-        exec "${BASH_SOURCE[0]}" "${lead_words[@]}" "${kept[@]}"
+        BANDITSHELL_MIGRATED=1 exec "${BASH_SOURCE[0]}" "${lead_words[@]}" "${kept[@]}"
     fi
     echo "banditshell: no command $*" >&2
     usage >&2
@@ -1293,8 +1292,9 @@ cmd="${1:-help}"
 shift || true
 
 if [ "$cmd" != help ] && [ "$cmd" != -h ] && [ "$cmd" != --help ]; then
-    case "${1:-}" in
-    help | -h | --help) group_help "$cmd" && exit 0 ;;
+    case "$cmd:${1:-}" in
+    log:-h | log:--help) ;;
+    *:help | *:-h | *:--help) group_help "$cmd" && exit 0 ;;
     esac
 fi
 
@@ -1352,7 +1352,12 @@ log)
 doctor)
     case "${1:-}" in
     "") doctor ;;
-    binds) ipc migration migrate ;;
+    binds)
+        case "${2:-}" in
+        "") ipc migration status ;;
+        rewrite) ipc migration migrate ;;
+        *) nope doctor "binds $2" ;;
+        esac ;;
     *) nope doctor "$1" ;;
     esac
     ;;

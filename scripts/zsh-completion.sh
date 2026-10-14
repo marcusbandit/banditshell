@@ -135,6 +135,7 @@ _bs_offer() {
     menu) values=( ${(f)"$(_bs_live dev menu list)"} ) ;;
     theme) values=( $_bs_theme ${(f)"$(_bs_live config theme list)"} ) ;;
     page) values=( $_bs_page ) ;;
+    command) values=( ${_bs_verbs%%:*} ) ;;
     layer) values=( $_bs_layer ) ;;
     screen) values=( ${(f)"$(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}')"} ) ;;
     key) values=( ${(f)"$(_bs_config_keys)"} ) ;;
@@ -169,9 +170,20 @@ _banditshell() {
         return
     fi
 
-    local target=$(( CURRENT - 1 )) rule word i n score ok best=-1
+    local target=$(( CURRENT - 1 )) rule word i n score ok best=-1 exact=0
     local -a typed parts items flags offers literals
     typed=( "${(@)words[2,CURRENT-1]}" )
+    for rule in $_bs_rules; do
+        parts=( ${(s: :)rule} )
+        [[ $parts[-1] == --* ]] && parts[-1]=()
+        (( $#parts == target - 1 )) || continue
+        ok=1
+        for (( i = 1; i < target; i++ )); do
+            items=( ${(s:,:)parts[i]} )
+            (( ${items[(Ie)$typed[i]]} )) || { ok=0; break }
+        done
+        (( ok )) && { exact=1; break }
+    done
     for rule in $_bs_rules; do
         parts=( ${(s: :)rule} )
         flags=()
@@ -193,6 +205,7 @@ _banditshell() {
             fi
         done
         (( ok )) || continue
+        (( exact && score < target - 1 )) && continue
         if (( target <= n )); then
             items=( ${(s:,:)parts[target]} )
         elif (( $#flags )) && [[ $typed[-1] != --* ]]; then

@@ -98,6 +98,16 @@ test("after a panel's name, its own actions sit beside the shared ones", () => {
     assert.deepStrictEqual(bashComplete("panel", "media", ""), ["close", "open", "status", "toggle"]);
 });
 
+test("a command that ends here is not also read as a placeholder", () => {
+    assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
+    assert.deepStrictEqual(bashComplete("doctor", ""), ["binds"]);
+    assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
+});
+
+test("help offers the commands", () => {
+    assert.deepStrictEqual(bashComplete("help", ""), tableVerbs);
+});
+
 test("a literal beats a wildcard at the same position", () => {
     const pages = table.find(r => r[0] === "values" && r[1] === "page")[2].split(" ").sort();
     assert.deepStrictEqual(bashComplete("panel", "settings", "open", ""), pages);
@@ -112,6 +122,7 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("tablet", ""), ["lid", "off", "on", "pen", "probe", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", "lid", ""), ["closed", "open", "toggle"]);
     assert.deepStrictEqual(bashComplete("dev", "preview", ""), ["files", "gallery", "lock", "menu", "settings"]);
+    assert.deepStrictEqual(bashComplete("dev", "keyring", ""), ["close", "demo", "status"]);
 });
 
 test("flags complete after the words they belong to", () => {
@@ -159,6 +170,7 @@ _banditshell`;
     assert.deepStrictEqual(complete("screen", "border", ""), ["off", "on", "toggle"]);
     assert.deepStrictEqual(complete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(complete("panel", "launcher", ""), ["close", "open", "run", "status", "toggle"]);
+    assert.deepStrictEqual(complete("panel", "close", ""), []);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 
