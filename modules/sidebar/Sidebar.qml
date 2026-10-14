@@ -57,7 +57,7 @@ Item {
     }
 
     function iconFor(key: string): Item {
-        return tray.iconFor(key) ?? (key === "update" ? update : key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
+        return tray.iconFor(key) ?? (key === "update" ? (update.visible ? update : clock.timeItem) : key === "clock" ? clock.timeItem : key === "calendar" ? clock.dateItem : null) ?? status.iconFor(key);
     }
 
     function cornerRise(inset: real): real {

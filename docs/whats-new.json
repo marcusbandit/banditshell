@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-14-6",
+      "date": "2026-10-14",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Updating installs exactly the version the update menu found. When it cannot, the menu says why in plain words instead of showing a line of git output: it names the files you edited that are in the way, or says that GitHub could not be reached or that this copy has changes of its own. A check that hangs now gives up after a few minutes."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The update icon above the clock now shows only when there is something to do: an update to get, a restart to finish one, or a problem. The rest of the time it is hidden, and What's new opens from the clock instead. To keep the icon all the time, turn on Keep the update icon in the sidebar under Settings, About. That page also has a button to check for updates."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "config.json has a new key, sidebar.update. The default, new, shows the update icon only when there is something to do. always keeps it there, and never hides it even when an update is waiting."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-5",
       "date": "2026-10-14",
       "changes": [
