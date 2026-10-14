@@ -29,6 +29,20 @@ function merge(base, over, path, opaque) {
     return over === undefined || !sameShape(base, over) ? base : over;
 }
 
+function upgrade(values) {
+    if (!isPlainObject(values) || !isPlainObject(values.launcher))
+        return values;
+    const launcher = Object.assign({}, values.launcher);
+    if (owns(launcher, "niagara")) {
+        if (!owns(launcher, "alphabet"))
+            launcher.alphabet = launcher.niagara;
+        delete launcher.niagara;
+    }
+    if (launcher.concept === "niagara")
+        launcher.concept = "alphabet";
+    return Object.assign({}, values, { launcher });
+}
+
 function holds(node, segment) {
     if (Array.isArray(node))
         return /^\d+$/.test(segment) && Number(segment) < node.length;

@@ -251,7 +251,7 @@ Singleton {
 
                 folders: ({}),
 
-                niagara: {
+                alphabet: {
                     width: 760,
 
                     icon: 48,
@@ -758,7 +758,7 @@ Singleton {
             }
 
             root.unreadable = false;
-            root.values = Configuration.merge(root.defaults, parsed, "", root.opaque);
+            root.values = Configuration.merge(root.defaults, Configuration.upgrade(parsed), "", root.opaque);
             root.loaded = true;
 
             if (JSON.stringify(root.values) !== JSON.stringify(parsed)) {

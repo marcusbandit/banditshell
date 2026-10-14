@@ -355,8 +355,8 @@ const PAGES_SOURCE = {
         status: s => `${s.v("concept")} · ${s.starredCount} starred`,
         groups: [
             { t: "Layout", rows: [
-                { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "niagara"], cfg: "launcher.concept", kw: "launcher layout",
-                    why: "List is a plain search list. Niagara is a thumb-sized alphabet rail with favourites on a bow." },
+                { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
+                    why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
                 { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", detail: "apps you use rise", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
             ] },
@@ -1027,16 +1027,16 @@ function dwindleRects(n) {
     return out;
 }
 
-const NIA_LETTERS = "#abcdefghijklmnopqrstuvwxyz".split("");
-const NIA_PATH = [[null, 0, 700], ["a", 220, 600], ["d", 260, 550], ["f", 200, 650], ["k", 300, 550], ["o", 260, 500], ["s", 260, 650], [null, 0, 900]];
+const RAIL_LETTERS = "#abcdefghijklmnopqrstuvwxyz".split("");
+const THUMB_PATH = [[null, 0, 700], ["a", 220, 600], ["d", 260, 550], ["f", 200, 650], ["k", 300, 550], ["o", 260, 500], ["s", 260, 650], [null, 0, 900]];
 
-function niagaraAt(ms) {
-    const total = NIA_PATH.reduce((a, p) => a + p[1] + p[2], 0);
+function alphabetThumbAt(ms) {
+    const total = THUMB_PATH.reduce((a, p) => a + p[1] + p[2], 0);
     let t = ms % total;
-    let prev = NIA_LETTERS.indexOf("a");
+    let prev = RAIL_LETTERS.indexOf("a");
     const ease = x => x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-    for (const p of NIA_PATH) {
-        const to = p[0] ? NIA_LETTERS.indexOf(p[0]) : null;
+    for (const p of THUMB_PATH) {
+        const to = p[0] ? RAIL_LETTERS.indexOf(p[0]) : null;
         if (t < p[1])
             return to === null ? null : prev + (to - prev) * ease(t / p[1]);
         t -= p[1];

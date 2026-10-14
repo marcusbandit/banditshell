@@ -2347,8 +2347,8 @@ already steps the value and a touchpad steps it the same way down the same path,
 which is the same answer reached without the primitive. The screenshot picker's
 region drag is two absolute corners, and a scroll has no position to give it. A
 tray icon's wheel belongs to the application behind it under the
-StatusNotifierItem protocol and is not ours to reinterpret. The Niagara
-launcher's alphabet rail is the same case as the bead, one level up: it scrubs
+StatusNotifierItem protocol and is not ours to reinterpret. The alphabet
+launcher's letter rail is the same case as the bead, one level up: it scrubs
 the list to the letter UNDER the pointer rather than by a distance, so a stream
 that reports motion and never a position has nothing to give it. It swallows the
 wheel rather than ignoring it, because the launcher's put-away pull lies under

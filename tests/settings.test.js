@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "niagaraAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
+const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "nudge", "resize", "fit"]);
 const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
@@ -253,10 +253,10 @@ test("dwindle splits the last window each time", () => {
     assert.strictEqual(three[2].y, 51);
 });
 
-test("the niagara thumb rests, travels the alphabet and lets go", () => {
-    assert.strictEqual(Catalogue.niagaraAt(0), null);
-    assert.strictEqual(Catalogue.niagaraAt(1000), 1);
-    assert.strictEqual(Catalogue.niagaraAt(6599), null);
+test("the alphabet thumb rests, travels the alphabet and lets go", () => {
+    assert.strictEqual(Catalogue.alphabetThumbAt(0), null);
+    assert.strictEqual(Catalogue.alphabetThumbAt(1000), 1);
+    assert.strictEqual(Catalogue.alphabetThumbAt(6599), null);
     assert.strictEqual(Catalogue.bowAt(5, null, 34, 4.5), 0);
     assert.strictEqual(Catalogue.bowAt(5, 5, 34, 4.5), 1);
     assert.strictEqual(Catalogue.bowAt(20, 5, 34, 4.5), 0);

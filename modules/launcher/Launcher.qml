@@ -11,7 +11,7 @@ Item {
 
     readonly property var concept: loader.item
 
-    readonly property bool alphabetical: Config.values.launcher.concept === "niagara"
+    readonly property bool alphabetical: Config.values.launcher.concept === "alphabet"
 
     readonly property bool open: root.concept?.open ?? false
     readonly property var blobs: root.concept?.blobs ?? []
@@ -38,7 +38,7 @@ Item {
         root.build().toggle();
     }
 
-    readonly property real panelWidth: root.concept?.panelWidth ?? (root.alphabetical ? Config.values.launcher.niagara.width : Appearance.sizes.launcherWidth)
+    readonly property real panelWidth: root.concept?.panelWidth ?? (root.alphabetical ? Config.values.launcher.alphabet.width : Appearance.sizes.launcherWidth)
 
     function scrub(fraction: real): void {
         const concept = root.build();
@@ -68,7 +68,7 @@ Item {
         anchors.fill: parent
 
         active: false
-        sourceComponent: root.alphabetical ? niagara : list
+        sourceComponent: root.alphabetical ? alphabet : list
     }
 
     Component {
@@ -81,7 +81,7 @@ Item {
     }
 
     Component {
-        id: niagara
+        id: alphabet
 
         AlphabetLauncher {
             originX: root.originX
