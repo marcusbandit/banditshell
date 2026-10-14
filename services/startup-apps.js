@@ -1,6 +1,7 @@
 const WRAPPER = "shell-up";
 const PLUMBING = ["dbus-update-activation-environment", "systemctl"];
 const OFF_MARKER = /^off:\s*(.*)$/;
+const POSITION_WORD = /^@(\d+)$/;
 const EXEC_LINE = /^(\s*)(--\s?)?hl\.exec_cmd\(\s*(["'])((?:\\.|(?!\3)[^\\])*)\3\s*\)\s*(?:--\s?(.*))?$/;
 
 function luaUnescape(s) {
@@ -60,7 +61,7 @@ function shellWords(text) {
 
 function quoteWord(word) {
     const w = String(word);
-    return /^~?[A-Za-z0-9_\/.:@%+=,-]+$/.test(w) ? w : `'${w.replace(/'/g, "'\\''")}'`;
+    return /^~?[A-Za-z0-9_\/.:@%+=,-]+$/.test(w) && !POSITION_WORD.test(w) ? w : `'${w.replace(/'/g, "'\\''")}'`;
 }
 
 function baseName(path) {
@@ -95,12 +96,36 @@ function wrapperOf(command) {
 }
 
 function offMarker(comment) {
-    const m = OFF_MARKER.exec(String(comment ?? "").trim());
+    const text = String(comment ?? "");
+    const m = OFF_MARKER.exec(text.replace(/^\s+/, ""));
     if (!m)
-        return { args: [], foreign: String(comment ?? "").trim() };
-    const words = shellWords(m[1]).map(w => w.text);
-    const bar = words.indexOf("|");
-    return bar < 0 ? { args: words, foreign: "" } : { args: words.slice(0, bar), foreign: words.slice(bar + 1).join(" ") };
+        return { args: [], indexes: [], foreign: text };
+    const rest = m[1];
+    const words = shellWords(rest);
+    const bar = words.find(w => rest.slice(w.start, w.end) === "|");
+    const args = [];
+    const indexes = [];
+    let index;
+    for (const word of bar ? words.slice(0, words.indexOf(bar)) : words) {
+        const position = POSITION_WORD.exec(rest.slice(word.start, word.end));
+        if (position) {
+            index = +position[1];
+            continue;
+        }
+        args.push(word.text);
+        indexes.push(index);
+        index = undefined;
+    }
+    return { args, indexes, foreign: bar ? rest.slice(bar.end).replace(/^ /, "") : "" };
+}
+
+function fullOrder(active, off) {
+    const order = active.slice();
+    for (const entry of off.filter(e => e.index !== undefined).sort((a, b) => a.index - b.index))
+        order.splice(Math.min(entry.index, order.length), 0, entry.word);
+    for (const entry of off.filter(e => e.index === undefined))
+        order.push(entry.word);
+    return order;
 }
 
 function hyprlandApps(files) {
@@ -135,11 +160,15 @@ function hyprlandApps(files) {
     return out;
 }
 
-function wrapperLine(row, args, offArgs) {
+function wrapperLine(row, full, off) {
     const line = row.line;
+    const away = off.map(e => e.word);
+    const args = full.filter(a => !away.includes(a));
     const command = row.wrapper.prefix + args.map(a => ` ${quoteWord(a)}`).join("");
     const foreign = row.marker.foreign;
-    const tail = offArgs.length ? ` -- off: ${offArgs.map(quoteWord).join(" ")}${foreign ? ` | ${foreign}` : ""}` : foreign ? ` -- ${foreign}` : "";
+    const inTail = full.every((word, i) => word === args.concat(away)[i]);
+    const note = off.map(e => (inTail ? "" : `@${e.index} `) + quoteWord(e.word)).join(" ");
+    const tail = off.length ? ` -- off: ${note}${foreign ? ` | ${foreign}` : ""}` : foreign ? ` -- ${foreign}` : "";
     return `${line.indent}hl.exec_cmd(${line.quote}${luaEscape(command, line.quote)}${line.quote})${tail}`;
 }
 
@@ -149,9 +178,11 @@ function toggleReplacement(row, on) {
         const body = line.raw.slice(line.indent.length);
         return [on ? line.indent + body.replace(/^--\s?/, "") : `${line.indent}-- ${body}`];
     }
-    const rest = row.wrapper.args.filter(a => a !== row.command);
-    const away = row.marker.args.filter(a => a !== row.command);
-    return [wrapperLine(row, on ? rest.concat([row.command]) : rest, on ? away : away.concat([row.command]))];
+    const placed = row.marker.args.map((word, i) => ({ word, index: row.marker.indexes[i] }));
+    const full = fullOrder(row.wrapper.args, placed);
+    const kept = placed.filter(e => e.word !== row.command).map(e => ({ word: e.word, index: e.index ?? full.indexOf(e.word) }));
+    const off = on ? kept : kept.concat([{ word: row.command, index: full.indexOf(row.command) }]);
+    return [wrapperLine(row, full, off.sort((a, b) => a.index - b.index))];
 }
 
 function parseUnitFiles(text) {
