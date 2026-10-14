@@ -17,13 +17,20 @@ function lowStep(stage, input) {
     }
 
     if (!input.onBattery) {
-        if (stage === "counting" || stage === "acted")
+        if (stage === "counting" || stage === "acted" || stage === "resumed")
             next.stage = "warned";
         return next;
     }
 
     if (stage === "acted")
         return next;
+
+    if (stage === "resumed") {
+        next.stage = "warned";
+        if (input.percentage <= input.warnAt)
+            next.say = "warn";
+        return next;
+    }
 
     if (actionable(input.action) && input.percentage <= nearlyEmptyFraction) {
         if (stage === "ok" || stage === "warned") {
@@ -51,5 +58,5 @@ function countdownMessage(action, seconds) {
 }
 
 function afterResume(stage) {
-    return stage === "acted" ? "warned" : stage;
+    return stage === "acted" ? "resumed" : stage;
 }

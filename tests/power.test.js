@@ -42,9 +42,27 @@ test("plugging in cancels the countdown and charging past the margin re-arms the
 
 test("after acting it waits for a resume before counting down again", () => {
     assert.deepStrictEqual(Battery.lowStep("acted", onBattery(0.03)), { stage: "acted", say: "" });
-    assert.strictEqual(Battery.afterResume("acted"), "warned");
+    assert.strictEqual(Battery.afterResume("acted"), "resumed");
     assert.strictEqual(Battery.afterResume("counting"), "counting");
-    assert.deepStrictEqual(Battery.lowStep(Battery.afterResume("acted"), onBattery(0.03)), { stage: "counting", say: "countdown" });
+    assert.strictEqual(Battery.afterResume("warned"), "warned");
+});
+
+test("after a wake on a nearly empty battery a fresh warning comes before any new countdown", () => {
+    const woken = Battery.afterResume("acted");
+    const warning = Battery.lowStep(woken, onBattery(0.03));
+    assert.deepStrictEqual(warning, { stage: "warned", say: "warn" });
+    assert.deepStrictEqual(Battery.lowStep(warning.stage, onBattery(0.03)), { stage: "counting", say: "countdown" });
+});
+
+test("a wake that finds the charger in or the battery topped up asks for no warning", () => {
+    const woken = Battery.afterResume("acted");
+    assert.deepStrictEqual(Battery.lowStep(woken, onBattery(0.03, { onBattery: false })), { stage: "warned", say: "" });
+    assert.deepStrictEqual(Battery.lowStep(woken, onBattery(0.6)), { stage: "ok", say: "" });
+    assert.deepStrictEqual(Battery.lowStep(woken, onBattery(0.5, { warnAt: 0.15 })), { stage: "ok", say: "" });
+});
+
+test("going to sleep leaves the acted stage alone so the same low battery cannot count down again", () => {
+    assert.deepStrictEqual(Battery.lowStep("acted", onBattery(0.03)), { stage: "acted", say: "" });
 });
 
 test("a battery that is not being read changes nothing", () => {

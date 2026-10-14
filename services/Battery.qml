@@ -96,6 +96,8 @@ Singleton {
         target: Lock
 
         function onSleepingChanged(): void {
+            if (Lock.sleeping)
+                return;
             root.stage = LowBattery.afterResume(root.stage);
             root.considerWarning();
         }
