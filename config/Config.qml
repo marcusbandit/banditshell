@@ -392,6 +392,8 @@ Singleton {
 
                 cornerZone: 120,
 
+                placement: "corner",
+
                 quiet: false,
 
                 quietUntil: 0,
@@ -416,9 +418,22 @@ Singleton {
                 alertVolume: 0.5
             },
 
-            notch: {
+            island: {
 
-                trackWidth: 288
+                width: 440,
+
+                glanceSeconds: 6,
+
+                downloads: true,
+
+                nowPlaying: true
+            },
+
+            packages: {
+
+                interval: 360,
+
+                upgrade: "sudo pacman -Syu"
             },
 
             media: {

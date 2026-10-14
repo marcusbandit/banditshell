@@ -857,6 +857,14 @@ Singleton {
         root.windowOpen = true;
     }
 
+    function reveal(path: string): void {
+        const name = path.slice(path.lastIndexOf("/") + 1);
+        root.show(root.parentOf(path));
+        root.cursorName = name;
+        root.anchorName = name;
+        root.picked = [name];
+    }
+
     function hide(): void {
         root.windowOpen = false;
     }

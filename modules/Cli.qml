@@ -528,26 +528,26 @@ Scope {
     }
 
     IpcHandler {
-        target: "notch"
+        target: "island"
 
         function open(screen: string): string {
-            return root.pin(Shell.forScreen(screen), "notch", true) || root.missing(screen);
+            return root.pin(Shell.forScreen(screen), "island", true) || root.missing(screen);
         }
 
         function close(): string {
-            return root.unpin("notch");
+            return root.unpin("island");
         }
 
         function toggle(screen: string): string {
             const win = Shell.forScreen(screen);
-            return root.pin(win, "notch", !win?.notch.pinned) || root.missing(screen);
+            return root.pin(win, "island", !win?.island.pinned) || root.missing(screen);
         }
 
         function status(screen: string): string {
             const win = Shell.forScreen(screen);
             if (!win)
                 return root.missing(screen);
-            return `pinned=${win.notch.pinned} active=${win.notch.active}`;
+            return `pinned=${win.island.pinned} showing=${win.island.presentation} activities=${win.island.activities.length}`;
         }
     }
 

@@ -7,6 +7,7 @@ import qs.config
 import qs.modules.calculator
 import qs.modules.cheatsheet
 import qs.modules.clipboard
+import qs.modules.island
 import qs.modules.keyboard
 import qs.modules.media
 import qs.modules.keyring
@@ -45,7 +46,7 @@ PanelWindow {
     readonly property LazyPanel settings: settingsLayer
 
     readonly property NotificationTray notifications: popups
-    readonly property SummonZone notch: topNotch
+    readonly property Island island: islandLayer
     readonly property QuickControls quickControls: quickLayer
 
     readonly property var statusItems: sidebar.menuItems
@@ -79,7 +80,7 @@ PanelWindow {
         if (here)
             return;
         popups.pinned = false;
-        topNotch.pinned = false;
+        islandLayer.pinned = false;
     }
 
     function openMenu(key: string, pin = true): bool {
@@ -92,6 +93,33 @@ PanelWindow {
         const centre = source.mapToItem(menuLayer, source.width / 2, source.height / 2);
         menuLayer.show(key, entry.heading ?? entry.title, entry.body, beside ? centre.x : centre.y, pin, !!beside);
         return true;
+    }
+
+    function act(notice: var): void {
+        switch (notice.kind) {
+        case "music":
+            islandLayer.close();
+            mediaLayer.show();
+            break;
+        case "notifications":
+            popups.pinned = true;
+            return;
+        case "update":
+            if (!win.openMenu("update", true))
+                Settings.show(win.screen?.name ?? "", "updates");
+            break;
+        case "kernel":
+            Pacman.upgrade();
+            break;
+        case "restart":
+            sessionLayer.show();
+            break;
+        case "download":
+            Files.reveal(notice.path);
+            break;
+        }
+        if (notice.key)
+            Notices.settle(notice.key);
     }
 
     Timer {
@@ -119,7 +147,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || topNotch.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || islandLayer.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -209,12 +237,7 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
-            item: topNotch.active ? topNotch.maskItem : null
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: Appearance.bare ? null : topNotch.grabItem
+            item: Appearance.bare ? null : islandLayer.grabItem
         }
 
         Region {
@@ -266,8 +289,8 @@ PanelWindow {
                 quickLayer.pinned = false;
             else if (menuLayer.wantsEscape)
                 menuLayer.hide();
-            else if (topNotch.wantsEscape)
-                topNotch.pinned = false;
+            else if (islandLayer.wantsEscape)
+                islandLayer.pinned = false;
             else if (popups.wantsEscape)
                 popups.pinned = false;
             else
@@ -307,7 +330,7 @@ PanelWindow {
 
             anchors.fill: parent
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...topNotch.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered([...micIndicator.blobs, ...launchNotice.blobs, ...settingsCorner.blobs])]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
         Sidebar {
@@ -650,30 +673,17 @@ PanelWindow {
             blocked: keyboardLayer.open || launcherLayer.open || clipLayer.open || wallpaperLayer.open || sessionLayer.open || cheatLayer.open || calcLayer.open || menuLayer.open
         }
 
-        SummonZone {
-            id: topNotch
+        Island {
+            id: islandLayer
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
             border: win.border
+            edge: Math.max(0, chassis.topBand - chassis.streamReach)
 
             keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
-        }
 
-        MicIndicator {
-            id: micIndicator
-
-            anchors.fill: parent
-            anchors.topMargin: chassis.streamReach
-            border: win.border
-        }
-
-        LaunchNotice {
-            id: launchNotice
-
-            anchors.fill: parent
-            anchors.topMargin: chassis.streamReach
-            border: win.border
+            onChosen: notice => win.act(notice)
         }
 
         QuickControls {

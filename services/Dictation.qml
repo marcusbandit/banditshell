@@ -18,6 +18,87 @@ Singleton {
 
     property bool present: false
 
+    readonly property string socketPath: `${root.home}/.local/share/gvoice/events.sock`
+
+    property string phase: "idle"
+    property string lang: "auto"
+
+    readonly property bool live: root.phase !== "idle"
+
+    readonly property string langTag: root.lang === "auto" ? "" : root.lang.startsWith("en") ? "EN" : root.lang.startsWith("da") ? "DK" : root.lang.startsWith("ja") ? "JP" : root.lang.split(/[-_]/)[0].toUpperCase()
+
+    readonly property int levelCount: 64
+    property var levels: []
+
+    function quiet(): void {
+        const blank = [];
+        for (let i = 0; i < root.levelCount; i++)
+            blank.push(0);
+        root.levels = blank;
+    }
+
+    function heard(level: real): void {
+        const next = root.levels.slice(1);
+        next.push(level);
+        root.levels = next;
+    }
+
+    onPhaseChanged: if (root.phase === "listening")
+        root.quiet()
+
+    Component.onCompleted: root.quiet()
+
+    Loader {
+        id: events
+
+        active: true
+        sourceComponent: eventSocket
+
+        readonly property bool up: item?.connected ?? false
+
+        onUpChanged: if (!up) {
+            root.phase = "idle";
+            root.quiet();
+        }
+    }
+
+    Component {
+        id: eventSocket
+
+        Socket {
+            path: root.socketPath
+            connected: true
+
+            parser: SplitParser {
+                splitMarker: "\n"
+                onRead: line => {
+                    let msg;
+                    try {
+                        msg = JSON.parse(line);
+                    } catch (e) {
+                        return;
+                    }
+                    if (msg.phase !== undefined)
+                        root.phase = msg.phase;
+                    if (msg.lang !== undefined)
+                        root.lang = msg.lang;
+                    if (msg.level !== undefined && root.phase === "listening")
+                        root.heard(msg.level);
+                }
+            }
+        }
+    }
+
+    Timer {
+        interval: 2000
+        running: !events.up
+        repeat: true
+        onTriggered: {
+            events.active = false;
+            events.active = true;
+        }
+    }
+
     function shape(e: var): var {
         return {
             id: e.id,

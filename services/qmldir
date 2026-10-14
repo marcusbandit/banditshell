@@ -17,6 +17,7 @@ singleton DesktopIndex 1.0 DesktopIndex.qml
 singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Display 1.0 Display.qml
+singleton Downloads 1.0 Downloads.qml
 singleton Files 1.0 Files.qml
 singleton Hotspot 1.0 Hotspot.qml
 singleton HyprConfig 1.0 HyprConfig.qml
@@ -35,10 +36,12 @@ singleton Modes 1.0 Modes.qml
 singleton Monitors 1.0 Monitors.qml
 singleton NetworkEvents 1.0 NetworkEvents.qml
 singleton Network 1.0 Network.qml
+singleton Notices 1.0 Notices.qml
 singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
 singleton Notifications 1.0 Notifications.qml
 singleton Obs 1.0 Obs.qml
+singleton Pacman 1.0 Pacman.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
 singleton PowerProfile 1.0 PowerProfile.qml

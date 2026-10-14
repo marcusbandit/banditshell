@@ -390,7 +390,11 @@ banditshell/
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell dev shaders`
-│   │   └── BlobField.qml        the ShaderEffect that draws it
+│   │   ├── BlobField.qml        the ShaderEffect that draws it
+│   │   ├── island.frag          a pill and a bubble melting into each other, and
+│   │   │                        whatever is drawn inside them, cut to that shape
+│   │   └── IslandField.qml      its QML side
+│   ├── ProgressRing.qml         a ring that fills: an app on its way
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
@@ -721,6 +725,30 @@ banditshell/
 │   │                            on another branch (a tried worktree), is
 │   │                            told so, not offered a button that cannot
 │   │                            work. A failed fetch is not a check
+│   ├── Notices.qml              what the shell itself has to say, as opposed
+│   │                            to an application's notification: an update on
+│   │                            GitHub, a new kernel, a restart it wants, a
+│   │                            finished download. Each glances in the island
+│   │                            for a few seconds, held while you look; the
+│   │                            standing ones then wait under the clock until
+│   │                            they are dealt with
+│   ├── Downloads.qml            inotifywait on the XDG download folder. A name
+│   │                            counts once it is a non-empty file with no
+│   │                            .part or .crdownload beside it, which is what
+│   │                            skips Firefox's empty placeholder
+│   ├── Pacman.qml               checkupdates every few hours, and whether the
+│   │                            kernel the machine RUNS is in the list. A
+│   │                            running kernel whose modules folder lost its
+│   │                            vmlinuz has been replaced: that is the restart.
+│   │                            Results are kept in state so a hot reload does
+│   │                            not ask the mirrors again; the upgrade itself
+│   │                            runs detached in a terminal, because a reload
+│   │                            must never kill pacman halfway
+│   ├── pacman.js                checkupdates' answer read into values. No QML
+│   │                            in it, tested in node
+│   ├── Dictation.qml            gvoice: the live phase, language and levels off
+│   │                            its socket (one connection for the whole shell),
+│   │                            and the history the clipboard shows
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
@@ -755,7 +783,27 @@ banditshell/
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
 │   ├── Cli.qml                   the control surface the CLI talks to
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
-│   ├── SummonZone.qml            summon zone: cursor to top-centre -> the time descends
+│   ├── island/                  the top centre, where everything that pops up
+│   │   │                        now arrives (see 18)
+│   │   ├── Island.qml           which of three sizes to be, and the morph between
+│   │   │                        them; a surface of its own, so the island never
+│   │   │                        repaints the full-screen chassis. The strip in the
+│   │   │                        band stays in ShellWindow: hover with a dwell,
+│   │   │                        tap to pin, pull down
+│   │   ├── ActivityRow.qml      the one anatomy: a mark, words, a sign. The
+│   │   │                        compact island is one of these, a row in the
+│   │   │                        overview is one of these, and the bubble is the
+│   │   │                        first forty pixels of one
+│   │   ├── NotificationAlert.qml a notification as the island tells it: tap for
+│   │   │                        its default action, swipe up into the island to
+│   │   │                        let it go, actions on hover
+│   │   ├── IslandOverview.qml   what going up to it shows: time, date, the
+│   │   │                        player, and every row that is live or waiting
+│   │   ├── IslandMedia.qml      the player, after the media card: cover with a
+│   │   │                        shadow, words that cross-fade, the wave, the
+│   │   │                        line being sung, the ring transport; its words
+│   │   │                        and its expand mark open the card
+│   │   └── DictationBars.qml    the voice, as bars
 │   ├── media/
 │   │   ├── MediaController.qml  Super+M's card, floating in the middle:
 │   │   │                        keyboard-driven (space, arrows, shift+arrows,
@@ -765,8 +813,6 @@ banditshell/
 │   │   │                        widening it to the right when there are any; the
 │   │   │                        CheatSheet's kind of object, the power panel's
 │   │   │                        kind of guest
-│   │   ├── MediaPreview.qml     what is playing, the launcher's block, under the time,
-│   │   │                        with the line being sung under the bar
 │   │   ├── MediaTransport.qml   the ONE set of media buttons: a ring and two glyphs,
 │   │   │                        shuffle and repeat at its ends on the card
 │   │   ├── Scrubber.qml         the ONE seek bar: a wave up to the pip, a straight run after it
@@ -808,15 +854,6 @@ banditshell/
 │   │                            seconds; camera, screen and the audio toggles
 │   │                            act on the scene on air, and a muted mic or a
 │   │                            hidden screen stays red until it is undone
-│   ├── MicIndicator.qml         dictation, while the microphone is actually open.
-│   │                            The shape melts out of the chassis, but the bars
-│   │                            draw on their own thin click-through strip, so a
-│   │                            level update never repaints the full-screen
-│   │                            field. Tucks away while the pointer is near (the
-│   │                            pointer is read from Hyprland's socket only while
-│   │                            it is out); the language is a small tag beside
-│   │                            the bars; while streaming a smaller capsule that
-│   │                            floats below the edge instead of melting out of it
 │   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
 │   ├── WallpaperWindow.qml      background layer, below every window; a
 │   │                            WallpaperView, motion only on an empty workspace
@@ -1203,7 +1240,7 @@ no single contour to round. Cutting one shape makes all three impossible rather 
 **Status 2026-08-01:** the sidebar is unconditionally visible and reserving space. That
 contradicts section 2.1 ("nothing at a glance") on purpose, as scaffolding. Toggling comes
 later; when it does, `exclusiveZone` drops to 0 while hidden and the whole thing slides behind
-the left edge the way `SummonZone` already does at the top.
+the left edge the way the top notch (now the island) already did at the top.
 
 **Status 2026-09-29: the hiding is here, per screen; the animation is not.** `sidebar.enabled`
 is the default every monitor follows and `sidebar.perScreen` holds the ones that disagree,
@@ -3021,6 +3058,118 @@ something was clicked, which reads as "Enter does not open folders" and sends yo
 looking in the wrong place.
 
 ---
+
+## 18. The island
+
+**Added 2026-10-14.** The top notch used to be a summon zone for the clock and a
+small player. It is now the island: the one place where anything that pops up
+arrives. An app opening, dictation, a finished download, a BanditShell update, a
+new kernel, and notifications if you want them there.
+
+The reason is the monitor. On a 32:9 screen the top-right corner is a head-turn
+away from where I work, so notifications went by unseen. The top centre is where
+the eye already is.
+
+### A floating pill, never a notch
+
+The first version melted out of the band like the notch it replaced and stacked
+cards inside it. It read as a notch with things in it, and that is what it was.
+The island is its own object: the darkest stop of the ramp, opaque, floating a
+gap below the band with a soft shadow and the chassis' sheen along its edge. It
+is not part of the chassis field, so it never bridges into the band.
+
+It has three sizes and no others. Compact is a capsule as tall as a button.
+Large is one width, `island.width`, for a notification or for the overview. A
+dot is where it goes when there is nothing to say: it shrinks toward a circle
+and fades, and grows back out of one. The shape morphs between sizes on its own
+Follows while the content of each size cross-fades, leaving faster than it
+arrives, so two layouts are never fully visible at once. Content is laid out at
+its final size and the shader cuts it to the shape, which is why the edges of a
+growing island reveal text rather than squeeze it.
+
+Compact ends are true round ends (power 2, as the round buttons are) and ease
+into the shell's own corner power as the shape grows tall, so a capsule reads as
+a capsule and a large card reads as one of ours.
+
+### It drips out of the band
+
+Floating free from the first frame read as something that arrived from nowhere.
+So the island is born in the band: it swells out of it as a bulge, drops on one
+Follow while a second, slower one shortens the reach of the smooth union between
+the two, and the neck stretches nearly to the resting place before it snaps. On
+the way back the reach grows fast and the pill sinks into the band and is
+absorbed. The neck shades from the band's colour to the island's black, and the
+shadow only arrives once it floats, because a drop still attached to the band
+casts nothing.
+
+### One anatomy
+
+Every activity is a mark, words and a sign: Firefox's icon, "Firefox" and a ring
+that fills, then a check; a microphone, the live bars and the language; a cover,
+the title and an equalizer. The compact island is one ActivityRow. The overview
+lists the same rows. When two things are live, the second buds off the right end
+as a bubble showing its mark, melting out of the pill through a smooth union
+whose reach is shorter than the gap, so the bridge forms and snaps on the way
+out and is gone at rest.
+
+### Lit by the music
+
+The media card made the cover its light, and the island borrows that. Behind
+everything in the overview sits the cover blurred to colour, so the island takes
+the tint of what is playing; a track-change glance in compact form glows the
+same way, more faintly. The player in the overview is the card's anatomy at a
+smaller scale, and it holds the lyrics only while it is on screen. The expand
+mark in its corner, or a click on the song's words, folds the island away and
+opens the card itself.
+
+### Which screen answers
+
+Launches and dictation go to the focused screen. Notifications and notices go to
+`Shell.offStageScreen`, the rule the corner tray already followed, so streamer
+mode keeps them off the streamed screen. Every screen keeps its own clock.
+
+### Summoning, and what passes through
+
+Cursor to the top centre with a dwell, a tap on the strip to pin, a pull down to
+drag the overview out of whatever size it is, a pull up to put it back. While
+the pointer is on it, every timer inside it stops. Hovering a notification never
+opens the overview over it; a tap or a pull still does.
+
+The island takes input only while it is open or holds something pressable. A
+launch or the dictation bars passing over a browser's tabs never eat the click
+meant for them, which is what the old launch notice and mic pill did too. Its
+surface stays mapped while empty, because Hyprland animates a layer surface
+appearing and that would fight the island's own bloom.
+
+### Notifications are a choice
+
+`notifications.placement` defaults to `corner`. Moving everyone's notifications
+is a big change to make for people who did not ask for it. Set to `island`, a
+notification takes the island at its large size, one at a time: a new one
+retires the one before it to the history. Tap runs its default action, a swipe
+up throws it back into the island, and its actions come out on hover. The
+corner still opens the history either way, and the overview carries a row that
+opens it.
+
+### The kernel
+
+`services/Pacman.qml` runs checkupdates every `packages.interval` minutes. Only
+the package of the kernel actually running counts, so linux-zen and linux-lts
+users get the same notice. Pressing it opens a terminal running
+`packages.upgrade`, `sudo pacman -Syu` by default, and never a single-package
+upgrade: Arch does not support partial upgrades. Once the running kernel's
+vmlinuz is gone from its modules folder, the island asks for a restart.
+Pressing that opens the power panel instead of restarting, because when to
+restart is not the shell's call.
+
+### What went
+
+SummonZone, MicIndicator, LaunchNotice and MediaPreview, whose only home was
+the notch. The mic pill's habit of tucking away from the pointer went with it.
+That pill tracked the focused window and sat on top of whatever was there; the
+island sits at the screen's centre and is click-through while dictating, so
+there is nothing to tuck away from. The island hangs under the stream band the
+way the notch did.
 
 ---
 

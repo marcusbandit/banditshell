@@ -1,0 +1,7 @@
+module qs.modules.island
+ActivityRow 1.0 ActivityRow.qml
+DictationBars 1.0 DictationBars.qml
+IslandMedia 1.0 IslandMedia.qml
+IslandOverview 1.0 IslandOverview.qml
+Island 1.0 Island.qml
+NotificationAlert 1.0 NotificationAlert.qml
