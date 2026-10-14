@@ -61,7 +61,7 @@ generate() {
 
     cat <<EOF
 #compdef banditshell
-
+typeset -g _bs_built=$EPOCHREALTIME
 typeset -ga _bs_verbs _bs_rules _bs_panel _bs_theme _bs_page _bs_layer
 typeset -g _bs_file=$(quote "$TARGET")
 
@@ -93,6 +93,12 @@ _bs_stale() {
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
+}
+
+_bs_moved() {
+    local compdef built
+    { read -r compdef; read -r built } 2>/dev/null <$_bs_file || return 1
+    [[ ${built#*=} != "$_bs_built" ]]
 }
 
 _bs_live() {
@@ -155,14 +161,12 @@ _bs_offer() {
 }
 
 _banditshell() {
-    if [[ -z $_bs_reloading ]] && _bs_stale; then
-        if $REPLY/scripts/zsh-completion.sh install --quiet 2>/dev/null; then
-            typeset -g _bs_reloading=1
-            source $_bs_file
-            unset _bs_reloading
-            _banditshell "$@"
-            return
-        fi
+    if [[ -z $_bs_reloading ]] && { _bs_stale && $REPLY/scripts/zsh-completion.sh install --quiet 2>/dev/null || _bs_moved }; then
+        typeset -g _bs_reloading=1
+        source $_bs_file
+        unset _bs_reloading
+        _banditshell "$@"
+        return
     fi
 
     if (( CURRENT == 2 )); then
