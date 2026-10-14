@@ -503,6 +503,33 @@ banditshell/
 │   │                            line alone. No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
+│   ├── DesktopIndex.qml         every installed desktop entry read once: its
+│   │                            name, icon, Exec program, MimeType and
+│   │                            categories, which Quickshell's own list leaves
+│   │                            out
+│   ├── DefaultApps.qml          the default app for links, folders, mail,
+│   │                            pictures, video and terminals, read with
+│   │                            `xdg-mime query default` and written with
+│   │                            `xdg-mime default` for every type in the group
+│   │                            (the terminal goes in xdg-terminals.list when
+│   │                            xdg-terminal-exec is installed)
+│   ├── StartupApps.qml          what starts with the session, from the three
+│   │                            places it can: exec lines in Hyprland's Lua
+│   │                            (commented out behind sourceEdits; one app
+│   │                            dropped from a `shell-up` line), enabled
+│   │                            systemd user units, and ~/.config/autostart
+│   │                            (`Hidden=true`). Nothing here runs XDG
+│   │                            autostart on Hyprland, so the shell launches
+│   │                            those once per session, marked in
+│   │                            XDG_RUNTIME_DIR
+│   ├── desktop-entries.js       desktop file parsing, the autostart file
+│   │                            text, Hidden toggling. No QML, tested in node
+│   ├── default-apps.js          which entries offer to handle a group of
+│   │                            types, and the terminal list. No QML, tested
+│   │                            in node
+│   ├── startup-apps.js          exec-line parsing and toggling, the `shell-up`
+│   │                            wrapper's arguments, systemd unit listing. No
+│   │                            QML, tested in node
 │   ├── Audio.qml                PipeWire: sinks, sources, volume, mute
 │   ├── Battery.qml              UPower, the low warning, and the nearly empty
 │   │                            step: warn once, count down 30 s, then

@@ -50,6 +50,8 @@ function fakeState(values) {
     return new Proxy({
         v: k => all[k] !== undefined ? all[k] : true,
         appsFor: () => [["firefox", "firefox"]],
+        defaultName: k => k,
+        defaultNote: () => "",
         kbLayouts: [{ name: "danish", code: "dk" }],
         btConnected: ["WH-1000XM5"],
         screensOn: ["DP-1"],

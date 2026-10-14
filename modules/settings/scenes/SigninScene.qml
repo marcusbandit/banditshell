@@ -12,7 +12,7 @@ Item {
     id: root
 
     readonly property real stageHeight: 260
-    readonly property var apps: (SettingsState.planned.startup ?? []).filter(a => a.on)
+    readonly property var apps: SettingsState.v("startup").filter(a => a.on)
     readonly property var rects: Catalogue.dwindleRects(Math.max(1, root.apps.length))
     readonly property int cycle: 2000 + root.apps.length * 900 + 1800
 
@@ -115,7 +115,7 @@ Item {
                             required property var modelData
                             required property int index
 
-                            readonly property var r: root.rects[win.index]
+                            readonly property var r: root.rects[win.index] ?? root.rects[root.rects.length - 1]
                             readonly property real open: Frames.BACK(root.phase(2500 + win.index * 900, 400))
                             readonly property real spin: root.phase(2000 + win.index * 900, 550)
 
@@ -137,7 +137,7 @@ Item {
                                 AppMark {
                                     anchors.centerIn: parent
                                     size: 26
-                                    spec: AppIcons.markFor(win.modelData.id, "colour")
+                                    spec: win.modelData.mark
                                     color: Appearance.colour.textDim
                                 }
                             }

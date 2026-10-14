@@ -14,32 +14,12 @@ Item {
 
     readonly property real stageHeight: 240
 
-    readonly property var look: ({
-            firefox: ["public", "#ff7139"],
-            chromium: ["public", "#4c8bf5"],
-            zen: ["public", "#f2c75c"],
-            files: ["folder", "#7fb3d4"],
-            nautilus: ["folder", "#8fb7e8"],
-            thunar: ["folder", "#6aa0d8"],
-            kitty: ["terminal", "#a6e3a1"],
-            foot: ["terminal", "#9ccfd8"],
-            alacritty: ["terminal", "#f5a97f"],
-            thunderbird: ["mail", "#7a8cff"],
-            geary: ["mail", "#8fa0c8"],
-            loupe: ["image", "#f2a7c3"],
-            imv: ["image", "#c9a0ff"],
-            gwenview: ["image", "#9ccfd8"],
-            mpv: ["movie", "#a26eff"],
-            celluloid: ["movie", "#ff8a6b"],
-            vlc: ["movie", "#ff8800"]
-        })
-
     property int turn: 0
 
     readonly property string pinned: Catalogue.OPENS.some(o => o.k === SettingsView.hovered?.k) ? SettingsView.hovered.k : ""
     readonly property var kind: root.pinned ? Catalogue.OPENS.find(o => o.k === root.pinned) : Catalogue.OPENS[root.turn % Catalogue.OPENS.length]
     readonly property string app: String(SettingsState.v(root.kind.k))
-    readonly property var appLook: root.look[root.app] ?? ["apps", Appearance.colour.accent]
+    readonly property string appName: SettingsState.defaultName(root.kind.k)
 
     property real t: 1
 
@@ -196,29 +176,29 @@ Item {
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.large
-                    color: Appearance.blend(Appearance.colour.surfaceSolid, root.appLook[1], 0.22)
-                    stroke: Qt.rgba(Qt.color(root.appLook[1]).r, Qt.color(root.appLook[1]).g, Qt.color(root.appLook[1]).b, 0.5)
+                    color: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, 0.22)
+                    stroke: Qt.alpha(Appearance.colour.accent, 0.5)
                     strokeWidth: 2
                 }
 
-                Icon {
+                AppMark {
                     anchors.centerIn: parent
-                    name: root.appLook[0]
                     size: 34
-                    fill: 1
-                    color: root.appLook[1]
+                    spec: DesktopIndex.markFor(root.app)
+                    fallback: root.kind.icon
+                    color: Appearance.colour.accent
                 }
             }
 
             StyledText {
                 anchors.horizontalCenter: parent.horizontalCenter
-                text: root.app
+                text: root.appName
                 color: Appearance.colour.textDim
             }
         }
     }
 
     SceneCaption {
-        text: `${root.kind.what} opens in ${root.app}`
+        text: `${root.kind.what} opens in ${root.appName}`
     }
 }

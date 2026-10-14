@@ -12,6 +12,8 @@ singleton CliMigration 1.0 CliMigration.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Clock 1.0 Clock.qml
 singleton CompositorSync 1.0 CompositorSync.qml
+singleton DefaultApps 1.0 DefaultApps.qml
+singleton DesktopIndex 1.0 DesktopIndex.qml
 singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Display 1.0 Display.qml
@@ -43,6 +45,7 @@ singleton Prompts 1.0 Prompts.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
+singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
 singleton SystemInfo 1.0 SystemInfo.qml

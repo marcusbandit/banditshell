@@ -21,15 +21,8 @@ Singleton {
             tapClick: true,
             penBtn1: "right click",
             penBtn2: "erase",
-            defBrowser: "firefox",
-            defFiles: "files",
-            defTerm: "kitty",
-            defMail: "thunderbird",
-            defImages: "loupe",
-            defVideo: "mpv",
             layout: "dwindle",
             customLayout: "",
-            startup: [],
             layouts: []
         })
 
@@ -343,6 +336,15 @@ Singleton {
             return PowerProfile.profile;
         case "mode":
             return Modes.current;
+        case "defBrowser":
+        case "defFiles":
+        case "defTerm":
+        case "defMail":
+        case "defImages":
+        case "defVideo":
+            return DefaultApps.valueOf(k);
+        case "startup":
+            return StartupApps.entries;
         }
         if (root.plannedKey(k))
             return root.planned[k] ?? root.planDefaults[k];
@@ -488,6 +490,17 @@ Singleton {
             return Hotspot.setPassword(value);
         case "hotspotBand":
             return Hotspot.setBand(value);
+        case "defBrowser":
+        case "defFiles":
+        case "defTerm":
+        case "defMail":
+        case "defImages":
+        case "defVideo":
+            return DefaultApps.choose(k, value);
+        case "startup":
+            if (StartupApps.needsHyprlandEdits(value) && !root.edits())
+                return;
+            return StartupApps.change(value);
         }
         if (root.plannedKey(k))
             root.plan(k, value);
@@ -1237,19 +1250,18 @@ Singleton {
     readonly property bool healthKnown: Battery.healthKnown
     readonly property int healthPct: Math.round(Battery.health)
 
-    readonly property int startupOn: (root.planned.startup ?? []).filter(s => s.on).length
+    readonly property int startupOn: StartupApps.entries.filter(s => s.on).length
 
     function appsFor(k: string): var {
-        const seed = [root.v(k)];
-        const pool = ({
-                defBrowser: ["firefox", "chromium", "zen"],
-                defFiles: ["files", "nautilus", "thunar"],
-                defTerm: ["kitty", "foot", "alacritty"],
-                defMail: ["thunderbird", "geary"],
-                defImages: ["loupe", "imv", "gwenview"],
-                defVideo: ["mpv", "celluloid", "vlc"]
-            })[k] ?? [];
-        return seed.concat(pool.filter(a => a !== seed[0]));
+        return DefaultApps.offersFor(k);
+    }
+
+    function defaultName(k: string): string {
+        return DefaultApps.nameFor(k);
+    }
+
+    function defaultNote(k: string): string {
+        return DefaultApps.noteFor(k);
     }
 
     readonly property var zoneChoices: Localisation.zoneChoices
