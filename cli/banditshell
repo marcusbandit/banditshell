@@ -173,7 +173,7 @@ live_worktree() {
 }
 
 match_worktree() {
-    local want="$1" home path branch number=0
+    local want="$1" home path branch folder number=0
     local -a hits=()
     [ -n "$want" ] || return 1
     home=$(main_dir)
@@ -183,14 +183,15 @@ match_worktree() {
     while IFS=$'\t' read -r path branch; do
         [ "$path" = "$home" ] && continue
         number=$((number + 1))
+        folder="${path##*/}"
         if [[ $want == /* ]]; then
             [ "$want" = "$path" ] && hits=("$path") && break
         elif [[ $want =~ ^[0-9]+$ ]]; then
             [ "$want" = "$number" ] && hits=("$path") && break
-        elif [ "$want" = "$branch" ] || [ "$want" = "${path##*/}" ]; then
+        elif [ "$want" = "$branch" ] || [ "$want" = "$folder" ]; then
             hits=("$path")
             break
-        elif [[ ${branch,,} == *"${want,,}"* || ${path##*/} == *"${want,,}"* ]]; then
+        elif [[ ${branch,,} == *"${want,,}"* || ${folder,,} == *"${want,,}"* ]]; then
             hits+=("$path")
         fi
     done < <(worktree_list)
