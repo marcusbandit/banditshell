@@ -66,7 +66,7 @@ Singleton {
     }
 
     function notify(urgency: string, summary: string, body: string): void {
-        warner.command = ["notify-send", "-a", "banditshell", "-u", urgency, summary, body ?? ""];
+        warner.command = ["notify-send", "-a", "banditshell", "-u", urgency, "-c", Notifications.categoryFor("battery"), summary, body ?? ""];
         warner.running = true;
     }
 

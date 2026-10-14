@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 import qs.modules.settings
 import "keyframes.js" as Frames
 
@@ -102,6 +103,6 @@ Item {
     }
 
     SceneCaption {
-        text: `stays ${root.timeout} s · ${SettingsState.v("notifPopups")} at once${SettingsState.v("dnd") ? " · quiet now" : ""}`
+        text: `stays ${root.timeout} s · ${SettingsState.v("notifPopups")} at once${Notifications.quieted ? " · quiet now" : ""}`
     }
 }

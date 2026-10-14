@@ -46,7 +46,7 @@ function lookup(values, key) {
 const NUMERIC = new Set(["neutral", "tunnelCount", "appsPlaying", "btNear", "starredCount", "trayCount", "batteryPct", "healthPct", "startupOn", "keyCount", "changeCount", "clipseWaiting", "usedMinutes"]);
 
 function fakeState(values) {
-    const all = Object.assign({}, PLAN_DEFAULTS, values || {});
+    const all = Object.assign({}, PLAN_DEFAULTS, { mode: "none" }, values || {});
     return new Proxy({
         v: k => all[k] !== undefined ? all[k] : true,
         appsFor: () => [["firefox", "firefox"]],
@@ -379,4 +379,33 @@ test("screen rows that wait for apply say so", () => {
         const r = Catalogue.ROWS.find(x => x.k === k);
         assert.strictEqual(r.detail({ pendingNote: () => "not applied yet" }), "not applied yet", k);
     }
+});
+
+test("the command line names every mode the panel has", () => {
+    const header = fs.readFileSync(path.join(ROOT, "cli/banditshell"), "utf8");
+    const line = /banditshell focus mode \[([^\]]+)\]/.exec(header);
+    assert.ok(line, "focus mode in the CLI's header");
+    assert.deepStrictEqual(line[1].split("|").filter(w => w !== "list"), Catalogue.MODES.map(m => m.id));
+});
+
+test("rules are opaque to the schema merge and start empty", () => {
+    const opaque = /readonly property var opaque: \[([^\]]*)\]/.exec(fs.readFileSync(path.join(ROOT, "config/Config.qml"), "utf8"));
+    assert.ok(opaque[1].includes('"notifications.rules"'));
+    assert.deepStrictEqual(lookup(DEFAULTS, "notifications.rules"), {});
+});
+
+test("quiet, rules and alert sounds are written to config, not kept as plans", () => {
+    for (const k of ["dnd", "dndUntil", "dndAlarms", "dndNightly", "rules", "alerts", "alertSet", "alertVol"]) {
+        assert.ok(k in CONFIG_BACKED, `${k} is config backed`);
+        assert.ok(!(k in PLAN_DEFAULTS), `${k} is no longer planned`);
+    }
+    assert.ok(!("mode" in PLAN_DEFAULTS));
+    assert.deepStrictEqual(lookup(DEFAULTS, "sound"), { alerts: true, alertSet: "soft", alertVolume: 0.5 });
+});
+
+test("every mode setting can be written by the panel", () => {
+    const served = new Set(["profile", "warmth", "level"]);
+    for (const m of Catalogue.MODES)
+        for (const k of Object.keys(m.set))
+            assert.ok(k in CONFIG_BACKED || served.has(k) || k in PLAN_DEFAULTS, `${m.id} sets ${k}, which nothing writes`);
 });

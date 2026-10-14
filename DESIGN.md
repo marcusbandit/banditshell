@@ -520,9 +520,16 @@ banditshell/
 │   ├── Wallpaper.qml            the current wallpaper and the list to pick from;
 │   │                            what kind each file is, its size, the colour
 │   │                            groups it falls in, and a poster frame per video
-│   ├── Notifications.qml        the notification DAEMON (a server, not a reader)
+│   ├── Notifications.qml        the notification DAEMON (a server, not a reader);
+│   │                            also where quiet lives: a notification always
+│   │                            lands in history, and quiet, the night window
+│   │                            and the sender's rule decide popup and sound
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
+│   ├── AlertSounds.qml          plays the three alert sounds (notification, low
+│   │                            battery, error) from assets/sounds with pw-play
+│   ├── Modes.qml                which mode is on and what it changed, so leaving
+│   │                            it puts back exactly that; kept in modes.json
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
 │   ├── Clipboard.qml            what has been copied, and what each of them IS;

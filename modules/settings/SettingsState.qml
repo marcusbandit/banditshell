@@ -16,15 +16,7 @@ Singleton {
             hotspotName: "banditshell",
             hotspotPass: "",
             hotspotBand: "2.4 GHz",
-            alerts: true,
-            alertSet: "soft",
-            alertVol: 0.5,
             nightSched: "off",
-            dnd: false,
-            dndUntil: "off by hand",
-            dndAlarms: true,
-            dndNightly: false,
-            mode: "none",
             greyCap: false,
             breaks: false,
             breakEvery: 50,
@@ -76,7 +68,6 @@ Singleton {
             sheetShape: "iso",
             customLayout: "",
             startup: [],
-            rules: [],
             layouts: [],
             tunnels: [],
             screens: ({})
@@ -90,7 +81,6 @@ Singleton {
     property var ui: ({})
     property var changes: []
     property var wrote: null
-    property var modeWas: ({})
 
     property bool loaded: false
 
@@ -116,6 +106,14 @@ Singleton {
             roleSpeakers: {
                 read: v => v,
                 write: v => v
+            },
+            dndUntil: {
+                read: v => Notifications.endsLabel(v),
+                write: v => Notifications.deadlineFor(v)
+            },
+            rules: {
+                read: v => v,
+                write: v => Array.isArray(v) ? Notifications.rulesFromList(v) : v
             }
         })
 
@@ -187,6 +185,14 @@ Singleton {
             notifTimeout: "notifications.timeout",
             notifPopups: "notifications.maxPopups",
             notifHistory: "notifications.maxHistory",
+            dnd: "notifications.quiet",
+            dndUntil: "notifications.quietUntil",
+            dndAlarms: "notifications.letAlarms",
+            dndNightly: "notifications.nightly",
+            rules: "notifications.rules",
+            alerts: "sound.alerts",
+            alertSet: "sound.alertSet",
+            alertVol: "sound.alertVolume",
             wheelSeek: "media.wheelSeek",
             seekSmall: "media.seekSmall",
             seekLarge: "media.seekLarge",
@@ -299,6 +305,8 @@ Singleton {
             return Display.warm;
         case "saver":
             return root.v("profile") === "saver";
+        case "mode":
+            return Modes.current;
         }
         if (root.plannedKey(k))
             return root.planned[k] ?? root.planDefaults[k];
@@ -411,6 +419,8 @@ Singleton {
             return;
         case "saver":
             return root.set("profile", value ? "saver" : "balanced");
+        case "mode":
+            return root.setMode(value);
         case "vpnFirst":
             {
                 const list = (root.planned.tunnels ?? []).slice();
@@ -484,6 +494,8 @@ Singleton {
         root.write(k, value);
         if (root.denied)
             return;
+        if (k === "alertSet" || k === "alertVol")
+            AlertSounds.preview();
         const r = root.rowOf(k);
         const typed = r?.kind === "text" || r?.kind === "secret";
         if (r && !typed && !root.muteLog && !root.stagedKey(k) && (value === null || typeof value !== "object"))
@@ -548,20 +560,20 @@ Singleton {
 
     function setMode(id: string): void {
         const m = Catalogue.MODES.find(x => x.id === id);
-        if (!m)
+        if (!m || Modes.current === id)
             return;
         root.muteLog = true;
-        if (root.v("mode") !== "none")
-            for (const key of Object.keys(root.modeWas).filter(k => root.plannedKey(k)))
-                root.set(key, root.modeWas[key]);
+        for (const key of Object.keys(Modes.was))
+            root.set(key, Modes.was[key]);
         const was = {};
-        for (const key of Object.keys(m.set).filter(k => root.plannedKey(k))) {
-            was[key] = root.v(key);
+        for (const key of Object.keys(m.set)) {
+            const before = root.v(key);
+            if (JSON.stringify(before) === JSON.stringify(m.set[key]))
+                continue;
+            was[key] = before;
             root.set(key, m.set[key]);
         }
-        root.modeWas = was;
-        root.plan("modeWas", was);
-        root.set("mode", id);
+        Modes.enter(id, m.icon, was);
         root.muteLog = false;
     }
 
@@ -1156,10 +1168,11 @@ Singleton {
 
     readonly property int changeCount: root.changes.length
 
-    readonly property string modeIcon: {
-        const id = root.v("mode");
-        return id && id !== "none" ? (Catalogue.MODES.find(m => m.id === id)?.icon ?? "") : "";
-    }
+    readonly property string modeIcon: Modes.icon
+
+    readonly property string quietNote: Notifications.note
+    readonly property string quietEndsNote: Notifications.endsNote
+    readonly property string nightWindow: `${Notifications.nightFrom} to ${Notifications.nightTo}`
 
     property bool completionsInstalled: false
 
@@ -1248,7 +1261,28 @@ Singleton {
             saver.restart();
     }
 
+    function adoptMode(): void {
+        if (!root.loaded || !Modes.loaded || root.planned.mode === undefined)
+            return;
+        const id = String(root.planned.mode);
+        Modes.adopt(id, Catalogue.MODES.find(m => m.id === id)?.icon ?? "", root.planned.modeWas);
+        const next = Object.assign({}, root.planned);
+        delete next.mode;
+        delete next.modeWas;
+        root.planned = next;
+        root.save();
+    }
+
+    Connections {
+        target: Modes
+
+        function onLoadedChanged(): void {
+            root.adoptMode();
+        }
+    }
+
     function adopt(): void {
+        root.adoptMode();
         if (!root.loaded || !Config.loaded)
             return;
         const moved = Object.keys(root.planned).filter(k => root.configBacked[k] && !root.plannedKey(k));
@@ -1316,7 +1350,6 @@ Singleton {
                 root.planned = data.planned ?? {};
                 root.ui = data.ui ?? {};
                 root.changes = data.changes ?? [];
-                root.modeWas = root.planned.modeWas ?? {};
             } catch (e) {
                 console.warn(`SettingsState: ${root.path} is not valid, starting fresh`);
             }

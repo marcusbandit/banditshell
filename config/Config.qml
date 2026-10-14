@@ -331,7 +331,30 @@ Singleton {
 
                 badge: 40,
 
-                cornerZone: 120
+                cornerZone: 120,
+
+                quiet: false,
+
+                quietUntil: 0,
+
+                letAlarms: true,
+
+                nightly: false,
+
+                nightFrom: "22:00",
+
+                nightTo: "07:30",
+
+                rules: {}
+            },
+
+            sound: {
+
+                alerts: true,
+
+                alertSet: "soft",
+
+                alertVolume: 0.5
             },
 
             notch: {
@@ -677,7 +700,7 @@ Singleton {
 
     property bool rewatch: false
 
-    readonly property var opaque: ["files.keys", "files.grid"]
+    readonly property var opaque: ["files.keys", "files.grid", "notifications.rules"]
 
     function get(key: string): var {
         return Configuration.lookup(root.values, key);

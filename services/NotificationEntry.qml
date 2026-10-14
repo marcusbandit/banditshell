@@ -25,6 +25,8 @@ QtObject {
 
     property string desktopEntry: ""
 
+    property string category: ""
+
     property string cacheDir: ""
 
     property bool live: false
@@ -105,6 +107,7 @@ QtObject {
         root.body = Markup.sanitise(n.body);
         root.appIcon = n.appIcon;
         root.desktopEntry = n.desktopEntry;
+        root.category = String(n.hints?.category ?? "");
 
         if (n.image !== root.image) {
             root.retire();
