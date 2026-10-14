@@ -157,6 +157,17 @@ Singleton {
 
         puller.command = ["sh", "-c", `
             export GIT_TERMINAL_PROMPT=0 LC_ALL=C
+            incoming=$(git -C "$1" diff --name-only HEAD "$2" --)
+            both=$(git -C "$1" diff --name-only HEAD -- | INCOMING="$incoming" awk 'BEGIN { n = split(ENVIRON["INCOMING"], f, "\\n"); for (i = 1; i <= n; i++) if (f[i] != "") seen[f[i]] = 1 } $0 in seen')
+            if [ -n "$both" ]; then
+                if out=$(printf '%s\\n' "$both" | git --literal-pathspecs -C "$1" stash push --quiet --message "banditshell update to $(printf '%.7s' "$2"): edits set aside" --pathspec-from-file=- 2>&1); then
+                    printf 'aside=%s\\n' "$(printf '%s\\n' "$both" | paste -sd '\\t' -)"
+                else
+                    echo failed
+                    printf '%s\\n' "$out" | sed 's/^/|/'
+                    exit 0
+                fi
+            fi
             if out=$(git -C "$1" merge --ff-only --quiet "$2" 2>&1); then
                 printf 'head=%s\\n' "$(git -C "$1" rev-parse HEAD)"
             else
@@ -290,9 +301,10 @@ Singleton {
                 watchdog.stop();
 
                 const got = Words.report(text);
+                const aside = Words.setAside(got.values.aside);
                 if (got.failed) {
                     kept.installedTo = "";
-                    root.error = Words.explain(got.output, root.branch);
+                    root.error = [aside, Words.explain(got.output, root.branch)].filter(Boolean).join(" ");
                     root.state = root.failed;
                     console.warn(`Update: ${got.output.join(" / ")}`);
                     return;
@@ -300,6 +312,7 @@ Singleton {
 
                 root.behind = 0;
                 root.ahead = 0;
+                root.error = aside;
                 root.state = root.downloaded;
             }
         }
