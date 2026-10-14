@@ -1,0 +1,10 @@
+appimagelauncherd.service        enabled enabled
+autostart-launcher.service       enabled enabled
+dunst.service                    masked  enabled
+notify-failure@.service          static  -
+pipewire.service                 enabled enabled
+spotify-spare.service            disabled enabled
+syncthing.service                enabled enabled
+tmux.service                     enabled enabled
+vesktop.service                  enabled enabled
+wireplumber.service              disabled enabled
