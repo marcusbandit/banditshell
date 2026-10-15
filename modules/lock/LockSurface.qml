@@ -5,7 +5,7 @@ import Quickshell.Wayland
 WlSessionLockSurface {
     id: surface
 
-    color: "black"
+    color: "transparent"
 
     LockFace {
         anchors.fill: parent

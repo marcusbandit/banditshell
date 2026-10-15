@@ -1,5 +1,9 @@
 module qs.modules.lock
+LockAlerts 1.0 LockAlerts.qml
+LockClock 1.0 LockClock.qml
 LockFace 1.0 LockFace.qml
-LockNotifications 1.0 LockNotifications.qml
+LockField 1.0 LockField.qml
+LockInfo 1.0 LockInfo.qml
+LockPower 1.0 LockPower.qml
 LockScreen 1.0 LockScreen.qml
 LockSurface 1.0 LockSurface.qml
