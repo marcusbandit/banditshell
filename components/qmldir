@@ -9,6 +9,7 @@ BlurredImage 1.0 BlurredImage.qml
 ButtonPair 1.0 ButtonPair.qml
 Button 1.0 Button.qml
 CodeBlock 1.0 CodeBlock.qml
+ColourField 1.0 ColourField.qml
 CommandQueue 1.0 CommandQueue.qml
 CrossfadeText 1.0 CrossfadeText.qml
 DropShadow 1.0 DropShadow.qml
@@ -19,12 +20,14 @@ Follow 1.0 Follow.qml
 Gauge 1.0 Gauge.qml
 GlideList 1.0 GlideList.qml
 Icon 1.0 Icon.qml
+ImagePalette 1.0 ImagePalette.qml
 MenuLayer 1.0 MenuLayer.qml
 ProgressRing 1.0 ProgressRing.qml
 Pull 1.0 Pull.qml
 QrScanner 1.0 QrScanner.qml
 RevealMask 1.0 RevealMask.qml
 ScrollGesture 1.0 ScrollGesture.qml
+ScrollingText 1.0 ScrollingText.qml
 Segments 1.0 Segments.qml
 Separator 1.0 Separator.qml
 SignalBars 1.0 SignalBars.qml
@@ -34,3 +37,4 @@ SquircleRect 1.0 SquircleRect.qml
 StyledText 1.0 StyledText.qml
 TerminalView 1.0 TerminalView.qml
 Toggle 1.0 Toggle.qml
+Waveform 1.0 Waveform.qml

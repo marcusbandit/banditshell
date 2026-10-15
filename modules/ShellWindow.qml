@@ -96,10 +96,24 @@ PanelWindow {
     }
 
     function act(notice: var): void {
+        if (notice.mock && notice.kind !== "music")
+            return;
         switch (notice.kind) {
+        case "launch":
+            islandLayer.close();
+            Hypr.focusClient([].concat(...Object.values(Hypr.clients)).find(c => Launching.fits(notice.rec, Hypr.classOf(c))) ?? null);
+            return;
+        case "dictation":
+            islandLayer.close();
+            clipLayer.build().setTab(1);
+            clipLayer.show();
+            return;
         case "music":
             islandLayer.close();
-            mediaLayer.show();
+            if ((notice.origin?.width ?? 0) > 0)
+                mediaLayer.build().showFrom(notice.origin);
+            else
+                mediaLayer.show();
             break;
         case "notifications":
             popups.pinned = true;
@@ -147,7 +161,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || islandLayer.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 

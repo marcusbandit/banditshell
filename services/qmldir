@@ -65,4 +65,5 @@ singleton UsageApps 1.0 UsageApps.qml
 singleton UsageLimits 1.0 UsageLimits.qml
 singleton Usage 1.0 Usage.qml
 singleton Wallpaper 1.0 Wallpaper.qml
+singleton Weather 1.0 Weather.qml
 singleton WhatsNew 1.0 WhatsNew.qml

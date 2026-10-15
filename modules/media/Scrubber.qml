@@ -110,7 +110,7 @@ Item {
             joinStyle: ShapePath.RoundJoin
 
             PathPolyline {
-                path: Wave.points(wave.width, root.amp * swell.value, root.wavelength, 2 * Math.PI * clock.t, Math.max(1, root.stroke / 2)).map(p => Qt.point(p[0], wave.height / 2 + p[1]))
+                path: Wave.points(Math.max(0, wave.width - root.stroke), root.amp * swell.value, root.wavelength, 2 * Math.PI * clock.t, Math.max(1, root.stroke / 2)).map(p => Qt.point(p[0] + root.stroke / 2, wave.height / 2 + p[1]))
             }
         }
     }
@@ -144,17 +144,35 @@ Item {
         color: Appearance.colour.fillStrong
     }
 
+    TextMetrics {
+        id: elapsedInk
+
+        font: elapsed.font
+        text: elapsed.text
+    }
+
+    TextMetrics {
+        id: lengthInk
+
+        font: total.font
+        text: total.text
+    }
+
     StyledText {
         id: elapsed
 
         anchors.left: parent.left
+        anchors.leftMargin: -elapsedInk.tightBoundingRect.x
         anchors.bottom: parent.bottom
         text: Media.timeLabel(root.timed ? root.shown * Media.length : Media.position)
         color: Appearance.colour.textDim
     }
 
     StyledText {
+        id: total
+
         anchors.right: parent.right
+        anchors.rightMargin: -(lengthInk.advanceWidth - lengthInk.tightBoundingRect.x - lengthInk.tightBoundingRect.width)
         anchors.bottom: parent.bottom
         text: Media.timeLabel(Media.length)
         color: Appearance.colour.textDim

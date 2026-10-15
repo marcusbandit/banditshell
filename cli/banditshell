@@ -162,6 +162,16 @@
 #   banditshell dev test [args]  run tests/*.test.js in node
 #   banditshell dev check        compile every QML file in a fresh engine, then
 #                                run the tests
+#   banditshell dev check island [dir]
+#                                walk the island through every situation it has
+#                                a rule for, headless: each checked, and
+#                                photographed into dir
+#   banditshell dev inspect island [screen]
+#                                look at every situation on the live island:
+#                                a panel on the right makes each one up, and
+#                                you hover and click the island itself
+#   banditshell dev inspect close
+#                                end it and take everything made up away
 #   banditshell dev preview lock [file]
 #                                the lock face, photographed
 #   banditshell dev preview settings [WxH] [page] [file]
@@ -1158,6 +1168,77 @@ preview_failed() {
     return 0
 }
 
+compositor_look() {
+    local r p g b
+    r=$(hyprctl getoption decoration:rounding -j 2>/dev/null | jq -r '.int // empty' 2>/dev/null) || r=""
+    if [ -z "$r" ]; then
+        echo "."
+        return
+    fi
+    p=$(hyprctl getoption decoration:rounding_power -j | jq -r '.float // 2')
+    g=$(hyprctl getoption general:gaps_out -j | jq -r '.css // .custom // .int' | awk '{print $1}')
+    b=$(hyprctl getoption general:border_size -j | jq -r '.int // 0')
+    echo ".compositor.follow = false | .rounding.base = $r | .rounding.power = $p | .edge.border = ${g:-0} | .edge.outerExtra = ((.edge.outerExtra // 0) + $b)"
+}
+
+headless_preview() {
+    local name="$1" shots="$2" limit="$3" overrides="${4:-.}" work config tool
+    for tool in gamescope dbus-run-session jq; do
+        command -v "$tool" >/dev/null || { echo "banditshell: $tool not found" >&2; exit 1; }
+    done
+    [ -f "$SHELL_DIR/previews/$name.qml" ] || { echo "banditshell: no preview named $name" >&2; exit 1; }
+    mkdir -p "$shots"
+    work=$(mktemp -d)
+    mkdir -p "$work/home" "$work/config/banditshell" "$work/state" "$work/cache" "$work/runtime"
+    chmod 700 "$work/runtime"
+    config="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+    overrides="$overrides | $(compositor_look)"
+    jq "$overrides" "$config" >"$work/config/banditshell/config.json" 2>/dev/null ||
+        jq -n "{} | $overrides" >"$work/config/banditshell/config.json"
+    cat >"$work/bus.conf" <<EOF
+<busconfig>
+  <type>session</type>
+  <listen>unix:dir=$work/runtime</listen>
+  <policy context="default">
+    <allow send_destination="*"/>
+    <allow receive_sender="*"/>
+    <allow own="*"/>
+  </policy>
+</busconfig>
+EOF
+    preview_log="$shots/$name.log"
+    : >"$preview_log"
+    (cd "$work/home" && exec env -i PATH="$PATH" HOME="$work/home" LANG=C.UTF-8 \
+        XDG_CONFIG_HOME="$work/config" XDG_STATE_HOME="$work/state" XDG_CACHE_HOME="$work/cache" XDG_RUNTIME_DIR="$work/runtime" \
+        BANDITSHELL_PREVIEW="$name" BANDITSHELL_SHOTS="$shots" \
+        timeout -s KILL "$limit" dbus-run-session --config-file="$work/bus.conf" -- \
+        gamescope --backend headless -W 1400 -H 900 --expose-wayland -- \
+        env QT_QPA_PLATFORM=wayland qs -p "$SHELL_DIR/preview.qml") </dev/null >"$preview_log" 2>&1 &
+    preview_pid=$!
+    trap 'kill -KILL -- -"$preview_pid" "$preview_pid" 2>/dev/null || true; wait "$preview_pid" 2>/dev/null || true; rm -rf "$work"; echo "stopped" >&2; exit 130' INT TERM
+    tail -n +1 -f --pid="$preview_pid" "$preview_log" | sed -u 's/\x1b\[[0-9;]*m//g' |
+        grep --line-buffered -oE '(PASS|FAIL) [0-9]+\. .*|(ERROR|WARN).*@(modules|previews|components|services)/.*' || true
+    wait "$preview_pid" 2>/dev/null || true
+    trap - INT TERM
+    rm -rf "$work" 2>/dev/null || echo "banditshell: could not clear $work" >&2
+}
+
+check_island() {
+    local out tally
+    out=$(realpath -m "${1:-$SHOT_DIR/island}")
+    echo "walking the island through its situations, about half a minute; ctrl-c stops"
+    headless_preview IslandPreview "$out" 120 '.notifications.placement = "island"'
+    tally=$(sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -oE 'DONE [0-9]+/[0-9]+' | tail -1)
+    tally="${tally#DONE }"
+    if [ -z "$tally" ]; then
+        echo "banditshell: the island check did not finish (log: $preview_log)" >&2
+        sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -E 'ERROR' >&2 || true
+        exit 1
+    fi
+    echo "$tally situations passed, photographs in $out"
+    [ "${tally%/*}" = "${tally#*/}" ]
+}
+
 window_rect() {
     hyprctl -j clients | jq -r --arg title "$1" '.[] | select(.title == $title) | "\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"' | head -1
 }
@@ -1261,7 +1342,18 @@ route_dev() {
         cd "$SHELL_DIR" || exit 1
         exec node --test 'tests/*.test.js' "$@"
         ;;
-    check) check_everything ;;
+    check)
+        case "${1:-}" in
+        "") check_everything ;;
+        island) check_island "${2:-}" ;;
+        *) nope dev "check $1" ;;
+        esac ;;
+    inspect)
+        case "${1:-}" in
+        island) ipc inspect island "${2:-}" ;;
+        close) ipc inspect close ;;
+        *) nope dev "inspect ${1:-}" ;;
+        esac ;;
     preview) route_preview "$@" ;;
     menu)
         case "${1:-current}" in

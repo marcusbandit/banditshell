@@ -101,6 +101,17 @@ Item {
 
     property bool holding: false
 
+    property rect origin: Qt.rect(0, 0, 0, 0)
+    readonly property bool grown: root.origin.width > 0
+    readonly property real lead: 1 - Math.pow(1 - reveal.value, 1.7)
+
+    function showFrom(from: rect): void {
+        if (root.shown)
+            return;
+        root.origin = from;
+        root.show();
+    }
+
     function show(): void {
         if (root.shown)
             return;
@@ -161,9 +172,12 @@ Item {
     Follow {
         id: reveal
 
-        speed: Appearance.animation.revealSpeed
+        speed: root.grown ? Appearance.animation.resizeSpeed * 0.6 : Appearance.animation.revealSpeed
         target: root.shown ? 1 : 0
         epsilon: 0.005
+
+        onValueChanged: if (reveal.value === 0 && !root.shown)
+            root.origin = Qt.rect(0, 0, 0, 0)
     }
 
     Follow {
@@ -263,26 +277,72 @@ Item {
     }
 
     Item {
+        id: grow
+
+        readonly property real t: root.lead
+        readonly property rect to: Qt.rect(panel.restX, panel.restTop, panel.width, panel.height)
+
+        x: root.origin.x + (to.x - root.origin.x) * t
+        y: root.origin.y + (to.y - root.origin.y) * t
+        width: root.origin.width + (to.width - root.origin.width) * t
+        height: root.origin.height + (to.height - root.origin.height) * t
+        visible: root.grown && reveal.value > 0.001 && reveal.value < 0.999
+        opacity: Math.min(1, t * 4) * (1 - Math.max(0, (reveal.value - 0.85) / 0.15))
+
+        SquircleRect {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal + (Appearance.rounding.large - Appearance.rounding.normal) * grow.t
+            color: Appearance.colour.surface
+        }
+
+        ArtGlow {
+            anchors.fill: parent
+            radius: Appearance.rounding.normal + (Appearance.rounding.large - Appearance.rounding.normal) * grow.t
+            source: Media.available ? Media.artUrl : ""
+            moving: false
+            opacity: 0.62
+        }
+    }
+
+    ArtCrossfade {
+        readonly property real t: root.lead
+        readonly property rect to: Qt.rect(panel.restX + root.pad, panel.restTop + root.pad, root.artSize, root.artSize)
+
+        x: root.origin.x + (to.x - root.origin.x) * t
+        y: root.origin.y + (to.y - root.origin.y) * t
+        width: root.artSize
+        height: root.artSize
+        transformOrigin: Item.TopLeft
+        scale: (root.origin.width + (root.artSize - root.origin.width) * t) / Math.max(1, root.artSize)
+        radius: Appearance.rounding.normal
+        source: Media.available ? Media.artUrl : ""
+        visible: root.grown && reveal.value > 0.001 && reveal.value < 0.999
+        opacity: 1 - Math.max(0, (reveal.value - 0.85) / 0.15)
+    }
+
+    Item {
         id: panel
 
         readonly property real restY: (root.height - panel.height) / 2
+        readonly property real restX: Math.round((root.width - panel.width) / 2)
+        readonly property real restTop: root.border + panel.restY
 
-        x: Math.round((root.width - panel.width) / 2)
-        y: root.border + panel.restY + (1 - reveal.value) * Appearance.padding.huge * 2
+        x: panel.restX
+        y: panel.restTop + (root.grown ? 0 : (1 - reveal.value) * Appearance.padding.huge * 2)
         width: root.pad * 2 + root.artSize + stage.value * (root.gutter + root.lyricsWidth)
         height: tall.value + root.pad * 2
         visible: reveal.value > 0.001
         enabled: root.open
 
         transform: Scale {
-            xScale: 0.85 + 0.15 * reveal.value
+            xScale: root.grown ? 0.97 + 0.03 * reveal.value : 0.85 + 0.15 * reveal.value
             yScale: xScale
 
             origin.x: panel.width / 2
             origin.y: panel.height / 2
         }
 
-        opacity: Math.min(1, reveal.value * 1.6)
+        opacity: root.grown ? Math.max(0, (reveal.value - 0.8) / 0.2) : Math.min(1, reveal.value * 1.6)
 
         MouseArea {
             anchors.fill: parent
@@ -294,13 +354,11 @@ Item {
             color: Appearance.colour.surface
         }
 
-        ArtCrossfade {
+        ArtGlow {
             anchors.fill: parent
             radius: Appearance.rounding.large
-            blurred: true
-            brightness: -0.32
-            tame: 0.85
             source: Media.available ? Media.artUrl : ""
+            moving: panel.visible
             opacity: 0.62
         }
 

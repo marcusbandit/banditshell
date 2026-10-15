@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-15",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The island now copes with several things at once. The newest one takes the big spot, and the rest become small bubbles beside it that keep their state: dictation, apps opening, and the same kind stacked into one bubble. A song change, a finished download or an update has its moment and then leaves on its own."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Notifications in the island stack up as layers behind the newest one. Resting the pointer on the stack spreads it into a list. Flick a card sideways to dismiss it, swipe it up to put it away in the history, click its close mark or right click it, or use clear all."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it grows the media controller out of the island."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The dictation line in the island is one smooth curve that fades out at both ends."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island's overview shows the weather under the date, from wttr.in every 30 minutes. weather.show set to false in config.json turns it off; weather.location, weather.units and weather.minutes set where, which units and how often."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A pinned island no longer takes the keyboard, and the screen around it stays clickable while it is open."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-11",
       "date": "2026-10-14",
       "changes": [

@@ -3,6 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import Quickshell
 import Quickshell.Wayland
+import Quickshell.Services.Notifications
 import qs.config
 import qs.components
 import qs.components.blob
@@ -29,16 +30,20 @@ Item {
     readonly property bool notifies: Config.values.notifications.placement === "island"
 
     readonly property int launchMax: 3
+    readonly property int bubbleMax: 4
+    readonly property int announceMs: 2500
+
+    readonly property var high: ["dictation", "launch", "notification"]
 
     readonly property var activities: {
         const out = [];
-        if (root.focused && Dictation.live)
+        if (root.voice)
             out.push({
                 key: "dictation",
                 kind: "dictation"
             });
         if (root.focused)
-            for (const rec of Launching.shown.slice(-root.launchMax).reverse())
+            for (const rec of Launching.shown.slice(-root.launchMax))
                 out.push({
                     key: `launch:${rec.id}`,
                     kind: "launch",
@@ -52,7 +57,17 @@ Item {
         return out;
     }
 
-    readonly property var alert: root.notifies && root.offStage ? (Notifications.popups.find(e => !e.leaving) ?? null) : null
+    readonly property bool voice: root.focused && Dictation.live
+
+    readonly property var deckEntries: {
+        if (!root.notifies || !root.offStage)
+            return [];
+        const all = Notifications.popups;
+        const urgent = all.filter(e => e.urgency === NotificationUrgency.Critical);
+        return urgent.length > 0 ? [...urgent, ...all.filter(e => !urgent.includes(e))] : all;
+    }
+
+    readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
     readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music"), ...(root.offStage ? Notices.settled : []), ...(Notifications.count > 0 ? [
                 {
@@ -62,6 +77,64 @@ Item {
                 }
             ] : [])]
 
+    readonly property var noticeRow: root.alerts.length > 0 ? {
+        key: "notification",
+        kind: "notification",
+        entry: root.alerts[0],
+        count: root.alerts.length
+    } : null
+
+    readonly property var groups: {
+        const out = {};
+        for (const a of root.activities) {
+            if (!root.high.includes(a.kind))
+                continue;
+            if (!out[a.kind])
+                out[a.kind] = {
+                    key: a.kind,
+                    kind: a.kind,
+                    items: []
+                };
+            out[a.kind].items.push(a);
+        }
+        if (root.noticeRow)
+            out.notification = {
+                key: "notification",
+                kind: "notification",
+                items: [root.noticeRow]
+            };
+        return out;
+    }
+
+    readonly property var passing: root.activities.filter(a => !root.high.includes(a.kind)).reverse()
+
+    property var order: []
+    property var deferred: []
+    property var sizes: ({})
+    property var announcing: ({})
+    property var seen: ({})
+    property string summon: ""
+
+    readonly property var liveOrder: root.order.filter(k => !!root.groups[k])
+    readonly property var annKeys: root.liveOrder.filter(k => root.announcing[k] !== undefined)
+    readonly property string centreKey: root.liveOrder.find(k => root.announcing[k] === undefined) ?? ""
+    readonly property var annItems: {
+        const out = [];
+        for (const k of root.annKeys)
+            for (const i of root.groups[k]?.items ?? [])
+                if ((root.announcing[k]?.items ?? []).includes(i.key))
+                    out.push(i);
+        return out;
+    }
+
+    function viewOf(key: string): var {
+        const g = root.groups[key];
+        const told = root.announcing[key]?.items ?? [];
+        return g && told.length > 0 ? Object.assign({}, g, {
+            items: g.items.filter(i => !told.includes(i.key))
+        }) : g;
+    }
+
     property bool pinned: false
     property bool pulling: false
     property real pullProgress: 0
@@ -69,20 +142,83 @@ Item {
     readonly property bool hovering: stripHover.hovered || islandHover.hovered
     property bool dwelt: false
     property bool spent: false
+    property bool fanning: false
 
-    onHoveringChanged: if (!root.hovering)
-        root.spent = false
-
-    readonly property bool expanded: root.pinned || (root.dwelt && !root.alert)
+    readonly property bool fronting: root.centreKey === "notification" && !root.deferred.includes("notification")
+    readonly property bool expanded: root.pinned || (root.dwelt && !root.fronting)
+    readonly property bool alerting: root.fronting && !root.expanded
     readonly property real openness: root.pulling ? root.pullProgress : root.expanded ? 1 : 0
 
-    readonly property string base: root.alert ? "alert" : root.activities.length > 0 ? "compact" : "hidden"
-    readonly property string presentation: root.openness > 0.5 ? "overview" : root.base
+    readonly property var stackItems: {
+        const out = [];
+        const centre = root.groups[root.centreKey];
+        if (centre && !(root.centreKey === "notification" && (root.alerting || root.expanded)))
+            out.push(...centre.items);
+        out.push(...root.annItems);
+        out.push(...root.passing);
+        return out;
+    }
+    readonly property var stackKeys: root.stackItems.map(i => i.key)
+    readonly property var stackByKey: {
+        const out = {};
+        for (const i of root.stackItems)
+            out[i.key] = i;
+        return out;
+    }
+    property var shownStack: []
 
-    readonly property var lead: root.activities[0] ?? null
-    readonly property var second: root.base === "alert" ? (root.activities[0] ?? null) : root.base === "compact" ? (root.activities[1] ?? null) : null
+    readonly property string rest: {
+        if (root.alerting)
+            return root.alerts.length < 2 ? "alert" : root.fanning ? "spread" : "stack";
+        return root.stackItems.length > 0 ? "compact" : "hidden";
+    }
 
-    readonly property bool out: root.base !== "hidden" || root.openness > 0
+    readonly property bool deckRest: root.rest === "alert" || root.rest === "stack" || root.rest === "spread"
+
+    readonly property string presentation: root.openness > 0.5 ? "overview" : root.rest
+
+    readonly property var bubbleKeys: root.out ? root.liveOrder.filter(k => k !== root.centreKey && (root.viewOf(k)?.items.length ?? 0) > 0).slice(0, root.bubbleMax) : []
+    property var shownBubbles: []
+
+    function named(key: string, count: int): string {
+        const g = root.groups[key];
+        const n = count > 0 ? count : key === "notification" ? root.alerts.length : (g?.items.length ?? 0);
+        switch (key) {
+        case "notification":
+            return n > 1 ? `${n} notifications` : "a notification";
+        case "launch":
+            return n > 1 ? `${n} launches` : "launch";
+        }
+        return key;
+    }
+
+    readonly property string situation: {
+        if (root.presentation === "overview")
+            return root.alerts.length > 0 ? "overview, notifications arriving inside it" : "overview";
+        const kinds = [...new Set(root.passing.map(p => p.kind))];
+        let centre = "";
+        switch (root.rest) {
+        case "alert":
+            centre = "one notification";
+            break;
+        case "stack":
+            centre = `${root.alerts.length} notifications stacked`;
+            break;
+        case "spread":
+            centre = `${root.alerts.length} notifications spread out`;
+            break;
+        case "compact":
+            centre = !root.centreKey ? kinds.join(", ") : root.centreKey === "notification" ? "notifications waiting under the pointer" : root.named(root.centreKey, 0);
+            break;
+        default:
+            return "hidden";
+        }
+        const below = [...root.annKeys.map(k => root.named(k, root.announcing[k]?.items.length ?? 0)), ...(root.centreKey ? kinds : [])];
+        const beside = root.bubbleKeys.map(k => root.named(k, k === "notification" ? 0 : (root.viewOf(k)?.items.length ?? 0)));
+        return [centre, below.length > 0 ? `below it: ${below.join(", ")}` : "", beside.length > 0 ? `beside it: ${beside.join(", ")}` : ""].filter(t => t).join(", ");
+    }
+
+    readonly property bool out: root.rest !== "hidden" || root.openness > 0
 
     readonly property bool attending: root.hovering || root.openness > 0
 
@@ -90,57 +226,267 @@ Item {
 
     readonly property Item grabItem: zone
 
-    function pressable(kind: string): bool {
-        return ["music", "download", "update", "kernel", "restart"].includes(kind);
+    readonly property Item stage: scene
+
+    function pressable(activity: var): bool {
+        return ["music", "download", "update", "kernel", "restart", "notification"].includes(activity?.kind ?? "");
     }
 
-    readonly property bool interactive: presence.value > 0.5 && (root.openness > 0 || root.base === "alert" || root.pressable(root.lead?.kind ?? "") || root.pressable(root.second?.kind ?? ""))
+    readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
+
+    readonly property bool interactive: presence.value > 0.5 && (root.whole || root.bubbleKeys.length > 0)
 
     readonly property real compactHeight: Appearance.font.line.small + Appearance.padding.small * 2
+    readonly property real slot: Appearance.font.line.small
     readonly property real largeWidth: Config.values.island.width
-    readonly property real cornerMax: Appearance.rounding.large * 1.5
     readonly property real islandTop: root.edge + Appearance.padding.small
     readonly property real budGap: Appearance.padding.normal
+    readonly property real bubblePitch: root.compactHeight + root.budGap
+    readonly property real stackStep: Math.round(Appearance.padding.small * 0.9)
     readonly property real shadowRoom: Appearance.padding.huge * 2
+    readonly property real fieldStep: Appearance.padding.huge * 4
 
-    readonly property real lift: alertView.lift
+    readonly property real lift: deck.lift
 
-    readonly property real baseWidth: root.base === "alert" ? root.largeWidth + (root.compactHeight - root.largeWidth) * root.lift : root.base === "compact" ? measure.implicitWidth : root.compactHeight
-    readonly property real baseHeight: root.base === "alert" ? alertView.implicitHeight + (root.compactHeight - alertView.implicitHeight) * root.lift : root.compactHeight
+    readonly property real rowsWidth: {
+        let widest = 0;
+        for (let i = 0; i < measures.count; i++)
+            widest = Math.max(widest, measures.itemAt(i)?.implicitWidth ?? 0);
+        return widest;
+    }
 
-    readonly property real targetWidth: root.baseWidth + (root.largeWidth - root.baseWidth) * root.openness
-    readonly property real targetHeight: root.baseHeight + (overview.implicitHeight - root.baseHeight) * root.openness
+    readonly property real cardHeight: root.alerting ? deck.implicitHeight + (root.compactHeight - deck.implicitHeight) * root.lift : 0
 
-    readonly property real fieldWidth: Math.ceil(root.largeWidth * 1.2 + (root.compactHeight + root.budGap + root.shadowRoom) * 2)
-    readonly property real fieldHeight: Math.ceil(root.islandTop + Math.max(root.compactHeight, overview.implicitHeight, alertView.implicitHeight) + root.shadowRoom)
-    readonly property real centreX: surface.width / 2
+    readonly property real restWidth: root.deckRest ? root.largeWidth + (root.compactHeight - root.largeWidth) * root.lift : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
+    readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
-    readonly property real pillWidth: wide.value
-    readonly property real pillHeight: tall.value
+    readonly property real fieldWidth: Math.ceil(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2)
+    readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2) + root.shadowRoom) / root.fieldStep) * root.fieldStep
+    readonly property real centreX: scene.width / 2
+
+    readonly property real widening: Math.min(1, glide.value * 1.8)
+    readonly property real pillWidth: wide.value + (root.largeWidth - wide.value) * root.widening
+    readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * glide.value
     readonly property real pillX: root.centreX - root.pillWidth / 2
     readonly property real tuckedY: root.edge - root.pillHeight - Appearance.padding.small
     readonly property real pillY: root.tuckedY + (root.islandTop - root.tuckedY) * presence.value
     readonly property real neck: Appearance.sizes.melt * (1 - settle.value)
-    readonly property real pillRadius: Math.min(root.pillHeight / 2, root.cornerMax)
-    readonly property real pillPower: 2 + (Appearance.rounding.power - 2) * Math.max(0, Math.min(1, (root.pillHeight / 2 - root.cornerMax) / root.cornerMax))
+    readonly property real squared: Math.max(0, Math.min(1, (root.pillHeight - root.compactHeight) / root.compactHeight))
+    readonly property real pillRadius: root.pillHeight / 2 + (Appearance.rounding.normal - root.pillHeight / 2) * root.squared
+    readonly property real pillPower: 2 + (Appearance.rounding.power - 2) * root.squared
 
-    readonly property real budSize: root.compactHeight * (0.6 + 0.4 * bud.value)
-    readonly property real budX: root.pillX + root.pillWidth - root.budSize + (root.budSize + root.budGap) * bud.value
-    readonly property real budY: root.pillY + (root.compactHeight - root.budSize) / 2
+    readonly property real chainRight: root.pillX + root.pillWidth + root.bubbleKeys.length * root.bubblePitch
+    readonly property real deckY: root.pillY + overview.arrivalsTop * Math.min(1, glide.value * 1.6)
 
-    property var shownLead: null
-    property var shownSecond: null
-    property var shownAlert: null
+    property var holding: []
 
-    function swapLead(): void {
-        if (!root.lead)
-            return;
-        if (!root.shownLead || root.shownLead.key === root.lead.key || compactFade.value < 0.01) {
-            root.shownLead = root.lead;
-            swap.target = 1;
+    readonly property var waiting: !root.expanded && (!root.alerting || root.pulling) ? root.alerts : []
+
+
+    function sizeOf(key: string): int {
+        return key === "notification" ? root.alerts.length : (root.groups[key]?.items.length ?? 0);
+    }
+
+    function arrange(fresh: bool): void {
+        const g = root.groups;
+        const before = fresh ? {} : root.sizes;
+        const centre = root.centreKey;
+        let next = fresh ? [] : root.order.filter(k => !!g[k]);
+        let held = fresh ? [] : root.deferred.filter(k => !!g[k]);
+        const told = {};
+        if (!fresh)
+            for (const k of Object.keys(root.announcing))
+                if (g[k]) {
+                    const items = root.announcing[k].items.filter(key => g[k].items.some(i => i.key === key));
+                    if (items.length > 0)
+                        told[k] = {
+                            left: root.announcing[k].left,
+                            items: items
+                        };
+                }
+        const announce = (k, keys) => {
+            if (fresh || root.expanded || keys.length === 0)
+                return;
+            told[k] = {
+                left: root.announceMs,
+                items: [...new Set([...(told[k]?.items ?? []), ...keys])]
+            };
+        };
+        for (const k of root.high) {
+            if (!g[k] || root.sizeOf(k) <= (before[k] ?? 0))
+                continue;
+            const known = root.seen[k] ?? [];
+            const arrived = g[k].items.map(i => i.key).filter(key => !known.includes(key));
+            const critical = k === "notification" && root.alerts.some(e => e.urgency === NotificationUrgency.Critical);
+            if (k === centre && !held.includes(k)) {
+                next = [k, ...next.filter(x => x !== k)];
+                continue;
+            }
+            next = next.filter(x => x !== k);
+            const company = next.length > 0;
+            const card = next[0] === "notification" && !held.includes("notification");
+            if (root.hovering && !critical) {
+                if (company) {
+                    next.splice(1, 0, k);
+                    announce(k, k === "notification" ? ["notification"] : arrived);
+                } else {
+                    next.unshift(k);
+                }
+                if (!held.includes(k))
+                    held.push(k);
+                continue;
+            }
+            held = held.filter(x => x !== k);
+            if (k === "notification") {
+                next.unshift(k);
+                delete told[k];
+                continue;
+            }
+            if (card)
+                next.splice(1, 0, k);
+            else
+                next.unshift(k);
+            if (company)
+                announce(k, arrived);
+            else
+                delete told[k];
+        }
+        if (!root.hovering && held.length > 0) {
+            for (const k of root.high.filter(x => held.includes(x))) {
+                next = next.filter(x => x !== k);
+                next.unshift(k);
+                if (k === "notification")
+                    delete told[k];
+            }
+            held = [];
+        }
+        if (root.summon && g[root.summon]) {
+            next = next.filter(x => x !== root.summon);
+            next.unshift(root.summon);
+            held = held.filter(x => x !== root.summon);
+            delete told[root.summon];
+        }
+        root.summon = "";
+        const counted = {};
+        const known = {};
+        for (const k of Object.keys(g)) {
+            counted[k] = root.sizeOf(k);
+            known[k] = g[k].items.map(i => i.key);
+        }
+        root.sizes = counted;
+        root.seen = known;
+        root.deferred = held;
+        if (JSON.stringify(told) !== JSON.stringify(root.announcing))
+            root.announcing = told;
+        if (next.join("|") !== root.order.join("|"))
+            root.order = next;
+        if (root.alerts.length === 0)
+            root.fanning = false;
+    }
+
+    function choose(activity: var): void {
+        if (activity?.kind === "notification") {
+            root.summon = "notification";
+            Qt.callLater(root.arrange);
             return;
         }
-        swap.target = 0;
+        if (activity?.kind === "music") {
+            root.chosen(Object.assign({}, activity, {
+                origin: root.musicOrigin()
+            }));
+            return;
+        }
+        root.chosen(activity);
+    }
+
+    function musicOrigin(): rect {
+        const shift = (root.width - root.fieldWidth) / 2;
+        const cover = overview.coverRect;
+        if (root.openness > 0.5 && cover.width > 0)
+            return Qt.rect(shift + overview.x + cover.x, overview.y + cover.y, cover.width, cover.height);
+        const row = root.rowOfKind("music");
+        if (row)
+            return Qt.rect(shift + row.markX, row.markY, root.slot, root.slot);
+        return Qt.rect(0, 0, 0, 0);
+    }
+
+    function tapBubble(key: string): void {
+        if (!root.groups[key])
+            return;
+        root.summon = key;
+        Qt.callLater(root.arrange);
+    }
+
+    function merged(shown: var, wanted: var): var {
+        const next = wanted.slice();
+        shown.forEach((k, i) => {
+            if (!next.includes(k))
+                next.splice(Math.min(i, next.length), 0, k);
+        });
+        return next;
+    }
+
+    function mergeBubbles(): void {
+        const next = root.merged(root.shownBubbles, root.bubbleKeys);
+        if (next.join("|") !== root.shownBubbles.join("|"))
+            root.shownBubbles = next;
+    }
+
+    function mergeStack(): void {
+        const next = root.merged(root.shownStack, root.stackKeys);
+        if (next.join("|") !== root.shownStack.join("|"))
+            root.shownStack = next;
+    }
+
+    function purgeBubbles(): void {
+        const keep = root.shownBubbles.filter(k => root.bubbleKeys.includes(k) || (root.bubbleFor(k)?.grown ?? 0) > 0.01);
+        if (keep.length !== root.shownBubbles.length)
+            root.shownBubbles = keep;
+    }
+
+    function purgeStack(): void {
+        const keep = root.shownStack.filter(k => root.stackKeys.includes(k) || (root.rowFor(k)?.shown ?? 0) > 0.01);
+        if (keep.length !== root.shownStack.length)
+            root.shownStack = keep;
+    }
+
+    function bubbleFor(key: string): Item {
+        for (let i = 0; i < bubbles.count; i++) {
+            const b = bubbles.itemAt(i);
+            if (b?.key === key)
+                return b;
+        }
+        return null;
+    }
+
+    function rowFor(key: string): Item {
+        for (let i = 0; i < rows.count; i++) {
+            const r = rows.itemAt(i);
+            if (r?.key === key)
+                return r;
+        }
+        return null;
+    }
+
+    function rowOfKind(kind: string): Item {
+        for (let i = 0; i < rows.count; i++) {
+            const r = rows.itemAt(i);
+            if (r?.item?.kind === kind && r.here)
+                return r;
+        }
+        return null;
+    }
+
+    function flickFront(direction: int): void {
+        deck.dismissFront(direction);
+    }
+
+    function putAwayFront(): void {
+        deck.putAwayFront();
+    }
+
+    function clearNotifications(only: var): void {
+        deck.clearAll(only);
     }
 
     function close(): void {
@@ -169,45 +515,40 @@ Item {
             keys.forceActiveFocus();
     }
 
-    property bool holdingLyrics: false
-
-    readonly property bool wantsLyrics: overviewFade.target > 0 && Media.hasTrack
-
-    onWantsLyricsChanged: {
-        if (root.wantsLyrics === root.holdingLyrics)
-            return;
-        root.holdingLyrics = root.wantsLyrics;
-        if (root.holdingLyrics)
-            Lyrics.hold();
-        else
-            Lyrics.release();
-    }
-
-    onLeadChanged: root.swapLead()
-
-    onSecondChanged: if (root.second)
-        root.shownSecond = root.second
-
-    onAlertChanged: {
-        if (!root.alert)
-            return;
-        root.shownAlert = root.alert;
-        for (const entry of Notifications.popups)
-            if (entry !== root.alert)
-                Notifications.expire(entry);
-    }
+    onGroupsChanged: Qt.callLater(root.arrange)
+    onStackKeysChanged: root.mergeStack()
+    onBubbleKeysChanged: root.mergeBubbles()
+    onAlertingChanged: if (!root.alerting && root.hovering && !root.expanded && !root.pulling)
+        root.spent = true
 
     onExpandedChanged: if (root.expanded)
         Media.sync()
 
-    onAttendingChanged: {
-        if (root.attending) {
-            Notices.hold(root);
+    onHoveringChanged: {
+        if (!root.hovering)
+            root.spent = false;
+        if (root.hovering)
             Notifications.pause(root);
-        } else {
-            Notices.release(root);
+        else
             Notifications.resume(root);
-        }
+        Qt.callLater(root.arrange);
+    }
+
+    onWaitingChanged: {
+        const next = root.waiting.slice();
+        for (const entry of root.holding)
+            if (!next.includes(entry))
+                entry.release(root);
+        for (const entry of next)
+            entry.hold(root);
+        root.holding = next;
+    }
+
+    onAttendingChanged: {
+        if (root.attending)
+            Notices.hold(root);
+        else
+            Notices.release(root);
     }
 
     onWantsEscapeChanged: {
@@ -218,21 +559,40 @@ Item {
     }
 
     Component.onCompleted: {
-        root.shownLead = root.lead;
-        root.shownSecond = root.second;
-        root.shownAlert = root.alert;
+        root.arrange(true);
+        root.mergeStack();
+        root.mergeBubbles();
     }
 
     Component.onDestruction: {
+        for (const entry of root.holding)
+            entry.release(root);
         Notices.release(root);
         Notifications.resume(root);
-        if (root.holdingLyrics)
-            Lyrics.release();
+    }
+
+    Timer {
+        interval: 100
+        repeat: true
+        running: Object.keys(root.announcing).length > 0 && !root.hovering && !root.expanded && !root.pulling
+
+        onTriggered: {
+            const next = {};
+            for (const k of Object.keys(root.announcing)) {
+                const left = root.announcing[k].left - interval;
+                if (left > 0)
+                    next[k] = {
+                        left: left,
+                        items: root.announcing[k].items
+                    };
+            }
+            root.announcing = next;
+        }
     }
 
     Timer {
         interval: Appearance.animation.dwell
-        running: root.hovering && !root.dwelt && !root.spent
+        running: root.hovering && !root.dwelt && !root.spent && !root.alerting
         onTriggered: root.dwelt = true
     }
 
@@ -240,6 +600,18 @@ Item {
         interval: Appearance.animation.grace
         running: !root.hovering && root.dwelt
         onTriggered: root.dwelt = false
+    }
+
+    Timer {
+        interval: Appearance.animation.dwell
+        running: islandHover.hovered && root.alerting && root.alerts.length > 1 && !root.fanning
+        onTriggered: root.fanning = true
+    }
+
+    Timer {
+        interval: Appearance.animation.grace
+        running: root.fanning && !islandHover.hovered
+        onTriggered: root.fanning = false
     }
 
     Follow {
@@ -268,46 +640,75 @@ Item {
         id: wide
 
         speed: root.morphSpeed
-        target: root.out ? root.targetWidth : root.compactHeight
+        target: root.out ? root.restWidth : root.compactHeight
     }
 
     Follow {
         id: tall
 
+        speed: root.deckRest && root.fanLeads ? 0 : root.morphSpeed
+        target: root.out ? root.restHeight : root.compactHeight
+    }
+
+    Follow {
+        id: overviewTall
+
         speed: root.morphSpeed
-        target: root.out ? root.targetHeight : root.compactHeight
+        target: overview.implicitHeight
     }
 
     Follow {
-        id: compactFade
+        id: glide
 
-        speed: root.fadeSpeed(compactFade)
-        epsilon: 0.004
-        target: root.base === "compact" ? 1 - root.openness : 0
+        speed: root.morphSpeed
+        epsilon: 0.002
+        target: root.openness
     }
 
     Follow {
-        id: swap
+        id: swell
 
-        speed: Appearance.animation.revealSpeed * 1.5
-        epsilon: 0.004
-        target: 1
-
-        onValueChanged: if (swap.value === 0) {
-            root.shownLead = root.lead ?? root.shownLead;
-            swap.target = 1;
-        }
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.05
+        target: root.rest === "compact" && root.hovering && root.openness === 0 ? Appearance.padding.small : 0
     }
 
     Follow {
-        id: alertFade
+        id: cardRoom
 
-        speed: root.fadeSpeed(alertFade)
+        speed: tall.speed
+        epsilon: 0.1
+        target: root.cardHeight
+    }
+
+    Follow {
+        id: deckFade
+
+        speed: root.fadeSpeed(deckFade)
         epsilon: 0.004
-        target: root.base === "alert" ? (1 - root.openness) * (1 - root.lift) : 0
+        target: root.deckEntries.length > 0 && (root.alerting || root.openness > 0) ? 1 - root.lift : 0
+    }
 
-        onValueChanged: if (alertFade.value === 0 && !root.alert)
-            root.shownAlert = null
+    property bool fanLeads: false
+
+    Follow {
+        id: fan
+
+        speed: root.morphSpeed
+        epsilon: 0.004
+        target: root.rest === "spread" || root.openness > 0 ? 1 : 0
+
+        onTargetChanged: root.fanLeads = root.deckRest && Math.abs(tall.value - tall.target) < 1
+        onSettledChanged: if (fan.settled)
+            root.fanLeads = false
+    }
+
+    Follow {
+        id: peek
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.004
+        target: root.rest === "stack" ? 1 : 0
     }
 
     Follow {
@@ -319,19 +720,11 @@ Item {
     }
 
     Follow {
-        id: bud
-
-        speed: Appearance.animation.trackSpeed
-        epsilon: 0.004
-        target: root.second && root.openness === 0 ? 1 : 0
-    }
-
-    Follow {
         id: glow
 
         speed: Appearance.animation.revealSpeed * 0.6
         epsilon: 0.004
-        target: !Media.hasTrack ? 0 : root.openness > 0 ? 0.62 * root.openness : root.base === "compact" && root.shownLead?.kind === "music" ? 0.45 : 0
+        target: !Media.hasTrack ? 0 : root.openness > 0 ? 0.62 * root.openness : root.rest === "compact" && root.passing.some(p => p.kind === "music") ? 0.45 : 0
     }
 
     Pull {
@@ -370,6 +763,23 @@ Item {
         }
     }
 
+    Repeater {
+        id: measures
+
+        model: ScriptModel {
+            values: root.stackItems
+            objectProp: "key"
+        }
+
+        ActivityRow {
+            required property var modelData
+
+            visible: false
+            activity: modelData
+            live: false
+        }
+    }
+
     PanelWindow {
         id: surface
 
@@ -389,11 +799,111 @@ Item {
         WlrLayershell.namespace: "banditshell-island"
 
         mask: Region {
-            item: root.interactive ? hit : null
+            item: !root.interactive ? null : root.whole ? hit : bubblesHit
         }
 
         Item {
-            anchors.fill: parent
+            id: scene
+
+            width: root.fieldWidth
+            height: root.fieldHeight
+            anchors.horizontalCenter: parent.horizontalCenter
+
+            Repeater {
+                model: 2
+
+                SquircleRect {
+                    id: layer
+
+                    required property int index
+
+                    readonly property int depth: layer.index + 1
+
+                    Follow {
+                        id: layerShown
+
+                        speed: Appearance.animation.revealSpeed
+                        epsilon: 0.004
+                        target: root.alerts.length > layer.depth ? 1 : 0
+                    }
+
+                    readonly property real shown: peek.value * layerShown.value * presence.value * (1 - glide.value)
+
+                    z: -layer.depth
+                    width: root.pillWidth * (1 - 0.07 * layer.depth)
+                    height: root.pillRadius * 2 + Appearance.padding.small
+                    x: root.centreX - width / 2
+                    y: root.pillY + root.pillHeight - height + Appearance.padding.small * 1.2 * layer.depth * layer.shown
+                    radius: root.pillRadius
+                    cornerPower: root.pillPower
+                    color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, 0.09 - 0.03 * layer.depth))
+                    stroke: Appearance.colour.seam
+                    strokeWidth: Appearance.sizes.seam / 2
+                    opacity: layer.shown
+                    visible: layer.shown > 0.01
+                }
+            }
+
+            Repeater {
+                model: ScriptModel {
+                    values: root.shownBubbles
+                }
+
+                Item {
+                    id: under
+
+                    required property int index
+
+                    readonly property Item twin: {
+                        bubbles.count;
+                        return bubbles.itemAt(under.index);
+                    }
+                    readonly property real fade: (under.twin?.grown ?? 0) * (1 - (under.twin?.travel ?? 0)) * presence.value
+
+                    DropShadow {
+                        x: under.twin?.x ?? 0
+                        y: under.twin?.y ?? 0
+                        width: under.twin?.width ?? 0
+                        height: under.twin?.height ?? 0
+                        radius: width / 2
+                        opacity: settle.value * 0.8 * under.fade
+                        visible: opacity > 0.01
+                    }
+
+                    Repeater {
+                        model: 2
+
+                        SquircleRect {
+                            id: behind
+
+                            required property int index
+
+                            readonly property int d: behind.index + 1
+
+                            Follow {
+                                id: behindShown
+
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: 0.004
+                                target: (under.twin?.depth ?? 0) >= behind.d ? 1 : 0
+                            }
+
+                            z: -behind.d
+                            x: under.twin?.x ?? 0
+                            y: (under.twin?.y ?? 0) + root.stackStep * behind.d * behindShown.value
+                            width: under.twin?.width ?? 0
+                            height: width
+                            radius: width / 2
+                            cornerPower: 2
+                            color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, 0.06 * behind.d))
+                            stroke: Appearance.colour.seam
+                            strokeWidth: Appearance.sizes.seam / 2
+                            opacity: under.fade * behindShown.value
+                            visible: opacity > 0.01
+                        }
+                    }
+                }
+            }
 
             DropShadow {
                 x: root.pillX
@@ -404,24 +914,24 @@ Item {
                 opacity: settle.value * 0.8
             }
 
-            DropShadow {
-                x: root.budX
-                y: root.budY
-                width: root.budSize
-                height: root.budSize
-                radius: root.budSize / 2
-                opacity: settle.value * bud.value * 0.8
-                visible: bud.value > 0.01
-            }
-
             IslandField {
                 anchors.fill: parent
 
                 pillRect: Qt.rect(root.pillX, root.pillY, root.pillWidth, root.pillHeight)
-                budRect: bud.value > 0.01 ? Qt.rect(root.budX, root.budY, root.budSize, root.budSize) : Qt.rect(0, 0, 0, 0)
+                budRects: {
+                    const out = [];
+                    for (let i = 0; i < Math.min(root.bubbleMax, bubbles.count); i++)
+                        out.push(bubbles.itemAt(i)?.shape);
+                    return out;
+                }
+                budReaches: {
+                    const out = [];
+                    for (let i = 0; i < Math.min(root.bubbleMax, bubbles.count); i++)
+                        out.push(bubbles.itemAt(i)?.reach ?? 0);
+                    return out;
+                }
                 pillRadius: root.pillRadius
                 power: root.pillPower
-                budRadius: root.budSize / 2
                 smoothing: root.budGap * 0.8
 
                 edge: root.edge
@@ -445,16 +955,12 @@ Item {
 
                 anchors.fill: parent
 
-                ArtCrossfade {
+                ArtGlow {
                     x: root.centreX - root.largeWidth / 2
                     y: root.pillY
                     width: root.largeWidth
                     height: Math.max(root.compactHeight, overview.implicitHeight)
-                    radius: 0
-                    blurred: true
-                    brightness: -0.32
-                    tame: 0.85
-                    source: Media.hasTrack ? Media.artUrl : ""
+                    moving: visible
                     opacity: glow.value
                     visible: glow.value > 0.005
                 }
@@ -475,43 +981,6 @@ Item {
                     onFinished: open => root.dragEnd(!open)
                 }
 
-                ActivityRow {
-                    id: measure
-
-                    visible: false
-                    activity: root.lead
-                    live: false
-                }
-
-                ActivityRow {
-                    x: root.centreX - width / 2
-                    y: root.pillY
-                    width: implicitWidth
-                    activity: root.shownLead
-                    live: root.focused && compactFade.value > 0
-                    opacity: compactFade.value * swap.value * presence.value
-                    visible: opacity > 0.005
-                    enabled: root.base === "compact" && root.openness === 0
-
-                    onChosen: root.chosen(root.shownLead)
-                }
-
-                NotificationAlert {
-                    id: alertView
-
-                    x: root.centreX - root.largeWidth / 2
-                    y: root.pillY
-                    width: root.largeWidth
-                    entry: root.shownAlert
-                    hovered: islandHover.hovered
-                    opacity: alertFade.value * presence.value
-                    visible: opacity > 0.005
-                    enabled: root.base === "alert" && root.openness === 0
-
-                    onDismissed: if (root.shownAlert)
-                        Notifications.dismiss(root.shownAlert)
-                }
-
                 IslandOverview {
                     id: overview
 
@@ -520,35 +989,268 @@ Item {
                     width: root.largeWidth
                     activities: root.overviewRows
                     watched: overviewFade.value > 0.01
-                    opacity: overviewFade.value * presence.value
+                    arrivals: root.deckEntries.length > 0 ? deck.implicitHeight : 0
+                    carried: root.stackKeys
+                    carriedOpacity: 1
+                    opacity: Math.max(0, (overviewFade.value - 0.4) / 0.6) * presence.value
                     visible: opacity > 0.005
                     enabled: root.expanded
 
-                    onChosen: activity => root.chosen(activity)
+                    onChosen: activity => root.choose(activity)
+                }
+
+                AlertDeck {
+                    id: deck
+
+                    x: root.centreX - root.largeWidth / 2
+                    y: root.deckY
+                    width: root.largeWidth
+                    entries: root.deckEntries
+                    fanned: fan.value
+                    opacity: deckFade.value * presence.value
+                    visible: opacity > 0.005
+                    enabled: root.deckRest || root.openness > 0
+
+                    onDismissed: entry => Notifications.dismiss(entry)
+                    onPutAway: entry => Notifications.expire(entry)
+                }
+
+                Repeater {
+                    id: rows
+
+                    model: ScriptModel {
+                        values: root.shownStack
+                    }
+
+                    ActivityRow {
+                        id: row
+
+                        required property string modelData
+                        required property int index
+
+                        readonly property string key: row.modelData
+                        property var held: null
+                        readonly property var item: root.stackByKey[row.key] ?? row.held
+                        readonly property bool here: root.stackKeys.includes(row.key)
+                        property int place: 0
+                        readonly property real shown: appear.value
+
+                        property real heldTop: -1
+                        readonly property real liveTop: overview.rowTop(row.key)
+                        readonly property real toY: row.liveTop >= 0 ? row.liveTop : row.heldTop
+                        readonly property bool carried: row.here && row.toY >= 0
+                        readonly property real t: row.carried ? glide.value : 0
+                        readonly property real fromWidth: root.pillWidth - swell.value * 2
+                        readonly property real toX: overview.x + overview.pad
+                        readonly property real toWidth: overview.width - overview.pad * 2
+                        readonly property real restY: cardRoom.value + offset.value
+                        readonly property real markX: row.x + row.inset
+                        readonly property real markY: row.y + (row.height - row.slot) / 2
+
+                        onItemChanged: if (root.stackByKey[row.key])
+                            row.held = root.stackByKey[row.key]
+                        onLiveTopChanged: if (row.liveTop >= 0)
+                            row.heldTop = row.liveTop
+
+                        function reslot(): void {
+                            const i = root.stackKeys.indexOf(row.key);
+                            if (i >= 0)
+                                row.place = i;
+                        }
+
+                        Follow {
+                            id: appear
+
+                            speed: root.fadeSpeed(appear)
+                            epsilon: 0.004
+                            target: row.here ? 1 : 0
+
+                            onValueChanged: if (appear.value === 0 && !row.here)
+                                Qt.callLater(root.purgeStack)
+                        }
+
+                        Follow {
+                            id: offset
+
+                            speed: root.morphSpeed
+                            epsilon: 0.1
+                            target: row.place * root.compactHeight
+                        }
+
+                        Connections {
+                            target: root
+
+                            function onStackKeysChanged(): void {
+                                row.reslot();
+                            }
+                        }
+
+                        Component.onCompleted: {
+                            row.held = root.stackByKey[row.key] ?? null;
+                            row.reslot();
+                            offset.snap();
+                        }
+
+                        x: root.pillX + swell.value + (row.toX - root.pillX - swell.value) * row.t
+                        y: root.pillY + row.restY + (row.toY - row.restY) * row.t
+                        width: row.fromWidth + (row.toWidth - row.fromWidth) * row.t
+                        activity: row.item
+                        lights: row.t > 0.5
+                        live: root.focused && row.visible
+                        opacity: presence.value * appear.value * (row.carried ? 1 : Math.max(0, 1 - glide.value * 2.5))
+                        visible: opacity > 0.005
+                        enabled: row.here && (root.openness === 0 || row.carried)
+
+                        onChosen: root.choose(row.item)
+                    }
+                }
+            }
+
+            Repeater {
+                id: bubbles
+
+                model: ScriptModel {
+                    values: root.shownBubbles
                 }
 
                 Item {
-                    x: root.budX
-                    y: root.budY
-                    width: root.budSize
-                    height: root.budSize
-                    clip: true
-                    opacity: bud.value
-                    visible: bud.value > 0.01
+                    id: bubble
 
-                    ActivityRow {
-                        id: budRow
+                    required property string modelData
+                    required property int index
 
-                        x: (parent.width - budRow.inset * 2 - budRow.slot) / 2
-                        y: (parent.height - height) / 2
-                        width: implicitWidth
-                        activity: root.shownSecond
-                        live: false
-                        enabled: !!root.second
+                    readonly property string key: bubble.modelData
+                    property var held: null
+                    readonly property var group: root.viewOf(bubble.key) ?? bubble.held
+                    readonly property bool here: root.bubbleKeys.includes(bubble.key)
+                    readonly property real grown: grow.value
+                    readonly property real reach: root.budGap * (0.8 + 1.6 * (1 - grow.value))
+                    readonly property int depth: Math.min(2, Math.max(0, (bubble.group?.kind === "notification" ? (bubble.group.items[0]?.count ?? 1) : (bubble.group?.items.length ?? 1)) - 1))
+                    readonly property real lean: root.stackStep * depthShown.value / 2
+                    readonly property real full: root.compactHeight * (0.6 + 0.4 * grow.value) * (1 + 0.12 * hoverGlow.value)
 
-                        onChosen: root.chosen(root.shownSecond)
+                    readonly property real travel: Math.min(1, glide.value * 2.2)
+                    readonly property real restCx: root.pillX + root.pillWidth + slide.value - bubble.full + (bubble.full + root.budGap) * grow.value + bubble.full / 2
+                    readonly property real restCy: root.pillY + root.compactHeight / 2 - bubble.lean
+                    readonly property real cx: bubble.restCx + (root.pillX + root.pillWidth - bubble.full / 2 - bubble.restCx) * bubble.travel
+                    readonly property real cy: bubble.restCy
+                    readonly property real size: bubble.full * (1 - 0.5 * bubble.travel)
+                    readonly property real body: bubble.size * (1 - bubble.travel)
+                    readonly property rect shape: grow.value > 0.01 && bubble.travel < 0.98 ? Qt.rect(bubble.cx - bubble.body / 2, bubble.cy - bubble.body / 2, bubble.body, bubble.body) : Qt.rect(0, 0, 0, 0)
+
+                    onGroupChanged: if (root.groups[bubble.key])
+                        bubble.held = root.viewOf(bubble.key)
+                    onHereChanged: if (!bubble.here && grow.value < 0.01)
+                        Qt.callLater(root.purgeBubbles)
+
+                    Follow {
+                        id: grow
+
+                        speed: Appearance.animation.trackSpeed * 0.5
+                        epsilon: 0.004
+                        target: bubble.here ? 1 : 0
+
+                        onValueChanged: if (grow.value === 0 && !bubble.here)
+                            Qt.callLater(root.purgeBubbles)
+                    }
+
+                    Follow {
+                        id: slide
+
+                        speed: root.morphSpeed
+                        epsilon: 0.1
+                        target: bubble.index * root.bubblePitch
+                    }
+
+                    Follow {
+                        id: depthShown
+
+                        speed: Appearance.animation.revealSpeed
+                        epsilon: 0.01
+                        target: bubble.depth
+                    }
+
+                    Follow {
+                        id: hoverGlow
+
+                        speed: Appearance.animation.revealSpeed * 1.5
+                        epsilon: 0.004
+                        target: tap.containsMouse && grow.value > 0.5 ? 1 : 0
+                    }
+
+                    Component.onCompleted: {
+                        bubble.held = root.viewOf(bubble.key) ?? null;
+                        slide.snap();
+                        depthShown.snap();
+                    }
+
+                    x: bubble.cx - bubble.size / 2
+                    y: bubble.cy - bubble.size / 2
+                    width: bubble.size
+                    height: bubble.size
+                    opacity: presence.value * Math.max(0, 1 - bubble.travel * 1.6)
+                    visible: grow.value > 0.01 && opacity > 0.01
+
+                    ActivityBubble {
+                        id: face
+
+                        anchors.fill: parent
+                        group: bubble.group
+                        size: bubble.size
+                        live: grow.value > 0.5
+                        markOpacity: Math.min(1, grow.value * 1.5)
+                        stateShown: Math.max(0, grow.value * 2 - 1)
+                    }
+
+                    MouseArea {
+                        id: tap
+
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        enabled: bubble.here && root.openness === 0
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: root.tapBubble(bubble.key)
+                    }
+
+                    SquircleRect {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        y: parent.height + Appearance.padding.small + root.stackStep * 2
+                        width: label.implicitWidth + Appearance.padding.normal * 2
+                        height: label.implicitHeight + Appearance.padding.small
+                        radius: height / 2
+                        cornerPower: 2
+                        color: Appearance.colour.ink
+                        opacity: hoverGlow.value
+                        visible: opacity > 0.01 && !!face.label
+
+                        StyledText {
+                            id: label
+
+                            anchors.centerIn: parent
+                            text: face.label
+                        }
                     }
                 }
+            }
+
+            ArtCrossfade {
+                readonly property Item from: {
+                    rows.count;
+                    root.stackKeys;
+                    return root.rowOfKind("music");
+                }
+                readonly property rect to: overview.coverRect
+                readonly property real t: glide.value
+                readonly property real startX: from ? from.markX : root.centreX
+                readonly property real startY: from ? from.markY : root.pillY
+
+                x: startX + (root.centreX - root.largeWidth / 2 + to.x - startX) * t
+                y: startY + (root.pillY + to.y - startY) * t
+                width: root.slot + (to.width - root.slot) * t
+                height: width
+                source: Media.hasTrack ? Media.artUrl : ""
+                opacity: presence.value * (from?.shown ?? 0) * Math.min(1, t * 6) * (1 - Math.max(0, (t - 0.8) / 0.2))
+                visible: !!from && to.width > 0 && opacity > 0.01
             }
 
             Item {
@@ -556,12 +1258,21 @@ Item {
 
                 x: root.pillX
                 y: root.pillY
-                width: bud.value > 0.01 ? root.budX + root.budSize - root.pillX : root.pillWidth
+                width: Math.max(root.pillWidth, root.chainRight - root.pillX)
                 height: Math.max(root.pillHeight, root.compactHeight)
 
                 HoverHandler {
                     id: islandHover
                 }
+            }
+
+            Item {
+                id: bubblesHit
+
+                x: root.pillX + root.pillWidth
+                y: root.pillY
+                width: root.bubbleKeys.length * root.bubblePitch
+                height: root.compactHeight
             }
         }
     }

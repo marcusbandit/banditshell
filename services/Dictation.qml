@@ -27,7 +27,7 @@ Singleton {
 
     readonly property string langTag: root.lang === "auto" ? "" : root.lang.startsWith("en") ? "EN" : root.lang.startsWith("da") ? "DK" : root.lang.startsWith("ja") ? "JP" : root.lang.split(/[-_]/)[0].toUpperCase()
 
-    readonly property int levelCount: 64
+    readonly property int levelCount: 128
     property var levels: []
 
     function quiet(): void {

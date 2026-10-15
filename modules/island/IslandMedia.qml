@@ -14,17 +14,9 @@ Item {
     signal expand
 
     readonly property real artSize: Math.round(Appearance.font.line.small * 3.5)
-
-    readonly property bool singing: root.watched && Lyrics.synced
-    property int current: -1
+    readonly property real coverTop: 0
 
     implicitHeight: column.implicitHeight
-
-    FrameAnimation {
-        running: root.singing
-
-        onTriggered: root.current = Lyrics.indexAt(Media.now())
-    }
 
     Column {
         id: column
@@ -33,6 +25,8 @@ Item {
         spacing: Appearance.padding.normal
 
         Item {
+            id: head
+
             width: parent.width
             height: root.artSize
 
@@ -102,41 +96,80 @@ Item {
                 }
             }
 
-            Column {
+            SquircleRect {
+                anchors.fill: words
+                anchors.margins: -Appearance.padding.small
+                radius: Appearance.rounding.normal
+                color: wordsPress.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill
+                opacity: wordsPress.containsMouse ? 1 : 0
+                visible: opacity > 0.01
+
+                Behavior on opacity {
+                    NumberAnimation {
+                        duration: Appearance.animation.fade.fast
+                    }
+                }
+            }
+
+            TextMetrics {
+                id: titleCap
+
+                font.family: Appearance.font.family
+                font.pixelSize: Appearance.font.size.normal
+                text: "H"
+            }
+
+            Item {
                 id: words
+
+                readonly property real groupLine: root.artSize
 
                 anchors.left: cover.right
                 anchors.leftMargin: Appearance.padding.normal
                 anchors.right: side.left
                 anchors.rightMargin: Appearance.padding.small
-                anchors.verticalCenter: cover.verticalCenter
-                spacing: Appearance.padding.small / 2
+                anchors.top: parent.top
+                anchors.bottom: parent.bottom
 
-                CrossfadeText {
+                ScrollingText {
+                    id: title
+
                     width: parent.width
+                    y: -(title.baselineOffset + titleCap.tightBoundingRect.y)
                     text: Media.title
                     pixelSize: Appearance.font.size.normal
-                    wrapMode: Text.Wrap
-                    maximumLineCount: 2
+                    running: root.watched
                 }
 
-                CrossfadeText {
+                ScrollingText {
+                    id: artist
+
                     width: parent.width
+                    y: words.groupLine - (album.visible ? Appearance.font.line.small : 0) - artist.baselineOffset
                     text: Media.artist
                     color: Appearance.colour.textDim
+                    running: root.watched
                     visible: !!Media.artist
                 }
 
-                CrossfadeText {
+                ScrollingText {
+                    id: album
+
                     width: parent.width
+                    y: words.groupLine - album.baselineOffset
                     text: Media.album || Media.app
                     color: Appearance.colour.textFaint
+                    running: root.watched
                     visible: !!Media.album || !!Media.app
                 }
             }
 
             MouseArea {
+                id: wordsPress
+
                 anchors.fill: words
+                anchors.margins: -Appearance.padding.small
+                hoverEnabled: true
                 cursorShape: Qt.PointingHandCursor
                 onClicked: root.expand()
             }
@@ -152,8 +185,9 @@ Item {
                 Item {
                     id: grow
 
-                    anchors.top: parent.top
                     anchors.right: parent.right
+                    anchors.rightMargin: -(width - Appearance.font.iconSize) / 2
+                    y: -(height - Appearance.font.iconSize) / 2
                     width: Appearance.sizes.minTarget + Appearance.padding.small
                     height: width
 
@@ -183,34 +217,36 @@ Item {
                 }
 
                 Equalizer {
-                    anchors.horizontalCenter: grow.horizontalCenter
-                    anchors.bottom: parent.bottom
-                    anchors.bottomMargin: Appearance.padding.small
+                    anchors.right: parent.right
+                    y: words.groupLine - height
                     playing: Media.playing
                     color: Appearance.colour.accent
                 }
             }
         }
 
-        Scrubber {
-            width: parent.width
-            visible: Media.length > 0 || Media.hasTrack
-            watched: root.watched
-        }
-
-        CrossfadeText {
-            readonly property var line: root.current >= 0 ? Lyrics.lines[root.current] : null
+        Item {
+            readonly property real timesMiddle: scrub.visible ? scrub.height - Appearance.font.line.small / 2 : transport.height / 2
+            readonly property real transportY: Math.max(scrub.visible ? scrub.height - Appearance.font.line.small : 0, timesMiddle - transport.height / 2)
 
             width: parent.width
-            visible: root.singing
-            text: line && !line.gap ? line.text : ""
-            color: Appearance.colour.textDim
-            horizontalAlignment: Text.AlignHCenter
-        }
+            height: Math.max(scrub.visible ? scrub.height : 0, transportY + transport.height)
 
-        MediaTransport {
-            anchors.horizontalCenter: parent.horizontalCenter
-            extended: true
+            Scrubber {
+                id: scrub
+
+                width: parent.width
+                visible: Media.length > 0 || Media.hasTrack
+                watched: root.watched
+            }
+
+            MediaTransport {
+                id: transport
+
+                anchors.horizontalCenter: parent.horizontalCenter
+                y: parent.transportY
+                extended: true
+            }
         }
     }
 }
