@@ -1,6 +1,27 @@
 {
   "entries": [
     {
+      "id": "2026-10-15",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell dev try now lists each worktree with its pull request, open, merged or closed, and first clears away every worktree whose work is already on main, along with its branch. A worktree with changes of its own is never cleared. banditshell dev tidy does the same clearing without trying anything."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When a worktree you are trying gets merged, the shell goes back to main by itself within two minutes and sends a notification. A worktree that still has unsaved changes stays on."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "In the banditshell dev try list, main is number 0 and the one running is marked * instead of a number. Picking the one already running says so instead of restarting it; banditshell restart still reloads it. In a terminal, the list and the messages are in colour."
+        }
+      ]
+    },
+    {
       "id": "2026-10-14-11",
       "date": "2026-10-14",
       "changes": [
