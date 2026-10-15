@@ -101,7 +101,7 @@ build_table() {
     add_step libnotify                     "command -v notify-send"                  libnotify                     2 "timers, alarms and the battery speaking up"
     add_step xdg-utils                     "command -v xdg-open"                     xdg-utils                     2 "opening files and links"
     add_step fd                            "command -v fd"                           fd                            2 "the launcher finding files by name"
-    add_step libqalculate                  "command -v qalc"                         libqalculate                  2 "the launcher's units, currency and dates"
+    add_step libqalculate                  "command -v qalc"                         libqalculate                  2 "the launcher's units, dates and functions"
     add_step networkmanager                "command -v nmcli"                        networkmanager                2 "wi-fi and wired"
     add_step ddcutil                       "command -v ddcutil"                      ddcutil                       2 "monitor brightness over DDC/CI"
     add_step pciutils                      "command -v lspci"                        pciutils                      2 "the device page's graphics card"
