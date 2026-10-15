@@ -250,18 +250,12 @@ Item {
 
         visible: Keymap.several
 
-        SquircleRect {
-            anchors.fill: parent
-            radius: Appearance.rounding.small
-            color: flip.containsMouse ? Appearance.veil(0.14) : Appearance.veil(0.07)
-        }
-
         Text {
             id: code
 
             anchors.centerIn: parent
             text: Keymap.layout
-            color: flip.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+            color: flip.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
             font.family: root.family
             font.pixelSize: Math.round(Appearance.font.size.small * 0.72)
             font.variableAxes: ({ "wght": 600 })

@@ -429,6 +429,17 @@ Singleton {
                 nowPlaying: true
             },
 
+            weather: {
+
+                show: true,
+
+                location: "",
+
+                units: "metric",
+
+                minutes: 30
+            },
+
             packages: {
 
                 interval: 360,

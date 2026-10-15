@@ -171,6 +171,14 @@ Item {
         root.place();
         keys.forceActiveFocus();
         Keymap.refresh();
+        Weather.refresh();
+    }
+
+    Timer {
+        interval: 5 * 60 * 1000
+        repeat: true
+        running: root.active
+        onTriggered: Weather.refresh()
     }
 
     SystemClock {
@@ -283,6 +291,41 @@ Item {
                         font.pixelSize: Math.round(time.size * 0.2)
                         font.variableAxes: ({ "wght": 300 + 160 * presence.value })
                         renderType: Text.NativeRendering
+                    }
+
+                    Row {
+                        anchors.horizontalCenter: parent.horizontalCenter
+                        visible: Weather.ready
+                        spacing: Appearance.padding.small
+                        opacity: 0.6 + 0.4 * presence.value
+
+                        Icon {
+                            anchors.verticalCenter: parent.verticalCenter
+                            name: Weather.icon
+                            size: Math.round(Appearance.font.size.small * 1.1)
+                            fill: 1
+                            color: Appearance.colour.textDim
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Weather.temperature
+                            color: Appearance.colour.textDim
+                            font.family: root.family
+                            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+                            font.variableAxes: ({ "wght": 600 })
+                            font.features: ({ "tnum": 1 })
+                            renderType: Text.NativeRendering
+                        }
+
+                        Text {
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: Weather.summary.toLowerCase()
+                            color: Appearance.colour.textFaint
+                            font.family: root.family
+                            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+                            renderType: Text.NativeRendering
+                        }
                     }
                 }
             }
