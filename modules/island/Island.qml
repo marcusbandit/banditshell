@@ -142,6 +142,16 @@ Item {
     readonly property bool hovering: stripHover.hovered || islandHover.hovered || deck.handling
     property bool dwelt: false
     property bool spent: false
+    property bool reforming: false
+
+    readonly property bool eyeingMusic: {
+        for (let i = 0; i < rows.count; i++) {
+            const row = rows.itemAt(i);
+            if (row?.hovered && row.item?.kind === "music")
+                return true;
+        }
+        return root.openness > 0.5 && overview.mediaHovered;
+    }
     property bool fanning: false
 
     readonly property bool fronting: root.centreKey === "notification" && !root.deferred.includes("notification")
@@ -425,10 +435,21 @@ Item {
 
     function handOff(): void {
         root.close();
+        root.spent = true;
+        root.reforming = true;
         for (const f of [glide, overviewTall, overviewFade, wide, tall, cardRoom, swell])
             f.snap();
         presence.value = 0;
         settle.value = 0;
+        Qt.callLater(root.reformed);
+    }
+
+    function reformed(): void {
+        if (!root.reforming || !presence.settled)
+            return;
+        root.reforming = false;
+        if (!root.hovering)
+            root.spent = false;
     }
 
     function tapBubble(key: string): void {
@@ -542,7 +563,7 @@ Item {
         Media.sync()
 
     onHoveringChanged: {
-        if (!root.hovering)
+        if (!root.hovering && !root.reforming)
             root.spent = false;
         if (root.hovering)
             Notifications.pause(root);
@@ -637,6 +658,8 @@ Item {
         speed: Appearance.animation.revealSpeed * 0.55
         target: root.out ? 1 : 0
         epsilon: 0.004
+
+        onSettledChanged: root.reformed()
     }
 
     Follow {

@@ -17,7 +17,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it turns the island itself into the media controller: its whole body grows into the card while the cover, the title, artist and album, the equalizer, the progress wave and the buttons each travel to their place, and a new island forms at the top."
+          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it turns the island itself into the media controller: its whole body grows into the card while the cover, the title, artist and album, the equalizer, the progress wave and the buttons each travel to their place, and a new island forms at the top. Resting the pointer on the music gets the controller ready, so the click starts the move straight away."
         },
         {
           "type": "ui",

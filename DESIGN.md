@@ -2713,6 +2713,18 @@ rule existed for: one summoned by a keybind has never been clicked, so Escape do
 nothing until it has been touched; the strip, the gesture reversed and the CLI
 still close it.
 
+The media card sits between the two. It is summoned by a key and driven by keys
+(space, arrows), so it has to win the keyboard at once, but it floats beside
+the island rather than covering the work. An exclusive grab is not only about
+keys in Hyprland: while any layer surface holds one, every pointer event goes
+to that surface, and if none of it is under the pointer the event goes there
+anyway. With the card up, the island, a surface of its own, never saw the
+pointer again and closed the moment it opened. So the card grabs exclusively
+only until its window is active (or 400 ms), then holds the keys on demand.
+The card's click-away catcher covers the screen, so with the pointer following
+focus the keys stay with the card, and the island, which never asks for keys,
+can take the pointer without taking them.
+
 **One surface, one answer.** Qt gives active focus to exactly one item, so two
 pinned things can never both be listening, and a panel that hands the focus back
 after closing hands it nowhere. The shell's root item is therefore a focus scope
@@ -3200,10 +3212,17 @@ those ride with its title and with the body. At that moment the island lets go
 of its body and drips out of the band afresh, and both colour washes run on one
 clock, so the hand-over shows no seam.
 
+Resting the pointer on the music, the card in the overview or a track-change
+row, builds the card and asks for its lyrics before anything is clicked, so the
+click only starts the move: the cover is already decoded and the card already
+knows how wide its lyrics make it.
+
 The card is not the island. Closing it fades it where it is, nothing flies
 back, and the island stays usable while the card is up: the card's click-away
-catcher leaves the island's shape and the strip above it alone, so the pointer
-on the island is on the island.
+catcher leaves the island's shape and the strip above it alone, and the card
+only briefly holds the keyboard exclusively (see the keyboard section), so the
+pointer on the island is on the island. An island that just handed its body
+over and re-forms under a pointer that has not moved does not open by itself.
 
 ### How the overview is laid out
 

@@ -26,6 +26,8 @@ Item {
     readonly property var live: root.activities.filter(a => a.kind !== "notifications")
     readonly property var summary: root.activities.find(a => a.kind === "notifications") ?? null
 
+    readonly property bool mediaHovered: media.visible && media.hovered
+
     readonly property rect coverRect: media.visible ? Qt.rect(column.x + media.x, column.y + media.y + media.coverTop, media.artSize, media.artSize) : Qt.rect(0, 0, 0, 0)
 
     function mediaParts(into: Item): var {

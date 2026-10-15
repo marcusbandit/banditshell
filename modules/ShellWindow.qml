@@ -59,6 +59,9 @@ PanelWindow {
     readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
+    readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
+
+    property bool claiming: false
 
     Component.onCompleted: Shell.register(win)
     Component.onDestruction: Shell.unregister(win)
@@ -163,7 +166,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -322,6 +325,16 @@ PanelWindow {
 
         HoverHandler {
             id: onShell
+        }
+
+        Window.onActiveChanged: if (body.Window.active)
+            win.claiming = false
+
+        Timer {
+            id: claim
+
+            interval: 400
+            onTriggered: win.claiming = false
         }
 
         function lowered(blobs: var): var {
@@ -604,8 +617,13 @@ PanelWindow {
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
-            onOpenChanged: if (open)
-                win.closeOthers(mediaLayer)
+            onOpenChanged: {
+                if (mediaLayer.open)
+                    win.closeOthers(mediaLayer);
+                win.claiming = mediaLayer.open && !body.Window.active;
+                if (win.claiming)
+                    claim.restart();
+            }
 
             panel: MediaController {
                 border: win.border
@@ -706,6 +724,8 @@ PanelWindow {
             keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
 
             onChosen: notice => win.act(notice)
+            onEyeingMusicChanged: if (islandLayer.eyeingMusic)
+                mediaLayer.build().warm()
         }
 
         QuickControls {

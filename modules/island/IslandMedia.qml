@@ -13,6 +13,8 @@ Item {
 
     signal expand
 
+    readonly property bool hovered: pointer.hovered
+
     readonly property real artSize: Math.round(Appearance.font.line.small * 3.5)
     readonly property real coverTop: 0
 
@@ -32,6 +34,10 @@ Item {
     }
 
     implicitHeight: column.implicitHeight
+
+    HoverHandler {
+        id: pointer
+    }
 
     Column {
         id: column

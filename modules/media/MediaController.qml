@@ -146,6 +146,10 @@ Item {
         return !root.grown || from ? 1 : root.late;
     }
 
+    function warm(): void {
+        Lyrics.prefetch();
+    }
+
     function show(): void {
         if (root.shown)
             return;
