@@ -39,6 +39,7 @@ MenuRow {
             icon: "function"
             text: "Symbols"
             style: "outlined"
+            size: 0
             checkable: true
             checked: root.symbolsOpen
             onToggled: root.symbols()

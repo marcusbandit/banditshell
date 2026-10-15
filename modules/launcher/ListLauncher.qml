@@ -737,6 +737,7 @@ LauncherConcept {
                                             iconFill: button.modelData.fill ? 1 : 0
                                             text: button.modelData.short ?? button.modelData.label
                                             style: "outlined"
+                                            size: 0
 
                                             onClicked: button.modelData.run()
                                         }
