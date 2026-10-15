@@ -41,9 +41,39 @@ Singleton {
 
     property var openRows: ({})
 
+    property real scroll: 0
+    property real resumeScroll: 0
+
+    function remember(): void {
+        Relaunch.keep("settingsView", {
+            rows: Object.keys(root.openRows),
+            pin: root.pin,
+            paneOut: root.paneOut,
+            scroll: root.scroll
+        });
+    }
+
+    onOpenRowsChanged: root.remember()
+    onPinChanged: root.remember()
+    onPaneOutChanged: root.remember()
+    onScrollChanged: root.remember()
+
     Component.onCompleted: {
         if (Settings.page && Settings.page !== root.current)
             root.go(Settings.page);
+        const was = Relaunch.recall("settingsView");
+        if (!was)
+            return;
+        const rows = {};
+        for (const uid of was.rows ?? [])
+            rows[uid] = true;
+        root.openRows = rows;
+        if (Settings.open) {
+            root.pin = was.pin ?? null;
+            root.paneOut = !!was.paneOut;
+            root.scroll = was.scroll ?? 0;
+            root.resumeScroll = root.scroll;
+        }
     }
 
     function go(id: string): void {

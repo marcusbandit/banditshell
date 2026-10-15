@@ -60,8 +60,63 @@ PanelWindow {
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
 
-    Component.onCompleted: Shell.register(win)
+    Component.onCompleted: {
+        Shell.register(win);
+        resumer.start();
+    }
     Component.onDestruction: Shell.unregister(win)
+
+    readonly property var named: ({
+            launcher: launcherLayer,
+            clipboard: clipLayer,
+            wallpapers: wallpaperLayer,
+            session: sessionLayer,
+            calculator: calcLayer,
+            hotkeys: cheatLayer,
+            media: mediaLayer
+        })
+
+    readonly property string memoryKey: `screen ${win.screen?.name ?? ""}`
+
+    readonly property var remembered: ({
+            panel: Object.keys(win.named).find(name => win.named[name].open) ?? "",
+            menu: menuLayer.pinned ? menuLayer.currentKey : "",
+            keyboard: keyboardLayer.open,
+            quickControls: quickLayer.pinned,
+            notifications: popups.pinned,
+            island: islandLayer.pinned
+        })
+
+    property bool resumed: false
+
+    onRememberedChanged: if (win.resumed)
+        Relaunch.keep(win.memoryKey, win.remembered)
+
+    Timer {
+        id: resumer
+
+        property var was: null
+        property int tries: 0
+
+        interval: 200
+        repeat: true
+
+        onTriggered: {
+            if (!win.resumed) {
+                resumer.was = Relaunch.recall(win.memoryKey);
+                win.named[resumer.was?.panel ?? ""]?.show();
+                if (resumer.was?.keyboard)
+                    keyboardLayer.show();
+                quickLayer.pinned = !!resumer.was?.quickControls;
+                popups.pinned = !!resumer.was?.notifications;
+                islandLayer.pinned = !!resumer.was?.island;
+                win.resumed = true;
+            }
+            const menu = resumer.was?.menu ?? "";
+            if (!menu || menuLayer.open || win.openMenu(menu, true) || ++resumer.tries >= 25)
+                resumer.stop();
+        }
+    }
 
     function closeOthers(opening: Item): void {
         Keyring.refuse();

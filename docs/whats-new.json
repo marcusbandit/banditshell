@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-3",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When the shell restarts, it puts back what you had open: the launcher or any other panel, a pinned sidebar menu, quick controls, notifications, the island, the on-screen keyboard and the Files window in its folder. Settings reopens on the same page, with the same rows expanded, scrolled to the same place, and the calculator keeps its number. A reboot or logging out still starts you with nothing open."
+        }
+      ]
+    },
+    {
       "id": "2026-10-15-2",
       "date": "2026-10-15",
       "changes": [
