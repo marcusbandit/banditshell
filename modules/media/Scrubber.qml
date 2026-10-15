@@ -14,6 +14,8 @@ Item {
 
     property color ink: Appearance.colour.text
 
+    property string family: Appearance.font.family
+
     readonly property real stroke: Appearance.sizes.scrubStroke
     readonly property real amp: Appearance.sizes.scrubWaveAmplitude
     readonly property real wavelength: Appearance.sizes.scrubWaveLength
@@ -151,6 +153,7 @@ Item {
         anchors.bottom: parent.bottom
         text: Media.timeLabel(root.timed ? root.shown * Media.length : Media.position)
         color: Appearance.colour.textDim
+        font.family: root.family
     }
 
     StyledText {
@@ -158,6 +161,7 @@ Item {
         anchors.bottom: parent.bottom
         text: Media.timeLabel(Media.length)
         color: Appearance.colour.textDim
+        font.family: root.family
         visible: root.timed
     }
 
@@ -183,6 +187,7 @@ Item {
 
             anchors.centerIn: parent
             text: Media.timeLabel(peek.at * Media.length)
+            font.family: root.family
         }
     }
 

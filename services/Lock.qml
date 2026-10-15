@@ -4,11 +4,14 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import Quickshell.Services.Pam
+import qs.config
 
 Singleton {
     id: root
 
     property bool active: false
+
+    property bool opening: false
 
     property bool secure: false
 
@@ -16,15 +19,27 @@ Singleton {
 
     readonly property bool busy: pam.active
 
+    readonly property int typed: entry.secret.length
+
     property string message: ""
 
     property bool failed: false
 
-    property string pending: ""
+    property bool awake: true
+
+    readonly property int restAfter: Config.values.lock.restAfter * 1000
+
+    signal sent(int marks)
+    signal refused
 
     readonly property int freeAttempts: 3
     readonly property int firstWait: 5000
     readonly property int longestWait: 60000
+
+    readonly property int verdictWait: Config.values.lock.verdict
+    readonly property int foldDeadline: 2000
+    readonly property int xrayDeadline: 400
+    readonly property int xrayLinger: 1000
 
     property real now: Date.now()
 
@@ -48,19 +63,118 @@ Singleton {
 
     readonly property int sleepDeadline: 3000
 
+    property bool arming: false
+
+    property bool releasing: false
+
+    property bool seeingThrough: false
+
+    QtObject {
+        id: entry
+
+        property string secret: ""
+        property string answer: ""
+        property var queue: []
+        property bool judged: false
+    }
+
+    function forget(): void {
+        entry.secret = "";
+        entry.answer = "";
+        entry.queue = [];
+        entry.judged = false;
+        verdict.stop();
+    }
+
     function lock(): void {
-        if (root.active)
+        if (root.opening || root.releasing) {
+            root.opening = false;
+            root.releasing = false;
+            fold.stop();
             return;
+        }
+        if (root.active || root.arming)
+            return;
+        if (root.sleeping) {
+            root.relock();
+            return;
+        }
+        root.forget();
         root.message = "";
         root.failed = false;
-        root.pending = "";
+        root.stir();
+        root.arming = true;
+        root.seeThrough(true, () => {
+            if (!root.arming) {
+                root.seeThrough(false, null);
+                return;
+            }
+            root.arming = false;
+            root.active = true;
+        });
+    }
+
+    function relock(): void {
+        if (root.active || root.arming)
+            return;
+        root.forget();
+        root.message = "";
+        root.failed = false;
+        root.stir();
+        if (root.seeingThrough)
+            root.seeThrough(false, null);
         root.active = true;
     }
 
     function release(): void {
-        if (!root.active)
+        if (root.arming) {
+            root.arming = false;
             return;
-        root.finish();
+        }
+        if (!root.active || root.opening || root.releasing)
+            return;
+        pam.abort();
+        root.forget();
+        root.releasing = true;
+        root.seeThrough(true, () => {
+            if (!root.active)
+                return;
+            if (!root.releasing) {
+                root.seeThrough(false, null);
+                return;
+            }
+            root.releasing = false;
+            root.opening = true;
+            fold.restart();
+        });
+    }
+
+    function covered(): void {
+        if (root.active && !root.opening && root.seeingThrough)
+            root.seeThrough(false, null);
+    }
+
+    function opened(): void {
+        if (root.opening)
+            root.finish();
+    }
+
+    function seeThrough(on: bool, then: var): void {
+        const command = CompositorSync.lockXrayCommand(on);
+        root.seeingThrough = on && command.length > 0;
+        if (!command.length) {
+            if (then)
+                then();
+            return;
+        }
+        if (!on) {
+            Quickshell.execDetached(command);
+            return;
+        }
+        xray.after = then;
+        xray.command = command;
+        xray.running = true;
+        xrayCap.restart();
     }
 
     function observe(locked: bool, secure: bool): void {
@@ -76,16 +190,21 @@ Singleton {
 
     function finish(): void {
         pam.abort();
-        root.pending = "";
+        root.forget();
+        fold.stop();
         root.message = "";
         root.failed = false;
         attempts.failures = 0;
         attempts.retryAt = 0;
         root.secure = false;
+        root.opening = false;
+        root.releasing = false;
         root.active = false;
         if (root.hinted)
             root.tellLogind(false);
         root.letSleep();
+        if (root.seeingThrough)
+            xrayRest.restart();
     }
 
     function prepareForSleep(going: bool): void {
@@ -101,30 +220,88 @@ Singleton {
     }
 
     function letSleep(): void {
-        if (!root.sleeping || (root.active && !root.secure))
+        if (!root.sleeping || root.arming || (root.active && !root.secure))
             return;
         sleepCap.stop();
         inhibitor.running = false;
     }
 
-    function submit(secret: string): bool {
-        if (!root.active || root.busy || !secret)
+    function stir(): void {
+        root.awake = true;
+        rest.restart();
+    }
+
+    function type(text: string): void {
+        root.stir();
+        if (!root.active || root.opening || !/^[^\x00-\x1F\x7F-\x9F]+$/.test(text))
+            return;
+        entry.secret += text;
+    }
+
+    function erase(all: bool): void {
+        root.stir();
+        entry.secret = all ? "" : entry.secret.slice(0, -1);
+    }
+
+    function enter(): bool {
+        root.stir();
+        if (!root.active || root.opening || !entry.secret)
             return false;
 
         root.tick();
-        if (attempts.retryAt > root.now)
+        if (root.waiting)
             return false;
 
-        root.pending = secret;
-        root.failed = false;
-        root.message = "checking";
+        const secret = entry.secret;
+        entry.secret = "";
+        root.sent(secret.length);
+
+        if (pam.active)
+            entry.queue = entry.queue.concat([secret]);
+        else
+            root.check(secret);
+        return true;
+    }
+
+    function check(secret: string): void {
+        entry.answer = secret;
+        entry.judged = false;
+        verdict.restart();
 
         if (!pam.start()) {
-            root.pending = "";
-            root.failed = true;
-            root.message = "cannot reach PAM";
+            entry.answer = "";
+            root.refuse("couldn't check the password, try again", false);
         }
-        return true;
+    }
+
+    function next(): void {
+        if (!root.active || root.opening || pam.active || !entry.queue.length)
+            return;
+        root.tick();
+        if (root.waiting)
+            return;
+        const secret = entry.queue[0];
+        entry.queue = entry.queue.slice(1);
+        root.check(secret);
+    }
+
+    function refuse(text: string, counts: bool): void {
+        verdict.stop();
+        entry.judged = true;
+        root.failed = true;
+        root.message = text;
+        if (counts)
+            root.countFailure();
+        root.refused();
+    }
+
+    function settle(text: string, counts: bool): void {
+        entry.answer = "";
+        if (!root.active || root.opening || root.releasing)
+            return;
+        if (!entry.judged)
+            root.refuse(text, counts);
+        Qt.callLater(root.next);
     }
 
     function tick(): void {
@@ -141,6 +318,60 @@ Singleton {
         attempts.retryAt = root.now + Math.min(root.firstWait * Math.pow(2, beyond), root.longestWait);
     }
 
+    Timer {
+        id: rest
+
+        interval: root.restAfter
+        onTriggered: root.awake = false
+    }
+
+    Timer {
+        id: verdict
+
+        interval: root.verdictWait
+        onTriggered: if (pam.active && !entry.judged)
+            root.refuse("wrong password", true)
+    }
+
+    Timer {
+        id: fold
+
+        interval: root.foldDeadline
+        onTriggered: root.opened()
+    }
+
+    Process {
+        id: xray
+
+        property var after: null
+
+        function proceed(): void {
+            xrayCap.stop();
+            const then = xray.after;
+            xray.after = null;
+            if (then)
+                then();
+        }
+
+        onRunningChanged: if (!xray.running)
+            xray.proceed()
+    }
+
+    Timer {
+        id: xrayCap
+
+        interval: root.xrayDeadline
+        onTriggered: xray.proceed()
+    }
+
+    Timer {
+        id: xrayRest
+
+        interval: root.xrayLinger
+        onTriggered: if (!root.active)
+            root.seeThrough(false, null)
+    }
+
     function tellLogind(on: bool): void {
         root.hinted = on;
         root.sendHint();
@@ -149,6 +380,10 @@ Singleton {
     function sendHint(): void {
         if (!root.sessionPath)
             return;
+        if (hint.running) {
+            hint.stale = true;
+            return;
+        }
         hint.command = ["busctl", "call", "org.freedesktop.login1", root.sessionPath, "org.freedesktop.login1.Session", "SetLockedHint", "b", root.hinted ? "true" : "false"];
         hint.running = true;
     }
@@ -203,11 +438,21 @@ Singleton {
         running: attempts.retryAt > root.now
         interval: 250
         repeat: true
-        onTriggered: root.tick()
+        onTriggered: {
+            root.tick();
+            root.next();
+        }
     }
 
     Process {
         id: hint
+
+        property bool stale: false
+
+        onRunningChanged: if (!hint.running && hint.stale) {
+            hint.stale = false;
+            root.sendHint();
+        }
     }
 
     Process {
@@ -247,7 +492,7 @@ Singleton {
 
         onExited: code => {
             if (code === 0 && root.reply(probeReply.text) === true)
-                root.lock();
+                root.relock();
         }
     }
 
@@ -326,33 +571,26 @@ Singleton {
         onResponseRequiredChanged: {
             if (!pam.responseRequired)
                 return;
-            pam.respond(root.pending);
-            root.pending = "";
+            pam.respond(entry.answer);
+            entry.answer = "";
         }
 
         onCompleted: res => {
-            root.pending = "";
-
             if (res === PamResult.Success) {
+                verdict.stop();
                 root.release();
                 return;
             }
 
-            root.failed = true;
-
-            if (res === PamResult.Error) {
-                root.message = "authentication error";
-                return;
-            }
-
-            root.message = res === PamResult.MaxTries ? "too many attempts" : "not your password";
-            root.countFailure();
+            if (res === PamResult.Error)
+                root.settle("couldn't check the password, try again", false);
+            else
+                root.settle(res === PamResult.MaxTries ? "too many tries" : "wrong password", true);
         }
 
         onError: err => {
-            root.pending = "";
-            root.failed = true;
-            root.message = `pam error: ${PamError.toString(err)}`;
+            console.warn(`Lock: PAM failed: ${PamError.toString(err)}`);
+            root.settle("couldn't check the password, try again", false);
         }
     }
 }
