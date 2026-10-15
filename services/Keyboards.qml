@@ -40,11 +40,13 @@ Singleton {
     readonly property int keyCount: root.board ? root.board.sections[0].keys.length : 0
 
     function judge(ok: bool, said: string): void {
+        const text = `${ok ? "this is it" : "this is not it"} · ${said}`;
         if (!ok)
-            console.warn(`Keyboards: ${said}`);
+            console.warn(`Keyboards: ${text}`);
         root.verdict = {
             ok: ok,
-            text: said,
+            detail: said,
+            text: text,
             serial: (root.verdict?.serial ?? 0) + 1
         };
     }
@@ -183,12 +185,12 @@ Singleton {
         onLoaded: {
             const parsed = KeyboardsJs.parseVia(reader.text());
             if (parsed.error)
-                return root.judge(false, `this is not it · ${parsed.error}`);
+                return root.judge(false, parsed.error);
 
             const aligned = KeyboardsJs.alignBoard(parsed);
             const base = (parsed.name || reader.path.split("/").pop().replace(/\.json$/i, "")).replace(/[^a-zA-Z0-9 ._()-]/g, " ").trim();
             root.pending = `${base || "keyboard"}.json`;
-            root.pendingVerdict = `this is it · ${parsed.name || base || "your board"}, ${aligned.sections[0].keys.length} keys, ${aligned.variant}`;
+            root.pendingVerdict = `${parsed.name || base || "your board"}, ${aligned.sections[0].keys.length} keys, ${String(aligned.variant).toUpperCase()}. The hotkey sheet draws it now.`;
             const target = `${root.dir}/${root.pending}`;
             if (writer.path === target && writer.text() === reader.text())
                 return root.keep();
@@ -236,13 +238,13 @@ Singleton {
         onLoaded: {
             const parsed = KeyboardsJs.parseKeymap(keymapReader.text());
             if (parsed.error)
-                return root.judge(false, `this is not it · ${parsed.error}`);
+                return root.judge(false, parsed.error);
             const made = KeyboardsJs.keymapLegends(root.definition, parsed);
             if (made.error)
-                return root.judge(false, `this is not it · ${made.error}`);
+                return root.judge(false, made.error);
 
             root.pendingKeymap = `${root.stored.replace(/\.json$/i, "")}.keymap.json`;
-            root.pendingVerdict = `this is it · ${parsed.name || "the keymap"} names ${Object.keys(made.legends).length} keys, the ones you bind light up`;
+            root.pendingVerdict = `${parsed.name || "The keymap"} names ${Object.keys(made.legends).length} keys. The ones you bind light up on the sheet.`;
             const target = `${root.dir}/${root.pendingKeymap}`;
             if (keymapWriter.path === target && keymapWriter.text() === keymapReader.text())
                 return root.keepKeymap();

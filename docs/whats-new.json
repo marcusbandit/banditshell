@@ -17,7 +17,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Settings › Hotkey sheet › Board offers ISO, ANSI and Custom. Custom unlocks VIA layout and VIA keymap: Import lists the VIA files in your Downloads folder and nothing else, Browse opens the system file picker, and every file is checked the moment you pick it, with this is it or this is not it and the reason."
+          "text": "Settings › Hotkey sheet › Board offers ISO, ANSI and Custom. Custom unlocks VIA layout and VIA keymap: Import lists the VIA files in your Downloads folder and nothing else, and Browse opens the system file picker. Every file you pick gets a short check, then a note under the row says this is it or this is not it, and why."
         },
         {
           "type": "features",
@@ -28,6 +28,11 @@
           "type": "ui",
           "severity": "minor",
           "text": "Split is no longer offered under Board. If you had it chosen, the sheet keeps drawing it and the list shows it until you pick something else."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The list on the left of Settings folds down to its icons with the button at its bottom, and the settings beside it get the room. It stays folded until you unfold it."
         }
       ]
     },

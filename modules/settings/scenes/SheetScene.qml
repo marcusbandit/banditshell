@@ -39,6 +39,6 @@ Item {
     }
 
     SceneCaption {
-        text: root.fromFile ? `${Keyboards.board?.name || Keyboards.stored.replace(/\.json$/, "")} · ${Keyboards.keyCount} keys · ${Keyboards.variant}` : `${root.shape === "file" ? `no file yet · ${Keyboards.shape}` : `${root.shape} board`} · lit keys are bound`
+        text: root.fromFile ? `${Keyboards.board?.name || Keyboards.stored.replace(/\.json$/, "")} · ${Keyboards.keyCount} keys` : `${root.shape === "file" ? `no file yet · ${Keyboards.shape}` : `${root.shape} board`} · lit keys are bound`
     }
 }
