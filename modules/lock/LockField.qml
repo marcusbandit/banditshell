@@ -18,7 +18,7 @@ Item {
 
     property bool waiting: false
 
-    property string placeholder: "type your password"
+    property string placeholder: "password"
 
     property string family: Appearance.font.lock
 
