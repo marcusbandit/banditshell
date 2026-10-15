@@ -23,7 +23,7 @@ MenuRow {
 
     icon: "calculate"
     label: root.result?.text ?? ""
-    detail: root.result?.detail || root.expression
+    detail: root.result?.missing ? "" : root.result?.detail || root.expression
     selected: root.holds
     inlineDetail: true
 
@@ -38,7 +38,7 @@ MenuRow {
             visible: !!root.result?.missing && Calculator.installing !== "trying"
             anchors.verticalCenter: parent.verticalCenter
             icon: "download"
-            text: Calculator.installing === "terminal" ? "Open the terminal again" : "Install"
+            text: Calculator.installing === "terminal" ? "Open again" : "Install"
             style: "outlined"
             size: 0
             onClicked: root.copied()

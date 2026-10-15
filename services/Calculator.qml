@@ -215,12 +215,12 @@ Singleton {
     readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
 
     readonly property var installWords: ({
-            "": "Install qalc to turn on the calculator",
+            "": "The calculator needs qalc",
             trying: "Installing qalc…",
-            terminal: "Finish installing qalc in the terminal",
+            terminal: "Finish in the terminal",
             failed: "qalc did not install",
-            nowhere: "No package manager found for qalc",
-            noterminal: "No terminal found to install qalc in"
+            nowhere: "No package manager for qalc",
+            noterminal: "No terminal to install qalc in"
         })
 
     function probeQalc(): void {
