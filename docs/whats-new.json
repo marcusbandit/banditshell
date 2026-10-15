@@ -37,7 +37,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "With qalc (libqalculate) installed, the launcher also does units, dates and functions, such as 5 km to miles, sqrt(2) or integrate(x^2, x). Finding files by name needs fd. The installer now sets up both."
+          "text": "The launcher's calculator runs on qalc, which also does units, dates and functions such as 5 km to miles, sqrt(2) or integrate(x^2, x). When qalc is missing, typing a sum offers to install it. The shell tries on its own, and when it needs your password it opens a terminal with the install command ready, so you press Enter and type the password. Money works without qalc. Finding files by name needs fd, which the installer sets up."
         },
         {
           "type": "bugs",

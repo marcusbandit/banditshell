@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.components
+import qs.services
 import qs.modules.controls
 
 MenuRow {
@@ -34,7 +35,17 @@ MenuRow {
         spacing: Appearance.padding.normal
 
         Button {
-            visible: root.offersSymbols && !root.result?.money
+            visible: !!root.result?.missing && Calculator.installing !== "trying"
+            anchors.verticalCenter: parent.verticalCenter
+            icon: "download"
+            text: Calculator.installing === "terminal" ? "Open the terminal again" : "Install"
+            style: "outlined"
+            size: 0
+            onClicked: root.copied()
+        }
+
+        Button {
+            visible: root.offersSymbols && !root.result?.money && !root.result?.missing
             anchors.verticalCenter: parent.verticalCenter
             icon: "function"
             text: "Symbols"
@@ -46,6 +57,7 @@ MenuRow {
         }
 
         StyledText {
+            visible: !root.result?.missing
             anchors.verticalCenter: parent.verticalCenter
             text: "copy"
             font.pixelSize: Appearance.font.size.small

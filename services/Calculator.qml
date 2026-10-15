@@ -208,6 +208,45 @@ Singleton {
     }
 
     property bool qalcFound: false
+    property bool qalcProbed: false
+    property string installing: ""
+
+    readonly property var qalcPackages: ["pacman:libqalculate", "apt:qalc", "dnf:qalculate", "zypper:qalculate", "xbps:libqalculate", "apk:libqalculate"]
+    readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
+
+    readonly property var installWords: ({
+            "": "Install qalc to turn on the calculator",
+            trying: "Installing qalc…",
+            terminal: "Finish installing qalc in the terminal",
+            failed: "qalc did not install",
+            nowhere: "No package manager found for qalc",
+            noterminal: "No terminal found to install qalc in"
+        })
+
+    function probeQalc(): void {
+        if (!prober.running)
+            prober.running = true;
+    }
+
+    function installQalc(): void {
+        if (root.installing === "trying" || root.qalcFound)
+            return;
+        root.installing = "trying";
+        quietInstall.running = true;
+    }
+
+    function missing(text: string): var {
+        if (!root.qalcProbed || root.qalcFound)
+            return null;
+        const ask = Calculation.looksLikeCalculation(text);
+        if (!ask && !Calculation.mathOnly(text) && !(/[=;]/.test(text) && /\d/.test(text)))
+            return null;
+        return {
+            text: root.installWords[root.installing] ?? root.installWords[""],
+            missing: true,
+            firm: !/^[\d\s.,]+$/.test(text) && (ask || Calculation.firm(text))
+        };
+    }
     property string asked: ""
     property var worked: null
     property int generation: 0
@@ -235,7 +274,7 @@ Singleton {
     }
 
     function answerFor(text: string): var {
-        return Currency.answer(text, root.amountOf) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
+        return Currency.answer(text, root.amountOf) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
     }
 
     function ask(text: string): void {
@@ -300,8 +339,66 @@ Singleton {
     }
 
     Process {
+        id: prober
+
         command: ["sh", "-c", "command -v qalc"]
         running: true
-        onExited: code => root.qalcFound = code === 0
+        onExited: code => {
+            root.qalcFound = code === 0;
+            root.qalcProbed = true;
+            if (root.qalcFound) {
+                watch.stop();
+                root.installing = "";
+            }
+        }
+    }
+
+    Process {
+        id: quietInstall
+
+        command: [root.installer, "--quiet", ...root.qalcPackages]
+        onExited: code => {
+            if (code === 0) {
+                root.probeQalc();
+                return;
+            }
+            if (code === 3) {
+                root.installing = "nowhere";
+                return;
+            }
+            root.installing = "terminal";
+            terminal.running = true;
+            watch.restart();
+        }
+    }
+
+    Process {
+        id: terminal
+
+        command: [`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.installer}' --ask ${root.qalcPackages.join(" ")}`]
+        onExited: code => {
+            if (code === 127)
+                root.installing = "noterminal";
+            root.probeQalc();
+        }
+    }
+
+    Timer {
+        id: watch
+
+        property int tries: 0
+
+        interval: 2000
+        repeat: true
+        onRunningChanged: if (watch.running)
+            watch.tries = 0
+        onTriggered: {
+            root.probeQalc();
+            if (++watch.tries > 300) {
+                watch.stop();
+                if (root.installing === "terminal")
+                    root.installing = "failed";
+            }
+        }
     }
 }

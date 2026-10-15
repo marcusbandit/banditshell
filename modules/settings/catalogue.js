@@ -369,9 +369,9 @@ const PAGES_SOURCE = {
             { t: "Layout", rows: [
                 { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
-                { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", detail: s => s.v("listPinned") ? "up to 12 icons until you type" : "off", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
+                { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
                     why: "Pick an app in the list and press Pin to put it here." },
-                { n: [], icon: "history", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", detail: s => s.v("listRecents") ? "the last apps you opened" : "off", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
+                { n: [], icon: "history", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
                 { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", detail: "apps you use rise", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
             ] },

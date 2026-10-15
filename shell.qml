@@ -19,6 +19,7 @@ ShellRoot {
     readonly property var startupApps: StartupApps
     readonly property var penButtons: PenButtons
     readonly property var currency: Currency
+    readonly property var calculator: Calculator
 
     LockScreen {}
 

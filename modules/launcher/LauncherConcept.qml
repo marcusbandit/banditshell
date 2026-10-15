@@ -69,6 +69,8 @@ Item {
     function show(): void {
         if (!root.shown)
             root.restoreTo = Hypr.focusedOn(root.screenName);
+        if (!Calculator.qalcFound)
+            Calculator.probeQalc();
 
         root.showing();
         root.shown = true;
@@ -117,6 +119,11 @@ Item {
     function copyAnswer(): bool {
         if (!root.answerHolds || !root.answer)
             return false;
+
+        if (root.answer.missing) {
+            Calculator.installQalc();
+            return true;
+        }
 
         Clipboard.copy({
             text: root.answer.text

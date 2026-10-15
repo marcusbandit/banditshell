@@ -528,14 +528,6 @@ LauncherConcept {
                         }
                     }
 
-                    StyledText {
-                        visible: !Calculator.qalcFound
-                        height: Appearance.sizes.minTarget
-                        verticalAlignment: Text.AlignVCenter
-                        text: "functions need qalc: sudo pacman -S libqalculate"
-                        font.pixelSize: Appearance.font.size.small
-                        color: Appearance.colour.textFaint
-                    }
                 }
 
                 Item {

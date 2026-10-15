@@ -31,7 +31,7 @@ function readQalc(output, text) {
     return out;
 }
 
-var MATH_ONLY = /^[\d\s.+\-−–*×xX÷/()]+$/;
+var MATH_ONLY = /^[\d\s.+\-−\u2013*×xX÷/()]+$/;
 
 function mathOnly(text) {
     const t = String(text || "").trim();
@@ -39,7 +39,7 @@ function mathOnly(text) {
 }
 
 function firm(text) {
-    return /[+\-−–*×xX÷/()]/.test(String(text || "").replace(/^\s*[-−–]/, ""));
+    return /[+\-−\u2013*×xX÷/()]/.test(String(text || "").replace(/^\s*[-−\u2013]/, ""));
 }
 
 function lenient(text, evaluate) {

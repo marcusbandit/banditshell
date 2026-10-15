@@ -56,10 +56,10 @@ function codeOf(word, known, home) {
 }
 
 var UNIT = "[a-zA-Z]{2,8}\\.?|[€$£¥₹₩₺₪฿₱]|zł|r\\$";
-var AMOUNT = "[\\d.,+\\-−–*×÷/()\\s]*\\d[\\d.,+\\-−–*×÷/()\\s]*";
+var AMOUNT = "[\\d.,+\\-−\\u2013*×÷/()\\s]*\\d[\\d.,+\\-−\\u2013*×÷/()\\s]*";
 var TARGET = new RegExp(`^(.*?)(?:\\s+(?:to|in|til|i)\\s+|\\s*(?:->|→|=)\\s*)(${UNIT})\\s*$`, "i");
 var WHOLE = new RegExp(`^(${UNIT})?\\s*(${AMOUNT})\\s*(${UNIT})?$`, "i");
-var TERM = new RegExp(`^\\s*([+\\-−–])?\\s*(${UNIT})?\\s*(\\d+(?:[.,]\\d+)?)\\s*(${UNIT})?`, "i");
+var TERM = new RegExp(`^\\s*([+\\-−\\u2013])?\\s*(${UNIT})?\\s*(\\d+(?:[.,]\\d+)?)\\s*(${UNIT})?`, "i");
 
 function single(before, after, known, home) {
     const a = before ? codeOf(before, known, home) : "";

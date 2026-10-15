@@ -136,20 +136,7 @@ Singleton {
         if (!root.present)
             return;
         kept.upgradingSince = Date.now();
-        Quickshell.execDetached(["sh", "-c", `
-            script="$1"'; status=$?; echo; if [ "$status" -eq 0 ]; then echo "Done. Press Enter to close."; else echo "pacman stopped with an error ($status). Press Enter to close."; fi; read -r _'
-            for term in "\${TERMINAL%% *}" kitty foot ghostty alacritty wezterm konsole gnome-terminal xterm; do
-                [ -n "$term" ] && command -v "$term" >/dev/null 2>&1 && break
-                term=
-            done
-            [ -n "$term" ] || exit 127
-            case \${term##*/} in
-                kitty | foot) exec "$term" sh -c "$script" ;;
-                wezterm) exec "$term" start -- sh -c "$script" ;;
-                gnome-terminal) exec "$term" -- sh -c "$script" ;;
-                *) exec "$term" -e sh -c "$script" ;;
-            esac
-        `, "sh", root.upgradeCommand]);
+        Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${root.upgradeCommand}; status=$?; echo; if [ "$status" -eq 0 ]; then echo "Done. Press Enter to close."; else echo "pacman stopped with an error ($status). Press Enter to close."; fi; read -r _`]);
     }
 
     PersistentProperties {
