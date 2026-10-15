@@ -99,6 +99,17 @@ Item {
         }
     }
 
+    readonly property real restingY: root.height * 0.46 - field.y - field.height / 2
+    readonly property real clearingY: power.y - Appearance.padding.large - (info.y + info.reach)
+
+    Follow {
+        id: lift
+
+        target: Math.max(Appearance.padding.huge, Math.min(root.restingY, root.clearingY))
+        speed: Appearance.animation.trackSpeed * 0.5
+        Component.onCompleted: lift.snap()
+    }
+
     Follow {
         id: telling
 
@@ -227,7 +238,7 @@ Item {
             id: stack
 
             anchors.horizontalCenter: parent.horizontalCenter
-            y: Math.round(root.height * 0.46 - field.y - field.height / 2)
+            y: Math.round(lift.value)
 
             width: Math.max(Appearance.sizes.lockField, time.implicitWidth)
 
@@ -311,7 +322,7 @@ Item {
                 text: root.shownStatus
                 color: root.warning ? Appearance.colour.alarm : Appearance.colour.textDim
                 font.family: root.family
-                font.pixelSize: Math.round(time.size * 0.13)
+                font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
                 font.variableAxes: ({ "wght": 500 })
                 renderType: Text.NativeRendering
             }
@@ -322,6 +333,8 @@ Item {
             }
 
             LockInfo {
+                id: info
+
                 anchors.horizontalCenter: parent.horizontalCenter
                 family: root.family
                 watched: root.sealed
@@ -330,6 +343,8 @@ Item {
         }
 
         LockPower {
+            id: power
+
             anchors.horizontalCenter: parent.horizontalCenter
             anchors.bottom: parent.bottom
             anchors.bottomMargin: Appearance.padding.huge * 2

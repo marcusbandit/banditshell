@@ -19,6 +19,9 @@ Column {
 
     readonly property real artSize: Appearance.font.line.small + Appearance.padding.small * 2
     readonly property int textSize: Math.round(Appearance.font.size.small * 0.9)
+    readonly property int captionSize: Math.round(Appearance.font.size.small * 0.72)
+
+    readonly property real reach: root.implicitHeight + (root.music ? (deck.height + Appearance.padding.normal) * (1 - open.value) : 0)
     readonly property real deckWidth: Appearance.sizes.lockField * 0.8
 
     readonly property string remaining: {
@@ -148,14 +151,14 @@ Column {
                     color: Appearance.colour.textDim
                     elide: Text.ElideRight
                     font.family: root.family
-                    font.pixelSize: Math.round(root.textSize * 0.92)
+                    font.pixelSize: root.captionSize
                     renderType: Text.NativeRendering
                 }
             }
 
             Equalizer {
                 anchors.verticalCenter: parent.verticalCenter
-                playing: Media.playing
+                playing: Media.playing && !Appearance.lessMotion
                 color: Appearance.colour.accent
             }
         }
@@ -167,7 +170,7 @@ Column {
             width: parent.width
             spacing: Appearance.padding.small
             opacity: open.value
-            visible: open.value > 0.01
+            enabled: open.value > 0.5
 
             Scrubber {
                 width: parent.width

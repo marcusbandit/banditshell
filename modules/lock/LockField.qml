@@ -70,7 +70,7 @@ Item {
 
         interval: 530
         repeat: true
-        running: root.visible && !root.waiting
+        running: root.visible && !root.waiting && !Appearance.lessMotion
         onTriggered: root.lit = !root.lit
     }
 
@@ -137,10 +137,10 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             text: root.placeholder
-            color: Appearance.colour.textFaint
+            color: Appearance.colour.textDim
             opacity: hint.value
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.95)
+            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
             renderType: Text.NativeRendering
         }
 

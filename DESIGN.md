@@ -904,7 +904,10 @@ banditshell/
 │   │                            Under that, LockInfo, in no box at all (the lock
 │   │                            is the whole computer, not a pop-up): now playing
 │   │                            dim until hovered, when its progress and controls
-│   │                            unfold downward without moving the field; battery
+│   │                            unfold downward without moving the field (on a
+│   │                            short screen the whole stack sits higher, by its
+│   │                            unfolded height, so they clear the power row);
+│   │                            battery
 │   │                            while a laptop is unplugged; and the
 │   │                            notifications as LockAlerts:
 │   │                            one disc per app, the newest in front
