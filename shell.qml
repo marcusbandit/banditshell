@@ -18,6 +18,7 @@ ShellRoot {
     readonly property var lid: Lid
     readonly property var startupApps: StartupApps
     readonly property var penButtons: PenButtons
+    readonly property var currency: Currency
 
     LockScreen {}
 

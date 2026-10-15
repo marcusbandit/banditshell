@@ -55,32 +55,78 @@ function codeOf(word, known, home) {
     return /^[A-Z]{3}$/.test(up) && known.indexOf(up) >= 0 ? up : "";
 }
 
-var UNIT = "([a-zA-Z]{2,8}\\.?|[€$£¥₹₩₺₪฿₱]|zł|r\\$)";
-var NUMBER = "(\\d+(?:[.,]\\d+)?)";
-var SHAPE = new RegExp(`^${UNIT}?\\s*${NUMBER}\\s*${UNIT}?(?:\\s*(?:to|in|til|i|->|→|=)\\s*${UNIT})?$`, "i");
+var UNIT = "[a-zA-Z]{2,8}\\.?|[€$£¥₹₩₺₪฿₱]|zł|r\\$";
+var AMOUNT = "[\\d.,+\\-−–*×÷/()\\s]*\\d[\\d.,+\\-−–*×÷/()\\s]*";
+var TARGET = new RegExp(`^(.*?)(?:\\s+(?:to|in|til|i)\\s+|\\s*(?:->|→|=)\\s*)(${UNIT})\\s*$`, "i");
+var WHOLE = new RegExp(`^(${UNIT})?\\s*(${AMOUNT})\\s*(${UNIT})?$`, "i");
+var TERM = new RegExp(`^\\s*([+\\-−–])?\\s*(${UNIT})?\\s*(\\d+(?:[.,]\\d+)?)\\s*(${UNIT})?`, "i");
 
-function parse(text, known, home) {
-    const m = SHAPE.exec(String(text || "").trim());
-    if (!m)
-        return null;
-    const before = m[1] ? codeOf(m[1], known, home) : "";
-    const after = m[3] ? codeOf(m[3], known, home) : "";
-    if ((m[1] && !before) || (m[3] && !after) || (before && after))
-        return null;
-    const from = before || after;
-    if (!from)
-        return null;
-    const target = m[4] ? codeOf(m[4], known, home) : "";
-    if (m[4] && !target)
+function single(before, after, known, home) {
+    const a = before ? codeOf(before, known, home) : "";
+    const b = after ? codeOf(after, known, home) : "";
+    if ((before && !a) || (after && !b) || (a && b))
+        return "";
+    return a || b;
+}
+
+function terms(source, known, home) {
+    const out = [];
+    let rest = source;
+    while (rest.trim()) {
+        const m = TERM.exec(rest);
+        if (!m || (out.length > 0) !== !!m[1])
+            return null;
+        const from = single(m[2], m[4], known, home);
+        if (!from)
+            return null;
+        out.push({
+            amount: parseFloat(m[3].replace(",", ".")) * (m[1] && m[1] !== "+" ? -1 : 1),
+            from: from
+        });
+        rest = rest.slice(m[0].length);
+    }
+    return out.length > 1 ? out : null;
+}
+
+function parse(text, known, home, evaluate) {
+    const t = String(text || "").trim();
+    const aimed = TARGET.exec(t);
+    const source = aimed ? aimed[1].trim() : t;
+    const target = aimed ? codeOf(aimed[2], known, home) : "";
+    if (aimed && !target)
         return null;
     const to = target || home;
-    if (!to || to === from)
+    if (!to)
         return null;
-    return {
-        amount: parseFloat(m[2].replace(",", ".")),
-        from: from,
-        to: to
-    };
+
+    const whole = WHOLE.exec(source);
+    if (whole) {
+        const from = single(whole[1], whole[3], known, home);
+        if (!from)
+            return null;
+        const expression = whole[2].trim().replace(/,/g, ".");
+        const plain = /^\d+(\.\d+)?$/.test(expression);
+        const amount = plain ? parseFloat(expression) : evaluate ? evaluate(expression) : NaN;
+        if (typeof amount !== "number" || !isFinite(amount) || (from === to && plain && !target))
+            return null;
+        return {
+            terms: [
+                {
+                    amount: amount,
+                    from: from
+                }
+            ],
+            to: to,
+            worked: !plain
+        };
+    }
+
+    const many = terms(source, known, home);
+    return many ? {
+        terms: many,
+        to: to,
+        worked: true
+    } : null;
 }
 
 function convert(amount, from, to, rates) {
@@ -91,11 +137,12 @@ function convert(amount, from, to, rates) {
     return amount / a * b;
 }
 
-function money(value) {
-    if (!isFinite(value))
-        return "?";
-    const digits = Math.abs(value) >= 1 || value === 0 ? 2 : Math.min(8, 1 - Math.floor(Math.log10(Math.abs(value))));
-    return value.toFixed(digits);
+function total(ask, rates) {
+    return ask.terms.reduce((sum, t) => sum + convert(t.amount, t.from, ask.to, rates), 0);
+}
+
+function places(value) {
+    return Math.abs(value) >= 1 || value === 0 || !isFinite(value) ? 2 : Math.min(8, 1 - Math.floor(Math.log10(Math.abs(value))));
 }
 
 function readEcb(xml) {

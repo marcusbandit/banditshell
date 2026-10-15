@@ -157,31 +157,51 @@ test.describe("arrange", () => {
     });
 });
 
-const Currency = lib("services/currency.js", ["parse", "convert", "money", "readEcb", "codeOf"]);
+const Currency = lib("services/currency.js", ["parse", "convert", "total", "places", "readEcb", "codeOf"]);
 const Calc = lib("services/calculation.js", ["mathOnly", "firm", "lenient"]);
 
 test.describe("currency", () => {
     const known = ["EUR", "USD", "DKK", "GBP", "SEK", "NOK", "JPY"];
+    const evaluate = t => /^[\d+\-*/() .]+$/.test(t) ? Function(`"use strict"; return (${t});`)() : null;
+    const one = (text, home) => {
+        const got = Currency.parse(text, known, home || "DKK", evaluate);
+        return got && got.terms.length === 1 ? { amount: got.terms[0].amount, from: got.terms[0].from, to: got.to } : got;
+    };
 
     test.it("reads an amount with a currency and aims it at the home currency", () => {
-        assert.deepStrictEqual(Currency.parse("5 eur", known, "DKK"), { amount: 5, from: "EUR", to: "DKK" });
-        assert.deepStrictEqual(Currency.parse("5eur", known, "DKK"), { amount: 5, from: "EUR", to: "DKK" });
-        assert.deepStrictEqual(Currency.parse("€5", known, "DKK"), { amount: 5, from: "EUR", to: "DKK" });
-        assert.deepStrictEqual(Currency.parse("12,50 $", known, "DKK"), { amount: 12.5, from: "USD", to: "DKK" });
-        assert.deepStrictEqual(Currency.parse("3 euros", known, "DKK"), { amount: 3, from: "EUR", to: "DKK" });
+        assert.deepStrictEqual(one("5 eur"), { amount: 5, from: "EUR", to: "DKK" });
+        assert.deepStrictEqual(one("5eur"), { amount: 5, from: "EUR", to: "DKK" });
+        assert.deepStrictEqual(one("€5"), { amount: 5, from: "EUR", to: "DKK" });
+        assert.deepStrictEqual(one("12,50 $"), { amount: 12.5, from: "USD", to: "DKK" });
+        assert.deepStrictEqual(one("3 euros"), { amount: 3, from: "EUR", to: "DKK" });
     });
 
     test.it("takes an explicit target either way round", () => {
-        assert.deepStrictEqual(Currency.parse("5 eur to dkk", known, "DKK"), { amount: 5, from: "EUR", to: "DKK" });
-        assert.deepStrictEqual(Currency.parse("5 DKK to EUR", known, "DKK"), { amount: 5, from: "DKK", to: "EUR" });
-        assert.deepStrictEqual(Currency.parse("100 usd in eur", known, "DKK"), { amount: 100, from: "USD", to: "EUR" });
-        assert.deepStrictEqual(Currency.parse("100usd->gbp", known, "DKK"), { amount: 100, from: "USD", to: "GBP" });
-        assert.deepStrictEqual(Currency.parse("50 kr to eur", known, "DKK"), { amount: 50, from: "DKK", to: "EUR" });
+        assert.deepStrictEqual(one("5 eur to dkk"), { amount: 5, from: "EUR", to: "DKK" });
+        assert.deepStrictEqual(one("5 DKK to EUR"), { amount: 5, from: "DKK", to: "EUR" });
+        assert.deepStrictEqual(one("100 usd in eur"), { amount: 100, from: "USD", to: "EUR" });
+        assert.deepStrictEqual(one("100usd->gbp"), { amount: 100, from: "USD", to: "GBP" });
+        assert.deepStrictEqual(one("50 kr to eur"), { amount: 50, from: "DKK", to: "EUR" });
+    });
+
+    test.it("does the sum in the amount first", () => {
+        assert.deepStrictEqual(one("50+30 jpy"), { amount: 80, from: "JPY", to: "DKK" });
+        assert.deepStrictEqual(one("(50+30)*2 eur to usd"), { amount: 160, from: "EUR", to: "USD" });
+        assert.deepStrictEqual(one("€10*3"), { amount: 30, from: "EUR", to: "DKK" });
+        assert.deepStrictEqual(one("50+30 dkk"), { amount: 80, from: "DKK", to: "DKK" });
+    });
+
+    test.it("adds amounts in different currencies", () => {
+        const got = Currency.parse("50 eur + 30 usd - 10 eur", known, "DKK", evaluate);
+        assert.deepStrictEqual(got.terms, [{ amount: 50, from: "EUR" }, { amount: 30, from: "USD" }, { amount: -10, from: "EUR" }]);
+        assert.strictEqual(got.to, "DKK");
+        const rates = { USD: 1.1, DKK: 7.46 };
+        assert.ok(Math.abs(Currency.total({ terms: [{ amount: 10, from: "EUR" }, { amount: 11, from: "USD" }], to: "EUR" }, rates) - 20) < 1e-9);
     });
 
     test.it("leaves things that are not money alone", () => {
-        for (const t of ["5", "5 km", "5 dkk", "firefox", "5 km to miles", "eur", "5 abc", "5 eur to xyz", "€5 usd"])
-            assert.strictEqual(Currency.parse(t, known, "DKK"), null, t);
+        for (const t of ["5", "5 km", "5 dkk", "firefox", "5 km to miles", "eur", "5 abc", "5 eur to xyz", "€5 usd", "50 eur + 30", "5+5"])
+            assert.strictEqual(Currency.parse(t, known, "DKK", evaluate), null, t);
     });
 
     test.it("converts through the euro", () => {
@@ -190,8 +210,8 @@ test.describe("currency", () => {
         assert.ok(Math.abs(Currency.convert(11, "USD", "EUR", rates) - 10) < 1e-9);
         assert.ok(Math.abs(Currency.convert(1.1, "USD", "DKK", rates) - 7.46) < 1e-9);
         assert.ok(isNaN(Currency.convert(1, "XXX", "DKK", rates)));
-        assert.strictEqual(Currency.money(37.3), "37.30");
-        assert.strictEqual(Currency.money(0.00512), "0.0051");
+        assert.strictEqual(Currency.places(37.3), 2);
+        assert.strictEqual(Currency.places(0.00512), 4);
     });
 
     test.it("reads the ECB daily file", () => {

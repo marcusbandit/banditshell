@@ -222,13 +222,17 @@ Singleton {
         }) : null;
     }
 
+    function amountOf(text: string): var {
+        return root.leniently(text)?.value ?? null;
+    }
+
     function answerFor(text: string): var {
-        return Currency.answer(text) ?? root.leniently(text) ?? (root.worked?.query === text ? root.worked : null);
+        return Currency.answer(text, root.amountOf) ?? root.leniently(text) ?? (root.worked?.query === text ? root.worked : null);
     }
 
     function ask(text: string): void {
         root.asked = text;
-        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text) || root.leniently(text) || !Calculation.looksLikeCalculation(text)) {
+        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text, root.amountOf) || root.leniently(text) || !Calculation.looksLikeCalculation(text)) {
             settle.stop();
             return;
         }

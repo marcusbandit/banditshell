@@ -22,18 +22,21 @@ Singleton {
     readonly property bool stale: Date.now() - root.fetched > root.staleAfter
     readonly property bool linked: Network.connected
 
-    function answer(text: string): var {
-        const ask = Money.parse(text, root.codes, root.home);
+    function answer(text: string, evaluate: var): var {
+        const ask = Money.parse(text, root.codes, root.home, evaluate);
         if (!ask)
             return null;
-        const value = Money.convert(ask.amount, ask.from, ask.to, root.rates);
+        const value = Money.total(ask, root.rates);
         if (!isFinite(value))
             return null;
-        const one = Money.convert(1, ask.from, ask.to, root.rates);
+        const amount = n => Number(parseFloat(n.toPrecision(12))).toLocaleString(Qt.locale(), "f", Number.isInteger(n) ? 0 : Money.places(n));
+        const first = ask.terms[0];
+        const rate = `1 ${first.from} = ${Money.convert(1, first.from, ask.to, root.rates).toLocaleString(Qt.locale(), "f", 4)} ${ask.to}`;
+        const said = ask.terms.length > 1 ? ask.terms.map((t, i) => `${i ? (t.amount < 0 ? "− " : "+ ") : ""}${amount(i ? Math.abs(t.amount) : t.amount)} ${t.from}`).join(" ") : ask.worked ? `${amount(first.amount)} ${first.from} · ${rate}` : rate;
         return {
             value: value,
-            text: `${Money.money(value)} ${ask.to}`,
-            detail: `1 ${ask.from} = ${one.toFixed(4)} ${ask.to} · ${root.date}`,
+            text: `${value.toLocaleString(Qt.locale(), "f", Money.places(value))} ${ask.to}`,
+            detail: `${said} · ${root.date}`,
             work: 1,
             firm: true,
             money: true
