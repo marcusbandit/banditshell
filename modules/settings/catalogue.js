@@ -42,7 +42,7 @@ const SEARCH_TITLES = {
 
 const WIDGET_WHY = {
     winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom is for your own layout; how it plugs in is still being worked out.",
-    via: "Import the .json your keyboard’s maker publishes for VIA. The sheet then draws your exact board, split halves and odd keys included. Add a keymap saved from VIA and the keys you bind light up on it.",
+    via: "Pick Custom under Board, then import the .json your keyboard’s maker publishes for usevia.app. Import lists the VIA files in Downloads; Browse opens any other. The sheet then draws your exact board, split halves and odd keys included. Add a keymap saved from VIA (Save + Load, Save) and the keys you bind light up on it. Open the file to edit it into your own board; the sheet follows your edits.",
     modes: "Like a focus on a phone. Pick one and it changes a handful of settings; pick none and they go back.",
     usage: "Time with each app in front of you today, counted only while you are active.",
     recent: "Every setting you change lands here with a way back. The search field shows the same list when it is empty.",
@@ -463,8 +463,8 @@ const PAGES_SOURCE = {
             ] },
             { t: "Hotkey sheet", rows: [
                 { n: 98, icon: "keyboard_alt", label: "Draw the board", k: "sheetBoard", kind: "toggle", cfg: "cheatsheet.board", detail: "super + /", kw: "hotkey sheet" },
-                { n: 98, icon: "keyboard", label: "Board", k: "sheetKeyboard", kind: "choice", o: [["ansi", "ansi"], ["iso", "iso"], ["split", "split"], ["file", "from file"]], cfg: "cheatsheet.keyboard", dis: s => !s.v("sheetBoard"), kw: "hotkey sheet keyboard via import",
-                    why: "Ansi, iso and split are drawn from built-in layouts. From file draws your own board from a VIA definition, so the sheet matches the keyboard on your desk. Pick a shape and the file is forgotten; import a file and it wins over the shape." },
+                { n: 98, icon: "keyboard", label: "Board", k: "sheetKeyboard", kind: "choice", o: [["iso", "ISO"], ["ansi", "ANSI"], ["file", "Custom"]], cfg: "cheatsheet.keyboard", dis: s => !s.v("sheetBoard"), kw: "hotkey sheet keyboard via import iso ansi custom",
+                    why: "ISO and ANSI are drawn from built-in layouts. Custom draws your own board from its VIA file, so the sheet matches the keyboard on your desk. Pick ISO or ANSI and the file is forgotten." },
                 { n: 98, kind: "w", w: "via", kw: "via file import keyboard layout" },
                 { n: 98, icon: "description", label: "Read keys from", k: "bindsFile", kind: "path", ro: true, kw: "hotkey sheet layout file" }
             ] }

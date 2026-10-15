@@ -660,7 +660,7 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
-                yielded: win.panelOpen || menuLayer.open || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
+                yielded: win.panelOpen || menuLayer.open || Settings.away || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }
 

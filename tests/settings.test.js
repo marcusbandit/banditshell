@@ -13,7 +13,7 @@ function lib(file, names) {
 
 const Catalogue = lib(path.join(SETTINGS, "catalogue.js"), ["CATS", "PAGES", "PAGE_BY_ID", "CAT_BY_ID", "ROWS", "ROW_BY_KEY", "MODES", "LAYOUTS", "INDEX", "search", "resolve", "options", "format", "show", "step", "nearest", "labelOf", "dwindleRects", "alphabetThumbAt", "bowAt", "zoneOf", "pagesCovered", "val", "present", "nameOf"]);
 const Screens = lib(path.join(SETTINGS, "screens.js"), ["rectOf", "overlaps", "contact", "issues", "snap", "settle", "anchor", "nudge", "resize", "fit"]);
-const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "readVia", "extent", "rects", "board", "lit", "withLegends", "struck"]);
+const Boards = lib(path.join(SETTINGS, "boards.js"), ["BOARDS", "SAMPLE_VIA", "kle", "extent", "rects", "board", "lit", "struck", "fromSheet"]);
 const Frames = lib(path.join(SETTINGS, "scenes/keyframes.js"), ["bezier", "STANDARD", "ARRIVE", "BACK", "at", "pulse", "steps"]);
 
 function block(file, opener) {
@@ -306,38 +306,11 @@ test("built-in boards parse from KLE and the ISO enter has its second rectangle"
     assert.ok(Boards.extent(Boards.board("split")).cols > 15);
 });
 
-test("a VIA file is read, and a wrong file says why", () => {
-    const sample = Boards.readVia(JSON.stringify(Boards.SAMPLE_VIA));
-    assert.strictEqual(sample.name, "sample 65%");
-    assert.ok(sample.keys.every(k => k.label === ""));
-    assert.throws(() => Boards.readVia("{"), /isn’t JSON/);
-    assert.throws(() => Boards.readVia("{}"), /no layouts.keymap/);
-    assert.throws(() => Boards.readVia(JSON.stringify({ layouts: { keymap: [] } })), /no keys/);
-});
-
 test("bound keys light up on the board", () => {
     const keys = Boards.board("ansi");
     const lit = Boards.lit(keys, ["super v", "ctrl shift s"]);
     const on = keys.filter((k, i) => lit[i]).map(k => k.label.toLowerCase());
     assert.ok(on.includes("super") && on.includes("v") && on.includes("shift") && on.includes("s"));
-});
-
-test("a keymap's legends light an imported board by the keys it binds", () => {
-    const sample = Boards.readVia(JSON.stringify(Boards.SAMPLE_VIA));
-    assert.strictEqual(sample.keys[0].matrix, "0,0");
-    const legends = {
-        "0,0": { label: "esc", syms: ["Escape"] },
-        "1,1": { label: "Q", syms: ["q"] },
-        "4,2": { label: "alt", syms: [] }
-    };
-    const keys = Boards.withLegends(sample.keys, legends);
-    assert.strictEqual(keys.length, sample.keys.length);
-    assert.strictEqual(keys[0].label, "esc");
-    assert.strictEqual(sample.keys[0].label, "", "the parsed board is left alone");
-    const lit = Boards.lit(keys, ["super q", "alt escape"]);
-    const on = keys.filter((k, i) => lit[i]).map(k => k.matrix);
-    assert.deepStrictEqual(on.sort(), ["0,0", "1,1", "4,2"]);
-    assert.ok(Boards.lit(sample.keys, ["super q"]).every(x => !x), "without a keymap nothing is lit");
 });
 
 test("the sheet shape lives in config, not in planned state", () => {
@@ -346,7 +319,8 @@ test("the sheet shape lives in config, not in planned state", () => {
     assert.strictEqual(lookup(DEFAULTS, "cheatsheet.keymap"), "");
     assert.ok(!("sheetShape" in PLAN_DEFAULTS));
     const row = Catalogue.ROW_BY_KEY.sheetKeyboard;
-    assert.deepStrictEqual(row.o.map(o => o[0]), ["ansi", "iso", "split", "file"]);
+    assert.deepStrictEqual(row.o.map(o => o[0]), ["iso", "ansi", "file"]);
+    assert.deepStrictEqual(row.o.map(o => o[1]), ["ISO", "ANSI", "Custom"]);
     assert.ok(!row.isNew);
 });
 
@@ -578,4 +552,20 @@ test("screens that are off or mirrored do not pull the arrangement", () => {
     const copy = Screens.rectOf("DP-2", { mode: "1920x1080@60", position: "-9000x0", mirror: "HDMI-A-1" });
     assert.deepStrictEqual(Screens.anchor([wide, off, copy]), { "HDMI-A-1": { x: 0, y: 0 } });
     assert.deepStrictEqual(Screens.anchor([off]), {});
+});
+
+test("the settings preview draws the sheet's own keys, the ISO enter as its two rectangles", () => {
+    const keys = Boards.fromSheet([
+        { id: "RTRN", cap: "Enter", syms: ["Return"], mod: 0, matrix: "", x: 13.5, y: 2.5, w: 1.5, h: 2, foot: 1.25 },
+        { id: "LWIN", cap: "", syms: [], mod: 64, matrix: "", x: 1.25, y: 5.5, w: 1.25, h: 1, foot: 0 },
+        { id: "SPCE", cap: "", syms: ["space"], mod: 0, matrix: "", x: 3.75, y: 5.5, w: 6.25, h: 1, foot: 0 }
+    ]);
+    const [leg, head] = Boards.rects(keys.slice(0, 1)).sort((a, b) => a.h - b.h).reverse();
+    assert.deepStrictEqual([leg.x, leg.y, leg.w, leg.h], [13.75, 2.5, 1.25, 2]);
+    assert.deepStrictEqual([head.x, head.y, head.w, head.h], [13.5, 2.5, 1.5, 1]);
+    assert.strictEqual(Boards.extent(keys.slice(0, 1)).cols, 15);
+    assert.strictEqual(keys[1].label, "Super");
+    assert.ok(Boards.struck(keys[1], { super: true }));
+    assert.strictEqual(keys[2].label, "Space");
+    assert.ok(Boards.struck(keys[0], { return: true }));
 });

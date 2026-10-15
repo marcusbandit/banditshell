@@ -11,6 +11,7 @@ Item {
     property string label: ""
     property string detail: ""
     property color detailColour: Appearance.colour.textFaint
+    property int detailLines: 1
     property bool selected: false
     property bool off: false
     property bool interactive: true
@@ -149,6 +150,8 @@ Item {
             width: parent.width
             text: root.detail
             elide: Text.ElideRight
+            wrapMode: root.detailLines > 1 ? Text.Wrap : Text.NoWrap
+            maximumLineCount: root.detailLines
             color: root.notice ? Appearance.colour.textDim : root.detailColour
             visible: root.detail !== ""
         }

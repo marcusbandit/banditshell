@@ -74,22 +74,6 @@ function kle(rows) {
     return keys;
 }
 
-function readVia(text) {
-    let data;
-    try {
-        data = JSON.parse(text);
-    } catch (e) {
-        throw new Error("that file isn’t JSON");
-    }
-    const map = data && data.layouts ? data.layouts.keymap : null;
-    if (!Array.isArray(map))
-        throw new Error("no layouts.keymap in it, so it isn’t a VIA definition");
-    const keys = kle(map);
-    if (!keys.length)
-        throw new Error("the keymap has no keys");
-    return { name: data.name || "imported board", keys: keys };
-}
-
 function extent(keys) {
     let cols = 0;
     let rows = 0;
@@ -126,10 +110,6 @@ function keyName(raw) {
     return KEY_NAMES[k] || k;
 }
 
-function withLegends(keys, legends) {
-    return keys.map(k => legends[k.matrix] ? Object.assign({}, k, { label: legends[k.matrix].label, syms: legends[k.matrix].syms }) : k);
-}
-
 function struck(key, hot) {
     if (key.label && hot[key.label.toLowerCase()])
         return true;
@@ -143,4 +123,28 @@ function lit(keys, combos) {
             if (part)
                 hot[part.toLowerCase()] = true;
     return keys.map(k => struck(k, hot));
+}
+
+const MOD_NAMES = { 1: "Shift", 4: "Ctrl", 8: "Alt", 64: "Super" };
+
+function fromSheet(keys) {
+    return keys.map(k => {
+        const syms = k.syms || [];
+        const out = {
+            matrix: k.matrix || "",
+            label: k.mod ? MOD_NAMES[k.mod] || "" : k.cap || (syms.indexOf("space") >= 0 ? "Space" : ""),
+            syms: syms,
+            x: k.x,
+            y: k.y,
+            w: k.w,
+            h: k.h,
+            x2: 0,
+            y2: 0,
+            w2: 0,
+            h2: 0
+        };
+        if (k.foot > 0 && k.h > 1)
+            return Object.assign(out, { x: k.x + k.w - k.foot, w: k.foot, x2: k.foot - k.w, w2: k.w, h2: 1 });
+        return out;
+    });
 }

@@ -10,6 +10,7 @@ Singleton {
     property string screenName: ""
     property string page: "connections"
     property string reveal: ""
+    property bool away: false
 
     function show(screen: string, which: string): void {
         root.screenName = screen || root.screenName || Quickshell.screens[0]?.name || "";

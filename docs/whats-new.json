@@ -1,6 +1,42 @@
 {
   "entries": [
     {
+      "id": "2026-10-16",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The hotkey sheet draws a whole keyboard: the function row, Print Screen and its neighbours, the Insert and Home block, the arrows as an inverted T and the numpad when anything on it is bound. ISO and ANSI are both drawn properly, and the ISO Enter is one stepped key instead of two boxes."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dropdowns in Settings open again. Clicking one used to show an empty list."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings › Hotkey sheet › Board offers ISO, ANSI and Custom. Custom unlocks VIA layout and VIA keymap: Import lists the VIA files in your Downloads folder and nothing else, and Browse opens the system file picker. Every file you pick gets a short check, then a note under the row says this is it or this is not it, and why."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Try a sample board works again after you forget the sample, and an imported board has an open button so you can edit its file into your own board. The sheet follows your edits as you save."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Split is no longer offered under Board. If you had it chosen, the sheet keeps drawing it and the list shows it until you pick something else."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The list on the left of Settings folds down to its icons with the button at its bottom, and the settings beside it get the room. It stays folded until you unfold it."
+        }
+      ]
+    },
+    {
       "id": "2026-10-15-3",
       "date": "2026-10-15",
       "changes": [

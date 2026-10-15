@@ -101,7 +101,6 @@ Column {
     MenuLayer {
         width: root.width
         open: root.hasLayer && root.unrolled
-        visible: root.hasLayer && implicitHeight > 0.5
 
         Repeater {
             model: root.hasLayer ? root.row.layer : []
@@ -121,7 +120,6 @@ Column {
     MenuLayer {
         width: root.width
         open: root.kind === "choice" && root.unrolled
-        visible: root.kind === "choice" && implicitHeight > 0.5
 
         Repeater {
             model: root.kind === "choice" ? root.choices : []
@@ -133,6 +131,7 @@ Column {
 
                 readonly property bool chosen: Catalogue.same(option.modelData[0], root.value)
 
+                width: parent ? parent.width : 0
                 icon: option.chosen ? "check" : "radio_button_unchecked"
                 label: String(option.modelData[1])
                 selected: option.chosen

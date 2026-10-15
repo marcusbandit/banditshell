@@ -1,0 +1,86 @@
+#!/usr/bin/env python3
+
+import os
+import shutil
+import subprocess
+import sys
+
+try:
+    import gi
+
+    gi.require_version("GLib", "2.0")
+    gi.require_version("Gio", "2.0")
+    from gi.repository import GLib, Gio
+except (ImportError, ValueError):
+    GLib = Gio = None
+
+PICKED, CANCELLED, NO_CHOOSER = 0, 1, 2
+PATIENCE_SECONDS = 1800
+
+
+def through_portal(title, pattern, folder):
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    token = f"banditshell{os.getpid()}"
+    sender = bus.get_unique_name()[1:].replace(".", "_")
+    handle = f"/org/freedesktop/portal/desktop/request/{sender}/{token}"
+    loop = GLib.MainLoop()
+    answer = {}
+
+    def on_response(_conn, _sender, _path, _iface, _signal, params):
+        code, results = params.unpack()
+        answer["code"] = code
+        answer["uris"] = results.get("uris", [])
+        loop.quit()
+
+    def listen(path):
+        bus.signal_subscribe("org.freedesktop.portal.Desktop", "org.freedesktop.portal.Request", "Response",
+                             path, None, Gio.DBusSignalFlags.NONE, on_response)
+
+    listen(handle)
+    options = {
+        "handle_token": GLib.Variant("s", token),
+        "filters": GLib.Variant("a(sa(us))", [(pattern, [(0, pattern)])]),
+    }
+    if os.path.isdir(folder):
+        options["current_folder"] = GLib.Variant("ay", folder.encode() + b"\0")
+    given = bus.call_sync("org.freedesktop.portal.Desktop", "/org/freedesktop/portal/desktop",
+                          "org.freedesktop.portal.FileChooser", "OpenFile",
+                          GLib.Variant("(ssa{sv})", ("", title, options)), GLib.VariantType("(o)"),
+                          Gio.DBusCallFlags.NONE, -1, None).unpack()[0]
+    if given != handle:
+        listen(given)
+    GLib.timeout_add_seconds(PATIENCE_SECONDS, loop.quit)
+    loop.run()
+    if answer.get("code") != 0 or not answer.get("uris"):
+        return CANCELLED, ""
+    return PICKED, Gio.File.new_for_uri(answer["uris"][0]).get_path() or ""
+
+
+def through_zenity(title, pattern, folder):
+    if not shutil.which("zenity"):
+        return NO_CHOOSER, ""
+    done = subprocess.run(["zenity", "--file-selection", f"--title={title}", f"--file-filter={pattern} | {pattern}",
+                           f"--filename={folder.rstrip('/')}/"], capture_output=True, text=True)
+    return (PICKED, done.stdout.strip()) if done.returncode == 0 and done.stdout.strip() else (CANCELLED, "")
+
+
+def main():
+    title = sys.argv[1] if len(sys.argv) > 1 else "Open"
+    pattern = sys.argv[2] if len(sys.argv) > 2 else "*"
+    folder = os.path.expanduser(sys.argv[3] if len(sys.argv) > 3 else "~")
+    if Gio is None:
+        print("pick-file: python-gobject is missing, trying zenity", file=sys.stderr)
+        code, path = through_zenity(title, pattern, folder)
+    else:
+        try:
+            code, path = through_portal(title, pattern, folder)
+        except GLib.Error as e:
+            print(f"pick-file: no portal file chooser ({e.message}), trying zenity", file=sys.stderr)
+            code, path = through_zenity(title, pattern, folder)
+    if path:
+        print(path)
+    sys.exit(code)
+
+
+if __name__ == "__main__":
+    main()
