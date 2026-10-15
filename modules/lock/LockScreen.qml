@@ -23,7 +23,7 @@ Scope {
         property bool held: false
 
         onReloaded: if (persisted.held)
-            Lock.lock()
+            Lock.relock()
     }
 
     Connections {

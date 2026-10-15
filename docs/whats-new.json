@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-2",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The lock screen is new. It covers the whole screen with your wallpaper blurred behind it, a large clock, the date and a password field, and nothing of the shell shows through. It grows out of your desktop when it locks and folds back into the password field when you unlock."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A wrong password is turned down at once instead of after about two seconds. A password you send while the last one is still being checked waits its turn instead of being dropped."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The lock screen shows how many notifications are waiting, with the apps they came from but nothing they say, and what music is playing. Point at the music to pause it or skip a track."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The password field shows your keyboard layout when you have more than one, and clicking it switches. It says so when Caps Lock is on, and an unplugged laptop shows its battery under the field."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Move the pointer to the bottom of the lock screen for sleep, restart and shut down. Each needs a press held until its ring fills, so a stray click does nothing."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "After 10 seconds without a key or the mouse, the lock screen dims and its clock turns thin. Any key or movement brings it back."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "lock.dim in config.json now sets how dark a veil sits over the lock screen's wallpaper, where it used to darken the picture itself, so the same number leaves your wallpaper more visible than before. New lock keys: font (the lock screen's typeface, Adwaita Sans by default), clockShare (clock size), clockLayout (row or stacked), restAfter (seconds before it dims) and verdict (milliseconds before an unanswered password counts as wrong)."
+        }
+      ]
+    },
+    {
       "id": "2026-10-15",
       "date": "2026-10-15",
       "changes": [

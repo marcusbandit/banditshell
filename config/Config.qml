@@ -441,6 +441,17 @@ Singleton {
                 nowPlaying: true
             },
 
+            weather: {
+
+                show: true,
+
+                location: "",
+
+                units: "metric",
+
+                minutes: 30
+            },
+
             packages: {
 
                 interval: 360,
@@ -720,6 +731,16 @@ Singleton {
                 desaturate: 0.45,
 
                 dotScale: 0.5,
+
+                font: "Adwaita Sans",
+
+                clockShare: 0.065,
+
+                clockLayout: "row",
+
+                verdict: 300,
+
+                restAfter: 10,
 
                 revealSpeed: 9
             },

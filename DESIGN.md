@@ -431,8 +431,8 @@ banditshell/
 │   ├── CodeBlock.qml            that, coloured from the theme, one delegate per
 │   │                            line so a 60,000-line paste costs 30 of them
 │   ├── Tooltips.qml             what is hovered and what it says; one, shell-wide
-│   ├── SecretField.qml          THE field you type a secret into: the lock
-│   │                            screen's, the keyring's, and the wifi row's.
+│   ├── SecretField.qml          THE field you type a secret into: the
+│   │                            keyring's and the wifi row's.
 │   │                            One mark per character rather than an
 │   │                            asterisk, each a different shape from
 │   │                            lobes.js, and only the NEW one ever moves.
@@ -656,7 +656,18 @@ banditshell/
 │   ├── Currency.qml             an amount in one currency, said in another:
 │   │                            the ECB's daily rates, fetched when online
 │   │                            and kept for when it is not
-│   ├── Lock.qml                 whether the screen is locked, and what decides it
+│   ├── Lock.qml                 whether the screen is locked, and what decides it.
+│   │                            Also the password on its way to PAM: typed into
+│   │                            a buffer nothing outside can read, called WRONG
+│   │                            the moment PAM has not said yes within
+│   │                            lock.verdict ms (both answers take ~50 ms
+│   │                            since the PAM stack runs nodelay; a wrong one
+│   │                            used to sleep 2 s), and queued, not refused,
+│   │                            when it is sent while the last one is out
+│   ├── Keymap.qml               the keyboard's layouts, which one is on, and Caps
+│   │                            Lock, read from Hyprland's main keyboard and
+│   │                            re-read on its activelayout event; next() moves
+│   │                            every keyboard to the next layout
 │   ├── Keyring.qml              the KEYRING'S question, once the shell is the one
 │   │                            asking it. gnome-keyring draws nothing: it asks
 │   │                            whoever owns org.gnome.keyring.SystemPrompter,
@@ -898,7 +909,52 @@ banditshell/
 │   │   └── CalculatorPanel.qml  panel's twin, mirrored. Summoned by name, so it
 │   │                            takes the keyboard and the number row drives it.
 │   │                            NOT a fifth gauge; a gauge answers a glance
-│   ├── lock/                    the lock: one compositor surface per screen, one face
+│   ├── lock/                    the lock: one compositor surface per screen, one face.
+│   │                            The face owns the whole screen and draws nothing
+│   │                            of the shell: the wallpaper blurred under an ink
+│   │                            veil, the time, and a field (LockField) of frosted
+│   │                            glass: one round dot per character, each from a
+│   │                            fixed pool so only the one that changed moves,
+│   │                            centred with the caret as one group, with the
+│   │                            keyboard layout as a tag at its end (click to
+│   │                            switch) and "caps lock is on" under it when it is.
+│   │                            Under that, LockInfo, in no box at all (the lock
+│   │                            is the whole computer, not a pop-up): now playing
+│   │                            dim until hovered, when its progress and controls
+│   │                            unfold downward without moving the field (on a
+│   │                            short screen the whole stack sits higher, by its
+│   │                            unfolded height, so they clear the power row);
+│   │                            battery
+│   │                            while a laptop is unplugged; and the
+│   │                            notifications as LockAlerts:
+│   │                            one disc per app, the newest in front
+│   │                            on the right with the total on its badge, the next
+│   │                            two smaller and fainter behind it to the left,
+│   │                            each peeking out by half of its OWN size, all on
+│   │                            one baseline so the smaller ones ride lower; not a
+│   │                            word of what they say. LockPower: sleep, restart
+│   │                            and shut down as island bubbles that rise when
+│   │                            the pointer reaches the bottom edge, each firing
+│   │                            only after a held press fills its ring, so a
+│   │                            guest can leave without a stray click costing
+│   │                            the session its unsaved work. No glow anywhere. One family on the whole
+│   │                            face, lock.font (Adwaita Sans, the desktop's own
+│   │                            UI face): LockClock sets the time in it on its
+│   │                            variable weight axis, sized from the screen's
+│   │                            SHORTER side, in a row or stacked
+│   │                            (lock.clockLayout); a changing digit thins out,
+│   │                            swaps and fills back in, and the digits nearest
+│   │                            the pointer run heavier. Two states, like an
+│   │                            always-on display: awake (Lock.awake) after any
+│   │                            key, move or touch, rested after lock.restAfter
+│   │                            seconds of nothing, when the weight drops to a
+│   │                            hairline and everything dims. It
+│   │                            blooms out of the field over the live desktop
+│   │                            and folds back into it on the way out, with the
+│   │                            wallpaper's lobed reveal; Hyprland's
+│   │                            session_lock_xray is on
+│   │                            for exactly those two moments, so a dead lock
+│   │                            client never shows what is behind it
 │   ├── keyring/KeyringPrompt.qml the keyring's password question, as a card. The
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
@@ -1265,8 +1321,7 @@ keyed by output name exactly like `wallpaper.perScreen` (`{ "DP-1": false }`), a
 `services/SidebarState.qml` owns the answer. Hidden means FULLY, in the shape this section
 promised: the chassis's left edge becomes the band the other three edges wear, the left
 reservation (`FrameExclusions`) gives the width back to the windows, the column draws nothing
-and takes no presses, and the lock face draws the same band-only shape because it instantiates
-the same `Chassis`. `screen sidebar toggle` flips the monitor the keyboard is on, and it is bound
+and takes no presses. `screen sidebar toggle` flips the monitor the keyboard is on, and it is bound
 (`SUPER + K`, taking the calculator panel's old seat, which fell back to `SUPER + Z`). Two
 things are still honest scaffolding: the change
 is instant rather than the promised slide behind the left edge, which is still to come, and an
@@ -1320,9 +1375,8 @@ with the zeros again, the same contract `pushBorders` runs on. There is no half-
 to fall out of: the toggle, the boot and the reload all land in the same place. The pair is
 bound (`SUPER + SHIFT + K`; the on-screen keyboard took its `SUPER + SHIFT + Z`). Bare is
 persisted like `wallpaper.enabled`: a shell turned
-off on purpose is off when it comes back. The lock face follows the chassis and so goes bare
-with the desktop; a shell reduced to a wallpaper runner is still the machine looking like
-itself.
+off on purpose is off when it comes back. The lock face draws no chassis, so it looks the same
+bare or not; a shell reduced to a wallpaper runner is still the machine looking like itself.
 
 ## 9. Driving it from a terminal
 
@@ -1498,8 +1552,8 @@ group answers the whole thing rather than only the halves a hotkey needs. Turnin
 **light going out, not a surface going away**: the window stays, the images keep their
 sources, `current` keeps its path, so what is left is the black `WallpaperWindow` was already
 painting behind the picture and coming back is a fade rather than a decode. The lock screen
-follows the same flag, because its ground is made of this same picture and `LockSurface` is
-black underneath it.
+follows the same flag, because its ground is made of this same picture and the face lays it on
+an ink floor of its own.
 
 `panel wallpaper`, the picker, is a **surface** rather than a setting: everything on it opens
 and closes something on the screen and writes nothing, where everything on `wallpaper` writes
