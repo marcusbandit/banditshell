@@ -34,7 +34,7 @@ MenuRow {
         spacing: Appearance.padding.normal
 
         Button {
-            visible: root.offersSymbols
+            visible: root.offersSymbols && !root.result?.money
             anchors.verticalCenter: parent.verticalCenter
             icon: "function"
             text: "Symbols"

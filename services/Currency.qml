@@ -35,7 +35,8 @@ Singleton {
             text: `${Money.money(value)} ${ask.to}`,
             detail: `1 ${ask.from} = ${one.toFixed(4)} ${ask.to} · ${root.date}`,
             work: 1,
-            firm: true
+            firm: true,
+            money: true
         };
     }
 
