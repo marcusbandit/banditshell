@@ -1,8 +1,8 @@
 {
   "entries": [
     {
-      "id": "2026-10-15",
-      "date": "2026-10-15",
+      "id": "2026-10-16-2",
+      "date": "2026-10-16",
       "changes": [
         {
           "type": "ui",
@@ -38,6 +38,115 @@
           "type": "bugs",
           "severity": "minor",
           "text": "With the media controller open, the island still opens when the pointer rests on it, and clicks on it reach the island instead of closing the controller."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-16",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The hotkey sheet draws a whole keyboard: the function row, Print Screen and its neighbours, the Insert and Home block, the arrows as an inverted T and the numpad when anything on it is bound. ISO and ANSI are both drawn properly, and the ISO Enter is one stepped key instead of two boxes."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dropdowns in Settings open again. Clicking one used to show an empty list."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings › Hotkey sheet › Board offers ISO, ANSI and Custom. Custom unlocks VIA layout and VIA keymap: Import lists the VIA files in your Downloads folder and nothing else, and Browse opens the system file picker. Every file you pick gets a short check, then a note under the row says this is it or this is not it, and why."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Try a sample board works again after you forget the sample, and an imported board has an open button so you can edit its file into your own board. The sheet follows your edits as you save."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Split is no longer offered under Board. If you had it chosen, the sheet keeps drawing it and the list shows it until you pick something else."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The list on the left of Settings folds down to its icons with the button at its bottom, and the settings beside it get the room. It stays folded until you unfold it."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-15-3",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When the shell restarts, it puts back what you had open: the launcher or any other panel, a pinned sidebar menu, quick controls, notifications, the island, the on-screen keyboard and the Files window in its folder. Settings reopens on the same page, with the same rows expanded, scrolled to the same place, and the calculator keeps its number. A reboot or logging out still starts you with nothing open."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-15-2",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The lock screen is new. It covers the whole screen with your wallpaper blurred behind it, a large clock, the date and a password field, and nothing of the shell shows through. It grows out of your desktop when it locks and folds back into the password field when you unlock."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A wrong password is turned down at once instead of after about two seconds. A password you send while the last one is still being checked waits its turn instead of being dropped."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The lock screen shows how many notifications are waiting, with the apps they came from but nothing they say, and what music is playing. Point at the music to pause it or skip a track."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The password field shows your keyboard layout when you have more than one, and clicking it switches. It says so when Caps Lock is on, and an unplugged laptop shows its battery under the field."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Move the pointer to the bottom of the lock screen for sleep, restart and shut down. Each needs a press held until its ring fills, so a stray click does nothing."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "After 10 seconds without a key or the mouse, the lock screen dims and its clock turns thin. Any key or movement brings it back."
+        },
+        {
+          "type": "config",
+          "severity": "major",
+          "text": "lock.dim in config.json now sets how dark a veil sits over the lock screen's wallpaper, where it used to darken the picture itself, so the same number leaves your wallpaper more visible than before. New lock keys: font (the lock screen's typeface, Adwaita Sans by default), clockShare (clock size), clockLayout (row or stacked), restAfter (seconds before it dims) and verdict (milliseconds before an unanswered password counts as wrong)."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-15",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell dev try now lists each worktree with its pull request, open, merged or closed, and first clears away every worktree whose work is already on main, along with its branch. A worktree with changes of its own is never cleared. banditshell dev tidy does the same clearing without trying anything."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When a worktree you are trying gets merged, the shell goes back to main by itself within two minutes and sends a notification. A worktree that still has unsaved changes stays on."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "In the banditshell dev try list, main is number 0 and the one running is marked * instead of a number. Picking the one already running says so instead of restarting it; banditshell restart still reloads it. In a terminal, the list and the messages are in colour."
         }
       ]
     },

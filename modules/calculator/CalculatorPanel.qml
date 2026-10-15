@@ -105,6 +105,55 @@ Item {
         root.full = !root.full;
     }
 
+    readonly property string memoryKey: `calculator ${root.screenName}`
+
+    function remember(): void {
+        Relaunch.keep(root.memoryKey, {
+            full: root.full,
+            entry: pad.entry,
+            typed: pad.typed,
+            acc: pad.acc,
+            op: pad.op,
+            history: pad.history
+        });
+    }
+
+    Connections {
+        target: pad
+
+        function onEntryChanged(): void {
+            root.remember();
+        }
+
+        function onTypedChanged(): void {
+            root.remember();
+        }
+
+        function onAccChanged(): void {
+            root.remember();
+        }
+
+        function onOpChanged(): void {
+            root.remember();
+        }
+
+        function onHistoryChanged(): void {
+            root.remember();
+        }
+    }
+
+    Component.onCompleted: {
+        const was = Relaunch.recall(root.memoryKey);
+        if (!was)
+            return;
+        pad.entry = was.entry ?? "0";
+        pad.typed = !!was.typed;
+        pad.acc = was.acc ?? 0;
+        pad.op = was.op ?? "";
+        pad.history = was.history ?? "";
+        root.full = !!was.full;
+    }
+
     Follow {
         id: reveal
 
@@ -123,8 +172,11 @@ Item {
         Component.onCompleted: snap()
     }
 
-    onFullChanged: if (!root.shown)
-        shape.snap()
+    onFullChanged: {
+        if (!root.shown)
+            shape.snap();
+        root.remember();
+    }
 
     Item {
         id: keys

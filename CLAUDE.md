@@ -41,10 +41,14 @@ work has a name, so that placeholder reads like a commit hash and matches
 nothing. `try` runs the files as they are, so nothing has to be committed
 first.
 
-A worktree ends with its PR. Once the PR is merged or closed, remove the
-worktree (`git worktree remove <path>`, run from the main checkout) and delete
-its local branch, in the same turn that settles it. Left alone they pile up in
-`git worktree list` and `banditshell dev try`'s picker.
+A worktree ends with its PR. Once the PR is merged, run `banditshell dev tidy`
+from the main checkout: it removes every worktree whose work is on main, with
+its local branch, and keeps anything with changes and the one you are standing
+in. A merged one that is running sends the live session back to the checkout
+first, and `try` leaves a watcher that does this on its own within two minutes
+of the merge. A bare `banditshell dev try` tidies the same way before it lists. A
+closed, unmerged PR is not tidied; remove that worktree by hand
+(`git worktree remove <path>` from the main checkout) and delete its branch.
 
 ## Agent skills
 

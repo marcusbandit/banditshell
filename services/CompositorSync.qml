@@ -122,6 +122,14 @@ Singleton {
         pusher.exec(["hyprctl", "--batch", `keyword general:col.active_border ${stop(active)} ; keyword general:col.inactive_border ${stop(inactive)}`]);
     }
 
+    function lockXrayCommand(on: bool): var {
+        if (!Compositor.isHyprland || !Hypr.parserKnown)
+            return [];
+        if (Hypr.lua)
+            return ["hyprctl", "eval", `hl.config({ misc = { session_lock_xray = ${on} } })`];
+        return ["hyprctl", "keyword", "misc:session_lock_xray", on ? "true" : "false"];
+    }
+
     Connections {
         target: Hypr
 

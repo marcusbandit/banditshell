@@ -35,7 +35,7 @@ Item {
     }
 
     function sectionOn(section: var): bool {
-        if (root.fromLayout || section.id === "main")
+        if (root.fromLayout || section.id !== "numpad")
             return true;
         for (const cell of section.keys)
             for (const s of cell.syms) {
@@ -51,14 +51,14 @@ Item {
     readonly property real totalUnits: {
         let n = 0;
         for (const section of root.shown)
-            n = Math.max(n, section.width);
+            n = Math.max(n, section.x + section.width);
         return n;
     }
 
     readonly property real totalRows: {
         let n = 0;
         for (const section of root.shown)
-            n += section.height;
+            n = Math.max(n, section.y + section.height);
         return n;
     }
 
@@ -110,17 +110,13 @@ Item {
 
     readonly property var placed: {
         const out = [];
-        let top = 0;
-        for (const section of root.shown) {
-            const left = section.align === "right" ? root.totalUnits - section.width : 0;
+        for (const section of root.shown)
             for (const cell of section.keys) {
                 const key = root.dress(cell);
-                key.x = left + cell.x;
-                key.y = top + cell.y;
+                key.x = section.x + cell.x;
+                key.y = section.y + cell.y;
                 out.push(key);
             }
-            top += section.height;
-        }
         return out;
     }
 
@@ -128,11 +124,17 @@ Item {
         return key.mod ? root.sheet.modSymbol(key.mod) : "";
     }
 
+    readonly property real legendMargin: Appearance.padding.small / 2
+
+    function legendWidth(cap: string, glyph: string): real {
+        const sigil = glyph ? Appearance.font.size.small + (cap ? Appearance.padding.small / 2 : 0) : 0;
+        return cap.length * root.advance + sigil + root.legendMargin * 2 + root.seam;
+    }
+
     readonly property real naturalPitch: {
         let p = Appearance.sizes.minTarget + root.seam;
         for (const k of root.placed) {
-            const glyph = root.glyphOf(k) ? Appearance.font.size.small + (k.cap ? Appearance.padding.small / 2 : 0) : 0;
-            const need = (k.cap.length * root.advance + glyph + Appearance.padding.normal + root.seam) / k.w;
+            const need = root.legendWidth(k.cap, root.glyphOf(k)) / k.w;
             if (need > p)
                 p = need;
         }
@@ -329,6 +331,7 @@ Item {
                         foot: cap.modelData.foot
                         pitch: root.pitch
                         seam: root.seam
+                        margin: root.legendMargin
 
                         label: cap.modelData.cap
                         glyph: root.glyphOf(cap.modelData)
@@ -371,9 +374,10 @@ Item {
 
                         readonly property var note: Keyboards.blockedNote(spare.modelData)
 
-                        units: root.pitch > 0 ? Math.min(root.totalUnits, (spare.modelData.cap.length * root.advance + Appearance.padding.normal + root.seam) / root.pitch) : 1
+                        units: root.pitch > 0 ? Math.min(root.totalUnits, root.legendWidth(spare.modelData.cap, "") / root.pitch) : 1
                         pitch: root.pitch
                         seam: root.seam
+                        margin: root.legendMargin
 
                         label: spare.modelData.cap
                         blocked: spare.note !== null

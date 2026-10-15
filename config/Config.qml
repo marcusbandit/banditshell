@@ -720,6 +720,16 @@ Singleton {
 
                 dotScale: 0.5,
 
+                font: "Adwaita Sans",
+
+                clockShare: 0.065,
+
+                clockLayout: "row",
+
+                verdict: 300,
+
+                restAfter: 10,
+
                 revealSpeed: 9
             },
 

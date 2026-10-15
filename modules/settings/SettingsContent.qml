@@ -22,6 +22,11 @@ Item {
         clip: true
         boundsBehavior: Flickable.StopAtBounds
 
+        onContentYChanged: SettingsView.scroll = view.contentY
+        onMovementStarted: SettingsView.resumeScroll = 0
+        onContentHeightChanged: root.resume()
+        onHeightChanged: root.resume()
+
         Column {
             id: body
 
@@ -201,6 +206,18 @@ Item {
             }
         }
     }
+
+    function resume(): void {
+        const want = SettingsView.resumeScroll;
+        if (want <= 0)
+            return;
+        const reach = Math.max(0, view.contentHeight - view.height);
+        view.contentY = Math.min(want, reach);
+        if (reach >= want)
+            SettingsView.resumeScroll = 0;
+    }
+
+    Component.onCompleted: Qt.callLater(root.resume)
 
     function reveal(uid: string): void {
         const target = root.findRow(body, uid);

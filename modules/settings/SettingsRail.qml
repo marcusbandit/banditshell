@@ -10,6 +10,8 @@ Item {
     id: root
 
     property bool tiny: false
+    property bool foldable: false
+    property bool folded: false
 
     readonly property real rowHeight: Appearance.sizes.settingsRailRow
     readonly property var hits: Catalogue.search(SettingsView.query).filter(h => Catalogue.present(h.page, SettingsState) && Catalogue.present(h.group, SettingsState))
@@ -128,7 +130,7 @@ Item {
         x: -Appearance.padding.small
         y: field.height + Appearance.padding.normal
         width: root.width + Appearance.padding.small * 2
-        height: root.height - y
+        height: root.height - y - (fold.visible ? fold.height + Appearance.padding.small : 0)
         contentHeight: SettingsView.searching ? found.implicitHeight : tree.implicitHeight
         clip: true
         boundsBehavior: Flickable.StopAtBounds
@@ -328,6 +330,17 @@ Item {
                 }
             }
         }
+    }
+
+    RailRow {
+        id: fold
+
+        y: root.height - height
+        width: root.width
+        visible: root.foldable
+        icon: root.folded ? "left_panel_open" : "left_panel_close"
+        label: "Fold this list"
+        onClicked: SettingsState.foldRail(!root.folded)
     }
 
     component RailRow: Item {

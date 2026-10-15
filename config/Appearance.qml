@@ -129,6 +129,7 @@ Singleton {
         readonly property string family: root.config.font.family
         readonly property string icon: root.config.font.icon
         readonly property string brand: root.config.font.brand
+        readonly property string lock: root.config.lock.font
 
         readonly property QtObject size: QtObject {
             readonly property int small: Math.round(root.tier(root.fontBase, root.config.font.scale, 0))
@@ -329,6 +330,8 @@ Singleton {
         readonly property real lockDim: root.config.lock.dim
         readonly property real lockDesaturate: root.config.lock.desaturate
         readonly property int lockDot: Math.round(root.font.iconSize * root.config.lock.dotScale)
+        readonly property real lockClockShare: root.config.lock.clockShare
+        readonly property bool lockClockStacked: root.config.lock.clockLayout === "stacked"
 
         readonly property real seam: 2
         readonly property real lockReveal: root.config.lock.revealSpeed

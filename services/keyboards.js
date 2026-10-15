@@ -27,6 +27,23 @@ const FUNCTION_ROWS = [
         .concat(functionKeys(1, 4), [{ gap: 0.5 }], functionKeys(5, 8), [{ gap: 0.5 }], functionKeys(9, 12))
 ];
 
+const PRINT_ROWS = [[
+        key("PRSC", "PrSc", ["Print"]),
+        key("SCLK", "ScLk", ["Scroll_Lock"]),
+        key("PAUS", "Paus", ["Pause"])
+    ]];
+
+const NAV_ROWS = [
+    [key("INS", "Ins", ["Insert"]), key("HOME", "Home", ["Home"]), key("PGUP", "PgUp", ["Prior", "Page_Up"])],
+    [key("DELE", "Del", ["Delete"]), key("END", "End", ["End"]), key("PGDN", "PgDn", ["Next", "Page_Down"])],
+    [],
+    [{ gap: 1 }, key("UP", "↑", ["Up"])],
+    [key("LEFT", "←", ["Left"]), key("DOWN", "↓", ["Down"]), key("RGHT", "→", ["Right"])]
+];
+
+const CLUSTER_GAP = 0.25;
+const FUNCTION_GAP = 0.5;
+
 const NUMBER_ROW = [key("TLDE", "`", ["grave"])]
     .concat(letters("AE", "1234567890").map(k => Object.assign(k, { syms: [k.cap] })), [
         key("AE11", "-", ["minus"]),
@@ -62,11 +79,7 @@ const BOTTOM_ROW = [
     key("RALT", "Alt", [], { mod: 8, units: 1.25 }),
     key("RWIN", "", [], { mod: 64, units: 1.25 }),
     key("MENU", "Menu", ["Menu"], { units: 1.25 }),
-    key("RCTL", "Ctrl", [], { mod: 4, units: 1.25 }),
-    { gap: 0.25 },
-    key("LEFT", "←", ["Left"]),
-    key("DOWN", "↓", ["Down"]),
-    key("RGHT", "→", ["Right"])
+    key("RCTL", "Ctrl", [], { mod: 4, units: 1.25 })
 ];
 
 const RIGHT_SHIFT = key("RTSH", "Shift", [], { mod: 1, units: 2.75 });
@@ -110,7 +123,7 @@ function mainRows(variant) {
             [key("LFSH", "", [], { mod: 1, units: 2.25 })].concat(LOWER_LETTERS, [RIGHT_SHIFT])
         ];
         if (variant === "ansi")
-            return rows.slice(0, 3).concat([rows[3].concat(ARROW_UP), BOTTOM_ROW]);
+            return rows.concat([BOTTOM_ROW]);
         return [
             splitAfter(rows[0], 7),
             splitAfter(rows[1], 6),
@@ -123,7 +136,7 @@ function mainRows(variant) {
         NUMBER_ROW,
         UPPER_LETTERS.concat([key("RTRN", "Enter", ["Return"], { units: 1.5, span: 2, foot: 1.25 })]),
         HOME_LETTERS.concat([key("BKSL", "\\", ["backslash"])]),
-        [key("LFSH", "", [], { mod: 1, units: 1.25 }), key("LSGT", "<", ["less"])].concat(LOWER_LETTERS, [RIGHT_SHIFT], ARROW_UP),
+        [key("LFSH", "", [], { mod: 1, units: 1.25 }), key("LSGT", "<", ["less"])].concat(LOWER_LETTERS, [RIGHT_SHIFT]),
         BOTTOM_ROW
     ];
 }
@@ -150,7 +163,7 @@ const NUMPAD_ROWS = [
         key("KP1", "1", ["KP_1", "KP_End"]),
         key("KP2", "2", ["KP_2", "KP_Down"]),
         key("KP3", "3", ["KP_3", "KP_Page_Down"]),
-        key("KPEN", "Enter", ["KP_Enter"], { span: 2 })
+        key("KPEN", "Ent", ["KP_Enter"], { span: 2 })
     ],
     [
         key("KP0", "0", ["KP_0", "KP_Insert"], { units: 2 }),
@@ -193,16 +206,36 @@ function place(rows) {
     return { keys, width, height };
 }
 
-function section(id, align, rows) {
-    return Object.assign({ id, align }, place(rows));
+function section(id, x, y, rows) {
+    return Object.assign({ id, x, y }, place(rows));
 }
 
+const MAIN_WIDTH = place([NUMBER_ROW]).width;
+const MAIN_TOP = 1 + FUNCTION_GAP;
+const NAV_LEFT = MAIN_WIDTH + CLUSTER_GAP;
+const NUMPAD_LEFT = NAV_LEFT + place(NAV_ROWS).width + CLUSTER_GAP;
+
 function templateSections(variant) {
+    if (variant === "split")
+        return [
+            section("function", 0, 0, FUNCTION_ROWS),
+            section("main", 0, MAIN_TOP, mainRows(variant))
+        ];
     return [
-        section("function", "left", FUNCTION_ROWS),
-        section("main", "left", mainRows(variant)),
-        section("numpad", "right", NUMPAD_ROWS)
+        section("function", 0, 0, FUNCTION_ROWS),
+        section("print", NAV_LEFT, 0, PRINT_ROWS),
+        section("main", 0, MAIN_TOP, mainRows(variant)),
+        section("nav", NAV_LEFT, MAIN_TOP, NAV_ROWS),
+        section("numpad", NUMPAD_LEFT, MAIN_TOP, NUMPAD_ROWS)
     ];
+}
+
+function flatten(sections) {
+    const keys = [];
+    for (const s of sections)
+        for (const k of s.keys)
+            keys.push(Object.assign({}, k, { x: s.x + k.x, y: s.y + k.y }));
+    return keys;
 }
 
 const SHAPES = ["ansi", "iso", "split"];
@@ -213,10 +246,9 @@ function shapeNamed(value) {
 }
 
 const TEMPLATE = templateSections(TEMPLATE_VARIANT);
-const MAIN_WIDTH = place([NUMBER_ROW]).width;
 
 function freshSize() {
-    return { w: 1, h: 1, x2: 0, y2: 0, w2: 0, h2: 0 };
+    return { w: 1, h: 1, x2: 0, y2: 0, w2: 0, h2: 0, decal: false };
 }
 
 function shapeOf(lines, x, y, size) {
@@ -238,6 +270,21 @@ function shapeOf(lines, x, y, size) {
     return out;
 }
 
+const MATRIX_SPOT = /^\d+\s*,\s*\d+$/;
+
+function notDefinition(data) {
+    if (Array.isArray(data))
+        return "a keyboard-layout-editor drawing, not a VIA definition";
+    if (Array.isArray(data?.layers))
+        return "a saved VIA keymap, not the layout · import it under VIA keymap";
+    const layouts = data?.layouts;
+    if (layouts && typeof layouts === "object" && Object.keys(layouts).some(k => Array.isArray(layouts[k]?.layout)))
+        return "a QMK info.json, not a VIA definition";
+    if (data && typeof data === "object" && (data.keyboard || data.keyboard_name) && data.keymap !== undefined)
+        return "a QMK keymap, not a VIA definition";
+    return "no layouts.keymap in it, so not a VIA definition";
+}
+
 function parseVia(text) {
     let data;
     try {
@@ -248,7 +295,7 @@ function parseVia(text) {
 
     const keymap = data?.layouts?.keymap;
     if (!Array.isArray(keymap) || keymap.length === 0)
-        return { error: Array.isArray(data?.layers) ? "the file is a saved keymap, not a definition · import it under VIA keymap" : "the file has no layouts.keymap, so it is not a VIA keyboard definition" };
+        return { error: notDefinition(data) };
 
     const rows = [];
     let y = 0;
@@ -267,11 +314,13 @@ function parseVia(text) {
                 for (const k of ["w", "h", "x2", "y2", "w2", "h2"])
                     if (typeof item[k] === "number")
                         size[k] = item[k];
+                if (item.d === true)
+                    size.decal = true;
                 continue;
             }
             const lines = String(item).split("\n");
             const option = /^\s*(\d+)\s*,\s*(\d+)\s*$/.exec(lines[3] ?? "");
-            if (!option || option[2] === "0")
+            if (!size.decal && (!option || option[2] === "0"))
                 cells.push(shapeOf(lines, x, y, size));
             x += size.w;
             size = freshSize();
@@ -283,6 +332,10 @@ function parseVia(text) {
 
     if (!rows.length)
         return { error: "the layout lists no keys" };
+    if (!rows.some(r => r.some(c => MATRIX_SPOT.test(c.matrix))))
+        return { error: "no key says where it sits in the matrix, so not a VIA definition" };
+    if (rows.some(r => r.some(c => ![c.x, c.y, c.w, c.h, c.foot].every(Number.isFinite) || c.w <= 0 || c.h <= 0 || Math.abs(c.x) > 1000 || Math.abs(c.y) > 1000 || c.w > 100 || c.h > 100)))
+        return { error: "some keys have an impossible size or place" };
 
     let left = Infinity;
     let top = Infinity;
@@ -385,7 +438,7 @@ function alignBoard(parsed) {
 
     const template = place(mainRows(variant)).keys;
     const byId = {};
-    for (const t of template)
+    for (const t of place(NAV_ROWS).keys)
         byId[t.id] = t;
     const functionRow = place(FUNCTION_ROWS).keys;
     const pad = place(NUMPAD_ROWS).keys;
@@ -442,7 +495,8 @@ function alignBoard(parsed) {
         variant,
         sections: [{
                 id: "board",
-                align: "left",
+                x: 0,
+                y: 0,
                 keys,
                 width,
                 height
@@ -458,6 +512,8 @@ const KEYCODE_ROLES = {
     KC_LCTL: "LCTL", KC_LGUI: "LWIN", KC_LALT: "LALT", KC_SPC: "SPCE",
     KC_RALT: "RALT", KC_RGUI: "RWIN", KC_APP: "MENU", KC_RCTL: "RCTL",
     KC_UP: "UP", KC_LEFT: "LEFT", KC_DOWN: "DOWN", KC_RGHT: "RGHT",
+    KC_INS: "INS", KC_HOME: "HOME", KC_PGUP: "PGUP", KC_DEL: "DELE", KC_END: "END", KC_PGDN: "PGDN",
+    KC_PSCR: "PRSC", KC_SCRL: "SCLK", KC_PAUS: "PAUS",
     KC_NUM: "NMLK", KC_PSLS: "KPDV", KC_PAST: "KPMU", KC_PMNS: "KPSU", KC_PPLS: "KPAD", KC_PENT: "KPEN", KC_PDOT: "KPDL",
     KC_P7: "KP7", KC_P8: "KP8", KC_P9: "KP9", KC_P4: "KP4", KC_P5: "KP5", KC_P6: "KP6",
     KC_P1: "KP1", KC_P2: "KP2", KC_P3: "KP3", KC_P0: "KP0"
@@ -465,15 +521,6 @@ const KEYCODE_ROLES = {
 
 const KEYCODE_EXTRAS = {
     KC_NUHS: ["#", ["numbersign"]],
-    KC_DEL: ["Del", ["Delete"]],
-    KC_INS: ["Ins", ["Insert"]],
-    KC_HOME: ["Home", ["Home"]],
-    KC_END: ["End", ["End"]],
-    KC_PGUP: ["PgUp", ["Prior", "Page_Up"]],
-    KC_PGDN: ["PgDn", ["Next", "Page_Down"]],
-    KC_PSCR: ["Print", ["Print"]],
-    KC_SCRL: ["ScrLk", ["Scroll_Lock"]],
-    KC_PAUS: ["Pause", ["Pause"]],
     KC_MUTE: ["Mute", ["XF86AudioMute"]],
     KC_VOLU: ["Vol+", ["XF86AudioRaiseVolume"]],
     KC_VOLD: ["Vol-", ["XF86AudioLowerVolume"]],
@@ -501,7 +548,7 @@ function keycodeLegends() {
         const k = byId[KEYCODE_ROLES[code]];
         out[code] = legendFrom(k.cap, k.syms, k.mod, k.id);
     }
-    for (const k of TEMPLATE[1].keys)
+    for (const k of TEMPLATE.find(s => s.id === "main").keys)
         if (/^[A-Z0-9]$/.test(k.cap) && /^A[BCDE]\d\d$/.test(k.id))
             out[`KC_${k.cap}`] = legendFrom(k.cap, k.syms, 0, k.id);
     for (let n = 1; n <= 24; n++)
@@ -573,7 +620,7 @@ function keymapLegends(definition, keymap) {
 
 function applyLegends(board, legends) {
     const keys = board.sections[0].keys.map(cell => {
-        const legend = cell.encoder ? undefined : legends[cell.matrix];
+        const legend = cell.encoder || !Object.prototype.hasOwnProperty.call(legends, cell.matrix) ? undefined : legends[cell.matrix];
         return legend ? Object.assign({}, cell, { role: legend.role, cap: legend.cap || (legend.syms.length || legend.mod ? "" : cell.matrix), syms: legend.syms, mod: legend.mod }) : cell;
     });
     return Object.assign({}, board, { sections: [Object.assign({}, board.sections[0], { keys })] });

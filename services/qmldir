@@ -24,6 +24,7 @@ singleton HyprConfig 1.0 HyprConfig.qml
 singleton Hypr 1.0 Hypr.qml
 singleton Idle 1.0 Idle.qml
 singleton Keyboards 1.0 Keyboards.qml
+singleton Keymap 1.0 Keymap.qml
 singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
 singleton Launching 1.0 Launching.qml
@@ -47,6 +48,7 @@ singleton PenMap 1.0 PenMap.qml
 singleton PowerProfile 1.0 PowerProfile.qml
 singleton Power 1.0 Power.qml
 singleton Prompts 1.0 Prompts.qml
+singleton Relaunch 1.0 Relaunch.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml

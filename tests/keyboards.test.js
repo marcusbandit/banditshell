@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/keyboards.js"), "utf8");
-const Keyboards = new Function(src + "\nreturn { TEMPLATE, TEMPLATE_VARIANT, templateSections, shapeNamed, parseVia, alignBoard, blockedMap, parseKeymap, keymapLegends, applyLegends };")();
+const Keyboards = new Function(src + "\nreturn { TEMPLATE, TEMPLATE_VARIANT, templateSections, flatten, shapeNamed, parseVia, alignBoard, blockedMap, parseKeymap, keymapLegends, applyLegends };")();
 
 const GALAXY = path.join(__dirname, "fixtures/Epomaker_Galaxy100.json");
 const MINI_DEFINITION = path.join(__dirname, "fixtures/via_bandit_mini.json");
@@ -157,7 +157,7 @@ test("the real Galaxy100: ANSI, arrows by shape, the numpad by x, the knob and t
     assert.deepStrictEqual(caps(["4,2", "4,11", "4,13"]), ["Z", "/", "Shift"]);
     assert.strictEqual(keys["4,0"].mod, 1);
     assert.deepStrictEqual(caps(["4,14", "5,13", "5,14", "5,15"]), ["↑", "←", "↓", "→"]);
-    assert.deepStrictEqual(caps(["6,0", "6,3", "6,4", "6,10", "4,15", "6,15", "6,13", "6,14"]), ["Num", "-", "7", "+", "1", "Enter", "0", "."]);
+    assert.deepStrictEqual(caps(["6,0", "6,3", "6,4", "6,10", "4,15", "6,15", "6,13", "6,14"]), ["Num", "-", "7", "+", "1", "Ent", "0", "."]);
     assert.deepStrictEqual(keys["6,15"].syms, ["KP_Enter"]);
     assert.strictEqual(keys["6,10"].h, 2);
     assert.strictEqual(keys["6,13"].w, 2);
@@ -214,8 +214,94 @@ test("the split board leaves a gap down the middle of every row", () => {
     assert.deepStrictEqual(spaces.map(k => k.w), [3.25, 2.75]);
     assert.strictEqual(spaces[1].x - (spaces[0].x + spaces[0].w), 1);
     const ansi = mainOf("ansi");
-    assert.strictEqual(main.keys.length, ansi.keys.length + 1);
+    assert.strictEqual(main.keys.length, ansi.keys.length + 1 + 4, "a second space bar and the arrows");
     assert.strictEqual(main.height, ansi.height);
+});
+
+function sectionOf(shape, id) {
+    return Keyboards.templateSections(shape).find(s => s.id === id);
+}
+
+test("ansi and iso are drawn as whole boards: function row above, nav and numpad beside, nothing overlapping", () => {
+    for (const shape of ["ansi", "iso"]) {
+        const sections = Keyboards.templateSections(shape);
+        assert.deepStrictEqual(sections.map(s => s.id), ["function", "print", "main", "nav", "numpad"], shape);
+        const main = sectionOf(shape, "main");
+        const nav = sectionOf(shape, "nav");
+        const pad = sectionOf(shape, "numpad");
+        assert.strictEqual(main.y, 1.5, `${shape}: half a row between the function row and the numbers`);
+        assert.strictEqual(nav.y, main.y);
+        assert.strictEqual(pad.y, main.y, `${shape}: the numpad sits beside the main block, not under it`);
+        assert.strictEqual(nav.x, main.x + main.width + 0.25);
+        assert.strictEqual(pad.x, nav.x + nav.width + 0.25);
+        assert.strictEqual(sectionOf(shape, "print").x, nav.x);
+        assert.strictEqual(main.width, 15, `${shape}: the main block ends flush at 15u`);
+
+        const keys = Keyboards.flatten(sections);
+        const pieces = keys.reduce((out, k) => out.concat(k.foot ? [
+            { id: k.id, x: k.x, y: k.y, w: k.w, h: 1 },
+            { id: k.id, x: k.x + k.w - k.foot, y: k.y + 1, w: k.foot, h: k.h - 1 }
+        ] : [k]), []);
+        for (const a of pieces)
+            for (const b of pieces) {
+                if (a.id === b.id)
+                    continue;
+                const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
+                assert.ok(apart, `${shape}: ${a.id} overlaps ${b.id}`);
+            }
+        const ids = keys.map(k => k.id);
+        assert.strictEqual(new Set(ids).size, ids.length, `${shape}: every key id once`);
+    }
+});
+
+test("the arrows make an inverted T under the nav cluster, level with the bottom row", () => {
+    const keys = Keyboards.flatten(Keyboards.templateSections("ansi"));
+    const at = id => keys.find(k => k.id === id);
+    assert.strictEqual(at("DOWN").y, at("SPCE").y);
+    assert.strictEqual(at("UP").y, at("RTSH").y);
+    assert.strictEqual(at("UP").x, at("DOWN").x);
+    assert.strictEqual(at("LEFT").x, at("DELE").x);
+    assert.strictEqual(at("HOME").y, at("AE01").y);
+    assert.strictEqual(at("PRSC").y, at("F1").y);
+});
+
+test("the ISO enter is one key with a narrower leg, and the backslash tucks beside the leg", () => {
+    const keys = Keyboards.flatten(Keyboards.templateSections("iso"));
+    const at = id => keys.find(k => k.id === id);
+    const enter = at("RTRN");
+    assert.deepStrictEqual([enter.w, enter.h, enter.foot], [1.5, 2, 1.25]);
+    assert.strictEqual(enter.x + enter.w, 15);
+    assert.strictEqual(at("BKSL").x + at("BKSL").w, enter.x + enter.w - enter.foot);
+    assert.strictEqual(at("BKSL").y, enter.y + 1);
+    assert.ok(!keys.some(k => k.id === "BKSL" && k.y === enter.y), "no ANSI backslash above the enter");
+    const ansi = Keyboards.flatten(Keyboards.templateSections("ansi"));
+    assert.strictEqual(ansi.find(k => k.id === "RTRN").w, 2.25);
+    assert.strictEqual(ansi.find(k => k.id === "LFSH").w, 2.25);
+    assert.strictEqual(keys.find(k => k.id === "LFSH").w, 1.25);
+});
+
+test("a file that is not a VIA definition says what it is instead", () => {
+    assert.match(Keyboards.parseVia(JSON.stringify([["Esc", "F1"]])).error, /keyboard-layout-editor/);
+    assert.match(Keyboards.parseVia(JSON.stringify({ keyboard_name: "x", layouts: { LAYOUT: { layout: [{ x: 0, y: 0 }] } } })).error, /QMK info\.json/);
+    assert.match(Keyboards.parseVia(JSON.stringify({ keyboard: "x", keymap: "default", layers: [] })).error, /saved VIA keymap|QMK keymap/);
+    assert.match(Keyboards.parseVia(JSON.stringify({ keyboard: "x", keymap: "default", layout: "LAYOUT" })).error, /QMK keymap/);
+    assert.match(Keyboards.parseVia(JSON.stringify({ name: "drawn", layouts: { keymap: [["Esc", "Q", "W"]] } })).error, /not a VIA definition/);
+    assert.match(Keyboards.parseVia(JSON.stringify({ name: "x" })).error, /no layouts\.keymap/);
+});
+
+test("decal keys are drawings, not keys, and a board of impossible sizes is refused", () => {
+    const parsed = via([[{ d: true }, "Logo", "0,0", "0,1"]]);
+    assert.deepStrictEqual(parsed.rows[0].map(c => c.matrix), ["0,0", "0,1"]);
+    assert.strictEqual(parsed.rows[0][0].x, 0);
+    assert.match(Keyboards.parseVia('{"layouts":{"keymap":[[{"w":1e400},"0,0"]]}}').error, /impossible/);
+    assert.match(Keyboards.parseVia('{"layouts":{"keymap":[[{"x":1e400},"0,0","0,1"]]}}').error, /impossible/);
+    assert.match(via([[{ w: -2 }, "0,0"]]).error, /impossible/);
+});
+
+test("a key named after an object property takes no legend from it", () => {
+    const aligned = Keyboards.alignBoard(via([["0,0", "constructor", "toString"]]));
+    const lit = Keyboards.applyLegends(aligned, { "0,0": { role: "ESC", cap: "Esc", syms: ["Escape"], mod: 0 } });
+    assert.strictEqual(lit.sections[0].keys.filter(k => k.cap === "Esc").length, 1);
 });
 
 test("the split board keeps the arrows in one cluster", () => {
@@ -259,7 +345,7 @@ test("a saved VIA keymap is read down to its first layer, and a wrong file says 
     assert.match(Keyboards.parseKeymap(JSON.stringify({ layers: [] })).error, /no layers/);
     assert.match(Keyboards.parseKeymap(JSON.stringify({ layers: [["KC_A"]] })).error, /no vendorProductId/);
     assert.match(Keyboards.parseKeymap(fs.readFileSync(MINI_DEFINITION, "utf8")).error, /definition, not a keymap/);
-    assert.match(Keyboards.parseVia(fs.readFileSync(MINI_KEYMAP, "utf8")).error, /saved keymap, not a definition/);
+    assert.match(Keyboards.parseVia(fs.readFileSync(MINI_KEYMAP, "utf8")).error, /saved VIA keymap, not the layout/);
 });
 
 test("a keymap lands on matrix positions and names the keys Hyprland binds", () => {
