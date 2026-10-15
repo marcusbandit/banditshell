@@ -911,6 +911,15 @@ Scope {
                                 }
 
                                 Button {
+                                    text: "90 more"
+                                    style: "outlined"
+                                    onClicked: {
+                                        for (let i = 0; i < 90; i++)
+                                            root.notify(root.pool[root.drawn++ % root.pool.length], false);
+                                    }
+                                }
+
+                                Button {
                                     text: "critical"
                                     style: "outlined"
                                     onClicked: root.notify(root.alarm, true)

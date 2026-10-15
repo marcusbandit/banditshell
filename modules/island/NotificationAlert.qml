@@ -44,6 +44,7 @@ Item {
     }
 
     readonly property bool hovered: pointer.hovered
+    readonly property bool handling: press.pressed || root.dragging || root.flinging || root.tucking
 
     readonly property var notification: root.entry?.notification ?? null
     readonly property bool live: root.entry?.live ?? false
@@ -220,13 +221,15 @@ Item {
                 else if (up >= threshold)
                     press.axis = "up";
             }
+            if (press.axis)
+                press.trail = [...press.trail.filter(p => Date.now() - p.t < 120), {
+                        x: mouse.x,
+                        y: mouse.y,
+                        t: Date.now()
+                    }];
             if (press.axis === "x") {
                 root.dragging = true;
                 root.dragX = dx;
-                press.trail = [...press.trail.filter(p => Date.now() - p.t < 120), {
-                        x: mouse.x,
-                        t: Date.now()
-                    }];
             } else if (press.axis === "up") {
                 root.dragLift = Math.max(0, Math.min(1, up / press.travel));
             }
@@ -244,7 +247,7 @@ Item {
             } else if (press.axis === "x") {
                 const first = press.trail[0];
                 const last = press.trail[press.trail.length - 1];
-                const speed = first && last && last.t > first.t ? (last.x - first.x) / (last.t - first.t) : 0;
+                const speed = first && last && last.t > first.t && Date.now() - last.t < 80 ? (last.x - first.x) / (last.t - first.t) : 0;
                 const thrown = Math.abs(speed) > 0.6 && Math.sign(speed) === Math.sign(root.dragX);
                 if (Math.abs(root.dragX) > root.width / 3 || thrown) {
                     root.fling(Math.sign(root.dragX) || 1);
@@ -254,8 +257,11 @@ Item {
                     slide.target = 0;
                 }
             } else {
+                const first = press.trail[0];
+                const last = press.trail[press.trail.length - 1];
+                const speed = first && last && last.t > first.t && Date.now() - last.t < 80 ? (first.y - last.y) / (last.t - first.t) : 0;
                 rise.value = root.dragLift;
-                if (root.dragLift >= Config.values.control.pullCommit) {
+                if (root.dragLift >= Config.values.control.pullCommit || speed > 0.6) {
                     root.tucking = true;
                     rise.target = 1;
                 } else {

@@ -3265,6 +3265,29 @@ whole spread up front, so nothing resizes mid-sweep. They fold back once the
 pointer has been gone for the grace. Every card keeps its own timer, so a burst drains
 in about one timeout, not one timeout each.
 
+A new one does not push in. It slides down into the island from its top edge
+while the card it replaces steps back into the stack: it sinks a little,
+shrinks and fades, the layer it becomes grows out from under the island, the
+layer that was there moves one place back, and the backmost tucks up behind it
+and is gone. Letting the front one go runs the same roll the other way: the
+next card starts rising from behind the moment the flick or the swipe begins,
+not after the old one has finished leaving, and the island's height blends
+from one card to the other instead of dipping in between.
+
+A long pile stays on screen. The spread stops at a little over half the
+screen's height, its edges fade where there is more, and the wheel scrolls it;
+at either end the wheel passes through to whatever is under it. The overview
+holds the same capped list. Clear all on a long spread throws the first few
+cards one after another and the rest at once.
+
+A card being dragged, flung or swiped away counts as the pointer resting on
+the island, wherever the pointer actually is. Holding a half-made swipe used to
+let the pointer drift off the shrinking island, which unpaused the timers,
+reshuffled the island and, after the dwell, spread the stack under the finger.
+A release only counts as a throw when the pointer was still moving: holding
+still and letting go springs back. A quick flick upward puts a card away even
+when it did not travel far.
+
 ### Every situation is its own
 
 The first version had one rule for arrivals, "a notification takes the island",

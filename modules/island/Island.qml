@@ -139,7 +139,7 @@ Item {
     property bool pulling: false
     property real pullProgress: 0
 
-    readonly property bool hovering: stripHover.hovered || islandHover.hovered
+    readonly property bool hovering: stripHover.hovered || islandHover.hovered || deck.handling
     property bool dwelt: false
     property bool spent: false
     property bool fanning: false
@@ -604,13 +604,13 @@ Item {
 
     Timer {
         interval: Appearance.animation.dwell
-        running: islandHover.hovered && root.alerting && root.alerts.length > 1 && !root.fanning
+        running: islandHover.hovered && root.alerting && root.alerts.length > 1 && !root.fanning && !deck.handling
         onTriggered: root.fanning = true
     }
 
     Timer {
         interval: Appearance.animation.grace
-        running: root.fanning && !islandHover.hovered
+        running: root.fanning && !islandHover.hovered && !deck.handling
         onTriggered: root.fanning = false
     }
 
@@ -701,6 +701,30 @@ Item {
         onTargetChanged: root.fanLeads = root.deckRest && Math.abs(tall.value - tall.target) < 1
         onSettledChanged: if (fan.settled)
             root.fanLeads = false
+    }
+
+    property bool thirdLayer: false
+
+    Follow {
+        id: roll
+
+        speed: deck.shuffleSpeed
+        epsilon: 0.004
+        value: 1
+        target: 1
+
+        onValueChanged: if (roll.target === 0 && roll.value === 0) {
+            roll.value = 1;
+            roll.target = 1;
+        }
+    }
+
+    Follow {
+        id: backs
+
+        speed: deck.shuffleSpeed
+        epsilon: 0.004
+        target: Math.min(2, Math.max(0, deck.standing.length - 1))
     }
 
     Follow {
@@ -810,26 +834,19 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
 
             Repeater {
-                model: 2
+                model: 3
 
                 SquircleRect {
                     id: layer
 
                     required property int index
 
-                    readonly property int depth: layer.index + 1
+                    readonly property bool tucked: layer.index === 2
+                    readonly property real depth: layer.tucked ? 2 - 0.6 * roll.value : layer.index + roll.value
+                    readonly property real kept: layer.tucked ? (root.thirdLayer ? 1 - roll.value : 0) : Math.max(0, Math.min(1, backs.value + 1 - layer.depth))
+                    readonly property real shown: peek.value * presence.value * (1 - glide.value)
 
-                    Follow {
-                        id: layerShown
-
-                        speed: Appearance.animation.revealSpeed
-                        epsilon: 0.004
-                        target: root.alerts.length > layer.depth ? 1 : 0
-                    }
-
-                    readonly property real shown: peek.value * layerShown.value * presence.value * (1 - glide.value)
-
-                    z: -layer.depth
+                    z: layer.tucked ? -4 : -1 - layer.depth
                     width: root.pillWidth * (1 - 0.07 * layer.depth)
                     height: root.pillRadius * 2 + Appearance.padding.small
                     x: root.centreX - width / 2
@@ -839,8 +856,8 @@ Item {
                     color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, 0.09 - 0.03 * layer.depth))
                     stroke: Appearance.colour.seam
                     strokeWidth: Appearance.sizes.seam / 2
-                    opacity: layer.shown
-                    visible: layer.shown > 0.01
+                    opacity: layer.shown * layer.kept
+                    visible: layer.opacity > 0.01
                 }
             }
 
@@ -1007,12 +1024,24 @@ Item {
                     width: root.largeWidth
                     entries: root.deckEntries
                     fanned: fan.value
+                    maxHeight: Math.max(root.compactHeight * 4, ((root.host?.height ?? 1080) - root.islandTop) * 0.55)
                     opacity: deckFade.value * presence.value
                     visible: opacity > 0.005
                     enabled: root.deckRest || root.openness > 0
 
                     onDismissed: entry => Notifications.dismiss(entry)
                     onPutAway: entry => Notifications.expire(entry)
+                    onAdvanced: (forward, count) => {
+                        if (root.fanning || root.openness > 0)
+                            return;
+                        root.thirdLayer = forward ? count >= 4 : count >= 3;
+                        if (forward) {
+                            roll.value = 0;
+                            roll.target = 1;
+                        } else {
+                            roll.target = 0;
+                        }
+                    }
                 }
 
                 Repeater {

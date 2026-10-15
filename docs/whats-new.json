@@ -12,7 +12,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Notifications in the island stack up as layers behind the newest one. Resting the pointer on the stack spreads it into a list. Flick a card sideways to dismiss it, swipe it up to put it away in the history, click its close mark or right click it, or use clear all."
+          "text": "Notifications in the island stack up as layers behind the newest one. A new one slides in from the top while the others step back, and a long pile stays on screen and scrolls. Resting the pointer on the stack spreads it into a list. Flick a card sideways to dismiss it, swipe it up to put it away in the history, click its close mark or right click it, or use clear all."
         },
         {
           "type": "ui",

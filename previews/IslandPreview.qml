@@ -171,6 +171,22 @@ ShellRoot {
                     kind: "music"
                 }),
             expect: "one notification, below it: music, beside it: dictation, 2 launches"
+        },
+        {
+            name: "ninety more pile up: one card in front, the rest behind it",
+            run: () => {
+                for (let i = 0; i < 90; i++)
+                    preview.notify(["Discord", "Firefox", "Steam"][i % 3], `message ${i + 1}`, "the same old story", false);
+            },
+            wait: 6000,
+            expect: "91 notifications stacked, beside it: dictation, 2 launches"
+        },
+        {
+            name: "spread, ninety stop at about half the screen and scroll",
+            run: () => island.fanning = true,
+            wait: 150,
+            expect: "91 notifications spread out, beside it: dictation, 2 launches",
+            holds: () => island.restHeight <= (island.host?.height ?? 900) * 0.62
         }
     ]
 
@@ -252,7 +268,7 @@ ShellRoot {
             if (ticker.pending) {
                 const s = ticker.pending;
                 ticker.pending = null;
-                const ok = island.situation === s.expect;
+                const ok = island.situation === s.expect && (!s.holds || s.holds());
                 if (!ok)
                     preview.failures++;
                 console.log(`${ok ? "PASS" : "FAIL"} ${preview.step}. ${s.name} | situation="${island.situation}"${ok ? "" : ` expected="${s.expect}"`} presentation=${island.presentation} alerting=${island.alerting} alerts=${island.alerts.length}`);
