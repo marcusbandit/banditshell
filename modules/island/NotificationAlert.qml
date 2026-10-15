@@ -11,23 +11,19 @@ Item {
 
     required property var entry
 
-    property bool loose: false
-
     property real dragX: 0
     property bool dragging: false
-    property real dragLift: 0
     property bool flinging: false
-    property bool tucking: false
 
     signal dismissed
-    signal putAway
+    signal scrolled(real by)
+    signal scrollEnded(real speed)
 
-    readonly property real lift: press.axis === "up" ? root.dragLift : rise.value
     readonly property real shiftX: root.dragging ? root.dragX : slide.value
     readonly property real shiftFade: Math.min(1, Math.abs(root.shiftX) / Math.max(1, root.width))
 
     function fling(direction: int): void {
-        if (root.flinging || root.tucking)
+        if (root.flinging)
             return;
         slide.value = root.shiftX;
         root.dragging = false;
@@ -35,16 +31,8 @@ Item {
         slide.target = direction * root.width * 1.15;
     }
 
-    function tuck(): void {
-        if (root.flinging || root.tucking)
-            return;
-        rise.value = root.lift;
-        root.tucking = true;
-        rise.target = 1;
-    }
-
     readonly property bool hovered: pointer.hovered
-    readonly property bool handling: press.pressed || root.dragging || root.flinging || root.tucking
+    readonly property bool handling: press.pressed || root.dragging || root.flinging
 
     readonly property var notification: root.entry?.notification ?? null
     readonly property bool live: root.entry?.live ?? false
@@ -76,18 +64,6 @@ Item {
     }
 
     Follow {
-        id: rise
-
-        speed: Appearance.animation.trackSpeed * 1.2
-        epsilon: 0.004
-
-        onValueChanged: if (root.tucking && rise.value >= 0.96) {
-            root.tucking = false;
-            root.putAway();
-        }
-    }
-
-    Follow {
         id: glow
 
         speed: Appearance.animation.revealSpeed * 1.5
@@ -101,8 +77,7 @@ Item {
         x: root.shiftX
         width: root.width
         height: root.height
-        y: root.loose ? -root.lift * root.height * 0.4 : 0
-        opacity: (root.loose ? 1 - root.lift : 1) * (1 - root.shiftFade * 0.9)
+        opacity: 1 - root.shiftFade * 0.9
 
         SquircleRect {
             anchors.fill: parent
@@ -187,11 +162,10 @@ Item {
 
         property real fromX: 0
         property real fromY: 0
+        property real lastY: 0
         property string axis: ""
         property var trail: []
         readonly property bool moved: press.axis !== ""
-
-        readonly property real travel: Math.max(1, root.implicitHeight * 0.6)
 
         anchors.fill: parent
         acceptedButtons: Qt.LeftButton | Qt.RightButton
@@ -206,6 +180,7 @@ Item {
         onPressed: mouse => {
             press.fromX = mouse.x;
             press.fromY = mouse.y;
+            press.lastY = mouse.y;
             press.reset();
         }
 
@@ -213,13 +188,13 @@ Item {
             if (press.pressedButtons !== Qt.LeftButton)
                 return;
             const dx = mouse.x - press.fromX;
-            const up = press.fromY - mouse.y;
+            const dy = mouse.y - press.fromY;
             const threshold = Config.values.control.dragThreshold;
             if (!press.axis) {
-                if (Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(up))
+                if (Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy))
                     press.axis = "x";
-                else if (up >= threshold)
-                    press.axis = "up";
+                else if (Math.abs(dy) >= threshold)
+                    press.axis = "y";
             }
             if (press.axis)
                 press.trail = [...press.trail.filter(p => Date.now() - p.t < 120), {
@@ -230,9 +205,10 @@ Item {
             if (press.axis === "x") {
                 root.dragging = true;
                 root.dragX = dx;
-            } else if (press.axis === "up") {
-                root.dragLift = Math.max(0, Math.min(1, up / press.travel));
+            } else if (press.axis === "y") {
+                root.scrolled(mouse.y - press.lastY);
             }
+            press.lastY = mouse.y;
         }
 
         onReleased: mouse => {
@@ -259,14 +235,7 @@ Item {
             } else {
                 const first = press.trail[0];
                 const last = press.trail[press.trail.length - 1];
-                const speed = first && last && last.t > first.t && Date.now() - last.t < 80 ? (first.y - last.y) / (last.t - first.t) : 0;
-                rise.value = root.dragLift;
-                if (root.dragLift >= Config.values.control.pullCommit || speed > 0.6) {
-                    root.tucking = true;
-                    rise.target = 1;
-                } else {
-                    rise.target = 0;
-                }
+                root.scrollEnded(first && last && last.t > first.t && Date.now() - last.t < 80 ? (last.y - first.y) / (last.t - first.t) : 0);
             }
             press.reset();
         }
@@ -277,10 +246,8 @@ Item {
                 root.dragging = false;
                 slide.target = 0;
             }
-            if (press.axis === "up") {
-                rise.value = root.dragLift;
-                rise.target = 0;
-            }
+            if (press.axis === "y")
+                root.scrollEnded(0);
             press.reset();
         }
     }

@@ -113,8 +113,8 @@ ShellRoot {
             expect: "3 notifications stacked, beside it: dictation"
         },
         {
-            name: "swipe the next one up: it is put away into the list, not lost",
-            run: () => island.putAwayFront(),
+            name: "flick the next one too: the one behind rises into its place",
+            run: () => island.flickFront(1),
             expect: "2 notifications stacked, beside it: dictation"
         },
         {

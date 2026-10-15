@@ -303,8 +303,8 @@ Scope {
             run: () => root.island.flickFront(1)
         },
         {
-            caption: "you swipe the next one up: it is put away in the list, not gone",
-            run: () => root.island.putAwayFront()
+            caption: "you flick the next one away too: the one behind rises into its place",
+            run: () => root.island.flickFront(1)
         },
         {
             caption: "you flick the last one left: the apps glide back into the big spot",
@@ -930,13 +930,6 @@ Scope {
                                     style: "outlined"
                                     enabled: root.frontIsMine
                                     onClicked: root.island.flickFront(1)
-                                }
-
-                                Button {
-                                    text: "put away"
-                                    style: "outlined"
-                                    enabled: root.frontIsMine
-                                    onClicked: root.island.putAwayFront()
                                 }
 
                                 Button {

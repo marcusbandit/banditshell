@@ -13,18 +13,18 @@ Item {
 
     property real fanned: 0
 
-    property real lift: 0
-
     property real maxHeight: 100000
 
     signal dismissed(var entry)
-    signal putAway(var entry)
-    signal advanced(bool forward, int count)
+    signal advanced(bool forward, int count, var previous)
 
     readonly property real shuffleSpeed: Appearance.animation.revealSpeed * 0.45
+    readonly property real notch: Appearance.font.line.small * 4
+    readonly property int sweepStep: 20
 
     property var clearing: []
-    readonly property int clearStagger: 6
+    property var swept: []
+    property bool sweeping: false
 
     function slotFor(entry: var): Item {
         for (let i = 0; i < slots.count; i++) {
@@ -49,24 +49,36 @@ Item {
         root.flick(root.front, direction);
     }
 
-    function putAwayFront(): void {
-        const slot = root.slotFor(root.front);
-        if (slot)
-            slot.tuck();
-        else if (root.front)
-            root.putAway(root.front);
-    }
-
     function clearAll(only: var): void {
         const all = root.standing.filter(e => !only || only.includes(e));
-        if (root.fanned < 0.5) {
-            for (const e of all)
-                root.flick(e, 1);
+        if (all.length === 0)
             return;
+        root.swept = all;
+        root.sweeping = true;
+        const shown = [];
+        for (const e of all) {
+            const slot = root.slotFor(e);
+            if (slot?.onScreen)
+                shown.push(slot);
+            else
+                root.flick(e, 1);
         }
-        root.clearing = all;
-        clear.flung = 0;
+        shown.sort((a, b) => a.y - b.y);
+        root.clearing = shown.map(s => s.modelData);
         clear.restart();
+    }
+
+    function scrollBy(by: real): void {
+        if (root.scrollMax <= 0 || root.fanned < 0.5)
+            return;
+        scroll.target = Math.max(0, Math.min(root.scrollMax, Math.min(scroll.target, root.scrollMax) - by));
+        scroll.snap();
+    }
+
+    function scrollGlide(speed: real): void {
+        if (root.scrollMax <= 0 || root.fanned < 0.5)
+            return;
+        scroll.target = Math.max(0, Math.min(root.scrollMax, Math.min(scroll.target, root.scrollMax) - speed * 260));
     }
 
     property var outgoing: []
@@ -93,26 +105,17 @@ Item {
 
     readonly property real listHeight: {
         let sum = 0;
-        for (let i = 0; i < slots.count; i++) {
-            const slot = slots.itemAt(i);
-            if (slot)
-                sum += slot.cardHeight * slot.open;
-        }
+        for (let i = 0; i < slots.count; i++)
+            sum += slots.itemAt(i)?.room ?? 0;
         return sum;
     }
 
     readonly property real foldedHeight: {
-        let sum = 0;
-        let weight = 0;
         for (let i = 0; i < slots.count; i++) {
             const slot = slots.itemAt(i);
-            if (!slot)
-                continue;
-            sum += slot.cardHeight * slot.weight;
-            weight += slot.weight;
+            if (slot?.isFront)
+                return slot.cardHeight;
         }
-        if (weight > 0.001)
-            return sum / weight;
         return slots.itemAt(0)?.cardHeight ?? 0;
     }
 
@@ -148,13 +151,26 @@ Item {
         root.facesShown = root.behindMarks
 
     onFrontChanged: {
-        root.lift = 0;
-        if (root.lastFront && root.front && root.fanned === 0)
-            root.advanced(root.standing.includes(root.lastFront), root.standing.length);
+        const previous = root.lastFront;
         root.lastFront = root.front;
+        if (!previous || !root.front || root.fanned > 0 || root.sweeping)
+            return;
+        const forward = root.standing.includes(previous);
+        if (forward) {
+            root.slotFor(root.front)?.settle();
+            root.slotFor(previous)?.settle();
+        }
+        root.advanced(forward, root.standing.length, previous);
     }
 
-    onEntriesChanged: root.outgoing = root.outgoing.filter(e => root.entries.includes(e) && !e.leaving)
+    onEntriesChanged: {
+        root.outgoing = root.outgoing.filter(e => root.entries.includes(e) && !e.leaving);
+        if (root.sweeping && root.swept.every(e => !root.entries.includes(e)))
+            root.sweeping = false;
+    }
+
+    onStandingChanged: if (root.sweeping && root.standing.some(e => !root.swept.includes(e)))
+        root.sweeping = false
 
     onFannedChanged: if (root.fanned === 0) {
         scroll.target = 0;
@@ -166,9 +182,7 @@ Item {
     Timer {
         id: clear
 
-        property int flung: 0
-
-        interval: 60
+        interval: root.sweepStep
         repeat: true
         triggeredOnStart: true
 
@@ -179,14 +193,6 @@ Item {
                 root.clearing = [];
                 return;
             }
-            if (clear.flung >= root.clearStagger) {
-                clear.stop();
-                root.clearing = [];
-                for (const e of next)
-                    root.flick(e, 1);
-                return;
-            }
-            clear.flung += 1;
             root.clearing = next.slice(1);
             root.flick(next[0], 1);
         }
@@ -203,7 +209,7 @@ Item {
     Follow {
         id: scroll
 
-        speed: Appearance.animation.trackSpeed
+        speed: Appearance.animation.trackSpeed * 1.4
         epsilon: 0.25
     }
 
@@ -229,7 +235,8 @@ Item {
             acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
 
             onWheel: event => {
-                const step = event.pixelDelta.y !== 0 ? event.pixelDelta.y : event.angleDelta.y / 120 * Appearance.font.line.small * 3;
+                const fine = event.device.type === PointerDevice.TouchPad && event.pixelDelta.y !== 0;
+                const step = fine ? event.pixelDelta.y * 2 : event.angleDelta.y / 120 * root.notch;
                 const from = Math.min(scroll.target, root.scrollMax);
                 const to = Math.max(0, Math.min(root.scrollMax, from - step));
                 event.accepted = to !== from;
@@ -254,54 +261,46 @@ Item {
                     card.fling(direction);
                 }
 
-                function tuck(): void {
-                    card.tuck();
+                function settle(): void {
+                    promotion.snap();
                 }
 
                 readonly property bool leaving: slot.modelData?.leaving ?? false
                 readonly property bool isFront: slot.modelData === root.front
                 readonly property bool handling: card.handling
-                readonly property bool outgoing: card.flinging || card.tucking
-
-                onOutgoingChanged: if (slot.outgoing && !root.outgoing.includes(slot.modelData))
-                    root.outgoing = [...root.outgoing, slot.modelData]
+                readonly property bool outgoing: card.flinging
                 readonly property real open: Math.max(0, arrival.value - departure.value)
                 readonly property real cardHeight: card.implicitHeight
+                readonly property real room: slot.cardHeight * (root.sweeping ? 1 : slot.open)
 
-                property bool fromTop: false
                 property real leftAt: 0
 
                 readonly property real step: slot.leaving ? slot.leftAt : promotion.value
-                readonly property real weight: slot.leaving ? slot.leftAt * slot.open : promotion.value
                 readonly property real away: 1 - slot.step
 
-                readonly property real foldY: slot.fromTop ? -slot.away * slot.cardHeight * 0.6 : slot.away * Appearance.padding.normal
                 readonly property real spreadTop: {
                     let sum = 0;
-                    for (let i = 0; i < slot.index; i++) {
-                        const other = slots.itemAt(i);
-                        if (other)
-                            sum += other.cardHeight * other.open;
-                    }
+                    for (let i = 0; i < slot.index; i++)
+                        sum += slots.itemAt(i)?.room ?? 0;
                     return sum;
                 }
                 readonly property real spreadY: slot.spreadTop - root.scrolled
+                readonly property bool inView: slot.y < view.height && slot.y + slot.height > 0
+                readonly property bool onScreen: slot.inView && slot.opacity > 0.005
 
-                onIsFrontChanged: slot.fromTop = slot.isFront && arrival.value < 0.5 && root.fanned === 0
+                onOutgoingChanged: if (slot.outgoing && !root.outgoing.includes(slot.modelData))
+                    root.outgoing = [...root.outgoing, slot.modelData]
                 onLeavingChanged: if (slot.leaving)
                     slot.leftAt = promotion.value
 
-                Component.onCompleted: slot.fromTop = slot.isFront && root.fanned === 0
-
                 width: view.width
-                height: root.fanned > 0 ? slot.cardHeight * slot.open : slot.cardHeight
-                y: root.fanned > 0 ? slot.spreadY : slot.foldY
+                height: root.fanned > 0 ? slot.room : slot.cardHeight
+                y: root.fanned > 0 ? slot.spreadY : slot.away * Appearance.padding.normal
                 z: root.fanned > 0 ? 0 : slot.step
                 clip: root.fanned > 0 && slot.height < slot.cardHeight - 0.5
-                scale: root.fanned > 0 || slot.fromTop ? 1 : 1 - 0.06 * slot.away
+                scale: root.fanned > 0 ? 1 : 1 - 0.06 * slot.away
                 transformOrigin: Item.Bottom
-                opacity: root.fanned > 0 ? slot.open : (slot.fromTop ? slot.step : slot.step * slot.step) * slot.open
-                visible: slot.opacity > 0.005 && slot.y < view.height && slot.y + slot.height > 0
+                opacity: !slot.inView ? 0 : root.fanned > 0 ? slot.open : slot.step * slot.step * slot.open
 
                 Follow {
                     id: promotion
@@ -332,19 +331,17 @@ Item {
 
                     width: slot.width
                     entry: slot.modelData
-                    loose: !slot.isFront || root.standing.length > 1
 
-                    onLiftChanged: if (slot.isFront)
-                        root.lift = card.loose ? 0 : card.lift
                     onDismissed: root.dismissed(slot.modelData)
-                    onPutAway: root.putAway(slot.modelData)
+                    onScrolled: by => root.scrollBy(by)
+                    onScrollEnded: speed => root.scrollGlide(speed)
                 }
 
                 Separator {
                     x: card.pad
                     width: slot.width - card.pad * 2
                     visible: slot.index > 0 && root.fanned > 0.01
-                    opacity: root.fanned
+                    opacity: root.fanned * (1 - card.shiftFade)
                 }
             }
         }

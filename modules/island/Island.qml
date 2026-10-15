@@ -246,8 +246,6 @@ Item {
     readonly property real shadowRoom: Appearance.padding.huge * 2
     readonly property real fieldStep: Appearance.padding.huge * 4
 
-    readonly property real lift: deck.lift
-
     readonly property real rowsWidth: {
         let widest = 0;
         for (let i = 0; i < measures.count; i++)
@@ -255,9 +253,9 @@ Item {
         return widest;
     }
 
-    readonly property real cardHeight: root.alerting ? deck.implicitHeight + (root.compactHeight - deck.implicitHeight) * root.lift : 0
+    readonly property real cardHeight: root.alerting ? deck.implicitHeight : 0
 
-    readonly property real restWidth: root.deckRest ? root.largeWidth + (root.compactHeight - root.largeWidth) * root.lift : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
+    readonly property real restWidth: root.deckRest ? root.largeWidth : root.rest === "compact" ? root.rowsWidth + swell.value * 2 : root.compactHeight
     readonly property real restHeight: root.deckRest ? root.cardHeight + root.stackItems.length * root.compactHeight : root.compactHeight * Math.max(1, root.stackItems.length)
 
     readonly property real fieldWidth: Math.ceil(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2)
@@ -277,6 +275,10 @@ Item {
 
     readonly property real chainRight: root.pillX + root.pillWidth + root.bubbleKeys.length * root.bubblePitch
     readonly property real deckY: root.pillY + overview.arrivalsTop * Math.min(1, glide.value * 1.6)
+    readonly property real dealY: -(1 - deal.value) * (root.pillY + root.pillHeight - root.edge + Appearance.padding.small)
+
+    property var ghost: null
+    property real ghostHeight: 0
 
     property var holding: []
 
@@ -481,10 +483,6 @@ Item {
         deck.dismissFront(direction);
     }
 
-    function putAwayFront(): void {
-        deck.putAwayFront();
-    }
-
     function clearNotifications(only: var): void {
         deck.clearAll(only);
     }
@@ -686,7 +684,7 @@ Item {
 
         speed: root.fadeSpeed(deckFade)
         epsilon: 0.004
-        target: root.deckEntries.length > 0 && (root.alerting || root.openness > 0) ? 1 - root.lift : 0
+        target: root.deckEntries.length > 0 && (root.alerting || root.openness > 0) ? 1 : 0
     }
 
     property bool fanLeads: false
@@ -704,6 +702,18 @@ Item {
     }
 
     property bool thirdLayer: false
+
+    Follow {
+        id: deal
+
+        speed: deck.shuffleSpeed
+        epsilon: 0.002
+        value: 1
+        target: 1
+
+        onSettledChanged: if (deal.settled)
+            root.ghost = null
+    }
 
     Follow {
         id: roll
@@ -845,19 +855,43 @@ Item {
                     readonly property real depth: layer.tucked ? 2 - 0.6 * roll.value : layer.index + roll.value
                     readonly property real kept: layer.tucked ? (root.thirdLayer ? 1 - roll.value : 0) : Math.max(0, Math.min(1, backs.value + 1 - layer.depth))
                     readonly property real shown: peek.value * presence.value * (1 - glide.value)
+                    readonly property real ghostness: layer.index === 0 && root.ghost ? (1 - roll.value) * (1 - fan.value) * presence.value : 0
+                    readonly property real strip: root.pillRadius * 2 + Appearance.padding.small
+                    readonly property real stand: root.ghost && layer.index === 0 ? root.ghostHeight + (root.pillHeight - root.ghostHeight) * roll.value : root.pillHeight
+                    readonly property real reach: Appearance.padding.small * 1.2 * layer.depth * (layer.ghostness > 0 ? 1 : layer.shown)
 
                     z: layer.tucked ? -4 : -1 - layer.depth
                     width: root.pillWidth * (1 - 0.07 * layer.depth)
-                    height: root.pillRadius * 2 + Appearance.padding.small
+                    height: root.ghost && layer.index === 0 ? root.ghostHeight + (layer.strip - root.ghostHeight) * roll.value : layer.strip
                     x: root.centreX - width / 2
-                    y: root.pillY + root.pillHeight - height + Appearance.padding.small * 1.2 * layer.depth * layer.shown
+                    y: root.pillY + layer.stand - height + layer.reach
                     radius: root.pillRadius
                     cornerPower: root.pillPower
-                    color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, 0.09 - 0.03 * layer.depth))
+                    color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth))
                     stroke: Appearance.colour.seam
                     strokeWidth: Appearance.sizes.seam / 2
-                    opacity: layer.shown * layer.kept
+                    opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
                     visible: layer.opacity > 0.01
+
+                    Item {
+                        id: uncovered
+
+                        y: Math.max(0, Math.min(layer.height, root.pillY + root.dealY + root.pillHeight - layer.y))
+                        width: layer.width
+                        height: layer.height - uncovered.y
+                        clip: true
+                        visible: layer.ghostness > 0.01
+
+                        NotificationAlert {
+                            y: -uncovered.y
+                            width: root.largeWidth
+                            entry: root.ghost
+                            enabled: false
+                            scale: layer.width / Math.max(1, root.largeWidth)
+                            transformOrigin: Item.TopLeft
+                            opacity: 1 - roll.value
+                        }
+                    }
                 }
             }
 
@@ -924,17 +958,17 @@ Item {
 
             DropShadow {
                 x: root.pillX
-                y: root.pillY
+                y: root.pillY + root.dealY
                 width: root.pillWidth
                 height: root.pillHeight
                 radius: root.pillRadius
-                opacity: settle.value * 0.8
+                opacity: settle.value * 0.8 * deal.value
             }
 
             IslandField {
                 anchors.fill: parent
 
-                pillRect: Qt.rect(root.pillX, root.pillY, root.pillWidth, root.pillHeight)
+                pillRect: Qt.rect(root.pillX, root.pillY + root.dealY, root.pillWidth, root.pillHeight)
                 budRects: {
                     const out = [];
                     for (let i = 0; i < Math.min(root.bubbleMax, bubbles.count); i++)
@@ -1020,7 +1054,7 @@ Item {
                     id: deck
 
                     x: root.centreX - root.largeWidth / 2
-                    y: root.deckY
+                    y: root.deckY + root.dealY
                     width: root.largeWidth
                     entries: root.deckEntries
                     fanned: fan.value
@@ -1030,14 +1064,17 @@ Item {
                     enabled: root.deckRest || root.openness > 0
 
                     onDismissed: entry => Notifications.dismiss(entry)
-                    onPutAway: entry => Notifications.expire(entry)
-                    onAdvanced: (forward, count) => {
+                    onAdvanced: (forward, count, previous) => {
                         if (root.fanning || root.openness > 0)
                             return;
                         root.thirdLayer = forward ? count >= 4 : count >= 3;
                         if (forward) {
+                            root.ghostHeight = root.pillHeight;
+                            root.ghost = previous;
                             roll.value = 0;
                             roll.target = 1;
+                            deal.value = 0;
+                            deal.target = 1;
                         } else {
                             roll.target = 0;
                         }
@@ -1121,7 +1158,7 @@ Item {
                         }
 
                         x: root.pillX + swell.value + (row.toX - root.pillX - swell.value) * row.t
-                        y: root.pillY + row.restY + (row.toY - row.restY) * row.t
+                        y: root.pillY + root.dealY * (1 - row.t) + row.restY + (row.toY - row.restY) * row.t
                         width: row.fromWidth + (row.toWidth - row.fromWidth) * row.t
                         activity: row.item
                         lights: row.t > 0.5

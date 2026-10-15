@@ -820,9 +820,9 @@ banditshell/
 │   │   │                        front with the rest peeking, spread into a list
 │   │   │                        on hover and inside the overview
 │   │   ├── NotificationAlert.qml a notification as the island tells it: tap for
-│   │   │                        its default action, swipe up into the island to
-│   │   │                        let it go, its actions always there, a close
-│   │   │                        mark on hover
+│   │   │                        its default action, flick it sideways to let
+│   │   │                        it go, drag it up or down to scroll the list,
+│   │   │                        its actions always there, a close mark on hover
 │   │   ├── NotificationMark.qml its picture, else its app's mark, else a bell
 │   │   ├── IslandInspector.qml  `banditshell dev inspect island`: a panel that
 │   │   │                        makes up each situation on the live island,
@@ -3238,15 +3238,17 @@ came out on hover, moving down a spread list grew and shrank the card under the
 pointer, so everything below it jumped up and down. The corner still opens the
 history either way, and the overview carries a row that opens it.
 
-Letting one go is a gesture with two meanings, and both are animated before
-anything changes underneath. Flick it sideways, either way, and it follows the
-pointer, fading as it goes; past a third of its width, or thrown fast, it flies
-off that side and is gone, and only then does the stack close up or the island
-fold away. Short of that it springs back. The close mark and a right click do
-the same flick to the right. Swipe it up instead and it is put away rather than
-lost: it lifts into the island, which shrinks to meet it, and it stays in the
-history. A stack carries "clear all" at its foot, folded or spread and inside the
-overview: a folded stack flies off at once, a spread one card after card.
+Letting one go is a sideways gesture, animated before anything changes
+underneath. Flick it either way and it follows the pointer, fading as it goes;
+past a third of its width, or thrown fast, it flies off that side and is gone,
+and only then does the stack close up or the island fold away. Short of that it
+springs back. The close mark and a right click do the same flick to the right.
+Up and down never dismiss: a vertical drag on a card scrolls a spread list the
+way a finger scrolls a phone, and a throw keeps it gliding. Swiping up to put a
+card away used to share that direction, and it read as the card vanishing
+instead of the list moving, so it is gone; a card that times out still lands in
+the history. A stack carries "clear all" at its foot, folded or spread and
+inside the overview.
 
 ### More than one
 
@@ -3265,28 +3267,37 @@ whole spread up front, so nothing resizes mid-sweep. They fold back once the
 pointer has been gone for the grace. Every card keeps its own timer, so a burst drains
 in about one timeout, not one timeout each.
 
-A new one does not push in. It slides down into the island from its top edge
-while the card it replaces steps back into the stack: it sinks a little,
-shrinks and fades, the layer it becomes grows out from under the island, the
-layer that was there moves one place back, and the backmost tucks up behind it
-and is gone. Letting the front one go runs the same roll the other way: the
-next card starts rising from behind the moment the flick or the swipe begins,
-not after the old one has finished leaving, and the island's height blends
-from one card to the other instead of dipping in between.
+A new one is dealt like a new card on a pile. The island itself, carrying the
+new notification, drops down from behind the screen's top edge, and the card
+it lands on is a real card that stays where it was: it keeps its own text and
+outline, steps back, narrows and sinks until it is the first layer peeking out
+underneath, its text fading as it goes. The layer that was there moves one
+place back, and the backmost tucks up behind it and is gone. Crossfading the
+text inside a pill that never moved read as everything shuddering with nothing
+actually moving. Letting the front one go runs the roll the other way: the
+next card starts rising from behind the moment the flick begins, not after the
+old one has finished leaving, and the island's height follows the new card
+without dipping in between.
 
 A long pile stays on screen. The spread stops at a little over half the
-screen's height, its edges fade where there is more, and the wheel scrolls it;
-at either end the wheel passes through to whatever is under it. The overview
-holds the same capped list. Clear all on a long spread throws the first few
-cards one after another and the rest at once.
+screen's height, its edges fade where there is more, and it scrolls: a wheel
+notch moves about four lines, a touchpad moves with the fingers, and at either
+end the wheel passes through to whatever is under it. The overview holds the
+same capped list. Clear all throws every card at once, the ones on screen
+twenty milliseconds apart from top to bottom so the sweep reads as a wave, and
+the ones scrolled out of view with the first. The list holds still while they
+go; closing it up after each one made clear all look like a fast scroll.
 
-A card being dragged, flung or swiped away counts as the pointer resting on
-the island, wherever the pointer actually is. Holding a half-made swipe used to
-let the pointer drift off the shrinking island, which unpaused the timers,
-reshuffled the island and, after the dwell, spread the stack under the finger.
-A release only counts as a throw when the pointer was still moving: holding
-still and letting go springs back. A quick flick upward puts a card away even
-when it did not travel far.
+A card outside the visible part of the list is made transparent, never
+invisible. An invisible item drops out of its column's layout, so a card's
+measured height collapsed whenever it scrolled out of view and grew back when
+it returned, and the cards around it overlapped while that happened.
+
+A card being dragged or flung counts as the pointer resting on the island,
+wherever the pointer actually is, so a held drag never unpauses the timers,
+reshuffles the island or spreads the stack under the finger. A release only
+counts as a throw when the pointer was still moving: holding still and letting
+go springs back.
 
 ### Every situation is its own
 
