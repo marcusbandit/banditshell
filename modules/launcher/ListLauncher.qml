@@ -6,6 +6,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.controls
+import "search.js" as Search
 
 LauncherConcept {
     id: root
@@ -23,17 +24,120 @@ LauncherConcept {
 
     property bool collapseToCentre: false
 
-    readonly property var results: Apps.search(query.text)
+    readonly property var results: search.rows
     property int selected: 0
+
+    readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
+
+    readonly property int buttonLimit: 3
+
+    property bool symbolsOpen: false
+
+    readonly property var symbolKeys: Search.SYMBOL_KEYS
+
+    function insert(text: string): void {
+        root.input.insert(root.input.cursorPosition, text);
+        root.input.forceActiveFocus();
+    }
+
+    function back(): void {
+        if (root.symbolsOpen)
+            root.symbolsOpen = false;
+        else
+            root.hide();
+    }
+
+    LauncherSearch {
+        id: search
+
+        query: root.input?.text ?? ""
+        screenName: root.screenName
+
+        onLaunch: what => root.launch(what)
+        onLeave: what => {
+            root.hide();
+            what();
+        }
+        onRetype: text => {
+            root.input.text = text;
+            root.input.cursorPosition = text.length;
+        }
+    }
+
+    readonly property int pinnedLimit: 12
+    readonly property int tileColumns: Math.ceil(root.pinnedLimit / 2)
+
+    readonly property var pinnedApps: Config.values.launcher.list.pinned ? Apps.starredApps.slice(0, root.pinnedLimit) : []
+    readonly property var recentApps: Config.values.launcher.list.recents ? Apps.recent(root.tileColumns, root.pinnedApps) : []
+
+    readonly property int pinnedRows: Math.ceil(root.pinnedApps.length / root.tileColumns)
+
+    readonly property var tiles: {
+        const out = [];
+        const place = (apps, pinned, firstRow) => apps.forEach((entry, i) => {
+                const row = Math.floor(i / root.tileColumns);
+                const across = Math.min(root.tileColumns, apps.length - row * root.tileColumns);
+                out.push({
+                    entry: entry,
+                    pinned: pinned,
+                    row: firstRow + row,
+                    slot: i % root.tileColumns - (across - 1) / 2
+                });
+            });
+        place(root.pinnedApps, true, 0);
+        place(root.recentApps, false, root.pinnedRows);
+        return out;
+    }
+
+    readonly property bool quick: !query.text && root.tiles.length > 0
+    property int tile: 0
+
+    readonly property bool asking: sheet.open
+
+    property Item tipHost: null
+
+    function tip(item: Item, text: string, drop: real, on: bool): void {
+        if (!on) {
+            if (root.tipHost === item)
+                root.tipHost = null;
+            return;
+        }
+        root.tipHost = item;
+        hint.text = text;
+        const at = item.mapToItem(panel, item.width / 2, drop);
+        hint.x = Math.round(at.x - hint.width / 2);
+        hint.y = Math.round(at.y + Appearance.padding.small);
+    }
+
+    readonly property real longestFrame: 1 / 60
+
+    property real wave: 0
+    readonly property real waveTarget: (root.shown || root.dragging) && root.quick ? root.tiles.length : 0
+
+    onQuickChanged: root.tile = 0
+    onTilesChanged: root.tile = Math.min(root.tile, Math.max(0, root.tiles.length - 1))
 
     onShowing: {
         root.collapseToCentre = false;
         root.unsized = true;
+        root.symbolsOpen = false;
+        FileSearch.forget();
     }
 
-    onCleared: root.selected = 0
+    onCleared: {
+        root.selected = 0;
+        root.tile = 0;
+        if (root.unsized) {
+            root.unsized = false;
+            grow.value = panel.implicitHeight;
+            gridIn.snap();
+        }
+    }
 
-    onHidden: root.collapseToCentre = !panel.bottomAnchored
+    onHidden: {
+        sheet.close();
+        root.collapseToCentre = !panel.bottomAnchored;
+    }
 
     onDropped: stayedOpen => {
         if (!stayedOpen)
@@ -44,26 +148,122 @@ LauncherConcept {
         if (root.copyAnswer())
             return;
 
-        const entry = root.results[root.selected];
-        if (entry)
-            root.launch(() => Apps.launch(entry));
+        if (root.quick) {
+            const entry = root.tiles[root.tile]?.entry;
+            if (entry)
+                root.launch(() => Apps.launch(entry));
+            return;
+        }
+
+        const row = root.results[root.selected];
+        if (row && !row.header)
+            search.activate(row);
         else
             root.hide();
     }
 
     function move(delta: int): void {
         root.answerHolds = false;
-        const n = root.results.length;
-        if (n <= 0)
+        if (root.quick) {
+            root.tile = (root.tile + delta + root.tiles.length) % root.tiles.length;
             return;
-        root.moveTo((root.selected + delta + n) % n);
+        }
+        const at = Search.nextPickable(root.results, root.selected + delta, delta < 0 ? -1 : 1);
+        if (at >= 0)
+            root.moveTo(at);
     }
 
     function page(rows: int): void {
-        root.moveTo(root.selected + rows);
+        if (!root.quick)
+            root.moveTo(root.selected + rows);
+    }
+
+    function stepRow(direction: int): void {
+        const from = root.tiles[root.tile];
+        let best = -1;
+        root.tiles.forEach((t, i) => {
+            if (t.row === from.row + direction && (best < 0 || Math.abs(t.slot - from.slot) < Math.abs(root.tiles[best].slot - from.slot)))
+                best = i;
+        });
+        if (best >= 0)
+            root.tile = best;
+    }
+
+    function shiftTile(step: int): void {
+        const t = root.tiles[root.tile];
+        if (t?.pinned && Apps.moveStarred(t.entry, step))
+            root.tile += step;
+    }
+
+    function claimTileKey(event: var): bool {
+        const held = event.modifiers & Qt.ControlModifier;
+        switch (event.key) {
+        case Qt.Key_Left:
+            if (held)
+                root.shiftTile(-1);
+            else
+                root.move(-1);
+            return true;
+        case Qt.Key_Right:
+            if (held)
+                root.shiftTile(1);
+            else
+                root.move(1);
+            return true;
+        case Qt.Key_Up:
+            root.stepRow(-1);
+            return true;
+        case Qt.Key_Down:
+            root.stepRow(1);
+            return true;
+        case Qt.Key_Home:
+            root.tile = 0;
+            return true;
+        case Qt.Key_End:
+            root.tile = root.tiles.length - 1;
+            return true;
+        }
+        return false;
     }
 
     function claimKey(event: var): bool {
+        if (sheet.open) {
+            switch (event.key) {
+            case Qt.Key_Down:
+                sheet.move(1);
+                break;
+            case Qt.Key_Up:
+                sheet.move(-1);
+                break;
+            case Qt.Key_Return:
+            case Qt.Key_Enter:
+                sheet.activate(sheet.selected);
+                break;
+            default:
+                sheet.close();
+                break;
+            }
+            return true;
+        }
+
+        if (event.key === Qt.Key_Menu) {
+            const item = root.quick ? tileRepeater.itemAt(root.tile) : list.itemAtIndex(root.selected);
+            if (item)
+                root.ask(item, root.quick ? root.tiles[root.tile].entry : root.results[root.selected], item.width / 2, item.height / 2);
+            return true;
+        }
+
+        if (root.quick)
+            return root.claimTileKey(event);
+
+        const row = root.results[root.selected];
+        if (event.key === Qt.Key_Tab && search.complete(row))
+            return true;
+        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
+            root.actionsFor(row)[1]?.run();
+            return true;
+        }
+
         switch (event.key) {
         case Qt.Key_Home:
             root.moveTo(0);
@@ -73,6 +273,58 @@ LauncherConcept {
             return true;
         }
         return false;
+    }
+
+    function actionsFor(what: var): var {
+        if (what?.kind && what.kind !== "app")
+            return search.actionsFor(what);
+        const entry = what?.kind === "app" ? what.entry : what;
+        const kept = Apps.isStarred(entry);
+        const acts = [
+            {
+                icon: "rocket_launch",
+                label: "Open",
+                run: () => root.launch(() => Apps.launch(entry))
+            }
+        ];
+
+        acts.push({
+            icon: "push_pin",
+            fill: kept,
+            label: kept ? "Unpin" : "Pin",
+            run: () => Apps.setStarred(entry, !kept)
+        });
+
+        for (const action of entry.actions ?? [])
+            acts.push({
+                icon: "open_in_new",
+                label: action.name,
+                run: () => root.launch(() => Apps.launchAction(entry, action))
+            });
+
+        const at = root.quick ? root.pinnedApps.indexOf(entry) : -1;
+        if (at > 0)
+            acts.push({
+                icon: "arrow_back",
+                label: "Move left",
+                run: () => root.shiftTile(-1)
+            });
+        if (at >= 0 && at < root.pinnedApps.length - 1)
+            acts.push({
+                icon: "arrow_forward",
+                label: "Move right",
+                run: () => root.shiftTile(1)
+            });
+
+        return acts;
+    }
+
+    function ask(item: Item, entry: var, x: real, y: real): void {
+        if (!entry || entry.header)
+            return;
+        root.answerHolds = false;
+        const at = item.mapToItem(panel, x, y);
+        sheet.popup(at.x, at.y, root.actionsFor(entry));
     }
 
     function chooseRow(index: int): void {
@@ -86,12 +338,31 @@ LauncherConcept {
         const n = root.results.length;
         if (n <= 0)
             return;
-        root.selected = Math.max(0, Math.min(index, n - 1));
+        const at = Math.max(0, Math.min(index, n - 1));
+        root.steered = true;
+        root.selected = root.results[at].header ? Math.max(0, Search.nextPickable(root.results, at, 1)) : at;
         list.reveal(root.selected);
     }
 
+    property string listedQuery: ""
+    property string selectedKey: ""
+    property bool steered: false
+
+    onSelectedChanged: root.selectedKey = root.results[root.selected]?.key ?? ""
+
     onResultsChanged: {
-        root.selected = 0;
+        if (search.query !== root.listedQuery) {
+            root.listedQuery = search.query;
+            root.steered = false;
+        }
+        const kept = root.steered ? root.results.findIndex(r => r.key === root.selectedKey) : -1;
+        if (kept >= 0) {
+            root.selected = kept;
+            return;
+        }
+        root.steered = false;
+        root.selected = Math.max(0, Search.nextPickable(root.results, 0, 1));
+        root.selectedKey = root.results[root.selected]?.key ?? "";
         list.reset();
     }
 
@@ -101,20 +372,28 @@ LauncherConcept {
         target: panel.implicitHeight
         speed: Appearance.animation.resizeSpeed
         epsilon: 0.5
+        longestFrame: root.longestFrame
+    }
+
+    Follow {
+        id: gridIn
+
+        target: root.quick ? 1 : 0
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.002
+        longestFrame: root.longestFrame
+    }
+
+    FrameAnimation {
+        running: root.wave !== root.waveTarget
+
+        onTriggered: {
+            const step = Math.min(frameTime, root.longestFrame) * 1000 / Math.max(1, Appearance.animation.normal) * Math.max(1, root.tiles.length);
+            root.wave = Appearance.lessMotion ? root.waveTarget : root.wave < root.waveTarget ? Math.min(root.waveTarget, root.wave + step) : Math.max(root.waveTarget, root.wave - step);
+        }
     }
 
     property bool unsized: false
-
-    Connections {
-        target: panel
-
-        function onImplicitHeightChanged(): void {
-            if (root.unsized) {
-                root.unsized = false;
-                grow.value = panel.implicitHeight;
-            }
-        }
-    }
 
     Item {
         id: panel
@@ -132,7 +411,7 @@ LauncherConcept {
 
         width: root.panelWidth
 
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + list.needed)
+        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
 
         height: grow.value * root.revealed
 
@@ -216,58 +495,314 @@ LauncherConcept {
                     expression: query.text
                     holds: root.answerHolds
 
+                    offersSymbols: true
+                    symbolsOpen: root.symbolsOpen
+                    onSymbols: root.symbolsOpen = !root.symbolsOpen
+
                     onCopied: {
                         root.answerHolds = true;
                         root.accept();
                     }
                 }
 
-                GlideList {
-                    id: list
-
-                    readonly property real needed: Math.max(1, root.results.length) * root.rowPitch
+                Flow {
+                    id: symbols
 
                     width: parent.width
-                    height: Math.max(0, panel.height - y - Appearance.padding.large)
-                    clip: true
+                    spacing: Appearance.padding.small
+                    visible: root.symbolsOpen && !!root.input.text
 
-                    model: ScriptModel {
-                        values: root.results
-                    }
+                    Repeater {
+                        model: root.symbolKeys
 
-                    cacheBuffer: root.rowPitch * 4
+                        delegate: Button {
+                            id: key
 
-                    delegate: MenuRow {
-                        required property var modelData
-                        required property int index
+                            required property var modelData
 
-                        width: list.width
-                        iconSize: Appearance.sizes.launcherIcon
-                        rowHeight: root.rowPitch
+                            text: key.modelData.label
+                            style: "tonal"
 
-                        labelSize: Appearance.font.size.normal
-                        inlineDetail: true
-
-                        iconSource: modelData.icon ? Quickshell.iconPath(modelData.icon, true) : ""
-                        icon: "apps"
-                        label: modelData.name ?? ""
-                        detail: modelData.genericName || modelData.comment || ""
-
-                        selected: index === root.selected && !root.answerHolds
-
-                        onActivated: root.chooseRow(index)
+                            onClicked: root.insert(key.modelData.insert)
+                            onHoveredChanged: root.tip(key, key.modelData.tip ?? key.modelData.insert, key.height, key.hovered && !!key.modelData.tip)
+                        }
                     }
 
                     StyledText {
-                        id: empty
-
-                        visible: !root.results.length && !root.answer
-                        text: query.text ? "nothing matches" : "no applications found"
-                        color: Appearance.colour.textFaint
+                        visible: !Calculator.qalcFound
+                        height: Appearance.sizes.minTarget
+                        verticalAlignment: Text.AlignVCenter
+                        text: "functions need qalc: sudo pacman -S libqalculate"
                         font.pixelSize: Appearance.font.size.small
+                        color: Appearance.colour.textFaint
+                    }
+                }
+
+                Item {
+                    id: body
+
+                    width: parent.width
+                    height: Math.max(0, panel.height - y - Appearance.padding.large)
+
+                    Item {
+                        id: quickLaunch
+
+                        readonly property real icon: Math.round(Appearance.sizes.launcherIcon * 1.75)
+                        readonly property real cell: quickLaunch.icon + Appearance.padding.large * 2
+                        readonly property real gap: root.pinnedApps.length && root.recentApps.length ? Appearance.padding.normal * 2 + separator.height : 0
+                        readonly property real full: (root.tiles.length ? root.tiles[root.tiles.length - 1].row + 1 : 0) * quickLaunch.cell + quickLaunch.gap
+
+                        width: parent.width
+                        height: quickLaunch.full
+                        visible: gridIn.value > 0.002
+                        enabled: root.quick
+                        opacity: gridIn.value * gridIn.value
+
+                        Separator {
+                            visible: quickLaunch.gap > 0
+                            anchors.horizontalCenter: parent.horizontalCenter
+                            y: root.pinnedRows * quickLaunch.cell + (quickLaunch.gap - height) / 2
+                            width: root.tileColumns * quickLaunch.cell - Appearance.padding.large * 2
+                        }
+
+                        Repeater {
+                            id: tileRepeater
+
+                            model: root.tiles
+
+                            delegate: Item {
+                                id: cell
+
+                                required property var modelData
+                                required property int index
+
+                                readonly property bool chosen: cell.index === root.tile
+
+                                x: quickLaunch.width / 2 + (cell.modelData.slot - 0.5) * quickLaunch.cell
+                                y: cell.modelData.row * quickLaunch.cell + (cell.modelData.pinned ? 0 : quickLaunch.gap)
+                                width: quickLaunch.cell
+                                height: quickLaunch.cell
+
+                                opacity: pop.value
+                                scale: 0.6 + 0.4 * pop.value
+
+                                Follow {
+                                    id: pop
+
+                                    target: root.wave > cell.index ? 1 : 0
+                                    speed: Appearance.animation.revealSpeed
+                                    epsilon: 0.002
+                                    longestFrame: root.longestFrame
+                                }
+
+                                SquircleRect {
+                                    anchors.centerIn: parent
+                                    width: quickLaunch.icon + Appearance.padding.card * 2
+                                    height: width
+                                    radius: Appearance.rounding.normal
+                                    color: Appearance.colour.fill
+                                    opacity: cell.chosen || pointer.containsMouse ? 1 : 0
+
+                                    Behavior on opacity {
+                                        NumberAnimation {
+                                            duration: Appearance.animation.fade.fast
+                                        }
+                                    }
+                                }
+
+                                Image {
+                                    id: art
+
+                                    anchors.centerIn: parent
+                                    width: quickLaunch.icon
+                                    height: quickLaunch.icon
+                                    sourceSize.width: width * Screen.devicePixelRatio
+                                    sourceSize.height: height * Screen.devicePixelRatio
+                                    source: cell.modelData.entry.icon ? Quickshell.iconPath(cell.modelData.entry.icon, true) : ""
+                                    fillMode: Image.PreserveAspectFit
+                                    asynchronous: true
+                                    smooth: true
+                                    visible: status === Image.Ready
+                                }
+
+                                Icon {
+                                    anchors.centerIn: parent
+                                    visible: art.status !== Image.Ready
+                                    size: quickLaunch.icon * 0.6
+                                    name: "apps"
+                                    color: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                                }
+
+                                MouseArea {
+                                    id: pointer
+
+                                    anchors.fill: parent
+                                    enabled: !root.asking
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    acceptedButtons: Qt.LeftButton | Qt.RightButton
+
+                                    onContainsMouseChanged: root.tip(cell, cell.modelData.entry.name ?? "", (cell.height + quickLaunch.icon) / 2 + Appearance.padding.card, pointer.containsMouse)
+
+                                    onClicked: mouse => {
+                                        root.tile = cell.index;
+                                        if (mouse.button === Qt.RightButton)
+                                            root.ask(cell, cell.modelData.entry, mouse.x, mouse.y);
+                                        else
+                                            root.accept();
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    GlideList {
+                        id: list
+
+                        readonly property real needed: Math.max(root.rowPitch, root.results.reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch), 0))
+
+                        y: (quickLaunch.full + Appearance.padding.large) * gridIn.value
+                        width: parent.width
+                        height: gridIn.value > 0 ? root.height : Math.max(0, body.height - y)
+                        enabled: !root.quick
+                        opacity: 1 - gridIn.value
+                        clip: true
+
+                        model: ScriptModel {
+                            values: root.results
+                            objectProp: "key"
+                        }
+
+                        cacheBuffer: root.rowPitch * 4
+
+                        delegate: Item {
+                            id: line
+
+                            required property var modelData
+                            required property int index
+
+                            width: list.width
+                            height: line.modelData.header ? root.headerPitch : root.rowPitch
+
+                            StyledText {
+                                visible: !!line.modelData.header
+                                anchors.left: parent.left
+                                anchors.leftMargin: Appearance.padding.normal
+                                anchors.bottom: parent.bottom
+                                anchors.bottomMargin: Appearance.padding.small / 2
+                                text: line.modelData.title ?? ""
+                                font.pixelSize: Appearance.font.size.small
+                                color: Appearance.colour.textFaint
+                            }
+
+                            MenuRow {
+                                id: row
+
+                                visible: !line.modelData.header
+                                width: parent.width
+                                height: line.height
+                                iconSize: Appearance.sizes.launcherIcon
+                                rowHeight: root.rowPitch
+
+                                labelSize: Appearance.font.size.normal
+                                inlineDetail: true
+
+                                iconSource: line.modelData.iconSource ?? ""
+                                icon: line.modelData.icon ?? "apps"
+                                label: line.modelData.label ?? ""
+                                detail: line.modelData.detail ?? ""
+
+                                selected: line.index === root.selected && !root.answerHolds
+
+                                askable: true
+                                onActivated: root.chooseRow(line.index)
+                                onAsked: (x, y) => {
+                                    root.steered = true;
+                                    root.selected = line.index;
+                                    root.ask(row, line.modelData, x, y);
+                                }
+
+                                Row {
+                                    spacing: Appearance.padding.small
+
+                                    Repeater {
+                                        model: line.buttons
+
+                                        delegate: Button {
+                                            id: button
+
+                                            required property var modelData
+
+                                            icon: button.modelData.icon
+                                            iconFill: button.modelData.fill ? 1 : 0
+                                            text: button.modelData.short ?? button.modelData.label
+                                            style: "text"
+
+                                            onClicked: button.modelData.run()
+                                        }
+                                    }
+
+                                    Toggle {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: line.modelData.toggle !== undefined
+                                        checked: !!line.modelData.toggle
+                                        onToggled: search.activate(line.modelData)
+                                    }
+                                }
+                            }
+
+                            HoverHandler {
+                                id: lineHover
+                            }
+
+                            readonly property bool opened: !line.modelData.header && !root.asking && (line.index === root.selected && !root.answerHolds || lineHover.hovered)
+
+                            readonly property var buttons: {
+                                if (!line.opened)
+                                    return [];
+                                const acts = root.actionsFor(line.modelData).slice(1);
+                                return acts.length <= root.buttonLimit ? acts : [...acts.slice(0, root.buttonLimit - 1), {
+                                        icon: "more_horiz",
+                                        label: "More",
+                                        run: () => root.ask(row, line.modelData, row.width - Appearance.padding.large, row.height / 2)
+                                    }];
+                            }
+                        }
+
+                        StyledText {
+                            id: empty
+
+                            visible: !root.results.length && !root.answer
+                            text: query.text ? "nothing matches" : "no applications found"
+                            color: Appearance.colour.textFaint
+                            font.pixelSize: Appearance.font.size.small
+                        }
                     }
                 }
             }
+        }
+
+        FloatingTooltip {
+            id: hint
+
+            shown: !!root.tipHost && !root.asking
+        }
+
+        ActionSheet {
+            id: sheet
+
+            anchors.fill: parent
+
+            Connections {
+                target: list
+
+                function onContentYChanged(): void {
+                    sheet.close();
+                }
+            }
+
+            onClosed: if (root.open)
+                Qt.callLater(query.forceActiveFocus)
         }
     }
 }

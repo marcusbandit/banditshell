@@ -40,11 +40,19 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var answer: Calculator.answer(root.input?.text ?? "")
+    readonly property var answer: Calculator.answerFor(root.input?.text ?? "")
+
+    Connections {
+        target: root.input
+
+        function onTextChanged(): void {
+            Calculator.ask(root.input.text);
+        }
+    }
 
     property bool answerHolds: false
 
-    onAnswerChanged: root.answerHolds = !!root.answer
+    onAnswerChanged: root.answerHolds = !!root.answer && root.answer.firm !== false
 
     property bool dragging: false
     property real dragProgress: 0

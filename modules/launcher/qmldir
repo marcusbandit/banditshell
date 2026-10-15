@@ -5,4 +5,5 @@ AnswerRow 1.0 AnswerRow.qml
 LaunchEdge 1.0 LaunchEdge.qml
 LauncherConcept 1.0 LauncherConcept.qml
 Launcher 1.0 Launcher.qml
+LauncherSearch 1.0 LauncherSearch.qml
 ListLauncher 1.0 ListLauncher.qml

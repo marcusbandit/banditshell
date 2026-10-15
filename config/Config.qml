@@ -254,6 +254,18 @@ Singleton {
 
                 concept: "list",
 
+                list: {
+                    pinned: true,
+
+                    recents: false
+                },
+
+                webSearch: "https://duckduckgo.com/?q=%s",
+
+                hiddenFiles: ".config",
+
+                currency: "DKK",
+
                 hidden: ({}),
 
                 starred: ({}),

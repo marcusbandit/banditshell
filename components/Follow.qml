@@ -10,6 +10,8 @@ QtObject {
 
     property real epsilon: 0.25
 
+    property real longestFrame: Infinity
+
     readonly property bool settled: value === target
 
     function snap(): void {
@@ -22,7 +24,7 @@ QtObject {
         onTriggered: {
             const d = root.target - root.value;
 
-            root.value = root.speed <= 0 || Appearance.lessMotion || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * root.driver.frameTime));
+            root.value = root.speed <= 0 || Appearance.lessMotion || Math.abs(d) < root.epsilon ? root.target : root.value + d * (1 - Math.exp(-root.speed * Math.min(root.driver.frameTime, root.longestFrame)));
         }
     }
 }

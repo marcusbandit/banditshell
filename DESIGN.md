@@ -648,7 +648,14 @@ banditshell/
 │   ├── Calculator.qml            arithmetic, once: how a number is written, what an
 │   │                            operator does, and what a TYPED expression means.
 │   │                            Two inputs onto one question, so they cannot
-│   │                            disagree; the keypad's own state is not here
+│   │                            disagree; the keypad's own state is not here.
+│   │                            What it cannot do (units, dates, functions)
+│   │                            goes to qalc when that is installed. Typed
+│   │                            sums are read up to the last part that makes
+│   │                            sense, so 5+5- still says 10
+│   ├── Currency.qml             an amount in one currency, said in another:
+│   │                            the ECB's daily rates, fetched when online
+│   │                            and kept for when it is not
 │   ├── Lock.qml                 whether the screen is locked, and what decides it
 │   ├── Keyring.qml              the KEYRING'S question, once the shell is the one
 │   │                            asking it. gnome-keyring draws nothing: it asks
@@ -709,6 +716,9 @@ banditshell/
 │   ├── Files.qml                the file browser's whole mind: where it is,
 │   │                            what is there, and the shell session it is
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17
+│   ├── FileSearch.qml           files by name under home (fd), and one folder
+│   │                            listed for a typed path, for the launcher;
+│   │                            which hidden ones count is a setting
 │   ├── Update.qml               whether the public repo is ahead of this
 │   │                            checkout, found by fetching the tracked
 │   │                            branch at every launch and counting what it
@@ -859,7 +869,14 @@ banditshell/
 │   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
-│   │   ├── ListLauncher.qml     a search field over everything installed
+│   │   ├── ListLauncher.qml     a search field that answers what you type;
+│   │   │                        empty, it shows up to 12 pinned apps and a
+│   │   │                        row of recent ones as icons
+│   │   ├── LauncherSearch.qml   what a typed line means: apps, commands,
+│   │   │                        settings (toggles flip in place), files, a
+│   │   │                        typed path, a link, the web; ranked into
+│   │   │                        sections, and what each row does
+│   │   ├── search.js            the pure part of it: paths, links, sections
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe

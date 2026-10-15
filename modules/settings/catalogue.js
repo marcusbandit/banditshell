@@ -369,8 +369,17 @@ const PAGES_SOURCE = {
             { t: "Layout", rows: [
                 { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
+                { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", detail: s => s.v("listPinned") ? "up to 12 icons until you type" : "off", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
+                    why: "Pick an app in the list and press Pin to put it here." },
+                { n: [], icon: "history", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", detail: s => s.v("listRecents") ? "the last apps you opened" : "off", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
                 { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", detail: "apps you use rise", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
+            ] },
+            { t: "Search results", rows: [
+                { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
+                    why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
+                { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", detail: s => s.ratesNote, kw: "currency money exchange rates convert",
+                    why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." }
             ] },
             { t: "Apps", rows: [
                 { n: 72, kind: "w", w: "chips", list: "starred", kw: "starred apps favourites" },
@@ -946,7 +955,8 @@ for (const p of PAGES) {
                     group: g,
                     label: label || r.kw.split(" ")[0],
                     nums: numbers(r),
-                    hay: `${label} ${r.kw || ""} ${typeof g.t === "string" ? g.t : ""} ${r.cfg || ""} ${p.name}`.toLowerCase()
+                    hay: `${label} ${r.kw || ""} ${typeof g.t === "string" ? g.t : ""} ${r.cfg || ""} ${p.name}`.toLowerCase(),
+                    flat: `${label} ${r.kw || ""}`.toLowerCase().replace(/[^a-z0-9]/g, "")
                 });
             if (r.layer)
                 visit(r.layer, g);
@@ -966,7 +976,7 @@ function search(query) {
         hits = INDEX.filter(x => x.nums.indexOf(+num[1]) >= 0);
     else {
         const words = q.split(/\s+/);
-        hits = INDEX.filter(x => words.every(w => x.hay.indexOf(w) >= 0));
+        hits = INDEX.filter(x => words.every(w => x.hay.indexOf(w) >= 0 || x.flat.indexOf(w.replace(/[^a-z0-9]/g, "")) >= 0));
         const lead = x => x.label.toLowerCase().indexOf(q) === 0 ? 1 : 0;
         hits = hits.map((x, i) => ({ x: x, i: i })).sort((a, b) => lead(b.x) - lead(a.x) || a.i - b.i).map(e => e.x);
     }

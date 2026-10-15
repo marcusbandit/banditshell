@@ -28,7 +28,10 @@ Item {
 
     default property alias trailing: trailingSlot.data
 
+    property bool askable: false
+
     signal activated
+    signal asked(real x, real y)
 
     readonly property bool hovered: interactive && pointer.containsMouse
 
@@ -56,7 +59,8 @@ Item {
         enabled: root.interactive
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
-        onClicked: root.activated()
+        acceptedButtons: root.askable ? Qt.LeftButton | Qt.RightButton : Qt.LeftButton
+        onClicked: mouse => mouse.button === Qt.RightButton ? root.asked(mouse.x, mouse.y) : root.activated()
     }
 
     HoverTip {

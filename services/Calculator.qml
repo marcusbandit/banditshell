@@ -2,6 +2,8 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
+import "calculation.js" as Calculation
 
 Singleton {
     id: root
@@ -203,5 +205,91 @@ Singleton {
     function answer(text: string): var {
         const result = root.evaluate(text);
         return result && result.work > 0 ? result : null;
+    }
+
+    property bool qalcFound: false
+    property string asked: ""
+    property var worked: null
+    property int generation: 0
+    property var latestRun: null
+
+    function leniently(text: string): var {
+        if (!Calculation.mathOnly(text))
+            return null;
+        const got = Calculation.lenient(text, t => root.evaluate(t));
+        return got ? Object.assign({}, got, {
+            firm: Calculation.firm(text)
+        }) : null;
+    }
+
+    function answerFor(text: string): var {
+        return Currency.answer(text) ?? root.leniently(text) ?? (root.worked?.query === text ? root.worked : null);
+    }
+
+    function ask(text: string): void {
+        root.asked = text;
+        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text) || root.leniently(text) || !Calculation.looksLikeCalculation(text)) {
+            settle.stop();
+            return;
+        }
+        settle.restart();
+    }
+
+    function take(generation: int, query: string, output: string): void {
+        if (generation !== root.generation)
+            return;
+        const text = Calculation.readQalc(output, query);
+        root.worked = text ? {
+            query: query,
+            text: text,
+            work: 1,
+            firm: true
+        } : null;
+    }
+
+    Timer {
+        id: settle
+
+        interval: 60
+
+        onTriggered: {
+            root.generation += 1;
+            if (root.latestRun)
+                root.latestRun.running = false;
+            root.latestRun = runner.createObject(root, {
+                command: ["qalc", "-t", Calculation.qalcExpression(root.asked)],
+                generation: root.generation,
+                query: root.asked,
+                running: true
+            });
+        }
+    }
+
+    Component {
+        id: runner
+
+        Process {
+            id: run
+
+            property int generation: 0
+            property string query: ""
+
+            environment: ({
+                    LC_ALL: "C.UTF-8"
+                })
+
+            stdout: StdioCollector {
+                onStreamFinished: root.take(run.generation, run.query, text)
+            }
+
+            onRunningChanged: if (!run.running)
+                run.destroy()
+        }
+    }
+
+    Process {
+        command: ["sh", "-c", "command -v qalc"]
+        running: true
+        onExited: code => root.qalcFound = code === 0
     }
 }

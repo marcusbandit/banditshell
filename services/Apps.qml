@@ -43,10 +43,30 @@ Singleton {
 
         const next = Object.assign({}, root.starred);
         if (keep)
-            next[id] = true;
+            next[id] = Date.now();
         else
             delete next[id];
         Config.set("launcher.starred", next);
+    }
+
+    readonly property var starredApps: root.all.filter(e => root.isStarred(e)).sort((a, b) => (+root.starred[a.id] || 0) - (+root.starred[b.id] || 0) || (a.name ?? "").localeCompare(b.name ?? ""))
+
+    function recent(count: int, except: var): var {
+        return root.visible.filter(e => root.usage[e.id ?? ""] && !except.includes(e)).sort((a, b) => root.usage[b.id].last - root.usage[a.id].last).slice(0, count);
+    }
+
+    function moveStarred(entry: var, step: int): bool {
+        const order = root.starredApps.map(e => e.id);
+        const from = order.indexOf(entry?.id);
+        const to = from + step;
+        if (from < 0 || to < 0 || to >= order.length)
+            return false;
+
+        order.splice(to, 0, order.splice(from, 1)[0]);
+        const next = Object.assign({}, root.starred);
+        order.forEach((id, i) => next[id] = i + 1);
+        Config.set("launcher.starred", next);
+        return true;
     }
 
     function pinned(count: int): var {

@@ -162,6 +162,10 @@ Singleton {
             menuW: "menu.width",
             settingsW: "settings.width",
             concept: "launcher.concept",
+            listPinned: "launcher.list.pinned",
+            listRecents: "launcher.list.recents",
+            hiddenFiles: "launcher.hiddenFiles",
+            currency: "launcher.currency",
             launcherIcon: "launcher.iconSize",
             halfLife: "launcher.halfLifeDays",
             clip: "clipboard.record",
@@ -1201,6 +1205,8 @@ Singleton {
     readonly property string chargeTrouble: ChargeLimit.trouble
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
+    readonly property var currencies: Currency.codes
+    readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse
     readonly property int clipseWaiting: Clipboard.clipseWaiting
