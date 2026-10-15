@@ -226,13 +226,21 @@ Singleton {
         return root.leniently(text)?.value ?? null;
     }
 
+    function programmed(text: string): var {
+        const got = Calculation.program(text, t => root.evaluate(t), n => root.format(n));
+        return got ? Object.assign({}, got, {
+            work: 1,
+            firm: true
+        }) : null;
+    }
+
     function answerFor(text: string): var {
-        return Currency.answer(text, root.amountOf) ?? root.leniently(text) ?? (root.worked?.query === text ? root.worked : null);
+        return Currency.answer(text, root.amountOf) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
     }
 
     function ask(text: string): void {
         root.asked = text;
-        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text, root.amountOf) || root.leniently(text) || !Calculation.looksLikeCalculation(text)) {
+        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text, root.amountOf) || root.leniently(text) || root.programmed(text) || !Calculation.looksLikeCalculation(text)) {
             settle.stop();
             return;
         }

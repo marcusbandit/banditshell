@@ -32,7 +32,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Sums in the launcher keep their answer while you type, so 5+5- still says 10. Money such as 5 eur, 50+30 jpy or 50 eur + 30 usd converts at the European Central Bank's daily rates into the currency you pick in Settings › Launcher (DKK unless you change it), written the way your region writes numbers. The rates are fetched when the shell starts and kept for when you are offline. A Symbols button next to a sum adds brackets, powers, roots and more."
+          "text": "Sums in the launcher keep their answer while you type, so 5+5- still says 10. Names carry across semicolons and a line with one unknown is solved, so x=5; x+2 says 7 and 2x+3=7 says x = 2. Money such as 5 eur, 50+30 jpy or 50 eur + 30 usd converts at the European Central Bank's daily rates into the currency you pick in Settings › Launcher (DKK unless you change it), written the way your region writes numbers. The rates are fetched when the shell starts and kept for when you are offline. A Symbols button next to a sum adds brackets, powers, roots and more."
         },
         {
           "type": "features",

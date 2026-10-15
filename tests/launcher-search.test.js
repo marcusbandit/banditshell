@@ -255,3 +255,45 @@ test.describe("lenient maths", () => {
         assert.ok(!Calc.firm("-5"));
     });
 });
+
+test.describe("program", () => {
+    const Prog = lib("services/calculation.js", ["program"]);
+    const evaluate = t => {
+        const js = t.replace(/×/g, "*").replace(/÷/g, "/").replace(/−/g, "-");
+        if (!/^[\d+\-*/() .]+$/.test(js))
+            return null;
+        try {
+            const v = Function(`"use strict"; return (${js});`)();
+            return typeof v === "number" && isFinite(v) ? { value: v } : null;
+        } catch (e) {
+            return null;
+        }
+    };
+    const format = n => String(parseFloat(n.toPrecision(12)));
+    const run = t => Prog.program(t, evaluate, format)?.text ?? null;
+
+    test.it("keeps names between statements", () => {
+        assert.strictEqual(run("x=5; x+2"), "7");
+        assert.strictEqual(run("x = 5; y = x*2; y+1"), "11");
+        assert.strictEqual(run("x=5; 2x"), "10");
+        assert.strictEqual(run("r=2; pi*r*r"), "12.5663706144");
+        assert.strictEqual(run("x=5;"), "x = 5");
+        assert.strictEqual(run("x=5; x+"), "5");
+    });
+
+    test.it("solves a line for the one unknown", () => {
+        assert.strictEqual(run("2x+3=7"), "x = 2");
+        assert.strictEqual(run("a=3; a*y = 12"), "y = 4");
+        assert.strictEqual(run("x*x=4"), null);
+    });
+
+    test.it("says whether two sides are equal", () => {
+        assert.strictEqual(run("5=5"), "true");
+        assert.strictEqual(run("2+2=5"), "false");
+    });
+
+    test.it("leaves ordinary text alone", () => {
+        for (const t of ["firefox", "5+5", "=now", "x+y=3", "x=", "a=b=c", "x==5"])
+            assert.strictEqual(run(t), null, t);
+    });
+});

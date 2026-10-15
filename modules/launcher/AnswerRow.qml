@@ -38,7 +38,7 @@ MenuRow {
             anchors.verticalCenter: parent.verticalCenter
             icon: "function"
             text: "Symbols"
-            style: "text"
+            style: "outlined"
             checkable: true
             checked: root.symbolsOpen
             onToggled: root.symbols()
