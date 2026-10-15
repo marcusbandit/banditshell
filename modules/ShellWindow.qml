@@ -81,6 +81,7 @@ PanelWindow {
     readonly property var remembered: ({
             panel: Object.keys(win.named).find(name => win.named[name].open) ?? "",
             menu: menuLayer.pinned ? menuLayer.currentKey : "",
+            keyboard: keyboardLayer.open,
             quickControls: quickLayer.pinned,
             notifications: popups.pinned,
             island: islandLayer.pinned
@@ -104,6 +105,8 @@ PanelWindow {
             if (!win.resumed) {
                 resumer.was = Relaunch.recall(win.memoryKey);
                 win.named[resumer.was?.panel ?? ""]?.show();
+                if (resumer.was?.keyboard)
+                    keyboardLayer.show();
                 quickLayer.pinned = !!resumer.was?.quickControls;
                 popups.pinned = !!resumer.was?.notifications;
                 islandLayer.pinned = !!resumer.was?.island;
