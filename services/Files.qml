@@ -196,6 +196,7 @@ Singleton {
         root.search = "";
         root.searching = false;
         root.refresh();
+        root.remember();
     }
 
     property int generation: 0
@@ -921,9 +922,23 @@ Singleton {
         }
     }
 
+    function remember(): void {
+        Relaunch.keep("files", {
+            open: root.windowOpen,
+            path: root.cwd
+        });
+    }
+
+    onWindowOpenChanged: root.remember()
+
     Component.onCompleted: {
+        const was = Relaunch.recall("files");
+        if (was?.path)
+            root.cwd = was.path;
         root.refresh();
         root.installRules();
+        if (was?.open)
+            root.show("");
     }
 
     function act(action: string): bool {

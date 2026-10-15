@@ -19,13 +19,19 @@ FloatingWindow {
 
     property bool opened: false
 
+    function follow(): void {
+        if (Files.windowOpen)
+            win.opened = true;
+        win.visible = Files.windowOpen;
+    }
+
+    Component.onCompleted: win.follow()
+
     Connections {
         target: Files
 
         function onWindowOpenChanged(): void {
-            if (Files.windowOpen)
-                win.opened = true;
-            win.visible = Files.windowOpen;
+            win.follow();
         }
     }
 
