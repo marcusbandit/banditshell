@@ -33,6 +33,22 @@ Singleton {
 
     property string pendingKeymap: ""
 
+    property var verdict: null
+
+    property string pendingVerdict: ""
+
+    readonly property int keyCount: root.board ? root.board.sections[0].keys.length : 0
+
+    function judge(ok: bool, said: string): void {
+        if (!ok)
+            console.warn(`Keyboards: ${said}`);
+        root.verdict = {
+            ok: ok,
+            text: said,
+            serial: (root.verdict?.serial ?? 0) + 1
+        };
+    }
+
     readonly property string shape: KeyboardsJs.shapeNamed(Config.values.cheatsheet.shape)
 
     readonly property var template: KeyboardsJs.templateSections(root.shape)
@@ -74,7 +90,7 @@ Singleton {
         if (!trimmed)
             return root.clearKeymap();
         if (!root.definition)
-            return root.fail("import the board's VIA layout first, the keymap is placed on it");
+            return root.judge(false, "import the board's VIA layout first, the keymap is placed on it");
         const expanded = trimmed === "~" || trimmed.startsWith("~/") ? `${Quickshell.env("HOME")}${trimmed.slice(1)}` : trimmed;
 
         root.error = "";
@@ -108,6 +124,16 @@ Singleton {
         }
         root.legends = made.legends;
         root.board = KeyboardsJs.applyLegends(aligned, made.legends);
+    }
+
+    function keep(): void {
+        Config.set("cheatsheet.keyboard", root.pending);
+        root.judge(true, root.pendingVerdict);
+    }
+
+    function keepKeymap(): void {
+        Config.set("cheatsheet.keymap", root.pendingKeymap);
+        root.judge(true, root.pendingVerdict);
     }
 
     function fail(said: string): void {
@@ -157,15 +183,20 @@ Singleton {
         onLoaded: {
             const parsed = KeyboardsJs.parseVia(reader.text());
             if (parsed.error)
-                return root.fail(parsed.error);
+                return root.judge(false, `this is not it · ${parsed.error}`);
 
+            const aligned = KeyboardsJs.alignBoard(parsed);
             const base = (parsed.name || reader.path.split("/").pop().replace(/\.json$/i, "")).replace(/[^a-zA-Z0-9 ._()-]/g, " ").trim();
             root.pending = `${base || "keyboard"}.json`;
-            writer.path = `${root.dir}/${root.pending}`;
+            root.pendingVerdict = `this is it · ${parsed.name || base || "your board"}, ${aligned.sections[0].keys.length} keys, ${aligned.variant}`;
+            const target = `${root.dir}/${root.pending}`;
+            if (writer.path === target && writer.text() === reader.text())
+                return root.keep();
+            writer.path = target;
             writer.setText(reader.text());
         }
 
-        onLoadFailed: root.fail(`could not read ${reader.path}`)
+        onLoadFailed: root.judge(false, `could not read ${reader.path}`)
     }
 
     FileView {
@@ -205,17 +236,21 @@ Singleton {
         onLoaded: {
             const parsed = KeyboardsJs.parseKeymap(keymapReader.text());
             if (parsed.error)
-                return root.fail(parsed.error);
+                return root.judge(false, `this is not it · ${parsed.error}`);
             const made = KeyboardsJs.keymapLegends(root.definition, parsed);
             if (made.error)
-                return root.fail(made.error);
+                return root.judge(false, `this is not it · ${made.error}`);
 
             root.pendingKeymap = `${root.stored.replace(/\.json$/i, "")}.keymap.json`;
-            keymapWriter.path = `${root.dir}/${root.pendingKeymap}`;
+            root.pendingVerdict = `this is it · ${parsed.name || "the keymap"} names ${Object.keys(made.legends).length} keys, the ones you bind light up`;
+            const target = `${root.dir}/${root.pendingKeymap}`;
+            if (keymapWriter.path === target && keymapWriter.text() === keymapReader.text())
+                return root.keepKeymap();
+            keymapWriter.path = target;
             keymapWriter.setText(keymapReader.text());
         }
 
-        onLoadFailed: root.fail(`could not read ${keymapReader.path}`)
+        onLoadFailed: root.judge(false, `could not read ${keymapReader.path}`)
     }
 
     FileView {
@@ -248,22 +283,26 @@ Singleton {
     FileView {
         id: writer
 
-        watchChanges: false
+        watchChanges: true
         printErrors: false
 
-        onSaved: Config.set("cheatsheet.keyboard", root.pending)
+        onFileChanged: writer.reload()
 
-        onSaveFailed: root.fail(`could not write ${writer.path}`)
+        onSaved: root.keep()
+
+        onSaveFailed: root.judge(false, `could not write ${writer.path}`)
     }
 
     FileView {
         id: keymapWriter
 
-        watchChanges: false
+        watchChanges: true
         printErrors: false
 
-        onSaved: Config.set("cheatsheet.keymap", root.pendingKeymap)
+        onFileChanged: keymapWriter.reload()
 
-        onSaveFailed: root.fail(`could not write ${keymapWriter.path}`)
+        onSaved: root.keepKeymap()
+
+        onSaveFailed: root.judge(false, `could not write ${keymapWriter.path}`)
     }
 }

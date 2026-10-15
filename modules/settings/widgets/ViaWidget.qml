@@ -6,19 +6,76 @@ import qs.components
 import qs.services
 import qs.modules.settings
 import "../boards.js" as Boards
+import "../../../services/keyboards.js" as KeyboardsJs
 
 Item {
     id: root
 
     property var row: ({})
 
-    readonly property bool wanted: SettingsState.v("sheetBoard") && (Keyboards.stored !== "" || SettingsState.boardWanted)
+    readonly property bool wanted: SettingsState.v("sheetBoard")
+    readonly property bool custom: SettingsState.v("sheetKeyboard") === "file"
     readonly property bool imported: Keyboards.stored !== "" && !!Keyboards.board
-    property bool asking: false
-    property bool askingKeymap: false
+    property string choosing: ""
+
+    property var said: null
+    property string saidFor: ""
 
     width: parent ? parent.width : 0
     implicitHeight: layer.implicitHeight
+
+    onCustomChanged: if (!root.custom)
+        root.choosing = ""
+
+    function choose(which: string): void {
+        root.choosing = root.choosing === which ? "" : which;
+        if (root.choosing === "layout")
+            layoutPicker.look();
+        else if (root.choosing === "keymap")
+            keymapPicker.look();
+    }
+
+    function take(which: string, path: string): void {
+        root.choosing = "";
+        root.saidFor = which;
+        if (which === "keymap")
+            Keyboards.useKeymap(path);
+        else
+            Keyboards.use(path);
+    }
+
+    function trySample(): void {
+        const wanted = JSON.stringify(Boards.SAMPLE_VIA);
+        if (sample.text() === wanted) {
+            root.saidFor = "layout";
+            Keyboards.use(sample.path);
+        } else {
+            sample.setText(wanted);
+        }
+    }
+
+    function openFile(name: string): void {
+        Quickshell.execDetached(["xdg-open", `${Keyboards.dir}/${name}`]);
+    }
+
+    function hear(which: string): var {
+        return root.said && root.saidFor === which ? root.said : null;
+    }
+
+    function layoutSummary(text: string): var {
+        const parsed = KeyboardsJs.parseVia(text);
+        if (parsed.error)
+            return null;
+        const board = KeyboardsJs.alignBoard(parsed);
+        return [parsed.name, `${board.sections[0].keys.length} keys`, board.variant].filter(s => s).join(" · ");
+    }
+
+    function keymapSummary(text: string): var {
+        const parsed = KeyboardsJs.parseKeymap(text);
+        if (parsed.error || !Keyboards.definition || KeyboardsJs.keymapLegends(Keyboards.definition, parsed).error)
+            return null;
+        return [parsed.name, "layer 0"].filter(s => s).join(" · ");
+    }
 
     Connections {
         target: Keyboards
@@ -28,17 +85,21 @@ Item {
                 SettingsView.drop(Keyboards.error, "error");
         }
 
-        function onStoredChanged(): void {
-            if (Keyboards.stored) {
-                SettingsState.boardWanted = false;
-                SettingsView.drop(`drawing ${Keyboards.stored.replace(/\.json$/, "")}`, "keyboard");
-            }
+        function onVerdictChanged(): void {
+            const v = Keyboards.verdict;
+            if (!v)
+                return;
+            root.said = v;
+            quiet.restart();
+            SettingsView.drop(v.text, v.ok ? "keyboard" : "error");
         }
+    }
 
-        function onStoredKeymapChanged(): void {
-            if (Keyboards.storedKeymap)
-                SettingsView.drop("the keys you bind will light up", "keyboard");
-        }
+    Timer {
+        id: quiet
+
+        interval: 9000
+        onTriggered: root.said = null
     }
 
     FileView {
@@ -46,7 +107,10 @@ Item {
 
         path: `${Quickshell.env("XDG_RUNTIME_DIR") || "/tmp"}/banditshell-sample-board.json`
         printErrors: false
-        onSaved: Keyboards.use(sample.path)
+        onSaved: {
+            root.saidFor = "layout";
+            Keyboards.use(sample.path);
+        }
     }
 
     MenuLayer {
@@ -56,17 +120,24 @@ Item {
         open: root.wanted
 
         SettingsRowFrame {
+            readonly property var heard: root.hear("layout")
+
             width: parent.width
             interactive: false
+            off: !root.custom
             icon: "upload_file"
             label: "VIA layout"
-            detail: root.imported ? `${Keyboards.stored.replace(/\.json$/, "")} · ${Keyboards.board?.keys?.length ?? Keyboards.board?.cells?.length ?? 0} keys` : `nothing imported · drawing ${Keyboards.shape}`
+            detail: heard ? heard.text : root.imported ? `${Keyboards.board.name || Keyboards.stored.replace(/\.json$/, "")} · ${Keyboards.keyCount} keys · ${Keyboards.variant}` : "nothing imported"
+            detailColour: heard ? (heard.ok ? Appearance.colour.accent : Appearance.colour.alarm) : Appearance.colour.textFaint
+            flashing: !!heard && heard.ok
             onPointed: SettingsView.hovered = root.row
 
             SettingsTool {
                 anchors.verticalCenter: parent.verticalCenter
-                icon: "info"
-                tip: "a VIA definition: the .json your board's maker ships for usevia.app. its layouts.keymap is read. keys are named by where they sit, unless you also import a keymap below."
+                visible: Keyboards.stored !== ""
+                icon: "edit_document"
+                tip: "open the file"
+                onClicked: root.openFile(Keyboards.stored)
             }
 
             SettingsTool {
@@ -74,7 +145,10 @@ Item {
                 visible: Keyboards.stored !== ""
                 icon: "close"
                 tip: "forget it"
-                onClicked: Keyboards.clear()
+                onClicked: {
+                    SettingsState.boardWanted = true;
+                    Keyboards.clear();
+                }
             }
 
             SettingsTool {
@@ -82,49 +156,51 @@ Item {
                 visible: Keyboards.stored === ""
                 icon: "science"
                 tip: "try a sample board"
-                onClicked: sample.setText(JSON.stringify(Boards.SAMPLE_VIA))
+                onClicked: root.trySample()
             }
 
             Button {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !root.asking
                 size: 0
-                text: "Import"
-                onClicked: {
-                    root.asking = true;
-                    Qt.callLater(file.take);
-                }
+                text: root.choosing === "layout" ? "Close" : "Import"
+                onClicked: root.choose("layout")
             }
+        }
 
-            SettingsField {
-                id: file
+        MenuLayer {
+            width: parent.width
+            open: root.choosing === "layout"
 
-                anchors.verticalCenter: parent.verticalCenter
-                visible: root.asking
-                placeholder: "~/Downloads/board.json"
-                onCommitted: t => {
-                    root.asking = false;
-                    if (t.trim())
-                        Keyboards.use(t.trim());
-                }
-                onEditingChanged: if (!editing)
-                    root.asking = false
+            SettingsFilePicker {
+                id: layoutPicker
+
+                row: root.row
+                title: "VIA layout"
+                kind: "VIA layouts"
+                check: text => root.layoutSummary(text)
+                onPicked: path => root.take("layout", path)
             }
         }
 
         SettingsRowFrame {
+            readonly property var heard: root.hear("keymap")
+
             width: parent.width
             interactive: false
-            visible: root.imported
+            off: !root.custom || !root.imported
             icon: "keyboard_alt"
             label: "VIA keymap"
-            detail: Keyboards.storedKeymap ? `${Keyboards.storedKeymap.replace(/\.keymap\.json$/, "")} · layer 0` : "optional · lights the keys you bind"
+            detail: heard ? heard.text : Keyboards.storedKeymap ? `${Keyboards.storedKeymap.replace(/\.keymap\.json$/, "")} · layer 0` : "nothing imported"
+            detailColour: heard ? (heard.ok ? Appearance.colour.accent : Appearance.colour.alarm) : Appearance.colour.textFaint
+            flashing: !!heard && heard.ok
             onPointed: SettingsView.hovered = root.row
 
             SettingsTool {
                 anchors.verticalCenter: parent.verticalCenter
-                icon: "info"
-                tip: "a keymap saved from VIA (Save + Load, Save). it says what each key does, so the keys you bind can light up. layer 0 is read, and it has to come from the same board as the layout."
+                visible: Keyboards.storedKeymap !== ""
+                icon: "edit_document"
+                tip: "open the file"
+                onClicked: root.openFile(Keyboards.storedKeymap)
             }
 
             SettingsTool {
@@ -137,28 +213,24 @@ Item {
 
             Button {
                 anchors.verticalCenter: parent.verticalCenter
-                visible: !root.askingKeymap
                 size: 0
-                text: "Import"
-                onClicked: {
-                    root.askingKeymap = true;
-                    Qt.callLater(keymapFile.take);
-                }
+                text: root.choosing === "keymap" ? "Close" : "Import"
+                onClicked: root.choose("keymap")
             }
+        }
 
-            SettingsField {
-                id: keymapFile
+        MenuLayer {
+            width: parent.width
+            open: root.choosing === "keymap"
 
-                anchors.verticalCenter: parent.verticalCenter
-                visible: root.askingKeymap
-                placeholder: "~/Downloads/board.layout.json"
-                onCommitted: t => {
-                    root.askingKeymap = false;
-                    if (t.trim())
-                        Keyboards.useKeymap(t.trim());
-                }
-                onEditingChanged: if (!editing)
-                    root.askingKeymap = false
+            SettingsFilePicker {
+                id: keymapPicker
+
+                row: root.row
+                title: "VIA keymap"
+                kind: "keymaps for this board"
+                check: text => root.keymapSummary(text)
+                onPicked: path => root.take("keymap", path)
             }
         }
     }
