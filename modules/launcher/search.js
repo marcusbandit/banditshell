@@ -112,6 +112,181 @@ function arrange(groups, caps) {
     return out;
 }
 
+var SPAN_HEAD = /^(\d+(?:[.,]\d+)?)\s*(hours?|hrs?|h|minutes?|mins?|m|seconds?|secs?|s)(?![a-z])\s*(?:and\s+)?/i;
+
+function unitSeconds(unit) {
+    const u = unit.toLowerCase();
+    return u[0] === "h" ? 3600 : u[0] === "m" ? 60 : 1;
+}
+
+function leadingSpan(text, bareMinutes) {
+    let rest = String(text || "").trim();
+    let total = 0;
+    let m;
+    while ((m = SPAN_HEAD.exec(rest)) !== null) {
+        total += parseFloat(m[1].replace(",", ".")) * unitSeconds(m[2]);
+        rest = rest.slice(m[0].length);
+    }
+    if (!total && bareMinutes) {
+        const bare = /^(\d+(?:[.,]\d+)?)(?![\d.,:a-z])\s*/i.exec(rest);
+        if (bare) {
+            total = parseFloat(bare[1].replace(",", ".")) * 60;
+            rest = rest.slice(bare[0].length);
+        }
+    }
+    return total > 0 ? {
+        seconds: Math.round(total),
+        rest: rest.trim()
+    } : null;
+}
+
+function spanText(seconds) {
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor(seconds % 3600 / 60);
+    const s = seconds % 60;
+    return [h ? `${h} h` : "", m ? `${m} min` : "", s ? `${s} s` : ""].filter(p => p).join(" ");
+}
+
+function timerAsk(text) {
+    const t = String(text || "").trim();
+    const led = /^timer\s+(?:for\s+)?(.*)$/i.exec(t);
+    if (led) {
+        const span = leadingSpan(led[1], true);
+        return span ? {
+            seconds: span.seconds,
+            label: span.rest.replace(/^(?:for|called)\s+/i, "")
+        } : null;
+    }
+    const span = leadingSpan(t, false);
+    const tail = span && /^timer(?:\s+(?:for\s+)?(.*))?$/i.exec(span.rest);
+    return tail ? {
+        seconds: span.seconds,
+        label: (tail[1] || "").trim()
+    } : null;
+}
+
+function clockOf(text, loose) {
+    const m = /^(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?$/i.exec(String(text || "").trim());
+    if (!m || !(m[2] || m[3] || loose))
+        return null;
+    let hour = parseInt(m[1], 10);
+    const minute = m[2] ? parseInt(m[2], 10) : 0;
+    const half = (m[3] || "").toLowerCase();
+    if (minute > 59 || hour > (half ? 12 : 23) || (half && hour === 0))
+        return null;
+    if (half)
+        hour = hour % 12 + (half === "pm" ? 12 : 0);
+    return {
+        hour: hour,
+        minute: minute
+    };
+}
+
+var CLOCK = "\\d{1,2}(?:[:.]\\d{2})?(?:\\s*(?:am|pm))?";
+
+function reminderAsk(text) {
+    const m = /^remind\s+me\s+(.+)$/i.exec(String(text || "").trim());
+    if (!m)
+        return null;
+    const rest = m[1].trim();
+    const what = s => (s || "").trim().replace(/^to\s+/i, "");
+
+    const first = new RegExp(`^(at\\s+)?(${CLOCK})(?:\\s+(.*))?$`, "i").exec(rest);
+    const early = first && clockOf(first[2], !!first[1]);
+    if (early)
+        return {
+            at: early,
+            label: what(first[3])
+        };
+    const last = new RegExp(`^(.+?)\\s+at\\s+(${CLOCK})$`, "i").exec(rest);
+    const late = last && clockOf(last[2], true);
+    if (late)
+        return {
+            at: late,
+            label: what(last[1])
+        };
+    const lead = /^in\s+(.*)$/i.exec(rest);
+    if (lead) {
+        const span = leadingSpan(lead[1], false);
+        return span ? {
+            seconds: span.seconds,
+            label: what(span.rest)
+        } : null;
+    }
+    const after = /^(.+?)\s+in\s+(.+)$/i.exec(rest);
+    const span = after && leadingSpan(after[2], false);
+    return span && !span.rest ? {
+        seconds: span.seconds,
+        label: what(after[1])
+    } : null;
+}
+
+function volumeAsk(text) {
+    const m = /^(?:set\s+)?(?:the\s+)?(?:volume|vol|sound)\s+(?:to\s+)?(\d{1,3})\s*%?$/i.exec(String(text || "").trim());
+    return m && parseInt(m[1], 10) <= 150 ? parseInt(m[1], 10) : -1;
+}
+
+var ZONE_ALIASES = {
+    "nyc": "America/New_York",
+    "washington": "America/New_York",
+    "boston": "America/New_York",
+    "miami": "America/New_York",
+    "sf": "America/Los_Angeles",
+    "san francisco": "America/Los_Angeles",
+    "seattle": "America/Los_Angeles",
+    "ldn": "Europe/London",
+    "beijing": "Asia/Shanghai",
+    "delhi": "Asia/Kolkata",
+    "new delhi": "Asia/Kolkata",
+    "mumbai": "Asia/Kolkata",
+    "bangalore": "Asia/Kolkata"
+};
+
+function zoneAsk(text) {
+    const t = String(text || "").trim().toLowerCase();
+    const m = /^(?:what\s+)?(?:time|clock)\s+(?:is\s+it\s+)?in\s+(.+)$/.exec(t) || /^time\s+(?!in$)(.+)$/.exec(t) || /^(.+?)\s+time$/.exec(t);
+    const place = m ? m[1].trim() : "";
+    return place.length >= 2 ? place : "";
+}
+
+function zoneMatches(zones, place, cityOf) {
+    const want = String(place || "").toLowerCase();
+    const alias = ZONE_ALIASES[want];
+    const rank = id => {
+        if (id === alias)
+            return 4;
+        const city = cityOf(id).toLowerCase();
+        return city === want ? 3 : city.indexOf(want) === 0 ? 2 : want.length >= 3 && city.indexOf(want) > 0 ? 1 : 0;
+    };
+    return (zones || []).filter(id => id.indexOf("/") > 0 && id.indexOf("Etc/") !== 0).map(id => ({
+                id: id,
+                rank: rank(id)
+            })).filter(z => z.rank > 0).sort((a, b) => b.rank - a.rank || a.id.length - b.id.length || a.id.localeCompare(b.id)).map(z => z.id);
+}
+
+function readOffsets(text) {
+    const map = {};
+    for (const line of String(text || "").split("\n")) {
+        const m = /^(\S+)\s+([+-])(\d{2})(\d{2})$/.exec(line.trim());
+        if (m)
+            map[m[1]] = (m[2] === "-" ? -1 : 1) * (parseInt(m[3], 10) * 60 + parseInt(m[4], 10));
+    }
+    return map;
+}
+
+function killAsk(text) {
+    const m = /^(?:kill|force\s+quit)(?:\s+(.*))?$/i.exec(String(text || "").trim());
+    return m ? (m[1] || "").trim().toLowerCase() : null;
+}
+
+function readProcesses(text, skip) {
+    return String(text || "").split("\n").map(line => /^\s*(\d+)\s+(\d+)\s+(.+?)\s*$/.exec(line)).filter(m => m && (skip || []).indexOf(m[3]) < 0).map(m => ({
+                pid: parseInt(m[1], 10),
+                kb: parseInt(m[2], 10),
+                name: m[3]
+            }));
+}
+
 function nextPickable(rows, from, step) {
     const n = (rows || []).length;
     for (let i = 0; i < n; i++) {

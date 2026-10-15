@@ -884,10 +884,14 @@ banditshell/
 │   │   │                        empty, it shows up to 12 pinned apps and a
 │   │   │                        row of recent ones as icons
 │   │   ├── LauncherSearch.qml   what a typed line means: apps, commands,
-│   │   │                        settings (toggles flip in place), files, a
+│   │   │                        settings (toggles flip in place), open
+│   │   │                        windows, devices, timers, reminders, the
+│   │   │                        time in a city, processes to kill, files, a
 │   │   │                        typed path, a link, the web; ranked into
 │   │   │                        sections, and what each row does
-│   │   ├── search.js            the pure part of it: paths, links, sections
+│   │   ├── search.js            the pure part of it: paths, links, sections,
+│   │   │                        and reading timer, reminder, volume, zone
+│   │   │                        and kill phrases
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe

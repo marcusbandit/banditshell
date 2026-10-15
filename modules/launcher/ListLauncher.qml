@@ -47,6 +47,8 @@ LauncherConcept {
             root.hide();
     }
 
+    answerless: search.intent
+
     LauncherSearch {
         id: search
 
@@ -348,21 +350,21 @@ LauncherConcept {
     property string selectedKey: ""
     property bool steered: false
 
-    onSelectedChanged: root.selectedKey = root.results[root.selected]?.key ?? ""
+    onSelectedChanged: root.selectedKey = root.results[root.selected]?.id ?? ""
 
     onResultsChanged: {
         if (search.query !== root.listedQuery) {
             root.listedQuery = search.query;
             root.steered = false;
         }
-        const kept = root.steered ? root.results.findIndex(r => r.key === root.selectedKey) : -1;
+        const kept = root.steered ? root.results.findIndex(r => r.id === root.selectedKey) : -1;
         if (kept >= 0) {
             root.selected = kept;
             return;
         }
         root.steered = false;
         root.selected = Math.max(0, Search.nextPickable(root.results, 0, 1));
-        root.selectedKey = root.results[root.selected]?.key ?? "";
+        root.selectedKey = root.results[root.selected]?.id ?? "";
         list.reset();
     }
 

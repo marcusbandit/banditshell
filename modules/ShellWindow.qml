@@ -258,6 +258,11 @@ PanelWindow {
 
     }
 
+    IdleInhibitor {
+        window: win
+        enabled: Idle.awake
+    }
+
     FocusScope {
         id: body
 

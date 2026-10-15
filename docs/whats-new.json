@@ -22,6 +22,11 @@
         {
           "type": "features",
           "severity": "minor",
+          "text": "The launcher also does small jobs as you type. timer 5m tea starts a timer, remind me at 15:00 to call mum sets a one-time alarm, and time in tokyo shows the time there with a button to add it to your world clock. Open windows come up by title, paired Bluetooth devices and saved Wi-Fi networks connect from their row, and speakers or headphones switch the sound. Volume up, volume 50, Mute sound, Mute microphone, Keep awake, Empty trash and Eject work as commands, and kill firefox lists matching processes with Quit and Force quit buttons."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
           "text": "The selected row in the launcher shows buttons for what else it can do, such as Pin, Show in folder, Copy path and Open in settings. Ctrl+Enter presses the first one, and right-click still works."
         },
         {

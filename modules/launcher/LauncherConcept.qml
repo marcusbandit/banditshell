@@ -40,7 +40,9 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var answer: Calculator.answerFor(root.input?.text ?? "")
+    property bool answerless: false
+
+    readonly property var answer: root.answerless ? null : Calculator.answerFor(root.input?.text ?? "")
 
     Connections {
         target: root.input
