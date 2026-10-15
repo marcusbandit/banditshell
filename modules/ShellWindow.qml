@@ -59,6 +59,9 @@ PanelWindow {
     readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
+    readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
+
+    property bool claiming: false
 
     Component.onCompleted: {
         Shell.register(win);
@@ -151,10 +154,26 @@ PanelWindow {
     }
 
     function act(notice: var): void {
+        if (notice.mock && notice.kind !== "music")
+            return;
         switch (notice.kind) {
-        case "music":
+        case "launch":
             islandLayer.close();
-            mediaLayer.show();
+            Hypr.focusClient([].concat(...Object.values(Hypr.clients)).find(c => Launching.fits(notice.rec, Hypr.classOf(c))) ?? null);
+            return;
+        case "dictation":
+            islandLayer.close();
+            clipLayer.build().setTab(1);
+            clipLayer.show();
+            return;
+        case "music":
+            if (notice.origin && !mediaLayer.open) {
+                islandLayer.handOff();
+                mediaLayer.build().showFrom(notice.origin);
+            } else {
+                islandLayer.close();
+                mediaLayer.show();
+            }
             break;
         case "notifications":
             popups.pinned = true;
@@ -202,7 +221,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || islandLayer.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -263,6 +282,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: mediaLayer.open ? mediaLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Subtract
+            item: mediaLayer.open ? islandLayer.passItem : null
         }
 
         Region {
@@ -356,6 +380,16 @@ PanelWindow {
 
         HoverHandler {
             id: onShell
+        }
+
+        Window.onActiveChanged: if (body.Window.active)
+            win.claiming = false
+
+        Timer {
+            id: claim
+
+            interval: 400
+            onTriggered: win.claiming = false
         }
 
         function lowered(blobs: var): var {
@@ -638,8 +672,13 @@ PanelWindow {
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
-            onOpenChanged: if (open)
-                win.closeOthers(mediaLayer)
+            onOpenChanged: {
+                if (mediaLayer.open)
+                    win.closeOthers(mediaLayer);
+                win.claiming = mediaLayer.open && !body.Window.active;
+                if (win.claiming)
+                    claim.restart();
+            }
 
             panel: MediaController {
                 border: win.border
@@ -733,12 +772,15 @@ PanelWindow {
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
+            z: mediaLayer.open ? 1 : 0
             border: win.border
             edge: Math.max(0, chassis.topBand - chassis.streamReach)
 
             keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
 
             onChosen: notice => win.act(notice)
+            onEyeingMusicChanged: if (islandLayer.eyeingMusic)
+                mediaLayer.build().warm()
         }
 
         QuickControls {

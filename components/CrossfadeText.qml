@@ -10,13 +10,18 @@ Item {
     property int wrapMode: Text.NoWrap
     property int maximumLineCount: 1
     property int horizontalAlignment: Text.AlignLeft
+    property int elide: Text.ElideRight
 
     property real speed: Appearance.animation.revealSpeed
 
     property bool flip: false
 
+    readonly property int lineCount: (root.flip ? b : a).lineCount
+    readonly property real shownWidth: (root.flip ? b : a).implicitWidth
+
     implicitWidth: Math.max(a.implicitWidth, b.implicitWidth)
     implicitHeight: (root.flip ? b : a).implicitHeight
+    baselineOffset: (root.flip ? b : a).baselineOffset
 
     onTextChanged: {
         if ((root.flip ? b : a).text === root.text)
@@ -43,7 +48,7 @@ Item {
         font.pixelSize: root.pixelSize
         wrapMode: root.wrapMode
         maximumLineCount: root.maximumLineCount
-        elide: Text.ElideRight
+        elide: root.elide
         horizontalAlignment: root.horizontalAlignment
         opacity: 1 - mix.value
         visible: opacity > 0.01
@@ -57,7 +62,7 @@ Item {
         font.pixelSize: root.pixelSize
         wrapMode: root.wrapMode
         maximumLineCount: root.maximumLineCount
-        elide: Text.ElideRight
+        elide: root.elide
         horizontalAlignment: root.horizontalAlignment
         opacity: mix.value
         visible: opacity > 0.01

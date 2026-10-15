@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-2",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The island now copes with several things at once. The newest one takes the big spot, and the rest become small bubbles beside it that keep their state: dictation, apps opening, and the same kind stacked into one bubble. A song change, a finished download or an update has its moment and then leaves on its own."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Notifications in the island stack up as cards behind the newest one. Each new one drops in from the top like a card dealt onto the pile, and the others step back. Resting the pointer on the stack spreads it into a list that stays on screen however long it gets; scroll it with the wheel or by dragging a card up or down. Flick a card sideways to dismiss it, click its close mark or right click it, or use clear all to send them all off at once."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it turns the island itself into the media controller: its whole body grows into the card while the cover, the title, artist and album, the equalizer, the progress wave and the buttons each travel to their place, and a new island forms at the top. Resting the pointer on the music gets the controller ready, so the click starts the move straight away."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The dictation line in the island is one smooth curve that fades out at both ends."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island's overview shows the weather under the date, from wttr.in every 30 minutes. weather.show set to false in config.json turns it off; weather.location, weather.units and weather.minutes set where, which units and how often."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A pinned island no longer takes the keyboard, and the screen around it stays clickable while it is open."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "With the media controller open, the island still opens when the pointer rests on it, and clicks on it reach the island instead of closing the controller."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16",
       "date": "2026-10-16",
       "changes": [

@@ -4,6 +4,7 @@ import Quickshell
 import qs.services
 import qs.modules
 import qs.modules.files
+import qs.modules.island
 import qs.modules.lock
 import qs.modules.pen
 import qs.modules.picker
@@ -27,8 +28,13 @@ ShellRoot {
         id: picker
     }
 
+    IslandInspector {
+        id: islandInspector
+    }
+
     Cli {
         picker: picker
+        inspector: islandInspector
     }
 
     Variants {
