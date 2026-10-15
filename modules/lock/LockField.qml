@@ -63,6 +63,8 @@ Item {
     onTypedChanged: {
         root.lit = true;
         blinker.restart();
+        if (present.value < 0.01)
+            Qt.callLater(caretAt.snap);
     }
 
     Timer {
@@ -91,14 +93,16 @@ Item {
     Follow {
         id: caretAt
 
-        target: {
-            if (root.shown > 0)
-                return root.start + root.shown * root.pitch;
-            if (root.prompting)
-                return (root.width - root.caretWidth - Appearance.padding.small - prompt.implicitWidth) / 2;
-            return (root.width - root.caretWidth) / 2;
-        }
+        target: root.shown > 0 ? root.start + root.shown * root.pitch : (root.width - root.caretWidth) / 2
         speed: Appearance.animation.trackSpeed
+    }
+
+    Follow {
+        id: present
+
+        target: root.shown > 0 ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.01
     }
 
     Follow {
@@ -133,7 +137,7 @@ Item {
         Text {
             id: prompt
 
-            x: (root.width + root.caretWidth + Appearance.padding.small - prompt.implicitWidth) / 2
+            x: (root.width - prompt.implicitWidth) / 2
             anchors.verticalCenter: parent.verticalCenter
 
             text: root.placeholder
@@ -229,9 +233,9 @@ Item {
             height: Math.round(Appearance.font.size.small * 1.1)
             radius: 1
 
-            visible: !root.waiting
+            visible: !root.waiting && present.value > 0.01
             color: Appearance.colour.accent
-            opacity: blink.value * (1 - root.gather)
+            opacity: blink.value * present.value * (1 - root.gather)
         }
     }
 
