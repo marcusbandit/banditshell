@@ -1,6 +1,57 @@
 {
   "entries": [
     {
+      "id": "2026-10-15-3",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The update menu no longer opens by itself when the shell starts. What changed is still in it when you open it."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The list launcher opens on your pinned apps as large icons, up to 12, until you type. Pick an app in the list and press Pin to add it. The arrow keys move between the icons, and Ctrl with left or right moves a pinned app. Settings › Launcher can also add a row of the apps you opened last, or turn the icons off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Typing in the launcher finds more than apps: commands such as lock, suspend and restart, settings, files in your home folder and .config, a link to open, and a web search. Results come in sections with the best match first. A setting that is on or off flips right there when you press Enter."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The selected row in the launcher shows buttons for what else it can do, such as Pin, Show in folder, Copy path and Open in settings. Ctrl+Enter presses the first one, and right-click still works."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Typing a path that starts with ~/ or / in the launcher lists that folder. Tab completes a name and Enter goes into a folder."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Sums in the launcher keep their answer while you type, so 5+5- still says 10. Money such as 5 eur or 100 usd to dkk converts at the European Central Bank's daily rates, which are kept for when you are offline, into the currency you pick in Settings › Launcher (DKK unless you change it). A Symbols button next to the answer adds brackets, powers, roots and more."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "With qalc (libqalculate) installed, the launcher also does units, dates and functions, such as 5 km to miles, sqrt(2) or integrate(x^2, x). Finding files by name needs fd. The installer now sets up both."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Searching settings for wifi now finds Wi-Fi, and the same goes for other names with a dash in them."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency and webSearch. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
+        }
+      ]
+    },
+    {
       "id": "2026-10-15-2",
       "date": "2026-10-15",
       "changes": [
