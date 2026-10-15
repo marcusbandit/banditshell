@@ -17,7 +17,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it grows the media controller out of the island."
+          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it turns the island itself into the media controller: its whole body grows into the card while the cover, the title, artist and album, the equalizer, the progress wave and the buttons each travel to their place, and a new island forms at the top."
         },
         {
           "type": "ui",
@@ -33,6 +33,11 @@
           "type": "bugs",
           "severity": "minor",
           "text": "A pinned island no longer takes the keyboard, and the screen around it stays clickable while it is open."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "With the media controller open, the island still opens when the pointer rests on it, and clicks on it reach the island instead of closing the controller."
         }
       ]
     },

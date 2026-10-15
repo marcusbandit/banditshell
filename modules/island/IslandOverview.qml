@@ -28,6 +28,10 @@ Item {
 
     readonly property rect coverRect: media.visible ? Qt.rect(column.x + media.x, column.y + media.y + media.coverTop, media.artSize, media.artSize) : Qt.rect(0, 0, 0, 0)
 
+    function mediaParts(into: Item): var {
+        return media.visible ? media.parts(into) : null;
+    }
+
     function rowTop(key: string): real {
         const i = root.live.findIndex(a => a.key === key);
         return i < 0 ? -1 : column.y + rows.y + i * root.rowPitch;

@@ -226,6 +226,8 @@ Item {
 
     readonly property Item grabItem: zone
 
+    readonly property Item passItem: pass
+
     readonly property Item stage: scene
 
     function pressable(activity: var): bool {
@@ -394,22 +396,39 @@ Item {
         }
         if (activity?.kind === "music") {
             root.chosen(Object.assign({}, activity, {
-                origin: root.musicOrigin()
+                origin: root.handoff()
             }));
             return;
         }
         root.chosen(activity);
     }
 
-    function musicOrigin(): rect {
+    function handoff(): var {
+        const parts = root.openness > 0.5 ? overview.mediaParts(scene) : root.rowOfKind("music")?.parts(scene);
+        if (!parts?.cover)
+            return null;
         const shift = (root.width - root.fieldWidth) / 2;
-        const cover = overview.coverRect;
-        if (root.openness > 0.5 && cover.width > 0)
-            return Qt.rect(shift + overview.x + cover.x, overview.y + cover.y, cover.width, cover.height);
-        const row = root.rowOfKind("music");
-        if (row)
-            return Qt.rect(shift + row.markX, row.markY, root.slot, root.slot);
-        return Qt.rect(0, 0, 0, 0);
+        const out = {
+            body: Qt.rect(root.pillX + shift, root.pillY, root.pillWidth, root.pillHeight),
+            radius: root.pillRadius,
+            power: root.pillPower,
+            glow: glow.value,
+            titleSize: parts.titleSize,
+            transportZoom: parts.transportZoom ?? 1
+        };
+        for (const key of ["cover", "title", "artist", "album", "beat", "scrub", "transport"]) {
+            const r = parts[key];
+            out[key] = r ? Qt.rect(r.x + shift, r.y, r.width, r.height) : null;
+        }
+        return out;
+    }
+
+    function handOff(): void {
+        root.close();
+        for (const f of [glide, overviewTall, overviewFade, wide, tall, cardRoom, swell])
+            f.snap();
+        presence.value = 0;
+        settle.value = 0;
     }
 
     function tapBubble(key: string): void {
@@ -795,6 +814,17 @@ Item {
                 event.accepted = true;
             }
         }
+    }
+
+    Item {
+        id: pass
+
+        readonly property Item over: !root.interactive ? null : root.whole ? hit : bubblesHit
+
+        x: (root.width - root.fieldWidth) / 2 + (pass.over?.x ?? 0)
+        y: pass.over?.y ?? 0
+        width: pass.over?.width ?? 0
+        height: pass.over?.height ?? 0
     }
 
     Repeater {

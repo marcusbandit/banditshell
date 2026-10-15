@@ -22,12 +22,11 @@ Item {
         return root.picked[i]?.share ?? 0;
     }
 
-    NumberAnimation on drift {
+    readonly property int period: 40000
+
+    FrameAnimation {
         running: root.moving && root.visible
-        from: 0
-        to: 1
-        duration: 40000
-        loops: Animation.Infinite
+        onTriggered: root.drift = (Date.now() % root.period) / root.period
     }
 
     ShaderEffect {

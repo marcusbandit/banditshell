@@ -24,6 +24,16 @@ Item {
 
     readonly property bool hovered: press.containsMouse
 
+    function parts(into: Item): var {
+        const box = item => item.visible ? item.mapToItem(into, 0, 0, item.width, item.height) : null;
+        return {
+            cover: box(mark),
+            title: box(words),
+            titleSize: Appearance.font.size.small,
+            beat: box(beat)
+        };
+    }
+
     readonly property var look: shape.look
 
     property real markOpacity: 1
@@ -81,6 +91,8 @@ Item {
     }
 
     StyledText {
+        id: words
+
         x: mark.x + mark.width + root.gap
         anchors.verticalCenter: parent.verticalCenter
         width: root.middle
@@ -125,6 +137,8 @@ Item {
         }
 
         Equalizer {
+            id: beat
+
             anchors.centerIn: parent
             visible: root.look.trailing === "beat"
             playing: Media.playing

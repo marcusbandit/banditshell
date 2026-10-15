@@ -109,11 +109,13 @@ PanelWindow {
             clipLayer.show();
             return;
         case "music":
-            islandLayer.close();
-            if ((notice.origin?.width ?? 0) > 0)
+            if (notice.origin && !mediaLayer.open) {
+                islandLayer.handOff();
                 mediaLayer.build().showFrom(notice.origin);
-            else
+            } else {
+                islandLayer.close();
                 mediaLayer.show();
+            }
             break;
         case "notifications":
             popups.pinned = true;
@@ -222,6 +224,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: mediaLayer.open ? mediaLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Subtract
+            item: mediaLayer.open ? islandLayer.passItem : null
         }
 
         Region {
@@ -692,6 +699,7 @@ PanelWindow {
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
+            z: mediaLayer.open ? 1 : 0
             border: win.border
             edge: Math.max(0, chassis.topBand - chassis.streamReach)
 

@@ -16,6 +16,21 @@ Item {
     readonly property real artSize: Math.round(Appearance.font.line.small * 3.5)
     readonly property real coverTop: 0
 
+    function parts(into: Item): var {
+        const box = item => item.visible ? item.mapToItem(into, 0, 0, item.width, item.height) : null;
+        return {
+            cover: box(cover),
+            title: box(title),
+            titleSize: title.pixelSize,
+            artist: box(artist),
+            album: box(album),
+            beat: box(beat),
+            scrub: box(scrub),
+            transport: box(transport),
+            transportZoom: transport.zoom
+        };
+    }
+
     implicitHeight: column.implicitHeight
 
     Column {
@@ -217,6 +232,8 @@ Item {
                 }
 
                 Equalizer {
+                    id: beat
+
                     anchors.right: parent.right
                     y: words.groupLine - height
                     playing: Media.playing

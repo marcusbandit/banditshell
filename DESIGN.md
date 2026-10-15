@@ -390,7 +390,8 @@ banditshell/
 │   ├── ImagePalette.qml         a picture's main colours and how much of it each
 │   │                            covers, read off a 24px copy in a Canvas
 │   ├── ColourField.qml          up to four colours blended into a slow, soft
-│   │                            field, each as large as its share (+ .frag)
+│   │                            field, each as large as its share, all fields
+│   │                            on one clock so two of them agree (+ .frag)
 │   ├── Waveform.qml             levels as one smooth mirrored curve: a ring of
 │   │                            levels, a playhead gliding through it, a shader
 │   │                            drawing a B-spline with soft ends (+ .frag)
@@ -848,7 +849,9 @@ banditshell/
 │   │   ├── MediaController.qml  Super+M's card, floating in the middle:
 │   │   │                        keyboard-driven (space, arrows, shift+arrows,
 │   │   │                        l lyrics, s shuffle, r repeat, tab the next
-│   │   │                        player), pops in and out; the cover on top, lit
+│   │   │                        player), pops in and out, or grows out of the
+│   │   │                        island's own body when the island opens it; the
+│   │   │                        cover on top, lit
 │   │   │                        from behind by its own blur, and the lyrics
 │   │   │                        widening it to the right when there are any; the
 │   │   │                        CheatSheet's kind of object, the power panel's
@@ -3183,10 +3186,24 @@ smaller scale, without the lyrics: those belong to the card. Its words are never
 cut to the cover's height; a long title takes two lines and the row grows to
 hold it. The expand
 mark in its corner, a click on the song's words, or a click on a track-change
-row opens the card, and it grows out of the island: a plate in the cover's
-colours swells from where the cover sat to the card's place while the cover
-itself flies to its spot at the top of the card, and the card's words fade in
-only once the plate has arrived. Closing it shrinks it back toward the island.
+row opens the card, and the island becomes it. A plate swelling from where the
+cover sat, with only the cover flying, read as something new appearing next to
+the island rather than the island turning into the card. Now the island's own
+body detaches: its outline, edge, shadow and colour wash move and grow into the
+card's, and every part of the player travels from where it sat in the island to
+its place on the card, the cover, the title, artist and album, the equalizer,
+the progress wave and the buttons. The card is laid out at its final size the
+whole way and the travelling body cuts it to shape, so what the island had no
+place for, the lyrics and the player chips, is uncovered by the growing edge
+and fades in over the last part. A compact row has no artist, album or wave, so
+those ride with its title and with the body. At that moment the island lets go
+of its body and drips out of the band afresh, and both colour washes run on one
+clock, so the hand-over shows no seam.
+
+The card is not the island. Closing it fades it where it is, nothing flies
+back, and the island stays usable while the card is up: the card's click-away
+catcher leaves the island's shape and the strip above it alone, so the pointer
+on the island is on the island.
 
 ### How the overview is laid out
 
