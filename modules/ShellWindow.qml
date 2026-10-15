@@ -122,20 +122,6 @@ PanelWindow {
             Notices.settle(notice.key);
     }
 
-    Timer {
-        id: whatsNewSummon
-
-        interval: 2500
-        repeat: false
-
-        running: WhatsNew.ready
-
-        onTriggered: {
-            if (WhatsNew.pending.length > 0 && Shell.forScreen("") === win)
-                win.openMenu("update", true);
-        }
-    }
-
     anchors {
         top: true
         bottom: true
