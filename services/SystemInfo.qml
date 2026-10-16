@@ -103,7 +103,7 @@ Singleton {
         id: findThermal
 
         running: true
-        command: ["sh", "-c", "for z in /sys/class/thermal/thermal_zone*; do t=$(cat $z/type 2>/dev/null); case $t in x86_pkg_temp|k10temp|cpu*|acpitz) echo $z/temp; exit;; esac; done; ls /sys/class/thermal/thermal_zone0/temp 2>/dev/null"]
+        command: ["sh", `${Quickshell.shellDir}/scripts/cpu-temperature.sh`]
 
         stdout: StdioCollector {
             onStreamFinished: root.thermalPath = text.trim()
