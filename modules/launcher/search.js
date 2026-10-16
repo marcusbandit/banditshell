@@ -1109,8 +1109,14 @@ var FALLBACKS = [
     }
 ];
 
+var TOKENISH = /(?:^|\s)(?:eyJ[\w-]{8,}\.[\w-]{8,}|(?=[A-Za-z0-9+\/=_.-]*\d)(?=[A-Za-z0-9+\/=_.-]*[A-Za-z])[A-Za-z0-9+\/=_.-]{32,})(?:\s|$)/;
+
+function looksLikeSecret(text) {
+    return TOKENISH.test(String(text || ""));
+}
+
 function fallbackRows(chosen, text, webTemplate) {
-    return FALLBACKS.filter(f => chosen && chosen[f.id]).map((f, i) => ({
+    return FALLBACKS.filter(f => chosen && chosen[f.id] && (f.id === "terminal" || !looksLikeSecret(text))).map((f, i) => ({
                 id: f.id,
                 icon: f.icon,
                 label: f.label.replace("%s", () => text),

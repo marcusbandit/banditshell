@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered", "looksLikeSecret"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
@@ -257,5 +257,19 @@ test.describe("rows you use come back first", () => {
         const out = Search.remembered(groups, () => 0.9);
         assert.strictEqual(out[1].items[0].score, 1);
         assert.strictEqual(out[0].items[0].key, "command:lead");
+    });
+});
+
+test.describe("no web search for tokens", () => {
+    test.it("spots tokens, keys and long secrets but not ordinary text", () => {
+        for (const t of ["jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.x", "ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", "sk-proj-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c", "base64 decode aGVsbG8gd29ybGQgdGhpcyBpcyBhIHRlc3Q5OTk="])
+            assert.ok(Search.looksLikeSecret(t), t);
+        for (const t of ["how do magnets work", "firefox", "days until christmas", "https://example.com/a/b", "supercalifragilisticexpialidocious", "0123456789012345678901234567890123"])
+            assert.ok(!Search.looksLikeSecret(t), t);
+    });
+
+    test.it("keeps only the terminal fallback for them", () => {
+        const rows = Search.fallbackRows({ web: true, wikipedia: true, terminal: true }, "ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", "");
+        assert.deepStrictEqual(rows.map(r => r.id), ["terminal"]);
     });
 });
