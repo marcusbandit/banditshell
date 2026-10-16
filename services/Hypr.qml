@@ -254,6 +254,69 @@ Singleton {
         return root.monitorOf(addr) !== "";
     }
 
+    function fullscreenWindow(addr: string, mode: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
+    }
+
+    function restoreWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (root.lua) {
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = "address:${w}" })) return hl.dsp.window.float({ action = "off", window = "address:${w}" }) end)()`);
+            return;
+        }
+        Hyprland.dispatch("fullscreenstate 0 0");
+        Hyprland.dispatch(`settiled address:${w}`);
+    }
+
+    function floatWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.float({ action = "toggle", window = "address:${w}" })`, `togglefloating address:${w}`);
+    }
+
+    function centerWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (root.lua) {
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.float({ action = "on", window = "address:${w}" })) return hl.dsp.window.center({ window = "address:${w}" }) end)()`);
+            return;
+        }
+        Hyprland.dispatch(`setfloating address:${w}`);
+        Hyprland.dispatch("centerwindow");
+    }
+
+    function placeWindow(addr: string, rect: var): void {
+        const w = root.windowAddress(addr);
+        if (!w || !rect)
+            return;
+        if (root.lua) {
+            const on = `window = "address:${w}"`;
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", ${on} })) hl.dispatch(hl.dsp.window.float({ action = "on", ${on} })) hl.dispatch(hl.dsp.window.resize({ x = ${rect.w}, y = ${rect.h}, ${on} })) return hl.dsp.window.move({ x = ${rect.x}, y = ${rect.y}, ${on} }) end)()`);
+            return;
+        }
+        Hyprland.dispatch("fullscreenstate 0 0");
+        Hyprland.dispatch(`setfloating address:${w}`);
+        Hyprland.dispatch(`resizewindowpixel exact ${rect.w} ${rect.h},address:${w}`);
+        Hyprland.dispatch(`movewindowpixel exact ${rect.x} ${rect.y},address:${w}`);
+    }
+
+    function moveToMonitor(addr: string, which: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.move({ monitor = "${which}", window = "address:${w}" })`, `movewindow mon:${which},address:${w}`);
+    }
+
+    function moveToWorkspace(addr: string, which: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.move({ workspace = "${which}", window = "address:${w}" })`, `movetoworkspace ${which},address:${w}`);
+    }
+
     function closeWindow(addr: string): void {
         if (addr)
             root.send(`hl.dsp.window.close({ window = "address:${addr}" })`, `closewindow address:${addr}`);

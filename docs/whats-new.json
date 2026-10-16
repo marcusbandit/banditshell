@@ -15,6 +15,11 @@
           "text": "More switches in the launcher: Night light, Dark mode for your apps, Energy saver, Performance mode and Airplane mode flip right in the list, and Sleep displays turns the screens off until you touch the mouse or keyboard. Quit all apps asks once more first, and Dismiss notifications clears them. Typing spotify 30% or volume firefox 50 sets one app's volume, volume lists every app that is playing with louder, quieter and mute, and keep awake 1h keeps the screen on for an hour."
         },
         {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher moves the window you were in. Fullscreen, Maximize, Restore window, Float window and Center window work as rows, and Left half, First two thirds, Top right quarter and the other halves, thirds, quarters and sixths snap it into place with your gaps. Move to next display, Move to next workspace and move to workspace 3 send it elsewhere. Typing layout lists the tiling layouts, including ones your Lua config registers, and switches between them right away. Any of these can get a hotkey."
+        },
+        {
           "type": "bugs",
           "severity": "minor",
           "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."

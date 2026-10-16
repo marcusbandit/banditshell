@@ -501,3 +501,81 @@ function contentRow(line, home) {
         where: shortPath(path.slice(0, cut) || "/", home)
     };
 }
+
+function usableArea(mon) {
+    const turned = (mon.transform || 0) % 2 === 1;
+    const scale = mon.scale || 1;
+    const w = (turned ? mon.height : mon.width) / scale;
+    const h = (turned ? mon.width : mon.height) / scale;
+    const r = mon.reserved || [0, 0, 0, 0];
+    return {
+        x: mon.x + r[0],
+        y: mon.y + r[1],
+        w: w - r[0] - r[2],
+        h: h - r[1] - r[3]
+    };
+}
+
+function cellRect(area, outer, inner, tile) {
+    const gap = inner * 2;
+    const cw = (area.w - 2 * outer - (tile.cols - 1) * gap) / tile.cols;
+    const ch = (area.h - 2 * outer - (tile.rows - 1) * gap) / tile.rows;
+    const span = tile.span || 1;
+    const tall = tile.tall || 1;
+    return {
+        x: Math.round(area.x + outer + tile.col * (cw + gap)),
+        y: Math.round(area.y + outer + tile.row * (ch + gap)),
+        w: Math.round(cw * span + gap * (span - 1)),
+        h: Math.round(ch * tall + gap * (tall - 1))
+    };
+}
+
+function tileSet() {
+    const out = [];
+    const add = (id, label, words, cols, rows, col, row, span) => out.push({
+            id: id,
+            label: label,
+            words: `${words} snap tile window`,
+            cols: cols,
+            rows: rows,
+            col: col,
+            row: row,
+            span: span || 1
+        });
+    const sides = ["left", "right"];
+    const ends = ["top", "bottom"];
+    const thirds = ["first", "center", "last"];
+    const across = ["left", "center", "right"];
+    const word = w => w.charAt(0).toUpperCase() + w.slice(1);
+    sides.forEach((s, i) => add(`${s}-half`, `${word(s)} half`, `${s} half`, 2, 1, i, 0));
+    ends.forEach((e, i) => add(`${e}-half`, `${word(e)} half`, `${e} half`, 1, 2, 0, i));
+    thirds.forEach((t, i) => add(`${t}-third`, `${word(t)} third`, `${t} third ${across[i]} third`, 3, 1, i, 0));
+    [thirds[0], thirds[2]].forEach((t, i) => add(`${t}-two-thirds`, `${word(t)} two thirds`, `${t} two thirds ${sides[i]} two thirds`, 3, 1, i, 0, 2));
+    ends.forEach((e, r) => sides.forEach((s, c) => add(`${e}-${s}-quarter`, `${word(e)} ${s} quarter`, `${e} ${s} quarter corner`, 2, 2, c, r)));
+    ends.forEach((e, r) => across.forEach((a, c) => add(`${e}-${a}-sixth`, `${word(e)} ${a} sixth`, `${e} ${a} sixth`, 3, 2, c, r)));
+    return out;
+}
+
+var TILES = tileSet();
+
+function workspaceAsk(text) {
+    const m = /^(?:move|send|put)(?: (?:the )?window)? to (?:workspace |ws )?(\d{1,2})$/i.exec(String(text || "").trim());
+    return m ? parseInt(m[1], 10) : 0;
+}
+
+function layoutLabel(name) {
+    const bare = String(name || "").replace(/^lua:/, "");
+    return bare.charAt(0).toUpperCase() + bare.slice(1);
+}
+
+function luaLayouts(texts) {
+    const out = [];
+    const find = /hl\.layout\.register\(\s*["']([^"']+)["']/g;
+    for (const text of texts || []) {
+        let m;
+        while ((m = find.exec(String(text))) !== null)
+            if (out.indexOf(`lua:${m[1]}`) < 0)
+                out.push(`lua:${m[1]}`);
+    }
+    return out;
+}

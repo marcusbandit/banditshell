@@ -26,7 +26,7 @@ QtObject {
 
     readonly property var caps: ({
             apps: 8,
-            commands: 4,
+            commands: 6,
             settings: 5,
             windows: 5,
             devices: 4,
@@ -47,11 +47,13 @@ QtObject {
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || !!root.streamAsk && root.streamRows.length > 0
+    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || !!root.streamAsk && root.streamRows.length > 0
 
     property bool started: false
 
     property bool quiet: false
+
+    property string target: ""
 
     onQueryChanged: {
         root.armed = "";
@@ -60,6 +62,7 @@ QtObject {
         else if (!root.started) {
             root.started = true;
             Files.refreshPlaces();
+            Hyprland.refreshToplevels();
         }
         if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()))
             Clock.loadZoneList();
@@ -314,7 +317,7 @@ QtObject {
             stay: true,
             run: () => Notifications.clear()
         }
-    ].concat(Files.drives.map(d => ({
+    ].concat(root.windowCommands, root.layoutCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
                 icon: "eject",
                 label: `Eject ${d.name}`,
@@ -322,6 +325,148 @@ QtObject {
                 detail: d.detail,
                 run: () => root.eject(d.path)
             })))
+
+    function windowTarget(): string {
+        return Hypr.windowAddress(root.target || Hypr.focusedOn(root.screenName));
+    }
+
+    readonly property var targetToplevel: Hypr.toplevelFor(root.target || Hypr.focusedOn(root.screenName))
+    readonly property var targetState: root.targetToplevel?.lastIpcObject ?? {}
+    readonly property string targetName: root.targetState.class ? Apps.nameFor(root.targetState.class) : ""
+
+    function snap(tile: var): void {
+        const addr = root.windowTarget();
+        const mon = Hypr.toplevelFor(addr)?.workspace?.monitor ?? Hyprland.focusedMonitor;
+        const geometry = mon?.lastIpcObject;
+        if (addr && geometry?.width)
+            Hypr.placeWindow(addr, Search.cellRect(Search.usableArea(geometry), Compositor.gapsOut, Compositor.gapsIn, tile));
+    }
+
+    function tileIcon(tile: var): string {
+        if (tile.cols * tile.rows === 2)
+            return `splitscreen_${tile.id.split("-")[0]}`;
+        return tile.cols === 3 && tile.rows === 1 ? "view_column" : tile.rows === 2 && tile.cols === 2 ? "grid_view" : "view_module";
+    }
+
+    readonly property var windowCommands: {
+        if (!root.targetToplevel)
+            return [];
+        const many = Hyprland.monitors.values.length > 1;
+        const named = c => Object.assign({
+                detail: root.targetName
+            }, c);
+        return [
+            {
+                id: "fullscreen",
+                icon: "fullscreen",
+                label: "Fullscreen",
+                words: "fullscreen full screen window",
+                toggle: root.targetState.fullscreen === 2,
+                run: () => Hypr.fullscreenWindow(root.windowTarget(), "fullscreen")
+            },
+            {
+                id: "maximize",
+                icon: "open_in_full",
+                label: "Maximize",
+                words: "maximize maximise window bigger",
+                toggle: root.targetState.fullscreen === 1,
+                run: () => Hypr.fullscreenWindow(root.windowTarget(), "maximized")
+            },
+            {
+                id: "restore",
+                icon: "close_fullscreen",
+                label: "Restore window",
+                words: "restore window unmaximize tile tiled normal size",
+                run: () => Hypr.restoreWindow(root.windowTarget())
+            },
+            {
+                id: "float",
+                icon: "picture_in_picture",
+                label: "Float window",
+                words: "float floating window tile tiled",
+                toggle: !!root.targetState.floating,
+                run: () => Hypr.floatWindow(root.windowTarget())
+            },
+            {
+                id: "center",
+                icon: "center_focus_strong",
+                label: "Center window",
+                words: "center centre window middle",
+                run: () => Hypr.centerWindow(root.windowTarget())
+            }
+        ].concat(Search.TILES.map(t => ({
+                    id: t.id,
+                    icon: root.tileIcon(t),
+                    label: t.label,
+                    words: t.words,
+                    run: () => root.snap(t)
+                })), many ? [
+            {
+                id: "nextdisplay",
+                icon: "move_up",
+                label: "Move to next display",
+                words: "next display monitor screen move window",
+                run: () => Hypr.moveToMonitor(root.windowTarget(), "+1")
+            },
+            {
+                id: "previousdisplay",
+                icon: "move_down",
+                label: "Move to previous display",
+                words: "previous display monitor screen move window",
+                run: () => Hypr.moveToMonitor(root.windowTarget(), "-1")
+            }
+        ] : [], [
+            {
+                id: "nextworkspace",
+                icon: "arrow_forward",
+                label: "Move to next workspace",
+                words: "next workspace move window",
+                run: () => Hypr.moveToWorkspace(root.windowTarget(), "r+1")
+            },
+            {
+                id: "previousworkspace",
+                icon: "arrow_back",
+                label: "Move to previous workspace",
+                words: "previous workspace move window",
+                run: () => Hypr.moveToWorkspace(root.windowTarget(), "r-1")
+            }
+        ]).map(named);
+    }
+
+    readonly property var layoutCommands: WindowLayouts.available.map(name => ({
+                id: `layout:${name}`,
+                icon: "dashboard",
+                label: `${Search.layoutLabel(name)} layout`,
+                words: `layout tiling window ${Search.layoutLabel(name).toLowerCase()}`,
+                detail: WindowLayouts.current === name ? "in use" : "",
+                toggle: WindowLayouts.current === name,
+                lead: /^(?:switch |change )?(?:window )?layouts?$/i,
+                stay: true,
+                run: () => WindowLayouts.use(name)
+            }))
+
+    readonly property int workspaceWanted: Search.workspaceAsk(root.text)
+
+    readonly property var workspaceRows: {
+        const n = root.workspaceWanted;
+        if (n <= 0 || !root.targetToplevel)
+            return [];
+        return [
+            {
+                key: "command:toworkspace",
+                kind: "command",
+                command: {
+                    id: "toworkspace",
+                    label: `Move to workspace ${n}`,
+                    run: () => Hypr.moveToWorkspace(root.windowTarget(), String(n))
+                },
+                label: `Move to workspace ${n}`,
+                detail: root.targetName,
+                icon: "move_item",
+                score: Infinity
+            }
+        ];
+    }
 
     readonly property var openWindows: Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0)
 
@@ -382,7 +527,7 @@ QtObject {
             detail: c.detail ?? "",
             icon: c.icon,
             toggle: c.toggle,
-            score: root.wordScore(c.label, c.words)
+            score: c.lead?.test(root.text) ? Infinity : root.wordScore(c.label, c.words)
         };
     }
 
@@ -890,7 +1035,7 @@ QtObject {
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.volumeRows.concat(root.awakeRows, root.commandRows))
+            items: root.withAlias("command", root.volumeRows.concat(root.awakeRows, root.workspaceRows, root.commandRows))
         }, {
             key: "sound",
             title: "Sound",

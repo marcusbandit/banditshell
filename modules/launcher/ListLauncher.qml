@@ -61,6 +61,7 @@ LauncherConcept {
         query: root.input?.text ?? ""
         screenName: root.screenName
         quiet: !!root.capture
+        target: root.restoreTo
 
         onLaunch: what => root.launch(what)
         onLeave: what => {

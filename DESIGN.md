@@ -478,7 +478,18 @@ banditshell/
 │                                a card, ink on paper, every module a G2 corner
 │                                that asks its neighbours; needs `qrencode`
 ├── services/                    state that outlives any one widget
-│   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
+│   ├── Hypr.qml                 Hyprland IPC -> clean workspace state, and
+│   │                            what the launcher does to a window: fullscreen,
+│   │                            maximize, restore, float, center, an exact
+│   │                            place, another monitor or workspace. Each in
+│   │                            Lua and in the legacy dispatcher form
+│   ├── WindowLayouts.qml        which tiling layouts there are (dwindle, master,
+│   │                            scrolling when core has it, hy3 when loaded,
+│   │                            and every hl.layout.register in the Lua
+│   │                            config) and switching between them live with
+│   │                            hyprctl eval, so the files keep their own;
+│   │                            apply_layout_binds(name) runs after, when the
+│   │                            config defines one
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
 │   │                            (the file this compositor was handed with
 │   │                            -c, else hyprland.lua, else hyprland.conf,
@@ -972,7 +983,11 @@ banditshell/
 │   │   │                        the fallbacks, every app's volume, and system
 │   │   │                        switches (night light, dark mode, energy
 │   │   │                        saver, airplane mode, sleep displays, quit
-│   │   │                        all, dismiss notifications); an alias lifts
+│   │   │                        all, dismiss notifications), the focused
+│   │   │                        window's moves (halves, thirds, quarters and
+│   │   │                        sixths cut from the monitor minus its
+│   │   │                        reserved edges and gaps, one formula for
+│   │   │                        every grid) and the tiling layouts; an alias lifts
 │   │   │                        its row to the
 │   │   │                        top. Ranked into sections, and what each row
 │   │   │                        does. Apps, commands and settings have ids
