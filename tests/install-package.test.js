@@ -18,7 +18,7 @@ function bin(tools) {
 
 function run(args, tools) {
     const dir = bin(tools);
-    const out = spawnSync("bash", [SCRIPT, ...args], { env: { PATH: `${dir}:/usr/bin:/bin` }, encoding: "utf8" });
+    const out = spawnSync("bash", [SCRIPT, ...args], { env: { PATH: `${dir}:/usr/bin:/bin`, BANDITSHELL_SYSTEM_PATH: `${dir}:/usr/bin:/bin` }, encoding: "utf8" });
     fs.rmSync(dir, { recursive: true, force: true });
     return out;
 }
@@ -27,7 +27,7 @@ function runBare(args, tools) {
     const dir = bin(tools);
     const core = fs.mkdtempSync(path.join(os.tmpdir(), "install-package-core-"));
     fs.symlinkSync(spawnSync("sh", ["-c", "command -v id"], { encoding: "utf8" }).stdout.trim(), path.join(core, "id"));
-    const out = spawnSync("/bin/bash", [SCRIPT, ...args], { env: { PATH: `${dir}:${core}` }, encoding: "utf8" });
+    const out = spawnSync("/bin/bash", [SCRIPT, ...args], { env: { PATH: `${dir}:${core}`, BANDITSHELL_SYSTEM_PATH: `${dir}:${core}` }, encoding: "utf8" });
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(core, { recursive: true, force: true });
     return out;
@@ -49,7 +49,14 @@ test.describe("install-package.sh", () => {
     test.it("asks for the password through pkexec, quietly for apt", () => {
         const out = run(["--polkit", "apt:qalc"], { "apt-get": "exit 0", pkexec: "printf '%s\\n' \"$*\"" });
         assert.strictEqual(out.status, 0);
-        assert.strictEqual(out.stdout.trim(), "env DEBIAN_FRONTEND=noninteractive apt-get install -y qalc");
+        assert.match(out.stdout.trim(), /^\/\S*\/env DEBIAN_FRONTEND=noninteractive apt-get install -y qalc$/);
+    });
+
+    test.it("hands pkexec a program found in the system folders, never one from the user's PATH", () => {
+        const out = run(["--polkit", "pacman:qalc"], { pacman: "exit 0", pkexec: "printf '%s\\n' \"$1\"" });
+        assert.strictEqual(out.status, 0);
+        assert.ok(out.stdout.trim().startsWith("/"), out.stdout);
+        assert.ok(out.stdout.trim().endsWith("/pacman"), out.stdout);
     });
 
     test.it("says so when no package manager is there", () => {

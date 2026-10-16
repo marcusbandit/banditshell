@@ -92,7 +92,7 @@ Singleton {
         if (elevated.running)
             return;
         Polkit.expect(`Quit ${name}`, "kill");
-        elevated.command = ["pkexec", "kill", "-TERM", String(pid)];
+        elevated.command = ["pkexec", "/bin/kill", "-TERM", String(pid)];
         elevated.running = true;
     }
 

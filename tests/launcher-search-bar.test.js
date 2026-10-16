@@ -180,7 +180,7 @@ test.describe("uninstall-app.sh", () => {
         fs.mkdirSync(core);
         for (const tool of ["sed", "head", "basename", "grep", "id", "cut", "sort", "tr"])
             fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(core, tool));
-        const out = spawnSync("/bin/bash", [UNINSTALL, "remove", "thing"], { env: { PATH: `${path.join(dir, "bin")}:${core}`, HOME: path.join(dir, "home"), XDG_DATA_DIRS: path.join(dir, "usr/share") }, encoding: "utf8" });
+        const out = spawnSync("/bin/bash", [UNINSTALL, "remove", "thing"], { env: { PATH: `${path.join(dir, "bin")}:${core}`, BANDITSHELL_SYSTEM_PATH: `${path.join(dir, "bin")}:${core}`, HOME: path.join(dir, "home"), XDG_DATA_DIRS: path.join(dir, "usr/share") }, encoding: "utf8" });
         fs.rmSync(dir, { recursive: true, force: true });
         assert.strictEqual(out.status, 4);
     });

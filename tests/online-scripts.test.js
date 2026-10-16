@@ -39,7 +39,7 @@ test.describe("uninstall-app.sh --package", () => {
         const dir = scratch();
         const bin = stubs(dir, tools);
         const base = core(dir, ["sed", "head", "basename", "grep", "id", "cut", "sort", "tr"]);
-        const out = spawnSync("/bin/bash", [UNINSTALL, ...args], { env: { PATH: `${bin}:${base}`, HOME: path.join(dir, "home") }, encoding: "utf8" });
+        const out = spawnSync("/bin/bash", [UNINSTALL, ...args], { env: { PATH: `${bin}:${base}`, BANDITSHELL_SYSTEM_PATH: `${bin}:${base}`, HOME: path.join(dir, "home") }, encoding: "utf8" });
         fs.rmSync(dir, { recursive: true, force: true });
         return { status: out.status, stdout: out.stdout.trim() };
     }
