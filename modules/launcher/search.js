@@ -114,8 +114,16 @@ function urlOf(text) {
     return "";
 }
 
+function encodedQuery(text) {
+    try {
+        return encodeURIComponent(text);
+    } catch (error) {
+        return encodeURIComponent(text.replace(/[\ud800-\udfff]/g, "\ufffd"));
+    }
+}
+
 function webSearchUrl(template, text) {
-    return String(template || "").replace("%s", encodeURIComponent(String(text || "").trim()));
+    return String(template || "").replace("%s", encodedQuery(String(text || "").trim()));
 }
 
 function remembered(groups, bonusOf) {
@@ -380,6 +388,7 @@ var TIME_LEAD = new RegExp(`^(at\\s+)?(${CLOCK_AT})(?![\\w:.])\\s*`, "i");
 var TIME_TAIL = new RegExp(`\\s+(?:at\\s+)(${CLOCK_AT})$`, "i");
 var REMIND = /^remind\s+me\s+(.+)$/i;
 var REMIND_WHAT = /^(to|about|that|of)(?:\s+|$)/i;
+var SPAN_SPLIT = /\s+in(?=\s)/gi;
 var MERIDIEM = /(?:am|pm|a\.m\.|p\.m\.)$/i;
 
 function partOfDay(day) {
@@ -439,7 +448,13 @@ function reminderAsk(text) {
     }
     if (at || day) {
         const part = partOfDay(day);
-        if (at && (part === "afternoon" || part === "evening" || part === "night") && at.hour < 12 && at.hour > 0 && !MERIDIEM.test(said.trim()))
+        const bare = at && !MERIDIEM.test(said.trim());
+        if (bare && part === "night" && at.hour === 12)
+            at = {
+                hour: 0,
+                minute: at.minute
+            };
+        else if (bare && (part === "afternoon" || part === "evening" || part === "night" && at.hour >= 5) && at.hour < 12 && at.hour > 0)
             at = {
                 hour: at.hour + 12,
                 minute: at.minute
@@ -460,12 +475,21 @@ function reminderAsk(text) {
             label: what(span.rest)
         }) : null;
     }
-    const after = /^(.+?)\s+in\s+(.+)$/i.exec(rest);
-    const span = after && leadingSpan(after[2], false);
-    return span && !span.rest ? linked({
-        seconds: span.seconds,
-        label: what(after[1])
-    }) : null;
+    const splits = [];
+    let split;
+    SPAN_SPLIT.lastIndex = 0;
+    while ((split = SPAN_SPLIT.exec(rest)) !== null)
+        splits.push(split);
+    for (let i = splits.length - 1; i >= 0; i--) {
+        const head = rest.slice(0, splits[i].index);
+        const span = head ? leadingSpan(rest.slice(splits[i].index + splits[i][0].length).trim(), false) : null;
+        if (span && !span.rest)
+            return linked({
+                seconds: span.seconds,
+                label: what(head)
+            });
+    }
+    return null;
 }
 
 function dayIndex(word, names, short) {
@@ -519,7 +543,7 @@ function reminderDay(phrase, now) {
             step = 7;
         return {
             date: plus(step),
-            rolls: m[1] !== "next"
+            rolls: m[1] !== "next" ? "week" : false
         };
     }
     m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(p);
@@ -541,7 +565,7 @@ function reminderDay(phrase, now) {
             date = validDay(year + 1, mo - 1, d);
         return date ? {
             date: date,
-            rolls: false
+            rolls: m[3] ? false : "year"
         } : null;
     }
     m = /^the (\d{1,2})(?:st|nd|rd|th)$/.exec(p);
@@ -553,7 +577,7 @@ function reminderDay(phrase, now) {
         }
         return date ? {
             date: date,
-            rolls: false
+            rolls: "month"
         } : null;
     }
     m = /^(?:the )?(\d{1,2})(?:st|nd|rd|th)? (?:of )?([a-z]+)$/.exec(p) || /^([a-z]+) (\d{1,2})(?:st|nd|rd|th)?$/.exec(p);
@@ -568,7 +592,7 @@ function reminderDay(phrase, now) {
             date = validDay(today.getFullYear() + 1, month, d);
         return date ? {
             date: date,
-            rolls: false
+            rolls: "year"
         } : null;
     }
     return null;
@@ -587,27 +611,43 @@ function vagueHour(text) {
     return !!m && parseInt(m[1], 10) >= 1 && parseInt(m[1], 10) <= 11;
 }
 
-function reminderMoment(ask, now, morningHour, twelveHour) {
+function rolledMoment(date, rolls, hour, minute, now) {
+    for (let step = 0; step <= 24; step++) {
+        const year = date.getFullYear() + (rolls === "year" ? step : 0);
+        const month = date.getMonth() + (rolls === "month" ? step : 0);
+        const day = date.getDate() + (rolls === "week" ? 7 * step : 0);
+        const moment = new Date(year, month, day, hour, minute);
+        const fits = rolls === "week" || moment.getDate() === date.getDate();
+        if (fits && moment > now)
+            return moment.getTime();
+        if (!rolls)
+            return 0;
+    }
+    return 0;
+}
+
+function reminderMoment(ask, now, morningHour, vague, twelveHour) {
     if (!ask)
         return 0;
     if (ask.seconds)
         return now.getTime() + ask.seconds * 1000;
+    const part = ask.day ? partOfDay(ask.day) : "";
+    let hour = ask.at ? ask.at.hour : PART_HOURS[part] ?? morningHour ?? 9;
+    const minute = ask.at ? ask.at.minute : 0;
+    if (vague && !part && hour >= 1 && hour <= 6)
+        hour += 12;
     if (!ask.day) {
-        const on = (offset, hour) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset, hour, ask.at.minute);
-        if (twelveHour && ask.at.hour >= 1 && ask.at.hour <= 11 && on(0, ask.at.hour) <= now && on(0, ask.at.hour + 12) > now)
-            return on(0, ask.at.hour + 12).getTime();
-        return on(0, ask.at.hour) > now ? on(0, ask.at.hour).getTime() : on(1, ask.at.hour).getTime();
+        const on = (offset, h) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + offset, h, minute);
+        if (vague && twelveHour && hour >= 1 && hour <= 11 && on(0, hour) <= now && on(0, hour + 12) > now)
+            return on(0, hour + 12).getTime();
+        return on(0, hour) > now ? on(0, hour).getTime() : on(1, hour).getTime();
     }
     const found = reminderDay(ask.day, now);
     if (!found)
         return 0;
-    const part = partOfDay(ask.day);
-    const hour = ask.at ? ask.at.hour : PART_HOURS[part] ?? morningHour ?? 9;
-    const minute = ask.at ? ask.at.minute : 0;
-    let moment = new Date(found.date.getFullYear(), found.date.getMonth(), found.date.getDate(), hour, minute);
-    if (moment <= now && found.rolls)
-        moment = new Date(found.date.getFullYear(), found.date.getMonth(), found.date.getDate() + 7, hour, minute);
-    return moment > now ? moment.getTime() : 0;
+    const late = part === "night" && ask.at && hour < 5 ? 1 : 0;
+    const date = new Date(found.date.getFullYear(), found.date.getMonth(), found.date.getDate() + late);
+    return rolledMoment(date, found.rolls, hour, minute, now);
 }
 
 var VOLUME_LEVEL = /^(?:(?:set|turn|put|change)\s+)?(?:the\s+)?(?:volume|vol|sound)\s+(?:(?:up|down)\s+to\s+|to\s+|at\s+)?(\d{1,3})\s*(?:%|percent)?$/i;
@@ -871,9 +911,10 @@ var ZONE_ABBREVIATIONS = {
 };
 
 var ZONE_TIME = "(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)?|noon|midnight)";
-var ZONE_BETWEEN = new RegExp(`^${ZONE_TIME} (?:in )?(.+?) (?:in|to|->|→) (.+)$`);
-var ZONE_TO = new RegExp(`^${ZONE_TIME} (?:in|to) (.+)$`);
-var ZONE_AT = new RegExp(`^${ZONE_TIME} (.+?)(?: time)?$`);
+var ZONE_NOT_MERIDIEM = "(?!(?:am|pm|a\\.m\\.|p\\.m\\.)(?: |$))";
+var ZONE_BETWEEN = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in )?(.+?) (?:in|to|->|→) (.+)$`);
+var ZONE_TO = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(?:in|to) (.+)$`);
+var ZONE_AT = new RegExp(`^${ZONE_TIME} ${ZONE_NOT_MERIDIEM}(.+?)(?: time)?$`);
 
 function zoneConvertAsk(text) {
     const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
@@ -896,7 +937,7 @@ function zoneConvertAsk(text) {
         hour: 0,
         minute: 0
     } : clockOf(m[1], false);
-    if (!clock || from === to || (from && from.length < 2) || (to && to.length < 2))
+    if (!clock || from === to || (from && from.length < 2) || (to && to.length < 2) || from === "in" || from === "to" || from === "time")
         return null;
     return {
         clock: clock,

@@ -237,6 +237,12 @@ Singleton {
         const alarm = root.alarms.find(a => a.id === id);
         if (!alarm)
             return;
+        const before = {
+            hour: alarm.hour,
+            minute: alarm.minute,
+            days: alarm.days.slice(),
+            at: alarm.at
+        };
         if (fields.hour !== undefined)
             alarm.hour = Math.max(0, Math.min(23, Math.round(fields.hour)));
         if (fields.minute !== undefined)
@@ -252,8 +258,8 @@ Singleton {
         if (fields.armed !== undefined)
             alarm.armed = !!fields.armed;
         root.reschedule(alarm);
-        if (fields.at > Date.now() && alarm.days.length === 0)
-            alarm.at = fields.at;
+        if (alarm.days.length === 0)
+            alarm.at = Alarms.oneOffAt(before, alarm, fields.at ?? 0, Date.now());
         root.alarms = root.alarms.slice();
         root.save();
     }

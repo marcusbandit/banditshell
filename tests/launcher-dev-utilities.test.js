@@ -11,7 +11,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Dev = lib("services/dev-utilities.js", ["utf8Bytes", "utf8Text", "hexOf", "base64Encode", "base64Decode", "sha256", "sha1", "md5", "readBytes", "pickIndex", "pickInteger", "drawPassword", "strengthBits", "uuidFrom", "drawKey", "draw", "urlEncode", "urlDecode", "htmlEscape", "htmlUnescape", "words", "convertCase", "counts", "jsonProblem", "jsonFormat", "jwtRead", "epochRead", "isoText", "relative", "devAsk", "answers", "PHRASES", "CHARACTER_SETS"]);
+const Dev = lib("services/dev-utilities.js", ["readPaste", "secretClipboard", "jsonReflow", "utf8Bytes", "utf8Text", "hexOf", "base64Encode", "base64Decode", "sha256", "sha1", "md5", "readBytes", "pickIndex", "pickInteger", "drawPassword", "strengthBits", "uuidFrom", "drawKey", "draw", "urlEncode", "urlDecode", "htmlEscape", "htmlUnescape", "words", "convertCase", "counts", "jsonProblem", "jsonFormat", "jwtRead", "epochRead", "isoText", "relative", "devAsk", "answers", "PHRASES", "CHARACTER_SETS"]);
 
 const text = s => Dev.utf8Bytes(s);
 const NOW = Date.UTC(2026, 9, 16, 10, 0);
@@ -142,6 +142,27 @@ test.describe("random draws", () => {
         assert.strictEqual(Dev.drawPassword([1, 2, 3], 0, 20, "full"), null);
     });
 
+    test.it("always draws a short password with every class, from any pool", () => {
+        for (let seed = 1; seed <= 400; seed++) {
+            const got = Dev.drawPassword(pool(64, seed), 0, 4, "full");
+            assert.ok(got, `seed ${seed}`);
+            for (const chars of Dev.CHARACTER_SETS.full)
+                assert.ok([...got.value].some(c => chars.includes(c)), `seed ${seed} ${got.value}`);
+        }
+    });
+
+    test.it("puts the guaranteed classes at varying positions", () => {
+        const firsts = new Set();
+        for (let seed = 1; seed <= 200; seed++)
+            firsts.add(Dev.drawPassword(pool(128, seed), 0, 8, "full").value.charAt(0));
+        assert.ok([...firsts].some(c => /[a-z]/.test(c)) && [...firsts].some(c => /[A-Z]/.test(c)) && [...firsts].some(c => /[0-9]/.test(c)));
+    });
+
+    test.it("needs a bounded number of bytes for the longest password", () => {
+        const got = Dev.drawPassword(pool(1024, 77), 0, 128, "full");
+        assert.ok(got && got.next < 700, String(got && got.next));
+    });
+
     test.it("never puts quotes, spaces or backslashes in a password", () => {
         assert.doesNotMatch(Dev.CHARACTER_SETS.full.join(""), /["'`\\\s|]/);
     });
@@ -176,6 +197,9 @@ test.describe("text tools", () => {
         assert.strictEqual(Dev.urlDecode("a%20b"), "a b");
         assert.strictEqual(Dev.urlDecode("%E2%82%AC"), "€");
         assert.strictEqual(Dev.urlDecode("%E2%82"), null);
+        assert.strictEqual(Dev.urlEncode("a\ud800b"), "a%EF%BF%BDb");
+        assert.strictEqual(Dev.urlEncode("€ 😀"), encodeURIComponent("€ 😀"));
+        assert.strictEqual(Dev.urlEncode("-_.~"), "-_.~");
     });
 
     test.it("escapes and unescapes html", () => {
@@ -226,6 +250,23 @@ test.describe("json", () => {
         assert.strictEqual(got.shape, "2 keys");
         assert.strictEqual(Dev.jsonFormat(" [1, 2, 3] ", true).text, "[1,2,3]");
         assert.strictEqual(Dev.jsonFormat("[1]", true).shape, "1 item");
+    });
+
+    test.it("keeps key order, number spelling and big integers", () => {
+        const got = Dev.jsonFormat("{\"b\":1,\"2\":2,\"1\":3,\"big\":12345678901234567890,\"f\":1.50,\"s\":\"a\\\"b, {c}\",\"e\":{},\"l\":[ ]}", false);
+        assert.strictEqual(got.other, "{\"b\":1,\"2\":2,\"1\":3,\"big\":12345678901234567890,\"f\":1.50,\"s\":\"a\\\"b, {c}\",\"e\":{},\"l\":[]}");
+        assert.strictEqual(got.text.split("\n")[1], "  \"b\": 1,");
+        assert.ok(got.text.includes("\"big\": 12345678901234567890"));
+        assert.ok(got.text.includes("\"e\": {},"));
+    });
+
+    test.it("reflows to what JSON.stringify writes for plain input", () => {
+        const samples = [{ a: [1, 2, { b: null }], c: "x\"y\\z\n", n: -1.5e-7 }, [], {}, "text", [[[[]]]], { a: { b: { c: [true, false] } } }];
+        for (const sample of samples) {
+            const text = JSON.stringify(sample);
+            assert.strictEqual(Dev.jsonReflow(text, true), JSON.stringify(sample, null, 2));
+            assert.strictEqual(Dev.jsonReflow(JSON.stringify(sample, null, 4), false), text);
+        }
     });
 
     test.it("says where it broke", () => {
@@ -295,6 +336,11 @@ test.describe("jwt", () => {
         assert.strictEqual(rows[2].copy, "2030-03-17T17:46:40Z");
         assert.strictEqual(rows[3].detail, "iat · 2 years ago");
         assert.ok(rows[0].peek.includes("\"alg\": \"HS256\""));
+    });
+
+    test.it("leaves out claims too large for a date", () => {
+        const huge = `${b64url(header)}.${b64url({ exp: 1e13, iat: 1700000000 })}.x`;
+        assert.deepStrictEqual(Dev.jwtRead(huge).times.map(t => t.claim), ["iat"]);
     });
 
     test.it("marks an expired token", () => {
@@ -467,6 +513,22 @@ test.describe("answers", () => {
         assert.strictEqual(rows[0].when, 1700000000000);
         assert.strictEqual(rows[0].detail, "seconds · 2 years ago");
         assert.strictEqual(rows[1].label, "2023-11-14T22:13:20Z");
+    });
+});
+
+test.describe("clipboard secrets", () => {
+    test.it("reads the clipboard script's answer", () => {
+        assert.deepStrictEqual(Dev.readPaste("secret"), { secret: true, text: "" });
+        assert.deepStrictEqual(Dev.readPaste("text\n{\"a\":1}"), { secret: false, text: "{\"a\":1}" });
+        assert.deepStrictEqual(Dev.readPaste("text\nsecret"), { secret: false, text: "secret" });
+        assert.deepStrictEqual(Dev.readPaste(""), { secret: false, text: "" });
+    });
+
+    test.it("refuses with a row that copies nothing", () => {
+        const row = Dev.secretClipboard();
+        assert.strictEqual(row.label, "The clipboard holds a secret");
+        assert.ok(row.failed);
+        assert.strictEqual(row.copy, null);
     });
 });
 

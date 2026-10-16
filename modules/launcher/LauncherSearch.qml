@@ -1212,6 +1212,10 @@ QtObject {
     }
 
     readonly property int reminderHour: Config.values.launcher.utilities.reminderHour
+    readonly property bool alarmsFull: Clock.alarms.length >= Clock.alarmMax
+    readonly property bool timersFull: Clock.timers.filter(t => !t.finished).length >= Clock.timerMax
+    readonly property string alarmsFullText: `alarms full · ${Clock.alarmMax} of ${Clock.alarmMax}`
+    readonly property string timersFullText: `timers full · ${Clock.timerMax} of ${Clock.timerMax}`
 
     function dayWord(moment: real): string {
         const now = new Date();
@@ -1222,15 +1226,16 @@ QtObject {
     function reminderRow(ask: var): var {
         const about = ask.label ? ` ${ask.link || "to"} ${ask.label}` : "";
         if (!ask.seconds) {
-            const moment = Search.reminderMoment(ask, new Date(), root.reminderHour, !TimeFormat.clock24 && Search.vagueHour(root.text));
+            const moment = Search.reminderMoment(ask, new Date(), root.reminderHour, Search.vagueHour(root.text), !TimeFormat.clock24);
             const when = new Date(moment);
             return {
                 key: "reminder",
                 kind: "reminder",
                 ask: ask,
                 moment: moment,
+                full: root.alarmsFull,
                 label: moment ? `Remind me at ${TimeFormat.clock(when.getHours(), when.getMinutes())}${about}` : `Remind me${about}`,
-                detail: moment ? root.dayWord(moment) : "in the past",
+                detail: !moment ? "in the past" : root.alarmsFull ? root.alarmsFullText : root.dayWord(moment),
                 icon: "notifications_active",
                 score: Infinity
             };
@@ -1239,8 +1244,9 @@ QtObject {
             key: "reminder",
             kind: "reminder",
             ask: ask,
+            full: root.timersFull,
             label: `Remind me in ${Search.spanText(ask.seconds)}${about}`,
-            detail: TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false),
+            detail: root.timersFull ? root.timersFullText : TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false),
             icon: "notifications_active",
             score: Infinity
         };
@@ -1253,8 +1259,9 @@ QtObject {
                 key: "timer",
                 kind: "timer",
                 ask: root.timer,
+                full: root.timersFull,
                 label: `Start a ${Search.spanText(root.timer.seconds)} timer${root.timer.label ? ` for ${root.timer.label}` : ""}`,
-                detail: `ends ${TimeFormat.time(new Date(Date.now() + root.timer.seconds * 1000), false)}`,
+                detail: root.timersFull ? root.timersFullText : `ends ${TimeFormat.time(new Date(Date.now() + root.timer.seconds * 1000), false)}`,
                 icon: "timer",
                 score: Infinity
             });
@@ -1477,10 +1484,11 @@ QtObject {
             Audio.setSink(row.node);
             return;
         case "timer":
-            root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
+            if (!row.full)
+                root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
             return;
         case "reminder":
-            if (row.ask.seconds || row.moment)
+            if (!row.full && (row.ask.seconds || row.moment))
                 root.leave(() => root.remind(row.ask, row.moment));
             return;
         case "zone":
