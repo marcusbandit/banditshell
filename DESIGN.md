@@ -3626,8 +3626,9 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   `kind`, `label`, `detail`, `icon` or `iconSource`, `score` (Infinity puts
   it first, -Infinity last), `toggle` for a switch, and `slider` (`{ value,
   set, to }`, where `value()` reads the live level and `set(v)` changes it)
-  for a level the row can drag; Left and Right nudge the selected one by 5%,
-  1% with Shift. Groups are ordered by their best score, like the built-in
+  for a level the row can drag; Left and Right nudge the selected one by
+  `step` (0.05 unless set), a fifth of that with Shift. `text()` replaces the
+  percentage beside it, and `warnAbove` moves the marker that is at 1. Groups are ordered by their best score, like the built-in
   ones.
 - `kinds`: the row kinds this source owns. The hub hands `activate(row)`,
   `actionsFor(row)` and `complete(row)` for those kinds to this source.

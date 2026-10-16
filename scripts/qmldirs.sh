@@ -19,6 +19,11 @@ for dir in config services components components/blob components/marks modules m
                 printf '%s 1.0 %s\n' "$name" "$(basename "$qml")"
             fi
         done
-    } > "$dir/qmldir"
-    echo "wrote $dir/qmldir"
+    } > "$dir/.qmldir.next"
+    if cmp -s "$dir/.qmldir.next" "$dir/qmldir"; then
+        rm "$dir/.qmldir.next"
+    else
+        mv "$dir/.qmldir.next" "$dir/qmldir"
+        echo "wrote $dir/qmldir"
+    fi
 done

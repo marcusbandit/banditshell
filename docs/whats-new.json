@@ -37,7 +37,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "A card beside the launcher shows what the selected row points at: a live picture of a window, an image, the first lines of a text file with the matching line lit, or what is inside a folder. Type windows to list every open window, last used first, and switch to one with its picture beside it."
+          "text": "A card beside the launcher shows what the selected row points at: a live picture of a window, an image, the first lines of a text file with the matching line lit, or what is inside a folder. Type windows to list every open window, last used first, and switch to one with its picture beside it. Type music or now playing for the song that is playing, with previous and next buttons and a bar that Left and Right move through the song 5 seconds at a time."
         },
         {
           "type": "bugs",

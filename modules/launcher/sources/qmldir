@@ -1,3 +1,4 @@
 module qs.modules.launcher.sources
 FallbackSource 1.0 FallbackSource.qml
+MediaSource 1.0 MediaSource.qml
 SoundSource 1.0 SoundSource.qml

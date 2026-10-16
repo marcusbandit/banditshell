@@ -32,6 +32,9 @@ QtObject {
         },
         SoundSource {
             search: root
+        },
+        MediaSource {
+            search: root
         }
     ]
 
