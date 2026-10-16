@@ -27,6 +27,9 @@ Item {
     readonly property real holeHeight: height - topBand - band
 
     readonly property real leftFlare: root.sidebar ? Appearance.sizes.sidebarFlare : Appearance.sizes.windowRadius
+
+    readonly property real gap: root.bare ? 0 : Appearance.sizes.gap
+    readonly property vector4d corners: root.bare ? Qt.vector4d(0, root.streamFlare, 0, root.streamFlare) : Qt.vector4d(Appearance.sizes.windowRadius, Appearance.sizes.windowRadius, Math.max(0, root.leftFlare - Appearance.sizes.gap), Math.max(0, root.leftFlare - Appearance.sizes.gap))
     readonly property real streamFlare: Math.min(Appearance.sizes.gap, root.streamReach)
 
     property var panels: []
@@ -45,9 +48,9 @@ Item {
 
         content: Qt.vector4d(root.holeX, root.holeY, root.holeWidth, root.holeHeight)
 
-        gap: root.bare ? 0 : Appearance.sizes.gap
+        gap: root.gap
 
-        baseRadius: root.bare ? Qt.vector4d(0, root.streamFlare, 0, root.streamFlare) : Qt.vector4d(Appearance.sizes.windowRadius, Appearance.sizes.windowRadius, Math.max(0, root.leftFlare - Appearance.sizes.gap), Math.max(0, root.leftFlare - Appearance.sizes.gap))
+        baseRadius: root.corners
 
         frameOn: Appearance.sizes.roundOuter && !root.bare ? 1 : 0
     }

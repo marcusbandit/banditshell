@@ -382,6 +382,20 @@ Singleton {
         return root.occupancy[screen] ?? 0;
     }
 
+    readonly property var fullscreenByMonitor: {
+        const out = {};
+        for (const mon of Hyprland.monitors.values) {
+            const special = mon.lastIpcObject?.specialWorkspace;
+            const shown = [mon.activeWorkspace?.id, special?.name ? special.id : undefined].filter(id => id !== undefined);
+            out[mon.name] = Hyprland.toplevels.values.some(c => shown.includes(c.workspace?.id) && (c.lastIpcObject?.fullscreen & 2) !== 0);
+        }
+        return out;
+    }
+
+    function fullscreenOn(screen: string): bool {
+        return root.fullscreenByMonitor[screen] ?? false;
+    }
+
     function switchTo(id: int): void {
         root.send(`hl.dsp.focus({ workspace = ${id} })`, `workspace ${id}`);
     }
