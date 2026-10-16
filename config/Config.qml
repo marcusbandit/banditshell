@@ -284,6 +284,16 @@ Singleton {
 
                 currency: "DKK",
 
+                ai: {
+                    enabled: true,
+
+                    backend: "ollama",
+                    model: "",
+
+                    ollamaAddress: "http://localhost:11434",
+                    openaiAddress: "https://api.openai.com/v1"
+                },
+
                 hidden: ({}),
 
                 starred: ({}),

@@ -3,6 +3,7 @@ singleton AlertSounds 1.0 AlertSounds.qml
 singleton AppIcons 1.0 AppIcons.qml
 singleton AppNotifications 1.0 AppNotifications.qml
 singleton Apps 1.0 Apps.qml
+singleton Assistant 1.0 Assistant.qml
 singleton Audio 1.0 Audio.qml
 singleton Battery 1.0 Battery.qml
 singleton Bluetooth 1.0 Bluetooth.qml

@@ -68,6 +68,12 @@ QtObject {
         },
         LoremSource {
             search: root
+        },
+        AskSource {
+            search: root
+        },
+        RewriteSource {
+            search: root
         }
     ]
 
