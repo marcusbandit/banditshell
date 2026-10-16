@@ -186,14 +186,15 @@ Scope {
         }
 
         function run(id: string): string {
-            if (/^(app|command|setting):/.test(id)) {
+            if (/^[a-z]+:/.test(id)) {
                 const runner = rowRunner.createObject(root, {
                     query: "",
                     screenName: Hypr.focusedScreen
                 });
                 const ran = runner.runById(id);
                 runner.destroy();
-                return ran ? `ran ${ran}` : `no launcher row is called ${id}`;
+                if (ran || /^(app|command|setting):/.test(id))
+                    return ran ? `ran ${ran}` : `no launcher row is called ${id}`;
             }
             const entry = Apps.entryById(id) ?? Apps.search(id)[0];
             if (!entry)

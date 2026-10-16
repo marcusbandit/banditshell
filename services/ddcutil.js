@@ -48,3 +48,7 @@ function parseVcp(text) {
         max: Number(match[2])
     };
 }
+
+function staleDisplays(displays, readAt, now, windowMs) {
+    return (displays ?? []).filter(display => !(now - (readAt?.[display.index] ?? -Infinity) < windowMs));
+}

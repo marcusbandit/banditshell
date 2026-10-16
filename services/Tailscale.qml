@@ -47,30 +47,46 @@ Singleton {
         reader.running = true;
     }
 
+    property var queued: null
+
     function run(what: string, command: var): void {
-        if (!root.installed || actor.running || !command.length)
+        if (!root.installed || !command.length)
             return;
-        root.busy = what;
+        const job = {
+            what: what,
+            command: command
+        };
+        if (!actor.running)
+            return root.start(job);
+        root.queued = job;
+        if (root.busy === "signin") {
+            actor.replaced = true;
+            actor.running = false;
+        }
+    }
+
+    function start(job: var): void {
+        root.busy = job.what;
         root.trouble = "";
         actor.said = "";
-        actor.command = command;
+        actor.replaced = false;
+        actor.timedOut = false;
+        if (job.what === "operator")
+            Polkit.expect("Let you control Tailscale", "tailscale");
+        actor.command = job.command;
+        deadline.interval = 20000;
+        deadline.restart();
         actor.running = true;
     }
 
     function up(): void {
-        if (!root.signedOut) {
-            root.run("up", ["tailscale", "up"]);
+        if (root.state === "NeedsMachineAuth")
+            return;
+        if (root.busy === "signin" && actor.running && root.openedUrl) {
+            Quickshell.execDetached(["xdg-open", root.openedUrl]);
             return;
         }
-        if (signer.running) {
-            if (root.openedUrl)
-                Quickshell.execDetached(["xdg-open", root.openedUrl]);
-            return;
-        }
-        root.trouble = "";
-        root.openedUrl = "";
-        root.busy = "signin";
-        signer.running = true;
+        root.run(root.signedOut ? "signin" : "up", ["tailscale", "up"]);
     }
 
     function down(): void {
@@ -82,25 +98,20 @@ Singleton {
     }
 
     function allowOperator(): void {
-        const command = Logic.operatorCommand(ToolInstaller.pathOf("tailscale"), Quickshell.env("USER"));
-        if (!command.length || actor.running)
-            return;
-        Polkit.expect("Let you control Tailscale", "tailscale");
-        root.run("operator", command);
+        if (!whoami.running)
+            whoami.running = true;
     }
 
     function hear(line: string): void {
         actor.said += `${line}\n`;
-    }
-
-    function hearSigner(line: string): void {
         const url = Logic.authUrlIn(line);
-        if (url && url !== root.openedUrl) {
-            root.openedUrl = url;
-            if (root.busy === "signin")
-                root.busy = "";
-            Quickshell.execDetached(["xdg-open", url]);
-        }
+        if (!url || url === root.openedUrl)
+            return;
+        root.openedUrl = url;
+        root.busy = "signin";
+        deadline.interval = 300000;
+        deadline.restart();
+        Quickshell.execDetached(["xdg-open", url]);
     }
 
     Timer {
@@ -134,24 +145,32 @@ Singleton {
         }
     }
 
+    Timer {
+        id: deadline
+
+        onTriggered: {
+            if (!actor.running)
+                return;
+            actor.timedOut = true;
+            actor.running = false;
+        }
+    }
+
     Process {
-        id: signer
+        id: whoami
 
-        command: ["tailscale", "up"]
+        command: ["id", "-un"]
 
-        stdout: SplitParser {
-            onRead: line => root.hearSigner(line)
+        stdout: StdioCollector {
+            id: whoamiOutput
         }
 
-        stderr: SplitParser {
-            onRead: line => root.hearSigner(line)
-        }
-
-        onExited: {
-            if (root.busy === "signin")
-                root.busy = "";
-            root.readAt = 0;
-            root.refresh();
+        onExited: code => {
+            const command = code === 0 ? Logic.operatorCommand(ToolInstaller.pathOf("tailscale"), whoamiOutput.text.trim()) : [];
+            if (command.length)
+                root.run("operator", command);
+            else
+                root.trouble = "could not tell who you are";
         }
     }
 
@@ -159,6 +178,8 @@ Singleton {
         id: actor
 
         property string said: ""
+        property bool replaced: false
+        property bool timedOut: false
 
         stdout: SplitParser {
             onRead: line => root.hear(line)
@@ -169,11 +190,17 @@ Singleton {
         }
 
         onExited: code => {
+            deadline.stop();
             const what = root.busy;
             root.busy = "";
+            root.openedUrl = "";
             if (what === "operator")
                 Polkit.forget();
-            if (code === 0) {
+            if (actor.replaced) {
+                root.trouble = "";
+            } else if (actor.timedOut) {
+                root.trouble = what === "signin" ? "the sign in was not finished" : "tailscale did not answer";
+            } else if (code === 0) {
                 root.trouble = "";
                 if (what === "operator")
                     root.needsOperator = false;
@@ -184,6 +211,10 @@ Singleton {
                 root.needsOperator = why.operator;
                 root.trouble = why.text || "tailscale refused";
             }
+            const next = root.queued;
+            root.queued = null;
+            if (next)
+                root.start(next);
             root.readAt = 0;
             root.refresh();
         }

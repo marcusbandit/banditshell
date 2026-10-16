@@ -180,12 +180,19 @@ Singleton {
         }
     }
 
+    property var levelsReadAt: ({})
+
     function readLevels(): void {
         if (root.ddcutilMissing)
             return;
-        for (const display of root.displays)
+        const now = Date.now();
+        const stamps = Object.assign({}, root.levelsReadAt);
+        for (const display of Ddcutil.staleDisplays(root.displays, root.levelsReadAt, now, 30000)) {
+            stamps[display.index] = now;
             if (!root.queue.some(job => job.kind === `read:${display.index}`))
                 root.enqueue(`read:${display.index}`, ["ddcutil", "--display", display.index, "getvcp", "10", "--brief"]);
+        }
+        root.levelsReadAt = stamps;
     }
 
     function retryDetect(): void {
@@ -231,6 +238,7 @@ Singleton {
                 console.warn(`Display: ddcutil detect exited ${code}`);
             }
             root.displays = code === 0 ? Ddcutil.parseDetect(output) : [];
+            root.levelsReadAt = ({});
             if (root.unwritten)
                 root.writeLevel();
         } else if (kind.startsWith("read:") && code === 0) {

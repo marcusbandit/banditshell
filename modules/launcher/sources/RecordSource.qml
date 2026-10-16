@@ -54,10 +54,23 @@ QtObject {
             key: "record:stop",
             kind: "recordstop",
             label: ScreenRecorder.stopping ? "Saving the recording" : "Stop recording",
-            detail: [ScreenRecorder.clock, ScreenRecorder.modeText, ScreenRecorder.current?.sound ? "with sound" : ""].filter(Boolean).join(" · "),
+            detail: [ScreenRecorder.clock, ScreenRecorder.modeText, ScreenRecorder.current?.sound ? "with sound" : "", ScreenRecorder.stopping ? "" : ScreenRecorder.trouble].filter(Boolean).join(" · "),
             icon: "stop_circle",
             score: Infinity
         };
+    }
+
+    function liveStopRow(): var {
+        const meant = root.wanted || Asks.stopNear(root.search.text);
+        const arming = root.search.armed === "recordstop";
+        const row = root.stopRow();
+        return Object.assign(row, {
+            careful: !meant,
+            armed: arming,
+            label: arming ? "Press Enter again to stop recording" : row.label,
+            detail: arming ? "" : row.detail,
+            score: meant ? Infinity : 0.45
+        });
     }
 
     function modeRow(choice: var, sound: bool, score: real): var {
@@ -115,9 +128,7 @@ QtObject {
         if (!ScreenRecorder.enabled)
             return [];
         if (ScreenRecorder.recording)
-            return root.search.text ? [Object.assign(root.stopRow(), {
-                        score: root.wanted || Asks.stopNear(root.search.text) ? Infinity : 0.45
-                    })] : [];
+            return root.search.text ? [root.liveStopRow()] : [];
         const ask = root.asked;
         if (!root.wanted || ask?.stop)
             return [];
@@ -146,6 +157,11 @@ QtObject {
     function activate(row: var): void {
         switch (row.kind) {
         case "recordstop":
+            if (row.careful && root.search.armed !== "recordstop") {
+                root.search.armed = "recordstop";
+                return;
+            }
+            root.search.armed = "";
             root.search.leave(() => ScreenRecorder.stop());
             return;
         case "recordinstall":
