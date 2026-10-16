@@ -16,12 +16,14 @@ data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
 IFS=: read -r -a data_dirs <<<"$data_home:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share"
 
 candidates() {
-    local dir name="$id.desktop"
+    local dir name="$id.desktop" i
     for dir in "${data_dirs[@]}" /var/lib/snapd/desktop; do
         dir="${dir%/}"
         [ -n "$dir" ] || continue
         [ -f "$dir/applications/$name" ] && printf '%s\n' "$dir/applications/$name"
-        [ "$name" != "${name/-//}" ] && [ -f "$dir/applications/${name/-//}" ] && printf '%s\n' "$dir/applications/${name/-//}"
+        for ((i = 0; i < ${#name}; i++)); do
+            [ "${name:i:1}" = - ] && [ -f "$dir/applications/${name:0:i}/${name:i+1}" ] && printf '%s\n' "$dir/applications/${name:0:i}/${name:i+1}"
+        done
     done
 }
 

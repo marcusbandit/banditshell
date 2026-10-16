@@ -168,6 +168,12 @@ test.describe("uninstall-app.sh", () => {
         assert.strictEqual(uninstall(["find", "missing"], none, {}).status, 1);
     });
 
+    test.it("finds a desktop file kept in a subfolder, whichever dash is the slash", () => {
+        const tools = { pacman: '[ "$1" = -Qqo ] && echo thing', pkexec: "exit 0" };
+        const files = { "usr/share/applications/kde-org/thing.desktop": DESKTOP };
+        assert.strictEqual(uninstall(["find", "kde-org-thing"], tools, files).stdout, "pacman\tthing\t$SANDBOX/usr/share/applications/kde-org/thing.desktop");
+    });
+
     test.it("says so when pkexec is missing, so the shell can fall back to a terminal", () => {
         const dir = sandbox({ pacman: '[ "$1" = -Qqo ] && echo thing' }, { "usr/share/applications/thing.desktop": DESKTOP });
         const core = path.join(dir, "core");

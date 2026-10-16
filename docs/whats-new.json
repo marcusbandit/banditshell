@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-4",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16-3",
       "date": "2026-10-16",
       "changes": [
