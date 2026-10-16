@@ -21,7 +21,22 @@ MenuRow {
 
     height: visible ? root.rowHeight : 0
 
-    icon: "calculate"
+    icon: root.result?.icon ?? "calculate"
+
+    mark: root.result?.swatch ? swatch : null
+
+    Component {
+        id: swatch
+
+        SquircleRect {
+            width: root.iconSize
+            height: root.iconSize
+            radius: Appearance.rounding.small
+            color: root.result?.swatch ?? "transparent"
+            stroke: Appearance.colour.seam
+            strokeWidth: Appearance.sizes.seam
+        }
+    }
     label: root.result?.text ?? ""
     detail: root.result?.missing ? "" : root.result?.detail || root.expression
     selected: root.holds
@@ -45,7 +60,7 @@ MenuRow {
         }
 
         Button {
-            visible: root.offersSymbols && !root.result?.money && !root.result?.missing
+            visible: root.offersSymbols && !root.result?.money && !root.result?.missing && !root.result?.icon
             anchors.verticalCenter: parent.verticalCenter
             icon: "function"
             text: "Symbols"

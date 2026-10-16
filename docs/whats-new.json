@@ -5,6 +5,11 @@
       "date": "2026-10-16",
       "changes": [
         {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher's calculator also reads dates and colours. days until christmas, monday in 3 weeks, 10 days ago and week number answer right under the field, and #ff8800 shows its rgb and hsl with a swatch of the colour. 5pm ldn in sf or 9am pst moves a time between places, daylight saving included. Coins work like money: 0.5 btc in dkk uses prices fetched only when you type one."
+        },
+        {
           "type": "bugs",
           "severity": "minor",
           "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."

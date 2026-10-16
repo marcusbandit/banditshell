@@ -242,6 +242,77 @@ var ZONE_ALIASES = {
     "bangalore": "Asia/Kolkata"
 };
 
+var ZONE_ABBREVIATIONS = {
+    "utc": "UTC",
+    "gmt": "UTC",
+    "wet": "Europe/Lisbon",
+    "bst": "Europe/London",
+    "cet": "Europe/Paris",
+    "cest": "Europe/Paris",
+    "eet": "Europe/Athens",
+    "est": "America/New_York",
+    "edt": "America/New_York",
+    "cst": "America/Chicago",
+    "cdt": "America/Chicago",
+    "mst": "America/Denver",
+    "mdt": "America/Denver",
+    "pst": "America/Los_Angeles",
+    "pdt": "America/Los_Angeles",
+    "ist": "Asia/Kolkata",
+    "sgt": "Asia/Singapore",
+    "hkt": "Asia/Hong_Kong",
+    "kst": "Asia/Seoul",
+    "jst": "Asia/Tokyo",
+    "aest": "Australia/Sydney",
+    "aedt": "Australia/Sydney",
+    "nzst": "Pacific/Auckland",
+    "nzdt": "Pacific/Auckland"
+};
+
+function zoneConvertAsk(text) {
+    const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const time = "(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)?|noon|midnight)";
+    let m = new RegExp(`^${time} (?:in )?(.+?) (?:in|to|->|→) (.+)$`).exec(t);
+    let from = "", to = "";
+    if (m) {
+        from = m[2];
+        to = m[3];
+    } else if ((m = new RegExp(`^${time} (?:in|to) (.+)$`).exec(t))) {
+        to = m[2];
+    } else if ((m = new RegExp(`^${time} (.+?)(?: time)?$`).exec(t))) {
+        from = m[2];
+    } else {
+        return null;
+    }
+    const clock = m[1] === "noon" ? {
+        hour: 12,
+        minute: 0
+    } : m[1] === "midnight" ? {
+        hour: 0,
+        minute: 0
+    } : clockOf(m[1], false);
+    if (!clock || from === to || (from && from.length < 2) || (to && to.length < 2))
+        return null;
+    return {
+        clock: clock,
+        from: from,
+        to: to
+    };
+}
+
+function readConversion(text) {
+    const lines = String(text || "").trim().split("\n");
+    const m = /^(\d{2}) (\d{2}) (\d{4}-\d{2}-\d{2})$/.exec((lines[0] || "").trim());
+    if (!m || !/^\d{4}-\d{2}-\d{2}$/.test((lines[1] || "").trim()))
+        return null;
+    return {
+        hour: parseInt(m[1], 10),
+        minute: parseInt(m[2], 10),
+        day: m[3],
+        shift: Math.round((Date.parse(m[3]) - Date.parse(lines[1].trim())) / 86400000)
+    };
+}
+
 function zoneAsk(text) {
     const t = String(text || "").trim().toLowerCase();
     const m = /^(?:what\s+)?(?:time|clock)\s+(?:is\s+it\s+)?in\s+(.+)$/.exec(t) || /^time\s+(?!in$)(.+)$/.exec(t) || /^(.+?)\s+time$/.exec(t);

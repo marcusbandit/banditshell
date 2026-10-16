@@ -43,9 +43,10 @@ QtObject {
     readonly property var reminder: Search.reminderAsk(root.text)
     readonly property int volume: Search.volumeAsk(root.text)
     readonly property string place: Search.zoneAsk(root.text)
+    readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.killing !== null
+    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null
 
     property bool started: false
 
@@ -59,7 +60,7 @@ QtObject {
             root.started = true;
             Files.refreshPlaces();
         }
-        if (Search.zoneAsk(root.query.trim()))
+        if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()))
             Clock.loadZoneList();
         if (Search.killAsk(root.query.trim()) !== null)
             root.listProcesses();
@@ -530,6 +531,80 @@ QtObject {
         };
     })
 
+    function zoneFor(place: string): string {
+        if (!place)
+            return Clock.localZone;
+        return Search.ZONE_ABBREVIATIONS[place] ?? Search.zoneMatches(Clock.allZones, place, Clock.cityOf)[0] ?? "";
+    }
+
+    function placeName(place: string, zone: string): string {
+        return Search.ZONE_ABBREVIATIONS[place] ? place.toUpperCase() : Clock.cityOf(zone);
+    }
+
+    readonly property var conversion: {
+        const ask = root.convert;
+        if (!ask)
+            return null;
+        const from = root.zoneFor(ask.from);
+        const to = root.zoneFor(ask.to);
+        if (!from || !to || from === to || !Clock.validZone(from) || !Clock.validZone(to))
+            return null;
+        return {
+            ask: ask,
+            from: from,
+            to: to,
+            at: `${String(ask.clock.hour).padStart(2, "0")}:${String(ask.clock.minute).padStart(2, "0")}`,
+            key: `${from}|${to}|${ask.clock.hour}:${ask.clock.minute}`
+        };
+    }
+
+    property var converted: null
+
+    onConversionChanged: {
+        const c = root.conversion;
+        if (!c || root.converted?.key === c.key)
+            return;
+        root.converter.running = false;
+        root.converter.key = c.key;
+        root.converter.command = ["sh", "-c", 'day=$(TZ="$2" date +%F) && TZ="$1" date -d "TZ=\\"$2\\" $day $3" "+%H %M %F" && echo "$day"', "sh", c.to, c.from, c.at];
+        root.converter.running = true;
+    }
+
+    property Process converter: Process {
+        property string key: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const got = Search.readConversion(text);
+                root.converted = got ? Object.assign(got, {
+                    key: root.converter.key
+                }) : null;
+            }
+        }
+    }
+
+    readonly property var convertRows: {
+        const c = root.conversion;
+        const got = root.converted;
+        if (!c || got?.key !== c.key)
+            return [];
+        const time = TimeFormat.clock(got.hour, got.minute);
+        const shifted = got.shift ? ` · ${Qt.locale().dayName(new Date(`${got.day}T12:00:00`).getDay(), Locale.LongFormat)}` : "";
+        const local = c.to === Clock.localZone;
+        return [
+            {
+                key: `convert:${c.key}`,
+                kind: "zone",
+                zone: local ? c.from : c.to,
+                time: time,
+                label: `${time} in ${root.placeName(c.ask.to, c.to)}${shifted}`,
+                detail: `${TimeFormat.clock(c.ask.clock.hour, c.ask.clock.minute)} in ${root.placeName(c.ask.from, c.from)}`,
+                icon: "schedule",
+                score: Infinity
+            }
+        ];
+    }
+
     function reminderRow(ask: var): var {
         const about = ask.label ? ` to ${ask.label}` : "";
         if (ask.at) {
@@ -570,7 +645,7 @@ QtObject {
             });
         if (root.reminder)
             out.push(root.reminderRow(root.reminder));
-        return out.concat(root.zoneRows);
+        return out.concat(root.convertRows, root.zoneRows);
     }
 
     property var processes: []

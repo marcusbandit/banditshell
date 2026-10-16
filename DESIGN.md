@@ -678,7 +678,17 @@ banditshell/
 │   │                            sense, so 5+5- still says 10
 │   ├── Currency.qml             an amount in one currency, said in another:
 │   │                            the ECB's daily rates, fetched when online
-│   │                            and kept for when it is not
+│   │                            and kept for when it is not. Coins (btc, eth
+│   │                            and a dozen more) are currencies too, priced
+│   │                            from CoinGecko only when one is typed and at
+│   │                            most every ten minutes
+│   ├── dates.js                 plain words about dates, read without qalc:
+│   │                            days until christmas, monday in 3 weeks,
+│   │                            10 days ago, week number, Easter. English and
+│   │                            Danish; a date already past this year means
+│   │                            next year's
+│   ├── colours.js               a colour in hex, rgb or hsl said in the others,
+│   │                            for the answer row and its swatch
 │   ├── Lock.qml                 whether the screen is locked, and what decides it.
 │   │                            Also the password on its way to PAM: typed into
 │   │                            a buffer nothing outside can read, called WRONG
@@ -963,7 +973,10 @@ banditshell/
 │   │   │                        the CLI runs without the launcher open
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
-│   │   │                        kill phrases, aliases, chords, fallbacks
+│   │   │                        kill phrases, a time moved between places
+│   │   │                        (5pm ldn in sf, which date(1) converts so
+│   │   │                        daylight saving is right), aliases, chords,
+│   │   │                        fallbacks
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
