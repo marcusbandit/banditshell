@@ -1224,7 +1224,7 @@ QtObject {
     }
 
     function reminderRow(ask: var): var {
-        const about = ask.label ? ` ${ask.link || "to"} ${ask.label}` : "";
+        const task = ask.label ? ask.label.charAt(0).toUpperCase() + ask.label.slice(1) : "";
         if (!ask.seconds) {
             const moment = Search.reminderMoment(ask, new Date(), root.reminderHour, Search.vagueHour(root.text), !TimeFormat.clock24);
             const when = new Date(moment);
@@ -1234,8 +1234,8 @@ QtObject {
                 ask: ask,
                 moment: moment,
                 full: root.alarmsFull,
-                label: moment ? `Remind me at ${TimeFormat.clock(when.getHours(), when.getMinutes())}${about}` : `Remind me${about}`,
-                detail: !moment ? "in the past" : root.alarmsFull ? root.alarmsFullText : root.dayWord(moment),
+                label: task || (moment ? `Remind me at ${TimeFormat.clock(when.getHours(), when.getMinutes())}` : "Remind me"),
+                detail: !moment ? "in the past" : root.alarmsFull ? root.alarmsFullText : task ? `at ${TimeFormat.clock(when.getHours(), when.getMinutes())} · ${root.dayWord(moment)}` : root.dayWord(moment),
                 icon: "notifications_active",
                 score: Infinity
             };
@@ -1245,8 +1245,8 @@ QtObject {
             kind: "reminder",
             ask: ask,
             full: root.timersFull,
-            label: `Remind me in ${Search.spanText(ask.seconds)}${about}`,
-            detail: root.timersFull ? root.timersFullText : TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false),
+            label: task || `Remind me in ${Search.spanText(ask.seconds)}`,
+            detail: root.timersFull ? root.timersFullText : task ? `in ${Search.spanText(ask.seconds)} · ${TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false)}` : TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false),
             icon: "notifications_active",
             score: Infinity
         };
