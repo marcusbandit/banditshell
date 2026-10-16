@@ -12,6 +12,12 @@ var WEB = /^[a-z][a-z0-9+.-]*:\/\//i;
 
 var LIST_LIMIT = 50;
 
+var ALLOWED_LINK = /^(?:https?:\/\/|mailto:|file:\/\/\/)/i;
+
+var SCHEME = /^([a-z][a-z0-9+.-]*):/i;
+
+var GROUP_STOP = 'kill -TERM -- "-$1" 2>/dev/null || { kill -TERM "$1" 2>/dev/null; exit 0; }; sleep 1; kill -0 -- "-$1" 2>/dev/null && kill -KILL -- "-$1" 2>/dev/null; exit 0';
+
 var ESCAPES = /\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07/g;
 
 var SKIPPED = /\.(?:md|txt|json|png|jpe?g|svg|gif|webp|ico|log|bak|orig|swp)$|~$/i;
@@ -255,9 +261,11 @@ function iconOf(icon, folder, home) {
     var t = raw.trim();
     if (!t)
         return {};
+    if (WEB.test(t))
+        return {};
     if (t.indexOf("/") >= 0 || IMAGE.test(t))
         return {
-            file: t.charAt(0) === "/" || WEB.test(t) ? t : t.indexOf("~/") === 0 ? expandHome(t, home) : `${folder}/${t}`
+            file: t.charAt(0) === "/" ? t : t.indexOf("~/") === 0 ? expandHome(t, home) : `${folder}/${t}`
         };
     if (ICON_NAME.test(t))
         return {
@@ -279,12 +287,16 @@ function readItem(raw, folder, home) {
     var arg = textOf(raw.arg);
     var file = type.indexOf("file") === 0 && !!arg;
     var icon = iconOf(raw.icon, folder, home);
+    var url = textOf(raw.url || raw.quicklookurl).trim();
+    var path = file ? expandHome(arg, home) : arg;
     return {
         uid: textOf(raw.uid),
         title: title,
         subtitle: textOf(raw.subtitle).trim(),
-        arg: file ? expandHome(arg, home) : arg,
-        url: textOf(raw.url || raw.quicklookurl),
+        arg: path,
+        url: url,
+        linkRefusal: linkRefusal(url),
+        fileRefusal: file ? fileRefusal(path) : "",
         copy: textOf(raw.copy !== undefined ? raw.copy : text.copy),
         file: file,
         valid: raw.valid !== false,
@@ -335,18 +347,52 @@ function readList(code, out, err, folder, home, limit) {
     };
 }
 
+function linkRefusal(link) {
+    var t = String(link || "");
+    if (!t)
+        return "";
+    if (t.charAt(0) === "-")
+        return "refused a link starting with -";
+    if (ALLOWED_LINK.test(t))
+        return "";
+    var m = SCHEME.exec(t);
+    return m ? `refused a ${m[1].toLowerCase()}: link` : "refused a link with no scheme";
+}
+
+function fileRefusal(path) {
+    var t = String(path || "");
+    if (t.charAt(0) === "-")
+        return "refused a file starting with -";
+    return t.charAt(0) === "/" ? "" : "refused a file path that is not absolute";
+}
+
+function refusalOf(item) {
+    return item.linkRefusal || item.fileRefusal || "";
+}
+
 function itemAction(item, selects) {
     if (!item.valid)
         return item.autocomplete ? "complete" : "";
     if (selects)
         return "run";
-    if (item.url)
+    if (item.url && !item.linkRefusal)
         return "url";
     if (item.copy)
         return "copy";
+    if (item.url)
+        return "refused";
     if (item.file)
-        return "file";
-    return WEB.test(item.arg) ? "url" : "copy";
+        return item.fileRefusal ? "refused" : "file";
+    return WEB.test(item.arg) && !linkRefusal(item.arg) ? "url" : "copy";
+}
+
+function groupCommand(command, grouped) {
+    return grouped ? ["setsid"].concat(command) : command;
+}
+
+function stopGroupCommand(pid) {
+    var id = Math.round(Number(pid));
+    return id > 1 ? ["sh", "-c", GROUP_STOP, "sh", String(id)] : null;
 }
 
 function outputLines(text, limit) {

@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore"]);
+const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore", "linkRefusal", "fileRefusal", "refusalOf", "groupCommand", "stopGroupCommand"]);
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
 const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "readDisks", "bytesText", "uptimeText", "cpuText"]);
@@ -635,5 +635,86 @@ test.describe("list scripts", () => {
         const result = Scripts.readList(0, execFileSync(python, [example, "leftwards", "arrow"]).toString(), "", path.dirname(example), "", 50);
         assert.strictEqual(result.error, "");
         assert.ok(result.items.some(i => i.title === "Leftwards Arrow" && i.copy === "←"));
+    });
+});
+
+test.describe("list script safety", () => {
+    test.it("opens only web, mail and absolute file links", () => {
+        assert.strictEqual(Scripts.linkRefusal("https://example.org"), "");
+        assert.strictEqual(Scripts.linkRefusal("http://example.org"), "");
+        assert.strictEqual(Scripts.linkRefusal("mailto:a@b.c"), "");
+        assert.strictEqual(Scripts.linkRefusal("file:///home/a/x.pdf"), "");
+        assert.strictEqual(Scripts.linkRefusal("file://host/x"), "refused a file: link");
+        assert.strictEqual(Scripts.linkRefusal("steam://run/1"), "refused a steam: link");
+        assert.strictEqual(Scripts.linkRefusal("javascript:alert(1)"), "refused a javascript: link");
+        assert.strictEqual(Scripts.linkRefusal("--help"), "refused a link starting with -");
+        assert.strictEqual(Scripts.linkRefusal("example.org"), "refused a link with no scheme");
+        assert.strictEqual(Scripts.fileRefusal("/home/a/x"), "");
+        assert.strictEqual(Scripts.fileRefusal("x.pdf"), "refused a file path that is not absolute");
+        assert.strictEqual(Scripts.fileRefusal("-rf"), "refused a file starting with -");
+    });
+
+    test.it("says why on the row and never opens a refused item", () => {
+        const items = Scripts.readItems(JSON.stringify([{
+                title: "Game",
+                url: "steam://run/1"
+            }, {
+                title: "Game too",
+                url: "steam://run/1",
+                copy: "1"
+            }, {
+                title: "Relative",
+                arg: "notes.txt",
+                type: "file"
+            }, {
+                title: "Dash",
+                arg: "--version"
+            }, {
+                title: "Scheme in arg",
+                arg: "steam://run/1"
+            }, {
+                title: "Remote icon",
+                icon: "https://tracker.example/pixel.png"
+            }]), "/s", "/home/a", 50);
+        assert.strictEqual(Scripts.refusalOf(items[0]), "refused a steam: link");
+        assert.strictEqual(Scripts.itemAction(items[0], false), "refused");
+        assert.strictEqual(Scripts.itemAction(items[1], false), "copy");
+        assert.strictEqual(Scripts.itemAction(items[2], false), "refused");
+        assert.strictEqual(Scripts.refusalOf(items[2]), "refused a file path that is not absolute");
+        assert.strictEqual(Scripts.itemAction(items[3], false), "copy");
+        assert.strictEqual(Scripts.itemAction(items[4], false), "copy");
+        assert.strictEqual(items[5].iconFile, "");
+    });
+
+    test.it("stops a timed out script together with its children", {
+        skip: !(() => {
+            try {
+                execFileSync("sh", ["-c", "command -v setsid"]);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        })()
+    }, async () => {
+        const { spawn } = require("node:child_process");
+        const command = Scripts.groupCommand(["sh", "-c", "sleep 30 & echo $!; wait"], true);
+        const script = spawn(command[0], command.slice(1));
+        const child = await new Promise(resolve => script.stdout.once("data", d => resolve(Number(String(d).trim()))));
+        const alive = pid => {
+            try {
+                process.kill(pid, 0);
+                return true;
+            } catch (e) {
+                return false;
+            }
+        };
+        assert.ok(alive(child));
+        const stop = Scripts.stopGroupCommand(script.pid);
+        execFileSync(stop[0], stop.slice(1));
+        await new Promise(resolve => setTimeout(resolve, 200));
+        assert.strictEqual(alive(child), false);
+        assert.strictEqual(Scripts.stopGroupCommand(1), null);
+        assert.strictEqual(Scripts.stopGroupCommand("x"), null);
+        assert.deepStrictEqual(Scripts.groupCommand(["a"], false), ["a"]);
     });
 });

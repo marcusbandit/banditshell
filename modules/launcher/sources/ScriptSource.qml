@@ -112,14 +112,16 @@ QtObject {
                 }));
     }
 
-    function itemRow(script: var, item: var, index: int): var {
+    function itemRow(script: var, item: var, index: int, waiting: bool): var {
         return {
-            key: `scriptitem:${script.file}:${index}:${item.uid || item.title}`,
+            key: `scriptitem:${script.file}:${index}:${item.uid || item.title}${waiting ? ":waiting" : ""}`,
             kind: "scriptitem",
             script: script,
             item: item,
+            waiting: waiting,
+            faded: waiting,
             label: item.title,
-            detail: item.subtitle,
+            detail: Scripts.refusalOf(item) || item.subtitle,
             icon: item.icon || (item.file ? "draft" : "chevron_right"),
             glyph: item.glyph,
             iconSource: item.iconFile,
@@ -145,17 +147,17 @@ QtObject {
         if (!ask)
             return [];
         const result = ScriptCommands.listFor(ask.script.path, ask.key);
-        if (!result || result.path !== ask.script.path)
-            return [Object.assign(root.scriptRow(ask.script, ask.values, Infinity), {
-                    detail: "running"
-                })];
+        const fresh = ScriptCommands.listFresh(ask.key);
+        const running = [Object.assign(root.scriptRow(ask.script, ask.values, Infinity), {
+                detail: "running"
+            })];
+        if (!result || result.path !== ask.script.path || !fresh && (result.error || !result.items.length))
+            return running;
         if (result.error)
             return [root.problemRow(ask.script, result.error, "error")];
         if (!result.items.length)
-            return ScriptCommands.listPending(ask.key) ? [Object.assign(root.scriptRow(ask.script, ask.values, Infinity), {
-                        detail: "running"
-                    })] : [root.problemRow(ask.script, "No results", "search_off")];
-        return result.items.map((item, i) => root.itemRow(ask.script, item, i));
+            return ScriptCommands.listPending(ask.key) ? running : [root.problemRow(ask.script, "No results", "search_off")];
+        return result.items.map((item, i) => root.itemRow(ask.script, item, i, !fresh));
     }
 
     readonly property bool folderAsked: root.text.length >= 3 && Math.max(Ranking.place("script commands", root.text), Ranking.place("scripts", root.text), Ranking.place("new script", root.text)) >= Ranking.PREFIX
@@ -221,6 +223,14 @@ QtObject {
     }
 
     function itemActions(row: var): var {
+        if (row.waiting)
+            return [
+                {
+                    icon: "hourglass_empty",
+                    label: "Waiting for the script",
+                    run: () => {}
+                }
+            ];
         const item = row.item;
         const script = row.script;
         const action = Scripts.itemAction(item, script.selects);
@@ -256,7 +266,7 @@ QtObject {
                 run: () => root.complete(row)
             }
         };
-        const out = action ? [choices[action]] : [
+        const out = choices[action] ? [choices[action]] : [
             {
                 icon: "block",
                 label: "Nothing to do",
@@ -265,9 +275,9 @@ QtObject {
         ];
         if (action !== "copy" && (item.copy || item.arg))
             out.push(choices.copy);
-        if (action !== "url" && item.url)
+        if (action !== "url" && item.url && !item.linkRefusal)
             out.push(choices.url);
-        if (item.file)
+        if (item.file && !item.fileRefusal)
             out.push({
                 icon: "drive_file_move",
                 label: "Show in folder",
@@ -287,7 +297,7 @@ QtObject {
     function activate(row: var): void {
         switch (row.kind) {
         case "scriptitem":
-            if (row.item.valid || row.item.autocomplete)
+            if (!row.waiting && (row.item.valid || row.item.autocomplete))
                 root.itemActions(row)[0].run();
             return;
         case "scriptproblem":
@@ -379,7 +389,7 @@ QtObject {
 
     function complete(row: var): bool {
         if (row.kind === "scriptitem") {
-            if (!row.item.autocomplete)
+            if (row.waiting || !row.item.autocomplete)
                 return false;
             root.search.retype(`${row.script.title} ${row.item.autocomplete}`);
             return true;

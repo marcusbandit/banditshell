@@ -914,6 +914,7 @@ LauncherConcept {
                                 id: row
 
                                 visible: !line.modelData.header
+                                opacity: line.modelData.faded ? 0.45 : 1
                                 width: parent.width
                                 height: line.height
                                 iconSize: Appearance.sizes.launcherIcon
