@@ -72,6 +72,11 @@
         {
           "type": "features",
           "severity": "minor",
+          "text": "Developer tools in the launcher: type uuid, password 20, base64 hello, sha256 text, json, jwt and a token, snake case My Title or a unix time, and Enter copies the answer. It also understands everyday phrasing such as set a timer for 5 minutes, remind me tomorrow at 9 to call mum, time in india, louder, and kill port 3000."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
           "text": "Draw your own tiling layout in Settings › Windows › Custom layout, or type layout workshop in the launcher. Place regions, choose where each new window goes and what happens on a narrow screen, and the shell writes a Hyprland layout and loads it right away without editing your config. Stage comes as a starting point, and your saved layouts show up next to it in the launcher's layout list."
         },
         {
