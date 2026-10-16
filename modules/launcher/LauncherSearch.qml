@@ -101,7 +101,7 @@ QtObject {
         }
     ]
 
-    readonly property var sourceGroups: root.sources.reduce((out, s) => out.concat(s.groups ?? []), [])
+    readonly property var sourceGroupLists: root.sources.map(s => s.groups ?? [])
 
     readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
 
@@ -109,8 +109,14 @@ QtObject {
 
     readonly property var limits: root.sources.reduce((out, s) => Object.assign(out, s.caps ?? {}), Object.assign({}, root.caps))
 
+    readonly property var sourceByKind: root.sources.reduce((out, s) => {
+        for (const kind of s.kinds ?? [])
+            out[kind] = s;
+        return out;
+    }, ({}))
+
     function sourceOf(row: var): var {
-        return row?.kind ? root.sources.find(s => (s.kinds ?? []).includes(row.kind)) ?? null : null;
+        return row?.kind ? root.sourceByKind[row.kind] ?? null : null;
     }
 
     readonly property var caps: ({
@@ -1250,7 +1256,31 @@ QtObject {
         });
     }
 
-    readonly property var arranged: {
+    readonly property var arrangeInputs: [root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.sourceGroupLists, root.limits]
+
+    property var arranged: []
+    property bool arrangePending: false
+
+    onArrangeInputsChanged: {
+        if (root.arrangePending)
+            return;
+        root.arrangePending = true;
+        Qt.callLater(root.arrangeNow);
+    }
+
+    Component.onCompleted: {
+        root.arrangePending = true;
+        root.arrangeNow();
+    }
+
+    function arrangeNow(): void {
+        if (!root.arrangePending)
+            return;
+        root.arrangePending = false;
+        root.arranged = root.arrangement();
+    }
+
+    function arrangement(): var {
         if (!root.text)
             return root.appRows;
         if (root.path)
@@ -1324,7 +1354,7 @@ QtObject {
             key: "contents",
             title: "Inside files",
             items: root.contentRows
-        }, ...root.sourceGroups);
+        }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
         return Search.arrange(groups, root.limits);
     }
 

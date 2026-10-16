@@ -176,6 +176,23 @@ function recentFirst(entries, byChar, used, limit) {
     return out;
 }
 
+var narrowing = {
+    from: null,
+    want: "",
+    pool: []
+};
+
+function couldMatch(entry, want, exact, parts) {
+    if (entry.hay.indexOf(want) >= 0 || entry.keyline.indexOf(want) >= 0 || entry.keyline.indexOf(exact) >= 0)
+        return true;
+    if (parts.length < 2)
+        return false;
+    for (var j = 0; j < parts.length; j++)
+        if (entry.hay.indexOf(" " + parts[j]) < 0)
+            return false;
+    return true;
+}
+
 function search(entries, byChar, query, used, explicit, limit) {
     var exact = foldWord(query);
     var want = fold(query);
@@ -186,14 +203,23 @@ function search(entries, byChar, query, used, explicit, limit) {
         return [];
     var parts = want.split(" ");
     var hits = [];
-    for (var i = 0; i < entries.length; i++) {
-        var found = tier(entries[i], want, exact, parts, least);
+    var narrowed = narrowing.from === entries && narrowing.want && want.indexOf(narrowing.want) === 0;
+    var pool = narrowed ? narrowing.pool : entries;
+    var kept = [];
+    for (var i = 0; i < pool.length; i++) {
+        if (!couldMatch(pool[i], want, exact, parts))
+            continue;
+        kept.push(pool[i]);
+        var found = tier(pool[i], want, exact, parts, least);
         if (found >= least)
             hits.push({
-                entry: entries[i],
-                score: found + bonus(entries[i], want, found, used)
+                entry: pool[i],
+                score: found + bonus(pool[i], want, found, used)
             });
     }
+    narrowing.from = entries;
+    narrowing.want = want;
+    narrowing.pool = kept;
     hits.sort(function (a, b) {
         return b.score - a.score || a.entry.title.length - b.entry.title.length || a.entry.index - b.entry.index;
     });

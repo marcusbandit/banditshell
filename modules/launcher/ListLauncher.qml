@@ -160,6 +160,7 @@ LauncherConcept {
     }
 
     function accept(): void {
+        search.arrangeNow();
         if (root.capture)
             return;
         if (assistantCard.busy)
@@ -324,6 +325,7 @@ LauncherConcept {
     }
 
     function claimKey(event: var): bool {
+        search.arrangeNow();
         if (root.capture)
             return root.claimCaptureKey(event);
 

@@ -318,3 +318,18 @@ test.describe("clipboard in search", () => {
         assert.strictEqual(ClipboardSearch.firstLine("abcdefghij", 5), "abcd…");
     });
 });
+
+test.describe("emoji search while typing", () => {
+    test.it("gives the same answer letter by letter as typed at once", () => {
+        for (const word of ["thumbs up", "red heart", "smiling face", "fire", "->", "deg"]) {
+            const fresh = lib("services/emoji.js", ["ask", "search"]);
+            const once = fresh.search(ALL, BY_CHAR, fresh.ask(word).term, {}, fresh.ask(word).explicit, 8).map(e => e.char);
+            let typed = [];
+            for (let i = 1; i <= word.length; i++) {
+                const asked = Emoji.ask(word.slice(0, i));
+                typed = Emoji.search(ALL, BY_CHAR, asked.term, {}, asked.explicit, 8).map(e => e.char);
+            }
+            assert.deepStrictEqual(typed, once, word);
+        }
+    });
+});

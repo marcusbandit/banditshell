@@ -414,22 +414,42 @@ Singleton {
     readonly property int tierNone: -1
     readonly property int tierExact: root.tierMeta + Ranking.EXACT
 
+    readonly property var searchMemo: ({
+            from: null,
+            needle: "",
+            matched: [],
+            lowered: ({})
+        })
+
+    function loweredOf(entry: var): var {
+        const memo = root.searchMemo;
+        const id = entry.id ?? entry.name ?? "";
+        let lowered = memo.lowered[id];
+        if (!lowered) {
+            lowered = {
+                generic: (entry.genericName ?? "").toLowerCase(),
+                comment: (entry.comment ?? "").toLowerCase(),
+                keywords: (entry.keywords ?? []).join(" ").toLowerCase()
+            };
+            memo.lowered[id] = lowered;
+        }
+        return lowered;
+    }
+
     function tier(entry: var, needle: string): int {
         if (!needle)
             return root.tierExact;
 
         const q = needle.toLowerCase();
         const name = entry.name ?? "";
-        const generic = (entry.genericName ?? "").toLowerCase();
-        const comment = (entry.comment ?? "").toLowerCase();
-        const keywords = (entry.keywords ?? []).join(" ").toLowerCase();
+        const lowered = root.loweredOf(entry);
 
         const placed = Ranking.place(name, q);
         if (placed !== Ranking.NONE)
             return root.tierMeta + placed;
-        if (generic.includes(q) || keywords.includes(q))
+        if (lowered.generic.includes(q) || lowered.keywords.includes(q))
             return root.tierMeta;
-        if (comment.includes(q))
+        if (lowered.comment.includes(q))
             return root.tierComment;
 
         return Ranking.subsequence(name, q) ? root.tierSubsequence : root.tierNone;
@@ -437,13 +457,29 @@ Singleton {
 
     function search(needle: string): var {
         const now = Date.now();
-        return root.visible.map(e => ({
+        const memo = root.searchMemo;
+        const q = needle.toLowerCase();
+        if (memo.from !== root.visible) {
+            memo.from = root.visible;
+            memo.needle = "";
+            memo.matched = [];
+            memo.lowered = {};
+        }
+        const pool = q && memo.needle && q.startsWith(memo.needle) ? memo.matched : root.visible;
+        const scored = [];
+        for (const e of pool) {
+            const placed = root.tier(e, needle);
+            if (placed > root.tierNone)
+                scored.push({
                     entry: e,
-                    tier: root.tier(e, needle),
+                    tier: placed,
                     used: root.frecencyAt(e, now),
-
                     length: needle ? (e.name ?? "").length : 0
-                })).filter(r => r.tier > root.tierNone).sort((a, b) => b.tier - a.tier || b.used - a.used || a.length - b.length || (a.entry.name ?? "").localeCompare(b.entry.name ?? "")).map(r => r.entry);
+                });
+        }
+        memo.needle = q;
+        memo.matched = q ? scored.map(r => r.entry) : [];
+        return scored.sort((a, b) => b.tier - a.tier || b.used - a.used || a.length - b.length || ((a.entry.name ?? "") < (b.entry.name ?? "") ? -1 : (a.entry.name ?? "") > (b.entry.name ?? "") ? 1 : 0)).map(r => r.entry);
     }
 
     function launch(entry: var): void {
