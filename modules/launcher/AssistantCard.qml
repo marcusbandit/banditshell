@@ -24,7 +24,7 @@ Item {
     readonly property bool holds: root.current && !root.released && Assistant.finished && !Assistant.streaming && !!Assistant.result
     readonly property bool busy: root.current && !root.released && Assistant.streaming
     readonly property bool rewriting: Assistant.kind === "rewrite"
-    readonly property bool replacing: root.rewriting && !!Assistant.action?.replaces && Assistant.canType
+    readonly property bool replacing: root.rewriting && Assistant.typeable
     readonly property bool waiting: Assistant.streaming && !Assistant.answer.trim()
 
     readonly property real textLeft: Appearance.padding.normal * 2 + root.iconSize
@@ -168,7 +168,10 @@ Item {
                 color: Assistant.error ? Appearance.colour.alarm : root.recalled ? Appearance.colour.textFaint : Appearance.colour.text
                 linkColor: Appearance.colour.accent
 
-                onLinkActivated: link => Quickshell.execDetached(["xdg-open", link])
+                onLinkActivated: link => {
+                    if (Logic.webLink(link))
+                        Quickshell.execDetached(["xdg-open", link]);
+                }
             }
         }
 

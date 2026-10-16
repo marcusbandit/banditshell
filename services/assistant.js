@@ -44,6 +44,13 @@ var HAS_DASH = /[\u2013\u2014]/;
 var STATUS_LINE = /^@@status (\d+)$/;
 var SSE_DATA = /^data:\s?/;
 var TRAILING_SLASHES = /\/+$/;
+var LOOPBACK_URL = /^http:\/\/(?:localhost|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|\[::1\])(?::\d+)?(?:[\/?#]|$)/i;
+var HTTPS_URL = /^https:\/\/[^\/?#\s]+/i;
+var PLAIN_HTTP = /^http:\/\//i;
+var OPENAI_OFFICIAL = /^https:\/\/api\.openai\.com(?:[\/?#:]|$)/i;
+var WEB_LINK = /^https?:\/\/[^\s]+$/i;
+var LINE_BREAKS = /\r\n|\r|\n/g;
+var CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g;
 var LOCAL_HOST = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?\/?$/i;
 
 var ACTIONS = [
@@ -143,6 +150,42 @@ function trimSlash(url) {
 
 function isLocal(address) {
     return LOCAL_HOST.test(String(address || ""));
+}
+
+function keySafe(url) {
+    const address = String(url || "");
+    return HTTPS_URL.test(address) || LOOPBACK_URL.test(address);
+}
+
+function keyFor(url, key) {
+    return key && keySafe(url) ? key : "";
+}
+
+function keyless(backend, address) {
+    return backend === "openai" && PLAIN_HTTP.test(String(address || ""));
+}
+
+function officialOpenai(address) {
+    return OPENAI_OFFICIAL.test(String(address || ""));
+}
+
+function webLink(url) {
+    return WEB_LINK.test(String(url || ""));
+}
+
+function lineBreaks(text) {
+    const found = String(text || "").match(LINE_BREAKS);
+    return found ? found.length : 0;
+}
+
+function typeBackRefusal(result, source, cut) {
+    if (cut)
+        return "the selection was too long to replace";
+    if (!String(result || "").trim())
+        return "nothing came back";
+    if (lineBreaks(result) > lineBreaks(source))
+        return "the reply has more lines than the selection";
+    return "";
 }
 
 function modelFor(backend, chosen, available) {
@@ -384,7 +427,7 @@ function unquote(text) {
 
 function tidyRewrite(result, original) {
     const source = String(original || "");
-    let text = visibleText(result).replace(TEXT_TAGS, "").trim().replace(PREAMBLE, "").trim();
+    let text = visibleText(result).replace(CONTROL, "").replace(TEXT_TAGS, "").trim().replace(PREAMBLE, "").trim();
     const core = source.trim();
     if (unquote(core) === core)
         text = unquote(text).trim();
