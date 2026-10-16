@@ -30,7 +30,7 @@ QtObject {
         FallbackSource {
             search: root
         },
-        ScreenshotSource {
+        LatestSource {
             search: root
         },
         SoundSource {

@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
@@ -225,5 +225,14 @@ test.describe("reminders", () => {
         assert.strictEqual(Ask.reminderAsk("remind me in 20 min to").label, "");
         assert.strictEqual(Ask.reminderAsk("remind me at 15:00 to").label, "");
         assert.strictEqual(Ask.reminderAsk("remind me in 20 min to tomato soup").label, "tomato soup");
+    });
+});
+
+test.describe("peek privacy", () => {
+    test.it("never previews the text of files named like secrets", () => {
+        for (const p of ["/d/client_secret_1201.json", "/h/.env", "/h/.env.local", "/h/.ssh/id_ed25519", "/d/api-key.txt", "/d/server.pem", "/d/passwords.kdbx", "/d/github-token.txt"])
+            assert.ok(Search.isSecretish(p), p);
+        for (const p of ["/d/notes.md", "/h/Projects/banditshell/DESIGN.md", "/d/secretary/letter.txt", "/d/environment.md"])
+            assert.ok(!Search.isSecretish(p), p);
     });
 });

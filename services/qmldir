@@ -36,6 +36,7 @@ singleton Keyboards 1.0 Keyboards.qml
 singleton Keymap 1.0 Keymap.qml
 singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
+singleton LatestFiles 1.0 LatestFiles.qml
 singleton LauncherHotkeys 1.0 LauncherHotkeys.qml
 singleton Launching 1.0 Launching.qml
 singleton LayoutDraft 1.0 LayoutDraft.qml
@@ -67,7 +68,6 @@ PrivateFile 1.0 PrivateFile.qml
 singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
-singleton Screenshots 1.0 Screenshots.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml

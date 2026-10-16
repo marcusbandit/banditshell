@@ -7,6 +7,7 @@ DefineSource 1.0 DefineSource.qml
 EmojiSource 1.0 EmojiSource.qml
 FallbackSource 1.0 FallbackSource.qml
 GithubSource 1.0 GithubSource.qml
+LatestSource 1.0 LatestSource.qml
 LoremSource 1.0 LoremSource.qml
 MediaSource 1.0 MediaSource.qml
 MonitorSource 1.0 MonitorSource.qml
@@ -16,7 +17,6 @@ PomodoroSource 1.0 PomodoroSource.qml
 ProjectSource 1.0 ProjectSource.qml
 QuicklinkSource 1.0 QuicklinkSource.qml
 RewriteSource 1.0 RewriteSource.qml
-ScreenshotSource 1.0 ScreenshotSource.qml
 ScriptSource 1.0 ScriptSource.qml
 SnippetSource 1.0 SnippetSource.qml
 SoundSource 1.0 SoundSource.qml

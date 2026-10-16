@@ -51,8 +51,15 @@ function isPicture(path) {
 
 var TEXTUAL = /(?:\.(?:md|markdown|txt|text|rst|org|adoc|qml|js|mjs|cjs|ts|tsx|jsx|json|jsonc|py|sh|bash|zsh|fish|lua|rs|go|c|h|cc|cpp|hpp|cs|java|kt|kts|swift|rb|php|pl|r|sql|css|scss|sass|less|html|htm|xml|svg|toml|yaml|yml|ini|conf|cfg|env|log|csv|tsv|nix|gradle|cmake|mk|vim|el|clj|ex|exs|erl|hs|ml|dart|vue|svelte|tex|bib|desktop|service|rules|patch|diff|gitignore|frag|vert|glsl)|\/(?:Makefile|Dockerfile|Containerfile|PKGBUILD|README|LICENSE|CHANGELOG|COPYING|\.zshrc|\.bashrc|\.profile))$/i;
 
+var SECRETISH = /(?:secret|token|credential|passw|apikey|api[_-]key|private|\.env(?:\.|$)|id_rsa|id_ed25519|\.pem$|\.key$|\.p12$|\.pfx$|\.kdbx$|\.gpg$|\.asc$|\.netrc$|\.pgpass$|wallet|keyring|cookies)/i;
+
 function isText(path) {
     return TEXTUAL.test(String(path || ""));
+}
+
+function isSecretish(path) {
+    var text = String(path || "");
+    return SECRETISH.test(text.slice(text.lastIndexOf("/") + 1));
 }
 
 function fileUrl(path) {
