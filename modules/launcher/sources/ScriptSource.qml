@@ -8,7 +8,7 @@ QtObject {
 
     required property var search
 
-    readonly property var kinds: ["script", "scriptline", "scriptfolder"]
+    readonly property var kinds: ["script", "scriptline", "scriptfolder", "scriptitem", "scriptproblem"]
 
     readonly property string text: root.search.text
 
@@ -33,7 +33,7 @@ QtObject {
         const out = [];
         for (const script of ScriptCommands.scripts) {
             const ask = Scripts.askFor(script, t);
-            const score = ask ? Infinity : Math.max(Ranking.place(script.title, t), Ranking.place(script.word, t), Ranking.place(script.packageName, t) - 1);
+            const score = ask ? Infinity : Scripts.ambientScore(Math.max(Ranking.place(script.title, t), Ranking.place(script.word, t), Ranking.place(script.packageName, t) - 1));
             if (score > 0)
                 out.push({
                     script: script,
@@ -45,7 +45,20 @@ QtObject {
         return out.sort((a, b) => b.score - a.score);
     }
 
-    readonly property bool intent: root.listing || root.matches.some(m => m.typed)
+    readonly property var listAsk: {
+        const top = root.matches[0];
+        if (root.listing || !top || top.score !== Infinity || top.script.mode !== "list")
+            return null;
+        return {
+            script: top.script,
+            values: top.values,
+            key: Scripts.runKey(top.script, top.values)
+        };
+    }
+
+    onListAskChanged: ScriptCommands.wantList(root.listAsk?.script ?? null, root.listAsk?.values ?? [])
+
+    readonly property bool intent: root.listing || !!root.listAsk || root.matches.some(m => m.typed)
 
     function signature(script: var): string {
         return script.arguments.map(a => a.optional ? `[${a.placeholder}]` : `<${a.placeholder}>`).join(" ");
@@ -99,6 +112,52 @@ QtObject {
                 }));
     }
 
+    function itemRow(script: var, item: var, index: int): var {
+        return {
+            key: `scriptitem:${script.file}:${index}:${item.uid || item.title}`,
+            kind: "scriptitem",
+            script: script,
+            item: item,
+            label: item.title,
+            detail: item.subtitle,
+            icon: item.icon || (item.file ? "draft" : "chevron_right"),
+            glyph: item.glyph,
+            iconSource: item.iconFile,
+            peekPath: item.file ? item.arg : "",
+            score: Infinity
+        };
+    }
+
+    function problemRow(script: var, label: string, icon: string): var {
+        return {
+            key: `scriptproblem:${script.file}:${label}`,
+            kind: "scriptproblem",
+            script: script,
+            label: label,
+            detail: script.title,
+            icon: icon,
+            score: Infinity
+        };
+    }
+
+    readonly property var listRows: {
+        const ask = root.listAsk;
+        if (!ask)
+            return [];
+        const result = ScriptCommands.listFor(ask.script.path, ask.key);
+        if (!result || result.path !== ask.script.path)
+            return [Object.assign(root.scriptRow(ask.script, ask.values, Infinity), {
+                    detail: "running"
+                })];
+        if (result.error)
+            return [root.problemRow(ask.script, result.error, "error")];
+        if (!result.items.length)
+            return ScriptCommands.listPending(ask.key) ? [Object.assign(root.scriptRow(ask.script, ask.values, Infinity), {
+                        detail: "running"
+                    })] : [root.problemRow(ask.script, "No results", "search_off")];
+        return result.items.map((item, i) => root.itemRow(ask.script, item, i));
+    }
+
     readonly property bool folderAsked: root.text.length >= 3 && Math.max(Ranking.place("script commands", root.text), Ranking.place("scripts", root.text), Ranking.place("new script", root.text)) >= Ranking.PREFIX
 
     readonly property var folderRows: !root.folderAsked ? [] : [
@@ -108,7 +167,7 @@ QtObject {
             label: ScriptCommands.folderExists ? "Open scripts folder" : "Create a script command",
             detail: ScriptCommands.folderExists ? (ScriptCommands.scripts.length === 1 ? "1 script" : `${ScriptCommands.scripts.length} scripts`) : ScriptCommands.folder.replace(Files.home, "~"),
             icon: ScriptCommands.folderExists ? "folder_open" : "add",
-            score: root.listing ? Infinity : 2
+            score: root.listing ? Infinity : 0.4
         }
     ]
 
@@ -116,12 +175,18 @@ QtObject {
         {
             key: "scripts",
             title: "Scripts",
-            items: root.matches.slice(0, root.outputRows.length ? 1 : root.listing ? 40 : 6).map(m => root.scriptRow(m.script, m.values, m.score)).concat(root.outputRows, root.folderRows)
+            items: root.listAsk ? [] : root.matches.slice(0, root.outputRows.length ? 1 : root.listing ? 40 : 6).map(m => root.scriptRow(m.script, m.values, m.score)).concat(root.outputRows, root.folderRows)
+        },
+        {
+            key: "scriptlist",
+            title: root.listAsk?.script.title ?? "",
+            items: root.listRows
         }
     ]
 
     readonly property var caps: ({
-            scripts: 48
+            scripts: 48,
+            scriptlist: 50
         })
 
     readonly property var phrases: ScriptCommands.scripts.filter(s => s.arguments[0]?.type === "dropdown" && s.arguments[0].choices.length).map(s => ({
@@ -131,6 +196,13 @@ QtObject {
 
     function run(row: var): void {
         const script = row.script;
+        if (script.mode === "list") {
+            if (root.listAsk?.script.path === script.path)
+                ScriptCommands.rerunList();
+            else
+                root.search.retype(`${script.title} `);
+            return;
+        }
         if (Scripts.missing(script, row.values).length) {
             root.search.retype(`${script.title} `);
             return;
@@ -142,16 +214,85 @@ QtObject {
     }
 
     function openFolder(): void {
-        if (ScriptCommands.folderExists) {
+        if (ScriptCommands.folderExists)
             root.search.leave(() => Files.show(ScriptCommands.folder));
-            return;
-        }
-        const path = ScriptCommands.createExample();
-        root.search.leave(() => Projects.edit(path, ScriptCommands.folder));
+        else
+            root.search.leave(() => ScriptCommands.createExamples());
+    }
+
+    function itemActions(row: var): var {
+        const item = row.item;
+        const script = row.script;
+        const action = Scripts.itemAction(item, script.selects);
+        const copied = item.copy || item.arg || item.title;
+        const link = item.url || item.arg;
+        const choices = {
+            run: {
+                icon: "play_arrow",
+                label: "Run",
+                run: () => root.search.leave(() => ScriptCommands.select(script, item.arg))
+            },
+            url: {
+                icon: "open_in_new",
+                label: "Open link",
+                short: "Open",
+                run: () => root.search.launch(() => Files.openWith(link))
+            },
+            copy: {
+                icon: "content_copy",
+                label: "Copy",
+                run: () => root.search.leave(() => Clipboard.copy({
+                            text: copied
+                        }))
+            },
+            file: {
+                icon: "open_in_new",
+                label: "Open",
+                run: () => root.search.launch(() => Files.openWith(item.arg))
+            },
+            complete: {
+                icon: "keyboard_tab",
+                label: "Narrow down",
+                run: () => root.complete(row)
+            }
+        };
+        const out = action ? [choices[action]] : [
+            {
+                icon: "block",
+                label: "Nothing to do",
+                run: () => {}
+            }
+        ];
+        if (action !== "copy" && (item.copy || item.arg))
+            out.push(choices.copy);
+        if (action !== "url" && item.url)
+            out.push(choices.url);
+        if (item.file)
+            out.push({
+                icon: "drive_file_move",
+                label: "Show in folder",
+                short: "Folder",
+                run: () => root.search.leave(() => Files.reveal(item.arg))
+            });
+        return out.concat([
+            {
+                icon: "edit",
+                label: "Edit script",
+                tucked: true,
+                run: () => root.search.leave(() => Projects.edit(script.path, script.path.slice(0, script.path.lastIndexOf("/"))))
+            }
+        ]);
     }
 
     function activate(row: var): void {
         switch (row.kind) {
+        case "scriptitem":
+            if (row.item.valid || row.item.autocomplete)
+                root.itemActions(row)[0].run();
+            return;
+        case "scriptproblem":
+            ScriptCommands.rerunList();
+            return;
         case "script":
             root.run(row);
             return;
@@ -165,6 +306,22 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        if (row.kind === "scriptitem")
+            return root.itemActions(row);
+        if (row.kind === "scriptproblem")
+            return [
+                {
+                    icon: "refresh",
+                    label: "Run again",
+                    run: () => ScriptCommands.rerunList()
+                },
+                {
+                    icon: "edit",
+                    label: "Edit script",
+                    short: "Edit",
+                    run: () => root.search.leave(() => Projects.edit(row.script.path, row.script.path.slice(0, row.script.path.lastIndexOf("/"))))
+                }
+            ];
         if (row.kind === "scriptline")
             return [
                 {
@@ -221,7 +378,13 @@ QtObject {
     }
 
     function complete(row: var): bool {
-        if (row.kind !== "script" || !row.script.arguments.length)
+        if (row.kind === "scriptitem") {
+            if (!row.item.autocomplete)
+                return false;
+            root.search.retype(`${row.script.title} ${row.item.autocomplete}`);
+            return true;
+        }
+        if (row.kind !== "script" || !row.script.arguments.length && row.script.mode !== "list")
             return false;
         root.search.retype(`${row.script.title} `);
         return true;
