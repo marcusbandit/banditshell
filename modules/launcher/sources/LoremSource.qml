@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.services
 import "../../../services/lorem.js" as Lorem
 

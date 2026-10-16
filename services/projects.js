@@ -43,7 +43,7 @@ prune=""
 for s in $skips; do prune="$prune -o -name $s"; done
 for root in "$@"; do
     [ -d "$root" ] || continue
-    find "$root" -mindepth 1 -maxdepth $((depth + 1)) \\( -name .git -print -prune \\) -o \\( \\( -name '.*' $prune \\) -prune \\) 2>/dev/null
+    find -H "$root" -mindepth 1 -maxdepth $((depth + 1)) \\( -name .git -print -prune \\) -o \\( \\( -name '.*' $prune \\) -prune \\) 2>/dev/null
 done | while IFS= read -r dot; do
     repo=\${dot%/.git}
     line=""
@@ -142,7 +142,7 @@ function inTerminal(command) {
         return false;
     var name = baseName(w[0]);
     var joined = [name].concat(w.slice(1)).join(" ");
-    return TERMINAL_EDITORS.some(t => t === name || joined.indexOf(t) === 0);
+    return TERMINAL_EDITORS.some(t => t === name || joined === t || joined.indexOf(`${t} `) === 0);
 }
 
 function editorFor(visual, editor, found) {
@@ -168,6 +168,10 @@ function editorFor(visual, editor, found) {
             name: term
         };
     return null;
+}
+
+function ambientScore(place) {
+    return place >= 2 ? 0.25 + place * 0.05 : 0;
 }
 
 function quote(text) {

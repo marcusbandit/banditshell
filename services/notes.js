@@ -114,20 +114,36 @@ function readIndex(text, vaults) {
     return out;
 }
 
+function ahead(a, b) {
+    return a.score > b.score || a.score === b.score && a.note.modified > b.note.modified;
+}
+
 function search(notes, text, place, limit) {
     var want = String(text || "").trim().toLowerCase();
+    var keep = limit || 8;
     var hits = [];
     for (var i = 0; i < notes.length; i++) {
         var n = notes[i];
         if (want && n.lower.indexOf(want) < 0)
             continue;
-        hits.push({
+        var hit = {
             note: n,
             score: want ? place(n.lower, want) : 1
-        });
+        };
+        if (hits.length === keep && !ahead(hit, hits[keep - 1]))
+            continue;
+        var at = hits.length;
+        while (at > 0 && ahead(hit, hits[at - 1]))
+            at--;
+        hits.splice(at, 0, hit);
+        if (hits.length > keep)
+            hits.pop();
     }
-    hits.sort((a, b) => b.score - a.score || b.note.modified - a.note.modified);
-    return hits.slice(0, limit || 8);
+    return hits;
+}
+
+function ambientScore(place) {
+    return place >= 2 ? 0.2 + place * 0.05 : 0;
 }
 
 function openUri(vaultName, relative) {
@@ -161,7 +177,7 @@ var INDEX = `max=$1; shift
 if command -v fd >/dev/null 2>&1; then
     fd --type f --extension md --max-results "$max" --absolute-path --print0 . "$@" 2>/dev/null | xargs -0 -r stat --printf '%Y\\t%n\\n' 2>/dev/null
 else
-    find "$@" -name '.*' -prune -o -type f -name '*.md' -printf '%T@\\t%p\\n' 2>/dev/null | head -n "$max"
+    find -H "$@" -mindepth 1 -name '.*' -prune -o -type f -name '*.md' -printf '%T@\\t%p\\n' 2>/dev/null | head -n "$max"
 fi`;
 
 function indexCommand(vaults, limit) {

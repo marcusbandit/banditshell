@@ -29,6 +29,14 @@ Singleton {
 
     property double startedAt: 0
 
+    property bool notifier: false
+
+    Process {
+        running: true
+        command: ["sh", "-c", "command -v notify-send"]
+        onExited: code => root.notifier = code === 0
+    }
+
     function begin(phase: string, minutes: int, round: int, focusMinutes: int, breakMinutes: int): void {
         const next = {
             timer: "",
@@ -97,7 +105,8 @@ Singleton {
             const finished = root.state;
             const next = Logic.nextRound(finished, root.settings);
             const said = Logic.notice(finished, next);
-            Quickshell.execDetached(["notify-send", "-a", "banditshell", "-u", "normal", "-c", Notifications.categoryFor("alarm"), said.summary, said.body]);
+            if (root.notifier)
+                Quickshell.execDetached(["notify-send", "-a", "banditshell", "-u", "normal", "-c", Notifications.categoryFor("alarm"), said.summary, said.body]);
             root.begin(next.phase, next.minutes, next.round, finished.focusMinutes, finished.breakMinutes);
         }
 
