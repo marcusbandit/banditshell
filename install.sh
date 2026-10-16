@@ -102,6 +102,7 @@ build_table() {
     add_step xdg-utils                     "command -v xdg-open"                     xdg-utils                     2 "opening files and links"
     add_step fd                            "command -v fd"                           fd                            2 "the launcher finding files by name"
     add_step libqalculate                  "command -v qalc"                         libqalculate                  2 "the launcher's units, dates and functions"
+    add_step ripgrep                       "command -v rg"                           ripgrep                       2 "the launcher searching inside files"
     add_step networkmanager                "command -v nmcli"                        networkmanager                2 "wi-fi and wired"
     add_step ddcutil                       "command -v ddcutil"                      ddcutil                       2 "monitor brightness over DDC/CI"
     add_step pciutils                      "command -v lspci"                        pciutils                      2 "the device page's graphics card"
@@ -122,8 +123,9 @@ build_table() {
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
 
+    add_step polkit                        "command -v pkexec"                       polkit                        2 "pkexec, so installs and uninstalls ask for your password in the shell"
+
     if [ "$WANT_CHARGE_LIMIT" -eq 1 ]; then
-        add_step polkit                    "command -v pkexec"                       polkit                        2 "pkexec, to run the charge limit helper without a password"
         add_step charge-limit              "charge_limit_present"                    @charge-limit                 2 "the helper that writes the battery's charge limit, and its polkit action"
     fi
 }

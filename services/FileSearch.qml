@@ -20,6 +20,42 @@ Singleton {
     }
 
     property bool fdFound: false
+    property bool rgFound: false
+
+    readonly property bool contents: Config.values.launcher.contents
+
+    readonly property int hitLimit: 8
+
+    function grepCommand(text: string): var {
+        return ["nice", "-n", "19", "rg", "--fixed-strings", "--smart-case", "--max-count", "1", "--line-number", "--with-filename", "--no-heading", "--color", "never", "--max-filesize", "1M", "--max-columns", "240", "--max-columns-preview", ...root.noise.reduce((out, n) => out.concat(["--glob", `!${n}`]), []), "--", text, Files.home];
+    }
+
+    property string grepAsked: ""
+    property string grepAnswered: ""
+    property var hits: []
+
+    property int grepGeneration: 0
+    property var latestGrep: null
+
+    function grep(text: string): void {
+        const t = text.trim();
+        root.grepAsked = t;
+        if (!root.rgFound || !root.contents || t.length < root.least) {
+            grepSettle.stop();
+            root.stopGrep();
+            root.hits = [];
+            root.grepAnswered = t;
+            return;
+        }
+        grepSettle.restart();
+    }
+
+    function stopGrep(): void {
+        root.grepGeneration += 1;
+        if (root.latestGrep)
+            root.latestGrep.running = false;
+        root.latestGrep = null;
+    }
 
     property string asked: ""
     property string answered: ""
@@ -65,6 +101,58 @@ Singleton {
     function forget(): void {
         root.listedDir = "";
         root.entries = [];
+        grepSettle.stop();
+        root.stopGrep();
+        root.hits = [];
+        root.grepAnswered = "";
+    }
+
+    Timer {
+        id: grepSettle
+
+        interval: 250
+
+        onTriggered: {
+            root.stopGrep();
+            root.latestGrep = grepper.createObject(root, {
+                command: root.grepCommand(root.grepAsked),
+                generation: root.grepGeneration,
+                query: root.grepAsked,
+                running: true
+            });
+        }
+    }
+
+    Component {
+        id: grepper
+
+        Process {
+            id: run
+
+            property int generation: 0
+            property string query: ""
+            property var found: []
+
+            stdout: SplitParser {
+                onRead: line => {
+                    if (run.generation !== root.grepGeneration || run.found.length >= root.hitLimit)
+                        return;
+                    run.found.push(line);
+                    root.hits = run.found.slice();
+                    root.grepAnswered = run.query;
+                    if (run.found.length >= root.hitLimit)
+                        run.running = false;
+                }
+            }
+
+            onExited: if (run.generation === root.grepGeneration && !run.found.length) {
+                root.hits = [];
+                root.grepAnswered = run.query;
+            }
+
+            onRunningChanged: if (!run.running)
+                run.destroy()
+        }
     }
 
     Timer {
@@ -139,5 +227,11 @@ Singleton {
         command: ["sh", "-c", "command -v fd"]
         running: true
         onExited: code => root.fdFound = code === 0
+    }
+
+    Process {
+        command: ["sh", "-c", "command -v rg"]
+        running: true
+        onExited: code => root.rgFound = code === 0
     }
 }

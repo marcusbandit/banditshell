@@ -10,7 +10,7 @@ import qs.modules.clipboard
 import qs.modules.island
 import qs.modules.keyboard
 import qs.modules.media
-import qs.modules.keyring
+import qs.modules.password
 import qs.modules.menu
 import qs.modules.quickcontrols
 import qs.modules.launcher
@@ -703,9 +703,9 @@ PanelWindow {
 
             anchors.fill: parent
 
-            needed: Keyring.asked > 0
+            needed: Keyring.asked + Polkit.asked > 0
 
-            panel: KeyringPrompt {
+            panel: PasswordPrompt {
                 holeX: chassis.holeX
                 holeY: chassis.holeY
                 holeWidth: chassis.holeWidth

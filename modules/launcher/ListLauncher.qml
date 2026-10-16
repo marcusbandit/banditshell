@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Wayland
 import qs.config
 import qs.components
 import qs.services
@@ -24,7 +25,12 @@ LauncherConcept {
 
     property bool collapseToCentre: false
 
-    readonly property var results: search.rows
+    property var capture: null
+    property string beforeCapture: ""
+
+    readonly property var results: root.capture ? search.keyed([Object.assign({}, root.capture.row, {
+                    detail: root.capture.said || root.capture.row.detail
+                })]) : search.rows
     property int selected: 0
 
     readonly property real headerPitch: Appearance.font.line.small + Appearance.padding.normal + Appearance.padding.small
@@ -47,13 +53,14 @@ LauncherConcept {
             root.hide();
     }
 
-    answerless: search.intent
+    answerless: search.intent || !!root.capture
 
     LauncherSearch {
         id: search
 
         query: root.input?.text ?? ""
         screenName: root.screenName
+        quiet: !!root.capture
 
         onLaunch: what => root.launch(what)
         onLeave: what => {
@@ -91,7 +98,7 @@ LauncherConcept {
         return out;
     }
 
-    readonly property bool quick: !query.text && root.tiles.length > 0
+    readonly property bool quick: !root.capture && !query.text && root.tiles.length > 0
     property int tile: 0
 
     readonly property bool asking: sheet.open
@@ -138,6 +145,8 @@ LauncherConcept {
 
     onHidden: {
         sheet.close();
+        root.capture = null;
+        search.armed = "";
         root.collapseToCentre = !panel.bottomAnchored;
     }
 
@@ -147,6 +156,8 @@ LauncherConcept {
     }
 
     function accept(): void {
+        if (root.capture)
+            return;
         if (root.copyAnswer())
             return;
 
@@ -228,7 +239,70 @@ LauncherConcept {
         return false;
     }
 
+    function startCapture(kind: string, row: var): void {
+        root.beforeCapture = root.capture ? root.beforeCapture : query.text;
+        search.armed = "";
+        root.capture = {
+            kind: kind,
+            row: Object.assign({}, row, {
+                key: row.id ?? row.key,
+                label: search.nameOf(row)
+            }),
+            said: ""
+        };
+        query.text = kind === "alias" ? search.aliasOf[row.id ?? row.key] ?? "" : "";
+        query.selectAll();
+        Qt.callLater(query.forceActiveFocus);
+    }
+
+    function endCapture(text: string): void {
+        root.capture = null;
+        query.text = text;
+        query.cursorPosition = text.length;
+    }
+
+    function commitAlias(): void {
+        const row = root.capture.row;
+        const alias = Search.cleanAlias(query.text);
+        Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, row.key, alias, row.label));
+        root.endCapture(alias || root.beforeCapture);
+    }
+
+    function takeHotkey(event: var): bool {
+        const got = LauncherHotkeys.chordFrom(event);
+        if (got.waiting)
+            return true;
+        const row = root.capture.row;
+        const holder = got.chord ? LauncherHotkeys.holderOf(got.chord, row.key) : "";
+        if (got.said || holder) {
+            root.capture = Object.assign({}, root.capture, {
+                said: got.said || `taken by ${holder}`
+            });
+            return true;
+        }
+        LauncherHotkeys.set(row.key, got.chord, row.label);
+        root.endCapture(root.beforeCapture);
+        return true;
+    }
+
+    function claimCaptureKey(event: var): bool {
+        if (event.key === Qt.Key_Escape && !(event.modifiers & (Qt.MetaModifier | Qt.ControlModifier | Qt.AltModifier))) {
+            root.endCapture(root.beforeCapture);
+            return true;
+        }
+        if (root.capture.kind === "hotkey")
+            return root.takeHotkey(event);
+        if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+            root.commitAlias();
+            return true;
+        }
+        return event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
+    }
+
     function claimKey(event: var): bool {
+        if (root.capture)
+            return root.claimCaptureKey(event);
+
         if (sheet.open) {
             switch (event.key) {
             case Qt.Key_Down:
@@ -248,6 +322,11 @@ LauncherConcept {
             return true;
         }
 
+        if (event.key === Qt.Key_Escape && search.armed) {
+            search.armed = "";
+            return true;
+        }
+
         if (event.key === Qt.Key_Menu) {
             const item = root.quick ? tileRepeater.itemAt(root.tile) : list.itemAtIndex(root.selected);
             if (item)
@@ -262,7 +341,7 @@ LauncherConcept {
         if (event.key === Qt.Key_Tab && search.complete(row))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
-            root.actionsFor(row)[1]?.run();
+            root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
             return true;
         }
 
@@ -277,9 +356,55 @@ LauncherConcept {
         return false;
     }
 
+    function steer(id: string): void {
+        const at = root.results.findIndex(r => r.id === id);
+        if (at < 0)
+            return;
+        root.steered = true;
+        root.selected = at;
+    }
+
+    function shortcutActions(row: var): var {
+        if (!search.runnable(row))
+            return [];
+        const id = row.id ?? row.key;
+        const alias = search.aliasOf[id] ?? "";
+        const hotkey = LauncherHotkeys.chordOf(id);
+        const acts = [
+            {
+                icon: "label",
+                label: alias ? `Change alias · ${alias}` : "Add alias",
+                tucked: true,
+                run: () => root.startCapture("alias", row)
+            }
+        ];
+        if (LauncherHotkeys.possible && search.keyable(row))
+            acts.push({
+                icon: "keyboard",
+                label: hotkey ? `Change hotkey · ${Search.chordText(hotkey)}` : "Set hotkey",
+                tucked: true,
+                run: () => root.startCapture("hotkey", row)
+            });
+        if (alias)
+            acts.push({
+                icon: "label_off",
+                label: "Remove alias",
+                tucked: true,
+                run: () => Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, id, "", ""))
+            });
+        if (hotkey)
+            acts.push({
+                icon: "keyboard_hide",
+                label: "Remove hotkey",
+                tucked: true,
+                run: () => LauncherHotkeys.clear(id)
+            });
+        return acts;
+    }
+
     function actionsFor(what: var): var {
         if (what?.kind && what.kind !== "app")
-            return search.actionsFor(what);
+            return search.actionsFor(what).concat(root.shortcutActions(what));
         const entry = what?.kind === "app" ? what.entry : what;
         const kept = Apps.isStarred(entry);
         const acts = [
@@ -296,6 +421,8 @@ LauncherConcept {
             label: kept ? "Unpin" : "Pin",
             run: () => Apps.setStarred(entry, !kept)
         });
+
+        acts.push(...search.appActions(entry));
 
         for (const action of entry.actions ?? [])
             acts.push({
@@ -318,6 +445,20 @@ LauncherConcept {
                 run: () => root.shiftTile(1)
             });
 
+        const row = what?.kind === "app" ? what : search.appRow(entry);
+        acts.push(...root.shortcutActions(row));
+
+        if (!root.quick)
+            acts.push({
+                icon: "delete",
+                label: "Uninstall",
+                tucked: true,
+                run: () => {
+                    search.armUninstall(entry);
+                    root.steer(`app:${entry.id}`);
+                }
+            });
+
         return acts;
     }
 
@@ -330,6 +471,8 @@ LauncherConcept {
     }
 
     function chooseRow(index: int): void {
+        if (root.capture)
+            return;
         root.answerHolds = false;
         root.selected = index;
         root.accept();
@@ -446,7 +589,7 @@ LauncherConcept {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
                         size: Appearance.font.size.normal
-                        name: "search"
+                        name: !root.capture ? "search" : root.capture.kind === "alias" ? "label" : "keyboard"
                         color: Appearance.colour.textFaint
                     }
 
@@ -472,7 +615,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: "Search"
+                            text: !root.capture ? "Search" : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -720,6 +863,35 @@ LauncherConcept {
                                     spacing: Appearance.padding.small
 
                                     Repeater {
+                                        model: line.modelData.armed ? [] : [line.modelData.alias, Search.chordText(line.modelData.hotkey ?? "")].filter(Boolean)
+
+                                        delegate: Item {
+                                            id: tag
+
+                                            required property string modelData
+
+                                            anchors.verticalCenter: parent?.verticalCenter
+                                            width: tagText.implicitWidth + Appearance.padding.normal * 2
+                                            height: tagText.implicitHeight + Appearance.padding.small
+
+                                            SquircleRect {
+                                                anchors.fill: parent
+                                                radius: Appearance.rounding.small
+                                                color: Appearance.colour.fill
+                                            }
+
+                                            StyledText {
+                                                id: tagText
+
+                                                anchors.centerIn: parent
+                                                text: tag.modelData
+                                                font.pixelSize: Appearance.font.size.small
+                                                color: Appearance.colour.textDim
+                                            }
+                                        }
+                                    }
+
+                                    Repeater {
                                         model: line.buttons
 
                                         delegate: Button {
@@ -731,6 +903,7 @@ LauncherConcept {
                                             iconFill: button.modelData.fill ? 1 : 0
                                             text: button.modelData.short ?? button.modelData.label
                                             style: "outlined"
+                                            alarm: button.modelData.alarm ?? false
                                             size: 0
 
                                             onClicked: button.modelData.run()
@@ -750,13 +923,16 @@ LauncherConcept {
                                 id: lineHover
                             }
 
-                            readonly property bool opened: !line.modelData.header && !root.asking && (line.index === root.selected && !root.answerHolds || lineHover.hovered)
+                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds || lineHover.hovered)
 
                             readonly property var buttons: {
                                 if (!line.opened)
                                     return [];
+                                if (line.modelData.armed)
+                                    return search.confirmActions(line.modelData);
                                 const acts = root.actionsFor(line.modelData).slice(1);
-                                return acts.length <= root.buttonLimit ? acts : [...acts.slice(0, root.buttonLimit - 1), {
+                                const shown = acts.filter(a => !a.tucked);
+                                return shown.length === acts.length && shown.length <= root.buttonLimit ? shown : [...shown.slice(0, root.buttonLimit - 1), {
                                         icon: "more_horiz",
                                         label: "More",
                                         run: () => root.ask(row, line.modelData, row.width - Appearance.padding.large, row.height / 2)
@@ -781,6 +957,11 @@ LauncherConcept {
             id: hint
 
             shown: !!root.tipHost && !root.asking
+        }
+
+        ShortcutInhibitor {
+            window: root.QsWindow.window
+            enabled: root.open && root.capture?.kind === "hotkey"
         }
 
         ActionSheet {

@@ -211,7 +211,7 @@ Singleton {
     property bool qalcProbed: false
     property string installing: ""
 
-    readonly property var qalcPackages: ["pacman:libqalculate", "apt:qalc", "dnf:qalculate", "zypper:qalculate", "xbps:libqalculate", "apk:libqalculate"]
+    readonly property var qalcPackages: ["pacman:libqalculate", "apt:qalc", "dnf:qalculate", "zypper:qalculate", "xbps:qalculate", "apk:qalc"]
     readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
 
     readonly property var installWords: ({
@@ -364,6 +364,29 @@ Singleton {
             }
             if (code === 3) {
                 root.installing = "nowhere";
+                return;
+            }
+            Polkit.expect("Install qalc", "");
+            askingInstall.running = true;
+        }
+    }
+
+    Process {
+        id: askingInstall
+
+        command: [root.installer, "--polkit", ...root.qalcPackages]
+        onExited: code => {
+            Polkit.forget();
+            if (code === 0) {
+                root.probeQalc();
+                return;
+            }
+            if (code === 126) {
+                root.installing = "";
+                return;
+            }
+            if (code !== 4 && code !== 127) {
+                root.installing = "failed";
                 return;
             }
             root.installing = "terminal";

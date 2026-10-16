@@ -36,6 +36,12 @@ test.describe("install-package.sh", () => {
         assert.strictEqual(out.stdout.trim(), "-n dnf install -y qalculate");
     });
 
+    test.it("asks for the password through pkexec, quietly for apt", () => {
+        const out = run(["--polkit", "apt:qalc"], { "apt-get": "exit 0", pkexec: "printf '%s\\n' \"$*\"" });
+        assert.strictEqual(out.status, 0);
+        assert.strictEqual(out.stdout.trim(), "env DEBIAN_FRONTEND=noninteractive apt-get install -y qalc");
+    });
+
     test.it("says so when no package manager is there", () => {
         const out = run(["--command", "zypper:qalculate", "xbps:libqalculate"], {});
         assert.strictEqual(out.status, 3);

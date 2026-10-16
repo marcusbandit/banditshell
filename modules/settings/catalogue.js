@@ -29,7 +29,7 @@ const WIDGET_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
     chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Places",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
 };
 
 const SEARCH_TITLES = {
@@ -37,7 +37,7 @@ const SEARCH_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Pick a wallpaper", themes: "Theme", wsStyles: "Workspace style",
     chips: "", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "World clocks",
     obs: "OBS", keys: "Keys", winLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
 };
 
 const WIDGET_WHY = {
@@ -379,7 +379,21 @@ const PAGES_SOURCE = {
                 { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
                     why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
                 { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", detail: s => s.ratesNote, kw: "currency money exchange rates convert",
-                    why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." }
+                    why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
+                { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",
+                    why: "Words you type are also looked for inside the files in your home folder. Hidden files, .config, node_modules and caches are skipped, so settings and keys never show here." },
+                { n: [], icon: "travel_explore", label: "Search engine", k: "webSearch", kind: "choice", o: [["https://duckduckgo.com/?q=%s", "DuckDuckGo"], ["https://www.google.com/search?q=%s", "Google"], ["https://www.bing.com/search?q=%s", "Bing"], ["https://search.brave.com/search?q=%s", "Brave"], ["https://www.startpage.com/do/search?q=%s", "Startpage"], ["https://www.ecosia.org/search?q=%s", "Ecosia"], ["https://kagi.com/search?q=%s", "Kagi"]], cfg: "launcher.webSearch", kw: "web search engine google duckduckgo bing" }
+            ] },
+            { t: "When nothing fits", rows: [
+                { n: [], icon: "travel_explore", label: "Web search", k: "fallbackWeb", kind: "toggle", cfg: "launcher.fallbacks.web", kw: "fallback web search" },
+                { n: [], icon: "smart_display", label: "YouTube", k: "fallbackYoutube", kind: "toggle", cfg: "launcher.fallbacks.youtube", kw: "fallback youtube video search" },
+                { n: [], icon: "menu_book", label: "Wikipedia", k: "fallbackWikipedia", kind: "toggle", cfg: "launcher.fallbacks.wikipedia", kw: "fallback wikipedia" },
+                { n: [], icon: "map", label: "Map", k: "fallbackMaps", kind: "toggle", cfg: "launcher.fallbacks.maps", kw: "fallback map places openstreetmap" },
+                { n: [], icon: "terminal", label: "Run in a terminal", k: "fallbackTerminal", kind: "toggle", cfg: "launcher.fallbacks.terminal", kw: "fallback run command terminal shell" }
+            ] },
+            { t: "Aliases and hotkeys", rows: [
+                { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
+                { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }
             ] },
             { t: "Apps", rows: [
                 { n: 72, kind: "w", w: "chips", list: "starred", kw: "starred apps favourites" },
@@ -988,6 +1002,10 @@ const ALIASES = {
     brightness: "light", theme: "colour", font: "type", appearance: "colour", general: "windows", keybinds: "shortcuts", hotkeys: "shortcuts",
     device: "about", developer: "shell", cli: "shell", power: "powermode", idle: "lock", language: "region"
 };
+
+function hitFor(pageId, key) {
+    return INDEX.find(x => x.page.id === pageId && (x.row.k ?? x.label) === key) || null;
+}
 
 function resolve(name) {
     const key = String(name || "");

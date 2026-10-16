@@ -29,6 +29,7 @@ singleton Keyboards 1.0 Keyboards.qml
 singleton Keymap 1.0 Keymap.qml
 singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
+singleton LauncherHotkeys 1.0 LauncherHotkeys.qml
 singleton Launching 1.0 Launching.qml
 singleton Lid 1.0 Lid.qml
 singleton Localisation 1.0 Localisation.qml
@@ -47,6 +48,7 @@ singleton Obs 1.0 Obs.qml
 singleton Pacman 1.0 Pacman.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
+singleton Polkit 1.0 Polkit.qml
 singleton PowerProfile 1.0 PowerProfile.qml
 singleton Power 1.0 Power.qml
 singleton Prompts 1.0 Prompts.qml
@@ -63,6 +65,7 @@ singleton TimeFormat 1.0 TimeFormat.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Tray 1.0 Tray.qml
 singleton Tunnels 1.0 Tunnels.qml
+singleton Uninstaller 1.0 Uninstaller.qml
 singleton Update 1.0 Update.qml
 singleton UsageApps 1.0 UsageApps.qml
 singleton UsageLimits 1.0 UsageLimits.qml

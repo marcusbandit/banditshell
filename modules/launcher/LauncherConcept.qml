@@ -52,6 +52,15 @@ Item {
         }
     }
 
+    Connections {
+        target: Polkit
+
+        function onActiveChanged(): void {
+            if (!Polkit.active && root.shown)
+                Qt.callLater(root.input.forceActiveFocus);
+        }
+    }
+
     property bool answerHolds: false
 
     onAnswerChanged: root.answerHolds = !!root.answer && root.answer.firm !== false

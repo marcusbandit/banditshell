@@ -27,6 +27,26 @@
         {
           "type": "features",
           "severity": "minor",
+          "text": "Apps in the launcher can be quit, force quit or uninstalled from their row. Uninstall finds where the app came from (pacman, apt, dnf, zypper, xbps, apk, Flatpak, Snap or Steam), asks once more, then takes your password in the shell. It refuses when other packages still need the app."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Any launcher row can get an alias or a hotkey from its More menu. With ff as an alias, typing ff puts Firefox first. A hotkey runs the row from anywhere, even with the launcher closed, and your Hyprland files are left alone. Settings › Launcher lists both, and a click removes one."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher also finds words inside the files in your home folder. When nothing fits, the end of the list offers a web search, and Settings › Launcher can add YouTube, Wikipedia, a map or running the line in a terminal, and pick the search engine."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When something needs your password to run as admin, such as an install, the shell asks in the same card as the keyring prompt. It can only do this when no other polkit agent is running; with hyprpolkitagent running, that one keeps asking."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
           "text": "The selected row in the launcher shows buttons for what else it can do, such as Pin, Show in folder, Copy path and Open in settings. Ctrl+Enter presses the first one, and right-click still works."
         },
         {
@@ -42,7 +62,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher's calculator runs on qalc, which also does units, dates and functions such as 5 km to miles, sqrt(2) or integrate(x^2, x). When qalc is missing, typing a sum offers to install it. The shell tries on its own, and when it needs your password it opens a terminal with the install command ready, so you press Enter and type the password. Money works without qalc. Finding files by name needs fd, which the installer sets up."
+          "text": "The launcher's calculator runs on qalc, which also does units, dates and functions such as 5 km to miles, sqrt(2) or integrate(x^2, x). When qalc is missing, typing a sum offers to install it. The shell tries on its own, and when it needs your password it asks for it in the shell. A terminal opens only when the shell cannot ask. Money works without qalc. Finding files by name needs fd, which the installer sets up."
         },
         {
           "type": "bugs",
@@ -52,7 +72,7 @@
         {
           "type": "config",
           "severity": "minor",
-          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency and webSearch. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
+          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency, webSearch, contents, fallbacks, aliases and hotkeys. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
         }
       ]
     },

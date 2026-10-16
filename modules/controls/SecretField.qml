@@ -125,6 +125,8 @@ Item {
 
     onVisibleChanged: root.land()
     onClaimsChanged: root.land()
+    onBusyChanged: if (!root.busy)
+        root.land()
     Component.onCompleted: root.land()
     Component.onDestruction: Prompts.release(root)
 

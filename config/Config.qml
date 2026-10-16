@@ -262,6 +262,20 @@ Singleton {
 
                 webSearch: "https://duckduckgo.com/?q=%s",
 
+                fallbacks: {
+                    web: true,
+                    youtube: false,
+                    wikipedia: false,
+                    maps: false,
+                    terminal: false
+                },
+
+                contents: true,
+
+                aliases: ({}),
+
+                hotkeys: ({}),
+
                 hiddenFiles: ".config",
 
                 currency: "DKK",

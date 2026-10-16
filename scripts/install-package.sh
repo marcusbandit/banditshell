@@ -3,7 +3,7 @@ set -u
 
 mode=quiet
 case "${1:-}" in
---command | --quiet | --ask)
+--command | --quiet | --polkit | --ask)
     mode="${1#--}"
     shift
     ;;
@@ -22,6 +22,7 @@ for want in "$@"; do
     *) continue ;;
     esac
     command -v "$tool" >/dev/null 2>&1 || continue
+    base=("${command[@]}")
 
     if [ "$(id -u)" -ne 0 ]; then
         if command -v sudo >/dev/null 2>&1; then
@@ -41,9 +42,15 @@ for want in "$@"; do
         [ "${command[0]}" = doas ] && command=(doas -n "${command[@]:1}")
         exec "${command[@]}" </dev/null
         ;;
+    polkit)
+        [ "$(id -u)" -eq 0 ] && exec "${base[@]}" </dev/null
+        command -v pkexec >/dev/null 2>&1 || exit 4
+        [ "$tool" = apt-get ] && base=(env DEBIAN_FRONTEND=noninteractive "${base[@]}")
+        exec pkexec "${base[@]}" </dev/null
+        ;;
     ask)
         echo "Press Enter to install $package, then type your password if asked."
-        read -r -e -i "${command[*]}" -p "$ " typed || exit 1
+        read -r -e -i "$(printf '%q ' "${command[@]}")" -p "$ " typed || exit 1
         eval "$typed"
         status=$?
         echo

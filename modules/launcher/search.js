@@ -296,3 +296,114 @@ function nextPickable(rows, from, step) {
     }
     return -1;
 }
+
+function chordParts(chord) {
+    return String(chord || "").split("+").map(p => p.trim()).filter(Boolean);
+}
+
+function sameChord(a, b) {
+    const norm = c => chordParts(c).map(p => p.toUpperCase()).sort().join("+");
+    return !!norm(a) && norm(a) === norm(b);
+}
+
+function legacyChord(chord) {
+    const parts = chordParts(chord);
+    const key = parts.pop() || "";
+    return `${parts.join(" ")}, ${key}`;
+}
+
+function chordText(chord) {
+    return chordParts(chord).map(p => p.length <= 1 ? p : p.charAt(0) + p.slice(1).toLowerCase()).join(" ");
+}
+
+function hotkeyCommand(id) {
+    return `banditshell panel launcher run '${String(id).replace(/'/g, "'\\''")}'`;
+}
+
+function cleanAlias(text) {
+    return String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function aliasTarget(aliases, text) {
+    const said = cleanAlias(text);
+    return said && aliases && Object.prototype.hasOwnProperty.call(aliases, said) ? aliases[said].id || "" : "";
+}
+
+function aliasesById(aliases) {
+    const out = {};
+    for (const alias of Object.keys(aliases || {}))
+        out[aliases[alias].id] = alias;
+    return out;
+}
+
+function withAlias(aliases, id, alias, label) {
+    const out = {};
+    for (const key of Object.keys(aliases || {}))
+        if (aliases[key].id !== id)
+            out[key] = aliases[key];
+    const said = cleanAlias(alias);
+    if (said)
+        out[said] = {
+            id: id,
+            label: label || id
+        };
+    return out;
+}
+
+var ENGINES = [["https://duckduckgo.com/?q=%s", "DuckDuckGo"], ["https://www.google.com/search?q=%s", "Google"], ["https://www.bing.com/search?q=%s", "Bing"], ["https://search.brave.com/search?q=%s", "Brave"], ["https://www.startpage.com/do/search?q=%s", "Startpage"], ["https://www.ecosia.org/search?q=%s", "Ecosia"], ["https://kagi.com/search?q=%s", "Kagi"]];
+
+var FALLBACKS = [
+    {
+        id: "web",
+        icon: "travel_explore",
+        label: "Search the web for “%s”"
+    },
+    {
+        id: "youtube",
+        icon: "smart_display",
+        label: "Search YouTube for “%s”",
+        url: "https://www.youtube.com/results?search_query=%s"
+    },
+    {
+        id: "wikipedia",
+        icon: "menu_book",
+        label: "Search Wikipedia for “%s”",
+        url: "https://en.wikipedia.org/w/index.php?search=%s"
+    },
+    {
+        id: "maps",
+        icon: "map",
+        label: "Find “%s” on a map",
+        url: "https://www.openstreetmap.org/search?query=%s"
+    },
+    {
+        id: "terminal",
+        icon: "terminal",
+        label: "Run “%s” in a terminal"
+    }
+];
+
+function fallbackRows(chosen, text, webTemplate) {
+    return FALLBACKS.filter(f => chosen && chosen[f.id]).map((f, i) => ({
+                id: f.id,
+                icon: f.icon,
+                label: f.label.replace("%s", () => text),
+                url: f.id === "terminal" ? "" : webSearchUrl(f.id === "web" ? webTemplate : f.url, text),
+                order: i
+            }));
+}
+
+function contentRow(line, home) {
+    const m = /^(.*?):(\d+):(.*)$/.exec(String(line || ""));
+    if (!m || !m[1])
+        return null;
+    const path = m[1];
+    const cut = path.lastIndexOf("/");
+    return {
+        path: path,
+        name: path.slice(cut + 1),
+        line: parseInt(m[2], 10),
+        text: m[3].trim().replace(/\s+/g, " "),
+        where: shortPath(path.slice(0, cut) || "/", home)
+    };
+}

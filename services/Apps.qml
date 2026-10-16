@@ -358,6 +358,15 @@ Singleton {
         return "";
     }
 
+    function entryFor(appClass: string): var {
+        for (const variant of root.nameVariants(appClass ?? "")) {
+            const entry = variant ? DesktopEntries.heuristicLookup(variant) : null;
+            if (entry)
+                return entry;
+        }
+        return null;
+    }
+
     function nameFor(appClass: string): string {
         const variants = root.nameVariants(appClass ?? "");
         for (const variant of variants) {

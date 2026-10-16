@@ -31,7 +31,8 @@ QtObject {
             windows: 5,
             devices: 4,
             processes: 8,
-            files: 6
+            files: 6,
+            contents: 5
         })
 
     readonly property string text: root.query.trim()
@@ -48,6 +49,8 @@ QtObject {
 
     property bool started: false
 
+    property bool quiet: false
+
     onQueryChanged: {
         root.armed = "";
         if (!root.query)
@@ -60,11 +63,16 @@ QtObject {
             Clock.loadZoneList();
         if (Search.killAsk(root.query.trim()) !== null)
             root.listProcesses();
+        if (root.quiet)
+            return;
         const typed = Search.pathQuery(root.query, Files.home);
-        if (typed)
+        if (typed) {
             FileSearch.list(typed.dir);
-        else
+            FileSearch.grep("");
+        } else {
             FileSearch.find(root.query);
+            FileSearch.grep(root.query);
+        }
     }
 
     function appScore(entry: var): real {
@@ -250,27 +258,38 @@ QtObject {
         return row.kind === "toggle" && !SettingsState.plannedKey(row.k) && !(row.dis && row.dis(SettingsState));
     }
 
-    readonly property var appRows: Apps.search(root.text).map(entry => ({
-                key: `app:${entry.id}`,
-                kind: "app",
-                entry: entry,
-                label: entry.name ?? "",
-                detail: entry.genericName || entry.comment || "",
-                iconSource: entry.icon ? Quickshell.iconPath(entry.icon, true) : "",
-                icon: "apps",
-                score: root.appScore(entry)
-            }))
+    function appRow(entry: var): var {
+        const arming = root.armed === `uninstall:${entry.id}`;
+        return {
+            key: `app:${entry.id}`,
+            kind: "app",
+            entry: entry,
+            label: entry.name ?? "",
+            detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || entry.comment || "",
+            armed: arming,
+            iconSource: entry.icon ? Quickshell.iconPath(entry.icon, true) : "",
+            icon: "apps",
+            score: root.appScore(entry)
+        };
+    }
 
-    readonly property var commandRows: root.text.length < 2 ? [] : root.commands.filter(c => !c.hidden).map(c => ({
-                key: `command:${c.id}`,
-                kind: "command",
-                command: c,
-                label: root.armed === c.id ? `Press Enter again to ${c.label.toLowerCase()}` : c.label,
-                detail: c.detail ?? "",
-                icon: c.icon,
-                toggle: c.toggle,
-                score: root.wordScore(c.label, c.words)
-            })).filter(r => r.score > 0).sort((a, b) => b.score - a.score)
+    readonly property var appRows: Apps.search(root.text).map(entry => root.appRow(entry))
+
+    function commandRow(c: var): var {
+        return {
+            key: `command:${c.id}`,
+            kind: "command",
+            command: c,
+            label: root.armed === c.id ? `Press Enter again to ${c.label.toLowerCase()}` : c.label,
+            armed: root.armed === c.id,
+            detail: c.detail ?? "",
+            icon: c.icon,
+            toggle: c.toggle,
+            score: root.wordScore(c.label, c.words)
+        };
+    }
+
+    readonly property var commandRows: root.text.length < 2 ? [] : root.commands.filter(c => !c.hidden).map(c => root.commandRow(c)).filter(r => r.score > 0).sort((a, b) => b.score - a.score)
 
     readonly property var volumeRows: root.volume < 0 || !Audio.ready ? [] : [
         {
@@ -289,7 +308,7 @@ QtObject {
         }
     ]
 
-    readonly property var settingRows: root.text.length < 2 ? [] : Catalogue.search(root.text).map(hit => {
+    function settingRow(hit: var): var {
         const live = root.liveToggle(hit.row);
         const group = typeof hit.group.t === "string" ? hit.group.t : "";
         return {
@@ -302,7 +321,82 @@ QtObject {
             toggle: live ? !!SettingsState.v(hit.row.k) : undefined,
             score: Math.max(0.5, Ranking.place(hit.label, root.text))
         };
-    })
+    }
+
+    readonly property var settingRows: root.text.length < 2 ? [] : Catalogue.search(root.text).map(hit => root.settingRow(hit))
+
+    function rowById(id: string): var {
+        const at = id.indexOf(":");
+        const rest = id.slice(at + 1);
+        switch (id.slice(0, at)) {
+        case "app":
+            {
+                const entry = Apps.entryById(rest);
+                return entry ? root.appRow(entry) : null;
+            }
+        case "command":
+            {
+                const c = root.commands.find(c => c.id === rest && !c.hidden);
+                return c ? root.commandRow(c) : null;
+            }
+        case "setting":
+            {
+                const cut = rest.indexOf(":");
+                const hit = Catalogue.hitFor(rest.slice(0, cut), rest.slice(cut + 1));
+                return hit ? root.settingRow(hit) : null;
+            }
+        }
+        return null;
+    }
+
+    function runnable(row: var): bool {
+        return ["app", "command", "setting"].includes(row?.kind) && row.command?.id !== "volumeset";
+    }
+
+    function keyable(row: var): bool {
+        return root.runnable(row) && !row.command?.confirm;
+    }
+
+    function nameOf(row: var): string {
+        return row.kind === "command" ? row.command.label : row.kind === "app" ? row.entry.name ?? "" : row.label;
+    }
+
+    function runById(id: string): string {
+        const row = root.rowById(id);
+        switch (row?.kind) {
+        case "app":
+            Apps.launch(row.entry);
+            Hypr.claimNextWindow();
+            break;
+        case "command":
+            if (row.command.confirm)
+                return "";
+            row.command.run();
+            break;
+        case "setting":
+            if (row.toggle !== undefined)
+                SettingsState.set(row.hit.row.k, !row.toggle);
+            else
+                Settings.openAt(root.screenName, row.hit.page.id, row.hit.row.k ?? "");
+            break;
+        default:
+            return "";
+        }
+        return row.kind === "app" ? row.entry.name : row.label;
+    }
+
+    readonly property string aliasId: Search.aliasTarget(Config.values.launcher.aliases, root.text)
+    readonly property var aliasRow: root.aliasId ? root.rowById(root.aliasId) : null
+    readonly property var aliasOf: Search.aliasesById(Config.values.launcher.aliases)
+
+    function withAlias(kind: string, rows: var): var {
+        const hit = root.aliasRow;
+        if (hit?.kind !== kind)
+            return rows;
+        return [Object.assign({}, hit, {
+                score: Infinity
+            })].concat(rows.filter(r => r.key !== hit.key));
+    }
 
     function fileRow(f: var, prefix: string): var {
         return {
@@ -320,6 +414,27 @@ QtObject {
     readonly property var fileRows: root.path || root.text.length < FileSearch.least ? [] : Search.fileRows(FileSearch.lines, root.text, Ranking.place).map(f => root.fileRow(Object.assign({}, f, {
                 score: f.score - Ranking.EXACT
             }), "file"))
+
+    readonly property var contentRows: root.path || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
+                key: `content:${hit.path}`,
+                kind: "file",
+                path: hit.path,
+                dir: false,
+                label: hit.name,
+                detail: `${hit.text} · ${hit.where}`,
+                icon: Marks.iconFor(hit.path, hit.name, false, Files.home) || "draft",
+                score: -1
+            }))
+
+    readonly property var fallbackRows: Search.fallbackRows(Config.values.launcher.fallbacks, root.text, Config.values.launcher.webSearch).map(f => ({
+                key: `fallback:${f.id}`,
+                kind: "fallback",
+                fallback: f,
+                label: f.label,
+                detail: "",
+                icon: f.icon,
+                score: -Infinity
+            }))
 
     readonly property var pathRows: root.path && FileSearch.listedDir === root.path.dir ? Search.pathRows(FileSearch.entries, root.path, FileSearch.hidden, Files.home).map(f => root.fileRow(f, "path")) : []
 
@@ -502,10 +617,18 @@ QtObject {
     readonly property var rows: root.keyed(root.arranged)
 
     function keyed(rows: var): var {
-        return rows.map(r => r.header ? r : Object.assign({}, r, {
+        return rows.map(r => {
+            if (r.header)
+                return r;
+            const alias = root.runnable(r) ? root.aliasOf[r.key] ?? "" : "";
+            const hotkey = root.keyable(r) ? LauncherHotkeys.chordOf(r.key) : "";
+            return Object.assign({}, r, {
                 id: r.key,
-                key: `${r.key}|${r.label}|${r.toggle}|${r.detail}`
-            }));
+                alias: alias,
+                hotkey: hotkey,
+                key: `${r.key}|${r.label}|${r.toggle}|${r.detail}|${alias}|${hotkey}`
+            });
+        });
     }
 
     readonly property var arranged: {
@@ -540,15 +663,15 @@ QtObject {
         }, {
             key: "apps",
             title: "Apps",
-            items: root.appRows
+            items: root.withAlias("app", root.appRows)
         }, {
             key: "commands",
             title: "Commands",
-            items: root.volumeRows.concat(root.commandRows)
+            items: root.withAlias("command", root.volumeRows.concat(root.commandRows))
         }, {
             key: "settings",
             title: "Settings",
-            items: root.settingRows
+            items: root.withAlias("setting", root.settingRows)
         }, {
             key: "windows",
             title: "Windows",
@@ -562,18 +685,13 @@ QtObject {
             title: "Files",
             items: root.fileRows
         }, {
-            key: "web",
-            title: "Web",
-            items: [
-                {
-                    key: "web",
-                    kind: "web",
-                    label: `Search the web for “${root.text}”`,
-                    detail: "",
-                    icon: "travel_explore",
-                    score: -Infinity
-                }
-            ]
+            key: "contents",
+            title: "Inside files",
+            items: root.contentRows
+        }, {
+            key: "fallbacks",
+            title: "Elsewhere",
+            items: root.fallbackRows
         });
         return Search.arrange(groups, root.caps);
     }
@@ -586,6 +704,12 @@ QtObject {
     function activate(row: var): void {
         switch (row?.kind) {
         case "app":
+            if (root.armed === `uninstall:${row.entry.id}`) {
+                const entry = row.entry;
+                if (Uninstaller.ready(entry.id))
+                    root.leave(() => Uninstaller.remove(entry));
+                return;
+            }
             root.launch(() => Apps.launch(row.entry));
             return;
         case "command":
@@ -645,10 +769,73 @@ QtObject {
         case "link":
             root.launch(() => Quickshell.execDetached(["xdg-open", root.url]));
             return;
-        case "web":
-            root.launch(() => Quickshell.execDetached(["xdg-open", Search.webSearchUrl(Config.values.launcher.webSearch, root.text)]));
+        case "fallback":
+            if (row.fallback.url) {
+                const url = row.fallback.url;
+                root.launch(() => Quickshell.execDetached(["xdg-open", url]));
+            } else {
+                const typed = root.text.replace(/'/g, "'\\''");
+                root.launch(() => Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `(eval '${typed}')\nexec "\${SHELL:-sh}"`]));
+            }
             return;
         }
+    }
+
+    function windowsOf(entry: var): var {
+        return Hyprland.toplevels.values.filter(t => {
+            const o = t.lastIpcObject ?? {};
+            return (t.workspace?.id ?? 0) !== 0 && Apps.entryFor(o.class || o.initialClass || "")?.id === entry.id;
+        });
+    }
+
+    function appActions(entry: var): var {
+        const open = root.windowsOf(entry);
+        if (!open.length)
+            return [];
+        return [
+            {
+                icon: "close",
+                label: open.length > 1 ? `Quit · ${open.length} windows` : "Quit",
+                short: "Quit",
+                run: () => open.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
+            },
+            {
+                icon: "dangerous",
+                label: "Force quit",
+                tucked: true,
+                run: () => root.forceQuit(open)
+            }
+        ];
+    }
+
+    function forceQuit(open: var): void {
+        const pids = [...new Set(open.map(t => t.lastIpcObject?.pid).filter(pid => pid > 0))];
+        if (pids.length)
+            Quickshell.execDetached(["kill", "-KILL", ...pids.map(String)]);
+    }
+
+    function confirmActions(row: var): var {
+        const cancel = {
+            icon: "close",
+            label: "Cancel",
+            run: () => root.armed = ""
+        };
+        if (row.kind === "app")
+            return Uninstaller.plans[row.entry.id]?.refused ? [cancel] : [
+                {
+                    icon: "delete",
+                    label: "Uninstall",
+                    alarm: true,
+                    run: () => root.activate(row)
+                },
+                cancel
+            ];
+        return [cancel];
+    }
+
+    function armUninstall(entry: var): void {
+        root.armed = `uninstall:${entry.id}`;
+        Uninstaller.plan(entry);
     }
 
     function remind(ask: var): void {
@@ -779,7 +966,7 @@ QtObject {
         case "timer":
         case "reminder":
         case "command":
-        case "web":
+        case "fallback":
             return [
                 {
                     icon: row.icon,
