@@ -16,7 +16,6 @@ QtObject {
     readonly property bool listsWifi: root.asked !== null
     readonly property bool intent: root.asked !== null
 
-
     readonly property bool viewing: root.intent && root.search.active
 
     onViewingChanged: Qt.callLater(root.viewNetworks)

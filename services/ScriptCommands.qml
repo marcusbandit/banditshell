@@ -334,11 +334,7 @@ Singleton {
         id: restartListing
 
         interval: 300
-        onTriggered: {
-            listing.folder = "";
-            listing.folder = `file://${root.folder}`;
-            root.scan();
-        }
+        onTriggered: root.scan()
     }
 
     Component {

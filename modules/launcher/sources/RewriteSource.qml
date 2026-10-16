@@ -13,7 +13,7 @@ QtObject {
 
     property bool readThisTime: false
 
-    readonly property bool wanted: Assistant.enabled && root.search.active && root.search.text.length >= 3 && Logic.ACTIONS.some(a => root.score(a) > 0)
+    readonly property bool wanted: Assistant.enabled && Assistant.ready && root.search.active && root.search.text.length >= 3 && Logic.ACTIONS.some(a => root.score(a) > 0)
 
     onWantedChanged: {
         if (!root.wanted || root.readThisTime)
