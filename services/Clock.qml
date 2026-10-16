@@ -149,12 +149,23 @@ Singleton {
             left: 0,
             paused: false,
             finished: false,
-            label: label ?? ""
+            label: label ?? "",
+            quiet: false
         };
         next.push(timer);
         root.timers = next;
         root.save();
         return timer.id;
+    }
+
+    function startQuietTimer(seconds: int, label: string): string {
+        const id = root.startTimer(seconds, label);
+        const timer = root.timers.find(t => t.id === id);
+        if (timer) {
+            timer.quiet = true;
+            root.save();
+        }
+        return id;
     }
 
     function toggleTimer(id: string): void {
@@ -337,7 +348,8 @@ Singleton {
                 continue;
             timer.finished = true;
             changed = true;
-            root.notify("critical", "Timer done", timer.label ? `${timer.label} · ${root.spanLabel(timer.total)}` : root.spanLabel(timer.total), "alarm");
+            if (!timer.quiet)
+                root.notify("critical", "Timer done", timer.label ? `${timer.label} · ${root.spanLabel(timer.total)}` : root.spanLabel(timer.total), "alarm");
             root.timerFinished(timer);
         }
         if (changed) {
@@ -683,7 +695,8 @@ Singleton {
                     left: Number.isFinite(t.left) ? Math.max(0, t.left) : 0,
                     paused: !!t.paused,
                     finished: false,
-                    label: typeof t.label === "string" ? t.label : ""
+                    label: typeof t.label === "string" ? t.label : "",
+                    quiet: !!t.quiet
                 })).map(t => {
             if (!t.paused)
                 t.finished = t.deadline <= now;

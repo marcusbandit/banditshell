@@ -405,6 +405,22 @@ const PAGES_SOURCE = {
             { t: "Quicklinks", rows: [
                 { n: [], kind: "w", w: "quicklinks", kw: "quicklinks search shortcuts keywords urls youtube github wiki" }
             ] },
+            { t: "Power tools", rows: [
+                { n: [], icon: "terminal", label: "Scripts folder", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder",
+                    why: "Scripts in this folder show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
+                { n: [], icon: "folder_code", label: "Project folders", k: "projectFolders", kind: "text", mono: true, cfg: "launcher.powerTools.projectFolders", placeholder: "~/Projects", kw: "projects git repositories code folders",
+                    why: "Git repositories in these folders, separated by commas, show up when you type their name or projects." },
+                { n: [], icon: "account_tree", label: "Project depth", k: "projectDepth", kind: "step", min: 1, max: 4, cfg: "launcher.powerTools.projectDepth", fmt: v => v === 1 ? "1 level" : `${v} levels`, kw: "projects search depth" },
+                { n: [], icon: "description", label: "Note folders", k: "noteFolders", kind: "text", mono: true, cfg: "launcher.powerTools.noteFolders", placeholder: "~/Obsidian", kw: "notes obsidian vaults folders",
+                    why: "Obsidian vaults inside these folders are searched along with the vaults Obsidian already knows about." },
+                { n: [], icon: "visibility_off", label: "Leave out vaults", k: "noteSkip", kind: "text", mono: true, cfg: "launcher.powerTools.noteSkip", placeholder: "Archive, ~/Obsidian/Work", kw: "notes obsidian vaults hide skip private exclude",
+                    why: "Vaults named here, by name or folder and separated by commas, are never searched and never get new notes." },
+                { n: [], icon: "note_add", label: "New notes go to", k: "noteVault", kind: "choice", o: s => s.noteVaults, cfg: "launcher.powerTools.noteVault", kw: "notes obsidian vault new note default" },
+                { n: [], icon: "timer", label: "Focus round", k: "focusMinutes", kind: "step", min: 5, max: 120, step: 5, unit: " min", cfg: "launcher.powerTools.focusMinutes", kw: "pomodoro focus work minutes" },
+                { n: [], icon: "coffee", label: "Break", k: "breakMinutes", kind: "step", min: 1, max: 30, unit: " min", cfg: "launcher.powerTools.breakMinutes", kw: "pomodoro short break minutes" },
+                { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
+                { n: [], icon: "replay", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
+            ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
                 { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }

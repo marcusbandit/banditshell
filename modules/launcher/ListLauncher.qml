@@ -886,6 +886,7 @@ LauncherConcept {
                                 iconSource: line.modelData.iconSource ?? ""
                                 glyph: line.modelData.glyph ?? ""
                                 icon: line.modelData.icon ?? "apps"
+                                mark: line.modelData.swatch ? swatch : null
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
 
@@ -981,6 +982,19 @@ LauncherConcept {
                                 }
                             }
 
+                            Component {
+                                id: swatch
+
+                                SquircleRect {
+                                    width: Appearance.sizes.launcherIcon
+                                    height: Appearance.sizes.launcherIcon
+                                    radius: Appearance.rounding.small
+                                    color: line.modelData.swatch ?? "transparent"
+                                    stroke: Appearance.colour.seam
+                                    strokeWidth: Appearance.sizes.seam
+                                }
+                            }
+
                             HoverHandler {
                                 id: lineHover
                             }
@@ -1006,7 +1020,8 @@ LauncherConcept {
                                     return [];
                                 if (line.modelData.armed)
                                     return search.confirmActions(line.modelData);
-                                const acts = root.actionsFor(line.modelData).slice(1);
+                                const all = root.actionsFor(line.modelData);
+                                const acts = all[0]?.button ? all : all.slice(1);
                                 const shown = acts.filter(a => !a.tucked);
                                 return shown.length === acts.length && shown.length <= root.buttonLimit ? shown : [...shown.slice(0, root.buttonLimit - 1), {
                                         icon: "more_horiz",

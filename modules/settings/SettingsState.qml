@@ -181,6 +181,16 @@ Singleton {
             currency: "launcher.currency",
             launcherIcon: "launcher.iconSize",
             halfLife: "launcher.halfLifeDays",
+            scriptsFolder: "launcher.powerTools.scriptsFolder",
+            projectFolders: "launcher.powerTools.projectFolders",
+            projectDepth: "launcher.powerTools.projectDepth",
+            noteFolders: "launcher.powerTools.noteFolders",
+            noteVault: "launcher.powerTools.noteVault",
+            noteSkip: "launcher.powerTools.noteSkip",
+            focusMinutes: "launcher.powerTools.focusMinutes",
+            breakMinutes: "launcher.powerTools.breakMinutes",
+            longBreakMinutes: "launcher.powerTools.longBreakMinutes",
+            roundsBeforeLongBreak: "launcher.powerTools.roundsBeforeLongBreak",
             clip: "clipboard.record",
             clipMax: "clipboard.maxEntries",
             clipText: "clipboard.maxText",
@@ -1219,6 +1229,7 @@ Singleton {
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+    readonly property var noteVaults: [["", "the one Obsidian opened last"]].concat(Notes.vaults.map(v => [v.path, v.name]))
 
     readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
     readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"
