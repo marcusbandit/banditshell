@@ -69,7 +69,7 @@ QtObject {
         const name = engine === "docker" ? "Docker" : "Podman";
         switch (problem.kind) {
         case "denied":
-            return root.note(`${engine}:denied`, `${name} refused the connection`, problem.socket ? `permission denied on ${problem.socket}` : "permission denied", "lock");
+            return root.note(`${engine}:denied`, `No access to ${name}`, problem.socket ? problem.socket.slice(problem.socket.lastIndexOf("/") + 1) : "permission denied", "lock");
         case "stopped":
             return root.note(`${engine}:stopped`, `${name} is not running`, "", "power_off", engine === "docker" && SystemdUnits.enabled ? {
                 startDocker: true
