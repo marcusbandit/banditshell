@@ -59,6 +59,10 @@ ShellRoot {
                 screen: scope.modelData
             }
 
+            FullscreenBorder {
+                screen: scope.modelData
+            }
+
             PickerWindow {
                 screen: scope.modelData
                 state: picker

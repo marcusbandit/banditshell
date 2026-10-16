@@ -63,6 +63,13 @@ PanelWindow {
 
     property bool claiming: false
 
+    readonly property bool underFullscreen: Hypr.fullscreenOn(win.screen?.name ?? "")
+
+    onUnderFullscreenChanged: if (win.underFullscreen) {
+        win.closePanels(null, false);
+        menuLayer.hide();
+    }
+
     Component.onCompleted: {
         Shell.register(win);
         resumer.start();
@@ -125,6 +132,8 @@ PanelWindow {
         Keyring.refuse();
         for (const window of Shell.windows)
             window.closePanels(opening, window === win);
+        if (win.underFullscreen)
+            win.closePanels(null, true);
     }
 
     function closePanels(opening: Item, here: bool): void {
@@ -142,6 +151,8 @@ PanelWindow {
     }
 
     function openMenu(key: string, pin = true): bool {
+        if (win.underFullscreen)
+            return false;
         const entry = sidebar.entryFor(key);
         const beside = streamPanel.anchorFor(key);
         const source = beside ?? sidebar.iconFor(key);
@@ -207,7 +218,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -335,6 +346,11 @@ PanelWindow {
             item: Appearance.bare ? null : settingsCorner.maskItem
         }
 
+        Region {
+            intersection: Intersection.Intersect
+            width: win.underFullscreen ? 0 : win.width
+            height: win.underFullscreen ? 0 : win.height
+        }
     }
 
     IdleInhibitor {
@@ -347,6 +363,7 @@ PanelWindow {
 
         anchors.fill: parent
         focus: true
+        visible: !win.underFullscreen
 
         Keys.onPressed: event => {
             if (event.key !== Qt.Key_Escape)

@@ -88,6 +88,19 @@ chassis the desktop sits inside, is a different thing and I want it. Concretely:
 - It **reserves its own space**, so windows sit inside it with the compositor's gap intact
   rather than jammed against it.
 
+**FULLSCREEN, 2026-10-16: the monitor belongs to the window.** A fullscreen window (Hyprland's
+fullscreen mode, not maximize) makes the shell on that monitor step aside: chassis, sidebar,
+island, panels and menus stop drawing, transient panels close and refuse to open, the input
+mask empties so no edge grab steals a click, and the shell takes no keyboard. Settings and
+pinned things are hidden rather than closed and come back when the window leaves fullscreen.
+The one thing left is the band's outer edge exactly as it looks at rest: the same seam ring,
+the same rounded screen corners and the same frame colour outside them. `FullscreenBorder`
+draws it with the chassis's own `BlobField`, the band cut down to the ring's width over the
+solid surface, on the overlay layer because a fullscreen window covers the band's own layer.
+Bare and a floating stream panel draw no edge at rest, so they draw none here either. The
+reservations stay as they were, so the windows underneath do not re-tile on the way in or
+out. Other monitors are untouched.
+
 This is deliberately close to caelestia's construction. **We are rebuilding caelestia's main
 parts, with more control, because they are ours.** The point was never that caelestia is wrong;
 it is that I want the whole mental model. Where caelestia solved something well, copy the
