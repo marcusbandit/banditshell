@@ -29,6 +29,18 @@ QtObject {
     readonly property list<QtObject> sources: [
         FallbackSource {
             search: root
+        },
+        EmojiSource {
+            search: root
+        },
+        SnippetSource {
+            search: root
+        },
+        QuicklinkSource {
+            search: root
+        },
+        ClipboardSource {
+            search: root
         }
     ]
 

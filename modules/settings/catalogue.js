@@ -29,7 +29,7 @@ const WIDGET_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
     chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Places",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
 };
 
 const SEARCH_TITLES = {
@@ -37,7 +37,7 @@ const SEARCH_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Pick a wallpaper", themes: "Theme", wsStyles: "Workspace style",
     chips: "", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "World clocks",
     obs: "OBS", keys: "Keys", winLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
 };
 
 const WIDGET_WHY = {
@@ -53,7 +53,9 @@ const WIDGET_WHY = {
     wsStyles: "Plates stack the apps in each workspace. Map draws a bar per window. Blocks draws a square per window.",
     walls: "A new wallpaper grows out from where you clicked.",
     battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
-    keys: "Click a key to change it in the pane."
+    keys: "Click a key to change it in the pane.",
+    snippets: "Type a snippet's keyword or name in the launcher and press Enter to type it into the app you were in. {date}, {time} and {clipboard} fill in as it is typed; {cursor} is where the caret ends up.",
+    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes."
 };
 
 const PAGES_SOURCE = {
@@ -390,6 +392,18 @@ const PAGES_SOURCE = {
                 { n: [], icon: "menu_book", label: "Wikipedia", k: "fallbackWikipedia", kind: "toggle", cfg: "launcher.fallbacks.wikipedia", kw: "fallback wikipedia" },
                 { n: [], icon: "map", label: "Map", k: "fallbackMaps", kind: "toggle", cfg: "launcher.fallbacks.maps", kw: "fallback map places openstreetmap" },
                 { n: [], icon: "terminal", label: "Run in a terminal", k: "fallbackTerminal", kind: "toggle", cfg: "launcher.fallbacks.terminal", kw: "fallback run command terminal shell" }
+            ] },
+            { t: "Typing", rows: [
+                { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour",
+                    why: "Emoji with people and hands come in this tone. More on an emoji row still offers every tone." },
+                { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste",
+                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." }
+            ] },
+            { t: "Snippets", rows: [
+                { n: [], kind: "w", w: "snippets", kw: "snippets saved text expand keyword placeholders" }
+            ] },
+            { t: "Quicklinks", rows: [
+                { n: [], kind: "w", w: "quicklinks", kw: "quicklinks search shortcuts keywords urls youtube github wiki" }
             ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },

@@ -322,6 +322,47 @@ Singleton {
 
                     landedMs: 700,
                     lostMs: 5000
+                },
+
+                typing: {
+                    skinTone: "none",
+
+                    clipboard: true,
+
+                    snippets: [],
+
+                    quicklinks: [
+                        {
+                            name: "YouTube",
+                            keyword: "yt",
+                            url: "https://www.youtube.com/results?search_query={query}"
+                        },
+                        {
+                            name: "GitHub",
+                            keyword: "gh",
+                            url: "https://github.com/search?q={query}"
+                        },
+                        {
+                            name: "Maps",
+                            keyword: "maps",
+                            url: "https://www.openstreetmap.org/search?query={query}"
+                        },
+                        {
+                            name: "Wikipedia",
+                            keyword: "wiki",
+                            url: "https://en.wikipedia.org/w/index.php?search={query}"
+                        },
+                        {
+                            name: "AUR",
+                            keyword: "aur",
+                            url: "https://aur.archlinux.org/packages?K={query}"
+                        },
+                        {
+                            name: "Arch Wiki",
+                            keyword: "arch",
+                            url: "https://wiki.archlinux.org/index.php?search={query}"
+                        }
+                    ]
                 }
             },
 
