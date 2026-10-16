@@ -10,6 +10,7 @@ QtObject {
 
     readonly property var asked: Emoji.ask(root.search.text)
     readonly property bool explicit: root.asked.explicit
+    readonly property string typed: String(root.asked.term || "").toLowerCase()
 
     readonly property var found: root.search.text ? Emoji.search(root.asked.term, root.explicit, root.explicit ? 40 : 3) : []
 
@@ -39,7 +40,7 @@ QtObject {
             label: entry.name.charAt(0).toUpperCase() + entry.name.slice(1),
             detail: entry.symbol ? `${entry.group} · ${Emoji.codeOf(entry.char)}` : entry.group,
             icon: entry.symbol ? "special_character" : "mood",
-            score: root.explicit ? Infinity : 0.45
+            score: root.explicit ? Infinity : root.typed && entry.title.indexOf(root.typed) === 0 ? 0.8 : 0.45
         };
     }
 
