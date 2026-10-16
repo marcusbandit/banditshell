@@ -1,0 +1,5 @@
+module qs.modules.workshop
+LayoutWorkshop 1.0 LayoutWorkshop.qml
+WorkshopCanvas 1.0 WorkshopCanvas.qml
+WorkshopHeading 1.0 WorkshopHeading.qml
+WorkshopPreview 1.0 WorkshopPreview.qml

@@ -74,6 +74,9 @@ QtObject {
         },
         RewriteSource {
             search: root
+        },
+        WorkshopSource {
+            search: root
         }
     ]
 

@@ -14,7 +14,9 @@ Singleton {
 
     property var plugins: []
 
-    readonly property var available: ["dwindle", "master", ...(root.scrolling ? ["scrolling"] : []), ...(root.plugins.some(p => /hy3/i.test(p)) ? ["hy3"] : []), ...Search.luaLayouts(Object.values(HyprConfig.texts))]
+    readonly property var configured: Search.luaLayouts(Object.values(HyprConfig.texts))
+
+    readonly property var available: ["dwindle", "master", ...(root.scrolling ? ["scrolling"] : []), ...(root.plugins.some(p => /hy3/i.test(p)) ? ["hy3"] : []), ...root.configured, ...WorkshopLayouts.names.filter(name => !root.configured.includes(name))]
 
     function use(name: string): void {
         root.current = name;

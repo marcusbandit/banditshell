@@ -35,6 +35,7 @@ singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
 singleton LauncherHotkeys 1.0 LauncherHotkeys.qml
 singleton Launching 1.0 Launching.qml
+singleton LayoutDraft 1.0 LayoutDraft.qml
 singleton Lid 1.0 Lid.qml
 singleton Localisation 1.0 Localisation.qml
 singleton Lock 1.0 Lock.qml
@@ -86,3 +87,4 @@ singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml
 singleton WhatsNew 1.0 WhatsNew.qml
 singleton WindowLayouts 1.0 WindowLayouts.qml
+singleton WorkshopLayouts 1.0 WorkshopLayouts.qml
