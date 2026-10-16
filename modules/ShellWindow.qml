@@ -59,9 +59,67 @@ PanelWindow {
     readonly property var panels: [launcherLayer, clipLayer, wallpaperLayer, sessionLayer, cheatLayer, calcLayer, mediaLayer]
 
     readonly property bool panelOpen: win.panels.some(panel => panel.open)
+    readonly property bool covering: win.panels.some(panel => panel.open && panel !== mediaLayer)
 
-    Component.onCompleted: Shell.register(win)
+    property bool claiming: false
+
+    Component.onCompleted: {
+        Shell.register(win);
+        resumer.start();
+    }
     Component.onDestruction: Shell.unregister(win)
+
+    readonly property var named: ({
+            launcher: launcherLayer,
+            clipboard: clipLayer,
+            wallpapers: wallpaperLayer,
+            session: sessionLayer,
+            calculator: calcLayer,
+            hotkeys: cheatLayer,
+            media: mediaLayer
+        })
+
+    readonly property string memoryKey: `screen ${win.screen?.name ?? ""}`
+
+    readonly property var remembered: ({
+            panel: Object.keys(win.named).find(name => win.named[name].open) ?? "",
+            menu: menuLayer.pinned ? menuLayer.currentKey : "",
+            keyboard: keyboardLayer.open,
+            quickControls: quickLayer.pinned,
+            notifications: popups.pinned,
+            island: islandLayer.pinned
+        })
+
+    property bool resumed: false
+
+    onRememberedChanged: if (win.resumed)
+        Relaunch.keep(win.memoryKey, win.remembered)
+
+    Timer {
+        id: resumer
+
+        property var was: null
+        property int tries: 0
+
+        interval: 200
+        repeat: true
+
+        onTriggered: {
+            if (!win.resumed) {
+                resumer.was = Relaunch.recall(win.memoryKey);
+                win.named[resumer.was?.panel ?? ""]?.show();
+                if (resumer.was?.keyboard)
+                    keyboardLayer.show();
+                quickLayer.pinned = !!resumer.was?.quickControls;
+                popups.pinned = !!resumer.was?.notifications;
+                islandLayer.pinned = !!resumer.was?.island;
+                win.resumed = true;
+            }
+            const menu = resumer.was?.menu ?? "";
+            if (!menu || menuLayer.open || win.openMenu(menu, true) || ++resumer.tries >= 25)
+                resumer.stop();
+        }
+    }
 
     function closeOthers(opening: Item): void {
         Keyring.refuse();
@@ -96,10 +154,26 @@ PanelWindow {
     }
 
     function act(notice: var): void {
+        if (notice.mock && notice.kind !== "music")
+            return;
         switch (notice.kind) {
-        case "music":
+        case "launch":
             islandLayer.close();
-            mediaLayer.show();
+            Hypr.focusClient([].concat(...Object.values(Hypr.clients)).find(c => Launching.fits(notice.rec, Hypr.classOf(c))) ?? null);
+            return;
+        case "dictation":
+            islandLayer.close();
+            clipLayer.build().setTab(1);
+            clipLayer.show();
+            return;
+        case "music":
+            if (notice.origin && !mediaLayer.open) {
+                islandLayer.handOff();
+                mediaLayer.build().showFrom(notice.origin);
+            } else {
+                islandLayer.close();
+                mediaLayer.show();
+            }
             break;
         case "notifications":
             popups.pinned = true;
@@ -133,7 +207,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.panelOpen || quickLayer.pinned || menuLayer.needsKeyboard || popups.wantsEscape || islandLayer.wantsEscape ? WlrKeyboardFocus.Exclusive : menuLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -194,6 +268,11 @@ PanelWindow {
         Region {
             intersection: Intersection.Combine
             item: mediaLayer.open ? mediaLayer.maskItem : null
+        }
+
+        Region {
+            intersection: Intersection.Subtract
+            item: mediaLayer.open ? islandLayer.passItem : null
         }
 
         Region {
@@ -292,6 +371,16 @@ PanelWindow {
 
         HoverHandler {
             id: onShell
+        }
+
+        Window.onActiveChanged: if (body.Window.active)
+            win.claiming = false
+
+        Timer {
+            id: claim
+
+            interval: 400
+            onTriggered: win.claiming = false
         }
 
         function lowered(blobs: var): var {
@@ -574,8 +663,13 @@ PanelWindow {
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
 
-            onOpenChanged: if (open)
-                win.closeOthers(mediaLayer)
+            onOpenChanged: {
+                if (mediaLayer.open)
+                    win.closeOthers(mediaLayer);
+                win.claiming = mediaLayer.open && !body.Window.active;
+                if (win.claiming)
+                    claim.restart();
+            }
 
             panel: MediaController {
                 border: win.border
@@ -596,7 +690,7 @@ PanelWindow {
             panel: SettingsPanel {
                 originX: chassis.barWidth
                 band: win.border
-                yielded: win.panelOpen || menuLayer.open || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
+                yielded: win.panelOpen || menuLayer.open || Settings.away || (quickLayer.active && farEdge > win.width - quickLayer.panelWidth)
             }
         }
 
@@ -669,12 +763,15 @@ PanelWindow {
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
+            z: mediaLayer.open ? 1 : 0
             border: win.border
             edge: Math.max(0, chassis.topBand - chassis.streamReach)
 
             keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
 
             onChosen: notice => win.act(notice)
+            onEyeingMusicChanged: if (islandLayer.eyeingMusic)
+                mediaLayer.build().warm()
         }
 
         QuickControls {

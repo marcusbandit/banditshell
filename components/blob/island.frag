@@ -21,7 +21,15 @@ layout(std140, binding = 0) uniform buf {
 
     vec4 pill;
 
-    vec4 bud;
+    vec4 bud0;
+
+    vec4 bud1;
+
+    vec4 bud2;
+
+    vec4 bud3;
+
+    vec4 reaches;
 
     vec4 radii;
 
@@ -51,6 +59,13 @@ float smin(float a, float b, float k) {
     return mix(b, a, h) - k * h * (1.0 - h);
 }
 
+float bubble(float d, vec2 p, vec4 b, float k) {
+    if (b.z <= 0.0 || b.w <= 0.0)
+        return d;
+    vec2 reach = b.zw * 0.5;
+    return smin(d, sdBox(p - (b.xy + reach), reach, min(reach.x, reach.y), 2.0), k);
+}
+
 float inside(float d) {
     float aa = max(fwidth(d), 0.0001) * feather;
     return 1.0 - smoothstep(-aa, aa, d);
@@ -62,8 +77,10 @@ void main() {
     float d = 100000.0;
     if (pill.z > 0.0 && pill.w > 0.0)
         d = sdBox(p - (pill.xy + pill.zw * 0.5), pill.zw * 0.5, radii.x, max(2.0, power));
-    if (bud.z > 0.0 && bud.w > 0.0)
-        d = smin(d, sdBox(p - (bud.xy + bud.zw * 0.5), bud.zw * 0.5, radii.y, 2.0), smoothing);
+    d = bubble(d, p, bud0, reaches.x > 0.0 ? reaches.x : smoothing);
+    d = bubble(d, p, bud1, reaches.y > 0.0 ? reaches.y : smoothing);
+    d = bubble(d, p, bud2, reaches.z > 0.0 ? reaches.z : smoothing);
+    d = bubble(d, p, bud3, reaches.w > 0.0 ? reaches.w : smoothing);
 
     float below = inside(edge - p.y);
 

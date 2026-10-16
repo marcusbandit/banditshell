@@ -25,6 +25,11 @@ Singleton {
         root.demand = Math.max(0, root.demand - 1);
     }
 
+    function prefetch(): void {
+        root.hold();
+        root.release();
+    }
+
     readonly property bool eligible: root.enabled && Media.hasTrack && !Media.isAdvert && !Media.isEpisode
     readonly property string key: root.eligible ? [Media.active?.dbusName ?? "", Media.artist, Media.title, Media.album].join("\n") : ""
 

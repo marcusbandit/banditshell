@@ -52,6 +52,7 @@ singleton Polkit 1.0 Polkit.qml
 singleton PowerProfile 1.0 PowerProfile.qml
 singleton Power 1.0 Power.qml
 singleton Prompts 1.0 Prompts.qml
+singleton Relaunch 1.0 Relaunch.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml

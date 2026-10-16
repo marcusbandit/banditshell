@@ -122,6 +122,8 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("tablet", ""), ["lid", "off", "on", "pen", "probe", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", "lid", ""), ["closed", "open", "toggle"]);
     assert.deepStrictEqual(bashComplete("dev", "preview", ""), ["files", "gallery", "lock", "menu", "settings"]);
+    assert.deepStrictEqual(bashComplete("dev", "check", ""), ["island"]);
+    assert.deepStrictEqual(bashComplete("dev", "inspect", ""), ["close", "island"]);
     assert.deepStrictEqual(bashComplete("dev", "keyring", ""), ["close", "demo", "status"]);
 });
 

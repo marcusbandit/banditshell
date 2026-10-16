@@ -14,6 +14,7 @@ Scope {
     id: root
 
     required property var picker
+    required property var inspector
 
     readonly property string bootsTheService: HyprConfig.configPath
 
@@ -566,7 +567,24 @@ Scope {
             const win = Shell.forScreen(screen);
             if (!win)
                 return root.missing(screen);
-            return `pinned=${win.island.pinned} showing=${win.island.presentation} activities=${win.island.activities.length}`;
+            return `pinned=${win.island.pinned} showing=${win.island.presentation} activities=${win.island.activities.length} notifications=${win.island.alerts.length} situation="${win.island.situation}"`;
+        }
+    }
+
+    IpcHandler {
+        target: "inspect"
+
+        function island(screen: string): string {
+            const win = Shell.forScreen(screen);
+            if (!win)
+                return root.missing(screen);
+            root.inspector.show(win);
+            return "inspecting the island: pick a situation on the right, or build one. Esc, the close button or `banditshell dev inspect close` ends it and takes everything made up away";
+        }
+
+        function close(): string {
+            root.inspector.close();
+            return "closed";
         }
     }
 

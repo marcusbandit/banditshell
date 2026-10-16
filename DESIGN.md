@@ -298,7 +298,8 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     It is stroked INSIDE the item's bounds, because a ring is laid out as a target.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
-  spacing instead. Portable rule: `~/.claude/rules/type-scale.md`.
+  spacing instead. The one exception is `display` (one and a half times `large`), and
+  it is only the island's clock: asked for bigger, by hand, on a screenshot. Portable rule: `~/.claude/rules/type-scale.md`.
 - **Palette: the machine's, not the shell's.** The colours are not invented here. `~/.config/theme` is
   the colour authority: `theme-set` renders one theme into `current/` for every app on the box at
   once, and `config/Themes.qml` reads this shell's share (`palette.json`) and hands it to
@@ -357,9 +358,10 @@ banditshell/
 ├── preview.qml                  the preview router: BANDITSHELL_PREVIEW names the
 │                                file in previews/ to open in its place
 ├── previews/                    the shell's pieces, opened alone in a window of
-│                                their own - battery, calculator, files, the lock
-│                                face, notifications, qr, settings, the terminal
-│                                workbench, windows, the gallery (`banditshell
+│                                their own - battery, calculator, files, the
+│                                island, the lock face, notifications, qr,
+│                                settings, the terminal workbench, windows, the
+│                                gallery (`banditshell
 │                                dev preview gallery`, `... preview lock`). They
 │                                sit in a folder so the root stays just the two
 │                                entry points, and the folder holds because a
@@ -384,9 +386,18 @@ banditshell/
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
-│   ├── BlurredImage.qml         the same cut, the picture blurred to colour: album art
-│   │                            as the light a card is lit by
+│   ├── BlurredImage.qml         the same cut, the picture blurred to colour
+│   ├── ImagePalette.qml         a picture's main colours and how much of it each
+│   │                            covers, read off a 24px copy in a Canvas
+│   ├── ColourField.qml          up to four colours blended into a slow, soft
+│   │                            field, each as large as its share, all fields
+│   │                            on one clock so two of them agree (+ .frag)
+│   ├── Waveform.qml             levels as one smooth mirrored curve: a ring of
+│   │                            levels, a playhead gliding through it, a shader
+│   │                            drawing a B-spline with soft ends (+ .frag)
 │   ├── CrossfadeText.qml        a line whose old words fade out under the new ones
+│   ├── ScrollingText.qml        one line that fades at its edges and, when too
+│   │                            long, scrolls round with a pause at the start
 │   ├── blob/
 │   │   ├── blob.frag            the chassis as a signed distance field
 │   │   ├── blob.frag.qsb        compiled; rebuild with `banditshell dev shaders`
@@ -795,6 +806,10 @@ banditshell/
 │   ├── Dictation.qml            gvoice: the live phase, language and levels off
 │   │                            its socket (one connection for the whole shell),
 │   │                            and the history the clipboard shows
+│   ├── Weather.qml              the weather now, from wttr.in (located by the
+│   │                            connection unless `weather.location` names a
+│   │                            place), fetched when the island opens and the
+│   │                            last reading is older than `weather.minutes`
 │   ├── WhatsNew.qml              the update's own changelog, read: entries
 │   │                            newer than the marker in the user's config
 │   │                            are what the What's new card shows. The log
@@ -831,30 +846,58 @@ banditshell/
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── island/                  the top centre, where everything that pops up
 │   │   │                        now arrives (see 18)
-│   │   ├── Island.qml           which of three sizes to be, and the morph between
-│   │   │                        them; a surface of its own, so the island never
+│   │   ├── Island.qml           what holds the centre and which bubbles sit
+│   │   │                        beside it (arrange() keeps the order), which
+│   │   │                        size that makes, and the morph between them; a
+│   │   │                        surface of its own, so the island never
 │   │   │                        repaints the full-screen chassis. The strip in the
 │   │   │                        band stays in ShellWindow: hover with a dwell,
 │   │   │                        tap to pin, pull down
 │   │   ├── ActivityRow.qml      the one anatomy: a mark, words, a sign. The
-│   │   │                        compact island is one of these, a row in the
-│   │   │                        overview is one of these, and the bubble is the
-│   │   │                        first forty pixels of one
+│   │   │                        compact island is one or a few of these, a row
+│   │   │                        in the overview is one of these. Given more
+│   │   │                        width it gives it to the middle, so bars gain
+│   │   │                        bars
+│   │   ├── ActivityLook.qml     how each kind looks: its mark, words and sign
+│   │   ├── ActivityMark.qml     the mark alone, squircle in a row, round in a
+│   │   │                        bubble
+│   │   ├── ActivityBubble.qml   a kind beside the centre: its mark, plus the
+│   │   │                        ring and badge that keep its state readable
+│   │   ├── AlertDeck.qml        the notifications that are up: the newest in
+│   │   │                        front with the rest peeking, spread into a list
+│   │   │                        on hover and inside the overview
 │   │   ├── NotificationAlert.qml a notification as the island tells it: tap for
-│   │   │                        its default action, swipe up into the island to
-│   │   │                        let it go, actions on hover
-│   │   ├── IslandOverview.qml   what going up to it shows: time, date, the
-│   │   │                        player, and every row that is live or waiting
+│   │   │                        its default action, flick it sideways to let
+│   │   │                        it go, drag it up or down to scroll the list,
+│   │   │                        its actions always there, a close mark on hover
+│   │   ├── NotificationMark.qml its picture, else its app's mark, else a bell
+│   │   ├── IslandInspector.qml  `banditshell dev inspect island`: a panel that
+│   │   │                        makes up each situation on the live island,
+│   │   │                        so it can be looked at, hovered and clicked;
+│   │   │                        everything made up goes when it closes, and
+│   │   │                        a click on a made-up row is held back
+│   │   ├── MockNotification.qml what a made-up notification stands in for
+│   │   ├── IslandOverview.qml   what going up to it shows: the clock at display
+│   │   │                        size, its ink set into the corner at the same
+│   │   │                        margin from the top as from the left; the date
+│   │   │                        level with the clock's top and the weather on its
+│   │   │                        baseline; arriving notifications, the live rows,
+│   │   │                        the player, and the notifications row last
 │   │   ├── IslandMedia.qml      the player, after the media card: cover with a
-│   │   │                        shadow, words that cross-fade, the wave, the
-│   │   │                        line being sung, the ring transport; its words
+│   │   │                        shadow and words that cross-fade; the title on
+│   │   │                        the cover's top, artist and album one tight
+│   │   │                        group on its bottom, each one line that scrolls
+│   │   │                        when it does not fit; the wave; the transport
+│   │   │                        between the two times on one line; its words
 │   │   │                        and its expand mark open the card
-│   │   └── DictationBars.qml    the voice, as bars
+│   │   └── DictationWave.qml    the voice, as one curve that glides
 │   ├── media/
 │   │   ├── MediaController.qml  Super+M's card, floating in the middle:
 │   │   │                        keyboard-driven (space, arrows, shift+arrows,
 │   │   │                        l lyrics, s shuffle, r repeat, tab the next
-│   │   │                        player), pops in and out; the cover on top, lit
+│   │   │                        player), pops in and out, or grows out of the
+│   │   │                        island's own body when the island opens it; the
+│   │   │                        cover on top, lit
 │   │   │                        from behind by its own blur, and the lyrics
 │   │   │                        widening it to the right when there are any; the
 │   │   │                        CheatSheet's kind of object, the power panel's
@@ -1460,7 +1503,8 @@ banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
 banditshell config get <key>|set <key> <value>|theme [<name>|list]
 banditshell start|stop|restart|status|log|doctor [binds [rewrite]]
 banditshell completions install|print|status|remove [zsh|bash]
-banditshell dev try [worktree]|back|worktrees|run|build|shaders|test|check
+banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
+                |check [island [dir]]|inspect island [screen]|inspect close
 banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
 banditshell dev menu current|hover|list|launcher scrub <0..1>
                                    |keyring [status|demo|close]
@@ -2771,15 +2815,29 @@ so, and it is the one state that does not expire, which is exactly what makes it
 the set worth spending the keyboard on. The grab lasts precisely as long as the
 pin, and not one moment longer.
 
-The honest cost is that a pinned tray or notch left up while you go back to
-typing swallows the keystrokes, and clicking the other window does not win the
-keyboard back, because an exclusive layer surface keeps it. Asking for keys only
-once the shell has been CLICKED is the alternative, and it is rejected for being
-dead in the case the rule exists for: a panel summoned by a keybind has never
-been clicked, so Escape would do nothing until you had gone and touched the very
-thing you were trying to get rid of. What is left is a grab that is always
-visible on screen and has four ways out: Escape, the corner or strip that
-summoned it, the summoning gesture reversed, and the CLI.
+The cost of a grab is that a pinned thing left up while you go back to typing
+swallows the keystrokes, and clicking the other window does not win the keyboard
+back, because an exclusive layer surface keeps it. For the panels that cover the
+work (the launcher, the power panel, the hotkey sheet) that is the point, and they
+still grab. For the island and the notification tray it was not: both sit beside
+the work, they stay pinned while you go on using the screen, and a pinned island
+made the whole screen feel dead until it was put away. So those two ask for keys
+only once the shell has been clicked (on demand). The price is the case the old
+rule existed for: one summoned by a keybind has never been clicked, so Escape does
+nothing until it has been touched; the strip, the gesture reversed and the CLI
+still close it.
+
+The media card sits between the two. It is summoned by a key and driven by keys
+(space, arrows), so it has to win the keyboard at once, but it floats beside
+the island rather than covering the work. An exclusive grab is not only about
+keys in Hyprland: while any layer surface holds one, every pointer event goes
+to that surface, and if none of it is under the pointer the event goes there
+anyway. With the card up, the island, a surface of its own, never saw the
+pointer again and closed the moment it opened. So the card grabs exclusively
+only until its window is active (or 400 ms), then holds the keys on demand.
+The card's click-away catcher covers the screen, so with the pointer following
+focus the keys stay with the card, and the island, which never asks for keys,
+can take the pointer without taking them.
 
 **One surface, one answer.** Qt gives active focus to exactly one item, so two
 pinned things can never both be listening, and a panel that hands the focus back
@@ -3220,21 +3278,84 @@ casts nothing.
 
 Every activity is a mark, words and a sign: Firefox's icon, "Firefox" and a ring
 that fills, then a check; a microphone, the live bars and the language; a cover,
-the title and an equalizer. The compact island is one ActivityRow. The overview
-lists the same rows. When two things are live, the second buds off the right end
-as a bubble showing its mark, melting out of the pill through a smooth union
-whose reach is shorter than the gap, so the bridge forms and snaps on the way
-out and is gone at rest.
+the title and an equalizer. The compact island is one ActivityRow, or a few of
+them when the centre holds several of one kind (two apps opening are two lines).
+The overview lists the same rows.
+
+Everything else that is live sits beside the centre as a bubble, one per kind,
+in a chain that buds off the right end: each bubble melts out of the shape
+before it through a smooth union whose reach is shorter than the gap, so the
+bridge forms and snaps on the way out and is gone at rest. A bubble is not just
+a mark. It still shows its state: an opening app carries its progress ring and
+gets a check or a red mark when it lands or fails, dictation has a ring that
+breathes with the voice and spins while the words are being made, music has its
+cover with the track's progress around it, a waiting stack of notifications or
+a download with more files carries a count, an update carries how many commits.
+Several of one kind (two apps, three notifications) are a stack of bubbles: the
+front one sits a little high and one or two more peek out straight down below
+it. Hovering a bubble names it underneath ("Opening Firefox", "Dictating", "3
+notifications"), because a mark alone does not always say what it is.
+ActivityLook, ActivityMark and ActivityBubble hold how each kind looks, so a row
+and a bubble can never disagree.
 
 ### Lit by the music
 
 The media card made the cover its light, and the island borrows that. Behind
-everything in the overview sits the cover blurred to colour, so the island takes
-the tint of what is playing; a track-change glance in compact form glows the
-same way, more faintly. The player in the overview is the card's anatomy at a
-smaller scale, and it holds the lyrics only while it is on screen. The expand
-mark in its corner, or a click on the song's words, folds the island away and
-opens the card itself.
+everything in the overview sits a field of the cover's own colours: its main
+colours are picked out (the same clustering the wallpaper theming uses, run on a
+tiny copy of the cover) and blended into a slow, soft wash, each colour as large
+as its share of the cover, darkened enough to keep the words readable. A blurred
+cover read as a smudge of the picture; the colours read as the song. The island
+takes that tint, a track-change glance in compact form glows the same way more
+faintly, and the card itself uses the same field (`ArtGlow`). The player in the overview is the card's anatomy at a
+smaller scale, without the lyrics: those belong to the card. Its words are never
+cut to the cover's height; a long title takes two lines and the row grows to
+hold it. The expand
+mark in its corner, a click on the song's words, or a click on a track-change
+row opens the card, and the island becomes it. A plate swelling from where the
+cover sat, with only the cover flying, read as something new appearing next to
+the island rather than the island turning into the card. Now the island's own
+body detaches: its outline, edge, shadow and colour wash move and grow into the
+card's, and every part of the player travels from where it sat in the island to
+its place on the card, the cover, the title, artist and album, the equalizer,
+the progress wave and the buttons. The card is laid out at its final size the
+whole way and the travelling body cuts it to shape, so what the island had no
+place for, the lyrics and the player chips, is uncovered by the growing edge
+and fades in over the last part. A compact row has no artist, album or wave, so
+those ride with its title and with the body. At that moment the island lets go
+of its body and drips out of the band afresh, and both colour washes run on one
+clock, so the hand-over shows no seam.
+
+Resting the pointer on the music, the card in the overview or a track-change
+row, builds the card and asks for its lyrics before anything is clicked, so the
+click only starts the move: the cover is already decoded and the card already
+knows how wide its lyrics make it.
+
+The card is not the island. Closing it fades it where it is, nothing flies
+back, and the island stays usable while the card is up: the card's click-away
+catcher leaves the island's shape and the strip above it alone, and the card
+only briefly holds the keyboard exclusively (see the keyboard section), so the
+pointer on the island is on the island. An island that just handed its body
+over and re-forms under a pointer that has not moved does not open by itself.
+
+### How the overview is laid out
+
+Everything sits on two lines, one per side: the clock, the cover, the start of
+the progress wave and the elapsed time on the left; the date, the weather, the
+expand mark, the level meter, the end of the wave and the length on the right.
+They are aligned by ink, not by text boxes, so a digit's side bearing or a round
+cap on the wave never pokes out past the line. The top margin is larger than the
+sides (24 against 16), because a clock that large needs room above it. Sections
+are 16 apart and rows inside a list 8, so what belongs together reads together.
+The title is the thing that matters while a song plays, so it takes the top of
+the cover on its own; artist and album are one fact (who, and from where), so
+they sit together as a tight pair on the cover's bottom. None of them ever
+wraps or ends in dots: a line too long for its room fades out at the edge, and
+once the overview is showing it waits two seconds, scrolls through to the end and
+round to the start again, and pauses there two seconds before the next pass
+(`ScrollingText`). Headless photographs
+copy the compositor's rounding, so their corners are the same G2 curve as on the
+screen.
 
 ### Which screen answers
 
@@ -3247,7 +3368,8 @@ mode keeps them off the streamed screen. Every screen keeps its own clock.
 Cursor to the top centre with a dwell, a tap on the strip to pin, a pull down to
 drag the overview out of whatever size it is, a pull up to put it back. While
 the pointer is on it, every timer inside it stops. Hovering a notification never
-opens the overview over it; a tap or a pull still does.
+opens the overview over it, it spreads a stack instead; a tap or a pull still
+opens it.
 
 The island takes input only while it is open or holds something pressable. A
 launch or the dictation bars passing over a browser's tabs never eat the click
@@ -3259,11 +3381,172 @@ appearing and that would fight the island's own bloom.
 
 `notifications.placement` defaults to `corner`. Moving everyone's notifications
 is a big change to make for people who did not ask for it. Set to `island`, a
-notification takes the island at its large size, one at a time: a new one
-retires the one before it to the history. Tap runs its default action, a swipe
-up throws it back into the island, and its actions come out on hover. The
-corner still opens the history either way, and the overview carries a row that
-opens it.
+notification takes the island at its large size. Tap runs its default action,
+its actions sit under the text from the start, and on hover a close mark appears
+in its corner. Nothing about a card's height depends on the pointer: when actions
+came out on hover, moving down a spread list grew and shrank the card under the
+pointer, so everything below it jumped up and down. The corner still opens the
+history either way, and the overview carries a row that opens it.
+
+Letting one go is a sideways gesture, animated before anything changes
+underneath. Flick it either way and it follows the pointer, fading as it goes;
+past a third of its width, or thrown fast, it flies off that side and is gone,
+and only then does the stack close up or the island fold away. Short of that it
+springs back. The close mark and a right click do the same flick to the right.
+Up and down never dismiss: a vertical drag on a card scrolls a spread list the
+way a finger scrolls a phone, and a throw keeps it gliding. Swiping up to put a
+card away used to share that direction, and it read as the card vanishing
+instead of the list moving, so it is gone; a card that times out still lands in
+the history. A stack carries "clear all" at its foot, folded or spread and
+inside the overview.
+
+### More than one
+
+The first version showed one at a time and retired the one before to the
+history, so a burst of three messages flashed past as one. Now they stack. The
+newest sits in front, and a critical one goes in front of everything. The cards
+behind it peek out under the island as one or two thinner layers, and a footer
+says how many more there are and whose, one mark per app. Rest the pointer on a
+stack and after the dwell the cards unfold under the front one into a list,
+each with its own hover, close mark and actions. The unfolding is a reveal, not a
+regrowth: every card is already laid out in its final place, and the island's
+edge sweeps down over them with "clear all" riding it, so no text moves or
+appears line by line; folding is the same sweep upward. The island's height
+follows the sweep exactly instead of chasing it, and the window is sized for the
+whole spread up front, so nothing resizes mid-sweep. They fold back once the
+pointer has been gone for the grace. Every card keeps its own timer, so a burst drains
+in about one timeout, not one timeout each.
+
+A new one is dealt like a new card on a pile. The island itself, carrying the
+new notification, drops down from behind the screen's top edge, and the card
+it lands on is a real card that stays where it was: it keeps its own text and
+outline, steps back, narrows and sinks until it is the first layer peeking out
+underneath, its text fading as it goes. The layer that was there moves one
+place back, and the backmost tucks up behind it and is gone. Crossfading the
+text inside a pill that never moved read as everything shuddering with nothing
+actually moving. Letting the front one go runs the roll the other way: the
+next card starts rising from behind the moment the flick begins, not after the
+old one has finished leaving, and the island's height follows the new card
+without dipping in between.
+
+A long pile stays on screen. The spread stops at a little over half the
+screen's height, its edges fade where there is more, and it scrolls: a wheel
+notch moves about four lines, a touchpad moves with the fingers, and at either
+end the wheel passes through to whatever is under it. The overview holds the
+same capped list. Clear all throws every card at once, the ones on screen
+twenty milliseconds apart from top to bottom so the sweep reads as a wave, and
+the ones scrolled out of view with the first. The list holds still while they
+go; closing it up after each one made clear all look like a fast scroll.
+
+A card outside the visible part of the list is made transparent, never
+invisible. An invisible item drops out of its column's layout, so a card's
+measured height collapsed whenever it scrolled out of view and grew back when
+it returned, and the cards around it overlapped while that happened.
+
+A card being dragged or flung counts as the pointer resting on the island,
+wherever the pointer actually is, so a held drag never unpauses the timers,
+reshuffles the island or spreads the stack under the finger. A release only
+counts as a throw when the pointer was still moving: holding still and letting
+go springs back.
+
+### Every situation is its own
+
+The first version had one rule for arrivals, "a notification takes the island",
+and it was wrong in most places it ran. It threw away the overview I had just
+opened and covered the bars while I was speaking. The second waited every
+notification out behind dictation in a bare icon. Neither is how it should feel.
+The rule now is that the newest thing always gets the big spot, and then things
+settle where they belong. `arrange()` in Island.qml keeps the order (the centre
+first, then the bubbles beside it, nearest first) and which arrivals are still
+having their moment; `situation` names what the island shows.
+`banditshell island status` prints it. `banditshell dev inspect island` makes
+each one up on the live island to look at, hover and click, and plays a thirty
+beat story through all of it; `banditshell dev check island` walks through them
+headlessly, checks each and photographs it.
+
+| Something arrives | What happens |
+| --- | --- |
+| A notification | takes the big spot at once as the card; whatever had it glides into the nearest bubble and pushes the others out |
+| Dictation or an app, while a notification shows | appears as a row below the card ("Opening Firefox") for a moment, then glides into its bubble beside it; the notification keeps the big spot while it is being shown |
+| Dictation or an app, while something else has the big spot | appears as a row below it for a moment, then takes the big spot; the old one glides into the nearest bubble and the newcomer slides up |
+| Another of a kind that already has the big spot (a second app) | another line, at the bottom |
+| Another of a kind that sits in a bubble | only the newcomer has its moment below; the bubble keeps the others |
+| A music change, a download, an update, the kernel | a row at the bottom of the big spot, or the big spot itself if nothing else is live, for as long as its moment lasts; then it is gone, never a bubble |
+| Anything while the pointer is on the island | has its moment below and then waits as the nearest bubble, its timer held; nothing moves under the pointer, and it takes the big spot once the pointer leaves |
+| A critical notification | takes the big spot whatever is happening |
+| Anything while the overview is open | lands inside it, notifications under the clock |
+
+| Something leaves | What happens |
+| --- | --- |
+| What held the big spot | the nearest bubble glides back into it |
+| A bubble | it is absorbed, and the ones further out slide in |
+| A row | it fades where it is and the rows under it slide up |
+| The last one under the pointer | the overview does not open by itself; the dwell waits for the pointer to leave and come back |
+
+The story that set this: dictating, a notification comes in and takes the big
+spot while dictation becomes a bubble; the notification goes and dictation comes
+back; an app opens, shows below dictation and then takes the big spot; a second
+app opens, two lines; the music changes and has its moment below; then a
+notification on top of it all, and the apps glide aside. A moment lasts 2.5
+seconds (`announceMs`); a music change or a download lasts as long as its glance.
+
+A notification in a bubble keeps its timer held. Pressing any bubble brings it
+to the big spot now. Timers also stop while the pointer is on the island; a
+pinned overview with the pointer elsewhere lets its arrivals time out, so it
+works as a feed.
+
+### Things move, they do not swap
+
+Opening the overview over a compact activity used to fade the compact row out
+and fade the same row in at its place in the list. Now one row travels from the
+capsule to its slot in the overview and widens on the way. The list's own copy
+only takes over once the two sit exactly on top of each other. The voice never
+stretches. It is one smooth mirrored curve drawn by a single shader, and a wider
+row shows more of it rather than a wider copy: the newest voice comes in on the
+right and the oldest leaves on the left, both through a soft fade that never
+goes fully dark. It used to be 128 bars that each jumped a whole bar with every
+level, and then a curve through every level, and both read as choppy. Now each
+pair of levels is one point and the curve is a B-spline, so a syllable is one
+soft swell; the levels land in a ring that never shifts, and a playhead glides
+through it at the rate they arrive, a couple of levels behind the newest, so
+uneven arrivals never make it jump. Dictation keeps 128 levels so the overview's
+row has enough history to fill.
+
+Going into a bubble does not move anything: the row fades where it is while the
+bubble morphs out of the island with its mark already on it. It swells out of the
+island's edge, pulls away on a liquid neck (each bubble melts with a reach that is
+wide while it grows and short at rest) and snaps free; coming back is the same in
+reverse. Rows never jump: each keeps its own slot and slides when one above it
+leaves. Badges and rings fade, and so do the layers of a stack. A stack of cards
+shows at most two behind the front one, the nearer lighter and the further darker
+and underneath, cut with the card's own corners; resting the pointer on it unfolds
+every card straight down, revealed at full strength while the island follows the
+stack's height.
+
+Opening the overview carries everything with it. Rows in the big spot travel to
+their rows in the list. The notification cards move down under the clock before
+the clock fades in. Bubbles slide into the island's side and melt into it as it
+widens, and their rows fade in once the overview is open; closing buds them back
+out of the side. A music change's cover grows into the player's cover. The
+overview opens width first: the island reaches its full width in the first half
+of the way, then grows down, and its contents fade in only in the second half,
+so nothing is ever laid out wider than the island holding it. A row that has no
+place in the overview fades where it is rather than drifting through the player.
+Live rows sit right under the clock, the player under them and the notifications
+row last, so the rows travelling in from the capsule have the shortest way to
+go.
+
+### Hover
+
+Everything in the island answers the pointer. The capsule widens a little under
+it, leaning toward the dwell, and a bubble grows under it. In the overview a row
+lifts a plate behind itself, its mark grows and its chevron nudges right. The
+date next to the clock reads out in full, the song's words get a plate, and the
+transport and scrubber keep the hover they already had. A notification card
+lifts a plate and shows its close mark. Rows that do nothing get no plate, so a
+plate always means a click. A finished launch focuses its window, the dictation
+row opens the transcription history, and a waiting notification comes out when
+pressed.
 
 ### The kernel
 

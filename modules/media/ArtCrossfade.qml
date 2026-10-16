@@ -7,6 +7,7 @@ Item {
 
     property string source: ""
     property real radius: Appearance.rounding.normal
+    property real power: Appearance.rounding.power
     property bool blurred: false
     property real brightness: 0
     property real tame: 0
@@ -65,6 +66,7 @@ Item {
 
         SquircleImage {
             radius: root.radius
+            power: root.power
         }
     }
 

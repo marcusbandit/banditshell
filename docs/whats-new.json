@@ -1,8 +1,8 @@
 {
   "entries": [
     {
-      "id": "2026-10-15-3",
-      "date": "2026-10-15",
+      "id": "2026-10-16-3",
+      "date": "2026-10-16",
       "changes": [
         {
           "type": "ui",
@@ -73,6 +73,94 @@
           "type": "config",
           "severity": "minor",
           "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency, webSearch, contents, fallbacks, aliases and hotkeys, and polkit.agent. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-16-2",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The island now copes with several things at once. The newest one takes the big spot, and the rest become small bubbles beside it that keep their state: dictation, apps opening, and the same kind stacked into one bubble. A song change, a finished download or an update has its moment and then leaves on its own."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Notifications in the island stack up as cards behind the newest one. Each new one drops in from the top like a card dealt onto the pile, and the others step back. Resting the pointer on the stack spreads it into a list that stays on screen however long it gets; scroll it with the wheel or by dragging a card up or down. Flick a card sideways to dismiss it, click its close mark or right click it, or use clear all to send them all off at once."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The music card in the island takes its colours from the cover art, and a title too long to fit scrolls instead of wrapping. Clicking it turns the island itself into the media controller: its whole body grows into the card while the cover, the title, artist and album, the equalizer, the progress wave and the buttons each travel to their place, and a new island forms at the top. Resting the pointer on the music gets the controller ready, so the click starts the move straight away."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The dictation line in the island is one smooth curve that fades out at both ends."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The island's overview shows the weather under the date, from wttr.in every 30 minutes. weather.show set to false in config.json turns it off; weather.location, weather.units and weather.minutes set where, which units and how often."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "A pinned island no longer takes the keyboard, and the screen around it stays clickable while it is open."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "With the media controller open, the island still opens when the pointer rests on it, and clicks on it reach the island instead of closing the controller."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-16",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The hotkey sheet draws a whole keyboard: the function row, Print Screen and its neighbours, the Insert and Home block, the arrows as an inverted T and the numpad when anything on it is bound. ISO and ANSI are both drawn properly, and the ISO Enter is one stepped key instead of two boxes."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Dropdowns in Settings open again. Clicking one used to show an empty list."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings › Hotkey sheet › Board offers ISO, ANSI and Custom. Custom unlocks VIA layout and VIA keymap: Import lists the VIA files in your Downloads folder and nothing else, and Browse opens the system file picker. Every file you pick gets a short check, then a note under the row says this is it or this is not it, and why."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Try a sample board works again after you forget the sample, and an imported board has an open button so you can edit its file into your own board. The sheet follows your edits as you save."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Split is no longer offered under Board. If you had it chosen, the sheet keeps drawing it and the list shows it until you pick something else."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The list on the left of Settings folds down to its icons with the button at its bottom, and the settings beside it get the room. It stays folded until you unfold it."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-15-3",
+      "date": "2026-10-15",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When the shell restarts, it puts back what you had open: the launcher or any other panel, a pinned sidebar menu, quick controls, notifications, the island, the on-screen keyboard and the Files window in its folder. Settings reopens on the same page, with the same rows expanded, scrolled to the same place, and the calculator keeps its number. A reboot or logging out still starts you with nothing open."
         }
       ]
     },

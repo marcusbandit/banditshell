@@ -6,6 +6,7 @@ Item {
 
     property string source: ""
     property real radius: Appearance.rounding.normal
+    property real power: Appearance.rounding.power
     property int fillMode: Image.PreserveAspectCrop
 
     readonly property bool ready: image.status === Image.Ready
@@ -60,7 +61,7 @@ Item {
 
         property var source: image
         property real corner: Math.max(0, Math.min(root.radius, width / 2, height / 2))
-        property real power: Appearance.rounding.power
+        property real power: root.power
         property vector2d extent: Qt.vector2d(width, height)
         property vector4d crop: root.crop
 

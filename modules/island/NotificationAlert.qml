@@ -11,11 +11,28 @@ Item {
 
     required property var entry
 
-    property bool hovered: false
-
-    property real lift: 0
+    property real dragX: 0
+    property bool dragging: false
+    property bool flinging: false
 
     signal dismissed
+    signal scrolled(real by)
+    signal scrollEnded(real speed)
+
+    readonly property real shiftX: root.dragging ? root.dragX : slide.value
+    readonly property real shiftFade: Math.min(1, Math.abs(root.shiftX) / Math.max(1, root.width))
+
+    function fling(direction: int): void {
+        if (root.flinging)
+            return;
+        slide.value = root.shiftX;
+        root.dragging = false;
+        root.flinging = true;
+        slide.target = direction * root.width * 1.15;
+    }
+
+    readonly property bool hovered: pointer.hovered
+    readonly property bool handling: press.pressed || root.dragging || root.flinging
 
     readonly property var notification: root.entry?.notification ?? null
     readonly property bool live: root.entry?.live ?? false
@@ -26,176 +43,265 @@ Item {
 
     readonly property real pad: Appearance.padding.card
     readonly property real badgeSize: Appearance.sizes.notificationBadge
+    readonly property real closeSize: Appearance.font.line.small + Appearance.padding.small
 
-    readonly property string picture: root.entry?.picture ?? ""
-    readonly property string mark: root.entry?.mark ?? ""
+    implicitHeight: root.pad * 2 + Math.max(root.badgeSize, words.implicitHeight) + (actionRow.visible ? Appearance.padding.normal + actionRow.implicitHeight : 0)
 
-    implicitHeight: root.pad * 2 + Math.max(root.badgeSize, words.implicitHeight) + (actionRow.visible ? (Appearance.padding.normal + actionRow.implicitHeight) * reach.value : 0)
+    HoverHandler {
+        id: pointer
+    }
 
     Follow {
-        id: reach
+        id: slide
 
-        speed: Appearance.animation.revealSpeed
+        speed: Appearance.animation.trackSpeed
+        epsilon: 0.5
+
+        onValueChanged: if (root.flinging && Math.abs(slide.value) >= root.width) {
+            root.flinging = false;
+            root.dismissed();
+        }
+    }
+
+    Follow {
+        id: glow
+
+        speed: Appearance.animation.revealSpeed * 1.5
         epsilon: 0.005
-        target: root.hovered && root.actions.length > 0 ? 1 : 0
+        target: root.hovered && !press.moved ? 1 : 0
+    }
+
+    Item {
+        id: body
+
+        x: root.shiftX
+        width: root.width
+        height: root.height
+        opacity: 1 - root.shiftFade * 0.9
+
+        SquircleRect {
+            anchors.fill: parent
+            anchors.margins: Appearance.padding.small
+            color: press.pressed && !press.moved ? Appearance.colour.fillStrong : Appearance.colour.fill
+            opacity: glow.value
+            visible: glow.value > 0.01
+        }
+
+        NotificationMark {
+            id: badge
+
+            x: root.pad
+            y: root.pad
+            size: root.badgeSize
+            entry: root.entry
+            scale: 1 + 0.06 * glow.value
+        }
+
+        Column {
+            id: words
+
+            x: badge.x + badge.width + Appearance.padding.normal
+            y: root.pad + Math.max(0, (root.badgeSize - Math.min(root.badgeSize, implicitHeight)) / 2)
+            width: root.width - x - root.pad - root.closeSize - Appearance.padding.small
+            spacing: Appearance.padding.small / 2
+
+            StyledText {
+                width: parent.width
+                visible: text !== ""
+                text: root.entry?.appName ?? ""
+                color: root.urgent ? Appearance.colour.alarm : Appearance.colour.textFaint
+                elide: Text.ElideRight
+            }
+
+            StyledText {
+                width: parent.width
+                visible: text !== ""
+                text: root.entry?.summary || (!root.entry?.body ? "(no message)" : "")
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+            }
+
+            StyledText {
+                width: parent.width
+                visible: text !== ""
+                text: root.entry?.brief || root.entry?.body || ""
+                textFormat: Text.StyledText
+                color: Appearance.colour.textDim
+                wrapMode: Text.Wrap
+                maximumLineCount: 2
+                elide: Text.ElideRight
+            }
+
+            Item {
+                width: parent.width
+                height: Appearance.padding.small + Appearance.font.stem * 2
+                visible: (root.entry?.progress ?? -1) >= 0
+
+                Rectangle {
+                    y: Appearance.padding.small
+                    width: parent.width
+                    height: Appearance.font.stem * 2
+                    radius: height / 2
+                    color: Appearance.colour.fillStrong
+                }
+
+                Rectangle {
+                    y: Appearance.padding.small
+                    width: parent.width * Math.max(0, root.entry?.progress ?? 0) / 100
+                    height: Appearance.font.stem * 2
+                    radius: height / 2
+                    color: Appearance.colour.accent
+                }
+            }
+        }
     }
 
     MouseArea {
         id: press
 
+        property real fromX: 0
         property real fromY: 0
-        property bool moved: false
-
-        readonly property real travel: Math.max(1, root.implicitHeight * 0.6)
+        property real lastY: 0
+        property string axis: ""
+        property var trail: []
+        readonly property bool moved: press.axis !== ""
 
         anchors.fill: parent
+        acceptedButtons: Qt.LeftButton | Qt.RightButton
         cursorShape: press.moved ? Qt.ClosedHandCursor : Qt.PointingHandCursor
         preventStealing: press.moved
 
+        function reset(): void {
+            press.axis = "";
+            press.trail = [];
+        }
+
         onPressed: mouse => {
+            press.fromX = mouse.x;
             press.fromY = mouse.y;
-            press.moved = false;
+            press.lastY = mouse.y;
+            press.reset();
         }
 
         onPositionChanged: mouse => {
-            const up = press.fromY - mouse.y;
-            if (!press.moved && up >= Config.values.control.dragThreshold)
-                press.moved = true;
-            if (press.moved)
-                root.lift = Math.max(0, Math.min(1, up / press.travel));
+            if (press.pressedButtons !== Qt.LeftButton)
+                return;
+            const dx = mouse.x - press.fromX;
+            const dy = mouse.y - press.fromY;
+            const threshold = Config.values.control.dragThreshold;
+            if (!press.axis) {
+                if (Math.abs(dx) >= threshold && Math.abs(dx) > Math.abs(dy))
+                    press.axis = "x";
+                else if (Math.abs(dy) >= threshold)
+                    press.axis = "y";
+            }
+            if (press.axis)
+                press.trail = [...press.trail.filter(p => Date.now() - p.t < 120), {
+                        x: mouse.x,
+                        y: mouse.y,
+                        t: Date.now()
+                    }];
+            if (press.axis === "x") {
+                root.dragging = true;
+                root.dragX = dx;
+            } else if (press.axis === "y") {
+                root.scrolled(mouse.y - press.lastY);
+            }
+            press.lastY = mouse.y;
         }
 
-        onReleased: {
+        onReleased: mouse => {
             if (!press.moved) {
-                if (root.primary)
-                    root.primary.invoke();
-                root.dismissed();
-            } else if (root.lift >= Config.values.control.pullCommit) {
-                root.dismissed();
+                if (mouse.button === Qt.RightButton) {
+                    root.fling(1);
+                } else {
+                    if (root.primary)
+                        root.primary.invoke();
+                    root.dismissed();
+                }
+            } else if (press.axis === "x") {
+                const first = press.trail[0];
+                const last = press.trail[press.trail.length - 1];
+                const speed = first && last && last.t > first.t && Date.now() - last.t < 80 ? (last.x - first.x) / (last.t - first.t) : 0;
+                const thrown = Math.abs(speed) > 0.6 && Math.sign(speed) === Math.sign(root.dragX);
+                if (Math.abs(root.dragX) > root.width / 3 || thrown) {
+                    root.fling(Math.sign(root.dragX) || 1);
+                } else {
+                    slide.value = root.dragX;
+                    root.dragging = false;
+                    slide.target = 0;
+                }
+            } else {
+                const first = press.trail[0];
+                const last = press.trail[press.trail.length - 1];
+                root.scrollEnded(first && last && last.t > first.t && Date.now() - last.t < 80 ? (last.y - first.y) / (last.t - first.t) : 0);
             }
-            root.lift = 0;
-            press.moved = false;
+            press.reset();
         }
 
         onCanceled: {
-            root.lift = 0;
-            press.moved = false;
+            if (root.dragging) {
+                slide.value = root.dragX;
+                root.dragging = false;
+                slide.target = 0;
+            }
+            if (press.axis === "y")
+                root.scrollEnded(0);
+            press.reset();
         }
     }
 
     Item {
-        id: badge
-
-        x: root.pad
-        y: root.pad
-        width: root.badgeSize
-        height: root.badgeSize
-
-        readonly property bool pictured: root.picture !== "" && art.ready
-        readonly property bool marked: root.mark !== "" && sign.ready
+        x: root.shiftX + root.width - root.pad - width + Appearance.padding.small / 2
+        y: root.pad - Appearance.padding.small / 2
+        width: root.closeSize
+        height: root.closeSize
+        opacity: glow.value * body.opacity
+        visible: opacity > 0.01
 
         SquircleRect {
             anchors.fill: parent
-            radius: Appearance.rounding.normal
-            color: Appearance.colour.fillStrong
-            visible: !badge.pictured && !badge.marked
+            radius: width / 2
+            cornerPower: 2
+            color: close.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
+            scale: close.pressed ? Appearance.press.ring : close.containsMouse ? Appearance.press.ringHover : 1
+
+            Behavior on scale {
+                NumberAnimation {
+                    duration: Appearance.animation.fast
+                    easing.type: Easing.OutCubic
+                }
+            }
         }
 
         Icon {
             anchors.centerIn: parent
-            visible: !badge.pictured && !badge.marked
-            size: Math.round(badge.width / 2)
-            name: root.urgent ? "priority_high" : "notifications"
-            fill: 1
-            color: root.urgent ? Appearance.colour.alarm : Appearance.colour.textDim
+            name: "close"
+            size: Appearance.font.size.small
+            color: close.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
         }
 
-        SquircleImage {
-            id: sign
+        MouseArea {
+            id: close
 
             anchors.fill: parent
-            source: root.mark
-            fillMode: Image.PreserveAspectCrop
-            radius: Appearance.rounding.normal
-            visible: !badge.pictured
-        }
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
 
-        SquircleImage {
-            id: art
-
-            anchors.fill: parent
-            source: root.picture
-            fillMode: Image.PreserveAspectCrop
-            radius: Appearance.rounding.normal
-        }
-    }
-
-    Column {
-        id: words
-
-        x: badge.x + badge.width + Appearance.padding.normal
-        y: root.pad + Math.max(0, (root.badgeSize - Math.min(root.badgeSize, implicitHeight)) / 2)
-        width: root.width - x - root.pad
-        spacing: Appearance.padding.small / 2
-
-        StyledText {
-            width: parent.width
-            visible: text !== ""
-            text: root.entry?.appName ?? ""
-            color: root.urgent ? Appearance.colour.alarm : Appearance.colour.textFaint
-            elide: Text.ElideRight
-        }
-
-        StyledText {
-            width: parent.width
-            visible: text !== ""
-            text: root.entry?.summary || (!root.entry?.body ? "(no message)" : "")
-            wrapMode: Text.Wrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-        }
-
-        StyledText {
-            width: parent.width
-            visible: text !== ""
-            text: root.entry?.brief || root.entry?.body || ""
-            textFormat: Text.StyledText
-            color: Appearance.colour.textDim
-            wrapMode: Text.Wrap
-            maximumLineCount: 2
-            elide: Text.ElideRight
-        }
-
-        Item {
-            width: parent.width
-            height: Appearance.padding.small + Appearance.font.stem * 2
-            visible: (root.entry?.progress ?? -1) >= 0
-
-            Rectangle {
-                y: Appearance.padding.small
-                width: parent.width
-                height: Appearance.font.stem * 2
-                color: Appearance.colour.fillStrong
-            }
-
-            Rectangle {
-                y: Appearance.padding.small
-                width: parent.width * Math.max(0, root.entry?.progress ?? 0) / 100
-                height: Appearance.font.stem * 2
-                color: Appearance.colour.accent
-            }
+            onClicked: root.fling(1)
         }
     }
 
     Flow {
         id: actionRow
 
-        x: words.x
-        y: root.pad + Math.max(root.badgeSize, words.implicitHeight) + Appearance.padding.normal
-        width: words.width
+        x: root.shiftX + words.x
+        y: body.y + root.pad + Math.max(root.badgeSize, words.implicitHeight) + Appearance.padding.normal
+        width: words.width + root.closeSize + Appearance.padding.small
         spacing: Appearance.padding.small
         visible: root.actions.length > 0
-        opacity: reach.value
+        opacity: body.opacity
 
         Repeater {
             model: root.actions

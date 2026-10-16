@@ -17,8 +17,11 @@ Singleton {
         })
 
     readonly property var uiDefaults: ({
-            wallTarget: "everywhere"
+            wallTarget: "everywhere",
+            railFolded: false
         })
+
+    readonly property bool railFolded: root.ui.railFolded ?? root.uiDefaults.railFolded
 
     property var planned: ({})
     property var ui: ({})
@@ -1932,6 +1935,13 @@ Singleton {
     function save(): void {
         if (root.loaded)
             saver.restart();
+    }
+
+    function foldRail(folded: bool): void {
+        root.ui = Object.assign({}, root.ui, {
+            railFolded: folded
+        });
+        root.save();
     }
 
     function adoptMode(): void {

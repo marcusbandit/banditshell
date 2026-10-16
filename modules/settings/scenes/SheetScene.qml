@@ -1,19 +1,21 @@
 import QtQuick
-import Quickshell.Io
 import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
 import "../boards.js" as Boards
+import "../../../services/keyboards.js" as KeyboardsJs
 
 Item {
     id: root
 
     readonly property real stageHeight: 240
     readonly property string shape: SettingsState.v("sheetKeyboard")
-    property var imported: null
+    readonly property bool fromFile: root.shape === "file" && !!Keyboards.board
 
-    readonly property var keys: root.shape === "file" && root.imported ? Boards.withLegends(root.imported.keys, Keyboards.legends) : Boards.board(root.shape === "file" ? Keyboards.shape : root.shape)
+    readonly property var sections: root.fromFile ? Keyboards.board.sections : KeyboardsJs.templateSections(root.shape === "file" ? Keyboards.shape : KeyboardsJs.shapeNamed(root.shape)).filter(s => s.id !== "numpad")
+
+    readonly property var keys: Boards.fromSheet(KeyboardsJs.flatten(root.sections))
 
     readonly property var hot: {
         const out = {};
@@ -27,19 +29,6 @@ Item {
         return out;
     }
 
-    FileView {
-        path: Keyboards.path
-        printErrors: false
-        onLoaded: {
-            try {
-                root.imported = Boards.readVia(text());
-            } catch (e) {
-                root.imported = null;
-            }
-        }
-        onLoadFailed: root.imported = null
-    }
-
     KeyboardBoard {
         x: 16
         y: 20
@@ -50,6 +39,6 @@ Item {
     }
 
     SceneCaption {
-        text: root.shape === "file" && root.imported ? `${root.imported.name} · ${root.keys.length} keys` : `${root.shape === "file" ? `no file yet · ${Keyboards.shape}` : `${root.shape} board`} · lit keys are bound`
+        text: root.fromFile ? `${Keyboards.board?.name || Keyboards.stored.replace(/\.json$/, "")} · ${Keyboards.keyCount} keys` : `${root.shape === "file" ? `no file yet · ${Keyboards.shape}` : `${root.shape} board`} · lit keys are bound`
     }
 }

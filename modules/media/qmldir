@@ -1,5 +1,6 @@
 module qs.modules.media
 ArtCrossfade 1.0 ArtCrossfade.qml
+ArtGlow 1.0 ArtGlow.qml
 Equalizer 1.0 Equalizer.qml
 LyricBlock 1.0 LyricBlock.qml
 LyricLine 1.0 LyricLine.qml

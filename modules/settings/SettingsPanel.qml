@@ -27,7 +27,7 @@ FocusScope {
     readonly property real spare: root.room - 24 - root.baseWidth
     readonly property bool spread: root.arranging && !root.compact && root.spare >= 320
     readonly property bool fold: root.arranging && !root.spread
-    readonly property real foldHeight: Math.round(Math.max(300, Math.min(460, (root.compact ? root.baseWidth - root.railWidth - root.gutter : root.baseWidth - Appearance.sizes.settingsRail - root.paneWidth - 96) * 0.62)))
+    readonly property real foldHeight: Math.round(Math.max(300, Math.min(460, (root.compact ? root.baseWidth - root.railWidth - root.gutter : root.baseWidth - root.railWidth - root.paneWidth - 96) * 0.62)))
 
     readonly property real panelWidth: root.baseWidth + (root.spread ? Math.min(560, root.spare) : 0)
     readonly property real panelHeight: root.fold ? Math.max(root.baseHeight, Math.min(root.tallest, root.baseHeight + root.foldHeight + root.gutter)) : root.baseHeight
@@ -38,10 +38,12 @@ FocusScope {
 
     readonly property real padding: root.tiny ? Appearance.padding.normal : Appearance.padding.large
     readonly property real gutter: root.tiny ? Appearance.padding.normal : Appearance.sizes.settingsGutter
-    readonly property real railWidth: root.tiny ? 52 : Appearance.sizes.settingsRail
+    readonly property real railSlim: 52
+    readonly property bool railFolded: root.tiny || SettingsState.railFolded
+    readonly property real railWidth: root.railFolded ? root.railSlim : Appearance.sizes.settingsRail
     readonly property real paneWidth: Appearance.sizes.settingsPane
 
-    readonly property bool compact: root.baseWidth - 48 - Appearance.sizes.settingsRail - root.paneWidth - 64 < 480
+    readonly property bool compact: root.baseWidth - 48 - root.railWidth - root.paneWidth - 64 < 480
     readonly property bool tiny: root.baseWidth < 640
 
     readonly property var blobs: {
@@ -87,6 +89,7 @@ FocusScope {
         if (root.shown) {
             root.claim();
             grow.snap();
+            railGrow.snap();
             SettingsState.wake();
             Qt.callLater(root.forceActiveFocus);
         } else {
@@ -114,6 +117,7 @@ FocusScope {
         if (root.shown) {
             root.claim();
             grow.snap();
+            railGrow.snap();
             SettingsState.wake();
             Qt.callLater(root.forceActiveFocus);
         }
@@ -140,6 +144,14 @@ FocusScope {
         target: root.shown && !root.yielded ? 1 : 0
         speed: Appearance.animation.revealSpeed
         epsilon: 0.002
+    }
+
+    Follow {
+        id: railGrow
+
+        target: root.railWidth
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.5
     }
 
     QtObject {
@@ -208,9 +220,11 @@ FocusScope {
 
                     x: root.padding
                     y: root.padding
-                    width: root.railWidth
+                    width: railGrow.value
                     height: page.height - root.padding * 2
-                    tiny: root.tiny
+                    tiny: root.tiny || root.railFolded && railGrow.value < root.railSlim + 1
+                    foldable: !root.tiny
+                    folded: root.railFolded
                 }
 
                 SettingsContent {

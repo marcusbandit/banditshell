@@ -3,6 +3,7 @@ BatteryPreview 1.0 BatteryPreview.qml
 CalculatorPreview 1.0 CalculatorPreview.qml
 FilesPreview 1.0 FilesPreview.qml
 GalleryPreview 1.0 GalleryPreview.qml
+IslandPreview 1.0 IslandPreview.qml
 LockPreview 1.0 LockPreview.qml
 NotificationPreview 1.0 NotificationPreview.qml
 QrPreview 1.0 QrPreview.qml
