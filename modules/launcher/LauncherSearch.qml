@@ -928,6 +928,7 @@ QtObject {
             kind: "window",
             address: Hypr.windowAddress(t.address),
             label: title,
+            workspace: t.workspace?.name ?? "",
             detail: `${app} · workspace ${t.workspace?.name ?? ""}`,
             iconSource: Apps.iconSourceFor([cls]),
             icon: "web_asset",
@@ -1496,18 +1497,31 @@ QtObject {
                 }
             ];
         case "window":
-            return [
-                {
-                    icon: "open_in_new",
-                    label: "Switch to",
-                    run: () => root.activate(row)
-                },
-                {
-                    icon: "close",
-                    label: "Close",
-                    run: () => Hypr.closeWindow(row.address)
-                }
-            ];
+            {
+                const here = Hyprland.focusedMonitor?.activeWorkspace;
+                return [
+                    {
+                        icon: "open_in_new",
+                        label: "Switch to",
+                        run: () => root.activate(row)
+                    }
+                ].concat(!here || here.name === row.workspace ? [] : [
+                        {
+                            icon: "move_down",
+                            label: "Bring here",
+                            run: () => root.leave(() => {
+                                Hypr.moveToWorkspace(row.address, String(here.id));
+                                Hypr.focusAddress(row.address);
+                            })
+                        }
+                    ], [
+                    {
+                        icon: "close",
+                        label: "Close",
+                        run: () => Hypr.closeWindow(row.address)
+                    }
+                ]);
+            }
         case "process":
             return [
                 {
