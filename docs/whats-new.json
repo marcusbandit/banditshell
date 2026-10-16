@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-5",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A fullscreen window now gets its whole monitor. The sidebar, the island and any panels on that monitor step aside, and only the thin line round the screen's edge stays, with its corners rounded as usual. The frame melts out to that line as the window grows and comes back the same way when it leaves fullscreen. Maximized windows and your other monitors are not affected."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Over a fullscreen window the shell no longer catches clicks at the screen's edges, and a panel shortcut no longer opens a launcher you cannot see that swallows your typing. On that monitor the shortcut now does nothing until the window leaves fullscreen."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16-3",
       "date": "2026-10-16",
       "changes": [
