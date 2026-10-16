@@ -147,7 +147,7 @@ Item {
             anchors.top: root.inlineDetail ? undefined : title.bottom
             anchors.verticalCenter: root.inlineDetail ? parent.verticalCenter : undefined
 
-            width: root.inlineDetail ? Math.min(implicitWidth, parent.width * 0.4) : parent.width
+            width: root.inlineDetail ? Math.min(implicitWidth, Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large)) : parent.width
             horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft
 
             visible: !!root.detail

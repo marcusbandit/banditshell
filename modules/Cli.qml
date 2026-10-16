@@ -210,7 +210,13 @@ Scope {
     Component {
         id: rowRunner
 
-        LauncherSearch {}
+        LauncherSearch {
+            onLaunch: what => {
+                what();
+                Hypr.claimNextWindow();
+            }
+            onLeave: what => what()
+        }
     }
 
     IpcHandler {

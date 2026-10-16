@@ -997,6 +997,8 @@ banditshell/
 │   │   │                        as usages, so typing bandit or banditshell in
 │   │   │                        the launcher runs any command and completes
 │   │   │                        the next word the way the terminal's Tab does
+│   │   ├── sources/             one file per newer kind of result, plugged into
+│   │   │                        LauncherSearch's `sources` list (section 19)
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
@@ -3606,6 +3608,44 @@ That pill tracked the focused window and sat on top of whatever was there; the
 island sits at the screen's centre and is click-through while dictating, so
 there is nothing to tuck away from. The island hangs under the stream band the
 way the notch did.
+
+## 19. Launcher sources
+
+`modules/launcher/LauncherSearch.qml` grew to sixteen hundred lines because
+every kind of result lived in it. New kinds of result go in their own file
+under `modules/launcher/sources/` instead, and LauncherSearch lists them in
+`sources`. A source is a plain QtObject; every member is optional except
+`search`:
+
+- `required property var search` is the LauncherSearch hub. Read
+  `search.text` (the trimmed query), `search.query`, `search.screenName`,
+  `search.windowTarget()`. Call `search.launch(fn)` to start something and
+  close the launcher, `search.leave(fn)` to close it first and then run `fn`,
+  `search.retype(text)` to replace what is typed.
+- `groups`: an array of `{ key, title, items }`. Each item is a row: `key`,
+  `kind`, `label`, `detail`, `icon` or `iconSource`, `score` (Infinity puts
+  it first, -Infinity last), and `toggle` for a switch. Groups are ordered by
+  their best score, like the built-in ones.
+- `kinds`: the row kinds this source owns. The hub hands `activate(row)`,
+  `actionsFor(row)` and `complete(row)` for those kinds to this source.
+  `actionsFor` returns `{ icon, label, short?, run, tucked? }`; the first is
+  what Enter does, the rest become row buttons, and tucked ones sit under
+  More. `complete` is Tab; return true when it handled it.
+- `commands`: entries for the shared command list, `{ id, icon, label,
+  words, detail?, toggle?, stay?, confirm?, run }`. These get aliases and
+  hotkeys for free.
+- `rowById(id)`: rebuild one of this source's rows from its key, so its
+  rows can take aliases and hotkeys too.
+- `intent`: true when the query is clearly meant for this source, which
+  stops the calculator from answering it.
+- `caps`: `{ groupKey: n }` to show more or fewer rows than the default.
+- `phrases`: `{ head, picks }` entries Tab completion offers, like
+  `{ head: "emoji ", picks: ["smile", "heart"] }`.
+
+A hotkey runs a row through a LauncherSearch that the CLI makes and throws
+away at once, so anything that outlives the call (a Process, a timer) belongs
+in a singleton service, not in the source. `FallbackSource.qml` is the
+smallest example.
 
 ---
 

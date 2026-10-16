@@ -535,7 +535,7 @@ function tileSet() {
     const add = (id, label, words, cols, rows, col, row, span) => out.push({
             id: id,
             label: label,
-            words: `${words} snap tile window`,
+            words: `${words} snap window`,
             cols: cols,
             rows: rows,
             col: col,
@@ -640,12 +640,12 @@ var PHRASES = [
     }
 ];
 
-function suggestions(text, found) {
+function suggestions(text, found, more) {
     const t = String(text || "").replace(/^\s+/, "").toLowerCase();
     if (t.length < 2)
         return [];
     const out = [];
-    for (const p of PHRASES) {
+    for (const p of PHRASES.concat(more || [])) {
         const picks = typeof p.picks === "string" ? (found && found[p.picks]) || [] : p.picks;
         if (t.indexOf(p.head) === 0) {
             const rest = t.slice(p.head.length);

@@ -7,6 +7,7 @@ import Quickshell.Io
 import qs.config
 import qs.services
 import qs.modules.settings
+import qs.modules.launcher.sources
 import "search.js" as Search
 import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
@@ -24,6 +25,24 @@ QtObject {
     signal launch(var what)
     signal leave(var what)
     signal retype(string text)
+
+    readonly property list<QtObject> sources: [
+        FallbackSource {
+            search: root
+        }
+    ]
+
+    readonly property var sourceGroups: root.sources.reduce((out, s) => out.concat(s.groups ?? []), [])
+
+    readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
+
+    readonly property bool sourceIntent: root.sources.some(s => !!s.intent)
+
+    readonly property var limits: root.sources.reduce((out, s) => Object.assign(out, s.caps ?? {}), Object.assign({}, root.caps))
+
+    function sourceOf(row: var): var {
+        return row?.kind ? root.sources.find(s => (s.kinds ?? []).includes(row.kind)) ?? null : null;
+    }
 
     readonly property var caps: ({
             apps: 8,
@@ -51,7 +70,7 @@ QtObject {
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: root.cliLine !== null || !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || !!root.streamAsk && root.streamRows.length > 0
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || !!root.streamAsk && root.streamRows.length > 0
 
     property bool started: false
 
@@ -329,7 +348,7 @@ QtObject {
             stay: true,
             run: () => Notifications.clear()
         }
-    ].concat(root.windowCommands, root.layoutCommands, Files.drives.map(d => ({
+    ].concat(root.windowCommands, root.layoutCommands, root.sourceCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
                 icon: "eject",
                 label: `Eject ${d.name}`,
@@ -419,6 +438,7 @@ QtObject {
                 icon: floating ? "grid_view" : "picture_in_picture",
                 label: floating ? "Tile window" : "Float window",
                 words: "float floating tile tiled unfloat window",
+                lead: /^(?:un)?(?:float(?:ing)?|tile[sd]?|tiling)(?: (?:the )?window)?$/i,
                 run: () => Hypr.floatWindow(root.windowTarget())
             },
             {
@@ -599,7 +619,7 @@ QtObject {
             kind: "app",
             entry: entry,
             label: entry.name ?? "",
-            detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || entry.comment || "",
+            detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || (entry.comment ?? "").replace(/^play this game on steam\.?$/i, ""),
             armed: arming,
             iconSource: entry.icon ? Quickshell.iconPath(entry.icon, true) : "",
             icon: "apps",
@@ -664,7 +684,7 @@ QtObject {
     readonly property int awakeFor: Search.awakeAsk(root.text)
 
     function streamRow(node: var, level: int): var {
-        const name = Audio.streamLabel(node);
+        const name = Audio.streamLabel(node).replace(/\.(?:x86_64|x86|x64|exe|bin|appimage)$/i, "");
         const binary = Audio.streamBinary(node);
         const pct = Math.round(Audio.streamVolume(node) * 100);
         return {
@@ -735,11 +755,16 @@ QtObject {
                 return hit ? root.settingRow(hit) : null;
             }
         }
+        for (const s of root.sources) {
+            const row = s.rowById?.(id) ?? null;
+            if (row)
+                return row;
+        }
         return null;
     }
 
     function runnable(row: var): bool {
-        return ["app", "command", "setting"].includes(row?.kind) && row.command?.id !== "volumeset";
+        return (["app", "command", "setting"].includes(row?.kind) || !!root.sourceOf(row)?.rowById) && row.command?.id !== "volumeset";
     }
 
     function keyable(row: var): bool {
@@ -769,7 +794,12 @@ QtObject {
                 Settings.openAt(root.screenName, row.hit.page.id, row.hit.row.k ?? "");
             break;
         default:
-            return "";
+            {
+                const owner = root.sourceOf(row);
+                if (!owner)
+                    return "";
+                owner.activate(row);
+            }
         }
         return row.kind === "app" ? row.entry.name : row.label;
     }
@@ -912,8 +942,9 @@ QtObject {
             playing: Audio.playing.map(n => Audio.streamLabel(n)),
             processes: [...new Set(root.processes.map(p => p.name))]
         };
-        const inside = Search.PHRASES.some(p => typed.toLowerCase().indexOf(p.head) === 0);
-        return Search.suggestions(typed, found).slice(0, root.caps.suggestions).map(text => {
+        const more = root.sources.reduce((out, s) => out.concat(s.phrases ?? []), []);
+        const inside = Search.PHRASES.concat(more).some(p => typed.toLowerCase().indexOf(p.head) === 0);
+        return Search.suggestions(typed, found, more).slice(0, root.caps.suggestions).map(text => {
             const preview = Calculator.answerFor(text);
             return {
                 key: `suggest:${text}`,
@@ -926,16 +957,6 @@ QtObject {
             };
         });
     }
-
-    readonly property var fallbackRows: Search.fallbackRows(Config.values.launcher.fallbacks, root.text, Config.values.launcher.webSearch).map(f => ({
-                key: `fallback:${f.id}`,
-                kind: "fallback",
-                fallback: f,
-                label: f.label,
-                detail: "",
-                icon: f.icon,
-                score: -Infinity
-            }))
 
     readonly property var pathRows: root.path && FileSearch.listedDir === root.path.dir ? Search.pathRows(FileSearch.entries, root.path, FileSearch.hidden, Files.home).map(f => root.fileRow(f, "path")) : []
 
@@ -1284,12 +1305,8 @@ QtObject {
             key: "contents",
             title: "Inside files",
             items: root.contentRows
-        }, {
-            key: "fallbacks",
-            title: "Elsewhere",
-            items: root.fallbackRows
-        });
-        return Search.arrange(groups, root.caps);
+        }, ...root.sourceGroups);
+        return Search.arrange(groups, root.limits);
     }
 
     function openSetting(row: var): void {
@@ -1298,6 +1315,11 @@ QtObject {
     }
 
     function activate(row: var): void {
+        const owner = root.sourceOf(row);
+        if (owner) {
+            owner.activate(row);
+            return;
+        }
         switch (row?.kind) {
         case "app":
             if (root.armed === `uninstall:${row.entry.id}`) {
@@ -1380,15 +1402,6 @@ QtObject {
         case "output":
             root.leave(() => Files.copyText(row.label));
             return;
-        case "fallback":
-            if (row.fallback.url) {
-                const url = row.fallback.url;
-                root.launch(() => Quickshell.execDetached(["xdg-open", url]));
-            } else {
-                const typed = root.text.replace(/'/g, "'\\''");
-                root.launch(() => Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `(eval '${typed}')\nexec "\${SHELL:-sh}"`]));
-            }
-            return;
         }
     }
 
@@ -1465,6 +1478,9 @@ QtObject {
     }
 
     function complete(row: var): bool {
+        const owner = root.sourceOf(row);
+        if (owner)
+            return !!owner.complete?.(row);
         if (row?.kind === "suggest") {
             root.retype(row.complete);
             return true;
@@ -1476,6 +1492,9 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        const owner = root.sourceOf(row);
+        if (owner)
+            return owner.actionsFor?.(row) ?? [];
         switch (row?.kind) {
         case "file":
             return [
@@ -1605,7 +1624,6 @@ QtObject {
         case "timer":
         case "reminder":
         case "command":
-        case "fallback":
             return [
                 {
                     icon: row.icon,

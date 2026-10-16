@@ -1,0 +1,2 @@
+module qs.modules.launcher.sources
+FallbackSource 1.0 FallbackSource.qml
