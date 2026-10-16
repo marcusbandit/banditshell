@@ -305,6 +305,15 @@ Singleton {
                     videos: true
                 },
 
+                systemControls: {
+                    brightness: true,
+                    lowestBrightness: 5,
+                    wifi: true,
+                    vpn: true,
+                    recording: true,
+                    recordingFolder: ""
+                },
+
                 hidden: ({}),
 
                 starred: ({}),

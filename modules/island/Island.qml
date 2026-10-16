@@ -42,6 +42,11 @@ Item {
                 key: "dictation",
                 kind: "dictation"
             });
+        if (root.focused && ScreenRecorder.recording)
+            out.push({
+                key: "recording",
+                kind: "recording"
+            });
         if (root.focused)
             for (const rec of Launching.shown.slice(-root.launchMax))
                 out.push({
@@ -241,7 +246,7 @@ Item {
     readonly property Item stage: scene
 
     function pressable(activity: var): bool {
-        return ["music", "download", "update", "kernel", "restart", "notification"].includes(activity?.kind ?? "");
+        return ["music", "download", "update", "kernel", "restart", "notification", "recording"].includes(activity?.kind ?? "");
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))

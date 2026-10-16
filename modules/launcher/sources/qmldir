@@ -1,5 +1,6 @@
 module qs.modules.launcher.sources
 AskSource 1.0 AskSource.qml
+BrightnessSource 1.0 BrightnessSource.qml
 BrowserSource 1.0 BrowserSource.qml
 ClipboardSource 1.0 ClipboardSource.qml
 ColourSource 1.0 ColourSource.qml
@@ -16,6 +17,7 @@ PackageSource 1.0 PackageSource.qml
 PomodoroSource 1.0 PomodoroSource.qml
 ProjectSource 1.0 ProjectSource.qml
 QuicklinkSource 1.0 QuicklinkSource.qml
+RecordSource 1.0 RecordSource.qml
 RewriteSource 1.0 RewriteSource.qml
 ScriptSource 1.0 ScriptSource.qml
 SnippetSource 1.0 SnippetSource.qml
@@ -23,4 +25,6 @@ SoundSource 1.0 SoundSource.qml
 SpeedtestSource 1.0 SpeedtestSource.qml
 TranslateSource 1.0 TranslateSource.qml
 VideoDownloadSource 1.0 VideoDownloadSource.qml
+VpnSource 1.0 VpnSource.qml
+WifiSource 1.0 WifiSource.qml
 WorkshopSource 1.0 WorkshopSource.qml

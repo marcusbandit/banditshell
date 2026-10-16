@@ -437,6 +437,18 @@ const PAGES_SOURCE = {
                 { n: [], icon: "movie", label: "Video downloads", k: "onlineVideos", kind: "toggle", cfg: "launcher.online.videos", kw: "download video audio youtube yt-dlp",
                     why: "Paste a video link to save the video or its sound to your Downloads folder with yt-dlp." }
             ] },
+            { t: "System controls", rows: [
+                { n: [], icon: "brightness_medium", label: "Brightness", k: "systemBrightness", kind: "toggle", cfg: "launcher.systemControls.brightness", kw: "brightness backlight dim brighter dimmer screen monitor ddcutil",
+                    why: "Type brightness for a slider per screen, brightness 40 to set them all, or brighter and dimmer. Monitors need ddcutil." },
+                { n: [], icon: "brightness_low", label: "Lowest brightness", k: "systemLowestBrightness", kind: "step", min: 1, max: 30, unit: "%", cfg: "launcher.systemControls.lowestBrightness", dis: s => !s.v("systemBrightness"), kw: "brightness minimum lowest floor black" },
+                { n: [], icon: "wifi", label: "Wi-Fi networks", k: "systemWifi", kind: "toggle", cfg: "launcher.systemControls.wifi", kw: "wifi wi-fi wireless networks join password",
+                    why: "Type wifi to see every network in range. Joining a locked one asks for its password on the shell's own card." },
+                { n: [], icon: "vpn_lock", label: "VPN and Tailscale", k: "systemVpn", kind: "toggle", cfg: "launcher.systemControls.vpn", kw: "vpn wireguard tailscale exit node tunnel",
+                    why: "Type vpn for your saved VPN connections, or tailscale for its status, devices and exit nodes." },
+                { n: [], icon: "screen_record", label: "Screen recording", k: "systemRecording", kind: "toggle", cfg: "launcher.systemControls.recording", kw: "record screen recording video capture wf-recorder",
+                    why: "Type record screen, record area or record window. Sound is only recorded when you say record screen with sound." },
+                { n: [], icon: "movie", label: "Recordings folder", k: "systemRecordingFolder", kind: "text", mono: true, cfg: "launcher.systemControls.recordingFolder", placeholder: "~/Videos/Recordings", dis: s => !s.v("systemRecording"), kw: "recordings folder videos save location" }
+            ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
                 { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }

@@ -17,7 +17,7 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var source: Polkit.active ? Polkit : Keyring
+    readonly property var source: Polkit.active ? Polkit : PasswordRequest.active ? PasswordRequest : Keyring
 
     readonly property bool open: root.source.active && root.source.screenName === root.screenName
 
@@ -177,7 +177,7 @@ Item {
                     onAccepted: secret => root.source.submit(secret)
                     onCancelled: root.source.refuse()
 
-                    readonly property int asked: Keyring.asked + Polkit.asked
+                    readonly property int asked: Keyring.asked + Polkit.asked + PasswordRequest.asked
                     onAskedChanged: field.clear()
                 }
 
