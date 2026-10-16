@@ -711,6 +711,9 @@ banditshell/
 │   │                            holds one for less time than Lock does: the
 │   │                            secret goes straight down the helper's stdin and
 │   │                            is never stored
+│   ├── DarkMode.qml             whether apps are asked for dark: the freedesktop
+│   │                            colour-scheme key, read and watched with
+│   │                            gsettings, which portal-aware apps follow
 │   ├── Polkit.qml               the shell as the polkit agent, so pkexec (an
 │   │                            install, an uninstall, the charge limit) asks
 │   │                            in the same card as the keyring. Only one agent
@@ -966,7 +969,11 @@ banditshell/
 │   │   │                        windows, devices, timers, reminders, the
 │   │   │                        time in a city, processes to kill, files and
 │   │   │                        words inside them, a typed path, a link, and
-│   │   │                        the fallbacks; an alias lifts its row to the
+│   │   │                        the fallbacks, every app's volume, and system
+│   │   │                        switches (night light, dark mode, energy
+│   │   │                        saver, airplane mode, sleep displays, quit
+│   │   │                        all, dismiss notifications); an alias lifts
+│   │   │                        its row to the
 │   │   │                        top. Ranked into sections, and what each row
 │   │   │                        does. Apps, commands and settings have ids
 │   │   │                        (app:firefox, command:lock) that a hotkey or

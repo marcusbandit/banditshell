@@ -13,6 +13,7 @@ singleton Clipboard 1.0 Clipboard.qml
 singleton Clock 1.0 Clock.qml
 singleton CompositorSync 1.0 CompositorSync.qml
 singleton Currency 1.0 Currency.qml
+singleton DarkMode 1.0 DarkMode.qml
 singleton DefaultApps 1.0 DefaultApps.qml
 singleton DesktopIndex 1.0 DesktopIndex.qml
 singleton Device 1.0 Device.qml

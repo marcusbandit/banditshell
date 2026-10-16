@@ -226,6 +226,29 @@ function volumeAsk(text) {
     return m && parseInt(m[1], 10) <= 150 ? parseInt(m[1], 10) : -1;
 }
 
+function streamVolumeAsk(text) {
+    const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const m = /^(?:set )?(?:volume|vol) (?:of |for )?(.+?) (?:to )?(\d{1,3}) ?%?$/.exec(t) || /^(?:set )?(.+?) (?:volume|vol) (?:to )?(\d{1,3}) ?%?$/.exec(t) || /^(.+?) (?:to )?(\d{1,3}) ?%$/.exec(t);
+    if (!m || /^(?:the|to|sound|it|all)$/.test(m[1]) || m[1].length < 2 || parseInt(m[2], 10) > 150)
+        return null;
+    return {
+        name: m[1],
+        level: parseInt(m[2], 10)
+    };
+}
+
+function mixerAsk(text) {
+    return /^(?:volume|volumes|mixer|volume mixer|sound mixer|app volume|apps volume|app volumes)$/i.test(String(text || "").trim());
+}
+
+function awakeAsk(text) {
+    const m = /^(?:keep )?awake(?: for)? (.+)$/i.exec(String(text || "").trim()) || /^(?:caffeinate|coffee)(?: for)? (.+)$/i.exec(String(text || "").trim());
+    if (!m)
+        return 0;
+    const span = leadingSpan(m[1], true);
+    return span && !span.rest ? span.seconds : 0;
+}
+
 var ZONE_ALIASES = {
     "nyc": "America/New_York",
     "washington": "America/New_York",

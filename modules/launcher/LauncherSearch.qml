@@ -31,6 +31,7 @@ QtObject {
             windows: 5,
             devices: 4,
             processes: 8,
+            sound: 5,
             files: 6,
             contents: 5
         })
@@ -46,7 +47,7 @@ QtObject {
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null
+    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || !!root.streamAsk && root.streamRows.length > 0
 
     property bool started: false
 
@@ -224,6 +225,7 @@ QtObject {
             icon: "coffee",
             label: "Keep awake",
             words: "keep awake caffeine coffee stay on no sleep",
+            detail: Idle.awake && Idle.awakeUntil ? `until ${TimeFormat.time(new Date(Idle.awakeUntil), false)}` : "",
             toggle: Idle.awake,
             stay: true,
             run: () => Idle.awake = !Idle.awake
@@ -235,6 +237,82 @@ QtObject {
             words: "empty trash bin rubbish",
             confirm: true,
             run: () => Quickshell.execDetached(["gio", "trash", "--empty"])
+        },
+        {
+            id: "nightlight",
+            icon: "nightlight",
+            label: "Night light",
+            words: "night light warm screen warmth blue light filter",
+            detail: Display.warm ? `${Display.kelvin} K` : "",
+            toggle: Display.warm,
+            stay: true,
+            run: () => Display.toggleWarm()
+        },
+        {
+            id: "darkmode",
+            icon: "dark_mode",
+            label: "Dark mode",
+            words: "dark mode light mode appearance colour color scheme apps",
+            toggle: DarkMode.dark,
+            hidden: !DarkMode.available,
+            stay: true,
+            run: () => DarkMode.set(!DarkMode.dark)
+        },
+        {
+            id: "sleepdisplays",
+            icon: "desktop_access_disabled",
+            label: "Sleep displays",
+            words: "sleep displays screens off monitors off blank dpms",
+            run: () => Idle.sleepScreens()
+        },
+        {
+            id: "energysaver",
+            icon: "eco",
+            label: "Energy saver",
+            words: "energy saver power saver battery saver low power eco",
+            toggle: PowerProfile.profile === "saver",
+            hidden: !PowerProfile.choices.includes("saver"),
+            stay: true,
+            run: () => PowerProfile.set(PowerProfile.profile === "saver" ? "balanced" : "saver")
+        },
+        {
+            id: "performance",
+            icon: "speed",
+            label: "Performance mode",
+            words: "performance mode fast power high power",
+            toggle: PowerProfile.profile === "fast",
+            hidden: !PowerProfile.choices.includes("fast"),
+            stay: true,
+            run: () => PowerProfile.set(PowerProfile.profile === "fast" ? "balanced" : "fast")
+        },
+        {
+            id: "airplane",
+            icon: "flight",
+            label: "Airplane mode",
+            words: "airplane mode aeroplane flight mode radios off wifi bluetooth",
+            toggle: root.airplane,
+            stay: true,
+            run: () => root.setAirplane(!root.airplane)
+        },
+        {
+            id: "quitall",
+            icon: "cancel_presentation",
+            label: "Quit all apps",
+            words: "quit all apps close all windows",
+            detail: root.openWindows.length === 1 ? "1 window" : `${root.openWindows.length} windows`,
+            hidden: !root.openWindows.length,
+            confirm: true,
+            run: () => root.openWindows.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
+        },
+        {
+            id: "dismiss",
+            icon: "clear_all",
+            label: "Dismiss notifications",
+            words: "dismiss clear notifications",
+            detail: Notifications.count === 1 ? "1 notification" : `${Notifications.count} notifications`,
+            hidden: !Notifications.count,
+            stay: true,
+            run: () => Notifications.clear()
         }
     ].concat(Files.drives.map(d => ({
                 id: `eject:${d.path}`,
@@ -244,6 +322,24 @@ QtObject {
                 detail: d.detail,
                 run: () => root.eject(d.path)
             })))
+
+    readonly property var openWindows: Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0)
+
+    readonly property bool airplane: !Network.enabled && !Bluetooth.enabled
+
+    property bool bluetoothBefore: false
+
+    function setAirplane(on: bool): void {
+        if (on) {
+            root.bluetoothBefore = Bluetooth.enabled;
+            Network.setEnabled(false);
+            Bluetooth.setEnabled(false);
+            return;
+        }
+        Network.setEnabled(true);
+        if (root.bluetoothBefore)
+            Bluetooth.setEnabled(true);
+    }
 
     function eject(path: string): void {
         Quickshell.execDetached(["sh", "-c", 'dev=$(findmnt -no SOURCE -- "$1") && udisksctl unmount -b "$dev" && udisksctl power-off -b "$dev"', "sh", path]);
@@ -323,6 +419,58 @@ QtObject {
             score: Math.max(0.5, Ranking.place(hit.label, root.text))
         };
     }
+
+    readonly property var streamAsk: root.volume < 0 ? Search.streamVolumeAsk(root.text) : null
+    readonly property int awakeFor: Search.awakeAsk(root.text)
+
+    function streamRow(node: var, level: int): var {
+        const name = Audio.streamLabel(node);
+        const binary = Audio.streamBinary(node);
+        const pct = Math.round(Audio.streamVolume(node) * 100);
+        return {
+            key: `stream:${node.id}`,
+            kind: "stream",
+            node: node,
+            level: level,
+            label: level >= 0 ? `Set ${name} to ${level}%` : name,
+            detail: Audio.streamMuted(node) ? "muted" : `${pct}%`,
+            toggle: level >= 0 ? undefined : !Audio.streamMuted(node),
+            iconSource: Apps.iconSourceFor([binary, name]),
+            icon: "graphic_eq",
+            score: level >= 0 || Search.mixerAsk(root.text) ? Infinity : Math.max(Ranking.place(name, root.text), Ranking.place(binary, root.text))
+        };
+    }
+
+    readonly property var streamRows: {
+        if (root.text.length < 3)
+            return [];
+        const ask = root.streamAsk;
+        const all = Search.mixerAsk(root.text);
+        return Audio.playing.map(node => {
+            const name = Audio.streamLabel(node);
+            const binary = Audio.streamBinary(node);
+            if (ask)
+                return Ranking.place(name, ask.name) > 0 || Ranking.place(binary, ask.name) > 0 ? root.streamRow(node, Math.min(ask.level, Math.round(Audio.maxVolume * 100))) : null;
+            return root.streamRow(node, -1);
+        }).filter(r => r && (all || ask || r.score > 0)).sort((a, b) => b.score - a.score);
+    }
+
+    readonly property var awakeRows: root.awakeFor <= 0 ? [] : [
+        {
+            key: "command:awakefor",
+            kind: "command",
+            command: {
+                id: "awakefor",
+                label: `Keep awake for ${Search.spanText(root.awakeFor)}`,
+                stay: true,
+                run: () => Idle.stayAwake(root.awakeFor)
+            },
+            label: `Keep awake for ${Search.spanText(root.awakeFor)}`,
+            detail: `until ${TimeFormat.time(new Date(Date.now() + root.awakeFor * 1000), false)}`,
+            icon: "coffee",
+            score: Infinity
+        }
+    ]
 
     readonly property var settingRows: root.text.length < 2 ? [] : Catalogue.search(root.text).map(hit => root.settingRow(hit))
 
@@ -742,7 +890,11 @@ QtObject {
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.volumeRows.concat(root.commandRows))
+            items: root.withAlias("command", root.volumeRows.concat(root.awakeRows, root.commandRows))
+        }, {
+            key: "sound",
+            title: "Sound",
+            items: root.streamRows
         }, {
             key: "settings",
             title: "Settings",
@@ -811,6 +963,12 @@ QtObject {
                 else if (n)
                     n.connect();
             }
+            return;
+        case "stream":
+            if (row.level >= 0)
+                Audio.setStreamVolume(row.node, row.level / 100);
+            else
+                Audio.toggleStreamMute(row.node);
             return;
         case "output":
             Audio.setSink(row.node);
@@ -1028,6 +1186,30 @@ QtObject {
                         run: () => Clock.addZone(row.zone)
                     }
                 ]);
+        case "stream":
+            return row.level >= 0 ? [
+                {
+                    icon: "volume_up",
+                    label: row.label,
+                    run: () => root.activate(row)
+                }
+            ] : [
+                {
+                    icon: Audio.streamMuted(row.node) ? "volume_up" : "volume_off",
+                    label: Audio.streamMuted(row.node) ? "Unmute" : "Mute",
+                    run: () => root.activate(row)
+                },
+                {
+                    icon: "volume_down",
+                    label: "Quieter",
+                    run: () => Audio.setStreamVolume(row.node, Audio.streamVolume(row.node) - 0.1)
+                },
+                {
+                    icon: "volume_up",
+                    label: "Louder",
+                    run: () => Audio.setStreamVolume(row.node, Math.min(Audio.maxVolume, Audio.streamVolume(row.node) + 0.1))
+                }
+            ];
         case "bluetooth":
         case "wifi":
             return [
