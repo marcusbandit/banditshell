@@ -9,6 +9,13 @@ var NETIDS = ["tcp", "udp", "tcp6", "udp6", "raw", "sctp", "mptcp"];
 var OWNER = /\("((?:[^"\\]|\\.)*)",pid=(\d+)/g;
 var UID = /\buid:(\d+)/;
 var CGROUP = /\bcgroup:(\S+)/;
+var MANAGER_SCOPE = /(?:^|\/)init\.scope$/;
+var SOCKET_PORT = /(?:^|:)(\d{1,5})$/;
+var SOCKET_UNIT = /^[A-Za-z0-9:_.\\-]+\.socket$/;
+var ACTIVATED_UNIT = /^[A-Za-z0-9:_.\\-]+\.service$/;
+var GONE = /no such process/i;
+var DENIED = /not permitted|permission denied/i;
+var NUMBER = /\d+/g;
 
 function protocolOf(word) {
     return String(word || "").toLowerCase();
@@ -127,10 +134,16 @@ function hostOf(local) {
 function unitOf(cgroup) {
     var parts = String(cgroup || "").split("/").filter(Boolean);
     var last = parts.length ? parts[parts.length - 1] : "";
+    var manager = MANAGER_SCOPE.test(String(cgroup || ""));
     return {
-        unit: /\.(?:service|scope)$/.test(last) ? last : "",
-        system: parts[0] === "system.slice"
+        unit: !manager && /\.(?:service|scope)$/.test(last) ? last : "",
+        system: parts[0] === "system.slice",
+        manager: manager
     };
+}
+
+function managerOwner(name, pid) {
+    return pid === 1 || name === "systemd" || name === "(sd-pam)";
 }
 
 function readListeners(text, fallbackProtocol) {
@@ -153,21 +166,28 @@ function readListeners(text, fallbackProtocol) {
         if (!(port > 0))
             continue;
         var owners = [];
+        var held = false;
         OWNER.lastIndex = 0;
         var m;
         while ((m = OWNER.exec(line)) !== null) {
             var pid = parseInt(m[2], 10);
+            var name = unescape(m[1]);
+            if (managerOwner(name, pid)) {
+                held = true;
+                continue;
+            }
             if (!owners.some(function (o) {
                     return o.pid === pid;
                 }))
                 owners.push({
-                    name: unescape(m[1]),
+                    name: name,
                     pid: pid
                 });
         }
         var uidMatch = UID.exec(line);
         var cgroupMatch = CGROUP.exec(line);
         var place = unitOf(cgroupMatch ? cgroupMatch[1] : "");
+        held = held || place.manager;
         var key = protocol + ":" + port + ":" + (owners.length ? owners.map(function (o) {
             return o.pid;
         }).join(",") : place.unit);
@@ -175,6 +195,10 @@ function readListeners(text, fallbackProtocol) {
         if (found[key]) {
             if (found[key].addresses.indexOf(host) < 0)
                 found[key].addresses.push(host);
+            if (held && !found[key].manager) {
+                found[key].manager = true;
+                found[key].systemUnit = "";
+            }
             continue;
         }
         found[key] = {
@@ -185,7 +209,9 @@ function readListeners(text, fallbackProtocol) {
             owners: owners,
             uid: uidMatch ? parseInt(uidMatch[1], 10) : 0,
             unit: place.unit,
-            systemUnit: place.system && /\.service$/.test(place.unit) ? place.unit : ""
+            systemUnit: !held && place.system && /\.service$/.test(place.unit) ? place.unit : "",
+            manager: held,
+            socketUnit: null
         };
         order.push(key);
     }
@@ -199,6 +225,10 @@ function readListeners(text, fallbackProtocol) {
 function ownerName(listener) {
     if (listener.owners.length)
         return listener.owners[0].name;
+    if (listener.socketUnit)
+        return listener.socketUnit.label.replace(/\.socket$/, "");
+    if (listener.manager)
+        return "systemd";
     if (listener.unit)
         return listener.unit.replace(/\.(?:service|scope)$/, "");
     return "";
@@ -275,7 +305,129 @@ function detailOf(listener, mine, users) {
     var pids = listener.owners.map(function (o) {
         return o.pid;
     });
-    return [addressText(listener.addresses), listener.protocol.toUpperCase(), pids.length ? (pids.length > 1 ? "PIDs " : "PID ") + pids.join(", ") : userText(listener.uid, mine, users), pids.length && listener.systemUnit ? listener.systemUnit : ""].filter(Boolean).join(" · ");
+    return [addressText(listener.addresses), listener.protocol.toUpperCase(), pids.length ? (pids.length > 1 ? "PIDs " : "PID ") + pids.join(", ") : userText(listener.uid, mine, users), pids.length && listener.systemUnit ? listener.systemUnit : "", listener.socketUnit ? listener.socketUnit.label : ""].filter(Boolean).join(" · ");
+}
+
+function parseList(text) {
+    var t = String(text || "").trim();
+    if (!t)
+        return [];
+    try {
+        var got = JSON.parse(t);
+        return Array.isArray(got) ? got : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function readSockets(systemText, userText) {
+    var out = [];
+    var scopes = [["system", parseList(systemText)], ["user", parseList(userText)]];
+    for (var i = 0; i < scopes.length; i++)
+        for (var j = 0; j < scopes[i][1].length; j++) {
+            var entry = scopes[i][1][j] || {};
+            var unit = String(entry.unit || "");
+            var listen = String(entry.listen || "");
+            var m = SOCKET_PORT.exec(listen);
+            if (!m || listen.charAt(0) === "/" || listen.charAt(0) === "@" || !SOCKET_UNIT.test(unit) || unit.charAt(0) === "-" || unit.indexOf("@.") >= 0)
+                continue;
+            var activates = String(entry.activates || "");
+            out.push({
+                port: parseInt(m[1], 10),
+                scope: scopes[i][0],
+                label: unit,
+                names: ACTIVATED_UNIT.test(activates) && activates.indexOf("@.") < 0 && activates.charAt(0) !== "-" ? [unit, activates] : [unit]
+            });
+        }
+    return out;
+}
+
+function withSockets(listeners, sockets) {
+    return listeners.map(function (l) {
+        if (!l.manager)
+            return l;
+        var hit = null;
+        for (var i = 0; i < sockets.length; i++)
+            if (sockets[i].port === l.port && (!hit || sockets[i].scope === "user" && l.uid !== 0))
+                hit = sockets[i];
+        return hit ? Object.assign({}, l, {
+            socketUnit: hit
+        }) : l;
+    });
+}
+
+function killable(listener) {
+    return !listener.manager && listener.owners.length > 0;
+}
+
+function freeable(listener) {
+    return !listener.manager && !listener.owners.length && !listener.systemUnit && validPort(listener.port) && (listener.protocol === "tcp" || listener.protocol === "udp");
+}
+
+var VERIFY = 'flag=$1\n' + 'shift\n' + 'for pid do\n' + '    printf "%s\\t" "$pid"\n' + '    cat "/proc/$pid/comm" 2>/dev/null || echo\n' + 'done\n' + 'printf "\\036"\n' + 'exec ss "$flag"\n';
+
+function verifyCommand(listener) {
+    var pids = listener.owners.map(function (o) {
+        return String(o.pid);
+    }).filter(function (p) {
+        return /^\d+$/.test(p);
+    });
+    return ["sh", "-c", VERIFY, "sh", "-ltunpeH"].concat(pids);
+}
+
+function confirmedPids(listener, text) {
+    var t = String(text || "");
+    var cut = t.indexOf("\u001e");
+    if (cut < 0)
+        return [];
+    var names = {};
+    var lines = t.slice(0, cut).split("\n");
+    for (var i = 0; i < lines.length; i++) {
+        var fields = lines[i].split("\t");
+        if (fields.length >= 2)
+            names[fields[0]] = fields.slice(1).join("\t").trim();
+    }
+    var fresh = readListeners(t.slice(cut + 1), "tcp").filter(function (l) {
+        return l.protocol === listener.protocol && l.port === listener.port && !l.manager;
+    });
+    var held = {};
+    for (var j = 0; j < fresh.length; j++)
+        for (var k = 0; k < fresh[j].owners.length; k++)
+            held[fresh[j].owners[k].pid] = fresh[j].owners[k].name;
+    return listener.owners.filter(function (o) {
+        return !managerOwner(o.name, o.pid) && held[o.pid] === o.name && names[String(o.pid)] === o.name;
+    }).map(function (o) {
+        return o.pid;
+    });
+}
+
+function killOutcome(code, error, pids) {
+    var out = {
+        gone: [],
+        denied: [],
+        failed: code !== 0
+    };
+    if (code === 0)
+        return out;
+    var lines = String(error || "").split("\n");
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i];
+        var reason = GONE.test(line) ? "gone" : DENIED.test(line) ? "denied" : "";
+        if (!reason)
+            continue;
+        var numbers = line.match(NUMBER) || [];
+        for (var j = 0; j < numbers.length; j++) {
+            var pid = parseInt(numbers[j], 10);
+            if (pids.indexOf(pid) >= 0 && out.gone.indexOf(pid) < 0 && out.denied.indexOf(pid) < 0) {
+                out[reason].push(pid);
+                break;
+            }
+        }
+    }
+    out.failed = out.gone.length + out.denied.length < lines.filter(function (l) {
+        return l.trim();
+    }).length || !out.gone.length && !out.denied.length;
+    return out;
 }
 
 function labelOf(listener) {

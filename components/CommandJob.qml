@@ -29,6 +29,6 @@ Process {
     onExited: code => root.settle(code, said.text, complained.text)
     onRunningChanged: {
         if (!root.running && !root.began)
-            root.settle(127, "", "the command did not start");
+            root.settle(-1, "", "the command did not start");
     }
 }

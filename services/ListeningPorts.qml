@@ -20,7 +20,7 @@ Singleton {
     property real readAt: 0
     property int uid: -1
     property var users: ({})
-    property bool fuserFound: false
+    readonly property bool fuserFound: SystemBinaries.has("fuser") && SystemBinaries.has("pkexec")
     property bool found: true
     property var jobs: ({})
 
@@ -50,7 +50,7 @@ Singleton {
             return;
         }
         lister.udp = root.wantUdp;
-        lister.command = ["sh", "-c", 'id -u; command -v fuser >/dev/null 2>&1 && echo fuser || echo none; printf "\\036"; cat /etc/passwd 2>/dev/null; printf "\\036"; exec ss "$1"', "sh", Logic.command(root.wantUdp)[1]];
+        lister.command = ["sh", "-c", 'id -u; printf "\\036"; cat /etc/passwd 2>/dev/null; printf "\\036"; systemctl list-sockets --all --no-pager --output=json 2>/dev/null; printf "\\036"; systemctl --user list-sockets --all --no-pager --output=json 2>/dev/null; printf "\\036"; exec ss "$1"', "sh", Logic.command(root.wantUdp)[1]];
         lister.running = true;
     }
 
@@ -71,37 +71,58 @@ Singleton {
         job.running = true;
     }
 
+    function tell(summary: string, body: string): void {
+        Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "dialog-error", summary, body]);
+    }
+
+    function finish(listener: var): void {
+        Polkit.forget();
+        root.mark(listener.key, "");
+        root.relist();
+    }
+
     function quit(listener: var, force: bool): void {
-        const pids = listener.owners.map(o => o.pid).filter(pid => pid > 0);
-        if (!pids.length)
+        if (!Logic.killable(listener) || root.jobs[listener.key])
             return;
+        const name = Logic.ownerName(listener) || `port ${listener.port}`;
         const signal = force ? "-KILL" : "-TERM";
         root.mark(listener.key, force ? "killing" : "quitting");
-        root.start(["kill", signal, ...pids.map(String)], (code, output, error) => {
-            if (code === 0 || /no such process/i.test(error)) {
-                root.mark(listener.key, "");
-                root.relist();
+        root.start(Logic.verifyCommand(listener), (code, output) => {
+            const pids = code === 0 ? Logic.confirmedPids(listener, output) : [];
+            if (!pids.length) {
+                root.finish(listener);
+                root.tell(`Did not quit ${name}`, `Port ${listener.port} changed owner since it was listed`);
                 return;
             }
-            Polkit.expect(`Quit ${Logic.ownerName(listener) || `port ${listener.port}`}`, "kill");
-            root.start(["pkexec", "kill", signal, ...pids.map(String)], () => {
-                Polkit.forget();
-                root.mark(listener.key, "");
-                root.relist();
+            root.start(["kill", signal, ...pids.map(String)], (killed, said, error) => {
+                const outcome = Logic.killOutcome(killed, error, pids);
+                if (!outcome.denied.length) {
+                    root.finish(listener);
+                    if (outcome.failed)
+                        root.tell(`Could not quit ${name}`, error.trim().split("\n")[0] ?? "");
+                    return;
+                }
+                const command = SystemBinaries.elevated("kill", [signal, ...outcome.denied.map(String)]);
+                if (!command) {
+                    root.finish(listener);
+                    root.tell(`Could not quit ${name}`, "pkexec or kill is missing from the system folders");
+                    return;
+                }
+                Polkit.expect(`Quit ${name}`, "kill");
+                root.start(command, () => root.finish(listener));
             });
         });
     }
 
     function quitAsAdministrator(listener: var, force: bool): void {
-        if (!root.fuserFound || !Logic.validPort(listener.port) || ["tcp", "udp"].indexOf(listener.protocol) < 0)
+        if (!Logic.freeable(listener) || root.jobs[listener.key])
+            return;
+        const command = SystemBinaries.elevated("fuser", ["-k", force ? "-KILL" : "-TERM", "-n", listener.protocol, String(listener.port)]);
+        if (!command)
             return;
         root.mark(listener.key, force ? "killing" : "quitting");
         Polkit.expect(`Free port ${listener.port}`, "fuser");
-        root.start(["pkexec", "fuser", "-k", force ? "-KILL" : "-TERM", "-n", listener.protocol, String(listener.port)], () => {
-            Polkit.forget();
-            root.mark(listener.key, "");
-            root.relist();
-        });
+        root.start(command, () => root.finish(listener));
     }
 
     Timer {
@@ -128,12 +149,10 @@ Singleton {
         }
         onExited: code => {
             const parts = listed.text.split("\u001e");
-            const head = (parts[0] ?? "").split("\n");
-            root.uid = parseInt(head[0], 10);
-            root.fuserFound = (head[1] ?? "").trim() === "fuser";
+            root.uid = parseInt(parts[0] ?? "", 10);
             root.users = Logic.readUsers(parts[1] ?? "");
             root.found = code !== 127;
-            root.listeners = code === 0 ? Logic.readListeners(parts[2] ?? "", "tcp") : [];
+            root.listeners = code === 0 ? Logic.withSockets(Logic.readListeners(parts[4] ?? "", "tcp"), Logic.readSockets(parts[2] ?? "", parts[3] ?? "")) : [];
             root.readAt = Date.now();
             root.readUdp = lister.udp;
             root.read = true;

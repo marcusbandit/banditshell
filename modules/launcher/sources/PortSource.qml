@@ -49,6 +49,22 @@ QtObject {
         return Logic.ownerName(listener) || `port ${listener.port}`;
     }
 
+    function unitName(listener: var): string {
+        return listener.manager ? listener.socketUnit?.label ?? "" : listener.systemUnit;
+    }
+
+    function unitFor(listener: var): var {
+        const socket = listener.socketUnit;
+        if (listener.manager)
+            return socket ? {
+                name: socket.label,
+                names: socket.names,
+                base: socket.label,
+                scope: socket.scope
+            } : null;
+        return listener.systemUnit ? SystemdUnits.systemUnit(listener.systemUnit) : null;
+    }
+
     function armedLabel(mode: string, listener: var): string {
         const name = root.ownerOf(listener);
         switch (mode) {
@@ -57,9 +73,9 @@ QtObject {
         case "portkill":
             return `Press Enter again to force quit ${name}`;
         case "portstop":
-            return `Press Enter again to stop ${listener.systemUnit}`;
+            return `Press Enter again to stop ${root.unitName(listener)}`;
         case "portrestart":
-            return `Press Enter again to restart ${listener.systemUnit}`;
+            return `Press Enter again to restart ${root.unitName(listener)}`;
         case "portfree":
             return `Press Enter again to free port ${listener.port}`;
         }
@@ -137,7 +153,11 @@ QtObject {
             return;
         case "portstop":
         case "portrestart":
-            SystemdUnits.control(SystemdUnits.systemUnit(listener.systemUnit), mode === "portstop" ? "stop" : "restart", () => ListeningPorts.relist());
+            {
+                const unit = root.unitFor(listener);
+                if (unit)
+                    SystemdUnits.control(unit, mode === "portstop" ? "stop" : "restart", () => ListeningPorts.relist());
+            }
             return;
         }
     }
@@ -200,7 +220,16 @@ QtObject {
                 }
             ].concat(root.openActions(listener));
         const name = root.ownerOf(listener);
-        if (listener.owners.length)
+        if (listener.manager)
+            return (root.unitFor(listener) && SystemdUnits.enabled ? [
+                    {
+                        icon: "stop_circle",
+                        label: `Stop ${root.unitName(listener)}`,
+                        short: "Stop",
+                        run: () => root.arm("portstop", listener)
+                    }
+                ] : []).concat(root.openActions(listener));
+        if (Logic.killable(listener))
             return [
                 {
                     icon: "close",
@@ -231,7 +260,7 @@ QtObject {
                     run: () => root.arm("portrestart", listener)
                 }
             ].concat(root.openActions(listener));
-        if (ListeningPorts.fuserFound)
+        if (ListeningPorts.fuserFound && Logic.freeable(listener))
             return [
                 {
                     icon: "admin_panel_settings",

@@ -57,20 +57,35 @@ Singleton {
     }
 
     function run(id: string, action: string, payload: var): void {
-        const command = Logic.commandFor(id, action, payload);
-        if (!command)
-            return;
-        const key = `${action}:${id}`;
         const name = root.nameOf(id);
+        const sent = Logic.commandFor(id, action, payload);
+        if (!sent) {
+            if (payload?.kind === "file")
+                root.tell(`Nothing sent to ${name}`, `${payload.value} is not a file`);
+            return;
+        }
+        const file = action === "share" && payload.kind === "file";
+        const command = file ? ["sh", "-c", '[ -f "$1" ] || exit 3; shift; exec "$@"', "sh", payload.value, ...sent] : sent;
+        const key = `${action}:${id}`;
         root.mark(key, "sending");
+        root.start(command, (code, output, error) => {
+            root.mark(key, "");
+            if (file && code === 3)
+                root.tell(`Nothing sent to ${name}`, `${payload.value} is not a file`);
+            else if (code !== 0 || /error|not reachable|couldn't find/i.test(error))
+                root.tell(`Could not reach ${name}`, error.trim().split("\n")[0] ?? "");
+        });
+    }
+
+    function tell(summary: string, body: string): void {
+        Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "smartphone", summary, body]);
+    }
+
+    function start(command: var, done: var): void {
         const job = jobMaker.createObject(root, {
             command: command
         });
-        job.finished.connect((code, output, error) => {
-            root.mark(key, "");
-            if (code !== 0 || /error|not reachable|couldn't find/i.test(error))
-                Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "smartphone", `Could not reach ${name}`, error.trim().split("\n")[0] ?? ""]);
-        });
+        job.finished.connect(done);
         job.running = true;
     }
 
@@ -89,7 +104,17 @@ Singleton {
             return;
         root.installing = "trying";
         Polkit.expect("Install KDE Connect", "kdeconnect");
-        packageInstaller.running = true;
+        root.start([root.installer, "--polkit", ...root.packages], code => {
+            Polkit.forget();
+            if (code === 4 || code === 127) {
+                root.installing = "terminal";
+                Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.installer}' --ask ${root.packages.join(" ")}`]);
+                return;
+            }
+            root.installing = code === 0 || code === 126 ? "" : "failed";
+            root.readAt = 0;
+            root.list();
+        });
     }
 
     Timer {
@@ -123,23 +148,6 @@ Singleton {
             root.devices = found;
             root.readAt = Date.now();
             root.read = true;
-        }
-    }
-
-    Process {
-        id: packageInstaller
-
-        command: [root.installer, "--polkit", ...root.packages]
-        onExited: code => {
-            Polkit.forget();
-            if (code === 4 || code === 127) {
-                root.installing = "terminal";
-                Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.installer}' --ask ${root.packages.join(" ")}`]);
-                return;
-            }
-            root.installing = code === 0 || code === 126 ? "" : "failed";
-            root.readAt = 0;
-            root.list();
         }
     }
 

@@ -6,6 +6,8 @@ var CONTROL = /^systemctl(?:\s+(--user|--system))?(?:\s+(start|stop|restart|stat
 var VERB = /^(start|stop|restart)\s+(?:the\s+)?(?:(user|system)\s+)?(?:service\s+)?([A-Za-z0-9@_.:\\-]+?)(?:\.service)?(?:\s+service)?$/i;
 var UNIT = /^[A-Za-z0-9:_.\\@-]+\.service$/;
 var TEMPLATE = /@\.service$/;
+var CONTROLLABLE = /^[A-Za-z0-9:_.\\@-]+\.(?:service|socket)$/;
+var TEMPLATE_UNIT = /@\.(?:service|socket)$/;
 
 var READ = 'command -v systemctl >/dev/null 2>&1 || exit 3\n' + 'for scope in system user; do\n' + '    if [ "$scope" = user ]; then set -- --user; else set --; fi\n' + '    printf "\\036%s units\\n" "$scope"\n' + '    systemctl "$@" list-units --type=service --all --output=json --no-pager 2>/dev/null\n' + '    printf "\\n\\036%s files\\n" "$scope"\n' + '    systemctl "$@" list-unit-files --type=service --output=json --no-pager 2>/dev/null\n' + '    printf "\\n"\n' + 'done\n';
 
@@ -194,10 +196,18 @@ function validUnit(name) {
     return UNIT.test(String(name || "")) && String(name).charAt(0) !== "-" && !TEMPLATE.test(name);
 }
 
-function controlCommand(unit, verb) {
-    if (!validUnit(unit.name) || ["start", "stop", "restart"].indexOf(verb) < 0)
+function controllable(name) {
+    var n = String(name || "");
+    return CONTROLLABLE.test(n) && n.charAt(0) !== "-" && !TEMPLATE_UNIT.test(n);
+}
+
+function controlCommand(unit, verb, elevate) {
+    var names = unit.names || [unit.name];
+    if (!names.length || !names.every(controllable) || ["start", "stop", "restart"].indexOf(verb) < 0)
         return null;
-    return unit.scope === "user" ? ["systemctl", "--user", verb, "--", unit.name] : ["pkexec", "systemctl", verb, "--", unit.name];
+    if (unit.scope === "user")
+        return ["systemctl", "--user", verb, "--"].concat(names);
+    return elevate ? elevate("systemctl", [verb, "--"].concat(names)) : null;
 }
 
 function quote(text) {

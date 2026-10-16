@@ -112,10 +112,9 @@ QtObject {
                 icon: "link",
                 suggestion: root.suggestedLink(),
                 take: text => {
-                    const payload = Logic.payloadOf(text);
+                    const payload = Logic.linkFrom(text);
                     const id = device.id;
-                    if (payload.kind === "link")
-                        root.search.launch(() => Phone.run(id, "share", payload));
+                    root.search.launch(() => Phone.run(id, "share", payload));
                 }
             }
         });

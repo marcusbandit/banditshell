@@ -21,6 +21,11 @@ Singleton {
     property var jobs: ({})
 
     readonly property bool loading: lister.running || debounce.running
+    readonly property bool elevatable: SystemBinaries.has("pkexec") && SystemBinaries.has("systemctl")
+
+    function controllable(unit: var): bool {
+        return unit.scope === "user" || root.elevatable;
+    }
 
     function keyOf(unit: var): string {
         return `${unit.scope}:${unit.name}`;
@@ -59,10 +64,15 @@ Singleton {
     }
 
     function control(unit: var, verb: string, after: var): void {
-        const command = Logic.controlCommand(unit, verb);
+        const command = Logic.controlCommand(unit, verb, (tool, args) => SystemBinaries.elevated(tool, args));
         const key = root.keyOf(unit);
-        if (!command || root.jobs[key])
+        if (root.jobs[key])
             return;
+        if (!command) {
+            if (unit.scope !== "user")
+                Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "dialog-error", `Could not ${verb} ${unit.base ?? unit.name}`, "pkexec or systemctl is missing from the system folders"]);
+            return;
+        }
         root.mark(key, Logic.progressWord(verb));
         if (unit.scope !== "user")
             Polkit.expect(`${Logic.verbLabel(verb)} ${unit.base ?? unit.name}`, "systemctl");

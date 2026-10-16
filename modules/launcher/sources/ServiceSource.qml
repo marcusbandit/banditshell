@@ -165,7 +165,7 @@ QtObject {
                 logs
             ];
         const running = Logic.running(unit);
-        const offered = running ? ["restart", "stop"] : Logic.startable(unit) ? ["start"] : [];
+        const offered = !SystemdUnits.controllable(unit) ? [] : running ? ["restart", "stop"] : Logic.startable(unit) ? ["start"] : [];
         const wanted = row.verb === "restart" && !running ? "start" : row.verb;
         const order = offered.indexOf(wanted) >= 0 ? [wanted].concat(offered.filter(v => v !== wanted)) : offered;
         const already = wanted === "stop" && !running ? "Already stopped" : wanted === "start" && running ? "Already running" : "";
