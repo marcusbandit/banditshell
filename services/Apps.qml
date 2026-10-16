@@ -289,7 +289,7 @@ Singleton {
     function drawnFor(appClass: string): string {
         for (const pattern in root.drawnMarks) {
             try {
-                if (new RegExp(pattern, "i").test(appClass))
+                if (root.patternOf(pattern).test(appClass))
                     return root.drawnMarks[pattern];
             } catch (e) {
                 console.warn(`Apps: "${pattern}" is not a valid drawn-mark regex, skipping it.`, e);
@@ -349,13 +349,19 @@ Singleton {
     function brandFor(appClass: string): string {
         for (const pattern in root.brandGlyphs) {
             try {
-                if (new RegExp(pattern, "i").test(appClass))
+                if (root.patternOf(pattern).test(appClass))
                     return root.brandGlyphs[pattern];
             } catch (e) {
                 console.warn(`Apps: "${pattern}" is not a valid brand regex, skipping it.`, e);
             }
         }
         return "";
+    }
+
+    readonly property var patterns: ({})
+
+    function patternOf(pattern: string): var {
+        return root.patterns[pattern] ?? (root.patterns[pattern] = new RegExp(pattern, "i"));
     }
 
     function entryFor(appClass: string): var {
@@ -381,7 +387,7 @@ Singleton {
     function overrideFor(appClass: string): string {
         for (const pattern in root.overrides) {
             try {
-                if (new RegExp(pattern, "i").test(appClass))
+                if (root.patternOf(pattern).test(appClass))
                     return root.overrides[pattern];
             } catch (e) {
                 console.warn(`Apps: "${pattern}" is not a valid regex, skipping that icon override.`, e);

@@ -10,6 +10,19 @@ function escapeRegex(text) {
     return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+var startsWord = {
+    want: null,
+    pattern: null
+};
+
+function wordStart(want) {
+    if (startsWord.want !== want) {
+        startsWord.want = want;
+        startsWord.pattern = new RegExp("\\b" + escapeRegex(want));
+    }
+    return startsWord.pattern;
+}
+
 function place(haystack, needle) {
     var hay = String(haystack || "").toLowerCase();
     var want = String(needle || "").toLowerCase();
@@ -17,7 +30,7 @@ function place(haystack, needle) {
         return EXACT;
     if (hay.indexOf(want) === 0)
         return PREFIX;
-    if (new RegExp("\\b" + escapeRegex(want)).test(hay))
+    if (wordStart(want).test(hay))
         return WORD;
     if (hay.indexOf(want) >= 0)
         return ANYWHERE;
