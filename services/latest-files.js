@@ -6,7 +6,7 @@ var SHELVES = [
         title: "Screenshots",
         icon: "screenshot_monitor",
         pictures: true,
-        ask: /^(?:screenshots?|screen shots?|recent screenshots?|last screenshot)(?:\s+(.*))?$/i
+        ask: /^(?:screenshots|screen shots|recent screenshots?|last screenshot|my screenshots)(?:\s+(.*))?$/i
     },
     {
         key: "downloads",

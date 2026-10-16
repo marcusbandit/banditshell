@@ -180,6 +180,11 @@ Scope {
             return `open=${win?.launcher.open ?? false}`;
         }
 
+        function query(): string {
+            const win = Shell.showing(w => w.launcher.open);
+            return win?.launcher.concept?.input?.text ?? "";
+        }
+
         function run(id: string): string {
             if (/^(app|command|setting):/.test(id)) {
                 const runner = rowRunner.createObject(root, {

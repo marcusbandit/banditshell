@@ -21,6 +21,7 @@ test.describe("latest screenshots and downloads", () => {
         assert.strictEqual(Latest.ask("last download pdf").words, "pdf");
         assert.strictEqual(Latest.ask("screen"), null);
         assert.strictEqual(Latest.ask("take screenshot"), null);
+        assert.strictEqual(Latest.ask("screenshot"), null);
         assert.strictEqual(Latest.ask("download video"), null);
     });
 

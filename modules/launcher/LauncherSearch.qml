@@ -261,6 +261,27 @@ QtObject {
             run: () => Shell.forScreen(root.screenName)?.wallpapers.show()
         },
         {
+            id: "screenshotarea",
+            icon: "screenshot_region",
+            label: "Screenshot an area",
+            words: "screenshot area region snip capture grab print screen save",
+            run: () => root.leave(() => Quickshell.execDetached([root.cli, "screenshot", "save"]))
+        },
+        {
+            id: "screenshotcopy",
+            icon: "content_cut",
+            label: "Screenshot an area to the clipboard",
+            words: "screenshot copy clipboard snip capture grab print screen",
+            run: () => root.leave(() => Quickshell.execDetached([root.cli, "screenshot", "copy"]))
+        },
+        {
+            id: "screenshotfull",
+            icon: "screenshot_monitor",
+            label: "Screenshot the whole desktop",
+            words: "screenshot full whole desktop screen capture grab print",
+            run: () => root.leave(() => Quickshell.execDetached(["sh", "-c", 'sleep 0.4; exec "$1" screenshot full', "sh", root.cli]))
+        },
+        {
             id: "settings",
             icon: "tune",
             label: "Settings",
