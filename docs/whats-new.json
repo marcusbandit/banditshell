@@ -82,6 +82,11 @@
         {
           "type": "bugs",
           "severity": "minor",
+          "text": "Anything the shell runs with your password (installing, removing, quitting another user's process, restarting a system service) now only runs programs from the system folders, never a program of the same name placed earlier in your PATH."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
           "text": "The processor temperature reads the processor's own sensor. On some boards it showed a fixed reading near 17 °C."
         },
         {
