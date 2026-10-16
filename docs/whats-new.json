@@ -57,6 +57,11 @@
         {
           "type": "features",
           "severity": "minor",
+          "text": "Type hello in german, define serendipity or install spotify, and the launcher answers from the web, with packages from your package manager, the AUR and Flatpak installed straight from the row. Type gh for your GitHub repos, pull requests and notifications. Your browser bookmarks and history show up as you type, speedtest measures your connection, and a pasted video link saves the video or its sound to Downloads. Settings › Launcher › Online turns each of these off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
           "text": "Draw your own tiling layout in Settings › Windows › Custom layout, or type layout workshop in the launcher. Place regions, choose where each new window goes and what happens on a narrow screen, and the shell writes a Hyprland layout and loads it right away without editing your config. Stage comes as a starting point, and your saved layouts show up next to it in the launcher's layout list."
         },
         {
