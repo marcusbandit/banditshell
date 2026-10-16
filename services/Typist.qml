@@ -9,6 +9,7 @@ Singleton {
     id: root
 
     property bool found: false
+    property bool notifies: false
     property bool probed: false
     property string installing: ""
 
@@ -21,7 +22,6 @@ Singleton {
     readonly property int least: 90
 
     property var job: null
-    property var queued: []
 
     function probe(): void {
         if (!prober.running)
@@ -97,24 +97,17 @@ Singleton {
     }
 
     function fire(job: var): void {
-        if (writer.running) {
-            root.queued = root.queued.concat([job]);
-            return;
-        }
         if (job.kind === "paste") {
-            writer.command = job.terminal ? ["wtype", "-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"] : ["wtype", "-M", "ctrl", "-k", "v", "-m", "ctrl"];
-            writer.stdinEnabled = false;
-            writer.running = true;
+            Keystrokes.send(job.terminal ? ["wtype", "-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"] : ["wtype", "-M", "ctrl", "-k", "v", "-m", "ctrl"]);
             return;
         }
-        const keys = [];
-        for (let i = 0; i < job.back; i++)
-            keys.push("-k", "Left");
-        writer.command = ["wtype", "-"].concat(keys);
-        writer.stdinEnabled = true;
-        writer.running = true;
-        writer.write(job.text);
-        writer.stdinEnabled = false;
+        Keystrokes.send(["wtype", "--", job.text]);
+        if (job.back > 0) {
+            const keys = ["wtype"];
+            for (let i = 0; i < job.back; i++)
+                keys.push("-k", "Left");
+            Keystrokes.send(keys);
+        }
     }
 
     function giveUp(job: var, why: string): void {
@@ -122,6 +115,8 @@ Singleton {
             Clipboard.copy({
                 text: job.text
             });
+        if (!root.notifies)
+            return;
         const summary = job.kind === "paste" ? "On the clipboard" : "Copied instead of typed";
         Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "content_paste", summary, job.kind === "paste" ? `${why} Paste it with Ctrl+V.` : why]);
     }
@@ -142,33 +137,20 @@ Singleton {
     }
 
     Process {
-        id: writer
-
-        environment: ({
-                LC_CTYPE: "C.UTF-8"
-            })
-
-        stderr: SplitParser {
-            onRead: line => console.warn("wtype:", line)
-        }
-
-        onRunningChanged: if (!running && root.queued.length) {
-            const next = root.queued[0];
-            root.queued = root.queued.slice(1);
-            Qt.callLater(() => root.fire(next));
-        }
-    }
-
-    Process {
         id: prober
 
-        command: ["sh", "-c", "command -v wtype"]
+        command: ["sh", "-c", "command -v wtype >/dev/null && echo wtype; command -v notify-send >/dev/null && echo notify-send; true"]
         running: true
-        onExited: code => {
-            root.found = code === 0;
-            root.probed = true;
-            if (root.found)
-                root.installing = "";
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const tools = text.split("\n");
+                root.found = tools.includes("wtype");
+                root.notifies = tools.includes("notify-send");
+                root.probed = true;
+                if (root.found)
+                    root.installing = "";
+            }
         }
     }
 

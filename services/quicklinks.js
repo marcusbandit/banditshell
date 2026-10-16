@@ -8,6 +8,7 @@ var LEADING = /^\s+/;
 var GAP = /\s/;
 var GAPS = /\s+/g;
 var WWW = /^www\./i;
+var KEYWORD_SCORE = 0.5;
 
 function takes(link) {
     return HAS_QUERY.test(String(link && link.url || ""));
@@ -62,7 +63,7 @@ function match(links, text) {
         }
         if (rest !== "")
             continue;
-        var score = keyword.indexOf(head) === 0 ? 2 : name.indexOf(head) === 0 && head.length >= 2 ? 1.5 : head.length >= 3 && (" " + name).indexOf(" " + head) >= 0 ? 1 : 0;
+        var score = head.length < 2 ? 0 : keyword.indexOf(head) === 0 ? 0.45 : name.indexOf(head) === 0 ? 0.4 : head.length >= 3 && (" " + name).indexOf(" " + head) >= 0 ? 0.35 : 0;
         if (score > 0)
             partial.push({
                 link: link,

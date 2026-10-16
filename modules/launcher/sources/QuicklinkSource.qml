@@ -24,7 +24,7 @@ QtObject {
         {
             key: "quicklinks",
             title: "Quicklinks",
-            items: root.matched.exact.map(m => root.row(m.link, m.query, m.query ? Infinity : 3.5)).concat(root.matched.partial.slice(0, 3).map(p => root.row(p.link, "", p.score)))
+            items: root.matched.exact.map(m => root.row(m.link, m.query, m.query ? Infinity : Quicklinks.KEYWORD_SCORE)).concat(root.matched.partial.slice(0, 3).map(p => root.row(p.link, "", p.score)))
         }
     ]
 

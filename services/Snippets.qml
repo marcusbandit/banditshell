@@ -27,17 +27,21 @@ Singleton {
         return entry && !entry.file ? entry.text ?? "" : "";
     }
 
-    function expand(snippet: var): var {
+    function values(clipboard: string): var {
         const now = new Date();
-        return SnippetLogic.expand(snippet?.text ?? "", {
+        return {
             date: TimeFormat.dateText(now, "year"),
             time: TimeFormat.time(now, false),
-            clipboard: root.clipboardText()
-        });
+            clipboard: clipboard
+        };
+    }
+
+    function expand(snippet: var): var {
+        return SnippetLogic.expand(snippet?.text ?? "", root.values(root.clipboardText()));
     }
 
     function preview(snippet: var): string {
-        return SnippetLogic.preview(root.expand(snippet).text, 80);
+        return SnippetLogic.previewText(snippet?.text ?? "", root.values(""), 80);
     }
 
     function suggestName(text: string): string {

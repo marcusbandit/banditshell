@@ -367,7 +367,7 @@ Singleton {
                 typing: {
                     skinTone: "none",
 
-                    clipboard: true,
+                    clipboard: false,
 
                     snippets: [],
 

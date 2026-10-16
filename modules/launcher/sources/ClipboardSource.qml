@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.config
 import qs.services
 import "../../../services/clipboard-search.js" as ClipboardSearch
