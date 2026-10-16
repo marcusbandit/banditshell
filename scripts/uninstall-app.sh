@@ -112,7 +112,7 @@ if [ "$id" = --package ]; then
     pacman | apt | dnf | zypper | xbps | apk | flatpak-user | flatpak-system | snap) ;;
     *) exit 2 ;;
     esac
-    [ -n "$package" ] || exit 2
+    [[ $package =~ ^[A-Za-z0-9][A-Za-z0-9+._@:-]*$ ]] || exit 2
 else
     file=""
     how=""
@@ -159,14 +159,14 @@ fi
 
 privileged=1
 case "$how" in
-pacman) command=(pacman -Rs --noconfirm "$package") ;;
+pacman) command=(pacman -Rs --noconfirm -- "$package") ;;
 apt) command=(env DEBIAN_FRONTEND=noninteractive apt-get remove -y "$package") ;;
-dnf) command=(dnf remove -y "$package") ;;
+dnf) command=(dnf remove -y -- "$package") ;;
 zypper) command=(zypper --non-interactive remove "$package") ;;
-xbps) command=(xbps-remove -Ry "$package") ;;
+xbps) command=(xbps-remove -Ry -- "$package") ;;
 apk) command=(apk del "$package") ;;
-flatpak-user) privileged=0 command=(flatpak uninstall -y --noninteractive --user "$package") ;;
-flatpak-system) privileged=0 command=(flatpak uninstall -y --system "$package") ;;
+flatpak-user) privileged=0 command=(flatpak uninstall -y --noninteractive --user -- "$package") ;;
+flatpak-system) privileged=0 command=(flatpak uninstall -y --noninteractive --system -- "$package") ;;
 snap) privileged=0 command=(snap remove "$package") ;;
 steam) privileged=0 command=(xdg-open "steam://uninstall/$package") ;;
 appimage) privileged=0 command=(gio trash -- "$package" "$file") ;;
@@ -196,7 +196,12 @@ plan)
     printf '%s\n' "${command[*]}"
     ;;
 remove)
-    exec "${command[@]}" </dev/null
+    "${command[@]}" </dev/null
+    status=$?
+    case "$status" in
+    0 | 126 | 127) exit "$status" ;;
+    *) exit 10 ;;
+    esac
     ;;
 ask)
     echo "Press Enter to remove $package, then type your password if asked."

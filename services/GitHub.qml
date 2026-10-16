@@ -67,7 +67,7 @@ Singleton {
             root.summary = got;
             root.state = "ready";
             root.fetchedAt = Date.now();
-            store.setText(JSON.stringify({
+            store.save(JSON.stringify({
                 at: root.fetchedAt,
                 summary: got
             }));
@@ -103,14 +103,13 @@ Singleton {
         }
     }
 
-    FileView {
+    PrivateFile {
         id: store
 
-        path: `${Config.stateDir}/github.json`
-        printErrors: false
-        onLoaded: {
+        path: `${Config.stateDir}/online/github.json`
+        onLoaded: text => {
             try {
-                const kept = JSON.parse(store.text());
+                const kept = JSON.parse(text);
                 if (kept.summary && !root.summary) {
                     root.summary = kept.summary;
                     root.fetchedAt = kept.at ?? 0;

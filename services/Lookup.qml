@@ -154,7 +154,7 @@ QtObject {
 
     property Timer saving: Timer {
         interval: 2000
-        onTriggered: root.memory.setText(JSON.stringify({
+        onTriggered: root.memory.save(JSON.stringify({
             answers: root.answers,
             stamps: root.stamps,
             order: root.order
@@ -194,13 +194,12 @@ QtObject {
         }
     }
 
-    property FileView memory: FileView {
+    property PrivateFile memory: PrivateFile {
         path: root.file
-        printErrors: false
 
-        onLoaded: {
+        onLoaded: text => {
             try {
-                const kept = JSON.parse(root.memory.text());
+                const kept = JSON.parse(text);
                 root.answers = Object.assign({}, kept.answers ?? {}, root.answers);
                 root.stamps = Object.assign({}, kept.stamps ?? {}, root.stamps);
                 root.order = (kept.order ?? []).filter(k => root.order.indexOf(k) < 0).concat(root.order);

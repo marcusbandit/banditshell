@@ -3,12 +3,10 @@ import glob
 import hashlib
 import json
 import os
-import shutil
 import sqlite3
 import sys
-import tempfile
 import time
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 HOME = os.path.expanduser("~")
 CONFIG = os.environ.get("XDG_CONFIG_HOME") or os.path.join(HOME, ".config")
@@ -80,27 +78,17 @@ def signature(kind, folder):
     return out
 
 
-def copied(scratch, path):
+def opened(path):
     if not os.path.isfile(path):
-        return ""
-    target = os.path.join(scratch, hashlib.sha1(path.encode()).hexdigest()[:12] + "-" + os.path.basename(path))
-    shutil.copy2(path, target)
-    for tail in ("-wal",):
-        if os.path.isfile(path + tail):
-            shutil.copy2(path + tail, target + tail)
-    return target
-
-
-def opened(scratch, path):
+        return None
     try:
-        copy = copied(scratch, path)
-        return sqlite3.connect(copy) if copy else None
-    except (OSError, sqlite3.Error):
+        return sqlite3.connect("file:" + quote(os.path.abspath(path)) + "?mode=ro&immutable=1", uri=True)
+    except sqlite3.Error:
         return None
 
 
-def mozilla_places(scratch, browser, folder):
-    connection = opened(scratch, os.path.join(folder, "places.sqlite"))
+def mozilla_places(browser, folder):
+    connection = opened(os.path.join(folder, "places.sqlite"))
     if not connection:
         return [], [], None
     bookmarks, history = [], []
@@ -129,7 +117,7 @@ def chromium_nodes(node, browser, out):
             chromium_nodes(child, browser, out)
 
 
-def chromium_places(scratch, browser, folder):
+def chromium_places(browser, folder):
     bookmarks, history = [], []
     try:
         with open(os.path.join(folder, "Bookmarks"), encoding="utf-8") as stream:
@@ -138,7 +126,7 @@ def chromium_places(scratch, browser, folder):
             chromium_nodes(root, browser, bookmarks)
     except (OSError, ValueError, AttributeError):
         pass
-    connection = opened(scratch, os.path.join(folder, "History"))
+    connection = opened(os.path.join(folder, "History"))
     if connection:
         try:
             for url, title, visits, last in connection.execute(
@@ -226,8 +214,8 @@ def best_icons(connection, kind, pages):
             yield host, bytes(row[0])
 
 
-def fill_icons(scratch, places, favicon_sources, folder, tried):
-    os.makedirs(folder, exist_ok=True)
+def fill_icons(places, favicon_sources, folder, tried):
+    private_folder(folder)
     have = existing_icons(folder)
     ranked = sorted(places, key=lambda e: (not e["bookmark"], -e["visits"]))
     wanted = []
@@ -242,7 +230,7 @@ def fill_icons(scratch, places, favicon_sources, folder, tried):
         if entry["host"] in pages and len(pages[entry["host"]]) < 8:
             pages[entry["host"]].append(entry["url"])
     for kind, path in favicon_sources if wanted else []:
-        connection = opened(scratch, path)
+        connection = opened(path)
         if not connection:
             continue
         try:
@@ -272,8 +260,13 @@ def load(path):
         return {}
 
 
+def private_folder(folder):
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    os.chmod(folder, 0o700)
+
+
 def save(path, data):
-    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    private_folder(os.path.dirname(path) or ".")
     partial = path + ".part"
     with open(partial, "w", encoding="utf-8") as out:
         json.dump(data, out, ensure_ascii=False, separators=(",", ":"))
@@ -284,6 +277,7 @@ def main():
     if len(sys.argv) != 3:
         print("usage: browser-places.py <places.json> <favicon-folder>", file=sys.stderr)
         return 2
+    os.umask(0o077)
     target, icons = sys.argv[1], sys.argv[2]
     memory_path = os.path.splitext(target)[0] + "-profiles.json"
     memory = load(memory_path)
@@ -293,28 +287,24 @@ def main():
     if os.path.isfile(target) and all(kept.get(folder, {}).get("signature") == stamps[folder] for folder in stamps) and set(kept) == set(stamps):
         print("unchanged")
         return 0
-    scratch = tempfile.mkdtemp(prefix="banditshell-places-")
-    try:
-        fresh = {}
-        bookmarks, history, favicon_sources = [], [], []
-        for kind, browser, folder in found:
-            known = kept.get(folder)
-            if known and known.get("signature") == stamps[folder]:
-                fresh[folder] = known
-            else:
-                reader = mozilla_places if kind == "mozilla" else chromium_places
-                marks, visited, favicons = reader(scratch, browser, folder)
-                fresh[folder] = {"signature": stamps[folder], "bookmarks": marks, "history": visited, "favicons": favicons}
-            bookmarks += fresh[folder]["bookmarks"]
-            history += fresh[folder]["history"]
-            if fresh[folder].get("favicons"):
-                favicon_sources.append(fresh[folder]["favicons"])
-        history.sort(key=lambda e: -e["visits"])
-        places = merged(bookmarks + history)[:PLACES_LIMIT]
-        tried = set(memory.get("tried", []))
-        fill_icons(scratch, places, favicon_sources, icons, tried)
-    finally:
-        shutil.rmtree(scratch, ignore_errors=True)
+    fresh = {}
+    bookmarks, history, favicon_sources = [], [], []
+    for kind, browser, folder in found:
+        known = kept.get(folder)
+        if known and known.get("signature") == stamps[folder]:
+            fresh[folder] = known
+        else:
+            reader = mozilla_places if kind == "mozilla" else chromium_places
+            marks, visited, favicons = reader(browser, folder)
+            fresh[folder] = {"signature": stamps[folder], "bookmarks": marks, "history": visited, "favicons": favicons}
+        bookmarks += fresh[folder]["bookmarks"]
+        history += fresh[folder]["history"]
+        if fresh[folder].get("favicons"):
+            favicon_sources.append(fresh[folder]["favicons"])
+    history.sort(key=lambda e: -e["visits"])
+    places = merged(bookmarks + history)[:PLACES_LIMIT]
+    tried = set(memory.get("tried", []))
+    fill_icons(places, favicon_sources, icons, tried)
     save(memory_path, {"profiles": fresh, "tried": sorted(tried)})
     save(target, {"generated": int(time.time() * 1000), "places": places})
     return 0

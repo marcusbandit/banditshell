@@ -195,9 +195,11 @@ test.describe("packages", () => {
             { id: "com.spotify.Client", name: "Spotify", summary: "Music", version: "1.2", remote: "flathub", installation: "system", icon: "/x/spotify.png" },
             { id: "org.mozilla.firefox", name: "Firefox", summary: "Browser", version: "158.0", remote: "flathub", installation: "system" }
         ] }));
-        const installed = Packages.readFlatpakInstalled("org.mozilla.firefox\t157.0\n");
+        const installed = Packages.readFlatpakInstalled("org.mozilla.firefox\t157.0\tuser\n");
         assert.deepStrictEqual(Packages.searchFlatpaks(index, "spot", installed).map(p => [p.name, p.title, p.installed]), [["com.spotify.Client", "Spotify", false]]);
-        assert.deepStrictEqual(Packages.searchFlatpaks(index, "firefox", installed).map(p => [p.name, p.installed, p.installedVersion]), [["org.mozilla.firefox", true, "157.0"]]);
+        assert.deepStrictEqual(Packages.searchFlatpaks(index, "firefox", installed).map(p => [p.name, p.installed, p.installedVersion, p.installation]), [["org.mozilla.firefox", true, "157.0", "user"]]);
+        assert.deepStrictEqual(Packages.removalOf(Packages.searchFlatpaks(index, "firefox", installed)[0]), { how: "flatpak-user", package: "org.mozilla.firefox" });
+        assert.strictEqual(Packages.searchFlatpaks(index, "spot", installed)[0].installation, "system");
         assert.deepStrictEqual(Packages.searchFlatpaks(index, "", installed), []);
     });
 

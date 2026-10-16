@@ -287,7 +287,7 @@ function readFlatpakInstalled(raw) {
     String(raw || "").split("\n").forEach(function (line) {
         var parts = line.split("\t");
         if (parts[0])
-            have[parts[0]] = parts[1] || "";
+            have[(parts[2] || "system") + "/" + parts[0]] = parts[1] || "";
     });
     return have;
 }
@@ -318,9 +318,11 @@ function searchFlatpaks(index, term, installed) {
         var app = index[i];
         if (app.hay.indexOf(want) < 0)
             continue;
+        var where = have["system/" + app.name] !== undefined ? "system" : have["user/" + app.name] !== undefined ? "user" : "";
         out.push(Object.assign({}, app, {
-            installed: have[app.name] !== undefined,
-            installedVersion: have[app.name] || ""
+            installed: !!where,
+            installedVersion: where ? have[where + "/" + app.name] : "",
+            installation: where || app.installation
         }));
     }
     return out;

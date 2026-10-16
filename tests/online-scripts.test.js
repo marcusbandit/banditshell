@@ -45,14 +45,23 @@ test.describe("uninstall-app.sh --package", () => {
     }
 
     test.it("removes a named package without looking for a desktop file", () => {
-        assert.deepStrictEqual(plan(["plan", "--package", "pacman", "ripgrep"], { pkexec: "exit 0" }), { status: 0, stdout: "pkexec pacman -Rs --noconfirm ripgrep" });
-        assert.deepStrictEqual(plan(["plan", "--package", "flatpak-user", "com.spotify.Client"], {}), { status: 0, stdout: "flatpak uninstall -y --noninteractive --user com.spotify.Client" });
+        assert.deepStrictEqual(plan(["plan", "--package", "pacman", "ripgrep"], { pkexec: "exit 0" }), { status: 0, stdout: "pkexec pacman -Rs --noconfirm -- ripgrep" });
+        assert.deepStrictEqual(plan(["plan", "--package", "flatpak-user", "com.spotify.Client"], {}), { status: 0, stdout: "flatpak uninstall -y --noninteractive --user -- com.spotify.Client" });
         assert.deepStrictEqual(plan(["find", "--package", "apt", "ripgrep"], {}), { status: 0, stdout: "apt\tripgrep" });
     });
 
     test.it("refuses kinds that only make sense for a desktop file", () => {
         assert.strictEqual(plan(["plan", "--package", "steam", "960090"], {}).status, 2);
         assert.strictEqual(plan(["plan", "--package", "pacman"], {}).status, 2);
+        assert.strictEqual(plan(["plan", "--package", "pacman", "-Rdd"], {}).status, 2);
+        assert.strictEqual(plan(["plan", "--package", "pacman", "a;b"], {}).status, 2);
+    });
+
+    test.it("reports the manager's own failure as one code of its own", () => {
+        assert.strictEqual(plan(["remove", "--package", "zypper", "thing"], { zypper: "exit 4", pkexec: '"$@"' }).status, 10);
+        assert.strictEqual(plan(["remove", "--package", "pacman", "thing"], { pacman: "exit 1", pkexec: '"$@"' }).status, 10);
+        assert.strictEqual(plan(["remove", "--package", "pacman", "thing"], { pacman: "exit 0", pkexec: "exit 126" }).status, 126);
+        assert.strictEqual(plan(["remove", "--package", "pacman", "thing"], { pacman: "exit 0", pkexec: '"$@"' }).status, 0);
     });
 });
 
@@ -104,6 +113,7 @@ test.describe("flatpak-index.py", () => {
             <component type="desktop-application"><id>com.example.Notes</id><name>Notes</name><name xml:lang="de">Notizen</name><summary>Write things</summary>
                 <icon type="cached" height="64" width="64">com.example.Notes.png</icon><releases><release version="2.1"/><release version="2.0"/></releases></component>
             <component type="runtime"><id>org.example.Platform</id><name>Platform</name></component>
+            <component type="desktop-application"><id>-rf.Evil</id><name>Evil</name></component>
         </components>`;
         fs.writeFileSync(path.join(active, "appstream.xml.gz"), zlib.gzipSync(xml));
         const target = path.join(dir, "out/index.json");
@@ -114,12 +124,14 @@ test.describe("flatpak-index.py", () => {
         assert.deepStrictEqual(index.apps, [{ id: "com.example.Notes", name: "Notes", summary: "Write things", version: "2.1", remote: "flathub", installation: "system", icon: path.join(active, "icons/64x64/com.example.Notes.png") }]);
         const again = spawnSync("python3", ["-I", FLATPAK_INDEX, target], { env, encoding: "utf8" });
         assert.strictEqual(again.status, 0);
+        assert.strictEqual(fs.statSync(target).mode & 0o777, 0o600);
+        assert.strictEqual(fs.statSync(path.dirname(target)).mode & 0o777, 0o700);
         fs.rmSync(dir, { recursive: true, force: true });
     });
 });
 
 test.describe("browser-places.py", () => {
-    test.it("reads Firefox bookmarks and history from a copy and keeps the profile untouched", () => {
+    test.it("reads Firefox bookmarks and history in place, read only, into private files", () => {
         const dir = scratch();
         const profile = path.join(dir, "home/.mozilla/firefox/abc.default");
         fs.mkdirSync(profile, { recursive: true });
@@ -148,6 +160,8 @@ c.commit()
         assert.deepStrictEqual(places.map(p => [p.title, p.host, p.bookmark, p.visits]), [["My example", "example.com", true, 5], ["Hacker News", "news.ycombinator.com", false, 40]]);
         assert.strictEqual(fs.statSync(db).mtimeMs, before);
         assert.deepStrictEqual(fs.readdirSync(dir).filter(n => n.startsWith("banditshell-places-")), []);
+        assert.strictEqual(fs.statSync(target).mode & 0o777, 0o600);
+        assert.strictEqual(fs.statSync(path.dirname(target)).mode & 0o777, 0o700);
         fs.rmSync(dir, { recursive: true, force: true });
     });
 });

@@ -124,12 +124,21 @@ QtObject {
                 }
             ];
         }
-        return [
-            {
-                icon: "download",
-                label: job ? "Try again" : row.label,
-                run: () => VideoDownloads.start(row.url, row.audio)
-            }
-        ];
+        const retry = {
+            icon: "download",
+            label: job ? "Try again" : row.label,
+            run: () => VideoDownloads.start(row.url, row.audio)
+        };
+        if (job && job.phase === "failed" && job.signIn && !job.withCookies && VideoDownloads.cookies)
+            return [
+                {
+                    icon: "cookie",
+                    label: "Retry with browser cookies",
+                    short: "Use cookies",
+                    run: () => VideoDownloads.retryWithCookies(row.url, row.audio)
+                },
+                retry
+            ];
+        return [retry];
     }
 }

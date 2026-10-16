@@ -48,13 +48,13 @@ QtObject {
         const out = root.found.map((entry, i) => {
             const token = Packages.installToken(entry);
             const state = root.stateOf(entry);
-            const armed = PackageSearch.armed === token;
-            const busy = state === "installing" ? entry.source === "aur" ? "building" : "installing" : state === "removing" ? "removing" : "";
+            const armed = PackageSearch.armed === `remove:${token}` ? `Press Enter again to uninstall ${entry.title}` : PackageSearch.armed === `install:${token}` ? `Press Enter again to build ${entry.title}` : "";
+            const busy = ["installing", "building", "removing"].indexOf(state) >= 0 ? state : "";
             return {
                 key: `package:${token}`,
                 kind: "package",
                 entry: entry,
-                label: armed ? `Press Enter again to uninstall ${entry.title}` : entry.title,
+                label: armed || entry.title,
                 detail: armed ? "" : busy ? [Packages.detailOf(entry).split(" · ")[0], busy].join(" · ") : Packages.detailOf(entry),
                 icon: entry.installed ? "inventory_2" : "package_2",
                 iconSource: root.iconFor(entry),
@@ -106,7 +106,12 @@ QtObject {
                 run: () => root.openPage(entry)
             }
         ] : [];
-        if (PackageSearch.armed === token)
+        const cancel = {
+            icon: "close",
+            label: "Cancel",
+            run: () => PackageSearch.armed = ""
+        };
+        if (PackageSearch.armed === `remove:${token}`)
             return [
                 {
                     icon: "delete",
@@ -114,17 +119,23 @@ QtObject {
                     alarm: true,
                     run: () => PackageSearch.uninstall(entry)
                 },
-                {
-                    icon: "close",
-                    label: "Cancel",
-                    run: () => PackageSearch.armed = ""
-                }
+                cancel
             ];
-        if (state === "installing" || state === "removing")
+        if (PackageSearch.armed === `install:${token}`)
+            return [
+                {
+                    icon: "terminal",
+                    label: `Build with ${PackageSearch.aurHelper} in a terminal`,
+                    short: "Build",
+                    run: () => PackageSearch.install(entry)
+                },
+                cancel
+            ].concat(page);
+        if (state === "installing" || state === "building" || state === "removing")
             return [
                 {
                     icon: "hourglass_top",
-                    label: state === "installing" ? "Installing" : "Removing",
+                    label: state === "removing" ? "Removing" : state === "building" ? "Building" : "Installing",
                     run: () => {}
                 }
             ].concat(page);
@@ -141,7 +152,7 @@ QtObject {
                 {
                     icon: "delete",
                     label: "Uninstall",
-                    run: () => PackageSearch.armed = token
+                    run: () => PackageSearch.armed = `remove:${token}`
                 }
             ]);
         }
@@ -151,8 +162,13 @@ QtObject {
             {
                 icon: "download",
                 label: entry.source === "aur" ? `Build with ${PackageSearch.aurHelper}` : "Install",
-                short: "Install",
-                run: () => PackageSearch.install(entry)
+                short: entry.source === "aur" ? "Build" : "Install",
+                run: () => {
+                    if (entry.source === "aur")
+                        PackageSearch.armed = `install:${token}`;
+                    else
+                        PackageSearch.install(entry);
+                }
             }
         ].concat(page);
     }
