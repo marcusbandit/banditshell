@@ -14,9 +14,9 @@ function lib(file, names) {
 
 const Asks = lib("modules/launcher/system-asks.js", ["brightnessAsk", "brightnessNear", "wifiAsk", "vpnAsk", "tailscaleAsk", "vpnNear", "recordAsk", "recordNear", "stopNear"]);
 const Brightness = lib("services/brightness.js", ["parseBacklights", "clamp", "stepped", "rawLevel", "percentText"]);
-const Ddcutil = lib("services/ddcutil.js", ["parseVcp"]);
+const Ddcutil = lib("services/ddcutil.js", ["parseVcp", "staleDisplays"]);
 const Tailscale = lib("services/tailscale.js", ["parseStatus", "stateText", "explain", "authUrlIn", "exitNodeCommand", "operatorCommand", "matches"]);
-const Recording = lib("services/recording.js", ["fileName", "folderFor", "pickBackend", "geometryParts", "evenGeometry", "recorderCommand", "windowBoxes", "windowBox", "splitDocuments", "parseState", "parseResult", "modeLabel"]);
+const Recording = lib("services/recording.js", ["isRecorderName", "fileName", "folderFor", "pickBackend", "geometryParts", "evenGeometry", "recorderCommand", "windowBoxes", "windowBox", "splitDocuments", "parseState", "parseResult", "modeLabel"]);
 
 test.describe("brightness asks", () => {
     test.it("reads a list, a level and a step", () => {
@@ -80,6 +80,13 @@ test.describe("brightness levels", () => {
         assert.strictEqual(Ddcutil.parseVcp("Display not found"), null);
         assert.strictEqual(Ddcutil.parseVcp("VCP 10 C 5 0"), null);
     });
+
+    test.it("reads a monitor again only after thirty seconds", () => {
+        const displays = [{ index: "1" }, { index: "2" }, { index: "3" }];
+        const stale = Ddcutil.staleDisplays(displays, { 1: 1000, 2: 25000 }, 40000, 30000);
+        assert.deepStrictEqual(stale.map(d => d.index), ["1", "3"]);
+        assert.deepStrictEqual(Ddcutil.staleDisplays(displays, {}, 0, 30000).length, 3);
+    });
 });
 
 test.describe("wifi asks", () => {
@@ -87,10 +94,20 @@ test.describe("wifi asks", () => {
         assert.deepStrictEqual(Asks.wifiAsk("wifi"), { name: "" });
         assert.deepStrictEqual(Asks.wifiAsk("Wi-Fi networks"), { name: "" });
         assert.deepStrictEqual(Asks.wifiAsk("wifi cafe"), { name: "cafe" });
-        assert.deepStrictEqual(Asks.wifiAsk("join Cafe Guest"), { name: "cafe guest", join: true });
         assert.deepStrictEqual(Asks.wifiAsk("wifi off"), { name: "", power: false });
         assert.deepStrictEqual(Asks.wifiAsk("wifi on"), { name: "", power: true });
         assert.strictEqual(Asks.wifiAsk("wifey"), null);
+    });
+
+    test.it("claims wireless and join only for a network that is there", () => {
+        const names = ["Cafe Guest", "CR1500"];
+        assert.deepStrictEqual(Asks.wifiAsk("join Cafe Guest", names), { name: "cafe guest", join: true });
+        assert.deepStrictEqual(Asks.wifiAsk("join the wifi cr15", names), { name: "cr15", join: true });
+        assert.deepStrictEqual(Asks.wifiAsk("wireless cafe", names), { name: "cafe", join: false });
+        assert.deepStrictEqual(Asks.wifiAsk("wireless", names), { name: "" });
+        assert.strictEqual(Asks.wifiAsk("join zoom", names), null);
+        assert.strictEqual(Asks.wifiAsk("wireless mouse", names), null);
+        assert.strictEqual(Asks.wifiAsk("join cafe", []), null);
     });
 });
 
@@ -263,6 +280,10 @@ test.describe("recording", () => {
         assert.strictEqual(Recording.parseState("1\n5\n/a"), null);
         assert.deepStrictEqual(Recording.parseResult("0\n/a.mp4\n2048\nframes: 10\n"), { status: 0, file: "/a.mp4", size: 2048, complaint: "frames: 10" });
         assert.strictEqual(Recording.modeLabel("window"), "a window");
+        assert.strictEqual(Recording.isRecorderName("wf-recorder\n"), true);
+        assert.strictEqual(Recording.isRecorderName("gpu-screen-reco"), true);
+        assert.strictEqual(Recording.isRecorderName("sleep"), false);
+        assert.strictEqual(Recording.isRecorderName(""), false);
     });
 });
 
@@ -272,6 +293,8 @@ test.describe("screen-record.sh", () => {
 
     test.after(() => {
         for (const dir of made)
+            spawnSync("pkill", ["-f", `${dir}/bin/wf-recorder`]);
+        for (const dir of made)
             fs.rmSync(dir, { recursive: true, force: true });
     });
 
@@ -280,7 +303,7 @@ test.describe("screen-record.sh", () => {
         made.push(dir);
         const bin = path.join(dir, "bin");
         fs.mkdirSync(bin);
-        fs.writeFileSync(path.join(bin, "wf-recorder"), "#!/bin/sh\nfile=\"$3\"\ntrap 'printf done >\"$file\"; exit 0' INT\nprintf started >&2\nwhile :; do sleep 0.05; done\n", { mode: 0o755 });
+        fs.writeFileSync(path.join(bin, "wf-recorder"), "#!/bin/sh\nfile=\"$3\"\nif [ \"$STUBBORN\" = 1 ]; then trap '' INT; else trap 'printf done >\"$file\"; exit 0' INT; fi\nprintf started >&2\nwhile :; do sleep 0.05; done\n", { mode: 0o755 });
         return { dir: dir, bin: bin, state: path.join(dir, "run") };
     }
 
@@ -321,5 +344,55 @@ test.describe("screen-record.sh", () => {
         assert.strictEqual(result[1], file);
         assert.strictEqual(fs.readFileSync(file, "utf8"), "done");
         child.kill();
+    });
+
+    function startRecording(box, extraEnv) {
+        const file = path.join(box.dir, "Recording.mp4");
+        const env = Object.assign({}, process.env, { PATH: `${box.bin}:${process.env.PATH}` }, extraEnv);
+        const child = spawn(script, ["start", box.state, file, "screen", "quiet", "wf-recorder", "-y", "-f", file, "-o", "DP-1"], { env: env, stdio: "ignore" });
+        const state = path.join(box.state, "recording");
+        const fresh = () => fs.existsSync(state) && parseInt(fs.readFileSync(state, "utf8"), 10) !== process.pid;
+        assert.ok(waitFor(fresh, 3000), "no state file appeared");
+        return { child: child, state: state, pid: parseInt(fs.readFileSync(state, "utf8"), 10) };
+    }
+
+    test.it("never signals a process that is not a recorder", () => {
+        const box = sandbox();
+        const bystander = spawn("sleep", ["30"], { stdio: "ignore" });
+        fs.mkdirSync(box.state, { mode: 0o700 });
+        const state = path.join(box.state, "recording");
+        fs.writeFileSync(state, `${bystander.pid}\n1760600000000\n/tmp/x.mp4\nscreen\nquiet\n`);
+        assert.strictEqual(spawnSync(script, ["stop", box.state]).status, 1);
+        assert.ok(!fs.existsSync(state), "the stale state stayed");
+        assert.ok(fs.existsSync(`/proc/${bystander.pid}`), "the bystander was signalled");
+        fs.writeFileSync(state, `${bystander.pid}\n1760600000000\n/tmp/x.mp4\nscreen\nquiet\n`);
+        assert.strictEqual(spawnSync(script, ["tidy", box.state]).status, 0);
+        assert.ok(!fs.existsSync(state));
+        bystander.kill();
+    });
+
+    test.it("starts over a stale state file but not over a live recording", () => {
+        const box = sandbox();
+        fs.mkdirSync(box.state, { mode: 0o700 });
+        fs.writeFileSync(path.join(box.state, "recording"), `${process.pid}\n1760600000000\n/tmp/x.mp4\nscreen\nquiet\n`);
+        const first = startRecording(box, {});
+        assert.notStrictEqual(first.pid, process.pid);
+        const env = Object.assign({}, process.env, { PATH: `${box.bin}:${process.env.PATH}` });
+        const second = spawnSync(script, ["start", box.state, path.join(box.dir, "b.mp4"), "screen", "quiet", "wf-recorder", "-o", "DP-1"], { env: env });
+        assert.strictEqual(second.status, 3);
+        assert.strictEqual(spawnSync(script, ["stop", box.state]).status, 0);
+        assert.ok(waitFor(() => !fs.existsSync(first.state), 3000));
+        first.child.kill();
+    });
+
+    test.it("escalates to TERM when the recorder ignores SIGINT", () => {
+        const box = sandbox();
+        const run = startRecording(box, { STUBBORN: "1" });
+        const env = Object.assign({}, process.env, { SCREEN_RECORD_PATIENCE: "1" });
+        const began = Date.now();
+        assert.strictEqual(spawnSync(script, ["stop", box.state], { env: env }).status, 0);
+        assert.ok(Date.now() - began >= 900, "it did not wait for SIGINT first");
+        assert.ok(waitFor(() => !fs.existsSync(`/proc/${run.pid}`) && !fs.existsSync(run.state), 3000), "the recorder outlived TERM");
+        run.child.kill();
     });
 });

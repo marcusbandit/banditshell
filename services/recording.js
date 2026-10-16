@@ -4,6 +4,15 @@ var BACKENDS = ["wf-recorder", "wl-screenrec", "gpu-screen-recorder"];
 var GEOMETRY = /^(-?\d+),(-?\d+) (\d+)x(\d+)$/;
 var OUTPUT = /^[A-Za-z0-9_.-]+$/;
 
+function isRecorderName(comm) {
+    var name = String(comm || "").trim();
+    for (var i = 0; i < BACKENDS.length; i++) {
+        if (name && name === BACKENDS[i].slice(0, 15))
+            return true;
+    }
+    return false;
+}
+
 function pad(n) {
     return (n < 10 ? "0" : "") + n;
 }

@@ -10,7 +10,8 @@ QtObject {
     required property var search
 
     readonly property var settings: Config.values.launcher.systemControls ?? {}
-    readonly property var asked: root.settings.wifi !== false && Network.available ? Asks.wifiAsk(root.search.text) : null
+    readonly property var names: Network.networks.map(n => n.name)
+    readonly property var asked: root.settings.wifi !== false && Network.available ? Asks.wifiAsk(root.search.text, root.names) : null
 
     readonly property bool listsWifi: root.asked !== null
     readonly property bool intent: root.asked !== null

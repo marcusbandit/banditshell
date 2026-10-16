@@ -5,8 +5,8 @@ var BRIGHTNESS_SET = /^(?:set )?(?:the )?(?:screen |display |monitor )?(?:bright
 var BRIGHTER = /^(?:brighter|brighten(?: the screen)?|(?:brightness|backlight) up|screen brighter)$/;
 var DIMMER = /^(?:dimmer|dim the screen|dim screen|(?:brightness|backlight) down|screen dimmer)$/;
 
-var WIFI_HEAD = /^(?:wifi networks?|wi-fi networks?|wireless networks?|wifi|wi-fi|wlan|wireless)(?: (.+))?$/;
-var WIFI_JOIN = /^join (.+)$/;
+var WIFI_HEAD = /^(?:wifi networks?|wi-fi networks?|wireless networks?|wifi|wi-fi|wlan)(?: (.+))?$/;
+var WIFI_LOOSE = /^(?:wireless|join(?: (?:the )?(?:wifi|wi-fi|network))?)(?: (.+))?$/;
 var WIFI_ON = /^(?:on|enable|turn on)$/;
 var WIFI_OFF = /^(?:off|disable|turn off)$/;
 
@@ -65,7 +65,15 @@ function brightnessNear(text) {
     return nearWord(text, ["brightness", "backlight", "brighter", "dimmer"]);
 }
 
-function wifiAsk(text) {
+function seen(names, wanted) {
+    for (var i = 0; i < (names || []).length; i++) {
+        if (String(names[i]).toLowerCase().indexOf(wanted) >= 0)
+            return true;
+    }
+    return false;
+}
+
+function wifiAsk(text, names) {
     var t = tidy(text);
     var m = WIFI_HEAD.exec(t);
     if (m) {
@@ -76,8 +84,13 @@ function wifiAsk(text) {
             return { name: "", power: false };
         return { name: rest };
     }
-    m = WIFI_JOIN.exec(t);
-    return m ? { name: m[1], join: true } : null;
+    m = WIFI_LOOSE.exec(t);
+    if (!m)
+        return null;
+    var wanted = m[1] || "";
+    if (t === "wireless")
+        return { name: "" };
+    return wanted && seen(names, wanted) ? { name: wanted, join: t.indexOf("join") === 0 } : null;
 }
 
 function vpnAsk(text) {

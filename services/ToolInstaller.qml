@@ -3,6 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Io
+import qs.components
 
 Singleton {
     id: root
@@ -75,14 +76,19 @@ Singleton {
             return;
         root.mark(tool, "trying");
         Polkit.expect(`Install ${tool}`, tool);
-        runner.createObject(root, {
-            tool: tool,
+        const job = runner.createObject(root, {
             command: [root.installer, "--polkit", ...wanted]
-        }).running = true;
+        });
+        job.finished.connect((code, output, error) => root.finish(tool, job.began ? code : -1));
+        job.running = true;
     }
 
     function finish(tool: string, code: int): void {
         Polkit.forget();
+        if (code < 0) {
+            root.mark(tool, "failed");
+            return;
+        }
         if (code === 4 || code === 127) {
             root.mark(tool, "terminal");
             Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.installer}' --ask ${root.packages[tool].join(" ")}`]);
@@ -121,15 +127,6 @@ Singleton {
     Component {
         id: runner
 
-        Process {
-            id: run
-
-            property string tool: ""
-
-            onExited: code => {
-                root.finish(run.tool, code);
-                run.destroy();
-            }
-        }
+        CommandJob {}
     }
 }

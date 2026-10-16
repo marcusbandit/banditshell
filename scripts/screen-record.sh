@@ -5,7 +5,28 @@ umask 077
 usage() {
     echo "usage: screen-record.sh start STATE_DIR FILE MODE SOUND RECORDER [ARGS...]" >&2
     echo "       screen-record.sh stop STATE_DIR" >&2
+    echo "       screen-record.sh tidy STATE_DIR" >&2
     exit 2
+}
+
+recorder_pid() {
+    local state=$1 pid comm
+    [ -r "$state" ] || return 1
+    pid=$(head -n 1 -- "$state")
+    [[ $pid =~ ^[0-9]+$ ]] && [ "$pid" -gt 1 ] || return 1
+    comm=$(cat "/proc/$pid/comm" 2>/dev/null) || return 1
+    case "$comm" in wf-recorder | wl-screenrec | gpu-screen-reco*) ;; *) return 1 ;; esac
+    printf '%s\n' "$pid"
+}
+
+gone_within() {
+    local pid=$1 tenths=$(($2 * 10))
+    while [ "$tenths" -gt 0 ]; do
+        [ -d "/proc/$pid" ] || return 0
+        sleep 0.1
+        tenths=$((tenths - 1))
+    done
+    [ ! -d "/proc/$pid" ]
 }
 
 now_ms() {
@@ -27,10 +48,11 @@ start)
 
     mkdir -p -- "$dir" && chmod 700 -- "$dir" || exit 1
     state="$dir/recording"
-    if [ -s "$state" ] && [ -d "/proc/$(head -n 1 "$state")" ]; then
+    if recorder_pid "$state" >/dev/null; then
         echo "a recording is already running" >&2
         exit 3
     fi
+    rm -f -- "$state"
     old_umask=$(umask)
     umask 022
     mkdir -p -- "$(dirname -- "$file")" || exit 1
@@ -68,11 +90,21 @@ start)
 stop)
     [ "$#" -eq 2 ] || usage
     state="$2/recording"
-    [ -r "$state" ] || exit 1
-    pid=$(head -n 1 -- "$state")
-    [[ $pid =~ ^[0-9]+$ ]] && [ "$pid" -gt 1 ] || exit 1
-    [ -d "/proc/$pid" ] || exit 1
-    kill -INT "$pid"
+    patience=${SCREEN_RECORD_PATIENCE:-5}
+    [[ $patience =~ ^[0-9]+$ ]] || patience=5
+    if ! pid=$(recorder_pid "$state"); then
+        rm -f -- "$state"
+        exit 1
+    fi
+    kill -INT "$pid" 2>/dev/null
+    gone_within "$pid" "$patience" && exit 0
+    kill -TERM "$pid" 2>/dev/null
+    gone_within "$pid" $((patience * 2)) && exit 0
+    kill -KILL "$pid" 2>/dev/null
+    ;;
+tidy)
+    [ "$#" -eq 2 ] || usage
+    recorder_pid "$2/recording" >/dev/null || rm -f -- "$2/recording"
     ;;
 *)
     usage

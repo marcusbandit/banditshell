@@ -31,6 +31,8 @@ Singleton {
     property string expected: ""
     property double expectedSince: 0
     property bool stopping: false
+    property int droppedPid: 0
+    property int deadTicks: 0
     property string lastFile: ""
     property string trouble: ""
     property double now: Date.now()
@@ -81,7 +83,33 @@ Singleton {
         if (!root.recording || root.stopping)
             return;
         root.stopping = true;
+        stopWatch.restart();
         Quickshell.execDetached([root.script, "stop", root.stateDir]);
+    }
+
+    function drop(): void {
+        if (root.current)
+            root.droppedPid = root.current.pid;
+        root.deadTicks = 0;
+        Quickshell.execDetached([root.script, "tidy", root.stateDir]);
+        root.lose();
+    }
+
+    function checkAlive(comm: string): void {
+        if (!root.current)
+            return;
+        if (Logic.isRecorderName(comm))
+            root.deadTicks = 0;
+        else
+            root.drop();
+    }
+
+    function missing(): void {
+        if (!root.current)
+            return;
+        root.deadTicks += 1;
+        if (root.deadTicks >= 3)
+            root.drop();
     }
 
     function adopt(text: string): void {
@@ -90,11 +118,12 @@ Singleton {
             root.lose();
             return;
         }
-        if (root.current?.pid === state.pid)
+        if (root.current?.pid === state.pid || state.pid === root.droppedPid)
             return;
         if (root.expected && state.file === root.expected)
             root.expected = "";
         root.current = state;
+        root.deadTicks = 0;
         alive.path = `/proc/${state.pid}/comm`;
         alive.reload();
     }
@@ -104,6 +133,7 @@ Singleton {
             root.lastFile = root.current.file;
             root.current = null;
             root.stopping = false;
+            stopWatch.stop();
             result.reload();
         } else if (root.expected && Date.now() - root.expectedSince > 8000) {
             root.expected = "";
@@ -155,6 +185,18 @@ Singleton {
     }
 
     Timer {
+        id: stopWatch
+
+        interval: 20000
+        onTriggered: {
+            if (!root.recording)
+                return;
+            root.stopping = false;
+            root.trouble = "the recorder would not stop";
+        }
+    }
+
+    Timer {
         id: settleLauncher
 
         interval: 350
@@ -187,7 +229,8 @@ Singleton {
 
         printErrors: false
 
-        onLoadFailed: root.lose()
+        onLoaded: root.checkAlive(alive.text().trim())
+        onLoadFailed: root.missing()
     }
 
     Process {

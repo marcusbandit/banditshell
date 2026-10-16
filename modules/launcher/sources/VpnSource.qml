@@ -14,6 +14,7 @@ QtObject {
     readonly property var settings: Config.values.launcher.systemControls ?? {}
     readonly property bool enabled: root.settings.vpn !== false
     readonly property string text: root.search.text
+    readonly property bool typed: root.search.query !== ""
 
     readonly property var vpnAsked: root.enabled ? Asks.vpnAsk(root.text) : null
     readonly property var tailAsked: root.enabled ? Asks.tailscaleAsk(root.text) : null
@@ -94,7 +95,7 @@ QtObject {
         const label = arming ? "Press Enter again to turn Tailscale off" : Tailscale.signedOut ? "Sign in to Tailscale" : ask?.kind === "up" ? "Turn Tailscale on" : ask?.kind === "down" ? "Turn Tailscale off" : "Tailscale";
         const self = Tailscale.status?.self;
         const exit = Tailscale.peers.find(p => p.exitActive) ?? null;
-        const busy = Tailscale.busy === "up" ? "connecting" : Tailscale.busy === "down" ? "disconnecting" : Tailscale.busy === "operator" ? "asking for permission" : Tailscale.busy === "signin" ? "opening the sign in page" : "";
+        const busy = Tailscale.busy === "up" ? "connecting" : Tailscale.busy === "down" ? "disconnecting" : Tailscale.busy === "operator" ? "asking for permission" : Tailscale.busy === "signin" ? (Tailscale.openedUrl ? "waiting for sign in" : "opening the sign in page") : "";
         return {
             key: "tailscale:status",
             kind: "tailscale",
@@ -193,14 +194,10 @@ QtObject {
         if (!root.enabled)
             return null;
         if (id === "tailscale:status")
-            return Tailscale.installed ? Object.assign(root.tailscaleRow(1), {
-                direct: true
-            }) : null;
+            return Tailscale.installed ? root.tailscaleRow(1) : null;
         if (id.startsWith("vpn:")) {
             const tunnel = Tunnels.list.find(t => `vpn:${t.uuid}` === id);
-            return tunnel ? Object.assign(root.tunnelRow(tunnel, 1), {
-                direct: true
-            }) : null;
+            return tunnel ? root.tunnelRow(tunnel, 1) : null;
         }
         if (id.startsWith("tailscale:exit:")) {
             const peer = Tailscale.exitNodes.find(p => `tailscale:exit:${p.id}` === id);
@@ -223,7 +220,7 @@ QtObject {
                 const tunnel = Tunnels.list.find(t => t.uuid === row.uuid);
                 if (!tunnel)
                     return;
-                if (tunnel.on && !row.direct && root.search.armed !== `vpnoff:${tunnel.uuid}`) {
+                if (tunnel.on && root.typed && root.search.armed !== `vpnoff:${tunnel.uuid}`) {
                     root.search.armed = `vpnoff:${tunnel.uuid}`;
                     return;
                 }
@@ -243,7 +240,7 @@ QtObject {
                 const want = kind === "up" ? true : kind === "down" ? false : !Tailscale.running;
                 if (want === Tailscale.running && !Tailscale.signedOut)
                     return;
-                if (!want && !row.direct && root.search.armed !== "tailscaleoff") {
+                if (!want && root.typed && root.search.armed !== "tailscaleoff") {
                     root.search.armed = "tailscaleoff";
                     return;
                 }
