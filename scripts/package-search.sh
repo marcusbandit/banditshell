@@ -82,7 +82,7 @@ aur)
     ;;
 flatpak)
     has flatpak || exit 3
-    flatpak list --app --columns=application,version 2>/dev/null
+    flatpak list --app --columns=application,version,installation 2>/dev/null
     ;;
 *)
     usage

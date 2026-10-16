@@ -3,11 +3,13 @@ import glob
 import gzip
 import json
 import os
+import re
 import sys
 import xml.etree.ElementTree as ElementTree
 
 LANG = "{http://www.w3.org/XML/1998/namespace}lang"
 KINDS = {"desktop-application", "desktop", "console-application"}
+NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9+._@:-]*$")
 
 
 def installations():
@@ -66,7 +68,7 @@ def read(source):
                 if identifier.endswith(".desktop"):
                     identifier = identifier[: -len(".desktop")]
                 release = element.find("releases/release")
-                if identifier:
+                if NAME.match(identifier) and NAME.match(source["remote"]):
                     apps.append({
                         "id": identifier,
                         "name": untranslated(element, "name") or identifier,
@@ -84,6 +86,7 @@ def main():
     if len(sys.argv) != 2:
         print("usage: flatpak-index.py <index.json>", file=sys.stderr)
         return 2
+    os.umask(0o077)
     target = sys.argv[1]
     found = sources()
     if not found:
@@ -103,7 +106,9 @@ def main():
                 apps.setdefault(app["id"], app)
         except (OSError, ElementTree.ParseError, EOFError):
             continue
-    os.makedirs(os.path.dirname(target) or ".", exist_ok=True)
+    folder = os.path.dirname(target) or "."
+    os.makedirs(folder, mode=0o700, exist_ok=True)
+    os.chmod(folder, 0o700)
     partial = target + ".part"
     with open(partial, "w", encoding="utf-8") as out:
         json.dump({"signature": signature, "apps": sorted(apps.values(), key=lambda a: a["name"].lower())}, out, ensure_ascii=False, separators=(",", ":"))

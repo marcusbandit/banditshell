@@ -13,7 +13,7 @@ Singleton {
 
     readonly property string searcher: `${Quickshell.shellDir}/scripts/package-search.sh`
     readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
-    readonly property string indexFile: `${Config.cacheDir}/flatpak-apps.json`
+    readonly property string indexFile: `${Config.cacheDir}/online/flatpak-apps.json`
 
     property var tools: ({})
     property bool probed: false
@@ -106,10 +106,23 @@ Singleton {
         return entry.source !== "aur" || !!root.aurHelper;
     }
 
+    readonly property bool busy: Uninstaller.busy !== "" || Object.keys(root.jobs).some(token => ["installing", "building", "removing"].indexOf(root.jobs[token]) >= 0)
+
     function install(entry: var): void {
         const token = Packages.installToken(entry);
-        if (root.jobs[token] === "installing" || root.jobs[token] === "removing")
+        root.armed = "";
+        if (root.busy)
             return;
+        if (entry.source === "aur") {
+            if (!root.aurHelper)
+                return;
+            root.setJob(token, "building");
+            builder.createObject(root, {
+                token: token,
+                command: [`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.installer}' --ask '${token.replace(/'/g, "'\\''")}'`]
+            }).running = true;
+            return;
+        }
         root.setJob(token, "installing");
         Polkit.expect(`Install ${entry.title}`, entry.name);
         runner.createObject(root, {
@@ -124,7 +137,7 @@ Singleton {
         const token = Packages.installToken(entry);
         const removal = Packages.removalOf(entry);
         root.armed = "";
-        if (Uninstaller.busy)
+        if (root.busy)
             return;
         root.setJob(token, "removing");
         Uninstaller.removePackage(removal.how, removal.package, entry.title, entry.icon, done => {
@@ -186,6 +199,24 @@ Singleton {
         path: root.indexed ? root.indexFile : ""
         printErrors: false
         onLoaded: root.flatpakIndex = Packages.readFlatpakIndex(text())
+    }
+
+    Component {
+        id: builder
+
+        Process {
+            id: build
+
+            property string token: ""
+
+            onExited: code => {
+                root.setJob(build.token, "");
+                if (code === 127)
+                    root.notify("", "No terminal to build in", build.token.slice(4));
+                root.refresh();
+                build.destroy();
+            }
+        }
     }
 
     Component {

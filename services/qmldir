@@ -57,6 +57,7 @@ singleton PenMap 1.0 PenMap.qml
 singleton Polkit 1.0 Polkit.qml
 singleton PowerProfile 1.0 PowerProfile.qml
 singleton Power 1.0 Power.qml
+PrivateFile 1.0 PrivateFile.qml
 singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
 singleton Settings 1.0 Settings.qml

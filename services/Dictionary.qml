@@ -15,19 +15,32 @@ Singleton {
 
     readonly property string script: `
         word="$1"
-        backup=$(mktemp)
-        trap 'rm -f "$backup"' EXIT
+        backup=$(mktemp) || exit 1
+        first=$(mktemp) || exit 1
+        pids=""
+        cleanup() {
+            [ -n "$pids" ] && kill $pids 2>/dev/null
+            rm -f "$backup" "$first"
+        }
+        trap cleanup EXIT
+        trap 'exit 143' TERM
+        trap 'exit 130' INT
         curl -fsS --max-time 6 -A "banditshell launcher" "https://en.wiktionary.org/api/rest_v1/page/definition/$word" >"$backup" 2>/dev/null &
+        backing=$!
+        pids=$backing
         if [ "$2" = 1 ]; then
-            out=$(curl -fsS --max-time 3 "https://api.dictionaryapi.dev/api/v2/entries/en/$word" 2>/dev/null)
+            curl -fsS --max-time 3 "https://api.dictionaryapi.dev/api/v2/entries/en/$word" >"$first" 2>/dev/null &
+            asking=$!
+            pids="$pids $asking"
+            wait "$asking"
             status=$?
-            if [ -n "$out" ] && [ "\${out#\\[}" != "$out" ]; then
-                printf '%s\\n' "$out"
+            if [ -s "$first" ] && [ "$(head -c 1 "$first")" = "[" ]; then
+                cat "$first"
                 exit 0
             fi
             [ "$status" -eq 22 ] || echo "@@ down"
         fi
-        wait
+        wait "$backing"
         [ -s "$backup" ] || exit 1
         cat "$backup"
     `
@@ -35,7 +48,7 @@ Singleton {
     property Lookup lookup: Lookup {
         delay: 450
         keep: 200
-        file: `${Config.cacheDir}/definitions.json`
+        file: `${Config.cacheDir}/online/definitions.json`
         commandFor: word => ["sh", "-c", root.script, "sh", encodeURIComponent(word), Date.now() - root.primaryDownAt > root.primaryRest ? "1" : "0"]
         read: (text, word) => {
             const down = text.indexOf("@@ down\n") === 0;

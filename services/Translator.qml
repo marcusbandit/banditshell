@@ -31,7 +31,7 @@ Singleton {
     property Lookup lookup: Lookup {
         delay: 450
         keep: 200
-        file: `${Config.cacheDir}/translations.json`
+        file: `${Config.cacheDir}/online/translations.json`
         commandFor: key => {
             const asked = Translation.splitKey(key);
             return ["sh", "-c", root.script, "sh", asked.text, asked.to];

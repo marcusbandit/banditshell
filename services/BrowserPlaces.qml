@@ -11,8 +11,8 @@ Singleton {
 
     readonly property bool enabled: (Config.values.launcher.online ?? {}).browser !== false
 
-    readonly property string file: `${Config.cacheDir}/browser-places.json`
-    readonly property string icons: `${Config.cacheDir}/favicons`
+    readonly property string file: `${Config.cacheDir}/online/browser-places.json`
+    readonly property string icons: `${Config.cacheDir}/online/favicons`
     readonly property real restFor: 3 * 60 * 1000
 
     property var places: []

@@ -150,13 +150,13 @@ test.describe("uninstall-app.sh", () => {
     test.it("prefers the package over a copy of its desktop file in the home folder", () => {
         const tools = { pacman: '[ "$1" = -Qqo ] && case "$2" in */usr/share/*) echo thing ;; *) exit 1 ;; esac', pkexec: "exit 0" };
         const files = { "home/.local/share/applications/thing.desktop": DESKTOP, "usr/share/applications/thing.desktop": DESKTOP };
-        assert.strictEqual(uninstall(["plan", "thing"], tools, files).stdout, "pkexec pacman -Rs --noconfirm thing");
+        assert.strictEqual(uninstall(["plan", "thing"], tools, files).stdout, "pkexec pacman -Rs --noconfirm -- thing");
     });
 
     test.it("hands flatpaks, Steam games and AppImages to their own tools", () => {
         const none = { pacman: "exit 1" };
         const flat = uninstall(["plan", "org.thing.App"], none, { "home/.local/share/flatpak/exports/share/applications/org.thing.App.desktop": `${DESKTOP}X-Flatpak=org.thing.App\n` });
-        assert.strictEqual(flat.stdout, "flatpak uninstall -y --noninteractive --user org.thing.App");
+        assert.strictEqual(flat.stdout, "flatpak uninstall -y --noninteractive --user -- org.thing.App");
         const steam = uninstall(["plan", "Some Game"], none, { "home/.local/share/applications/Some Game.desktop": "[Desktop Entry]\nName=Some Game\nExec=steam steam://rungameid/960090\n" });
         assert.strictEqual(steam.stdout, "xdg-open steam://uninstall/960090");
     });

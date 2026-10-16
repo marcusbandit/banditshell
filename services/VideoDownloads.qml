@@ -15,6 +15,7 @@ Singleton {
     property bool ffmpeg: false
     property bool probed: false
     property string cookies: ""
+    property var queued: null
 
     readonly property string folder: Downloads.dir || `${Files.home}/Downloads`
 
@@ -44,7 +45,17 @@ Singleton {
         root.launch(url, audio, "");
     }
 
+    function retryWithCookies(url: string, audio: bool): void {
+        if (root.cookies)
+            root.launch(url, audio, root.cookies);
+    }
+
     function launch(url: string, audio: bool, cookies: string): void {
+        if (!root.probed) {
+            root.queued = [url, audio, cookies];
+            root.probe();
+            return;
+        }
         const running = root.jobFor(url, audio);
         if (!root.found || running && (running.phase === "downloading" || running.phase === "starting" || running.phase === "processing"))
             return;
@@ -59,14 +70,14 @@ Singleton {
                 progress: null,
                 title: "",
                 file: "",
-                error: ""
+                error: "",
+                signIn: false,
+                withCookies: !!cookies
             }
         ]).slice(-12);
         const run = runner.createObject(root, {
             jobId: id,
-            url: url,
             audio: audio,
-            withCookies: !!cookies,
             command: Videos.command(url, audio, root.folder, root.ffmpeg, cookies)
         });
         root.runs[id] = run;
@@ -96,6 +107,10 @@ Singleton {
                 root.ffmpeg = lines.indexOf("ffmpeg") >= 0;
                 root.cookies = (lines.find(l => l.indexOf("cookies=") === 0) ?? "").slice(8);
                 root.probed = true;
+                const waiting = root.queued;
+                root.queued = null;
+                if (waiting)
+                    root.launch(waiting[0], waiting[1], waiting[2]);
             }
         }
     }
@@ -107,9 +122,7 @@ Singleton {
             id: run
 
             property int jobId: 0
-            property string url: ""
             property bool audio: false
-            property bool withCookies: false
             property bool cancelled: false
             property string title: ""
             property string file: ""
@@ -154,15 +167,11 @@ Singleton {
                         file: run.file
                     });
                     root.notify(run.audio ? "Audio downloaded" : "Video downloaded", run.title || run.file.split("/").pop(), "folder-download");
-                } else if (!run.withCookies && root.cookies && Videos.needsSignIn(run.complaint)) {
-                    root.update(run.jobId, {
-                        phase: "failed"
-                    });
-                    root.launch(run.url, run.audio, root.cookies);
                 } else {
                     root.update(run.jobId, {
                         phase: "failed",
-                        error: Videos.shortError(run.complaint)
+                        error: Videos.shortError(run.complaint),
+                        signIn: Videos.needsSignIn(run.complaint)
                     });
                     root.notify("Download failed", Videos.shortError(run.complaint) || run.title, "dialog-error");
                 }
