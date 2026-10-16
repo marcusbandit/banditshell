@@ -320,29 +320,31 @@ function strengthBits(length, set) {
 function drawPassword(pool, from, length, set) {
     var classes = CHARACTER_SETS[set];
     var alphabet = classes.join("");
+    var required = length >= classes.length ? classes : [];
+    var chars = [];
     var at = from;
-    for (var attempt = 0; attempt < 64; attempt++) {
-        var text = "";
-        for (var i = 0; i < length; i++) {
-            var picked = pickIndex(pool, at, alphabet.length);
-            if (!picked)
-                return null;
-            text += alphabet.charAt(picked.value);
-            at = picked.next;
-        }
-        var covered = length < classes.length || classes.every(chars => {
-            for (var k = 0; k < text.length; k++)
-                if (chars.indexOf(text.charAt(k)) >= 0)
-                    return true;
-            return false;
-        });
-        if (covered)
-            return {
-                value: text,
-                next: at
-            };
+    var picked;
+    for (var i = 0; i < length; i++) {
+        var source = i < required.length ? required[i] : alphabet;
+        picked = pickIndex(pool, at, source.length);
+        if (!picked)
+            return null;
+        chars.push(source.charAt(picked.value));
+        at = picked.next;
     }
-    return null;
+    for (var k = chars.length - 1; k > 0; k--) {
+        picked = pickIndex(pool, at, k + 1);
+        if (!picked)
+            return null;
+        at = picked.next;
+        var held = chars[k];
+        chars[k] = chars[picked.value];
+        chars[picked.value] = held;
+    }
+    return {
+        value: chars.join(""),
+        next: at
+    };
 }
 
 function uuidFrom(bytes) {
@@ -415,8 +417,16 @@ function draw(key, pool, from) {
     return null;
 }
 
+var URL_KEPT = /[A-Za-z0-9_.~-]/;
+
 function urlEncode(text) {
-    return encodeURIComponent(String(text)).replace(/[!'()*]/g, c => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
+    var bytes = utf8Bytes(text);
+    var out = "";
+    for (var i = 0; i < bytes.length; i++) {
+        var c = String.fromCharCode(bytes[i]);
+        out += bytes[i] < 0x80 && URL_KEPT.test(c) ? c : `%${HEX.charAt(bytes[i] >> 4).toUpperCase()}${HEX.charAt(bytes[i] & 15).toUpperCase()}`;
+    }
+    return out;
 }
 
 function urlDecode(text) {
@@ -794,6 +804,58 @@ function jsonShape(value) {
     return value === null ? "null" : typeof value;
 }
 
+var JSON_SPACE = " \t\n\r";
+var JSON_STOPS = ",:{}[] \t\n\r\"";
+
+function jsonReflow(text, pretty) {
+    var source = String(text);
+    var out = "";
+    var depth = 0;
+    var i = 0;
+    var newline = () => pretty ? `\n${"  ".repeat(depth)}` : "";
+    while (i < source.length) {
+        var c = source.charAt(i);
+        if (c === "\"") {
+            var j = i + 1;
+            while (j < source.length && source.charAt(j) !== "\"")
+                j += source.charAt(j) === "\\" ? 2 : 1;
+            out += source.slice(i, j + 1);
+            i = j + 1;
+        } else if (JSON_SPACE.indexOf(c) >= 0) {
+            i++;
+        } else if (c === "{" || c === "[") {
+            var close = c === "{" ? "}" : "]";
+            var k = i + 1;
+            while (k < source.length && JSON_SPACE.indexOf(source.charAt(k)) >= 0)
+                k++;
+            if (source.charAt(k) === close) {
+                out += c + close;
+                i = k + 1;
+            } else {
+                depth++;
+                out += c + newline();
+                i++;
+            }
+        } else if (c === "}" || c === "]") {
+            depth--;
+            out += newline() + c;
+            i++;
+        } else if (c === ",") {
+            out += `,${newline()}`;
+            i++;
+        } else if (c === ":") {
+            out += pretty ? ": " : ":";
+            i++;
+        } else {
+            var begin = i;
+            while (i < source.length && JSON_STOPS.indexOf(source.charAt(i)) < 0)
+                i++;
+            out += source.slice(begin, i);
+        }
+    }
+    return out;
+}
+
 function jsonFormat(text, minify) {
     var source = String(text).trim();
     var parsed;
@@ -812,8 +874,8 @@ function jsonFormat(text, minify) {
             problem: problem
         };
     }
-    var pretty = JSON.stringify(parsed, null, 2);
-    var compact = JSON.stringify(parsed);
+    var pretty = jsonReflow(source, true);
+    var compact = jsonReflow(source, false);
     return {
         ok: true,
         text: minify ? compact : pretty,
@@ -853,7 +915,7 @@ function jwtRead(token) {
     var times = [];
     for (var i = 0; i < JWT_TIMES.length; i++) {
         var seconds = payload[JWT_TIMES[i][0]];
-        if (typeof seconds === "number" && isFinite(seconds))
+        if (typeof seconds === "number" && isFinite(seconds) && Math.abs(seconds * 1000) < 8.64e15)
             times.push({
                 claim: JWT_TIMES[i][0],
                 name: JWT_TIMES[i][1],
@@ -1179,6 +1241,19 @@ function devAsk(text) {
     return null;
 }
 
+function readPaste(output) {
+    var text = String(output || "");
+    if (text === "secret")
+        return {
+            secret: true,
+            text: ""
+        };
+    return {
+        secret: false,
+        text: text.indexOf("text\n") === 0 ? text.slice(5) : ""
+    };
+}
+
 function answer(id, label, detail, copy, extra) {
     var out = {
         id: id,
@@ -1189,6 +1264,12 @@ function answer(id, label, detail, copy, extra) {
     for (var key in extra || {})
         out[key] = extra[key];
     return out;
+}
+
+function secretClipboard() {
+    return answer("clipboard:secret", "The clipboard holds a secret", "not read", null, {
+        failed: true
+    });
 }
 
 function clipped(text, size) {

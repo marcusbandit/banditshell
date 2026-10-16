@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["timerAsk", "leadingSpan", "reminderAsk", "reminderDay", "reminderMoment", "vagueHour", "clockOf", "volumeAsk", "volumeLevelAsk", "LOUDER", "QUIETER", "zoneAsk", "zoneMatches", "namedZones", "placeLabel", "ZONE_REGIONS", "ZONE_CHOICES", "portAsk", "killAsk", "awakeAsk"]);
+const Search = lib("modules/launcher/search.js", ["webSearchUrl", "zoneConvertAsk", "timerAsk", "leadingSpan", "reminderAsk", "reminderDay", "reminderMoment", "vagueHour", "clockOf", "volumeAsk", "volumeLevelAsk", "LOUDER", "QUIETER", "zoneAsk", "zoneMatches", "namedZones", "placeLabel", "ZONE_REGIONS", "ZONE_CHOICES", "portAsk", "killAsk", "awakeAsk"]);
 
 const cityOf = id => id.slice(id.lastIndexOf("/") + 1).replace(/_/g, " ");
 function systemZones() {
@@ -199,16 +199,48 @@ test.describe("reminder phrases", () => {
         assert.deepStrictEqual(Search.reminderAsk("remind me on wednesday evening to call"), { at: null, label: "call", day: "wednesday evening" });
     });
 
-    test.it("reads a bare hour on a 12 hour clock as the next one coming", () => {
-        const ask = Search.reminderAsk("remind me at 5 to leave");
+    test.it("reads a bare hour from 1 to 6 as the afternoon, and 7 to 11 as the next one on a 12 hour clock", () => {
+        const moment = (text, now, twelve) => stamp(Search.reminderMoment(Search.reminderAsk(text), now || FRIDAY, 9, Search.vagueHour(text), twelve));
         assert.ok(Search.vagueHour("remind me at 5 to leave"));
         assert.ok(!Search.vagueHour("remind me at 5pm to leave"));
         assert.ok(!Search.vagueHour("remind me at 5:30 to leave"));
         assert.ok(!Search.vagueHour("remind me at 17 to leave"));
-        assert.strictEqual(stamp(Search.reminderMoment(ask, FRIDAY, 9, true)), "2026-10-16 17:00");
-        assert.strictEqual(stamp(Search.reminderMoment(ask, FRIDAY, 9, false)), "2026-10-17 05:00");
-        assert.strictEqual(stamp(Search.reminderMoment(Search.reminderAsk("remind me at 11 to x"), FRIDAY, 9, true)), "2026-10-16 11:00");
-        assert.strictEqual(stamp(Search.reminderMoment(Search.reminderAsk("remind me at 5 to x"), new Date(2026, 9, 16, 22, 0), 9, true)), "2026-10-17 05:00");
+        assert.strictEqual(moment("remind me at 5 to leave", FRIDAY, true), "2026-10-16 17:00");
+        assert.strictEqual(moment("remind me at 5 to leave", FRIDAY, false), "2026-10-16 17:00");
+        assert.strictEqual(moment("remind me at 5 to x", new Date(2026, 9, 16, 22, 0), true), "2026-10-17 17:00");
+        assert.strictEqual(moment("remind me at 5am to x", FRIDAY, true), "2026-10-17 05:00");
+        assert.strictEqual(moment("remind me at 9 to x", FRIDAY, true), "2026-10-16 21:00");
+        assert.strictEqual(moment("remind me at 9 to x", FRIDAY, false), "2026-10-17 09:00");
+        assert.strictEqual(moment("remind me at 11 to x", FRIDAY, true), "2026-10-16 11:00");
+        assert.strictEqual(moment("remind me to pick up kids at 3 on wednesday", FRIDAY, false), "2026-10-21 15:00");
+        assert.strictEqual(moment("remind me on wednesday at 8 to x", FRIDAY, false), "2026-10-21 08:00");
+        assert.strictEqual(moment("remind me tonight at 3 to x", FRIDAY, false), "2026-10-17 03:00");
+    });
+
+    test.it("puts tonight at midnight and at 12 on the coming midnight", () => {
+        const late = new Date(2026, 9, 16, 22, 0);
+        assert.strictEqual(when("remind me tonight at midnight", late), "2026-10-17 00:00");
+        assert.strictEqual(when("remind me tonight at 12", late), "2026-10-17 00:00");
+        assert.strictEqual(when("remind me tonight at 12:30 to sleep", late), "2026-10-17 00:30");
+        assert.strictEqual(when("remind me tonight at 12am", late), "2026-10-17 00:00");
+        assert.strictEqual(when("remind me tonight at 11", late), "2026-10-16 23:00");
+    });
+
+    test.it("rolls a day of the month, a date and a weekday on when their time has passed", () => {
+        const sixteenth = new Date(2026, 9, 16, 9, 30);
+        assert.strictEqual(when("remind me on the 16th at 9am to pay", sixteenth), "2026-11-16 09:00");
+        assert.strictEqual(when("remind me on the 16th at 10am to pay", sixteenth), "2026-10-16 10:00");
+        assert.strictEqual(when("remind me on the 31st at 9 to x", new Date(2026, 9, 31, 10, 0)), "2026-12-31 09:00");
+        assert.strictEqual(when("remind me on 16 oct at 9 to x", sixteenth), "2027-10-16 09:00");
+        assert.strictEqual(when("remind me on 16/10 at 9 to x", sixteenth), "2027-10-16 09:00");
+        assert.strictEqual(Search.reminderMoment(Search.reminderAsk("remind me on 2026-10-16 at 9 to x"), sixteenth, 9), 0);
+    });
+
+    test.it("splits a span at the last in", () => {
+        assert.deepStrictEqual(Search.reminderAsk("remind me to sign in to github in 10 minutes"), { seconds: 600, label: "sign in to github" });
+        assert.deepStrictEqual(Search.reminderAsk("remind me to check in on grandma in 2 hours"), { seconds: 7200, label: "check in on grandma" });
+        assert.deepStrictEqual(Search.reminderAsk("remind me to log in in 5m"), { seconds: 300, label: "log in" });
+        assert.strictEqual(Search.reminderAsk("remind me to check in on grandma"), null);
     });
 
     test.it("uses the configured hour when no time is given", () => {
@@ -314,6 +346,30 @@ test.describe("time zone places", () => {
         assert.strictEqual(Search.placeLabel("ist", "Asia/Kolkata", cityOf), "Kolkata");
         assert.strictEqual(Search.placeLabel("cet", "Europe/Paris", cityOf), "CET");
         assert.strictEqual(Search.placeLabel("tokyo", "Asia/Tokyo", cityOf), "Tokyo");
+    });
+});
+
+test.describe("zone conversion keeps am and pm on the time", () => {
+    test.it("reads am and pm before the place", () => {
+        assert.deepStrictEqual(Search.zoneConvertAsk("3 pm in tokyo"), { clock: { hour: 15, minute: 0 }, from: "", to: "tokyo" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("9 am to tokyo"), { clock: { hour: 9, minute: 0 }, from: "", to: "tokyo" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("10 pm in london"), { clock: { hour: 22, minute: 0 }, from: "", to: "london" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("3:30 pm in tokyo"), { clock: { hour: 15, minute: 30 }, from: "", to: "tokyo" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("3 pm tokyo time"), { clock: { hour: 15, minute: 0 }, from: "tokyo", to: "" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("3 pm cet in tokyo"), { clock: { hour: 15, minute: 0 }, from: "cet", to: "tokyo" });
+        assert.deepStrictEqual(Search.zoneConvertAsk("3pm ist in cet"), { clock: { hour: 15, minute: 0 }, from: "ist", to: "cet" });
+    });
+
+    test.it("never takes am or pm for a place", () => {
+        for (const t of ["3 pm", "3 am", "3 pm in", "10 pm time"])
+            assert.strictEqual(Search.zoneConvertAsk(t), null, t);
+    });
+});
+
+test.describe("web search", () => {
+    test.it("survives a lone surrogate", () => {
+        assert.strictEqual(Search.webSearchUrl("https://x/?q=%s", "a\ud800b"), "https://x/?q=a%EF%BF%BDb");
+        assert.strictEqual(Search.webSearchUrl("https://x/?q=%s", "a b"), "https://x/?q=a%20b");
     });
 });
 

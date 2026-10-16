@@ -27,6 +27,8 @@ QtObject {
 
     readonly property var drawn: root.drawKey ? DevUtilities.drawn[root.drawKey] : undefined
     readonly property string input: root.needsClipboard ? DevUtilities.clipboardText : ""
+    readonly property bool secretClipboard: root.needsClipboard && !DevUtilities.fromHistory && DevUtilities.clipboardSecret
+    readonly property bool copyBlocked: DevUtilities.sensitiveProbed && !DevUtilities.sensitiveCopy
 
     readonly property var icons: ({
             uuid: "fingerprint",
@@ -71,14 +73,14 @@ QtObject {
             tool: root.ask.tool,
             copyText: answer.copy === null ? (dated ? label : "") : answer.copy,
             label: label,
-            detail: answer.detail,
+            detail: answer.secret && root.copyBlocked ? `${answer.detail} · copy off, wl-copy lacks --sensitive` : answer.detail,
             icon: answer.expired ? "timer_off" : root.icons[root.ask.tool] ?? "terminal",
             peekText: hidden ? "" : answer.peek || "",
             score: root.ask.explicit ? Infinity : 0.4
         };
     }
 
-    readonly property var rows: root.ask ? Logic.answers(root.ask, root.input, root.drawn, Date.now()).map(answer => root.row(answer)) : []
+    readonly property var rows: !root.ask ? [] : root.secretClipboard ? [root.row(Logic.secretClipboard())] : Logic.answers(root.ask, root.input, root.drawn, Date.now()).map(answer => root.row(answer))
 
     readonly property var groups: [
         {
@@ -111,7 +113,11 @@ QtObject {
     }
 
     function activate(row: var): void {
-        if (!row.answer.failed)
+        if (row.answer.failed)
+            return;
+        if (row.answer.secret && root.copyBlocked)
+            DevUtilities.reveal(root.drawKey);
+        else
             root.copy(row.copyText, !!row.answer.secret);
     }
 
@@ -119,7 +125,7 @@ QtObject {
         const answer = row.answer;
         if (answer.failed)
             return [];
-        const acts = [
+        const acts = answer.secret && root.copyBlocked ? [] : [
             {
                 icon: "content_copy",
                 label: "Copy",
@@ -133,6 +139,7 @@ QtObject {
             acts.push({
                 icon: shown ? "visibility_off" : "visibility",
                 label: shown ? "Hide" : "Show",
+                button: true,
                 run: () => DevUtilities.reveal(key)
             });
         }

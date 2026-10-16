@@ -16,16 +16,20 @@ Singleton {
     property var waiting: []
     property string revealed: ""
     property bool sensitiveCopy: false
+    property bool sensitiveProbed: false
+    property bool clipboardSecret: false
     property string pasted: ""
     property bool pasting: false
     property bool again: false
 
     readonly property int poolSize: 1024
     readonly property int refillBelow: 384
+    readonly property int poolCap: 4096
     readonly property int clipboardLimit: 262144
 
-    readonly property var latest: Clipboard.entries.find(e => e.id === Clipboard.current) ?? null
-    readonly property string clipboardText: root.latest && !root.latest.file && root.latest.text ? (root.latest.text.length <= root.clipboardLimit ? root.latest.text : "") : root.pasted
+    readonly property var latest: Clipboard.recording ? Clipboard.entries.find(e => e.id === Clipboard.current) ?? null : null
+    readonly property bool fromHistory: !!root.latest && !root.latest.file && !!root.latest.text
+    readonly property string clipboardText: root.fromHistory ? (root.latest.text.length <= root.clipboardLimit ? root.latest.text : "") : root.pasted
 
     function want(key: string): void {
         if (!key || root.drawn[key] !== undefined || root.take(key))
@@ -67,12 +71,15 @@ Singleton {
         root.waiting = [];
         root.revealed = "";
         root.pasted = "";
+        root.clipboardSecret = false;
     }
 
     function readClipboard(): void {
-        if (root.latest?.text || root.pasting)
+        if (root.fromHistory || root.pasting)
             return;
         root.pasting = true;
+        root.clipboardSecret = false;
+        root.pasted = "";
         paster.running = true;
     }
 
@@ -81,7 +88,8 @@ Singleton {
     }
 
     function copySecret(text: string): void {
-        Clipboard.offer(root.sensitiveCopy ? ["wl-copy", "--sensitive", "-n"] : ["wl-copy", "-n"], text);
+        if (root.sensitiveCopy)
+            Clipboard.offer(["wl-copy", "--sensitive", "-n"], text);
     }
 
     Process {
@@ -99,8 +107,10 @@ Singleton {
                 for (const key of waiting)
                     if (root.drawn[key] === undefined && !root.take(key))
                         root.waiting = root.waiting.concat([key]);
-                if (root.waiting.length)
+                if (root.waiting.length && root.pool.length < root.poolCap)
                     root.refill();
+                else
+                    root.waiting = [];
             }
         }
         onExited: if (root.again) {
@@ -112,9 +122,13 @@ Singleton {
     Process {
         id: paster
 
-        command: ["wl-paste", "-n", "-t", "text"]
+        command: ["sh", "-c", 'types=$(wl-paste -l 2>/dev/null) || exit 0; case "$types" in *x-kde-passwordManagerHint*) printf secret; exit 0 ;; esac; printf "text\\n"; exec wl-paste -n -t text']
         stdout: StdioCollector {
-            onStreamFinished: root.pasted = text.length <= root.clipboardLimit ? text : ""
+            onStreamFinished: {
+                const got = Logic.readPaste(text);
+                root.clipboardSecret = got.secret;
+                root.pasted = got.text.length <= root.clipboardLimit ? got.text : "";
+            }
         }
         onExited: root.pasting = false
     }
@@ -125,7 +139,10 @@ Singleton {
         command: ["sh", "-c", "wl-copy --help 2>&1 | grep -q -- --sensitive && echo sensitive; true"]
         running: true
         stdout: StdioCollector {
-            onStreamFinished: root.sensitiveCopy = text.trim() === "sensitive"
+            onStreamFinished: {
+                root.sensitiveCopy = text.trim() === "sensitive";
+                root.sensitiveProbed = true;
+            }
         }
     }
 

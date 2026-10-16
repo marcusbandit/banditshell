@@ -12,6 +12,13 @@ function nextClockTime(hour, minute, at) {
     return today > at ? today : occurrence(from, 1, hour, minute);
 }
 
+function oneOffAt(before, after, requested, now) {
+    if (requested > now)
+        return requested;
+    const same = before.hour === after.hour && before.minute === after.minute && before.days.join(",") === after.days.join(",");
+    return same && before.at > now ? before.at : nextClockTime(after.hour, after.minute, now);
+}
+
 function nextFor(alarm, at) {
     if (!alarm || !alarm.armed)
         return 0;
