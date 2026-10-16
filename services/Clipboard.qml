@@ -288,7 +288,7 @@ Singleton {
             const ext = entry.file.slice(entry.file.lastIndexOf(".") + 1).toLowerCase();
             root.offer(["sh", "-c", 'exec wl-copy -t "$1" < "$2"', "sh", `image/${ext === "jpg" ? "jpeg" : ext}`, entry.file], "");
         } else if ((entry.paths ?? []).length) {
-            root.offer(["wl-copy", "-t", "text/uri-list"], entry.paths.map(p => `file://${encodeURI(p)}`).join("\r\n"));
+            root.offer(["wl-copy", "-t", "text/uri-list"], entry.paths.map(p => `file://${String(p).split("/").map(encodeURIComponent).join("/")}`).join("\r\n"));
         } else {
             root.offer(["wl-copy", "-n"], entry.text ?? "");
         }

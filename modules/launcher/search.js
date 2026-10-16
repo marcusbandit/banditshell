@@ -51,7 +51,8 @@ function isPicture(path) {
 
 var TEXTUAL = /(?:\.(?:md|markdown|txt|text|rst|org|adoc|qml|js|mjs|cjs|ts|tsx|jsx|json|jsonc|py|sh|bash|zsh|fish|lua|rs|go|c|h|cc|cpp|hpp|cs|java|kt|kts|swift|rb|php|pl|r|sql|css|scss|sass|less|html|htm|xml|svg|toml|yaml|yml|ini|conf|cfg|env|log|csv|tsv|nix|gradle|cmake|mk|vim|el|clj|ex|exs|erl|hs|ml|dart|vue|svelte|tex|bib|desktop|service|rules|patch|diff|gitignore|frag|vert|glsl)|\/(?:Makefile|Dockerfile|Containerfile|PKGBUILD|README|LICENSE|CHANGELOG|COPYING|\.zshrc|\.bashrc|\.profile))$/i;
 
-var SECRETISH = /(?:secret|token|credential|passw|apikey|api[_-]key|private|\.env(?:\.|$)|id_rsa|id_ed25519|\.pem$|\.key$|\.p12$|\.pfx$|\.kdbx$|\.gpg$|\.asc$|\.netrc$|\.pgpass$|wallet|keyring|cookies)/i;
+var SECRETISH = /(?:secret|token|credential|passw|apikey|api[_-]key|adminsdk|wallet|keyring|cookies|id_rsa|id_ed25519|id_ecdsa|backup.?code)|(?:^|[^a-z])(?:auth|recovery|seed|mnemonic|otp|private)(?:s?(?:[^a-z]|$))|[_.-]keys?(?:\.|$)|\.env(?:\.|$)|\.(?:pem|p12|pfx|kdbx|gpg|asc|netrc|pgpass)$/i;
+var SECRET_FOLDERS = /\/\.(?:ssh|gnupg|aws|kube|docker|password-store|config\/gh|config\/rclone|local\/share\/keyrings)(?:\/|$)/;
 
 function isText(path) {
     return TEXTUAL.test(String(path || ""));
@@ -59,7 +60,7 @@ function isText(path) {
 
 function isSecretish(path) {
     var text = String(path || "");
-    return SECRETISH.test(text.slice(text.lastIndexOf("/") + 1));
+    return SECRET_FOLDERS.test(text) || SECRETISH.test(text.slice(text.lastIndexOf("/") + 1));
 }
 
 function fileUrl(path) {
@@ -121,7 +122,7 @@ function remembered(groups, bonusOf) {
     return (groups || []).map(g => {
         let lifted = false;
         const items = g.items.map((it, i) => {
-            const bonus = it.kind === "app" || it.header || !isFinite(it.score ?? 0) ? 0 : bonusOf(it.key);
+            const bonus = it.kind === "app" || it.kind === "latest" || it.header || !isFinite(it.score ?? 0) ? 0 : bonusOf(it.key);
             if (bonus > 0)
                 lifted = true;
             return {

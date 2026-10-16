@@ -103,7 +103,10 @@ QtObject {
                 icon: "history",
                 label: "Forget that I used it",
                 tucked: true,
-                run: () => Emoji.forget(row.entry)
+                run: () => {
+                    Emoji.forget(row.entry);
+                    LauncherMemory.forget(row.id ?? row.key);
+                }
             });
         if (!typing && Typist.probed)
             acts.push({

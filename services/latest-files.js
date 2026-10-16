@@ -39,7 +39,7 @@ function readListing(text) {
         var parts = lines[i].split("\t");
         if (parts.length < 3 || !parts[2])
             continue;
-        var path = parts[2];
+        var path = parts.slice(2).join("\t");
         var name = path.slice(path.lastIndexOf("/") + 1);
         if (name.charAt(0) === "." || PARTIAL.test(name))
             continue;

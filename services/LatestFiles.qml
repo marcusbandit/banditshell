@@ -24,7 +24,7 @@ Singleton {
     property string owed: ""
 
     function refresh(key: string): void {
-        if (Date.now() - (root.readAt[key] ?? 0) < 5000)
+        if (Date.now() - (root.readAt[key] ?? 0) < 1000)
             return;
         if (lister.running) {
             root.owed = key;

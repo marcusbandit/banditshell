@@ -427,6 +427,7 @@ Singleton {
         let lowered = memo.lowered[id];
         if (!lowered) {
             lowered = {
+                name: (entry.name ?? "").toLowerCase(),
                 generic: (entry.genericName ?? "").toLowerCase(),
                 comment: (entry.comment ?? "").toLowerCase(),
                 keywords: (entry.keywords ?? []).join(" ").toLowerCase()
@@ -474,12 +475,13 @@ Singleton {
                     entry: e,
                     tier: placed,
                     used: root.frecencyAt(e, now),
-                    length: needle ? (e.name ?? "").length : 0
+                    length: needle ? (e.name ?? "").length : 0,
+                    lower: root.loweredOf(e).name
                 });
         }
         memo.needle = q;
         memo.matched = q ? scored.map(r => r.entry) : [];
-        return scored.sort((a, b) => b.tier - a.tier || b.used - a.used || a.length - b.length || ((a.entry.name ?? "") < (b.entry.name ?? "") ? -1 : (a.entry.name ?? "") > (b.entry.name ?? "") ? 1 : 0)).map(r => r.entry);
+        return scored.sort((a, b) => b.tier - a.tier || b.used - a.used || a.length - b.length || (a.lower < b.lower ? -1 : a.lower > b.lower ? 1 : 0)).map(r => r.entry);
     }
 
     function launch(entry: var): void {

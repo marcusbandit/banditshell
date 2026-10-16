@@ -232,7 +232,9 @@ test.describe("peek privacy", () => {
     test.it("never previews the text of files named like secrets", () => {
         for (const p of ["/d/client_secret_1201.json", "/h/.env", "/h/.env.local", "/h/.ssh/id_ed25519", "/d/api-key.txt", "/d/server.pem", "/d/passwords.kdbx", "/d/github-token.txt"])
             assert.ok(Search.isSecretish(p), p);
-        for (const p of ["/d/notes.md", "/h/Projects/banditshell/DESIGN.md", "/d/secretary/letter.txt", "/d/environment.md"])
+        for (const p of ["/h/.config/gh/hosts.yml", "/h/.ssh/config", "/d/my-key.json", "/d/auth.json", "/d/recovery-codes.txt", "/d/gcp-key.json", "/d/firebase-adminsdk-x.json"])
+            assert.ok(Search.isSecretish(p), p);
+        for (const p of ["/d/notes.md", "/h/Projects/banditshell/DESIGN.md", "/d/secretary/letter.txt", "/d/environment.md", "/d/author.md", "/d/hotplug.md", "/d/keyboard-layout.json", "/d/monkey.png", "/d/privateer.txt"])
             assert.ok(!Search.isSecretish(p), p);
     });
 });

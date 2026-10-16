@@ -861,7 +861,7 @@ QtObject {
                 score: f.score - Ranking.EXACT
             }), "file"))
 
-    readonly property var contentRows: !root.grepFor || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
+    readonly property var contentRows: !root.grepFor || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !Search.isSecretish(hit.path) && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
                 key: `content:${hit.path}`,
                 kind: "file",
                 path: hit.path,
@@ -1367,8 +1367,10 @@ QtObject {
     }
 
     function activate(row: var): void {
-        if (row?.kind !== "app" && !row?.header)
-            LauncherMemory.record(row?.id ?? row?.key ?? "");
+        if (row?.kind !== "app" && !row?.header) {
+            const used = row?.id ?? row?.key ?? "";
+            Qt.callLater(() => LauncherMemory.record(used));
+        }
         const owner = root.sourceOf(row);
         if (owner) {
             owner.activate(row);

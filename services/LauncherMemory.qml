@@ -23,8 +23,23 @@ Singleton {
         return used > 0 ? Math.min(1, Math.log(1 + used) / 2) : 0;
     }
 
+    readonly property var passing: /^(?:app|cli|suggest|output|scriptline|process|window|link|translation|video|newnote|latest|clipboard|definition|stream|answer|fallback|content|file|reminder|timer|zone|convert):/
+
+    function remembers(key: string): bool {
+        return !!key && key.length <= 80 && !root.passing.test(key);
+    }
+
+    function forget(key: string): void {
+        if (!root.usage[key])
+            return;
+        const next = Object.assign({}, root.usage);
+        delete next[key];
+        root.usage = next;
+        store.setText(JSON.stringify(next));
+    }
+
     function record(key: string): void {
-        if (!key || key.startsWith("app:"))
+        if (!root.remembers(key))
             return;
         const now = Date.now();
         const next = Object.assign({}, root.usage, {

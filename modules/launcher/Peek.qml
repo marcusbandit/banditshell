@@ -46,7 +46,7 @@ Item {
         if (!root.readKey)
             return;
         reader.key = root.readKey;
-        reader.command = root.folder ? ["ls", "-1Ap", "--group-directories-first", "--", root.folder] : ["sed", "-n", `${root.firstLine},${root.firstLine + root.lineCount - 1}p;${root.firstLine + root.lineCount - 1}q`, "--", root.document];
+        reader.command = root.folder ? ["ls", "-1Ap", "--group-directories-first", "--", root.folder] : ["sh", "-c", 'sed -n "$1" -- "$2" | cut -c1-300', "sh", `${root.firstLine},${root.firstLine + root.lineCount - 1}p;${root.firstLine + root.lineCount - 1}q`, root.document];
         reader.running = true;
     }
 
@@ -67,14 +67,14 @@ Item {
             onStreamFinished: {
                 if (reader.key !== root.readKey)
                     return;
-                root.lines = this.text.replace(/\t/g, "    ").split("\n").slice(0, root.lineCount);
+                root.lines = this.text.replace(/\t/g, "    ").split("\n").slice(0, root.lineCount).map(line => line.slice(0, 300));
                 root.linesOf = reader.key;
             }
         }
     }
 
     readonly property bool textReady: root.clipText ? root.wanted : !!root.readKey && root.linesOf === root.readKey && root.lines.some(l => l.trim() !== "")
-    readonly property var shownLines: root.clipText ? root.clipText.replace(/\t/g, "    ").split("\n").slice(0, root.lineCount) : root.lines
+    readonly property var shownLines: root.clipText ? root.clipText.slice(0, 4000).replace(/\t/g, "    ").split("\n").slice(0, root.lineCount) : root.lines
 
     readonly property var windowSize: root.toplevel?.lastIpcObject?.size ?? null
     readonly property real aspect: root.toplevel ? (root.windowSize ? root.windowSize[0] / Math.max(1, root.windowSize[1]) : 16 / 9) : image.ready ? image.aspect : 16 / 10
