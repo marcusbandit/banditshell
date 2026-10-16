@@ -892,7 +892,7 @@ QtObject {
         const found = {
             places: [...new Set([...Clock.places.map(z => Clock.cityOf(z)), ...root.cities])],
             workspaces: Hyprland.workspaces.values.filter(w => w.id > 0).map(w => w.id).sort((a, b) => a - b).map(String),
-            playing: Audio.playing.map(n => Audio.streamLabel(n)),
+            playing: Audio.playing.map(n => Search.streamName(Audio.streamLabel(n)).toLowerCase()),
             processes: [...new Set(root.processes.map(p => p.name))]
         };
         const more = root.sources.reduce((out, s) => out.concat(s.phrases ?? []), []);

@@ -41,6 +41,10 @@ function pathQuery(text, home) {
 
 var PICTURE = /\.(?:png|jpe?g|webp|gif|bmp|svg|avif|tiff?)$/i;
 
+function streamName(label) {
+    return String(label || "").replace(/\.(?:x86_64|x86|x64|exe|bin|appimage)$/i, "");
+}
+
 function isPicture(path) {
     return PICTURE.test(String(path || ""));
 }
@@ -205,7 +209,7 @@ function reminderAsk(text) {
     if (!m)
         return null;
     const rest = m[1].trim();
-    const what = s => (s || "").trim().replace(/^to\s+/i, "");
+    const what = s => (s || "").trim().replace(/^to(?:\s+|$)/i, "");
 
     const first = new RegExp(`^(at\\s+)?(${CLOCK})(?:\\s+(.*))?$`, "i").exec(rest);
     const early = first && clockOf(first[2], !!first[1]);
@@ -251,6 +255,12 @@ function streamVolumeAsk(text) {
         name: m[1],
         level: parseInt(m[2], 10)
     };
+}
+
+function streamNameAsk(text) {
+    const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
+    const m = /^(?:volume|vol|mute|unmute) (?:of |for )?(.+)$/.exec(t) || /^(.+?) (?:volume|vol)$/.exec(t);
+    return m && m[1].length >= 2 && !/^(?:up|down|mixer|the|to|\d+ ?%?)$/.test(m[1]) ? m[1] : "";
 }
 
 function mixerAsk(text) {
@@ -601,6 +611,8 @@ function luaLayouts(texts) {
     return out;
 }
 
+var DIRECTIONS = ["left", "right", "up", "down"];
+
 var PHRASES = [
     {
         head: "days until ",
@@ -651,8 +663,92 @@ var PHRASES = [
         picks: "playing"
     },
     {
+        head: "volume ",
+        picks: ["25", "50", "75", "100"]
+    },
+    {
+        head: "set volume to ",
+        picks: ["25", "50", "75", "100"]
+    },
+    {
         head: "kill ",
         picks: "processes"
+    },
+    {
+        head: "force quit ",
+        picks: "processes"
+    },
+    {
+        head: "swap ",
+        picks: DIRECTIONS
+    },
+    {
+        head: "focus ",
+        picks: DIRECTIONS
+    },
+    {
+        head: "move window ",
+        picks: DIRECTIONS.concat(["to workspace "])
+    },
+    {
+        head: "move window to workspace ",
+        picks: "workspaces"
+    },
+    {
+        head: "send to workspace ",
+        picks: "workspaces"
+    },
+    {
+        head: "move to ",
+        picks: ["next display", "previous display", "next workspace", "previous workspace"]
+    },
+    {
+        head: "go to workspace ",
+        picks: "workspaces"
+    },
+    {
+        head: "workspace ",
+        picks: "workspaces"
+    },
+    {
+        head: "timer for ",
+        picks: ["5m", "10m", "25m", "1h"]
+    },
+    {
+        head: "remind me at ",
+        picks: ["9:00 to ", "12:00 to ", "15:00 to ", "18:00 to "]
+    },
+    {
+        head: "awake ",
+        picks: ["30m", "1h", "2h"]
+    },
+    {
+        head: "coffee ",
+        picks: ["30m", "1h", "2h"]
+    },
+    {
+        head: "what time is it in ",
+        picks: "places"
+    },
+    {
+        head: "noon in ",
+        picks: "places"
+    },
+    {
+        head: "midnight in ",
+        picks: "places"
+    },
+    {
+        head: "week of ",
+        picks: ["christmas", "new year", "easter", "1 jan"]
+    },
+    {
+        head: "what week is ",
+        picks: ["christmas", "new year", "easter", "1 jan"]
+    },
+    {
+        head: "weeks since ",
+        picks: ["christmas", "1 jan", "easter"]
     }
 ];
 
@@ -670,7 +766,7 @@ function suggestions(text, found, more) {
                 if (said.indexOf(rest) === 0 && said !== rest && out.indexOf(p.head + said) < 0)
                     out.push(p.head + said);
             }
-        } else if (p.head.indexOf(t) === 0 && picks.length) {
+        } else if (p.head.indexOf(t) === 0 && picks.length && out.indexOf(p.head) < 0) {
             out.push(p.head);
         }
     }

@@ -12,6 +12,7 @@ QtObject {
     readonly property int masterLevel: Search.volumeAsk(root.text)
     readonly property var streamAsk: root.masterLevel < 0 ? Search.streamVolumeAsk(root.text) : null
     readonly property bool mixer: Search.mixerAsk(root.text)
+    readonly property string named: root.masterLevel < 0 && !root.streamAsk ? Search.streamNameAsk(root.text) : ""
     readonly property int ceiling: Math.round(Audio.maxVolume * 100)
 
     readonly property var kinds: ["stream"]
@@ -60,13 +61,14 @@ QtObject {
     }
 
     function streamRow(node: var): var {
-        const name = Audio.streamLabel(node).replace(/\.(?:x86_64|x86|x64|exe|bin|appimage)$/i, "");
+        const name = Search.streamName(Audio.streamLabel(node));
         const binary = Audio.streamBinary(node);
         const ask = root.streamAsk;
-        if (ask && Ranking.place(name, ask.name) <= 0 && Ranking.place(binary, ask.name) <= 0)
+        const wanted = ask?.name ?? root.named;
+        if (wanted && Ranking.place(name, wanted) <= 0 && Ranking.place(binary, wanted) <= 0)
             return null;
         const level = ask ? Math.min(ask.level, root.ceiling) : -1;
-        const score = ask || root.mixer ? Infinity : Math.max(Ranking.place(name, root.text), Ranking.place(binary, root.text));
+        const score = wanted || root.mixer ? Infinity : Math.max(Ranking.place(name, root.text), Ranking.place(binary, root.text));
         return score > 0 ? root.levelRow(node, name, level, score, {
             iconSource: Apps.iconSourceFor([binary, name]),
             icon: "graphic_eq"

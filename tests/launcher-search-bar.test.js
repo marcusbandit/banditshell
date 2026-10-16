@@ -204,4 +204,26 @@ test.describe("tab completion", () => {
         assert.deepStrictEqual(Search.suggestions("focus workspace ", { workspaces: ["1", "6"] }), ["focus workspace 1", "focus workspace 6"]);
         assert.deepStrictEqual(Search.suggestions("time in", {}), []);
     });
+
+    test.it("completes window directions and the other ways to name a workspace", () => {
+        assert.deepStrictEqual(Search.suggestions("swap l", {}), ["swap left"]);
+        assert.deepStrictEqual(Search.suggestions("focus ", {}), ["focus left", "focus right", "focus up", "focus down"]);
+        assert.deepStrictEqual(Search.suggestions("move window to workspace ", { workspaces: ["2"] }), ["move window to workspace 2"]);
+        assert.deepStrictEqual(Search.suggestions("go to workspace ", { workspaces: ["3"] }), ["go to workspace 3"]);
+    });
+
+    test.it("offers both playing apps and levels after volume, once each", () => {
+        assert.deepStrictEqual(Search.suggestions("volume ", { playing: ["spotify"] }), ["volume spotify", "volume 25", "volume 50", "volume 75", "volume 100"]);
+        assert.strictEqual(Search.suggestions("vol", { playing: ["spotify"] }).filter(t => t === "volume ").length, 1);
+    });
+});
+
+test.describe("reminders", () => {
+    const Ask = lib("modules/launcher/search.js", ["reminderAsk"]);
+
+    test.it("leaves the label empty when only the time is given", () => {
+        assert.strictEqual(Ask.reminderAsk("remind me in 20 min to").label, "");
+        assert.strictEqual(Ask.reminderAsk("remind me at 15:00 to").label, "");
+        assert.strictEqual(Ask.reminderAsk("remind me in 20 min to tomato soup").label, "tomato soup");
+    });
 });

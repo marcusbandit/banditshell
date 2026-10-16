@@ -10,9 +10,17 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["streamVolumeAsk", "mixerAsk", "awakeAsk", "volumeAsk"]);
+const Search = lib("modules/launcher/search.js", ["streamVolumeAsk", "streamNameAsk", "mixerAsk", "awakeAsk", "volumeAsk"]);
 
 test.describe("an app's volume", () => {
+    test.it("finds the app when only its name follows the word volume", () => {
+        assert.strictEqual(Search.streamNameAsk("volume turing complete"), "turing complete");
+        assert.strictEqual(Search.streamNameAsk("spotify volume"), "spotify");
+        assert.strictEqual(Search.streamNameAsk("mute spotify"), "spotify");
+        for (const text of ["volume up", "volume 40", "volume", "volume mixer"])
+            assert.strictEqual(Search.streamNameAsk(text), "", text);
+    });
+
     test.it("reads the app and the level in the usual word orders", () => {
         for (const text of ["volume spotify 30", "spotify volume 30", "set spotify volume to 30%", "spotify 30%", "volume of spotify to 30"])
             assert.deepStrictEqual(Search.streamVolumeAsk(text), { name: "spotify", level: 30 }, text);
