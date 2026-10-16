@@ -77,7 +77,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Snapping a window to a half, third or quarter places it instead of only floating it. Typing in the launcher is about three times quicker than before this update, even with everything above added: the results are put together once per key instead of once for every kind of result, and app and emoji searches narrow from the letters you already typed."
+          "text": "Snapping a window to a half, third or quarter places it instead of only floating it. Typing in the launcher is quicker even with everything above added: the results are put together once per key instead of once for every kind of result, and app and emoji searches narrow from the letters you already typed."
         }
       ]
     },
