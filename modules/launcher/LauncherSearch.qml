@@ -51,7 +51,7 @@ QtObject {
             apps: 8,
             commands: 6,
             settings: 5,
-            windows: 5,
+            windows: root.windowList ? 24 : 5,
             devices: 4,
             processes: 8,
             shell: 12,
@@ -72,7 +72,7 @@ QtObject {
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList
 
     property bool started: false
 
@@ -913,6 +913,8 @@ QtObject {
 
     readonly property var pathRows: root.path && FileSearch.listedDir === root.path.dir ? Search.pathRows(FileSearch.entries, root.path, FileSearch.hidden, Files.home).map(f => root.fileRow(f, "path")) : []
 
+    readonly property bool windowList: Search.windowListAsk(root.text)
+
     readonly property var windowRows: root.text.length < 2 ? [] : Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0).map(t => {
         const o = t.lastIpcObject ?? {};
         const cls = o.class || o.initialClass || "";
@@ -926,9 +928,10 @@ QtObject {
             detail: `${app} · workspace ${t.workspace?.name ?? ""}`,
             iconSource: Apps.iconSourceFor([cls]),
             icon: "web_asset",
-            score: Math.max(Ranking.place(title, root.text), Ranking.place(app, root.text), Ranking.place(cls, root.text) - 0.5)
+            recency: o.focusHistoryID > 0 ? o.focusHistoryID : 999,
+            score: root.windowList ? Infinity : Math.max(Ranking.place(title, root.text), Ranking.place(app, root.text), Ranking.place(cls, root.text) - 0.5)
         };
-    }).filter(r => r.score > 0).sort((a, b) => b.score - a.score)
+    }).filter(r => r.score > 0).sort((a, b) => b.score - a.score || a.recency - b.recency)
 
     function kindScore(label: string, words: string): real {
         return Math.max(Ranking.place(label, root.text), Ranking.place(words, root.text) - 0.5);

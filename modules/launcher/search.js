@@ -263,6 +263,10 @@ function streamNameAsk(text) {
     return m && m[1].length >= 2 && !/^(?:up|down|mixer|the|to|\d+ ?%?)$/.test(m[1]) ? m[1] : "";
 }
 
+function windowListAsk(text) {
+    return /^(?:windows|window list|all windows|open windows|switch windows?|switcher|window switcher)$/i.test(String(text || "").trim());
+}
+
 function mixerAsk(text) {
     return /^(?:volume|volumes|mixer|volume mixer|sound mixer|app volume|apps volume|app volumes)$/i.test(String(text || "").trim());
 }
