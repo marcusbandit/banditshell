@@ -11,6 +11,24 @@ Item {
     id: root
 
     property bool compact: false
+    property bool showing: true
+    property bool lingering: false
+
+    onShowingChanged: {
+        if (root.showing)
+            root.lingering = true;
+        else
+            linger.restart();
+    }
+
+    Timer {
+        id: linger
+
+        interval: 900
+        onTriggered: root.lingering = root.showing
+    }
+
+    Component.onCompleted: root.lingering = root.showing
 
     readonly property var s: SettingsState
     readonly property var pin: SettingsView.pin
@@ -163,7 +181,7 @@ Item {
                         id: scene
 
                         anchors.fill: parent
-                        active: !root.pin && root.sceneName !== "" && (!root.compact || SettingsView.paneOut)
+                        active: root.lingering && !root.pin && root.sceneName !== "" && (!root.compact || SettingsView.paneOut)
                         source: root.sceneName ? Qt.resolvedUrl(`scenes/${root.sceneName.charAt(0).toUpperCase()}${root.sceneName.slice(1)}Scene.qml`) : ""
                     }
                 }
