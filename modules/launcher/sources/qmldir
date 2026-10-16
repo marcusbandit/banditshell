@@ -1,2 +1,9 @@
 module qs.modules.launcher.sources
+ColourSource 1.0 ColourSource.qml
 FallbackSource 1.0 FallbackSource.qml
+LoremSource 1.0 LoremSource.qml
+MonitorSource 1.0 MonitorSource.qml
+NotesSource 1.0 NotesSource.qml
+PomodoroSource 1.0 PomodoroSource.qml
+ProjectSource 1.0 ProjectSource.qml
+ScriptSource 1.0 ScriptSource.qml

@@ -11,6 +11,7 @@ singleton ChargeLimit 1.0 ChargeLimit.qml
 singleton CliMigration 1.0 CliMigration.qml
 singleton Clipboard 1.0 Clipboard.qml
 singleton Clock 1.0 Clock.qml
+singleton ColourPicks 1.0 ColourPicks.qml
 singleton CompositorSync 1.0 CompositorSync.qml
 singleton Currency 1.0 Currency.qml
 singleton DarkMode 1.0 DarkMode.qml
@@ -41,6 +42,7 @@ singleton Modes 1.0 Modes.qml
 singleton Monitors 1.0 Monitors.qml
 singleton NetworkEvents 1.0 NetworkEvents.qml
 singleton Network 1.0 Network.qml
+singleton Notes 1.0 Notes.qml
 singleton Notices 1.0 Notices.qml
 singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
@@ -50,10 +52,13 @@ singleton Pacman 1.0 Pacman.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
 singleton Polkit 1.0 Polkit.qml
+singleton Pomodoro 1.0 Pomodoro.qml
 singleton PowerProfile 1.0 PowerProfile.qml
 singleton Power 1.0 Power.qml
+singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
+singleton ScriptCommands 1.0 ScriptCommands.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
@@ -61,6 +66,7 @@ singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
 singleton SystemInfo 1.0 SystemInfo.qml
+singleton SystemMonitor 1.0 SystemMonitor.qml
 singleton Tablet 1.0 Tablet.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton TimeFormat 1.0 TimeFormat.qml

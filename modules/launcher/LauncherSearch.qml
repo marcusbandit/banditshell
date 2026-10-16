@@ -29,6 +29,27 @@ QtObject {
     readonly property list<QtObject> sources: [
         FallbackSource {
             search: root
+        },
+        ScriptSource {
+            search: root
+        },
+        ColourSource {
+            search: root
+        },
+        ProjectSource {
+            search: root
+        },
+        NotesSource {
+            search: root
+        },
+        MonitorSource {
+            search: root
+        },
+        PomodoroSource {
+            search: root
+        },
+        LoremSource {
+            search: root
         }
     ]
 

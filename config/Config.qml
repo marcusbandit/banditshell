@@ -290,6 +290,24 @@ Singleton {
 
                 folders: ({}),
 
+                powerTools: {
+                    scriptsFolder: "",
+
+                    projectFolders: "~/Projects",
+                    projectDepth: 2,
+                    projectSkip: "_archive",
+
+                    noteFolders: "~/Obsidian",
+                    noteVault: "",
+
+                    focusMinutes: 25,
+                    breakMinutes: 5,
+                    longBreakMinutes: 15,
+                    roundsBeforeLongBreak: 4,
+
+                    colourHistory: 12
+                },
+
                 alphabet: {
                     width: 760,
 
