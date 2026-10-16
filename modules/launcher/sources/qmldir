@@ -1,4 +1,8 @@
 module qs.modules.launcher.sources
+ClipboardSource 1.0 ClipboardSource.qml
+EmojiSource 1.0 EmojiSource.qml
 FallbackSource 1.0 FallbackSource.qml
 MediaSource 1.0 MediaSource.qml
+QuicklinkSource 1.0 QuicklinkSource.qml
+SnippetSource 1.0 SnippetSource.qml
 SoundSource 1.0 SoundSource.qml

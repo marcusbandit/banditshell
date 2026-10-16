@@ -20,6 +20,7 @@ singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Display 1.0 Display.qml
 singleton Downloads 1.0 Downloads.qml
+singleton Emoji 1.0 Emoji.qml
 singleton FileSearch 1.0 FileSearch.qml
 singleton Files 1.0 Files.qml
 singleton Hotspot 1.0 Hotspot.qml
@@ -57,6 +58,7 @@ singleton Relaunch 1.0 Relaunch.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
+singleton Snippets 1.0 Snippets.qml
 singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
@@ -67,6 +69,7 @@ singleton TimeFormat 1.0 TimeFormat.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Tray 1.0 Tray.qml
 singleton Tunnels 1.0 Tunnels.qml
+singleton Typist 1.0 Typist.qml
 singleton Uninstaller 1.0 Uninstaller.qml
 singleton Update 1.0 Update.qml
 singleton UsageApps 1.0 UsageApps.qml

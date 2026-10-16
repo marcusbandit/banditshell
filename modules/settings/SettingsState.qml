@@ -176,6 +176,8 @@ Singleton {
             fallbackWikipedia: "launcher.fallbacks.wikipedia",
             fallbackMaps: "launcher.fallbacks.maps",
             fallbackTerminal: "launcher.fallbacks.terminal",
+            skinTone: "launcher.typing.skinTone",
+            clipboardInSearch: "launcher.typing.clipboard",
             currency: "launcher.currency",
             launcherIcon: "launcher.iconSize",
             halfLife: "launcher.halfLifeDays",

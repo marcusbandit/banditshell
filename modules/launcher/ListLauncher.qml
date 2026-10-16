@@ -170,7 +170,9 @@ LauncherConcept {
         }
 
         const row = root.results[root.selected];
-        if (row && !row.header)
+        if (row?.ask)
+            root.startCapture("ask", row);
+        else if (row && !row.header)
             search.activate(row);
         else
             root.hide();
@@ -251,7 +253,7 @@ LauncherConcept {
             }),
             said: ""
         };
-        query.text = kind === "alias" ? search.aliasOf[row.id ?? row.key] ?? "" : "";
+        query.text = kind === "alias" ? search.aliasOf[row.id ?? row.key] ?? "" : kind === "ask" ? row.ask.suggestion ?? "" : "";
         query.selectAll();
         Qt.callLater(query.forceActiveFocus);
     }
@@ -267,6 +269,14 @@ LauncherConcept {
         const alias = Search.cleanAlias(query.text);
         Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, row.key, alias, row.label));
         root.endCapture(alias || root.beforeCapture);
+    }
+
+    function commitAsk(): void {
+        const typed = query.text.trim();
+        if (!typed)
+            return;
+        const after = root.capture.row.ask.take(typed);
+        root.endCapture(typeof after === "string" ? after : root.beforeCapture);
     }
 
     function takeHotkey(event: var): bool {
@@ -294,7 +304,10 @@ LauncherConcept {
         if (root.capture.kind === "hotkey")
             return root.takeHotkey(event);
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            root.commitAlias();
+            if (root.capture.kind === "ask")
+                root.commitAsk();
+            else
+                root.commitAlias();
             return true;
         }
         return event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
@@ -615,7 +628,7 @@ LauncherConcept {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
                         size: Appearance.font.size.normal
-                        name: !root.capture ? "search" : root.capture.kind === "alias" ? "label" : "keyboard"
+                        name: !root.capture ? "search" : root.capture.kind === "ask" ? root.capture.row.ask.icon : root.capture.kind === "alias" ? "label" : "keyboard"
                         color: Appearance.colour.textFaint
                     }
 
@@ -641,7 +654,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search" : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -871,6 +884,7 @@ LauncherConcept {
                                 inlineDetail: true
 
                                 iconSource: line.modelData.iconSource ?? ""
+                                glyph: line.modelData.glyph ?? ""
                                 icon: line.modelData.icon ?? "apps"
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
