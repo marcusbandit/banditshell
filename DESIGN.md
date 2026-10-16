@@ -3628,7 +3628,10 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   set, to }`, where `value()` reads the live level and `set(v)` changes it)
   for a level the row can drag; Left and Right nudge the selected one by
   `step` (0.05 unless set), a fifth of that with Shift. `text()` replaces the
-  percentage beside it, and `warnAbove` moves the marker that is at 1. Groups are ordered by their best score, like the built-in
+  percentage beside it, and `warnAbove` moves the marker that is at 1. A
+  row can also carry `glyph` (a character, such as an emoji, drawn as its
+  icon) and `ask` (`{ prompt, icon, suggestion, take }`): Enter on it turns
+  the field into a one-line question and hands the answer to `take(text)`. Groups are ordered by their best score, like the built-in
   ones.
 - `kinds`: the row kinds this source owns. The hub hands `activate(row)`,
   `actionsFor(row)` and `complete(row)` for those kinds to this source.
@@ -3649,7 +3652,9 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
 A hotkey runs a row through a LauncherSearch that the CLI makes and throws
 away at once, so anything that outlives the call (a Process, a timer) belongs
 in a singleton service, not in the source. `FallbackSource.qml` is the
-smallest example; `SoundSource.qml` shows sliders.
+smallest example; `SoundSource.qml` shows sliders. Typing into the window
+the user came from goes through `services/Typist.qml`, which waits for that
+window to have focus again and copies instead when wtype is missing.
 
 ---
 
