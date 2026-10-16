@@ -346,6 +346,12 @@ LauncherConcept {
             return true;
         }
 
+        if (row?.slider && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
+            const step = (event.modifiers & Qt.ShiftModifier ? 0.01 : 0.05) * (event.key === Qt.Key_Left ? -1 : 1);
+            row.slider.set(Math.max(0, Math.min(row.slider.to, Math.round((row.slider.value() + step) * 100) / 100)));
+            return true;
+        }
+
         switch (event.key) {
         case Qt.Key_Home:
             root.moveTo(0);
@@ -928,6 +934,26 @@ LauncherConcept {
 
                                             onClicked: (line.buttons[button.index] ?? button.modelData).run()
                                         }
+                                    }
+
+                                    StyledText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: !!line.modelData.slider
+                                        width: Appearance.font.size.small * 3
+                                        horizontalAlignment: Text.AlignRight
+                                        text: line.modelData.slider ? `${Math.round(line.modelData.slider.value() * 100)}%` : ""
+                                        font.pixelSize: Appearance.font.size.small
+                                        color: line.modelData.toggle === false ? Appearance.colour.textFaint : Appearance.colour.textDim
+                                    }
+
+                                    Slider {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: !!line.modelData.slider
+                                        width: root.panelWidth * 0.22
+                                        to: line.modelData.slider?.to ?? 1
+                                        value: line.modelData.slider ? line.modelData.slider.value() : 0
+                                        dimmed: line.modelData.toggle === false
+                                        onMoved: v => line.modelData.slider.set(v)
                                     }
 
                                     Toggle {

@@ -29,6 +29,9 @@ QtObject {
     readonly property list<QtObject> sources: [
         FallbackSource {
             search: root
+        },
+        SoundSource {
+            search: root
         }
     ]
 
@@ -65,12 +68,11 @@ QtObject {
 
     readonly property var timer: Search.timerAsk(root.text)
     readonly property var reminder: Search.reminderAsk(root.text)
-    readonly property int volume: Search.volumeAsk(root.text)
     readonly property string place: Search.zoneAsk(root.text)
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || !!root.streamAsk && root.streamRows.length > 0
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0
 
     property bool started: false
 
@@ -648,23 +650,6 @@ QtObject {
 
     readonly property var commandRows: root.text.length < 2 ? [] : root.commands.filter(c => !c.hidden).map(c => root.commandRow(c)).filter(r => r.score > 0).sort((a, b) => b.score - a.score)
 
-    readonly property var volumeRows: root.volume < 0 || !Audio.ready ? [] : [
-        {
-            key: "command:volumeset",
-            kind: "command",
-            command: {
-                id: "volumeset",
-                label: `Set volume to ${root.volume}%`,
-                stay: true,
-                run: () => Audio.setVolume(Math.min(Audio.maxVolume, root.volume / 100))
-            },
-            label: `Set volume to ${root.volume}%`,
-            detail: root.volumeText,
-            icon: "volume_up",
-            score: Infinity
-        }
-    ]
-
     function settingRow(hit: var): var {
         const live = root.liveToggle(hit.row);
         const group = typeof hit.group.t === "string" ? hit.group.t : "";
@@ -680,40 +665,7 @@ QtObject {
         };
     }
 
-    readonly property var streamAsk: root.volume < 0 ? Search.streamVolumeAsk(root.text) : null
     readonly property int awakeFor: Search.awakeAsk(root.text)
-
-    function streamRow(node: var, level: int): var {
-        const name = Audio.streamLabel(node).replace(/\.(?:x86_64|x86|x64|exe|bin|appimage)$/i, "");
-        const binary = Audio.streamBinary(node);
-        const pct = Math.round(Audio.streamVolume(node) * 100);
-        return {
-            key: `stream:${node.id}`,
-            kind: "stream",
-            node: node,
-            level: level,
-            label: level >= 0 ? `Set ${name} to ${level}%` : name,
-            detail: Audio.streamMuted(node) ? "muted" : `${pct}%`,
-            toggle: level >= 0 ? undefined : !Audio.streamMuted(node),
-            iconSource: Apps.iconSourceFor([binary, name]),
-            icon: "graphic_eq",
-            score: level >= 0 || Search.mixerAsk(root.text) ? Infinity : Math.max(Ranking.place(name, root.text), Ranking.place(binary, root.text))
-        };
-    }
-
-    readonly property var streamRows: {
-        if (root.text.length < 3)
-            return [];
-        const ask = root.streamAsk;
-        const all = Search.mixerAsk(root.text);
-        return Audio.playing.map(node => {
-            const name = Audio.streamLabel(node);
-            const binary = Audio.streamBinary(node);
-            if (ask)
-                return Ranking.place(name, ask.name) > 0 || Ranking.place(binary, ask.name) > 0 ? root.streamRow(node, Math.min(ask.level, Math.round(Audio.maxVolume * 100))) : null;
-            return root.streamRow(node, -1);
-        }).filter(r => r && (all || ask || r.score > 0)).sort((a, b) => b.score - a.score);
-    }
 
     readonly property var awakeRows: root.awakeFor <= 0 ? [] : [
         {
@@ -764,7 +716,7 @@ QtObject {
     }
 
     function runnable(row: var): bool {
-        return (["app", "command", "setting"].includes(row?.kind) || !!root.sourceOf(row)?.rowById) && row.command?.id !== "volumeset";
+        return (["app", "command", "setting"].includes(row?.kind) || !!root.sourceOf(row)?.rowById);
     }
 
     function keyable(row: var): bool {
@@ -1280,11 +1232,7 @@ QtObject {
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.volumeRows.concat(root.awakeRows, root.workspaceRows, root.commandRows))
-        }, {
-            key: "sound",
-            title: "Sound",
-            items: root.streamRows
+            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.commandRows))
         }, {
             key: "settings",
             title: "Settings",
@@ -1354,12 +1302,6 @@ QtObject {
                 else if (n)
                     n.connect();
             }
-            return;
-        case "stream":
-            if (row.level >= 0)
-                Audio.setStreamVolume(row.node, row.level / 100);
-            else
-                Audio.toggleStreamMute(row.node);
             return;
         case "output":
             Audio.setSink(row.node);
@@ -1587,30 +1529,6 @@ QtObject {
                         run: () => Clock.addZone(row.zone)
                     }
                 ]);
-        case "stream":
-            return row.level >= 0 ? [
-                {
-                    icon: "volume_up",
-                    label: row.label,
-                    run: () => root.activate(row)
-                }
-            ] : [
-                {
-                    icon: Audio.streamMuted(row.node) ? "volume_up" : "volume_off",
-                    label: Audio.streamMuted(row.node) ? "Unmute" : "Mute",
-                    run: () => root.activate(row)
-                },
-                {
-                    icon: "volume_down",
-                    label: "Quieter",
-                    run: () => Audio.setStreamVolume(row.node, Audio.streamVolume(row.node) - 0.1)
-                },
-                {
-                    icon: "volume_up",
-                    label: "Louder",
-                    run: () => Audio.setStreamVolume(row.node, Math.min(Audio.maxVolume, Audio.streamVolume(row.node) + 0.1))
-                }
-            ];
         case "bluetooth":
         case "wifi":
             return [

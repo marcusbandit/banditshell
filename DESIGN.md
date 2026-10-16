@@ -3624,8 +3624,11 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   `search.retype(text)` to replace what is typed.
 - `groups`: an array of `{ key, title, items }`. Each item is a row: `key`,
   `kind`, `label`, `detail`, `icon` or `iconSource`, `score` (Infinity puts
-  it first, -Infinity last), and `toggle` for a switch. Groups are ordered by
-  their best score, like the built-in ones.
+  it first, -Infinity last), `toggle` for a switch, and `slider` (`{ value,
+  set, to }`, where `value()` reads the live level and `set(v)` changes it)
+  for a level the row can drag; Left and Right nudge the selected one by 5%,
+  1% with Shift. Groups are ordered by their best score, like the built-in
+  ones.
 - `kinds`: the row kinds this source owns. The hub hands `activate(row)`,
   `actionsFor(row)` and `complete(row)` for those kinds to this source.
   `actionsFor` returns `{ icon, label, short?, run, tucked? }`; the first is
@@ -3645,7 +3648,7 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
 A hotkey runs a row through a LauncherSearch that the CLI makes and throws
 away at once, so anything that outlives the call (a Process, a timer) belongs
 in a singleton service, not in the source. `FallbackSource.qml` is the
-smallest example.
+smallest example; `SoundSource.qml` shows sliders.
 
 ---
 
