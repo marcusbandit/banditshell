@@ -152,13 +152,11 @@ install_charge_limit() {
 }
 
 cli_installed() {
-    [ -x "$REPO/bin/banditshell" ] || return 1
-    [ "$REPO/cli/banditshell" -nt "$REPO/bin/banditshell" ] && return 1
-    return 0
+    [ "$(readlink "$REPO/bin/banditshell" 2>/dev/null)" = ../cli/banditshell ] && [ -x "$REPO/bin/banditshell" ]
 }
 
 install_cli() {
-    install -Dm755 "$REPO/cli/banditshell" "$REPO/bin/banditshell"
+    mkdir -p "$REPO/bin" && ln -sfn ../cli/banditshell "$REPO/bin/banditshell"
 }
 
 helpers_built() {

@@ -766,8 +766,8 @@ helpers_current() {
 }
 
 ensure_built() {
-    if [ ! -x "$SHELL_DIR/bin/banditshell" ] || [ "$SHELL_DIR/cli/banditshell" -nt "$SHELL_DIR/bin/banditshell" ]; then
-        install -Dm755 "$SHELL_DIR/cli/banditshell" "$SHELL_DIR/bin/banditshell" || return 1
+    if [ "$(readlink "$SHELL_DIR/bin/banditshell" 2>/dev/null)" != ../cli/banditshell ]; then
+        mkdir -p "$SHELL_DIR/bin" && ln -sfn ../cli/banditshell "$SHELL_DIR/bin/banditshell" || return 1
     fi
     helpers_current && return 0
     "$SHELL_DIR/bin/banditshell" dev build >/dev/null 2>&1 || "$SHELL_DIR/bin/banditshell" build >/dev/null 2>&1 || return 1
@@ -1227,7 +1227,7 @@ doctor() {
         complain "bin/ not rebuilt (run: bash $SHELL_DIR/install.sh)"
     fi
     mkdir -p "$HOME/bin"
-    if [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$SHELL_DIR/bin/banditshell" ]; then
+    if [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$(readlink -f "$SHELL_DIR/bin/banditshell")" ]; then
         ln -sfn "$SHELL_DIR/bin/banditshell" "$HOME/bin/banditshell"
         echo "exec symlink restored: ~/bin/banditshell"
     fi

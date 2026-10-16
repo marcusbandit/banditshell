@@ -1527,7 +1527,9 @@ bare or not; a shell reduced to a wallpaper runner is still the machine looking 
 
 ## 9. Driving it from a terminal
 
-`bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`.
+`bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`. It is a symlink to
+`cli/banditshell`, never a copy: every start, restart and `doctor` recreates the link, so a
+merge that changes the CLI cannot leave Hyprland's binds running an old copy (issue #20).
 
 It exists because **menus open on hover, and hover is impossible to assert**. You cannot script
 a cursor into a corner and check what happened, so the gesture and the thing it opens have to

@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-7",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Shell hotkeys no longer stop working after an update that changes the banditshell command. The command your binds run is now a link to the one in the update itself, set up again on every start, so it can never be left on an older version."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16-6",
       "date": "2026-10-16",
       "changes": [
