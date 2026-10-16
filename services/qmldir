@@ -67,6 +67,7 @@ PrivateFile 1.0 PrivateFile.qml
 singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
+singleton Screenshots 1.0 Screenshots.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml

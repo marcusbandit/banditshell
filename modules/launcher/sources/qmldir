@@ -16,6 +16,7 @@ PomodoroSource 1.0 PomodoroSource.qml
 ProjectSource 1.0 ProjectSource.qml
 QuicklinkSource 1.0 QuicklinkSource.qml
 RewriteSource 1.0 RewriteSource.qml
+ScreenshotSource 1.0 ScreenshotSource.qml
 ScriptSource 1.0 ScriptSource.qml
 SnippetSource 1.0 SnippetSource.qml
 SoundSource 1.0 SoundSource.qml
