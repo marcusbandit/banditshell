@@ -149,12 +149,23 @@ Singleton {
             left: 0,
             paused: false,
             finished: false,
-            label: label ?? ""
+            label: label ?? "",
+            quiet: false
         };
         next.push(timer);
         root.timers = next;
         root.save();
         return timer.id;
+    }
+
+    function startQuietTimer(seconds: int, label: string): string {
+        const id = root.startTimer(seconds, label);
+        const timer = root.timers.find(t => t.id === id);
+        if (timer) {
+            timer.quiet = true;
+            root.save();
+        }
+        return id;
     }
 
     function toggleTimer(id: string): void {
@@ -226,6 +237,12 @@ Singleton {
         const alarm = root.alarms.find(a => a.id === id);
         if (!alarm)
             return;
+        const before = {
+            hour: alarm.hour,
+            minute: alarm.minute,
+            days: alarm.days.slice(),
+            at: alarm.at
+        };
         if (fields.hour !== undefined)
             alarm.hour = Math.max(0, Math.min(23, Math.round(fields.hour)));
         if (fields.minute !== undefined)
@@ -241,6 +258,8 @@ Singleton {
         if (fields.armed !== undefined)
             alarm.armed = !!fields.armed;
         root.reschedule(alarm);
+        if (alarm.days.length === 0)
+            alarm.at = Alarms.oneOffAt(before, alarm, fields.at ?? 0, Date.now());
         root.alarms = root.alarms.slice();
         root.save();
     }
@@ -337,7 +356,8 @@ Singleton {
                 continue;
             timer.finished = true;
             changed = true;
-            root.notify("critical", "Timer done", timer.label ? `${timer.label} · ${root.spanLabel(timer.total)}` : root.spanLabel(timer.total), "alarm");
+            if (!timer.quiet)
+                root.notify("critical", "Timer done", timer.label ? `${timer.label} · ${root.spanLabel(timer.total)}` : root.spanLabel(timer.total), "alarm");
             root.timerFinished(timer);
         }
         if (changed) {
@@ -683,7 +703,8 @@ Singleton {
                     left: Number.isFinite(t.left) ? Math.max(0, t.left) : 0,
                     paused: !!t.paused,
                     finished: false,
-                    label: typeof t.label === "string" ? t.label : ""
+                    label: typeof t.label === "string" ? t.label : "",
+                    quiet: !!t.quiet
                 })).map(t => {
             if (!t.paused)
                 t.finished = t.deadline <= now;

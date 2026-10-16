@@ -38,6 +38,15 @@ QtObject {
                 trailing: Dictation.langTag ? "text" : "",
                 trailingText: Dictation.langTag
             };
+        case "recording":
+            return {
+                icon: "fiber_manual_record",
+                tone: Appearance.colour.alarm,
+                text: ScreenRecorder.stopping ? "Saving the recording" : `Recording ${ScreenRecorder.clock}`,
+                trailing: "icon",
+                trailingIcon: "stop_circle",
+                trailingTone: Appearance.colour.alarm
+            };
         case "download":
             return {
                 icon: "download_done",

@@ -53,7 +53,7 @@ LauncherConcept {
             root.hide();
     }
 
-    answerless: search.intent || !!root.capture
+    answerless: search.intent || !!root.capture || assistantCard.shown
 
     LauncherSearch {
         id: search
@@ -61,6 +61,8 @@ LauncherConcept {
         query: root.input?.text ?? ""
         screenName: root.screenName
         quiet: !!root.capture
+        active: root.open
+        target: root.restoreTo
 
         onLaunch: what => root.launch(what)
         onLeave: what => {
@@ -134,6 +136,7 @@ LauncherConcept {
     }
 
     onCleared: {
+        search.arrangeNow();
         root.selected = 0;
         root.tile = 0;
         if (root.unsized) {
@@ -145,6 +148,9 @@ LauncherConcept {
 
     onHidden: {
         sheet.close();
+        Assistant.following = false;
+        if (!Assistant.inPlace)
+            Assistant.stop();
         root.capture = null;
         search.armed = "";
         root.collapseToCentre = !panel.bottomAnchored;
@@ -156,8 +162,15 @@ LauncherConcept {
     }
 
     function accept(): void {
+        search.arrangeNow();
         if (root.capture)
             return;
+        if (assistantCard.busy)
+            return;
+        if (assistantCard.holds) {
+            assistantCard.primary();
+            return;
+        }
         if (root.copyAnswer())
             return;
 
@@ -169,7 +182,9 @@ LauncherConcept {
         }
 
         const row = root.results[root.selected];
-        if (row && !row.header)
+        if (row?.ask)
+            root.startCapture("ask", row);
+        else if (row && !row.header)
             search.activate(row);
         else
             root.hide();
@@ -177,6 +192,7 @@ LauncherConcept {
 
     function move(delta: int): void {
         root.answerHolds = false;
+        assistantCard.released = true;
         if (root.quick) {
             root.tile = (root.tile + delta + root.tiles.length) % root.tiles.length;
             return;
@@ -250,7 +266,7 @@ LauncherConcept {
             }),
             said: ""
         };
-        query.text = kind === "alias" ? search.aliasOf[row.id ?? row.key] ?? "" : "";
+        query.text = kind === "alias" ? search.aliasOf[row.id ?? row.key] ?? "" : kind === "ask" ? row.ask.suggestion ?? "" : "";
         query.selectAll();
         Qt.callLater(query.forceActiveFocus);
     }
@@ -266,6 +282,14 @@ LauncherConcept {
         const alias = Search.cleanAlias(query.text);
         Config.set("launcher.aliases", Search.withAlias(Config.values.launcher.aliases, row.key, alias, row.label));
         root.endCapture(alias || root.beforeCapture);
+    }
+
+    function commitAsk(): void {
+        const typed = query.text.trim();
+        if (!typed)
+            return;
+        const after = root.capture.row.ask.take(typed);
+        root.endCapture(typeof after === "string" ? after : root.beforeCapture);
     }
 
     function takeHotkey(event: var): bool {
@@ -293,13 +317,17 @@ LauncherConcept {
         if (root.capture.kind === "hotkey")
             return root.takeHotkey(event);
         if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
-            root.commitAlias();
+            if (root.capture.kind === "ask")
+                root.commitAsk();
+            else
+                root.commitAlias();
             return true;
         }
         return event.key === Qt.Key_Up || event.key === Qt.Key_Down || event.key === Qt.Key_Tab || event.key === Qt.Key_Backtab;
     }
 
     function claimKey(event: var): bool {
+        search.arrangeNow();
         if (root.capture)
             return root.claimCaptureKey(event);
 
@@ -338,10 +366,17 @@ LauncherConcept {
             return root.claimTileKey(event);
 
         const row = root.results[root.selected];
-        if (event.key === Qt.Key_Tab && search.complete(row))
+        if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
+            return true;
+        }
+
+        if (row?.slider && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
+            const stride = row.slider.step ?? 0.05;
+            const step = (event.modifiers & Qt.ShiftModifier ? stride / 5 : stride) * (event.key === Qt.Key_Left ? -1 : 1);
+            row.slider.set(Math.max(0, Math.min(row.slider.to, Math.round((row.slider.value() + step) * 100) / 100)));
             return true;
         }
 
@@ -474,12 +509,14 @@ LauncherConcept {
         if (root.capture)
             return;
         root.answerHolds = false;
+        assistantCard.released = true;
         root.selected = index;
         root.accept();
     }
 
     function moveTo(index: int): void {
         root.answerHolds = false;
+        assistantCard.released = true;
         const n = root.results.length;
         if (n <= 0)
             return;
@@ -487,6 +524,24 @@ LauncherConcept {
         root.steered = true;
         root.selected = root.results[at].header ? Math.max(0, Search.nextPickable(root.results, at, 1)) : at;
         list.reveal(root.selected);
+    }
+
+    property bool settled: true
+
+    Timer {
+        id: settle
+
+        interval: 160
+        onTriggered: root.settled = true
+    }
+
+    Connections {
+        target: root.input
+
+        function onTextChanged(): void {
+            root.settled = false;
+            settle.restart();
+        }
     }
 
     property string listedQuery: ""
@@ -556,7 +611,7 @@ LauncherConcept {
 
         width: root.panelWidth
 
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
 
         height: grow.value * root.revealed
 
@@ -589,7 +644,7 @@ LauncherConcept {
                         anchors.verticalCenter: parent.verticalCenter
                         width: Appearance.sizes.launcherIcon
                         size: Appearance.font.size.normal
-                        name: !root.capture ? "search" : root.capture.kind === "alias" ? "label" : "keyboard"
+                        name: !root.capture ? "search" : root.capture.kind === "ask" ? root.capture.row.ask.icon : root.capture.kind === "alias" ? "label" : "keyboard"
                         color: Appearance.colour.textFaint
                     }
 
@@ -615,7 +670,7 @@ LauncherConcept {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
 
-                            text: !root.capture ? "Search" : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
+                            text: !root.capture ? "Search" : root.capture.kind === "ask" ? root.capture.row.ask.prompt : root.capture.kind === "alias" ? `Alias for ${root.capture.row.label}` : `Press the keys for ${root.capture.row.label}`
                             font.pixelSize: Appearance.font.size.normal
                             color: Appearance.colour.textFaint
                         }
@@ -647,6 +702,30 @@ LauncherConcept {
                     onCopied: {
                         root.answerHolds = true;
                         root.accept();
+                    }
+                }
+
+                AssistantCard {
+                    id: assistantCard
+
+                    width: parent.width
+                    iconSize: Appearance.sizes.launcherIcon
+                    rowHeight: root.rowPitch
+                    typed: query.text
+
+                    onCopied: {
+                        Assistant.copy();
+                        root.hide();
+                    }
+                    onReplaced: {
+                        root.hide();
+                        Assistant.replace();
+                    }
+                    onContinued: {
+                        Assistant.followUp();
+                        query.text = "? ";
+                        query.cursorPosition = query.text.length;
+                        query.forceActiveFocus();
                     }
                 }
 
@@ -836,6 +915,7 @@ LauncherConcept {
                                 id: row
 
                                 visible: !line.modelData.header
+                                opacity: line.modelData.faded ? 0.45 : 1
                                 width: parent.width
                                 height: line.height
                                 iconSize: Appearance.sizes.launcherIcon
@@ -845,11 +925,13 @@ LauncherConcept {
                                 inlineDetail: true
 
                                 iconSource: line.modelData.iconSource ?? ""
+                                glyph: line.modelData.glyph ?? ""
                                 icon: line.modelData.icon ?? "apps"
+                                mark: line.modelData.swatch ? swatch : null
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
 
-                                selected: line.index === root.selected && !root.answerHolds
+                                selected: line.index === root.selected && !root.answerHolds && !assistantCard.holds
 
                                 askable: true
                                 onActivated: root.chooseRow(line.index)
@@ -892,12 +974,13 @@ LauncherConcept {
                                     }
 
                                     Repeater {
-                                        model: line.buttons
+                                        model: line.shownButtons
 
                                         delegate: Button {
                                             id: button
 
                                             required property var modelData
+                                            required property int index
 
                                             icon: button.modelData.icon
                                             iconFill: button.modelData.fill ? 1 : 0
@@ -906,8 +989,29 @@ LauncherConcept {
                                             alarm: button.modelData.alarm ?? false
                                             size: 0
 
-                                            onClicked: button.modelData.run()
+                                            onClicked: (line.buttons[button.index] ?? button.modelData).run()
                                         }
+                                    }
+
+                                    StyledText {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: !!line.modelData.slider
+                                        width: Math.max(Appearance.font.size.small * 3, implicitWidth)
+                                        horizontalAlignment: Text.AlignRight
+                                        text: !line.modelData.slider ? "" : line.modelData.slider.text ? line.modelData.slider.text() : `${Math.round(line.modelData.slider.value() * 100)}%`
+                                        font.pixelSize: Appearance.font.size.small
+                                        color: line.modelData.toggle === false ? Appearance.colour.textFaint : Appearance.colour.textDim
+                                    }
+
+                                    Slider {
+                                        anchors.verticalCenter: parent.verticalCenter
+                                        visible: !!line.modelData.slider
+                                        width: root.panelWidth * 0.22
+                                        to: line.modelData.slider?.to ?? 1
+                                        warnAbove: line.modelData.slider?.warnAbove ?? 1
+                                        value: line.modelData.slider ? line.modelData.slider.value() : 0
+                                        dimmed: line.modelData.toggle === false
+                                        onMoved: v => line.modelData.slider.set(v)
                                     }
 
                                     Toggle {
@@ -919,18 +1023,46 @@ LauncherConcept {
                                 }
                             }
 
+                            Component {
+                                id: swatch
+
+                                SquircleRect {
+                                    width: Appearance.sizes.launcherIcon
+                                    height: Appearance.sizes.launcherIcon
+                                    radius: Appearance.rounding.small
+                                    color: line.modelData.swatch ?? "transparent"
+                                    stroke: Appearance.colour.seam
+                                    strokeWidth: Appearance.sizes.seam
+                                }
+                            }
+
                             HoverHandler {
                                 id: lineHover
                             }
 
-                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds || lineHover.hovered)
+                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds && !assistantCard.holds && root.settled || lineHover.hovered)
+
+                            property var shownButtons: []
+                            property string shownSignature: ""
+
+                            function showButtons(): void {
+                                const signature = line.buttons.map(b => `${b.icon}|${b.short ?? b.label}|${b.fill ? 1 : 0}|${b.alarm ? 1 : 0}`).join(",");
+                                if (signature === line.shownSignature)
+                                    return;
+                                line.shownSignature = signature;
+                                line.shownButtons = line.buttons;
+                            }
+
+                            onButtonsChanged: line.showButtons()
+                            Component.onCompleted: line.showButtons()
 
                             readonly property var buttons: {
                                 if (!line.opened)
                                     return [];
                                 if (line.modelData.armed)
                                     return search.confirmActions(line.modelData);
-                                const acts = root.actionsFor(line.modelData).slice(1);
+                                const all = root.actionsFor(line.modelData);
+                                const acts = all[0]?.button ? all : all.slice(1);
                                 const shown = acts.filter(a => !a.tucked);
                                 return shown.length === acts.length && shown.length <= root.buttonLimit ? shown : [...shown.slice(0, root.buttonLimit - 1), {
                                         icon: "more_horiz",
@@ -943,7 +1075,7 @@ LauncherConcept {
                         StyledText {
                             id: empty
 
-                            visible: !root.results.length && !root.answer
+                            visible: !root.results.length && !root.answer && !assistantCard.shown
                             text: query.text ? "nothing matches" : "no applications found"
                             color: Appearance.colour.textFaint
                             font.pixelSize: Appearance.font.size.small
@@ -962,6 +1094,33 @@ LauncherConcept {
         ShortcutInhibitor {
             window: root.QsWindow.window
             enabled: root.open && root.capture?.kind === "hotkey"
+        }
+
+        Peek {
+            id: peek
+
+            readonly property real gap: Appearance.padding.large
+            readonly property real rowTop: layout.y + body.y + list.y - list.contentY + root.results.slice(0, root.selected).reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch), 0)
+            readonly property bool roomRight: panel.x + panel.width + peek.gap + peek.width <= root.width - root.inset
+            readonly property bool roomLeft: panel.x - peek.gap - peek.width >= root.inset
+
+            parent: root
+            x: peek.roomRight ? panel.x + panel.width + peek.gap : panel.x - peek.gap - peek.width
+            y: panel.y + glidePeek.value
+            z: 50
+
+            row: root.results[root.selected] ?? null
+            wanted: root.open && !root.quick && root.settled && !root.capture && !root.asking && !root.answerHolds && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            longestFrame: root.longestFrame
+
+            Follow {
+                id: glidePeek
+
+                target: Math.max(0, Math.min(peek.rowTop + root.rowPitch / 2 - peek.height / 2, root.height - root.inset - panel.y - peek.height))
+                speed: Appearance.animation.trackSpeed
+                epsilon: 0.5
+                longestFrame: root.longestFrame
+            }
         }
 
         ActionSheet {

@@ -105,6 +105,10 @@ Singleton {
     }
 
     readonly property var configBacked: ({
+            aiOn: "launcher.ai.enabled",
+            aiBackend: "launcher.ai.backend",
+            aiModel: "launcher.ai.model",
+            aiAddress: "launcher.ai.openaiAddress",
             keepFresh: "network.keepListFresh",
             netCheck: "network.checkForInternet",
             portalUri: "network.portalUri",
@@ -176,9 +180,42 @@ Singleton {
             fallbackWikipedia: "launcher.fallbacks.wikipedia",
             fallbackMaps: "launcher.fallbacks.maps",
             fallbackTerminal: "launcher.fallbacks.terminal",
+            skinTone: "launcher.typing.skinTone",
+            clipboardInSearch: "launcher.typing.clipboard",
+            onlineTranslate: "launcher.online.translate",
+            onlineTranslateTo: "launcher.online.translateTo",
+            onlineDefine: "launcher.online.define",
+            onlinePackages: "launcher.online.packages",
+            onlineGithub: "launcher.online.github",
+            onlineBrowser: "launcher.online.browser",
+            onlineSpeedtest: "launcher.online.speedtest",
+            onlineVideos: "launcher.online.videos",
+            systemBrightness: "launcher.systemControls.brightness",
+            systemLowestBrightness: "launcher.systemControls.lowestBrightness",
+            systemWifi: "launcher.systemControls.wifi",
+            systemVpn: "launcher.systemControls.vpn",
+            systemRecording: "launcher.systemControls.recording",
+            systemRecordingFolder: "launcher.systemControls.recordingFolder",
             currency: "launcher.currency",
             launcherIcon: "launcher.iconSize",
             halfLife: "launcher.halfLifeDays",
+            scriptsFolder: "launcher.powerTools.scriptsFolder",
+            projectFolders: "launcher.powerTools.projectFolders",
+            projectDepth: "launcher.powerTools.projectDepth",
+            noteFolders: "launcher.powerTools.noteFolders",
+            noteVault: "launcher.powerTools.noteVault",
+            noteSkip: "launcher.powerTools.noteSkip",
+            focusMinutes: "launcher.powerTools.focusMinutes",
+            breakMinutes: "launcher.powerTools.breakMinutes",
+            longBreakMinutes: "launcher.powerTools.longBreakMinutes",
+            roundsBeforeLongBreak: "launcher.powerTools.roundsBeforeLongBreak",
+            devOpsSsh: "launcher.devOps.ssh",
+            devOpsPorts: "launcher.devOps.ports",
+            devOpsServices: "launcher.devOps.services",
+            devOpsContainers: "launcher.devOps.containers",
+            devOpsPhone: "launcher.devOps.phone",
+            passwordLength: "launcher.utilities.passwordLength",
+            reminderHour: "launcher.utilities.reminderHour",
             clip: "clipboard.record",
             clipMax: "clipboard.maxEntries",
             clipText: "clipboard.maxText",
@@ -339,6 +376,8 @@ Singleton {
             return Hotspot.ssid;
         case "hotspotPass":
             return Hotspot.password;
+        case "aiKey":
+            return Assistant.savedKey;
         case "hotspotBand":
             return Hotspot.band;
         case "warm":
@@ -520,6 +559,8 @@ Singleton {
             return Hotspot.setName(value);
         case "hotspotPass":
             return Hotspot.setPassword(value);
+        case "aiKey":
+            return Assistant.setKey(value);
         case "hotspotBand":
             return Hotspot.setBand(value);
         case "defBrowser":
@@ -1217,6 +1258,24 @@ Singleton {
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+    readonly property var noteVaults: [["", "the one Obsidian opened last"]].concat(Notes.vaults.map(v => [v.path, v.name]))
+
+    readonly property var aiModels: [["", "automatic"]].concat(Assistant.models.map(m => [m, Assistant.labelOf(m)]))
+    readonly property string aiNote: ({
+            off: "off",
+            unknown: "",
+            ready: Assistant.local ? `${Assistant.modelName} on this computer` : `${Assistant.modelName} over the internet`,
+            nokey: "no API key yet",
+            missing: "Ollama is not installed",
+            installing: "installing Ollama",
+            stopped: "Ollama is not running",
+            starting: "starting Ollama",
+            empty: "no model downloaded yet",
+            pulling: `downloading · ${Assistant.progress}%`,
+            unreachable: "Ollama is not answering"
+        })[Assistant.phase] ?? ""
+    readonly property string aiAddressNote: Assistant.keyHeld ? "plain http, so the key is not sent" : ""
+    readonly property string aiModelNote: Assistant.modelName ? `${Assistant.modelName} in use` : ""
 
     readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
     readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"

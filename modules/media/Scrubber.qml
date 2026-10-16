@@ -93,26 +93,34 @@ Item {
         running: root.watched && root.visible && Media.playing && swell.value > 0
     }
 
-    Shape {
-        id: wave
+    Item {
+        id: waveWindow
 
         x: 0
         y: root.centre - height / 2
         width: root.waveEnd
-
         height: root.amp * 2 + root.stroke
         visible: root.waveEnd > 0
-        preferredRendererType: Shape.CurveRenderer
+        clip: true
 
-        ShapePath {
-            fillColor: "transparent"
-            strokeColor: root.ink
-            strokeWidth: root.stroke
-            capStyle: ShapePath.RoundCap
-            joinStyle: ShapePath.RoundJoin
+        Shape {
+            id: wave
 
-            PathPolyline {
-                path: Wave.points(Math.max(0, wave.width - root.stroke), root.amp * swell.value, root.wavelength, 2 * Math.PI * clock.t, Math.max(1, root.stroke / 2)).map(p => Qt.point(p[0] + root.stroke / 2, wave.height / 2 + p[1]))
+            x: (clock.t - 1) * root.wavelength
+            width: root.width + root.wavelength * 2
+            height: parent.height
+            preferredRendererType: Shape.CurveRenderer
+
+            ShapePath {
+                fillColor: "transparent"
+                strokeColor: root.ink
+                strokeWidth: root.stroke
+                capStyle: ShapePath.RoundCap
+                joinStyle: ShapePath.RoundJoin
+
+                PathPolyline {
+                    path: Wave.points(wave.width, root.amp * swell.value, root.wavelength, 0, Math.max(1, root.stroke / 2)).map(p => Qt.point(p[0], wave.height / 2 + p[1]))
+                }
             }
         }
     }
@@ -136,14 +144,44 @@ Item {
         }
     }
 
-    SquircleRect {
+    Item {
+        id: rest
+
         x: root.pipX + root.stroke + root.gap
         y: root.centre - height / 2
         width: Math.max(0, root.width - x)
         height: root.stroke
-        radius: height / 2
         visible: root.timed && width > 0
-        color: Appearance.colour.fillStrong
+
+        readonly property real cap: Math.min(rest.height, rest.width) / 2
+
+        SquircleRect {
+            width: rest.cap
+            height: rest.height
+            topLeftRadius: rest.cap
+            bottomLeftRadius: rest.cap
+            topRightRadius: 0
+            bottomRightRadius: 0
+            color: Appearance.colour.fillStrong
+        }
+
+        Rectangle {
+            x: rest.cap
+            width: Math.max(0, rest.width - rest.cap * 2)
+            height: rest.height
+            color: Appearance.colour.fillStrong
+        }
+
+        SquircleRect {
+            x: rest.width - rest.cap
+            width: rest.cap
+            height: rest.height
+            topLeftRadius: 0
+            bottomLeftRadius: 0
+            topRightRadius: rest.cap
+            bottomRightRadius: rest.cap
+            color: Appearance.colour.fillStrong
+        }
     }
 
     TextMetrics {

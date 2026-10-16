@@ -39,6 +39,11 @@ has() {
     return 1
 }
 
+if has "x-kde-passwordManagerHint"; then
+    emit sensitive '[]' '{}'
+    exit 0
+fi
+
 firstLike() {
     local prefix="$1" t
     for t in "${typeList[@]}"; do

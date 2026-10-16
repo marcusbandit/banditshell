@@ -269,6 +269,7 @@ FocusScope {
                     SettingsPane {
                         anchors.fill: parent
                         compact: root.compact
+                        showing: root.shown
                     }
                 }
             }

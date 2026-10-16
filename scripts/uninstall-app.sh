@@ -6,7 +6,7 @@ id="${2:-}"
 case "$verb" in
 find | plan | remove | ask) ;;
 *)
-    echo "usage: uninstall-app.sh find|plan|remove|ask <desktop-id>" >&2
+    echo "usage: uninstall-app.sh find|plan|remove|ask <desktop-id> | --package <how> <package>" >&2
     exit 2
     ;;
 esac
@@ -16,12 +16,14 @@ data_home="${XDG_DATA_HOME:-$HOME/.local/share}"
 IFS=: read -r -a data_dirs <<<"$data_home:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}:$HOME/.local/share/flatpak/exports/share:/var/lib/flatpak/exports/share"
 
 candidates() {
-    local dir name="$id.desktop"
+    local dir name="$id.desktop" i
     for dir in "${data_dirs[@]}" /var/lib/snapd/desktop; do
         dir="${dir%/}"
         [ -n "$dir" ] || continue
         [ -f "$dir/applications/$name" ] && printf '%s\n' "$dir/applications/$name"
-        [ "$name" != "${name/-//}" ] && [ -f "$dir/applications/${name/-//}" ] && printf '%s\n' "$dir/applications/${name/-//}"
+        for ((i = 0; i < ${#name}; i++)); do
+            [ "${name:i:1}" = - ] && [ -f "$dir/applications/${name:0:i}/${name:i+1}" ] && printf '%s\n' "$dir/applications/${name:0:i}/${name:i+1}"
+        done
     done
 }
 
@@ -102,30 +104,41 @@ classify() {
     return 1
 }
 
-file=""
-how=""
-package=""
-first=""
-while IFS= read -r candidate; do
-    [ -n "$first" ] || first="$candidate"
-    found="$(classify "$candidate")" || continue
-    kind="${found%%	*}"
-    [ "$kind" = entry ] && [ -n "$how" ] && continue
-    if [ -z "$how" ] || [ "$how" = entry ]; then
-        file="$candidate"
-        how="$kind"
-        package="${found#*	}"
-    fi
-    [ "$how" != entry ] && break
-done < <(candidates)
+if [ "$id" = --package ]; then
+    how="${3:-}"
+    package="${4:-}"
+    file=""
+    case "$how" in
+    pacman | apt | dnf | zypper | xbps | apk | flatpak-user | flatpak-system | snap) ;;
+    *) exit 2 ;;
+    esac
+    [[ $package =~ ^[A-Za-z0-9][A-Za-z0-9+._@:-]*$ ]] || exit 2
+else
+    file=""
+    how=""
+    package=""
+    first=""
+    while IFS= read -r candidate; do
+        [ -n "$first" ] || first="$candidate"
+        found="$(classify "$candidate")" || continue
+        kind="${found%%	*}"
+        [ "$kind" = entry ] && [ -n "$how" ] && continue
+        if [ -z "$how" ] || [ "$how" = entry ]; then
+            file="$candidate"
+            how="$kind"
+            package="${found#*	}"
+        fi
+        [ "$how" != entry ] && break
+    done < <(candidates)
 
-if [ -z "$first" ]; then
-    echo "no desktop file for $id" >&2
-    exit 1
-fi
-if [ -z "$how" ]; then
-    echo "$first does not come from a package this can remove" >&2
-    exit 3
+    if [ -z "$first" ]; then
+        echo "no desktop file for $id" >&2
+        exit 1
+    fi
+    if [ -z "$how" ]; then
+        echo "$first does not come from a package this can remove" >&2
+        exit 3
+    fi
 fi
 
 if [ "$verb" = find ]; then
@@ -146,14 +159,14 @@ fi
 
 privileged=1
 case "$how" in
-pacman) command=(pacman -Rs --noconfirm "$package") ;;
+pacman) command=(pacman -Rs --noconfirm -- "$package") ;;
 apt) command=(env DEBIAN_FRONTEND=noninteractive apt-get remove -y "$package") ;;
-dnf) command=(dnf remove -y "$package") ;;
+dnf) command=(dnf remove -y -- "$package") ;;
 zypper) command=(zypper --non-interactive remove "$package") ;;
-xbps) command=(xbps-remove -Ry "$package") ;;
+xbps) command=(xbps-remove -Ry -- "$package") ;;
 apk) command=(apk del "$package") ;;
-flatpak-user) privileged=0 command=(flatpak uninstall -y --noninteractive --user "$package") ;;
-flatpak-system) privileged=0 command=(flatpak uninstall -y --system "$package") ;;
+flatpak-user) privileged=0 command=(flatpak uninstall -y --noninteractive --user -- "$package") ;;
+flatpak-system) privileged=0 command=(flatpak uninstall -y --noninteractive --system -- "$package") ;;
 snap) privileged=0 command=(snap remove "$package") ;;
 steam) privileged=0 command=(xdg-open "steam://uninstall/$package") ;;
 appimage) privileged=0 command=(gio trash -- "$package" "$file") ;;
@@ -183,7 +196,16 @@ plan)
     printf '%s\n' "${command[*]}"
     ;;
 remove)
-    exec "${command[@]}" </dev/null
+    if [ "${command[0]}" = pkexec ]; then
+        trusted=$(PATH="${BANDITSHELL_SYSTEM_PATH:-/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin}" command -v -- "${command[1]}") || exit 4
+        command=(pkexec "$trusted" "${command[@]:2}")
+    fi
+    "${command[@]}" </dev/null
+    status=$?
+    case "$status" in
+    0 | 126 | 127) exit "$status" ;;
+    *) exit 10 ;;
+    esac
     ;;
 ask)
     echo "Press Enter to remove $package, then type your password if asked."

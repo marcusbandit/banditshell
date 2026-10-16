@@ -8,6 +8,7 @@ Item {
     property string icon: ""
 
     property string iconSource: ""
+    property string glyph: ""
     readonly property bool hasImage: iconSource !== "" && image.status === Image.Ready
 
     property Component mark: null
@@ -88,9 +89,11 @@ Item {
         anchors.leftMargin: Appearance.padding.normal
         anchors.verticalCenter: parent.verticalCenter
 
-        visible: !!root.icon && !root.hasImage && !root.mark
+        visible: (!!root.icon || !!root.glyph) && !root.hasImage && !root.mark
+        width: root.glyph ? root.iconSize : implicitWidth
         size: root.iconSize
         name: root.icon
+        glyph: root.glyph
         color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
     }
 
@@ -116,7 +119,7 @@ Item {
     Item {
         id: stack
 
-        anchors.left: root.mark ? custom.right : root.hasImage ? image.right : root.icon ? glyph.right : parent.left
+        anchors.left: root.mark ? custom.right : root.hasImage ? image.right : root.icon || root.glyph ? glyph.right : parent.left
         anchors.leftMargin: Appearance.padding.normal
         anchors.right: trailingSlot.left
         anchors.rightMargin: Appearance.padding.normal
@@ -147,7 +150,7 @@ Item {
             anchors.top: root.inlineDetail ? undefined : title.bottom
             anchors.verticalCenter: root.inlineDetail ? parent.verticalCenter : undefined
 
-            width: root.inlineDetail ? Math.min(implicitWidth, parent.width * 0.4) : parent.width
+            width: root.inlineDetail ? Math.min(implicitWidth, Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large)) : parent.width
             horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft
 
             visible: !!root.detail

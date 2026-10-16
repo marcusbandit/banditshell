@@ -36,8 +36,65 @@ var NAMES = {
     won: "KRW",
     lira: "TRY",
     real: "BRL",
-    reais: "BRL"
+    reais: "BRL",
+    bitcoin: "BTC",
+    bitcoins: "BTC",
+    ether: "ETH",
+    ethereum: "ETH",
+    solana: "SOL",
+    ripple: "XRP",
+    cardano: "ADA",
+    dogecoin: "DOGE",
+    litecoin: "LTC",
+    monero: "XMR",
+    tether: "USDT",
+    polkadot: "DOT",
+    tron: "TRX",
+    avalanche: "AVAX",
+    chainlink: "LINK"
 };
+
+var COINS = {
+    BTC: "bitcoin",
+    ETH: "ethereum",
+    SOL: "solana",
+    XRP: "ripple",
+    ADA: "cardano",
+    DOGE: "dogecoin",
+    LTC: "litecoin",
+    XMR: "monero",
+    USDT: "tether",
+    USDC: "usd-coin",
+    BNB: "binancecoin",
+    DOT: "polkadot",
+    TRX: "tron",
+    AVAX: "avalanche-2",
+    LINK: "chainlink"
+};
+
+function coinFeed() {
+    return `https://api.coingecko.com/api/v3/simple/price?ids=${Object.keys(COINS).map(c => COINS[c]).join(",")}&vs_currencies=eur`;
+}
+
+function readCoins(json) {
+    let got = null;
+    try {
+        got = JSON.parse(String(json || ""));
+    } catch (e) {
+        return null;
+    }
+    const rates = {};
+    for (const code of Object.keys(COINS)) {
+        const price = got?.[COINS[code]]?.eur;
+        if (typeof price === "number" && price > 0)
+            rates[code] = 1 / price;
+    }
+    return Object.keys(rates).length ? rates : null;
+}
+
+function coinsIn(ask) {
+    return !!ask && [ask.to, ...ask.terms.map(t => t.from)].some(code => !!COINS[code]);
+}
 
 var KRONE = ["DKK", "NOK", "SEK", "ISK"];
 
@@ -52,7 +109,7 @@ function codeOf(word, known, home) {
     if (NAMES[w])
         return NAMES[w];
     const up = w.toUpperCase();
-    return /^[A-Z]{3}$/.test(up) && known.indexOf(up) >= 0 ? up : "";
+    return /^[A-Z]{3,5}$/.test(up) && known.indexOf(up) >= 0 ? up : "";
 }
 
 var UNIT = "[a-zA-Z]{2,8}\\.?|[€$£¥₹₩₺₪฿₱]|zł|r\\$";

@@ -4,6 +4,8 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "calculation.js" as Calculation
+import "colours.js" as Colours
+import "dates.js" as Dates
 
 Singleton {
     id: root
@@ -273,13 +275,78 @@ Singleton {
         }) : null;
     }
 
+    function coloured(text: string): var {
+        const got = Colours.colourAnswer(text);
+        return got ? Object.assign(got, {
+            work: 1,
+            firm: true,
+            icon: "palette"
+        }) : null;
+    }
+
+    function count(days: int, unit: string): string {
+        const n = Math.abs(days);
+        const said = (k, one) => `${k} ${one}${k === 1 ? "" : "s"}`;
+        if (unit !== "weeks" || n < 7)
+            return said(n, "day");
+        return n % 7 ? `${said(Math.floor(n / 7), "week")} and ${said(n % 7, "day")}` : said(n / 7, "week");
+    }
+
+    function dayText(moment: date): string {
+        const head = TimeFormat.dateText(moment, "headline");
+        return moment.getFullYear() === new Date().getFullYear() || TimeFormat.dateStyle === "iso" ? head : `${head} ${moment.getFullYear()}`;
+    }
+
+    function dated(text: string): var {
+        const ask = Dates.dateAsk(text, new Date());
+        if (!ask)
+            return null;
+        const away = Dates.between(new Date(), ask.date);
+        let got;
+        switch (ask.kind) {
+        case "until":
+        case "since":
+            got = {
+                text: root.count(ask.days, ask.unit),
+                detail: root.dayText(ask.date)
+            };
+            break;
+        case "between":
+            got = {
+                text: root.count(ask.days, ask.unit),
+                detail: `${root.dayText(ask.date)} to ${root.dayText(ask.end)}`
+            };
+            break;
+        case "week":
+            {
+                const monday = Dates.plusDays(ask.date, -((ask.date.getDay() + 6) % 7));
+                got = {
+                    text: `Week ${ask.week}`,
+                    detail: `${TimeFormat.dateText(monday, "day")} to ${TimeFormat.dateText(Dates.plusDays(monday, 6), "day")}`
+                };
+            }
+            break;
+        default:
+            got = {
+                text: root.dayText(ask.date),
+                detail: away === 0 ? "today" : away > 0 ? `in ${root.count(away, "days")}` : `${root.count(away, "days")} ago`
+            };
+        }
+        return Object.assign(got, {
+            work: 1,
+            firm: !ask.bare,
+            icon: "event"
+        });
+    }
+
     function answerFor(text: string): var {
-        return Currency.answer(text, root.amountOf) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
+        return Currency.answer(text, root.amountOf) ?? root.coloured(text) ?? root.dated(text) ?? root.missing(text) ?? root.leniently(text) ?? root.programmed(text) ?? (root.worked?.query === text ? root.worked : null);
     }
 
     function ask(text: string): void {
         root.asked = text;
-        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text, root.amountOf) || root.leniently(text) || root.programmed(text) || !Calculation.looksLikeCalculation(text)) {
+        Currency.wake(text, root.amountOf);
+        if (!root.qalcFound || root.worked?.query === text || Currency.answer(text, root.amountOf) || root.coloured(text) || root.dated(text) || root.leniently(text) || root.programmed(text) || !Calculation.looksLikeCalculation(text)) {
             settle.stop();
             return;
         }

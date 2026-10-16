@@ -80,7 +80,24 @@ Singleton {
         remover.name = entry.name;
         remover.icon = entry.icon ?? "";
         remover.how = plan.how;
+        remover.target = [entry.id];
+        remover.after = null;
         remover.command = [root.script, "remove", entry.id];
+        remover.begin();
+    }
+
+    function removePackage(how: string, name: string, title: string, icon: string, after: var): void {
+        if (root.busy)
+            return;
+        root.busy = `package:${how}:${name}`;
+        Polkit.expect(`Uninstall ${title}`, name);
+        remover.entryId = "";
+        remover.name = title;
+        remover.icon = icon ?? "";
+        remover.how = how;
+        remover.target = ["--package", how, name];
+        remover.after = after ?? null;
+        remover.command = [root.script, "remove", "--package", how, name];
         remover.begin();
     }
 
@@ -135,6 +152,8 @@ Singleton {
         property string name: ""
         property string icon: ""
         property string how: ""
+        property var target: []
+        property var after: null
         property int code: -1
         property int streams: 0
 
@@ -151,7 +170,9 @@ Singleton {
             remover.code = -1;
             Polkit.forget();
             root.busy = "";
-            root.store(remover.entryId, null);
+            if (remover.entryId)
+                root.store(remover.entryId, null);
+            remover.after?.(code === 0);
             const last = (complained.text || said.text).trim().split("\n").pop() ?? "";
             if (code === 0) {
                 if (remover.how !== "steam")
@@ -159,7 +180,7 @@ Singleton {
             } else if (code === 5) {
                 root.notify(remover.icon, `${remover.name} stays`, said.text.trim());
             } else if (code === 4 || code === 127) {
-                Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.script}' ask '${remover.entryId.replace(/'/g, "'\\''")}'`]);
+                Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.script}' ask ${remover.target.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(" ")}`]);
             } else if (code !== 126) {
                 root.notify(remover.icon, `${remover.name} did not uninstall`, last);
             }

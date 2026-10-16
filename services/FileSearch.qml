@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import "narrowing.js" as Narrowing
 
 Singleton {
     id: root
@@ -16,7 +17,7 @@ Singleton {
 
     function command(text: string): var {
         const all = root.hidden === "all";
-        return ["fd", "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", "600", ...(all ? ["--hidden"] : []), ...root.noise.reduce((out, n) => out.concat(["--exclude", n]), []), "--", text, Files.home, ...(root.hidden === ".config" ? [`${Files.home}/.config`] : [])];
+        return ["nice", "-n", "10", "fd", "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", "600", ...(all ? ["--hidden"] : []), ...root.noise.reduce((out, n) => out.concat(["--exclude", n]), []), "--", text, Files.home, ...(root.hidden === ".config" ? [`${Files.home}/.config`] : [])];
     }
 
     property bool fdFound: false
@@ -26,9 +27,14 @@ Singleton {
 
     readonly property int hitLimit: 8
 
-    function grepCommand(text: string): var {
-        return ["nice", "-n", "19", "rg", "--fixed-strings", "--smart-case", "--max-count", "1", "--line-number", "--with-filename", "--no-heading", "--color", "never", "--max-filesize", "1M", "--max-columns", "240", "--max-columns-preview", ...root.noise.reduce((out, n) => out.concat(["--glob", `!${n}`]), []), "--", text, Files.home];
+    function grepCommand(text: string, within: var): var {
+        return ["nice", "-n", "19", "rg", "--fixed-strings", "--smart-case", "--max-count", "1", "--line-number", "--with-filename", "--no-heading", "--color", "never", "--max-filesize", "1M", "--max-columns", "240", "--max-columns-preview", ...(within ? [] : ["--threads", "2", ...root.noise.reduce((out, n) => out.concat(["--glob", `!${n}`]), [])]), "--", text, ...(within ?? [Files.home])];
     }
+
+    property string grepped: ""
+    property var grepFiles: []
+    property bool grepAll: false
+    property var grepWithin: null
 
     property string grepAsked: ""
     property string grepAnswered: ""
@@ -47,6 +53,16 @@ Singleton {
             root.grepAnswered = t;
             return;
         }
+        const narrower = root.grepAll && Narrowing.grepNarrows(root.grepped, t);
+        if (narrower && !root.grepFiles.length) {
+            grepSettle.stop();
+            root.stopGrep();
+            root.hits = [];
+            root.grepAnswered = t;
+            return;
+        }
+        root.grepWithin = narrower ? root.grepFiles : null;
+        grepSettle.interval = narrower ? 60 : 450;
         grepSettle.restart();
     }
 
@@ -60,6 +76,12 @@ Singleton {
     property string asked: ""
     property string answered: ""
     property var lines: []
+
+    property string found: ""
+    property var foundLines: []
+    property bool foundAll: false
+
+    onHiddenChanged: root.found = ""
 
     property string listedDir: ""
     property var entries: []
@@ -76,6 +98,13 @@ Singleton {
         if (!root.fdFound || t.length < root.least) {
             settle.stop();
             root.lines = [];
+            root.answered = t;
+            return;
+        }
+        if (root.foundAll && Narrowing.narrows(root.found, t)) {
+            settle.stop();
+            root.findGeneration += 1;
+            root.lines = Narrowing.keepNamed(root.foundLines, t);
             root.answered = t;
             return;
         }
@@ -101,6 +130,9 @@ Singleton {
     function forget(): void {
         root.listedDir = "";
         root.entries = [];
+        root.found = "";
+        root.grepped = "";
+        root.grepAll = false;
         grepSettle.stop();
         root.stopGrep();
         root.hits = [];
@@ -115,7 +147,7 @@ Singleton {
         onTriggered: {
             root.stopGrep();
             root.latestGrep = grepper.createObject(root, {
-                command: root.grepCommand(root.grepAsked),
+                command: root.grepCommand(root.grepAsked, root.grepWithin),
                 generation: root.grepGeneration,
                 query: root.grepAsked,
                 running: true
@@ -145,9 +177,17 @@ Singleton {
                 }
             }
 
-            onExited: if (run.generation === root.grepGeneration && !run.found.length) {
-                root.hits = [];
-                root.grepAnswered = run.query;
+            onExited: {
+                if (run.generation !== root.grepGeneration)
+                    return;
+                if (!run.found.length) {
+                    root.hits = [];
+                    root.grepAnswered = run.query;
+                }
+                const all = run.found.length < root.hitLimit;
+                root.grepAll = all;
+                root.grepped = all ? run.query : "";
+                root.grepFiles = all ? run.found.map(hit => Narrowing.pathOf(hit)).filter(Boolean) : [];
             }
 
             onRunningChanged: if (!run.running)
@@ -186,8 +226,12 @@ Singleton {
                 onStreamFinished: {
                     if (run.generation !== root.findGeneration)
                         return;
-                    root.lines = text.split("\n");
+                    const lines = text.split("\n").filter(Boolean);
+                    root.lines = lines;
                     root.answered = run.query;
+                    root.found = run.query;
+                    root.foundLines = lines;
+                    root.foundAll = lines.length < 600;
                 }
             }
 

@@ -177,6 +177,9 @@ PanelWindow {
             clipLayer.build().setTab(1);
             clipLayer.show();
             return;
+        case "recording":
+            ScreenRecorder.stop();
+            return;
         case "music":
             if (notice.origin && !mediaLayer.open) {
                 islandLayer.handOff();
@@ -826,7 +829,7 @@ PanelWindow {
 
             anchors.fill: parent
 
-            needed: Keyring.asked + Polkit.asked > 0
+            needed: Keyring.asked + Polkit.asked + PasswordRequest.asked > 0
 
             panel: PasswordPrompt {
                 holeX: chassis.holeX

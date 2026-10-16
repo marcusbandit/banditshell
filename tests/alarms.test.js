@@ -5,7 +5,31 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/alarms.js"), "utf8");
-const Alarms = new Function(src + "\nreturn { weekdayOf, occurrence, nextClockTime, nextFor, lastFor, pendingFor };")();
+const Alarms = new Function(src + "\nreturn { weekdayOf, occurrence, nextClockTime, oneOffAt, nextFor, lastFor, pendingFor };")();
+
+test.describe("oneOffAt", () => {
+    const NOW = new Date(2026, 9, 16, 10, 0).getTime();
+    const FRIDAY_NINE = new Date(2026, 9, 23, 9, 0).getTime();
+    const alarm = (fields) => Object.assign({ hour: 9, minute: 0, days: [], at: FRIDAY_NINE }, fields);
+
+    test.it("takes a requested moment that is still ahead", () => {
+        assert.strictEqual(Alarms.oneOffAt(alarm({ at: 0 }), alarm(), FRIDAY_NINE, NOW), FRIDAY_NINE);
+    });
+
+    test.it("keeps a dated moment through a toggle or a new label", () => {
+        assert.strictEqual(Alarms.oneOffAt(alarm(), alarm(), 0, NOW), FRIDAY_NINE);
+    });
+
+    test.it("moves to the next clock time once hour, minute or days change", () => {
+        assert.strictEqual(Alarms.oneOffAt(alarm(), alarm({ hour: 11 }), 0, NOW), new Date(2026, 9, 16, 11, 0).getTime());
+        assert.strictEqual(Alarms.oneOffAt(alarm(), alarm({ minute: 30 }), 0, NOW), new Date(2026, 9, 17, 9, 30).getTime());
+        assert.strictEqual(Alarms.oneOffAt(alarm({ days: [0] }), alarm(), 0, NOW), new Date(2026, 9, 17, 9, 0).getTime());
+    });
+
+    test.it("forgets a dated moment that has passed", () => {
+        assert.strictEqual(Alarms.oneOffAt(alarm({ at: NOW - 1000 }), alarm(), 0, NOW), new Date(2026, 9, 17, 9, 0).getTime());
+    });
+});
 
 const MONDAY = 0;
 const SATURDAY = 5;

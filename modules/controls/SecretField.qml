@@ -31,6 +31,11 @@ Item {
             field.forceActiveFocus();
     }
 
+    function cancel(): void {
+        field.text = "";
+        root.cancelled();
+    }
+
     function submit(): void {
         if (root.busy || !field.length)
             return;
@@ -99,7 +104,7 @@ Item {
         color: "transparent"
 
         onAccepted: root.submit()
-        Keys.onEscapePressed: root.cancelled()
+        Keys.onEscapePressed: root.cancel()
 
         onCursorPositionChanged: root.reveal()
 

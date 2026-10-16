@@ -180,15 +180,21 @@ Scope {
             return `open=${win?.launcher.open ?? false}`;
         }
 
+        function query(): string {
+            const win = Shell.showing(w => w.launcher.open);
+            return win?.launcher.concept?.input?.text ?? "";
+        }
+
         function run(id: string): string {
-            if (/^(app|command|setting):/.test(id)) {
+            if (/^[a-z]+:/.test(id)) {
                 const runner = rowRunner.createObject(root, {
                     query: "",
                     screenName: Hypr.focusedScreen
                 });
                 const ran = runner.runById(id);
                 runner.destroy();
-                return ran ? `ran ${ran}` : `no launcher row is called ${id}`;
+                if (ran || /^(app|command|setting):/.test(id))
+                    return ran ? `ran ${ran}` : `no launcher row is called ${id}`;
             }
             const entry = Apps.entryById(id) ?? Apps.search(id)[0];
             if (!entry)
@@ -210,7 +216,13 @@ Scope {
     Component {
         id: rowRunner
 
-        LauncherSearch {}
+        LauncherSearch {
+            onLaunch: what => {
+                what();
+                Hypr.claimNextWindow();
+            }
+            onLeave: what => what()
+        }
     }
 
     IpcHandler {

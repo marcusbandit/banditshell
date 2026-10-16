@@ -54,6 +54,17 @@ def find_pad(evdev, name, log):
     return None, denied, seen
 
 class PadReader:
+    def grab_patiently(self, dev):
+        for _ in range(50):
+            try:
+                dev.grab()
+                return
+            except OSError as exc:
+                if exc.errno != 16:
+                    raise
+                time.sleep(0.1)
+        dev.grab()
+
     def __init__(self, name, verbose, grab=False):
         self.name = name
         self.verbose = verbose
@@ -177,7 +188,7 @@ class PadReader:
 
             if self.grab:
                 try:
-                    dev.grab()
+                    self.grab_patiently(dev)
                     self.log("grabbed: the compositor will not see pad events")
                 except Exception as exc:
                     self.warn_once(

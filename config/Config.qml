@@ -284,11 +284,73 @@ Singleton {
 
                 currency: "DKK",
 
+                ai: {
+                    enabled: true,
+
+                    backend: "ollama",
+                    model: "",
+
+                    ollamaAddress: "http://localhost:11434",
+                    openaiAddress: "https://api.openai.com/v1"
+                },
+
+                online: {
+                    translate: true,
+                    translateTo: "",
+                    define: true,
+                    packages: true,
+                    github: true,
+                    browser: true,
+                    speedtest: true,
+                    videos: true
+                },
+
+                systemControls: {
+                    brightness: true,
+                    lowestBrightness: 5,
+                    wifi: true,
+                    vpn: true,
+                    recording: true,
+                    recordingFolder: ""
+                },
+
                 hidden: ({}),
 
                 starred: ({}),
 
                 folders: ({}),
+
+                devOps: {
+                    ssh: true,
+                    ports: true,
+                    services: true,
+                    containers: true,
+                    phone: true
+                },
+
+                powerTools: {
+                    scriptsFolder: "",
+
+                    projectFolders: "~/Projects",
+                    projectDepth: 2,
+                    projectSkip: "_archive",
+
+                    noteFolders: "~/Obsidian",
+                    noteVault: "",
+                    noteSkip: "",
+
+                    focusMinutes: 25,
+                    breakMinutes: 5,
+                    longBreakMinutes: 15,
+                    roundsBeforeLongBreak: 4,
+
+                    colourHistory: 12
+                },
+
+                utilities: {
+                    passwordLength: 20,
+                    reminderHour: 9
+                },
 
                 alphabet: {
                     width: 760,
@@ -322,6 +384,47 @@ Singleton {
 
                     landedMs: 700,
                     lostMs: 5000
+                },
+
+                typing: {
+                    skinTone: "none",
+
+                    clipboard: false,
+
+                    snippets: [],
+
+                    quicklinks: [
+                        {
+                            name: "YouTube",
+                            keyword: "yt",
+                            url: "https://www.youtube.com/results?search_query={query}"
+                        },
+                        {
+                            name: "GitHub",
+                            keyword: "gh",
+                            url: "https://github.com/search?q={query}"
+                        },
+                        {
+                            name: "Maps",
+                            keyword: "maps",
+                            url: "https://www.openstreetmap.org/search?query={query}"
+                        },
+                        {
+                            name: "Wikipedia",
+                            keyword: "wiki",
+                            url: "https://en.wikipedia.org/w/index.php?search={query}"
+                        },
+                        {
+                            name: "AUR",
+                            keyword: "aur",
+                            url: "https://aur.archlinux.org/packages?K={query}"
+                        },
+                        {
+                            name: "Arch Wiki",
+                            keyword: "arch",
+                            url: "https://wiki.archlinux.org/index.php?search={query}"
+                        }
+                    ]
                 }
             },
 

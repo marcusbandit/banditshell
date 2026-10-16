@@ -21,7 +21,7 @@ const LAYOUTS = [
     { id: "master", name: "master", detail: "one big, the rest stack" },
     { id: "scrolling", name: "scrolling", detail: "columns on a strip · hyprscrolling" },
     { id: "hy3", name: "hy3", detail: "i3-style groups and tabs · hy3" },
-    { id: "custom", name: "add custom", detail: "your own · still being worked out" }
+    { id: "custom", name: "add custom", detail: "your own · drawn in the layout workshop" }
 ];
 
 const WIDGET_TITLES = {
@@ -29,7 +29,7 @@ const WIDGET_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
     chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Places",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
 };
 
 const SEARCH_TITLES = {
@@ -37,11 +37,11 @@ const SEARCH_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Pick a wallpaper", themes: "Theme", wsStyles: "Workspace style",
     chips: "", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "World clocks",
     obs: "OBS", keys: "Keys", winLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys", snippets: "Snippets", quicklinks: "Quicklinks"
 };
 
 const WIDGET_WHY = {
-    winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom is for your own layout; how it plugs in is still being worked out.",
+    winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom opens the layout workshop: draw regions, pick where each new window goes, and the shell writes a Lua layout and loads it into Hyprland without touching your config files.",
     via: "Pick Custom under Board, then import the .json your keyboard’s maker publishes for usevia.app. Import lists the VIA files in Downloads; Browse opens any other. The sheet then draws your exact board, split halves and odd keys included. Add a keymap saved from VIA (Save + Load, Save) and the keys you bind light up on it. Open the file to edit it into your own board; the sheet follows your edits.",
     modes: "Like a focus on a phone. Pick one and it changes a handful of settings; pick none and they go back.",
     usage: "Time with each app in front of you today, counted only while you are active.",
@@ -53,7 +53,9 @@ const WIDGET_WHY = {
     wsStyles: "Plates stack the apps in each workspace. Map draws a bar per window. Blocks draws a square per window.",
     walls: "A new wallpaper grows out from where you clicked.",
     battery: "Charge over the last day. The dashed lines are the hold point and the warning.",
-    keys: "Click a key to change it in the pane."
+    keys: "Click a key to change it in the pane.",
+    snippets: "Type a snippet's keyword or name in the launcher and press Enter to type it into the app you were in. {date}, {time} and {clipboard} fill in as it is typed; {cursor} is where the caret ends up.",
+    quicklinks: "Type a keyword, a space and what to look for. {query} in the address is where it goes."
 };
 
 const PAGES_SOURCE = {
@@ -346,7 +348,7 @@ const PAGES_SOURCE = {
         status: s => `${s.v("layout") === "custom" ? "custom layout" : s.v("layout")} · ${s.v("dropMode")} on drop`,
         groups: [
             { t: "Layout", rows: [
-                { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom" }
+                { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom workshop draw lua" }
             ] },
             { t: "Moving", rows: [
                 { n: 66, icon: "vertical_align_top", label: "Bottom edge lifts windows", k: "edgeLift", kind: "toggle", cfg: "windows.edge", detail: "push down to peek" },
@@ -391,6 +393,80 @@ const PAGES_SOURCE = {
                 { n: [], icon: "map", label: "Map", k: "fallbackMaps", kind: "toggle", cfg: "launcher.fallbacks.maps", kw: "fallback map places openstreetmap" },
                 { n: [], icon: "terminal", label: "Run in a terminal", k: "fallbackTerminal", kind: "toggle", cfg: "launcher.fallbacks.terminal", kw: "fallback run command terminal shell" }
             ] },
+            { t: "Typing", rows: [
+                { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour",
+                    why: "Emoji with people and hands come in this tone. More on an emoji row still offers every tone." },
+                { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste",
+                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." }
+            ] },
+            { t: "Snippets", rows: [
+                { n: [], kind: "w", w: "snippets", kw: "snippets saved text expand keyword placeholders" }
+            ] },
+            { t: "Quicklinks", rows: [
+                { n: [], kind: "w", w: "quicklinks", kw: "quicklinks search shortcuts keywords urls youtube github wiki" }
+            ] },
+            { t: "Power tools", rows: [
+                { n: [], icon: "terminal", label: "Scripts folder", k: "scriptsFolder", kind: "text", mono: true, cfg: "launcher.powerTools.scriptsFolder", placeholder: "~/.config/banditshell/scripts", kw: "script commands raycast scripts folder",
+                    why: "Scripts in this folder show up by their file name, or by the Raycast style @raycast.title header. Type a script's name and press Enter to run it." },
+                { n: [], icon: "folder_code", label: "Project folders", k: "projectFolders", kind: "text", mono: true, cfg: "launcher.powerTools.projectFolders", placeholder: "~/Projects", kw: "projects git repositories code folders",
+                    why: "Git repositories in these folders, separated by commas, show up when you type their name or projects." },
+                { n: [], icon: "account_tree", label: "Project depth", k: "projectDepth", kind: "step", min: 1, max: 4, cfg: "launcher.powerTools.projectDepth", fmt: v => v === 1 ? "1 level" : `${v} levels`, kw: "projects search depth" },
+                { n: [], icon: "description", label: "Note folders", k: "noteFolders", kind: "text", mono: true, cfg: "launcher.powerTools.noteFolders", placeholder: "~/Obsidian", kw: "notes obsidian vaults folders",
+                    why: "Obsidian vaults inside these folders are searched along with the vaults Obsidian already knows about." },
+                { n: [], icon: "visibility_off", label: "Leave out vaults", k: "noteSkip", kind: "text", mono: true, cfg: "launcher.powerTools.noteSkip", placeholder: "Archive, ~/Obsidian/Work", kw: "notes obsidian vaults hide skip private exclude",
+                    why: "Vaults named here, by name or folder and separated by commas, are never searched and never get new notes." },
+                { n: [], icon: "note_add", label: "New notes go to", k: "noteVault", kind: "choice", o: s => s.noteVaults, cfg: "launcher.powerTools.noteVault", kw: "notes obsidian vault new note default" },
+                { n: [], icon: "timer", label: "Focus round", k: "focusMinutes", kind: "step", min: 5, max: 120, step: 5, unit: " min", cfg: "launcher.powerTools.focusMinutes", kw: "pomodoro focus work minutes" },
+                { n: [], icon: "coffee", label: "Break", k: "breakMinutes", kind: "step", min: 1, max: 30, unit: " min", cfg: "launcher.powerTools.breakMinutes", kw: "pomodoro short break minutes" },
+                { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
+                { n: [], icon: "replay", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
+            ] },
+            { t: "Developer tools", rows: [
+                { n: [], icon: "dns", label: "SSH hosts", k: "devOpsSsh", kind: "toggle", cfg: "launcher.devOps.ssh", kw: "ssh hosts servers remote connect terminal known_hosts",
+                    why: "Type ssh for the hosts in your SSH config and known hosts, then press Enter to connect in a terminal. Private keys are never read." },
+                { n: [], icon: "lan", label: "Listening ports", k: "devOpsPorts", kind: "toggle", cfg: "launcher.devOps.ports", kw: "ports listening sockets who uses port localhost server kill",
+                    why: "Type ports or port 3000 to see what listens there, then quit it or open it in the browser." },
+                { n: [], icon: "settings_suggest", label: "Services", k: "devOpsServices", kind: "toggle", cfg: "launcher.devOps.services", kw: "systemd services units systemctl start stop restart daemon",
+                    why: "Type services, service docker or restart sshd. System services ask for your password before they change." },
+                { n: [], icon: "deployed_code", label: "Containers", k: "devOpsContainers", kind: "toggle", cfg: "launcher.devOps.containers", kw: "containers podman docker logs shell exec",
+                    why: "Type containers, podman or docker to start and stop containers, follow their logs or open a shell inside." },
+                { n: [], icon: "mobile", label: "Phone through KDE Connect", k: "devOpsPhone", kind: "toggle", cfg: "launcher.devOps.phone", kw: "phone kde connect ring ping battery send file clipboard share link",
+                    why: "Type phone, ring phone or send to phone. Works with phones already paired in KDE Connect." }
+            ] },
+            { t: "Utilities", rows: [
+                { n: [], icon: "password", label: "Password length", k: "passwordLength", kind: "step", min: 8, max: 64, step: 4, cfg: "launcher.utilities.passwordLength", fmt: v => `${v} characters`, kw: "password generator random length uuid developer",
+                    why: "Typing password makes one this long. Ask for another length with password 32, or password 20 simple for one without symbols." },
+                { n: [], icon: "notifications_active", label: "Reminders without a time", k: "reminderHour", kind: "step", min: 5, max: 12, cfg: "launcher.utilities.reminderHour", fmt: v => `${v < 10 ? "0" : ""}${v}:00`, kw: "reminder default time morning tomorrow remind me",
+                    why: "Remind me tomorrow to call mum rings at this hour. Tonight, this afternoon and this evening ring at 20:00, 15:00 and 19:00." }
+            ] },
+            { t: "Online", rows: [
+                { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
+                    why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
+                { n: [], icon: "language", label: "Translate into", k: "onlineTranslateTo", kind: "choice", o: [["", "System language"], ["en", "English"], ["da", "Danish"], ["de", "German"], ["fr", "French"], ["es", "Spanish"], ["it", "Italian"], ["nl", "Dutch"], ["sv", "Swedish"], ["no", "Norwegian"], ["fi", "Finnish"], ["pl", "Polish"], ["pt", "Portuguese"], ["ja", "Japanese"], ["zh-CN", "Chinese"], ["ko", "Korean"]], cfg: "launcher.online.translateTo", dis: s => !s.v("onlineTranslate"), kw: "translate target language default" },
+                { n: [], icon: "menu_book", label: "Define words", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word",
+                    why: "Type define and a word. Meanings come from dictionaryapi.dev, or Wiktionary when that is down." },
+                { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software",
+                    why: "Type install and a name to search the system packages, the AUR and Flatpak, then install or remove from the row." },
+                { n: [], icon: "book", label: "GitHub", k: "onlineGithub", kind: "toggle", cfg: "launcher.online.github", kw: "github gh repos pull requests issues notifications",
+                    why: "Type gh for your repositories, open pull requests, assigned issues and notifications. Needs the gh command, signed in." },
+                { n: [], icon: "bookmark", label: "Bookmarks and history", k: "onlineBrowser", kind: "toggle", cfg: "launcher.online.browser", kw: "browser bookmarks history firefox zen chromium",
+                    why: "Pages from your browsers show up as you type. The list is read in the background at most every few minutes and stays on this computer." },
+                { n: [], icon: "speed", label: "Speed test", k: "onlineSpeedtest", kind: "toggle", cfg: "launcher.online.speedtest", kw: "speedtest internet speed bandwidth" },
+                { n: [], icon: "movie", label: "Video downloads", k: "onlineVideos", kind: "toggle", cfg: "launcher.online.videos", kw: "download video audio youtube yt-dlp",
+                    why: "Paste a video link to save the video or its sound to your Downloads folder with yt-dlp." }
+            ] },
+            { t: "System controls", rows: [
+                { n: [], icon: "brightness_medium", label: "Brightness", k: "systemBrightness", kind: "toggle", cfg: "launcher.systemControls.brightness", kw: "brightness backlight dim brighter dimmer screen monitor ddcutil",
+                    why: "Type brightness for a slider per screen, brightness 40 to set them all, or brighter and dimmer. Monitors need ddcutil." },
+                { n: [], icon: "brightness_low", label: "Lowest brightness", k: "systemLowestBrightness", kind: "step", min: 1, max: 30, unit: "%", cfg: "launcher.systemControls.lowestBrightness", dis: s => !s.v("systemBrightness"), kw: "brightness minimum lowest floor black" },
+                { n: [], icon: "wifi", label: "Wi-Fi networks", k: "systemWifi", kind: "toggle", cfg: "launcher.systemControls.wifi", kw: "wifi wi-fi wireless networks join password",
+                    why: "Type wifi to see every network in range. Joining a locked one asks for its password on the shell's own card." },
+                { n: [], icon: "vpn_lock", label: "VPN and Tailscale", k: "systemVpn", kind: "toggle", cfg: "launcher.systemControls.vpn", kw: "vpn wireguard tailscale exit node tunnel",
+                    why: "Type vpn for your saved VPN connections, or tailscale for its status, devices and exit nodes." },
+                { n: [], icon: "screen_record", label: "Screen recording", k: "systemRecording", kind: "toggle", cfg: "launcher.systemControls.recording", kw: "record screen recording video capture wf-recorder",
+                    why: "Type record screen, record area or record window. Sound is only recorded when you say record screen with sound." },
+                { n: [], icon: "movie", label: "Recordings folder", k: "systemRecordingFolder", kind: "text", mono: true, cfg: "launcher.systemControls.recordingFolder", placeholder: "~/Videos/Recordings", dis: s => !s.v("systemRecording"), kw: "recordings folder videos save location" }
+            ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
                 { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }
@@ -400,6 +476,17 @@ const PAGES_SOURCE = {
                 { n: 72, kind: "w", w: "chips", list: "hidden", kw: "hidden apps" },
                 { n: 72, kind: "w", w: "folders", kw: "app folders" },
                 { n: 73, kind: "w", w: "overrides", kw: "app icon overrides" }
+            ] },
+            { t: "AI", rows: [
+                { n: [], icon: "auto_awesome", label: "Answers and rewriting", k: "aiOn", kind: "toggle", cfg: "launcher.ai.enabled", detail: s => s.aiNote, kw: "ai assistant ask question answer chat llm ollama rewrite selected text grammar translate summarise",
+                    why: "Type ? and a question to get an answer under the search field. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it. Nothing is sent anywhere but the backend below." },
+                { n: [], icon: "dns", label: "Backend", k: "aiBackend", kind: "choice", o: [["ollama", "Ollama"], ["openai", "OpenAI compatible"], ["anthropic", "Anthropic"]], cfg: "launcher.ai.backend", dis: s => !s.v("aiOn"), kw: "ai backend provider ollama openai anthropic claude api local",
+                    why: "Ollama runs the model on this computer, so what you ask and select stays here. The other two send it to that service with your API key." },
+                { n: [], icon: "neurology", label: "Model", k: "aiModel", kind: "choice", o: s => s.aiModels, cfg: "launcher.ai.model", dis: s => !s.v("aiOn"), detail: s => s.aiModelNote, kw: "ai model llm qwen llama claude gpt" },
+                { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") === "ollama", kw: "ai api key token secret openai anthropic",
+                    why: "Each backend keeps its own key, in a file only you can read in the shell's state folder, never in config.json." },
+                { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", detail: s => s.aiAddressNote, dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp",
+                    why: "Any server that speaks the OpenAI chat API: OpenAI, OpenRouter, Groq, LM Studio or llama.cpp. The key goes only to an https address or to this computer; a plain http server elsewhere is asked without it." }
             ] }
         ]
     },

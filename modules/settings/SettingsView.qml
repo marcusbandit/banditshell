@@ -148,6 +148,8 @@ Singleton {
             return p.title ?? "key";
         case "restore":
             return "restore settings";
+        case "workshop":
+            return "layout workshop";
         }
         return "";
     }

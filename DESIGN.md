@@ -498,7 +498,18 @@ banditshell/
 │                                a card, ink on paper, every module a G2 corner
 │                                that asks its neighbours; needs `qrencode`
 ├── services/                    state that outlives any one widget
-│   ├── Hypr.qml                 Hyprland IPC -> clean workspace state
+│   ├── Hypr.qml                 Hyprland IPC -> clean workspace state, and
+│   │                            what the launcher does to a window: fullscreen,
+│   │                            maximize, restore, float, center, an exact
+│   │                            place, another monitor or workspace. Each in
+│   │                            Lua and in the legacy dispatcher form
+│   ├── WindowLayouts.qml        which tiling layouts there are (dwindle, master,
+│   │                            scrolling when core has it, hy3 when loaded,
+│   │                            and every hl.layout.register in the Lua
+│   │                            config) and switching between them live with
+│   │                            hyprctl eval, so the files keep their own;
+│   │                            apply_layout_binds(name) runs after, when the
+│   │                            config defines one
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
 │   │                            (the file this compositor was handed with
 │   │                            -c, else hyprland.lua, else hyprland.conf,
@@ -698,7 +709,17 @@ banditshell/
 │   │                            sense, so 5+5- still says 10
 │   ├── Currency.qml             an amount in one currency, said in another:
 │   │                            the ECB's daily rates, fetched when online
-│   │                            and kept for when it is not
+│   │                            and kept for when it is not. Coins (btc, eth
+│   │                            and a dozen more) are currencies too, priced
+│   │                            from CoinGecko only when one is typed and at
+│   │                            most every ten minutes
+│   ├── dates.js                 plain words about dates, read without qalc:
+│   │                            days until christmas, monday in 3 weeks,
+│   │                            10 days ago, week number, Easter. English and
+│   │                            Danish; a date already past this year means
+│   │                            next year's
+│   ├── colours.js               a colour in hex, rgb or hsl said in the others,
+│   │                            for the answer row and its swatch
 │   ├── Lock.qml                 whether the screen is locked, and what decides it.
 │   │                            Also the password on its way to PAM: typed into
 │   │                            a buffer nothing outside can read, called WRONG
@@ -721,6 +742,9 @@ banditshell/
 │   │                            holds one for less time than Lock does: the
 │   │                            secret goes straight down the helper's stdin and
 │   │                            is never stored
+│   ├── DarkMode.qml             whether apps are asked for dark: the freedesktop
+│   │                            colour-scheme key, read and watched with
+│   │                            gsettings, which portal-aware apps follow
 │   ├── Polkit.qml               the shell as the polkit agent, so pkexec (an
 │   │                            install, an uninstall, the charge limit) asks
 │   │                            in the same card as the keyring. Only one agent
@@ -976,14 +1000,31 @@ banditshell/
 │   │   │                        windows, devices, timers, reminders, the
 │   │   │                        time in a city, processes to kill, files and
 │   │   │                        words inside them, a typed path, a link, and
-│   │   │                        the fallbacks; an alias lifts its row to the
+│   │   │                        the fallbacks, every app's volume, and system
+│   │   │                        switches (night light, dark mode, energy
+│   │   │                        saver, airplane mode, sleep displays, quit
+│   │   │                        all, dismiss notifications), the focused
+│   │   │                        window's moves (halves, thirds, quarters and
+│   │   │                        sixths cut from the monitor minus its
+│   │   │                        reserved edges and gaps, one formula for
+│   │   │                        every grid) and the tiling layouts; an alias lifts
+│   │   │                        its row to the
 │   │   │                        top. Ranked into sections, and what each row
 │   │   │                        does. Apps, commands and settings have ids
 │   │   │                        (app:firefox, command:lock) that a hotkey or
 │   │   │                        the CLI runs without the launcher open
+│   │   ├── shellcli.js          the CLI's own help header (cli/banditshell) read
+│   │   │                        as usages, so typing bandit or banditshell in
+│   │   │                        the launcher runs any command and completes
+│   │   │                        the next word the way the terminal's Tab does
+│   │   ├── sources/             one file per newer kind of result, plugged into
+│   │   │                        LauncherSearch's `sources` list (section 19)
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
-│   │   │                        kill phrases, aliases, chords, fallbacks
+│   │   │                        kill phrases, a time moved between places
+│   │   │                        (5pm ldn in sf, which date(1) converts so
+│   │   │                        daylight saving is right), aliases, chords,
+│   │   │                        fallbacks
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
@@ -3587,6 +3628,79 @@ That pill tracked the focused window and sat on top of whatever was there; the
 island sits at the screen's centre and is click-through while dictating, so
 there is nothing to tuck away from. The island hangs under the stream band the
 way the notch did.
+
+## 19. Launcher sources
+
+`modules/launcher/LauncherSearch.qml` grew to sixteen hundred lines because
+every kind of result lived in it. New kinds of result go in their own file
+under `modules/launcher/sources/` instead, and LauncherSearch lists them in
+`sources`. A source is a plain QtObject; every member is optional except
+`search`:
+
+- `required property var search` is the LauncherSearch hub. Read
+  `search.text` (the trimmed query), `search.query`, `search.screenName`,
+  `search.windowTarget()`. Call `search.launch(fn)` to start something and
+  close the launcher, `search.leave(fn)` to close it first and then run `fn`,
+  `search.retype(text)` to replace what is typed.
+- `groups`: an array of `{ key, title, items }`. Each item is a row: `key`,
+  `kind`, `label`, `detail`, `icon` or `iconSource`, `score` (Infinity puts
+  it first, -Infinity last), `toggle` for a switch, and `slider` (`{ value,
+  set, to }`, where `value()` reads the live level and `set(v)` changes it)
+  for a level the row can drag; Left and Right nudge the selected one by
+  `step` (0.05 unless set), a fifth of that with Shift. `text()` replaces the
+  percentage beside it, and `warnAbove` moves the marker that is at 1. A
+  row can also carry `glyph` (a character, such as an emoji, drawn as its
+  icon) and `ask` (`{ prompt, icon, suggestion, take }`): Enter on it turns
+  the field into a one-line question and hands the answer to `take(text)`.
+  `peekPath` (with `peekDir: true` for a folder) or `peekText` fills the card
+  beside the launcher when the row is selected: a picture, the first lines of
+  a text file, a folder's contents, or the full text.
+  `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
+  true` lets the row take Tab even when another row is selected. In
+  `actionsFor`, a first action with `button: true` also shows as a button,
+  for rows whose Enter action belongs next to the others (Pause beside Skip
+  and Stop). Groups are ordered by their best score, like the built-in
+  ones.
+- `kinds`: the row kinds this source owns. The hub hands `activate(row)`,
+  `actionsFor(row)` and `complete(row)` for those kinds to this source.
+  `actionsFor` returns `{ icon, label, short?, run, tucked? }`; the first is
+  what Enter does, the rest become row buttons, and tucked ones sit under
+  More. `complete` is Tab; return true when it handled it.
+- `confirmActionsFor(row)`: the buttons an armed row shows (the hub adds
+  Cancel). A dangerous action sets `search.armed` to a key on the first
+  Enter and only runs on the second; the row reads "Press Enter again to
+  ..." while armed.
+- `commands`: entries for the shared command list, `{ id, icon, label,
+  words, detail?, toggle?, stay?, confirm?, run }`. These get aliases and
+  hotkeys for free.
+- `rowById(id)`: rebuild one of this source's rows from its key, so its
+  rows can take aliases and hotkeys too.
+- `intent`: true when the query is clearly meant for this source, which
+  stops the calculator from answering it.
+- `caps`: `{ groupKey: n }` to show more or fewer rows than the default.
+- `phrases`: `{ head, picks }` entries Tab completion offers, like
+  `{ head: "emoji ", picks: ["smile", "heart"] }`.
+
+Scores: apps rank about 1 to 4 (4 for an exact name) and settings at least
+0.5. A row that shows up for a plain word the user did not clearly mean for a
+source stays near or below 0.5 (an emoji whose name starts with the word, or
+a plain question for the AI, may reach 0.8, still under an app prefix match);
+a clear ask of a source puts its first row at Infinity. Rows the user
+runs get a small lift next time from `services/LauncherMemory.qml`, which
+skips typed text, links, files and anything positional.
+
+The result list is not a binding: `arrangeInputs` lists everything
+`arrangement()` reads, and a change schedules one rebuild per event loop
+turn. Key handlers call `arrangeNow()` first. A source whose groups read a
+property the hub does not already list must still expose it through
+`groups`, which is in `arrangeInputs`.
+
+A hotkey runs a row through a LauncherSearch that the CLI makes and throws
+away at once, so anything that outlives the call (a Process, a timer) belongs
+in a singleton service, not in the source. `FallbackSource.qml` is the
+smallest example; `SoundSource.qml` shows sliders. Typing into the window
+the user came from goes through `services/Typist.qml`, which waits for that
+window to have focus again and copies instead when wtype is missing.
 
 ---
 

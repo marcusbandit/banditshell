@@ -1,6 +1,112 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-6",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type bandit, or banditshell, in the launcher to run the shell's own commands: bandit restart restarts the shell, bandit wallpaper next changes the picture, and the next word is suggested as you go, the same way Tab works in a terminal. What a command prints shows up underneath. Typing restart now offers both Restart shell and Restart computer."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher learns: commands, settings, emoji and every other row you run come back higher next time, the way apps already did. Tab completes in the launcher. days until offers christmas, easter and other days with the count already worked out, and time in, timer, remind me, focus workspace, volume and kill offer what can follow them. So do swap, focus and move window with their directions, go to workspace, force quit, awake, noon in tokyo and week of."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "More window rows that work in every layout: Promote window, Swap left, right, up and down, Focus left and the other directions, Move window left and so on, and focus workspace 2. Float window and Tile window are one row that names what it will do, and either word finds it; Fullscreen and Maximize turn into Exit fullscreen and Unmaximize the same way."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher's calculator also reads dates and colours. days until christmas, monday in 3 weeks, 10 days ago and week number answer right under the field, and #ff8800 shows its rgb and hsl with a swatch of the colour. 5pm ldn in sf or 9am pst moves a time between places, daylight saving included. Coins work like money: 0.5 btc in dkk uses prices fetched only when you type one."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "More switches in the launcher: Night light, Dark mode for your apps, Energy saver, Performance mode and Airplane mode flip right in the list, and Sleep displays turns the screens off until you touch the mouse or keyboard. Quit all apps asks once more first, and Dismiss notifications clears them. Typing spotify 30% or volume firefox 50 sets one app's volume, volume shows a mixer: your speakers and every app that is playing, each with a slider and a mute switch, where Left and Right nudge the selected one by 5% (1% with Shift), and keep awake 1h keeps the screen on for an hour."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher moves the window you were in. Fullscreen, Maximize, Restore window, Float window and Center window work as rows, and Left half, First two thirds, Top right quarter and the other halves, thirds, quarters and sixths snap it into place with your gaps. Move to next display, Move to next workspace and move to workspace 3 send it elsewhere. Typing layout lists the tiling layouts, including ones your Lua config registers, and switches between them right away. Any of these can get a hotkey."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "A card beside the launcher shows what the selected row points at: a live picture of a window, an image, the first lines of a text file with the matching line lit, or what is inside a folder. Type windows to list every open window, last used first, and switch to one with its picture beside it. Type screenshots or downloads for your newest screenshots or downloaded files, shown beside the list, with buttons to copy, edit or find one. Type music or now playing for the song that is playing, with previous and next buttons and a bar that Left and Right move through the song 5 seconds at a time."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type emoji heart, :smile or just thumbs up in the launcher and Enter types it into the app you were in. Symbols such as °, → and ½ work the same way. Snippets keep text you type often behind a keyword, with the date, time or clipboard filled in. Quicklinks such as yt cats or gh banditshell search a site straight away, and clip, or a few words you copied, finds it in your clipboard history and pastes it. Snippets and quicklinks are edited in Settings › Launcher."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher runs your own scripts: put one in ~/.config/banditshell/scripts and type its name, with any words after it as input. Type pick colour to grab a colour from the screen, colours for the ones you picked, projects to open a repository in your editor, notes or note something for Obsidian, and cpu, memory, disk or top to see what the machine is doing. pomodoro starts focus rounds with breaks between them, and lorem 3 copies three paragraphs of filler text. Settings › Launcher › Power tools sets the folders, and can leave a vault out of notes. A script can also show a list: add # @banditshell.mode list, print a little JSON, and type the script's name followed by what you are looking for; try unicode arrow after Create a script command."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ? and a question in the launcher and the answer appears under the search field, from a model running on your own computer. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it, then put the result back in place or copy it. If Ollama is not set up yet, the launcher installs it, starts it and downloads a small model for you, or you can add an API key in Settings › Launcher."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type hello in german, define serendipity or install spotify, and the launcher answers from the web, with packages from your package manager and Flatpak installed straight from the row. AUR packages ask twice and then build in a terminal, so you can read what they run first. Type gh for your GitHub repos, pull requests and notifications. Your browser bookmarks show up as you type, history and a word searches what you visited, speedtest measures your connection, and a pasted video link saves the video or its sound to Downloads. Settings › Launcher › Online turns each of these off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type brightness for a slider on every screen, or brightness 40 to set them all at once. Type wifi to see every network in range and join one, with the password on the shell's own card. Type vpn or tailscale to switch connections and exit nodes, and record screen, area or window to capture video, with a stop button in the island. Screenshot an area, or the whole desktop, from the launcher too."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ssh to connect to a host from your SSH config, or ports to see what is listening and quit it. Type services, containers or phone to restart a service, follow a container's logs, or ring your phone and send it a file or link through KDE Connect. Stopping, restarting and quitting always ask for a second Enter."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Developer tools in the launcher: type uuid, password 20, base64 hello, sha256 text, json, jwt and a token, snake case My Title or a unix time, and Enter copies the answer. It also understands everyday phrasing such as set a timer for 5 minutes, remind me tomorrow at 9 to call mum, time in india, louder, and kill port 3000."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Draw your own tiling layout in Settings › Windows › Custom layout, or type layout workshop in the launcher. Place regions, choose where each new window goes and what happens on a narrow screen, and the shell writes a Hyprland layout and loads it right away without editing your config. Stage comes as a starting point, and your saved layouts show up next to it in the launcher's layout list."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Anything the shell runs with your password (installing, removing, quitting another user's process, restarting a system service) now only runs programs from the system folders, never a program of the same name placed earlier in your PATH."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The processor temperature reads the processor's own sensor. On some boards it showed a fixed reading near 17 °C."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Snapping a window to a half, third or quarter places it instead of only floating it. The shell uses far less processor while music plays: the seek bar in the island, the media card and the lock screen no longer redraws its shapes from scratch every frame, and a settings page illustration stops animating when the panel is closed. Typing in the launcher is quicker even with everything above added: the results are put together once per key instead of once for every kind of result, and app and emoji searches narrow from the letters you already typed."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "config.json has new groups under launcher: typing (with your snippets and quicklinks), powerTools, online, ai, systemControls, devOps and utilities, each with its own switches in Settings › Launcher. The shell also keeps launcher-rows.json (rows you ran), emoji.json, colours.json and drawn layouts (layouts.json and a layouts folder) in ~/.local/state/banditshell, AI keys there in assistant-key files only you can read, and online lookups in a private folder under ~/.cache/banditshell."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16-5",
       "date": "2026-10-16",
       "changes": [

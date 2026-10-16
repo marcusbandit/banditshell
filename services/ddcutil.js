@@ -38,3 +38,17 @@ function parseDetect(text) {
 
     return found.filter(display => display.name);
 }
+
+function parseVcp(text) {
+    const match = /^VCP\s+10\s+C\s+(\d+)\s+(\d+)\s*$/m.exec(String(text ?? ""));
+    if (!match || !(Number(match[2]) > 0))
+        return null;
+    return {
+        current: Number(match[1]),
+        max: Number(match[2])
+    };
+}
+
+function staleDisplays(displays, readAt, now, windowMs) {
+    return (displays ?? []).filter(display => !(now - (readAt?.[display.index] ?? -Infinity) < windowMs));
+}

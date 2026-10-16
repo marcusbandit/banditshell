@@ -7,7 +7,9 @@ import Quickshell.Io
 import qs.config
 import qs.services
 import qs.modules.settings
+import qs.modules.launcher.sources
 import "search.js" as Search
+import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
@@ -24,13 +26,143 @@ QtObject {
     signal leave(var what)
     signal retype(string text)
 
+    readonly property list<QtObject> sources: [
+        FallbackSource {
+            search: root
+        },
+        LatestSource {
+            search: root
+        },
+        SoundSource {
+            search: root
+        },
+        MediaSource {
+            search: root
+        },
+        EmojiSource {
+            search: root
+        },
+        SnippetSource {
+            search: root
+        },
+        QuicklinkSource {
+            search: root
+        },
+        ClipboardSource {
+            search: root
+        },
+        ScriptSource {
+            search: root
+        },
+        ColourSource {
+            search: root
+        },
+        ProjectSource {
+            search: root
+        },
+        NotesSource {
+            search: root
+        },
+        MonitorSource {
+            search: root
+        },
+        PomodoroSource {
+            search: root
+        },
+        LoremSource {
+            search: root
+        },
+        AskSource {
+            search: root
+        },
+        RewriteSource {
+            search: root
+        },
+        WorkshopSource {
+            search: root
+        },
+        TranslateSource {
+            search: root
+        },
+        DefineSource {
+            search: root
+        },
+        PackageSource {
+            search: root
+        },
+        GithubSource {
+            search: root
+        },
+        BrowserSource {
+            search: root
+        },
+        SpeedtestSource {
+            search: root
+        },
+        VideoDownloadSource {
+            search: root
+        },
+        SshSource {
+            search: root
+        },
+        PortSource {
+            search: root
+        },
+        ServiceSource {
+            search: root
+        },
+        ContainerSource {
+            search: root
+        },
+        PhoneSource {
+            search: root
+        },
+        RecordSource {
+            search: root
+        },
+        BrightnessSource {
+            search: root
+        },
+        WifiSource {
+            search: root
+        },
+        VpnSource {
+            search: root
+        },
+        DevSource {
+            search: root
+        }
+    ]
+
+    readonly property var sourceGroupLists: root.sources.map(s => s.groups ?? [])
+
+    readonly property var sourceCommands: root.sources.reduce((out, s) => out.concat(s.commands ?? []), [])
+
+    readonly property bool sourceIntent: root.sources.some(s => !!s.intent)
+
+    readonly property var limits: root.sources.reduce((out, s) => Object.assign(out, s.caps ?? {}), Object.assign({}, root.caps))
+
+    readonly property var sourceByKind: root.sources.reduce((out, s) => {
+        for (const kind of s.kinds ?? [])
+            out[kind] = s;
+        return out;
+    }, ({}))
+
+    function sourceOf(row: var): var {
+        return row?.kind ? root.sourceByKind[row.kind] ?? null : null;
+    }
+
     readonly property var caps: ({
             apps: 8,
-            commands: 4,
+            commands: 6,
             settings: 5,
-            windows: 5,
+            windows: root.windowList ? 24 : 5,
             devices: 4,
             processes: 8,
+            shell: 12,
+            output: 12,
+            suggestions: 6,
+            sound: 5,
             files: 6,
             contents: 5
         })
@@ -41,15 +173,19 @@ QtObject {
 
     readonly property var timer: Search.timerAsk(root.text)
     readonly property var reminder: Search.reminderAsk(root.text)
-    readonly property int volume: Search.volumeAsk(root.text)
     readonly property string place: Search.zoneAsk(root.text)
+    readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.killing !== null
+    readonly property bool intent: root.sourceIntent || root.cliLine !== null || !!root.timer || !!root.reminder || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || root.windowList || root.commandRows.some(r => r.score === Infinity)
 
     property bool started: false
 
     property bool quiet: false
+
+    property bool active: true
+
+    property string target: ""
 
     onQueryChanged: {
         root.armed = "";
@@ -58,22 +194,24 @@ QtObject {
         else if (!root.started) {
             root.started = true;
             Files.refreshPlaces();
+            Hyprland.refreshToplevels();
         }
-        if (Search.zoneAsk(root.query.trim()))
+        if (Search.zoneAsk(root.query.trim()) || Search.zoneConvertAsk(root.query.trim()))
             Clock.loadZoneList();
         if (Search.killAsk(root.query.trim()) !== null)
             root.listProcesses();
-        if (root.quiet)
+        if (root.quiet || ShellCli.ask(root.query) !== null)
             return;
         const typed = Search.pathQuery(root.query, Files.home);
-        if (typed) {
+        if (typed)
             FileSearch.list(typed.dir);
-            FileSearch.grep("");
-        } else {
+        else
             FileSearch.find(root.query);
-            FileSearch.grep(root.query);
-        }
     }
+
+    readonly property string grepFor: root.quiet || root.path || root.intent || root.aliasId || root.text.length < 4 || !/[a-z].*[a-z].*[a-z]/i.test(root.text) || Calculator.answerFor(root.text) ? "" : root.text
+
+    onGrepForChanged: FileSearch.grep(root.grepFor)
 
     function appScore(entry: var): real {
         const tier = Apps.tier(entry, root.text);
@@ -110,10 +248,17 @@ QtObject {
             run: () => Suspension.perform("hibernate")
         },
         {
+            id: "restartshell",
+            icon: "refresh",
+            label: "Restart shell",
+            words: "restart shell reload banditshell",
+            run: () => Quickshell.execDetached([root.cli, "restart"])
+        },
+        {
             id: "reboot",
             icon: "restart_alt",
-            label: "Restart",
-            words: "reboot restart",
+            label: "Restart computer",
+            words: "reboot restart computer",
             confirm: true,
             run: () => root.power("reboot")
         },
@@ -146,6 +291,27 @@ QtObject {
             label: "Wallpapers",
             words: "wallpaper background picture",
             run: () => Shell.forScreen(root.screenName)?.wallpapers.show()
+        },
+        {
+            id: "screenshotarea",
+            icon: "screenshot_region",
+            label: "Screenshot an area",
+            words: "screenshot area region snip capture grab print screen save",
+            run: () => root.leave(() => Quickshell.execDetached([root.cli, "screenshot", "save"]))
+        },
+        {
+            id: "screenshotcopy",
+            icon: "content_cut",
+            label: "Screenshot an area to the clipboard",
+            words: "screenshot copy clipboard snip capture grab print screen",
+            run: () => root.leave(() => Quickshell.execDetached([root.cli, "screenshot", "copy"]))
+        },
+        {
+            id: "screenshotfull",
+            icon: "screenshot_monitor",
+            label: "Screenshot the whole desktop",
+            words: "screenshot full whole desktop screen capture grab print",
+            run: () => root.leave(() => Quickshell.execDetached(["sh", "-c", 'sleep 0.4; exec "$1" screenshot full', "sh", root.cli]))
         },
         {
             id: "settings",
@@ -183,6 +349,7 @@ QtObject {
             icon: "volume_up",
             label: "Volume up",
             words: "volume up louder sound",
+            lead: Search.LOUDER,
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
@@ -193,6 +360,7 @@ QtObject {
             icon: "volume_down",
             label: "Volume down",
             words: "volume down quieter softer sound",
+            lead: Search.QUIETER,
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
@@ -223,6 +391,7 @@ QtObject {
             icon: "coffee",
             label: "Keep awake",
             words: "keep awake caffeine coffee stay on no sleep",
+            detail: Idle.awake && Idle.awakeUntil ? `until ${TimeFormat.time(new Date(Idle.awakeUntil), false)}` : "",
             toggle: Idle.awake,
             stay: true,
             run: () => Idle.awake = !Idle.awake
@@ -234,8 +403,84 @@ QtObject {
             words: "empty trash bin rubbish",
             confirm: true,
             run: () => Quickshell.execDetached(["gio", "trash", "--empty"])
+        },
+        {
+            id: "nightlight",
+            icon: "nightlight",
+            label: "Night light",
+            words: "night light warm screen warmth blue light filter",
+            detail: Display.warm ? `${Display.kelvin} K` : "",
+            toggle: Display.warm,
+            stay: true,
+            run: () => Display.toggleWarm()
+        },
+        {
+            id: "darkmode",
+            icon: "dark_mode",
+            label: "Dark mode",
+            words: "dark mode light mode appearance colour color scheme apps",
+            toggle: DarkMode.dark,
+            hidden: !DarkMode.available,
+            stay: true,
+            run: () => DarkMode.set(!DarkMode.dark)
+        },
+        {
+            id: "sleepdisplays",
+            icon: "desktop_access_disabled",
+            label: "Sleep displays",
+            words: "sleep displays screens off monitors off blank dpms",
+            run: () => Idle.sleepScreens()
+        },
+        {
+            id: "energysaver",
+            icon: "eco",
+            label: "Energy saver",
+            words: "energy saver power saver battery saver low power eco",
+            toggle: PowerProfile.profile === "saver",
+            hidden: !PowerProfile.choices.includes("saver"),
+            stay: true,
+            run: () => PowerProfile.set(PowerProfile.profile === "saver" ? "balanced" : "saver")
+        },
+        {
+            id: "performance",
+            icon: "speed",
+            label: "Performance mode",
+            words: "performance mode fast power high power",
+            toggle: PowerProfile.profile === "fast",
+            hidden: !PowerProfile.choices.includes("fast"),
+            stay: true,
+            run: () => PowerProfile.set(PowerProfile.profile === "fast" ? "balanced" : "fast")
+        },
+        {
+            id: "airplane",
+            icon: "flight",
+            label: "Airplane mode",
+            words: "airplane mode aeroplane flight mode radios off wifi bluetooth",
+            toggle: root.airplane,
+            stay: true,
+            run: () => root.setAirplane(!root.airplane)
+        },
+        {
+            id: "quitall",
+            icon: "cancel_presentation",
+            label: "Quit all apps",
+            words: "quit all apps close all windows",
+            detail: root.openWindows.length === 1 ? "1 window" : `${root.openWindows.length} windows`,
+            hidden: !root.openWindows.length,
+            confirm: true,
+            run: () => root.openWindows.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
+        },
+        {
+            id: "dismiss",
+            icon: "clear_all",
+            label: "Dismiss notifications",
+            words: "dismiss clear notifications",
+            detail: Notifications.count === 1 ? "1 notification" : `${Notifications.count} notifications`,
+            hidden: !Notifications.count,
+            stay: true,
+            run: () => Notifications.clear()
         }
-    ].concat(Files.drives.map(d => ({
+    ].concat(root.windowCommands, root.layoutCommands, root.sourceCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
                 icon: "eject",
                 label: `Eject ${d.name}`,
@@ -243,6 +488,247 @@ QtObject {
                 detail: d.detail,
                 run: () => root.eject(d.path)
             })))
+
+    function windowTarget(): string {
+        return Hypr.windowAddress(root.target || Hypr.focusedOn(root.screenName));
+    }
+
+    readonly property var targetToplevel: Hypr.toplevelFor(root.target || Hypr.focusedOn(root.screenName))
+    readonly property var targetState: root.targetToplevel?.lastIpcObject ?? {}
+    readonly property string targetName: root.targetState.class ? Apps.nameFor(root.targetState.class) : ""
+
+    function snap(tile: var): void {
+        const outer = Compositor.gapsOut;
+        const inner = Compositor.gapsIn;
+        Hypr.snapWindow(root.windowTarget(), mon => Search.cellRect(Search.usableArea(mon), outer, inner, tile));
+    }
+
+    readonly property var directions: [
+        {
+            short: "l",
+            name: "left",
+            icon: "west"
+        },
+        {
+            short: "r",
+            name: "right",
+            icon: "east"
+        },
+        {
+            short: "u",
+            name: "up",
+            icon: "north"
+        },
+        {
+            short: "d",
+            name: "down",
+            icon: "south"
+        }
+    ]
+
+    function tileIcon(tile: var): string {
+        if (tile.cols * tile.rows === 2)
+            return `splitscreen_${tile.id.split("-")[0]}`;
+        return tile.cols === 3 && tile.rows === 1 ? "view_column" : tile.rows === 2 && tile.cols === 2 ? "grid_view" : "view_module";
+    }
+
+    readonly property var windowCommands: {
+        if (!root.targetToplevel)
+            return [];
+        const many = Hyprland.monitors.values.length > 1;
+        const named = c => Object.assign({
+                detail: root.targetName
+            }, c);
+        const layout = WindowLayouts.current;
+        const full = root.targetState.fullscreen === 2;
+        const big = root.targetState.fullscreen === 1;
+        const floating = !!root.targetState.floating;
+        return [
+            {
+                id: "fullscreen",
+                icon: full ? "fullscreen_exit" : "fullscreen",
+                label: full ? "Exit fullscreen" : "Fullscreen",
+                words: "fullscreen full screen exit fullscreen leave window",
+                run: () => Hypr.fullscreenWindow(root.windowTarget(), "fullscreen")
+            },
+            {
+                id: "maximize",
+                icon: big ? "close_fullscreen" : "open_in_full",
+                label: big ? "Unmaximize" : "Maximize",
+                words: "maximize maximise unmaximize unmaximise window bigger",
+                run: () => Hypr.fullscreenWindow(root.windowTarget(), "maximized")
+            },
+            {
+                id: "restore",
+                icon: "close_fullscreen",
+                label: "Restore window",
+                words: "restore window unmaximize tile tiled normal size",
+                run: () => Hypr.restoreWindow(root.windowTarget())
+            },
+            {
+                id: "float",
+                icon: floating ? "grid_view" : "picture_in_picture",
+                label: floating ? "Tile window" : "Float window",
+                words: "float floating tile tiled unfloat window",
+                lead: /^(?:un)?(?:float(?:ing)?|tile[sd]?|tiling)(?: (?:the )?window)?$/i,
+                run: () => Hypr.floatWindow(root.windowTarget())
+            },
+            {
+                id: "promote",
+                icon: "vertical_align_top",
+                label: "Promote window",
+                words: "promote window main master stage make main swap with master",
+                run: () => Hypr.promoteWindow(root.windowTarget(), layout)
+            },
+            {
+                id: "center",
+                icon: "center_focus_strong",
+                label: "Center window",
+                words: "center centre window middle",
+                run: () => Hypr.centerWindow(root.windowTarget())
+            }
+        ].concat(Search.TILES.map(t => ({
+                    id: t.id,
+                    icon: root.tileIcon(t),
+                    label: t.label,
+                    words: t.words,
+                    run: () => root.snap(t)
+                })), many ? [
+            {
+                id: "nextdisplay",
+                icon: "move_up",
+                label: "Move to next display",
+                words: "next display monitor screen move window",
+                run: () => Hypr.moveToMonitor(root.windowTarget(), "+1")
+            },
+            {
+                id: "previousdisplay",
+                icon: "move_down",
+                label: "Move to previous display",
+                words: "previous display monitor screen move window",
+                run: () => Hypr.moveToMonitor(root.windowTarget(), "-1")
+            }
+        ] : [], root.directions.map(d => ({
+                    id: `swap-${d.name}`,
+                    icon: d.icon,
+                    label: `Swap ${d.name}`,
+                    words: `swap ${d.name} window`,
+                    run: () => Hypr.swapWindow(root.windowTarget(), d.short, layout)
+                })), root.directions.map(d => ({
+                    id: `focus-${d.name}`,
+                    icon: d.icon,
+                    label: `Focus ${d.name}`,
+                    words: `focus ${d.name} window go`,
+                    run: () => Hypr.focusToward(d.short, layout)
+                })), root.directions.map(d => ({
+                    id: `move-${d.name}`,
+                    icon: d.icon,
+                    label: `Move window ${d.name}`,
+                    words: `move window ${d.name}`,
+                    run: () => Hypr.moveWindowToward(root.windowTarget(), d.short)
+                })), [
+            {
+                id: "nextworkspace",
+                icon: "arrow_forward",
+                label: "Move to next workspace",
+                words: "next workspace move window",
+                run: () => Hypr.moveToWorkspace(root.windowTarget(), "r+1")
+            },
+            {
+                id: "previousworkspace",
+                icon: "arrow_back",
+                label: "Move to previous workspace",
+                words: "previous workspace move window",
+                run: () => Hypr.moveToWorkspace(root.windowTarget(), "r-1")
+            }
+        ]).map(named).concat([
+            {
+                id: "focusnextworkspace",
+                icon: "arrow_forward",
+                label: "Next workspace",
+                words: "next workspace focus go switch",
+                run: () => Hypr.focusWorkspace("r+1")
+            },
+            {
+                id: "focuspreviousworkspace",
+                icon: "arrow_back",
+                label: "Previous workspace",
+                words: "previous workspace focus go switch",
+                run: () => Hypr.focusWorkspace("r-1")
+            }
+        ]);
+    }
+
+    readonly property var layoutCommands: WindowLayouts.available.map(name => ({
+                id: `layout:${name}`,
+                icon: "dashboard",
+                label: `${Search.layoutLabel(name)} layout`,
+                words: `layout tiling window ${Search.layoutLabel(name).toLowerCase()}`,
+                detail: WindowLayouts.current === name ? "in use" : "",
+                toggle: WindowLayouts.current === name,
+                lead: /^(?:switch |change )?(?:window )?layouts?$/i,
+                stay: true,
+                run: () => WindowLayouts.use(name)
+            }))
+
+    readonly property int workspaceWanted: Search.workspaceAsk(root.text)
+    readonly property int workspaceShown: Search.focusWorkspaceAsk(root.text)
+
+    readonly property var workspaceRows: {
+        const shown = root.workspaceShown;
+        if (shown > 0)
+            return [
+                {
+                    key: "command:showworkspace",
+                    kind: "command",
+                    command: {
+                        id: "showworkspace",
+                        label: `Focus workspace ${shown}`,
+                        run: () => Hypr.focusWorkspace(String(shown))
+                    },
+                    label: `Focus workspace ${shown}`,
+                    detail: "",
+                    icon: "space_dashboard",
+                    score: Infinity
+                }
+            ];
+        const n = root.workspaceWanted;
+        if (n <= 0 || !root.targetToplevel)
+            return [];
+        return [
+            {
+                key: "command:toworkspace",
+                kind: "command",
+                command: {
+                    id: "toworkspace",
+                    label: `Move to workspace ${n}`,
+                    run: () => Hypr.moveToWorkspace(root.windowTarget(), String(n))
+                },
+                label: `Move to workspace ${n}`,
+                detail: root.targetName,
+                icon: "move_item",
+                score: Infinity
+            }
+        ];
+    }
+
+    readonly property var openWindows: Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0)
+
+    readonly property bool airplane: !Network.enabled && !Bluetooth.enabled
+
+    property bool bluetoothBefore: false
+
+    function setAirplane(on: bool): void {
+        if (on) {
+            root.bluetoothBefore = Bluetooth.enabled;
+            Network.setEnabled(false);
+            Bluetooth.setEnabled(false);
+            return;
+        }
+        Network.setEnabled(true);
+        if (root.bluetoothBefore)
+            Bluetooth.setEnabled(true);
+    }
 
     function eject(path: string): void {
         Quickshell.execDetached(["sh", "-c", 'dev=$(findmnt -no SOURCE -- "$1") && udisksctl unmount -b "$dev" && udisksctl power-off -b "$dev"', "sh", path]);
@@ -265,7 +751,7 @@ QtObject {
             kind: "app",
             entry: entry,
             label: entry.name ?? "",
-            detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || entry.comment || "",
+            detail: arming ? Uninstaller.detailFor(entry.id) : entry.genericName || (entry.comment ?? "").replace(/^play this game on steam\.?$/i, ""),
             armed: arming,
             iconSource: entry.icon ? Quickshell.iconPath(entry.icon, true) : "",
             icon: "apps",
@@ -273,7 +759,10 @@ QtObject {
         };
     }
 
-    readonly property var appRows: Apps.search(root.text).map(entry => root.appRow(entry))
+    readonly property var appRows: {
+        const found = Apps.search(root.text);
+        return (root.text ? found.slice(0, root.caps.apps) : found).map(entry => root.appRow(entry));
+    }
 
     function commandRow(c: var): var {
         return {
@@ -285,28 +774,11 @@ QtObject {
             detail: c.detail ?? "",
             icon: c.icon,
             toggle: c.toggle,
-            score: root.wordScore(c.label, c.words)
+            score: c.lead?.test(root.text) ? Infinity : root.wordScore(c.label, c.words)
         };
     }
 
     readonly property var commandRows: root.text.length < 2 ? [] : root.commands.filter(c => !c.hidden).map(c => root.commandRow(c)).filter(r => r.score > 0).sort((a, b) => b.score - a.score)
-
-    readonly property var volumeRows: root.volume < 0 || !Audio.ready ? [] : [
-        {
-            key: "command:volumeset",
-            kind: "command",
-            command: {
-                id: "volumeset",
-                label: `Set volume to ${root.volume}%`,
-                stay: true,
-                run: () => Audio.setVolume(Math.min(Audio.maxVolume, root.volume / 100))
-            },
-            label: `Set volume to ${root.volume}%`,
-            detail: root.volumeText,
-            icon: "volume_up",
-            score: Infinity
-        }
-    ]
 
     function settingRow(hit: var): var {
         const live = root.liveToggle(hit.row);
@@ -322,6 +794,25 @@ QtObject {
             score: Math.max(0.5, Ranking.place(hit.label, root.text))
         };
     }
+
+    readonly property int awakeFor: Search.awakeAsk(root.text)
+
+    readonly property var awakeRows: root.awakeFor <= 0 ? [] : [
+        {
+            key: "command:awakefor",
+            kind: "command",
+            command: {
+                id: "awakefor",
+                label: `Keep awake for ${Search.spanText(root.awakeFor)}`,
+                stay: true,
+                run: () => Idle.stayAwake(root.awakeFor)
+            },
+            label: `Keep awake for ${Search.spanText(root.awakeFor)}`,
+            detail: `until ${TimeFormat.time(new Date(Date.now() + root.awakeFor * 1000), false)}`,
+            icon: "coffee",
+            score: Infinity
+        }
+    ]
 
     readonly property var settingRows: root.text.length < 2 ? [] : Catalogue.search(root.text).map(hit => root.settingRow(hit))
 
@@ -346,11 +837,16 @@ QtObject {
                 return hit ? root.settingRow(hit) : null;
             }
         }
+        for (const s of root.sources) {
+            const row = s.rowById?.(id) ?? null;
+            if (row)
+                return row;
+        }
         return null;
     }
 
     function runnable(row: var): bool {
-        return ["app", "command", "setting"].includes(row?.kind) && row.command?.id !== "volumeset";
+        return (["app", "command", "setting"].includes(row?.kind) || !!root.sourceOf(row)?.rowById);
     }
 
     function keyable(row: var): bool {
@@ -380,7 +876,12 @@ QtObject {
                 Settings.openAt(root.screenName, row.hit.page.id, row.hit.row.k ?? "");
             break;
         default:
-            return "";
+            {
+                const owner = root.sourceOf(row);
+                if (!owner)
+                    return "";
+                owner.activate(row);
+            }
         }
         return row.kind === "app" ? row.entry.name : row.label;
     }
@@ -415,28 +916,134 @@ QtObject {
                 score: f.score - Ranking.EXACT
             }), "file"))
 
-    readonly property var contentRows: root.path || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
+    readonly property var contentRows: !root.grepFor || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !Search.isSecretish(hit.path) && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
                 key: `content:${hit.path}`,
                 kind: "file",
                 path: hit.path,
                 dir: false,
+                line: hit.line,
                 label: hit.name,
                 detail: `${hit.text} · ${hit.where}`,
                 icon: Marks.iconFor(hit.path, hit.name, false, Files.home) || "draft",
                 score: -1
             }))
 
-    readonly property var fallbackRows: Search.fallbackRows(Config.values.launcher.fallbacks, root.text, Config.values.launcher.webSearch).map(f => ({
-                key: `fallback:${f.id}`,
-                kind: "fallback",
-                fallback: f,
-                label: f.label,
+    readonly property string cli: `${Quickshell.shellDir}/cli/banditshell`
+    readonly property var cliLine: ShellCli.ask(root.query)
+
+    property var help: null
+
+    property FileView helpFile: FileView {
+        path: root.cliLine !== null || root.help ? root.cli : ""
+        onLoaded: root.help = ShellCli.parseHelp(root.helpFile.text())
+    }
+
+    property var cliOutput: null
+
+    function runCli(line: string): void {
+        const command = [root.cli, ...line.split(/\s+/).filter(Boolean)];
+        if (ShellCli.detached(line)) {
+            root.leave(() => Quickshell.execDetached(command));
+            return;
+        }
+        root.cliOutput = {
+            line: line,
+            lines: ["…"]
+        };
+        root.cliRunner.running = false;
+        root.cliRunner.line = line;
+        root.cliRunner.command = command;
+        root.cliRunner.running = true;
+    }
+
+    property Process cliRunner: Process {
+        property string line: ""
+
+        stdout: StdioCollector {
+            id: cliSaid
+
+            onStreamFinished: root.cliOutput = {
+                line: root.cliRunner.line,
+                lines: cliSaid.text.split("\n").map(l => l.replace(/\x1b\[[0-9;]*m/g, "")).filter(l => l.trim()).slice(0, 40)
+            }
+        }
+    }
+
+    readonly property var shellRows: {
+        const line = root.cliLine;
+        if (line === null)
+            return [];
+        const trimmed = line.trim();
+        const usage = root.help && trimmed ? ShellCli.usageFor(root.help, trimmed) : null;
+        const next = root.help ? ShellCli.nextWords(root.help, line) : null;
+        const out = trimmed && (usage || !next?.words.length) ? [
+            {
+                key: `cli:${trimmed}`,
+                kind: "cli",
+                line: trimmed,
+                label: `banditshell ${trimmed}`,
+                detail: usage?.about ?? "",
+                icon: "terminal",
+                score: Infinity
+            }
+        ] : [];
+        if (!next)
+            return out;
+        const typed = next.typed.join(" ");
+        return out.concat(next.words.map(w => {
+            const text = `${typed}${typed ? " " : ""}${w.word}`;
+            return {
+                key: `suggest:bandit ${text}`,
+                kind: "suggest",
+                complete: `bandit ${text} `,
+                label: `banditshell ${text}`,
+                detail: w.about,
+                icon: "keyboard_tab",
+                score: 2
+            };
+        }));
+    }
+
+    readonly property var outputRows: !root.cliOutput || root.cliOutput.line !== (root.cliLine ?? "").trim() ? [] : root.cliOutput.lines.map((text, i) => ({
+                key: `output:${i}:${text}`,
+                kind: "output",
+                label: text,
                 detail: "",
-                icon: f.icon,
-                score: -Infinity
+                icon: "subdirectory_arrow_right",
+                score: 1
             }))
 
+    readonly property var cities: ["Tokyo", "New York", "London", "Los Angeles", "Paris", "Berlin", "Sydney", "Singapore", "Dubai", "Toronto"]
+
+    readonly property var suggestRows: {
+        const typed = root.query.replace(/^\s+/, "");
+        if (!typed || root.path)
+            return [];
+        const found = {
+            places: [...new Set([...Clock.places.map(z => Clock.cityOf(z)), ...root.cities])],
+            workspaces: Hyprland.workspaces.values.filter(w => w.id > 0).map(w => w.id).sort((a, b) => a - b).map(String),
+            playing: Audio.playing.map(n => Search.streamName(Audio.streamLabel(n)).toLowerCase()),
+            processes: [...new Set(root.processes.map(p => p.name))]
+        };
+        const more = root.sources.reduce((out, s) => out.concat(s.phrases ?? []), []);
+        const inside = Search.PHRASES.concat(more).some(p => typed.toLowerCase().indexOf(p.head) === 0);
+        return Search.suggestions(typed, found, more).slice(0, root.caps.suggestions).map(text => {
+            const preview = Calculator.answerFor(text);
+            return {
+                key: `suggest:${text}`,
+                kind: "suggest",
+                complete: text,
+                label: text.endsWith(" ") ? `${text}…` : text,
+                detail: preview && !preview.missing ? preview.text : "",
+                icon: "keyboard_tab",
+                score: inside ? 3 : 0.4
+            };
+        });
+    }
+
     readonly property var pathRows: root.path && FileSearch.listedDir === root.path.dir ? Search.pathRows(FileSearch.entries, root.path, FileSearch.hidden, Files.home).map(f => root.fileRow(f, "path")) : []
+
+    readonly property bool windowList: Search.windowListAsk(root.text)
 
     readonly property var windowRows: root.text.length < 2 ? [] : Hyprland.toplevels.values.filter(t => (t.workspace?.id ?? 0) !== 0).map(t => {
         const o = t.lastIpcObject ?? {};
@@ -448,12 +1055,14 @@ QtObject {
             kind: "window",
             address: Hypr.windowAddress(t.address),
             label: title,
+            workspace: t.workspace?.name ?? "",
             detail: `${app} · workspace ${t.workspace?.name ?? ""}`,
             iconSource: Apps.iconSourceFor([cls]),
             icon: "web_asset",
-            score: Math.max(Ranking.place(title, root.text), Ranking.place(app, root.text), Ranking.place(cls, root.text) - 0.5)
+            recency: o.focusHistoryID > 0 ? o.focusHistoryID : 999,
+            score: root.windowList ? Infinity : Math.max(Ranking.place(title, root.text), Ranking.place(app, root.text), Ranking.place(cls, root.text) - 0.5)
         };
-    }).filter(r => r.score > 0).sort((a, b) => b.score - a.score)
+    }).filter(r => r.score > 0).sort((a, b) => b.score - a.score || a.recency - b.recency)
 
     function kindScore(label: string, words: string): real {
         return Math.max(Ranking.place(label, root.text), Ranking.place(words, root.text) - 0.5);
@@ -472,7 +1081,7 @@ QtObject {
                     toggle: !!d.connected,
                     score: root.kindScore(d.name ?? "", "bluetooth device connect")
                 })) : [];
-        const wifi = Network.enabled ? Network.knownNetworks.map(n => ({
+        const wifi = Network.enabled && !root.sources.some(s => s.listsWifi) ? Network.knownNetworks.map(n => ({
                     key: `wifi:${n.name}`,
                     kind: "wifi",
                     name: n.name,
@@ -496,7 +1105,7 @@ QtObject {
 
     property var zoneOffsets: ({})
 
-    readonly property var zoneIds: root.place ? Search.zoneMatches(Clock.allZones, root.place, Clock.cityOf).slice(0, 3) : []
+    readonly property var zoneIds: root.place ? Search.zoneMatches(Clock.allZones, root.place, Clock.cityOf, Clock.localZone).slice(0, 4) : []
 
     onZoneIdsChanged: {
         const unknown = root.zoneIds.filter(id => root.zoneOffsets[id] === undefined && Clock.validZone(id));
@@ -523,24 +1132,112 @@ QtObject {
             kind: "zone",
             zone: id,
             time: time,
-            label: `${time} in ${Clock.cityOf(id)}`,
+            label: `${time} in ${Search.placeLabel(root.place, id, Clock.cityOf)}`,
             detail: `${Qt.locale().dayName(there.getUTCDay(), Locale.LongFormat)} · ${Clock.offsetLabel(offset + new Date(now).getTimezoneOffset())}`,
             icon: "schedule",
             score: Infinity
         };
     })
 
+    function zoneFor(place: string): string {
+        if (!place)
+            return Clock.localZone;
+        return Search.zoneMatches(Clock.allZones, place, Clock.cityOf, Clock.localZone)[0] ?? "";
+    }
+
+    function placeName(place: string, zone: string): string {
+        return Search.placeLabel(place, zone, Clock.cityOf);
+    }
+
+    readonly property var conversion: {
+        const ask = root.convert;
+        if (!ask)
+            return null;
+        const from = root.zoneFor(ask.from);
+        const to = root.zoneFor(ask.to);
+        if (!from || !to || from === to || !Clock.validZone(from) || !Clock.validZone(to))
+            return null;
+        return {
+            ask: ask,
+            from: from,
+            to: to,
+            at: `${String(ask.clock.hour).padStart(2, "0")}:${String(ask.clock.minute).padStart(2, "0")}`,
+            key: `${from}|${to}|${ask.clock.hour}:${ask.clock.minute}`
+        };
+    }
+
+    property var converted: null
+
+    onConversionChanged: {
+        const c = root.conversion;
+        if (!c || root.converted?.key === c.key)
+            return;
+        root.converter.running = false;
+        root.converter.key = c.key;
+        root.converter.command = ["sh", "-c", 'day=$(TZ="$2" date +%F) && TZ="$1" date -d "TZ=\\"$2\\" $day $3" "+%H %M %F" && echo "$day"', "sh", c.to, c.from, c.at];
+        root.converter.running = true;
+    }
+
+    property Process converter: Process {
+        property string key: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const got = Search.readConversion(text);
+                root.converted = got ? Object.assign(got, {
+                    key: root.converter.key
+                }) : null;
+            }
+        }
+    }
+
+    readonly property var convertRows: {
+        const c = root.conversion;
+        const got = root.converted;
+        if (!c || got?.key !== c.key)
+            return [];
+        const time = TimeFormat.clock(got.hour, got.minute);
+        const shifted = got.shift ? ` · ${Qt.locale().dayName(new Date(`${got.day}T12:00:00`).getDay(), Locale.LongFormat)}` : "";
+        const local = c.to === Clock.localZone;
+        return [
+            {
+                key: `convert:${c.key}`,
+                kind: "zone",
+                zone: local ? c.from : c.to,
+                time: time,
+                label: `${time} in ${root.placeName(c.ask.to, c.to)}${shifted}`,
+                detail: `${TimeFormat.clock(c.ask.clock.hour, c.ask.clock.minute)} in ${root.placeName(c.ask.from, c.from)}`,
+                icon: "schedule",
+                score: Infinity
+            }
+        ];
+    }
+
+    readonly property int reminderHour: Config.values.launcher.utilities.reminderHour
+    readonly property bool alarmsFull: Clock.alarms.length >= Clock.alarmMax
+    readonly property bool timersFull: Clock.timers.filter(t => !t.finished).length >= Clock.timerMax
+    readonly property string alarmsFullText: `alarms full · ${Clock.alarmMax} of ${Clock.alarmMax}`
+    readonly property string timersFullText: `timers full · ${Clock.timerMax} of ${Clock.timerMax}`
+
+    function dayWord(moment: real): string {
+        const now = new Date();
+        const days = Math.round((new Date(moment).setHours(12, 0, 0, 0) - new Date(now).setHours(12, 0, 0, 0)) / 86400000);
+        return days === 0 ? "today" : days === 1 ? "tomorrow" : TimeFormat.dateText(new Date(moment), "headline");
+    }
+
     function reminderRow(ask: var): var {
-        const about = ask.label ? ` to ${ask.label}` : "";
-        if (ask.at) {
-            const when = new Date();
-            when.setHours(ask.at.hour, ask.at.minute, 0, 0);
+        const task = ask.label ? ask.label.charAt(0).toUpperCase() + ask.label.slice(1) : "";
+        if (!ask.seconds) {
+            const moment = Search.reminderMoment(ask, new Date(), root.reminderHour, Search.vagueHour(root.text), !TimeFormat.clock24);
+            const when = new Date(moment);
             return {
                 key: "reminder",
                 kind: "reminder",
                 ask: ask,
-                label: `Remind me at ${TimeFormat.clock(ask.at.hour, ask.at.minute)}${about}`,
-                detail: when.getTime() > Date.now() ? "today" : "tomorrow",
+                moment: moment,
+                full: root.alarmsFull,
+                label: task || (moment ? `Remind me at ${TimeFormat.clock(when.getHours(), when.getMinutes())}` : "Remind me"),
+                detail: !moment ? "in the past" : root.alarmsFull ? root.alarmsFullText : task ? `at ${TimeFormat.clock(when.getHours(), when.getMinutes())} · ${root.dayWord(moment)}` : root.dayWord(moment),
                 icon: "notifications_active",
                 score: Infinity
             };
@@ -549,8 +1246,9 @@ QtObject {
             key: "reminder",
             kind: "reminder",
             ask: ask,
-            label: `Remind me in ${Search.spanText(ask.seconds)}${about}`,
-            detail: TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false),
+            full: root.timersFull,
+            label: task || `Remind me in ${Search.spanText(ask.seconds)}`,
+            detail: root.timersFull ? root.timersFullText : task ? `in ${Search.spanText(ask.seconds)} · ${TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false)}` : TimeFormat.time(new Date(Date.now() + ask.seconds * 1000), false),
             icon: "notifications_active",
             score: Infinity
         };
@@ -563,14 +1261,15 @@ QtObject {
                 key: "timer",
                 kind: "timer",
                 ask: root.timer,
+                full: root.timersFull,
                 label: `Start a ${Search.spanText(root.timer.seconds)} timer${root.timer.label ? ` for ${root.timer.label}` : ""}`,
-                detail: `ends ${TimeFormat.time(new Date(Date.now() + root.timer.seconds * 1000), false)}`,
+                detail: root.timersFull ? root.timersFullText : `ends ${TimeFormat.time(new Date(Date.now() + root.timer.seconds * 1000), false)}`,
                 icon: "timer",
                 score: Infinity
             });
         if (root.reminder)
             out.push(root.reminderRow(root.reminder));
-        return out.concat(root.zoneRows);
+        return out.concat(root.convertRows, root.zoneRows);
     }
 
     property var processes: []
@@ -631,11 +1330,48 @@ QtObject {
         });
     }
 
-    readonly property var arranged: {
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.sourceGroupLists, root.limits]
+
+    property var arranged: []
+    property bool arrangePending: false
+
+    onArrangeInputsChanged: {
+        if (root.arrangePending)
+            return;
+        root.arrangePending = true;
+        Qt.callLater(root.arrangeNow);
+    }
+
+    Component.onCompleted: {
+        root.arrangePending = true;
+        root.arrangeNow();
+    }
+
+    function arrangeNow(): void {
+        if (!root.arrangePending)
+            return;
+        root.arrangePending = false;
+        root.arranged = root.arrangement();
+    }
+
+    function arrangement(): var {
         if (!root.text)
             return root.appRows;
         if (root.path)
             return root.pathRows;
+        if (root.cliLine !== null)
+            return Search.arrange([
+                {
+                    key: "output",
+                    title: "Output",
+                    items: root.outputRows
+                },
+                {
+                    key: "shell",
+                    title: "banditshell",
+                    items: root.shellRows
+                }
+            ], root.caps);
         const groups = [];
         if (root.url)
             groups.push({
@@ -661,13 +1397,17 @@ QtObject {
             title: "Processes",
             items: root.processRows
         }, {
+            key: "suggestions",
+            title: "Suggestions",
+            items: root.suggestRows
+        }, {
             key: "apps",
             title: "Apps",
             items: root.withAlias("app", root.appRows)
         }, {
             key: "commands",
             title: "Commands",
-            items: root.withAlias("command", root.volumeRows.concat(root.commandRows))
+            items: root.withAlias("command", root.awakeRows.concat(root.workspaceRows, root.commandRows))
         }, {
             key: "settings",
             title: "Settings",
@@ -688,12 +1428,8 @@ QtObject {
             key: "contents",
             title: "Inside files",
             items: root.contentRows
-        }, {
-            key: "fallbacks",
-            title: "Elsewhere",
-            items: root.fallbackRows
-        });
-        return Search.arrange(groups, root.caps);
+        }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
+        return Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);
     }
 
     function openSetting(row: var): void {
@@ -702,6 +1438,15 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row?.kind !== "app" && !row?.header) {
+            const used = row?.id ?? row?.key ?? "";
+            Qt.callLater(() => LauncherMemory.record(used));
+        }
+        const owner = root.sourceOf(row);
+        if (owner) {
+            owner.activate(row);
+            return;
+        }
         switch (row?.kind) {
         case "app":
             if (root.armed === `uninstall:${row.entry.id}`) {
@@ -741,10 +1486,12 @@ QtObject {
             Audio.setSink(row.node);
             return;
         case "timer":
-            root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
+            if (!row.full)
+                root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
             return;
         case "reminder":
-            root.leave(() => root.remind(row.ask));
+            if (!row.full && (row.ask.seconds || row.moment))
+                root.leave(() => root.remind(row.ask, row.moment));
             return;
         case "zone":
             root.leave(() => Files.copyText(row.time));
@@ -769,14 +1516,14 @@ QtObject {
         case "link":
             root.launch(() => Quickshell.execDetached(["xdg-open", root.url]));
             return;
-        case "fallback":
-            if (row.fallback.url) {
-                const url = row.fallback.url;
-                root.launch(() => Quickshell.execDetached(["xdg-open", url]));
-            } else {
-                const typed = root.text.replace(/'/g, "'\\''");
-                root.launch(() => Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `(eval '${typed}')\nexec "\${SHELL:-sh}"`]));
-            }
+        case "suggest":
+            root.retype(row.complete);
+            return;
+        case "cli":
+            root.runCli(row.line);
+            return;
+        case "output":
+            root.leave(() => Files.copyText(row.label));
             return;
         }
     }
@@ -820,6 +1567,9 @@ QtObject {
             label: "Cancel",
             run: () => root.armed = ""
         };
+        const owner = root.sourceOf(row);
+        if (owner?.confirmActionsFor)
+            return owner.confirmActionsFor(row).concat([cancel]);
         if (row.kind === "app")
             return Uninstaller.plans[row.entry.id]?.refused ? [cancel] : [
                 {
@@ -838,22 +1588,31 @@ QtObject {
         Uninstaller.plan(entry);
     }
 
-    function remind(ask: var): void {
-        if (!ask.at) {
+    function remind(ask: var, moment: real): void {
+        if (ask.seconds) {
             Clock.startTimer(ask.seconds, ask.label || "Reminder");
             return;
         }
+        const when = new Date(moment);
         const id = Clock.addAlarm();
         if (id)
             Clock.setAlarm(id, {
-                hour: ask.at.hour,
-                minute: ask.at.minute,
+                hour: when.getHours(),
+                minute: when.getMinutes(),
                 days: [],
-                label: ask.label || "Reminder"
+                label: ask.label || "Reminder",
+                at: moment
             });
     }
 
     function complete(row: var): bool {
+        const owner = root.sourceOf(row);
+        if (owner)
+            return !!owner.complete?.(row);
+        if (row?.kind === "suggest") {
+            root.retype(row.complete);
+            return true;
+        }
         if (row?.kind !== "file")
             return false;
         root.retype(`${Search.shortPath(row.path, Files.home)}${row.dir ? "/" : ""}`);
@@ -861,6 +1620,9 @@ QtObject {
     }
 
     function actionsFor(row: var): var {
+        const owner = root.sourceOf(row);
+        if (owner)
+            return owner.actionsFor?.(row) ?? [];
         switch (row?.kind) {
         case "file":
             return [
@@ -913,18 +1675,31 @@ QtObject {
                 }
             ];
         case "window":
-            return [
-                {
-                    icon: "open_in_new",
-                    label: "Switch to",
-                    run: () => root.activate(row)
-                },
-                {
-                    icon: "close",
-                    label: "Close",
-                    run: () => Hypr.closeWindow(row.address)
-                }
-            ];
+            {
+                const here = Hyprland.focusedMonitor?.activeWorkspace;
+                return [
+                    {
+                        icon: "open_in_new",
+                        label: "Switch to",
+                        run: () => root.activate(row)
+                    }
+                ].concat(!here || here.name === row.workspace ? [] : [
+                        {
+                            icon: "move_down",
+                            label: "Bring here",
+                            run: () => root.leave(() => {
+                                Hypr.moveToWorkspace(row.address, String(here.id));
+                                Hypr.focusAddress(row.address);
+                            })
+                        }
+                    ], [
+                    {
+                        icon: "close",
+                        label: "Close",
+                        run: () => Hypr.closeWindow(row.address)
+                    }
+                ]);
+            }
         case "process":
             return [
                 {
@@ -966,7 +1741,6 @@ QtObject {
         case "timer":
         case "reminder":
         case "command":
-        case "fallback":
             return [
                 {
                     icon: row.icon,

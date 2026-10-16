@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered", "looksLikeSecret"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
@@ -150,13 +150,13 @@ test.describe("uninstall-app.sh", () => {
     test.it("prefers the package over a copy of its desktop file in the home folder", () => {
         const tools = { pacman: '[ "$1" = -Qqo ] && case "$2" in */usr/share/*) echo thing ;; *) exit 1 ;; esac', pkexec: "exit 0" };
         const files = { "home/.local/share/applications/thing.desktop": DESKTOP, "usr/share/applications/thing.desktop": DESKTOP };
-        assert.strictEqual(uninstall(["plan", "thing"], tools, files).stdout, "pkexec pacman -Rs --noconfirm thing");
+        assert.strictEqual(uninstall(["plan", "thing"], tools, files).stdout, "pkexec pacman -Rs --noconfirm -- thing");
     });
 
     test.it("hands flatpaks, Steam games and AppImages to their own tools", () => {
         const none = { pacman: "exit 1" };
         const flat = uninstall(["plan", "org.thing.App"], none, { "home/.local/share/flatpak/exports/share/applications/org.thing.App.desktop": `${DESKTOP}X-Flatpak=org.thing.App\n` });
-        assert.strictEqual(flat.stdout, "flatpak uninstall -y --noninteractive --user org.thing.App");
+        assert.strictEqual(flat.stdout, "flatpak uninstall -y --noninteractive --user -- org.thing.App");
         const steam = uninstall(["plan", "Some Game"], none, { "home/.local/share/applications/Some Game.desktop": "[Desktop Entry]\nName=Some Game\nExec=steam steam://rungameid/960090\n" });
         assert.strictEqual(steam.stdout, "xdg-open steam://uninstall/960090");
     });
@@ -168,14 +168,108 @@ test.describe("uninstall-app.sh", () => {
         assert.strictEqual(uninstall(["find", "missing"], none, {}).status, 1);
     });
 
+    test.it("finds a desktop file kept in a subfolder, whichever dash is the slash", () => {
+        const tools = { pacman: '[ "$1" = -Qqo ] && echo thing', pkexec: "exit 0" };
+        const files = { "usr/share/applications/kde-org/thing.desktop": DESKTOP };
+        assert.strictEqual(uninstall(["find", "kde-org-thing"], tools, files).stdout, "pacman\tthing\t$SANDBOX/usr/share/applications/kde-org/thing.desktop");
+    });
+
     test.it("says so when pkexec is missing, so the shell can fall back to a terminal", () => {
         const dir = sandbox({ pacman: '[ "$1" = -Qqo ] && echo thing' }, { "usr/share/applications/thing.desktop": DESKTOP });
         const core = path.join(dir, "core");
         fs.mkdirSync(core);
         for (const tool of ["sed", "head", "basename", "grep", "id", "cut", "sort", "tr"])
             fs.symlinkSync(spawnSync("sh", ["-c", `command -v ${tool}`], { encoding: "utf8" }).stdout.trim(), path.join(core, tool));
-        const out = spawnSync("/bin/bash", [UNINSTALL, "remove", "thing"], { env: { PATH: `${path.join(dir, "bin")}:${core}`, HOME: path.join(dir, "home"), XDG_DATA_DIRS: path.join(dir, "usr/share") }, encoding: "utf8" });
+        const out = spawnSync("/bin/bash", [UNINSTALL, "remove", "thing"], { env: { PATH: `${path.join(dir, "bin")}:${core}`, BANDITSHELL_SYSTEM_PATH: `${path.join(dir, "bin")}:${core}`, HOME: path.join(dir, "home"), XDG_DATA_DIRS: path.join(dir, "usr/share") }, encoding: "utf8" });
         fs.rmSync(dir, { recursive: true, force: true });
         assert.strictEqual(out.status, 4);
+    });
+});
+
+test.describe("tab completion", () => {
+    test.it("offers the phrase while its first words are typed", () => {
+        assert.deepStrictEqual(Search.suggestions("days u", {}), ["days until "]);
+        assert.ok(Search.suggestions("da", {}).includes("days since "));
+        assert.deepStrictEqual(Search.suggestions("x", {}), []);
+    });
+
+    test.it("offers what can follow the phrase, narrowed by what is typed", () => {
+        assert.ok(Search.suggestions("days until ", {}).includes("days until christmas"));
+        assert.deepStrictEqual(Search.suggestions("days until chr", {}), ["days until christmas", "days until christmas eve"]);
+        assert.deepStrictEqual(Search.suggestions("days until christmas eve", {}), []);
+    });
+
+    test.it("fills places, workspaces and apps from what the shell knows", () => {
+        assert.deepStrictEqual(Search.suggestions("time in to", { places: ["Tokyo", "Toronto", "Oslo"] }), ["time in tokyo", "time in toronto"]);
+        assert.deepStrictEqual(Search.suggestions("focus workspace ", { workspaces: ["1", "6"] }), ["focus workspace 1", "focus workspace 6"]);
+        assert.deepStrictEqual(Search.suggestions("time in", {}), []);
+    });
+
+    test.it("completes window directions and the other ways to name a workspace", () => {
+        assert.deepStrictEqual(Search.suggestions("swap l", {}), ["swap left"]);
+        assert.deepStrictEqual(Search.suggestions("focus ", {}), ["focus left", "focus right", "focus up", "focus down"]);
+        assert.deepStrictEqual(Search.suggestions("move window to workspace ", { workspaces: ["2"] }), ["move window to workspace 2"]);
+        assert.deepStrictEqual(Search.suggestions("go to workspace ", { workspaces: ["3"] }), ["go to workspace 3"]);
+    });
+
+    test.it("offers both playing apps and levels after volume, once each", () => {
+        assert.deepStrictEqual(Search.suggestions("volume ", { playing: ["spotify"] }), ["volume spotify", "volume 25", "volume 50", "volume 75", "volume 100"]);
+        assert.strictEqual(Search.suggestions("vol", { playing: ["spotify"] }).filter(t => t === "volume ").length, 1);
+    });
+});
+
+test.describe("reminders", () => {
+    const Ask = lib("modules/launcher/search.js", ["reminderAsk"]);
+
+    test.it("leaves the label empty when only the time is given", () => {
+        assert.strictEqual(Ask.reminderAsk("remind me in 20 min to").label, "");
+        assert.strictEqual(Ask.reminderAsk("remind me at 15:00 to").label, "");
+        assert.strictEqual(Ask.reminderAsk("remind me in 20 min to tomato soup").label, "tomato soup");
+    });
+});
+
+test.describe("peek privacy", () => {
+    test.it("never previews the text of files named like secrets", () => {
+        for (const p of ["/d/client_secret_1201.json", "/h/.env", "/h/.env.local", "/h/.ssh/id_ed25519", "/d/api-key.txt", "/d/server.pem", "/d/passwords.kdbx", "/d/github-token.txt"])
+            assert.ok(Search.isSecretish(p), p);
+        for (const p of ["/h/.config/gh/hosts.yml", "/h/.ssh/config", "/d/my-key.json", "/d/auth.json", "/d/recovery-codes.txt", "/d/gcp-key.json", "/d/firebase-adminsdk-x.json"])
+            assert.ok(Search.isSecretish(p), p);
+        for (const p of ["/d/notes.md", "/h/Projects/banditshell/DESIGN.md", "/d/secretary/letter.txt", "/d/environment.md", "/d/author.md", "/d/hotplug.md", "/d/keyboard-layout.json", "/d/monkey.png", "/d/privateer.txt"])
+            assert.ok(!Search.isSecretish(p), p);
+    });
+});
+
+test.describe("rows you use come back first", () => {
+    const groups = [{ key: "commands", title: "Commands", items: [
+        { key: "command:lock", kind: "command", score: 2 },
+        { key: "command:logout", kind: "command", score: 2 },
+        { key: "command:lead", kind: "command", score: Infinity }
+    ] }, { key: "apps", title: "Apps", items: [{ key: "app:x", kind: "app", score: 1 }] }];
+
+    test.it("lifts a used row above an equal match and leaves the rest alone", () => {
+        const out = Search.remembered(groups, key => key === "command:logout" ? 0.5 : 0);
+        assert.deepStrictEqual(out[0].items.map(r => r.key), ["command:lead", "command:logout", "command:lock"]);
+        assert.strictEqual(out[0].items[1].score, 2.5);
+        assert.strictEqual(out[1], groups[1]);
+    });
+
+    test.it("never touches apps, which keep their own record, or rows already first", () => {
+        const out = Search.remembered(groups, () => 0.9);
+        assert.strictEqual(out[1].items[0].score, 1);
+        assert.strictEqual(out[0].items[0].key, "command:lead");
+    });
+});
+
+test.describe("no web search for tokens", () => {
+    test.it("spots tokens, keys and long secrets but not ordinary text", () => {
+        for (const t of ["jwt eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjMifQ.x", "ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", "sk-proj-4f9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c", "base64 decode aGVsbG8gd29ybGQgdGhpcyBpcyBhIHRlc3Q5OTk="])
+            assert.ok(Search.looksLikeSecret(t), t);
+        for (const t of ["how do magnets work", "firefox", "days until christmas", "https://example.com/a/b", "supercalifragilisticexpialidocious", "0123456789012345678901234567890123"])
+            assert.ok(!Search.looksLikeSecret(t), t);
+    });
+
+    test.it("keeps only the terminal fallback for them", () => {
+        const rows = Search.fallbackRows({ web: true, wikipedia: true, terminal: true }, "ghp_a1B2c3D4e5F6g7H8i9J0k1L2m3N4o5P6q7R8", "");
+        assert.deepStrictEqual(rows.map(r => r.id), ["terminal"]);
     });
 });

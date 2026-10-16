@@ -18,6 +18,10 @@ Singleton {
 
     property bool awake: false
 
+    property double awakeUntil: 0
+
+    property bool napping: false
+
     property double idleSince: 0
 
     property bool screensOff: false
@@ -48,6 +52,19 @@ Singleton {
             root.switchScreens(true);
     }
 
+    function stayAwake(seconds: int): void {
+        root.awakeUntil = seconds > 0 ? Date.now() + seconds * 1000 : 0;
+        root.awake = true;
+    }
+
+    function sleepScreens(): void {
+        root.napping = true;
+        root.switchScreens(false);
+    }
+
+    onAwakeChanged: if (!root.awake)
+        root.awakeUntil = 0
+
     function switchScreens(on: bool): void {
         if (root.screensOff === !on)
             return;
@@ -58,6 +75,32 @@ Singleton {
     function recheck(): void {
         if (!handler.running)
             handler.running = true;
+    }
+
+    Timer {
+        running: root.awake && root.awakeUntil > 0
+        interval: Math.max(1000, root.awakeUntil - Date.now())
+        onTriggered: root.awake = false
+    }
+
+    IdleMonitor {
+        id: nap
+
+        property bool rested: false
+
+        enabled: root.napping
+        timeout: 1
+        respectInhibitors: false
+
+        onEnabledChanged: nap.rested = false
+        onIsIdleChanged: {
+            if (nap.isIdle) {
+                nap.rested = true;
+            } else if (nap.rested) {
+                root.napping = false;
+                root.switchScreens(true);
+            }
+        }
     }
 
     IdleMonitor {

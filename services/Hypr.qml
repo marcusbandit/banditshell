@@ -49,16 +49,23 @@ Singleton {
     onSettledChanged: root.home()
 
     readonly property int known: Hyprland.workspaces.values.length
-    property bool homed: false
+
+    PersistentProperties {
+        id: kept
+
+        reloadableId: "hypr-home"
+
+        property bool homed: !!Quickshell.env("BANDITSHELL_PREVIEW")
+    }
 
     onKnownChanged: root.home()
     onParserKnownChanged: root.home()
     Component.onCompleted: root.home()
 
     function home(): void {
-        if (root.homed || root.known === 0 || !root.parserKnown || !root.settled)
+        if (kept.homed || root.known === 0 || !root.parserKnown || !root.settled)
             return;
-        root.homed = true;
+        kept.homed = true;
         const band = root.bandFor(root.focusedScreen);
         if (root.activeId < band || root.activeId >= band + root.count)
             root.switchTo(band);
@@ -252,6 +259,153 @@ Singleton {
 
     function onScreen(addr: string): bool {
         return root.monitorOf(addr) !== "";
+    }
+
+    function fullscreenWindow(addr: string, mode: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.fullscreen({ mode = "${mode}", action = "toggle", window = "address:${w}" })`, `fullscreen ${mode === "maximized" ? 1 : 0}`);
+    }
+
+    function restoreWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (root.lua) {
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", window = "address:${w}" })) return hl.dsp.window.float({ action = "off", window = "address:${w}" }) end)()`);
+            return;
+        }
+        Hyprland.dispatch("fullscreenstate 0 0");
+        Hyprland.dispatch(`settiled address:${w}`);
+    }
+
+    function floatWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.float({ action = "toggle", window = "address:${w}" })`, `togglefloating address:${w}`);
+    }
+
+    function centerWindow(addr: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (root.lua) {
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.float({ action = "on", window = "address:${w}" })) return hl.dsp.window.center({ window = "address:${w}" }) end)()`);
+            return;
+        }
+        Hyprland.dispatch(`setfloating address:${w}`);
+        Hyprland.dispatch("centerwindow");
+    }
+
+    function placeWindow(addr: string, rect: var): void {
+        const w = root.windowAddress(addr);
+        if (!w || !rect)
+            return;
+        if (root.lua) {
+            const on = `window = "address:${w}"`;
+            Hyprland.dispatch(`(function() hl.dispatch(hl.dsp.window.fullscreen_state({ internal = 0, client = 0, action = "set", ${on} })) hl.dispatch(hl.dsp.window.float({ action = "on", ${on} })) hl.dispatch(hl.dsp.window.resize({ x = ${rect.w}, y = ${rect.h}, ${on} })) return hl.dsp.window.move({ x = ${rect.x}, y = ${rect.y}, ${on} }) end)()`);
+            return;
+        }
+        Hyprland.dispatch("fullscreenstate 0 0");
+        Hyprland.dispatch(`setfloating address:${w}`);
+        Hyprland.dispatch(`resizewindowpixel exact ${rect.w} ${rect.h},address:${w}`);
+        Hyprland.dispatch(`movewindowpixel exact ${rect.x} ${rect.y},address:${w}`);
+    }
+
+    property var pending: null
+
+    function withLayout(job: var): void {
+        root.pending = job;
+        sizer.running = false;
+        sizer.running = true;
+    }
+
+    function snapWindow(addr: string, rectFor: var): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.withLayout((mons, clients) => {
+                const client = clients.find(c => root.windowAddress(c.address) === w);
+                const mon = mons.find(m => m.id === client?.monitor) ?? mons.find(m => m.focused);
+                if (client && mon)
+                    root.placeWindow(w, rectFor(mon));
+            });
+    }
+
+    function promoteWindow(addr: string, layout: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (layout === "master" || layout === "scrolling") {
+            root.send(`hl.dsp.layout("${layout === "master" ? "swapwithmaster" : "promote"}")`, `layoutmsg ${layout === "master" ? "swapwithmaster" : "promote"}`);
+            return;
+        }
+        root.withLayout((mons, clients) => {
+            const self = clients.find(c => root.windowAddress(c.address) === w);
+            if (!self || self.floating)
+                return;
+            const main = clients.filter(c => c.workspace?.id === self.workspace?.id && !c.floating && c.mapped !== false).sort((a, b) => b.size[0] * b.size[1] - a.size[0] * a.size[1])[0];
+            const other = root.windowAddress(main?.address);
+            if (other && other !== w)
+                root.send(`hl.dsp.window.swap({ target = "address:${other}", window = "address:${w}" })`, `swapwindow address:${other}`);
+        });
+    }
+
+    function swapWindow(addr: string, direction: string, layout: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (layout === "scrolling" && (direction === "l" || direction === "r"))
+            root.send(`hl.dsp.layout("swapcol ${direction}")`, `layoutmsg swapcol ${direction}`);
+        else
+            root.send(`hl.dsp.window.swap({ direction = "${direction}", window = "address:${w}" })`, `swapwindow ${direction}`);
+    }
+
+    function moveWindowToward(addr: string, direction: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.move({ direction = "${direction}", window = "address:${w}" })`, `movewindow ${direction}`);
+    }
+
+    function focusToward(direction: string, layout: string): void {
+        if (layout === "scrolling")
+            root.send(`hl.dsp.layout("focus ${direction}")`, `layoutmsg focus ${direction}`);
+        else
+            root.send(`hl.dsp.focus({ direction = "${direction}" })`, `movefocus ${direction}`);
+    }
+
+    function focusWorkspace(which: string): void {
+        root.send(`hl.dsp.focus({ workspace = "${which}" })`, `workspace ${which}`);
+    }
+
+    Process {
+        id: sizer
+
+        command: ["sh", "-c", "hyprctl -j monitors; echo @@; hyprctl -j clients"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const job = root.pending;
+                root.pending = null;
+                const parts = text.split("@@");
+                try {
+                    if (job)
+                        job(JSON.parse(parts[0]), JSON.parse(parts[1]));
+                } catch (e) {
+                    console.warn(`Hypr: could not read monitors and windows: ${e}`);
+                }
+            }
+        }
+    }
+
+    function moveToMonitor(addr: string, which: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.move({ monitor = "${which}", window = "address:${w}" })`, `movewindow mon:${which},address:${w}`);
+    }
+
+    function moveToWorkspace(addr: string, which: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.move({ workspace = "${which}", window = "address:${w}" })`, `movetoworkspace ${which},address:${w}`);
     }
 
     function closeWindow(addr: string): void {
