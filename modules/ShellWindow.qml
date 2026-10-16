@@ -353,6 +353,14 @@ PanelWindow {
         }
     }
 
+    FullscreenBorder {
+        id: fullscreenBorder
+
+        screen: win.screen
+        chassis: chassis
+        covering: win.underFullscreen
+    }
+
     IdleInhibitor {
         window: win
         enabled: Idle.awake
@@ -363,7 +371,7 @@ PanelWindow {
 
         anchors.fill: parent
         focus: true
-        visible: !win.underFullscreen
+        visible: !fullscreenBorder.yielded
 
         Keys.onPressed: event => {
             if (event.key !== Qt.Key_Escape)
@@ -785,6 +793,7 @@ PanelWindow {
             edge: Math.max(0, chassis.topBand - chassis.streamReach)
 
             keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
+            yielded: win.underFullscreen || fullscreenBorder.yielded
 
             onChosen: notice => win.act(notice)
             onEyeingMusicChanged: if (islandLayer.eyeingMusic)

@@ -101,6 +101,13 @@ Bare and a floating stream panel draw no edge at rest, so they draw none here ei
 reservations stay as they were, so the windows underneath do not re-tile on the way in or
 out. Other monitors are untouched.
 
+The change is a motion, not a cut. Hyprland fades every top-layer surface out under a
+fullscreen window, so the overlay carries the transition: it starts as an exact copy of the
+chassis at rest and melts the band out to the edge ring at `revealSpeed`, which tracks the
+window's own easeOutExpo grow. Leaving runs it backwards; once the copy is back at rest the
+real shell is shown under it and the copy fades out, which is also how the sidebar's icons
+come back in.
+
 This is deliberately close to caelestia's construction. **We are rebuilding caelestia's main
 parts, with more control, because they are ours.** The point was never that caelestia is wrong;
 it is that I want the whole mental model. Where caelestia solved something well, copy the
