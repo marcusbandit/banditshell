@@ -1024,6 +1024,33 @@ LauncherConcept {
             enabled: root.open && root.capture?.kind === "hotkey"
         }
 
+        Peek {
+            id: peek
+
+            readonly property real gap: Appearance.padding.large
+            readonly property real rowTop: layout.y + body.y + list.y - list.contentY + root.results.slice(0, root.selected).reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch), 0)
+            readonly property bool roomRight: panel.x + panel.width + peek.gap + peek.width <= root.width - root.inset
+            readonly property bool roomLeft: panel.x - peek.gap - peek.width >= root.inset
+
+            parent: root
+            x: peek.roomRight ? panel.x + panel.width + peek.gap : panel.x - peek.gap - peek.width
+            y: panel.y + glidePeek.value
+            z: 50
+
+            row: root.results[root.selected] ?? null
+            wanted: root.open && !root.quick && root.settled && !root.capture && !root.asking && !root.answerHolds && (peek.roomRight || peek.roomLeft)
+            longestFrame: root.longestFrame
+
+            Follow {
+                id: glidePeek
+
+                target: Math.max(0, Math.min(peek.rowTop + root.rowPitch / 2 - peek.height / 2, root.height - root.inset - panel.y - peek.height))
+                speed: Appearance.animation.trackSpeed
+                epsilon: 0.5
+                longestFrame: root.longestFrame
+            }
+        }
+
         ActionSheet {
             id: sheet
 

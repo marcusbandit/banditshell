@@ -791,6 +791,7 @@ QtObject {
                 kind: "file",
                 path: hit.path,
                 dir: false,
+                line: hit.line,
                 label: hit.name,
                 detail: `${hit.text} · ${hit.where}`,
                 icon: Marks.iconFor(hit.path, hit.name, false, Files.home) || "draft",
