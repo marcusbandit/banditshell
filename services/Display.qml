@@ -34,6 +34,10 @@ Singleton {
 
     property bool ddcutilMissing: false
 
+    property var displayLevels: ({})
+
+    property var unsentLevels: ({})
+
     readonly property string warmthPath: `${Config.stateDir}/warmth`
 
     readonly property string gammaPath: Quickshell.shellPath("bin/bs-gamma")
@@ -86,6 +90,15 @@ Singleton {
     }
 
     Connections {
+        target: ToolInstaller
+
+        function onInstalled(tool: string): void {
+            if (tool === "ddcutil")
+                root.retryDetect();
+        }
+    }
+
+    Connections {
         target: Monitors
 
         function onOutputsChanged(): void {
@@ -132,10 +145,52 @@ Singleton {
 
     function setLevel(v: real): void {
         const f = Math.max(0, Math.min(1, v));
-        if (root.levelKnown && Math.abs(f - root.level) < 0.001)
+        if (root.levelKnown && Math.abs(f - root.level) < 0.001 && !Object.keys(root.displayLevels).length)
             return;
         root.level = f;
+        root.displayLevels = ({});
+        root.unsentLevels = ({});
         levelDebounce.restart();
+    }
+
+    function levelOf(display: var): real {
+        const own = root.displayLevels[display?.index];
+        return own !== undefined ? own : root.level;
+    }
+
+    function setDisplayLevel(display: var, v: real): void {
+        if (!display?.index)
+            return;
+        const f = Math.max(0, Math.min(1, v));
+        const levels = Object.assign({}, root.displayLevels);
+        levels[display.index] = f;
+        root.displayLevels = levels;
+        const unsent = Object.assign({}, root.unsentLevels);
+        unsent[display.index] = Math.round(f * (display.max || 100));
+        root.unsentLevels = unsent;
+        displayDebounce.restart();
+    }
+
+    function sendDisplayLevels(): void {
+        const unsent = root.unsentLevels;
+        root.unsentLevels = ({});
+        for (const index of Object.keys(unsent)) {
+            root.queue = root.queue.filter(job => job.kind !== `write:${index}`);
+            root.enqueue(`write:${index}`, ["ddcutil", "--display", index, "setvcp", "10", `${unsent[index]}`, "--noverify"]);
+        }
+    }
+
+    function readLevels(): void {
+        if (root.ddcutilMissing)
+            return;
+        for (const display of root.displays)
+            if (!root.queue.some(job => job.kind === `read:${display.index}`))
+                root.enqueue(`read:${display.index}`, ["ddcutil", "--display", display.index, "getvcp", "10", "--brief"]);
+    }
+
+    function retryDetect(): void {
+        root.ddcutilMissing = false;
+        root.detect();
     }
 
     function outputKey(): string {
@@ -178,6 +233,17 @@ Singleton {
             root.displays = code === 0 ? Ddcutil.parseDetect(output) : [];
             if (root.unwritten)
                 root.writeLevel();
+        } else if (kind.startsWith("read:") && code === 0) {
+            const read = Ddcutil.parseVcp(output);
+            const index = kind.slice(5);
+            if (read && root.unsentLevels[index] === undefined && !root.queue.some(job => job.kind === `write:${index}`)) {
+                root.displays = root.displays.map(d => d.index === index ? Object.assign({}, d, {
+                        max: read.max
+                    }) : d);
+                const levels = Object.assign({}, root.displayLevels);
+                levels[index] = Math.max(0, Math.min(1, read.current / read.max));
+                root.displayLevels = levels;
+            }
         }
         Qt.callLater(root.step);
     }
@@ -322,6 +388,13 @@ Singleton {
 
         interval: 200
         onTriggered: root.commitWarmth()
+    }
+
+    Timer {
+        id: displayDebounce
+
+        interval: 250
+        onTriggered: root.sendDisplayLevels()
     }
 
     Timer {

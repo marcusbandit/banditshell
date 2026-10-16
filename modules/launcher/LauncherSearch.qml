@@ -116,6 +116,18 @@ QtObject {
         },
         PhoneSource {
             search: root
+        },
+        RecordSource {
+            search: root
+        },
+        BrightnessSource {
+            search: root
+        },
+        WifiSource {
+            search: root
+        },
+        VpnSource {
+            search: root
         }
     ]
 
@@ -1062,7 +1074,7 @@ QtObject {
                     toggle: !!d.connected,
                     score: root.kindScore(d.name ?? "", "bluetooth device connect")
                 })) : [];
-        const wifi = Network.enabled ? Network.knownNetworks.map(n => ({
+        const wifi = Network.enabled && !root.sources.some(s => s.listsWifi) ? Network.knownNetworks.map(n => ({
                     key: `wifi:${n.name}`,
                     kind: "wifi",
                     name: n.name,

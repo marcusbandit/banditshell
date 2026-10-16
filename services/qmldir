@@ -5,6 +5,7 @@ singleton AppNotifications 1.0 AppNotifications.qml
 singleton Apps 1.0 Apps.qml
 singleton Assistant 1.0 Assistant.qml
 singleton Audio 1.0 Audio.qml
+singleton Backlight 1.0 Backlight.qml
 singleton Battery 1.0 Battery.qml
 singleton Bluetooth 1.0 Bluetooth.qml
 singleton BrowserPlaces 1.0 BrowserPlaces.qml
@@ -61,6 +62,7 @@ singleton Notifications 1.0 Notifications.qml
 singleton Obs 1.0 Obs.qml
 singleton PackageSearch 1.0 PackageSearch.qml
 singleton Pacman 1.0 Pacman.qml
+singleton PasswordRequest 1.0 PasswordRequest.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
 singleton Phone 1.0 Phone.qml
@@ -72,6 +74,7 @@ PrivateFile 1.0 PrivateFile.qml
 singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
+singleton ScreenRecorder 1.0 ScreenRecorder.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
@@ -86,8 +89,10 @@ singleton SystemdUnits 1.0 SystemdUnits.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton SystemMonitor 1.0 SystemMonitor.qml
 singleton Tablet 1.0 Tablet.qml
+singleton Tailscale 1.0 Tailscale.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton TimeFormat 1.0 TimeFormat.qml
+singleton ToolInstaller 1.0 ToolInstaller.qml
 singleton Tooltips 1.0 Tooltips.qml
 singleton Translator 1.0 Translator.qml
 singleton Tray 1.0 Tray.qml
@@ -102,5 +107,6 @@ singleton VideoDownloads 1.0 VideoDownloads.qml
 singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml
 singleton WhatsNew 1.0 WhatsNew.qml
+singleton WifiJoin 1.0 WifiJoin.qml
 singleton WindowLayouts 1.0 WindowLayouts.qml
 singleton WorkshopLayouts 1.0 WorkshopLayouts.qml
