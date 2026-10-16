@@ -114,7 +114,7 @@ Singleton {
         });
         root.live[script.path] = runner.createObject(root, {
             path: script.path,
-            command: ["sh", "-c", 'exec "$@" 2>&1 </dev/null', "sh", ...command],
+            command: Scripts.groupCommand(["sh", "-c", 'exec "$@" 2>&1 </dev/null', "sh", ...command], root.grouped),
             workingDirectory: folder,
             running: true
         });
@@ -125,6 +125,7 @@ Singleton {
         if (!process)
             return;
         delete root.live[path];
+        root.stopGroup(process);
         process.running = false;
         root.record(path, {
             running: false,
@@ -174,6 +175,10 @@ Singleton {
         return root.lists[key] ?? root.lists[root.latestList[path] ?? ""] ?? null;
     }
 
+    function listFresh(key: string): bool {
+        return root.lists[key] !== undefined;
+    }
+
     function listPending(key: string): bool {
         return !!key && root.listWanted === key && (root.listAsking === key || listWait.running);
     }
@@ -210,8 +215,23 @@ Singleton {
         if (!run)
             return;
         run.dropped = true;
+        root.stopGroup(run);
         run.running = false;
         run.destroy();
+    }
+
+    property bool grouped: false
+
+    Process {
+        running: true
+        command: ["sh", "-c", "command -v setsid"]
+        onExited: code => root.grouped = code === 0
+    }
+
+    function stopGroup(process: var): void {
+        const command = process?.running ? Scripts.stopGroupCommand(process.processId) : null;
+        if (command)
+            Quickshell.execDetached(command);
     }
 
     function startList(): void {
@@ -222,7 +242,7 @@ Singleton {
         root.listRun = listRunner.createObject(root, {
             key: root.listWanted,
             path: script.path,
-            command: Scripts.commandFor(script, root.listValues),
+            command: Scripts.groupCommand(Scripts.commandFor(script, root.listValues), root.grouped),
             workingDirectory: script.path.slice(0, script.path.lastIndexOf("/")) || "/"
         });
         root.listRun.running = true;
@@ -315,6 +335,7 @@ Singleton {
                 running: true
                 onTriggered: {
                     run.late = true;
+                    root.stopGroup(run);
                     run.running = false;
                     run.settle();
                 }
