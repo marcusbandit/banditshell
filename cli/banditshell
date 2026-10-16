@@ -13,8 +13,9 @@
 #   banditshell panel settings float
 #                                settings on a page, another page while it stays
 #                                put, or settings as a window
-#   banditshell panel launcher run <app>
-#                                start an app the way the launcher does
+#   banditshell panel launcher run <app|row>
+#                                start an app the way the launcher does, or run
+#                                any launcher row by its id, like command:lock
 #   banditshell panel keyboard [dock|float]
 #   banditshell panel keyboard page <layer> [screen]
 #                                dock or float the on-screen keyboard, or show one
@@ -200,6 +201,10 @@
 #   banditshell dev keyring [status|demo|close]
 #                                the keyring's password prompt: what it asks, a
 #                                made-up question, or refuse it
+#   banditshell dev polkit [status|demo|close]
+#                                the shell's polkit password prompt: whether the
+#                                shell is the agent, what it asks, a made-up
+#                                question, or refuse it
 #
 # help                           this list; banditshell help <command> for one
 #   banditshell help [<command>]
@@ -899,7 +904,7 @@ route_panel() {
     if [ $# -gt 0 ]; then shift; fi
 
     case "$name:$action" in
-    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app>"; ipc launcher run "$1" ;;
+    launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" ;;
     settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
     settings:float) ipc settings float ;;
     keyboard:dock | keyboard:float) ipc keyboard "$action" ;;
@@ -1561,6 +1566,12 @@ route_dev() {
         status | demo) ipc keyring "${1:-status}" ;;
         close) ipc keyring refuse ;;
         *) nope dev "keyring $1" ;;
+        esac ;;
+    polkit)
+        case "${1:-status}" in
+        status | demo) ipc polkit "${1:-status}" ;;
+        close) ipc polkit refuse ;;
+        *) nope dev "polkit $1" ;;
         esac ;;
     *) nope dev "$what" ;;
     esac

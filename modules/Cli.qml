@@ -1,10 +1,12 @@
 pragma ComponentBehavior: Bound
 
+import QtQml
 import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.services
 import qs.modules.settings
+import qs.modules.launcher
 import "cli.js" as Words
 import "settings/catalogue.js" as SettingsCatalogue
 
@@ -17,6 +19,8 @@ Scope {
     readonly property string bootsTheService: HyprConfig.configPath
 
     readonly property bool bootsModes: Modes.loaded
+
+    readonly property bool bootsLauncherHotkeys: LauncherHotkeys.possible
 
     function penmapStatus(): string {
         const r = PenMap.region;
@@ -177,6 +181,15 @@ Scope {
         }
 
         function run(id: string): string {
+            if (/^(app|command|setting):/.test(id)) {
+                const runner = rowRunner.createObject(root, {
+                    query: "",
+                    screenName: Hypr.focusedScreen
+                });
+                const ran = runner.runById(id);
+                runner.destroy();
+                return ran ? `ran ${ran}` : `no launcher row is called ${id}`;
+            }
             const entry = Apps.entryById(id) ?? Apps.search(id)[0];
             if (!entry)
                 return `no application matches "${id}"`;
@@ -192,6 +205,12 @@ Scope {
             win.launcher.scrub(parseFloat(fraction));
             return `scrubbed to ${fraction}`;
         }
+    }
+
+    Component {
+        id: rowRunner
+
+        LauncherSearch {}
     }
 
     IpcHandler {
@@ -1060,7 +1079,27 @@ Scope {
         }
     }
 
-    readonly property string clockUnread: "the clock has not read its state file yet; ask again in a moment"
+    IpcHandler {
+        target: "polkit"
+
+        function status(): string {
+            return [`agent      ${Polkit.serving ? "the shell" : Polkit.wanted ? "another program (the shell could not register)" : "another program (polkit.agent is off)"}`, `stopped    ${Polkit.stopped.map(g => g.what.split("/").pop()).join(", ") || "-"}`, `asking     ${Polkit.active}`, `title      ${Polkit.active ? Polkit.title : "-"}`, `message    ${Polkit.message || "-"}`, `warning    ${Polkit.warning || "-"}`, `screen     ${Polkit.screenName || "-"}`].join("\n");
+        }
+
+        function refuse(): string {
+            if (!Polkit.active)
+                return "nothing is being asked";
+            Polkit.refuse();
+            return "refused";
+        }
+
+        function demo(): string {
+            Polkit.demo();
+            return "showing a made-up question; escape puts it away";
+        }
+    }
+
+    readonly property string clockUnread:"the clock has not read its state file yet; ask again in a moment"
 
     function resolveScreen(screen: string): string {
         if (screen === "all")

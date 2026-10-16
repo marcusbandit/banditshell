@@ -1,0 +1,2 @@
+module qs.modules.password
+PasswordPrompt 1.0 PasswordPrompt.qml

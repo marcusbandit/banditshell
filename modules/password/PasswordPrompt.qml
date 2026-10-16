@@ -17,23 +17,25 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property bool open: Keyring.active && Keyring.screenName === root.screenName
+    readonly property var source: Polkit.active ? Polkit : Keyring
+
+    readonly property bool open: root.source.active && root.source.screenName === root.screenName
 
     readonly property Item maskItem: catcher
 
     readonly property bool needsKeyboard: root.open
 
-    readonly property bool asksForSecret: Keyring.kind === "password"
+    readonly property bool asksForSecret: root.source.kind === "password"
 
-    readonly property string goLabel: Keyring.continueLabel || (root.asksForSecret ? "unlock" : "continue")
-    readonly property string stopLabel: Keyring.cancelLabel || "cancel"
+    readonly property string goLabel: root.source.continueLabel || (root.asksForSecret ? "unlock" : "continue")
+    readonly property string stopLabel: root.source.cancelLabel || "cancel"
 
     function answer(): void {
         if (root.asksForSecret) {
             field.submit();
             return;
         }
-        Keyring.confirm();
+        root.source.confirm();
     }
 
     Follow {
@@ -71,7 +73,7 @@ Item {
         Keys.onPressed: event => {
             if (event.key !== Qt.Key_Escape)
                 return;
-            Keyring.refuse();
+            root.source.refuse();
             event.accepted = true;
         }
     }
@@ -97,7 +99,7 @@ Item {
         enabled: root.open
         visible: root.open
 
-        onClicked: Keyring.refuse()
+        onClicked: root.source.refuse()
     }
 
     Item {
@@ -137,29 +139,29 @@ Item {
                 StyledText {
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    text: Keyring.title || "Keyring"
+                    text: root.source.title || "Keyring"
                     font.pixelSize: Appearance.font.size.normal
                 }
 
                 StyledText {
                     width: parent.width
                     elide: Text.ElideRight
-                    visible: !!Keyring.requester
-                    text: Keyring.requester
+                    visible: !!root.source.requester
+                    text: root.source.requester
                     color: Appearance.colour.textFaint
                 }
 
                 BalancedText {
                     width: parent.width
-                    visible: !!Keyring.message
-                    text: Keyring.message
+                    visible: !!root.source.message
+                    text: root.source.message
                     color: Appearance.colour.textDim
                 }
 
                 BalancedText {
                     width: parent.width
-                    visible: !!Keyring.description
-                    text: Keyring.description
+                    visible: !!root.source.description
+                    text: root.source.description
                     color: Appearance.colour.textFaint
                 }
 
@@ -168,37 +170,38 @@ Item {
 
                     width: parent.width
                     visible: root.asksForSecret
-                    placeholder: Keyring.passwordNew ? "new password" : "password"
-                    alarm: !!Keyring.warning
+                    placeholder: root.source.placeholder ?? (Keyring.passwordNew ? "new password" : "password")
+                    busy: root.source.busy ?? false
+                    alarm: !!root.source.warning
 
-                    onAccepted: secret => Keyring.submit(secret)
-                    onCancelled: Keyring.refuse()
+                    onAccepted: secret => root.source.submit(secret)
+                    onCancelled: root.source.refuse()
 
-                    readonly property int asked: Keyring.asked
+                    readonly property int asked: Keyring.asked + Polkit.asked
                     onAskedChanged: field.clear()
                 }
 
                 StyledText {
                     width: parent.width
                     elide: Text.ElideRight
-                    visible: !!Keyring.warning
-                    text: Keyring.warning
+                    visible: !!root.source.warning
+                    text: root.source.warning
                     color: Appearance.colour.alarm
                 }
 
                 Item {
                     width: parent.width
                     height: Math.max(choice.height, choiceLabel.implicitHeight)
-                    visible: !!Keyring.choiceLabel
+                    visible: !!root.source.choiceLabel
 
                     Toggle {
                         id: choice
 
                         anchors.left: parent.left
                         anchors.verticalCenter: parent.verticalCenter
-                        checked: Keyring.choiceChosen
+                        checked: root.source.choiceChosen
 
-                        onToggled: Keyring.choose(!Keyring.choiceChosen)
+                        onToggled: root.source.choose(!root.source.choiceChosen)
                     }
 
                     BalancedText {
@@ -208,12 +211,12 @@ Item {
                         anchors.right: parent.right
                         anchors.leftMargin: Appearance.padding.normal
                         anchors.verticalCenter: parent.verticalCenter
-                        text: Keyring.choiceLabel
+                        text: root.source.choiceLabel
                         color: Appearance.colour.textDim
 
                         MouseArea {
                             anchors.fill: parent
-                            onClicked: Keyring.choose(!Keyring.choiceChosen)
+                            onClicked: root.source.choose(!root.source.choiceChosen)
                         }
                     }
                 }
@@ -233,7 +236,7 @@ Item {
 
                     onTriggered: index => {
                         if (index === 0)
-                            Keyring.refuse();
+                            root.source.refuse();
                         else
                             root.answer();
                     }

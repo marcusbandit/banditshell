@@ -1,6 +1,82 @@
 {
   "entries": [
     {
+      "id": "2026-10-16-3",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The update menu no longer opens by itself when the shell starts. What changed is still in it when you open it."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The list launcher opens on your pinned apps as large icons, up to 12, until you type. Pick an app in the list and press Pin to add it. The arrow keys move between the icons, and Ctrl with left or right moves a pinned app. Settings › Launcher can also add a row of the apps you opened last, or turn the icons off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Typing in the launcher finds more than apps: commands such as lock, suspend and restart, settings, files in your home folder and .config, a link to open, and a web search. Results come in sections with the best match first. A setting that is on or off flips right there when you press Enter."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher also does small jobs as you type. timer 5m tea starts a timer, remind me at 15:00 to call mum sets a one-time alarm, and time in tokyo shows the time there with a button to add it to your world clock. Open windows come up by title, paired Bluetooth devices and saved Wi-Fi networks connect from their row, and speakers or headphones switch the sound. Volume up, volume 50, Mute sound, Mute microphone, Keep awake, Empty trash and Eject work as commands, and kill firefox lists matching processes with Quit and Force quit buttons."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Apps in the launcher can be quit, force quit or uninstalled from their row. Uninstall finds where the app came from (pacman, apt, dnf, zypper, xbps, apk, Flatpak, Snap or Steam), asks once more, then takes your password in the shell. It refuses when other packages still need the app."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Any launcher row can get an alias or a hotkey from its More menu. With ff as an alias, typing ff puts Firefox first. A hotkey runs the row from anywhere, even with the launcher closed, and your Hyprland files are left alone. Settings › Launcher lists both, and a click removes one."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher also finds words inside the files in your home folder. When nothing fits, the end of the list offers a web search, and Settings › Launcher can add YouTube, Wikipedia, a map or running the line in a terminal, and pick the search engine."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "When something needs your password to run as admin, such as an install, the shell asks in the same card as the keyring prompt. Only one program can ask, so another password agent such as hyprpolkitagent is stopped while the shell runs. Turning off Settings › Shell › Ask for passwords starts it again."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The selected row in the launcher shows buttons for what else it can do, such as Pin, Show in folder, Copy path and Open in settings. Ctrl+Enter presses the first one, and right-click still works."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Typing a path that starts with ~/ or / in the launcher lists that folder. Tab completes a name and Enter goes into a folder."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Sums in the launcher keep their answer while you type, so 5+5- still says 10. Names carry across semicolons and a line with one unknown is solved, so x=5; x+2 says 7 and 2x+3=7 says x = 2. Money such as 5 eur, 50+30 jpy or 50 eur + 30 usd converts at the European Central Bank's daily rates into the currency you pick in Settings › Launcher (DKK unless you change it), written the way your region writes numbers. The rates are fetched when the shell starts and kept for when you are offline. A Symbols button next to a sum adds brackets, powers, roots and more."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher's calculator runs on qalc, which also does units, dates and functions such as 5 km to miles, sqrt(2) or integrate(x^2, x). When qalc is missing, typing a sum offers to install it. The shell tries on its own, and when it needs your password it asks for it in the shell. A terminal opens only when the shell cannot ask. Money works without qalc. Finding files by name needs fd, which the installer sets up."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Searching settings for wifi now finds Wi-Fi, and the same goes for other names with a dash in them."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency, webSearch, contents, fallbacks, aliases and hotkeys, and polkit.agent. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16-2",
       "date": "2026-10-16",
       "changes": [

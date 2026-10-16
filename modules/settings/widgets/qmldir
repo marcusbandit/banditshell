@@ -15,6 +15,7 @@ ObsWidget 1.0 ObsWidget.qml
 OverridesWidget 1.0 OverridesWidget.qml
 RecentWidget 1.0 RecentWidget.qml
 RulesWidget 1.0 RulesWidget.qml
+ShortcutsWidget 1.0 ShortcutsWidget.qml
 SpecialsWidget 1.0 SpecialsWidget.qml
 StartupWidget 1.0 StartupWidget.qml
 ThemesWidget 1.0 ThemesWidget.qml

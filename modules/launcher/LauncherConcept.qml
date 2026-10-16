@@ -40,11 +40,30 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property var answer: Calculator.answer(root.input?.text ?? "")
+    property bool answerless: false
+
+    readonly property var answer: root.answerless ? null : Calculator.answerFor(root.input?.text ?? "")
+
+    Connections {
+        target: root.input
+
+        function onTextChanged(): void {
+            Calculator.ask(root.input.text);
+        }
+    }
+
+    Connections {
+        target: Polkit
+
+        function onActiveChanged(): void {
+            if (!Polkit.active && root.shown)
+                Qt.callLater(root.input.forceActiveFocus);
+        }
+    }
 
     property bool answerHolds: false
 
-    onAnswerChanged: root.answerHolds = !!root.answer
+    onAnswerChanged: root.answerHolds = !!root.answer && root.answer.firm !== false
 
     property bool dragging: false
     property real dragProgress: 0
@@ -61,6 +80,8 @@ Item {
     function show(): void {
         if (!root.shown)
             root.restoreTo = Hypr.focusedOn(root.screenName);
+        if (!Calculator.qalcFound)
+            Calculator.probeQalc();
 
         root.showing();
         root.shown = true;
@@ -109,6 +130,11 @@ Item {
     function copyAnswer(): bool {
         if (!root.answerHolds || !root.answer)
             return false;
+
+        if (root.answer.missing) {
+            Calculator.installQalc();
+            return true;
+        }
 
         Clipboard.copy({
             text: root.answer.text

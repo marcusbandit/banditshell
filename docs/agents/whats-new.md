@@ -70,8 +70,8 @@ for most of your readers there was no last time.
 
 `services/WhatsNew.qml` reads this file; entries newer than the marker
 (`updates.seen` in the user's config.json) accumulate and surface in the
-update menu, and the shell summons that menu once at launch when there is
-anything pending. Entries are marked seen when the card has been believed on
+update menu when the user opens it; nothing summons it at launch. Entries
+are marked seen when the card has been believed on
 screen, not when it is dismissed. A config.json the shell creates on a first
 start begins at the newest entry, so a new install shows nothing until the
 next push. The example entry in the file is skipped by

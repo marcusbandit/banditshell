@@ -16,6 +16,8 @@ Singleton {
 
     property bool idle: false
 
+    property bool awake: false
+
     property double idleSince: 0
 
     property bool screensOff: false

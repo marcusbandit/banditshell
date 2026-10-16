@@ -650,6 +650,18 @@ banditshell/
 │   │                            it puts back exactly that; kept in modes.json
 │   ├── Usage.qml                when this machine was awake, kept for the calendar
 │   ├── Apps.qml                 desktop entries, and ranked search over them
+│   ├── Uninstaller.qml          which package an app came from, and taking it
+│   │                            away: scripts/uninstall-app.sh asks pacman,
+│   │                            dpkg, rpm, xbps, apk, flatpak, snap or Steam,
+│   │                            refuses when other packages need it, and runs
+│   │                            the removal through pkexec, so the password is
+│   │                            asked by Polkit below; a terminal only when
+│   │                            there is no pkexec or no agent
+│   ├── LauncherHotkeys.qml      a key for any launcher row, kept in config.json
+│   │                            and bound LIVE with hyprctl eval, again after
+│   │                            every Hyprland reload; the user's own Hyprland
+│   │                            files are never written. The bind calls
+│   │                            `banditshell panel launcher run <row id>`
 │   ├── Clipboard.qml            what has been copied, and what each of them IS;
 │   │                            runs its own wl-paste watcher, because the type
 │   │                            list is the only place "file" differs from "text"
@@ -659,7 +671,14 @@ banditshell/
 │   ├── Calculator.qml            arithmetic, once: how a number is written, what an
 │   │                            operator does, and what a TYPED expression means.
 │   │                            Two inputs onto one question, so they cannot
-│   │                            disagree; the keypad's own state is not here
+│   │                            disagree; the keypad's own state is not here.
+│   │                            What it cannot do (units, dates, functions)
+│   │                            goes to qalc when that is installed. Typed
+│   │                            sums are read up to the last part that makes
+│   │                            sense, so 5+5- still says 10
+│   ├── Currency.qml             an amount in one currency, said in another:
+│   │                            the ECB's daily rates, fetched when online
+│   │                            and kept for when it is not
 │   ├── Lock.qml                 whether the screen is locked, and what decides it.
 │   │                            Also the password on its way to PAM: typed into
 │   │                            a buffer nothing outside can read, called WRONG
@@ -682,6 +701,16 @@ banditshell/
 │   │                            holds one for less time than Lock does: the
 │   │                            secret goes straight down the helper's stdin and
 │   │                            is never stored
+│   ├── Polkit.qml               the shell as the polkit agent, so pkexec (an
+│   │                            install, an uninstall, the charge limit) asks
+│   │                            in the same card as the keyring. Only one agent
+│   │                            per session, so scripts/polkit-takeover.sh
+│   │                            stops any other (hyprpolkitagent, polkit-gnome,
+│   │                            the KDE one) BEFORE the shell registers, and
+│   │                            the setting being turned off starts them again.
+│   │                            It registers once: Quickshell crashes when an
+│   │                            agent is destroyed while its registration is
+│   │                            still in flight. Previews never take over
 │   ├── Tablet.qml               whether the machine is FOLDED OVER. The changes
 │   │                            come from the compositor (a switch bind execs
 │   │                            the CLI); the state at startup comes from
@@ -731,6 +760,12 @@ banditshell/
 │   ├── Files.qml                the file browser's whole mind: where it is,
 │   │                            what is there, and the shell session it is
 │   │                            having. THE SHELL OWNS THE DIRECTORY; see 17
+│   ├── FileSearch.qml           files by name under home (fd), words inside
+│   │                            them (ripgrep, one line a file, eight files,
+│   │                            stopped the moment the line changes; never
+│   │                            hidden files, where keys live), and one
+│   │                            folder listed for a typed path, for the
+│   │                            launcher; which hidden ones count is a setting
 │   ├── Update.qml               whether the public repo is ahead of this
 │   │                            checkout, found by fetching the tracked
 │   │                            branch at every launch and counting what it
@@ -913,7 +948,22 @@ banditshell/
 │   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
-│   │   ├── ListLauncher.qml     a search field over everything installed
+│   │   ├── ListLauncher.qml     a search field that answers what you type;
+│   │   │                        empty, it shows up to 12 pinned apps and a
+│   │   │                        row of recent ones as icons
+│   │   ├── LauncherSearch.qml   what a typed line means: apps, commands,
+│   │   │                        settings (toggles flip in place), open
+│   │   │                        windows, devices, timers, reminders, the
+│   │   │                        time in a city, processes to kill, files and
+│   │   │                        words inside them, a typed path, a link, and
+│   │   │                        the fallbacks; an alias lifts its row to the
+│   │   │                        top. Ranked into sections, and what each row
+│   │   │                        does. Apps, commands and settings have ids
+│   │   │                        (app:firefox, command:lock) that a hotkey or
+│   │   │                        the CLI runs without the launcher open
+│   │   ├── search.js            the pure part of it: paths, links, sections,
+│   │   │                        reading timer, reminder, volume, zone and
+│   │   │                        kill phrases, aliases, chords, fallbacks
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
@@ -981,7 +1031,8 @@ banditshell/
 │   │                            session_lock_xray is on
 │   │                            for exactly those two moments, so a dead lock
 │   │                            client never shows what is behind it
-│   ├── keyring/KeyringPrompt.qml the keyring's password question, as a card. The
+│   ├── password/PasswordPrompt.qml the keyring's and polkit's password question,
+│   │                            as a card. The
 │   │                            one panel nobody asks for: an application wants
 │   │                            a secret and is BLOCKED on the answer, so it
 │   │                            draws over everything, a click off it is a NO
@@ -1201,6 +1252,15 @@ banditshell/
 │   ├── pointing-devices.py      the mice and touchpads udev knows, and the
 │   │                            size of each pad in millimetres, read from
 │   │                            /run/udev/data with no privileges
+│   ├── install-package.sh       one package by whichever manager is there:
+│   │                            quietly with sudo -n, through pkexec, or typed
+│   │                            in a terminal
+│   ├── polkit-takeover.sh       stops the other polkit agents of this user,
+│   │                            units by systemctl, the rest by name, and says
+│   │                            which, so they can be started again
+│   ├── uninstall-app.sh         which package a desktop id came from, and its
+│   │                            removal; refuses when apt or rpm would take
+│   │                            other packages with it
 │   ├── keyring-prompter.py      the keyring's prompter: owns the bus name gcr's
 │   │                            GTK dialog would have been activated for, and
 │   │                            reimplements gcr's `sx-aes-1` secret exchange

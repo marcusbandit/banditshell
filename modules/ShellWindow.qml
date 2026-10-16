@@ -10,7 +10,7 @@ import qs.modules.clipboard
 import qs.modules.island
 import qs.modules.keyboard
 import qs.modules.media
-import qs.modules.keyring
+import qs.modules.password
 import qs.modules.menu
 import qs.modules.quickcontrols
 import qs.modules.launcher
@@ -196,20 +196,6 @@ PanelWindow {
             Notices.settle(notice.key);
     }
 
-    Timer {
-        id: whatsNewSummon
-
-        interval: 2500
-        repeat: false
-
-        running: WhatsNew.ready
-
-        onTriggered: {
-            if (WhatsNew.pending.length > 0 && Shell.forScreen("") === win)
-                win.openMenu("update", true);
-        }
-    }
-
     anchors {
         top: true
         bottom: true
@@ -349,6 +335,11 @@ PanelWindow {
             item: Appearance.bare ? null : settingsCorner.maskItem
         }
 
+    }
+
+    IdleInhibitor {
+        window: win
+        enabled: Idle.awake
     }
 
     FocusScope {
@@ -809,9 +800,9 @@ PanelWindow {
 
             anchors.fill: parent
 
-            needed: Keyring.asked > 0
+            needed: Keyring.asked + Polkit.asked > 0
 
-            panel: KeyringPrompt {
+            panel: PasswordPrompt {
                 holeX: chassis.holeX
                 holeY: chassis.holeY
                 holeWidth: chassis.holeWidth

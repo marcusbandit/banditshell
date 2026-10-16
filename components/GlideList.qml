@@ -21,9 +21,10 @@ ListView {
     function reveal(index: int): void {
         if (root.count <= 0)
             return;
+        const item = root.itemAtIndex(index);
         const rowHeight = root.contentHeight / root.count;
-        const top = index * rowHeight;
-        const bottom = top + rowHeight;
+        const top = item ? item.y : index * rowHeight;
+        const bottom = top + (item ? item.height : rowHeight);
 
         if (top < root.anchor)
             root.scrollTo(top);

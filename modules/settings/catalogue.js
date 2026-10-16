@@ -29,7 +29,7 @@ const WIDGET_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Wallpapers", themes: "Theme", wsStyles: "Workspace style",
     chips: "Apps", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "Places",
     obs: "OBS", keys: "Keys", kbLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
 };
 
 const SEARCH_TITLES = {
@@ -37,7 +37,7 @@ const SEARCH_TITLES = {
     devices: "Devices", volume: "Volume", apps: "Volume by app", walls: "Pick a wallpaper", themes: "Theme", wsStyles: "Workspace style",
     chips: "", folders: "Folders", overrides: "Icon overrides", startup: "Startup apps", rules: "App rules", clocks: "World clocks",
     obs: "OBS", keys: "Keys", winLayouts: "Layouts", battery: "Battery", update: "Updates", changes: "What’s new", about: "About",
-    tunnels: "Tunnels"
+    tunnels: "Tunnels", shortcuts: "Aliases and hotkeys"
 };
 
 const WIDGET_WHY = {
@@ -369,8 +369,31 @@ const PAGES_SOURCE = {
             { t: "Layout", rows: [
                 { n: 69, icon: "view_agenda", label: "Concept", k: "concept", kind: "seg", o: ["list", "alphabet"], cfg: "launcher.concept", kw: "launcher layout",
                     why: "List is a plain search list. Alphabet is a thumb-sized rail of letters with favourites on a bow." },
+                { n: [], icon: "push_pin", label: "Show pinned", k: "listPinned", kind: "toggle", cfg: "launcher.list.pinned", dis: s => s.v("concept") !== "list", kw: "pinned favourites quick launch grid icons",
+                    why: "Pick an app in the list and press Pin to put it here." },
+                { n: [], icon: "history", label: "Show recents", k: "listRecents", kind: "toggle", cfg: "launcher.list.recents", dis: s => s.v("concept") !== "list", kw: "recent apps launcher icons" },
                 { n: 70, icon: "photo_size_select_large", label: "Icon size", k: "launcherIcon", kind: "slider", min: 18, max: 48, step: 2, fmt: v => `${v} px`, cfg: "launcher.iconSize", kw: "launcher icon size" },
                 { n: 71, icon: "trending_up", label: "Habit fades over", k: "halfLife", kind: "step", min: 1, max: 60, unit: " days", cfg: "launcher.halfLifeDays", detail: "apps you use rise", extra: { icon: "history", tip: "forget what it learned", act: "forgetHabit" }, kw: "app ranking by habit" }
+            ] },
+            { t: "Search results", rows: [
+                { n: [], icon: "visibility", label: "Hidden files", k: "hiddenFiles", kind: "seg", o: ["off", ".config", "all"], cfg: "launcher.hiddenFiles", kw: "hidden files dotfiles .config search results",
+                    why: "Which hidden files the launcher finds by name. .config is where most apps keep their settings." },
+                { n: [], icon: "currency_exchange", label: "Currency", k: "currency", kind: "choice", o: s => s.currencies, cfg: "launcher.currency", detail: s => s.ratesNote, kw: "currency money exchange rates convert",
+                    why: "Typing an amount like 5 eur shows it in this currency. Rates come from the European Central Bank once a day and are kept for when you are offline." },
+                { n: [], icon: "find_in_page", label: "Inside files", k: "contents", kind: "toggle", cfg: "launcher.contents", kw: "search inside files contents text ripgrep grep",
+                    why: "Words you type are also looked for inside the files in your home folder. Hidden files, .config, node_modules and caches are skipped, so settings and keys never show here." },
+                { n: [], icon: "travel_explore", label: "Search engine", k: "webSearch", kind: "choice", o: [["https://duckduckgo.com/?q=%s", "DuckDuckGo"], ["https://www.google.com/search?q=%s", "Google"], ["https://www.bing.com/search?q=%s", "Bing"], ["https://search.brave.com/search?q=%s", "Brave"], ["https://www.startpage.com/do/search?q=%s", "Startpage"], ["https://www.ecosia.org/search?q=%s", "Ecosia"], ["https://kagi.com/search?q=%s", "Kagi"]], cfg: "launcher.webSearch", kw: "web search engine google duckduckgo bing" }
+            ] },
+            { t: "When nothing fits", rows: [
+                { n: [], icon: "travel_explore", label: "Web search", k: "fallbackWeb", kind: "toggle", cfg: "launcher.fallbacks.web", kw: "fallback web search" },
+                { n: [], icon: "smart_display", label: "YouTube", k: "fallbackYoutube", kind: "toggle", cfg: "launcher.fallbacks.youtube", kw: "fallback youtube video search" },
+                { n: [], icon: "menu_book", label: "Wikipedia", k: "fallbackWikipedia", kind: "toggle", cfg: "launcher.fallbacks.wikipedia", kw: "fallback wikipedia" },
+                { n: [], icon: "map", label: "Map", k: "fallbackMaps", kind: "toggle", cfg: "launcher.fallbacks.maps", kw: "fallback map places openstreetmap" },
+                { n: [], icon: "terminal", label: "Run in a terminal", k: "fallbackTerminal", kind: "toggle", cfg: "launcher.fallbacks.terminal", kw: "fallback run command terminal shell" }
+            ] },
+            { t: "Aliases and hotkeys", rows: [
+                { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
+                { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }
             ] },
             { t: "Apps", rows: [
                 { n: 72, kind: "w", w: "chips", list: "starred", kw: "starred apps favourites" },
@@ -696,7 +719,9 @@ const PAGES_SOURCE = {
             { t: "Behaviour", rows: [
                 { n: 115, icon: "keyboard_tab", label: "Tab completion", k: "tabComplete", kind: "toggle", detail: "for the shell’s cli" },
                 { n: 116, icon: "edit_document", label: "Edit Hyprland files", k: "sourceEdits", kind: "toggle", cfg: "sourceEdits.acknowledged", detail: s => s.v("sourceEdits") ? "only its own include" : "hands off", kw: "permission to edit hyprland files",
-                    why: "The shell writes borders, screen layout and binds into one file it owns. Your own Hyprland files are never touched." }
+                    why: "The shell writes borders, screen layout and binds into one file it owns. Your own Hyprland files are never touched." },
+                { n: [], icon: "password", label: "Ask for passwords", k: "polkitAgent", kind: "toggle", cfg: "polkit.agent", detail: s => s.polkitNote, kw: "polkit password prompt authentication agent pkexec admin",
+                    why: "When a program needs your password to run as admin, the shell asks in its own card. Only one program can do this at a time, so another password agent that is running, such as hyprpolkitagent, is stopped." }
             ] },
             { t: "Recent changes", rows: [
                 { n: [], kind: "w", w: "recent", kw: "recent changes undo history" }
@@ -946,7 +971,8 @@ for (const p of PAGES) {
                     group: g,
                     label: label || r.kw.split(" ")[0],
                     nums: numbers(r),
-                    hay: `${label} ${r.kw || ""} ${typeof g.t === "string" ? g.t : ""} ${r.cfg || ""} ${p.name}`.toLowerCase()
+                    hay: `${label} ${r.kw || ""} ${typeof g.t === "string" ? g.t : ""} ${r.cfg || ""} ${p.name}`.toLowerCase(),
+                    flat: `${label} ${r.kw || ""}`.toLowerCase().replace(/[^a-z0-9]/g, "")
                 });
             if (r.layer)
                 visit(r.layer, g);
@@ -966,7 +992,7 @@ function search(query) {
         hits = INDEX.filter(x => x.nums.indexOf(+num[1]) >= 0);
     else {
         const words = q.split(/\s+/);
-        hits = INDEX.filter(x => words.every(w => x.hay.indexOf(w) >= 0));
+        hits = INDEX.filter(x => words.every(w => x.hay.indexOf(w) >= 0 || x.flat.indexOf(w.replace(/[^a-z0-9]/g, "")) >= 0));
         const lead = x => x.label.toLowerCase().indexOf(q) === 0 ? 1 : 0;
         hits = hits.map((x, i) => ({ x: x, i: i })).sort((a, b) => lead(b.x) - lead(a.x) || a.i - b.i).map(e => e.x);
     }
@@ -978,6 +1004,10 @@ const ALIASES = {
     brightness: "light", theme: "colour", font: "type", appearance: "colour", general: "windows", keybinds: "shortcuts", hotkeys: "shortcuts",
     device: "about", developer: "shell", cli: "shell", power: "powermode", idle: "lock", language: "region"
 };
+
+function hitFor(pageId, key) {
+    return INDEX.find(x => x.page.id === pageId && (x.row.k ?? x.label) === key) || null;
+}
 
 function resolve(name) {
     const key = String(name || "");

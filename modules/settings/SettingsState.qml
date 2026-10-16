@@ -165,6 +165,18 @@ Singleton {
             menuW: "menu.width",
             settingsW: "settings.width",
             concept: "launcher.concept",
+            listPinned: "launcher.list.pinned",
+            listRecents: "launcher.list.recents",
+            hiddenFiles: "launcher.hiddenFiles",
+            polkitAgent: "polkit.agent",
+            webSearch: "launcher.webSearch",
+            contents: "launcher.contents",
+            fallbackWeb: "launcher.fallbacks.web",
+            fallbackYoutube: "launcher.fallbacks.youtube",
+            fallbackWikipedia: "launcher.fallbacks.wikipedia",
+            fallbackMaps: "launcher.fallbacks.maps",
+            fallbackTerminal: "launcher.fallbacks.terminal",
+            currency: "launcher.currency",
             launcherIcon: "launcher.iconSize",
             halfLife: "launcher.halfLifeDays",
             clip: "clipboard.record",
@@ -1204,6 +1216,10 @@ Singleton {
     readonly property string chargeTrouble: ChargeLimit.trouble
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
+    readonly property var currencies: Currency.codes
+
+    readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
+    readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse
     readonly property int clipseWaiting: Clipboard.clipseWaiting

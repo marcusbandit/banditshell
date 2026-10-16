@@ -227,6 +227,10 @@ Singleton {
                 acknowledged: false,
             },
 
+            polkit: {
+                agent: true
+            },
+
             blob: {
 
                 melt: 34,
@@ -253,6 +257,32 @@ Singleton {
                 halfLifeDays: 14,
 
                 concept: "list",
+
+                list: {
+                    pinned: true,
+
+                    recents: false
+                },
+
+                webSearch: "https://duckduckgo.com/?q=%s",
+
+                fallbacks: {
+                    web: true,
+                    youtube: false,
+                    wikipedia: false,
+                    maps: false,
+                    terminal: false
+                },
+
+                contents: true,
+
+                aliases: ({}),
+
+                hotkeys: ({}),
+
+                hiddenFiles: ".config",
+
+                currency: "DKK",
 
                 hidden: ({}),
 
