@@ -27,15 +27,21 @@ Singleton {
 
     property var queue: []
     property var job: null
+    property bool began: false
     property bool exited: false
     property bool read: false
     property string output: ""
+    property int code: 0
 
     readonly property string fallbackLayout: WindowLayouts.configured[0] ?? "dwindle"
 
-    readonly property var names: root.layouts.filter(model => root.ready[model.name]).map(model => `lua:${model.name}`)
+    readonly property var names: root.layouts.filter(model => root.isReady(model.name)).map(model => `lua:${model.name}`)
 
     readonly property var taken: Search.luaLayouts(Object.values(HyprConfig.texts)).map(name => name.replace(/^lua:/, "")).filter(name => !root.layouts.some(model => model.name === name))
+
+    function isReady(name: string): bool {
+        return root.ready[name] === true;
+    }
 
     function find(name: string): var {
         return root.layouts.find(model => model.name === name) ?? null;
@@ -80,7 +86,7 @@ Singleton {
     function use(draft: var, previous: string): string {
         const name = LayoutModel.normalise(draft).name;
         return root.save(draft, previous, () => {
-            if (root.ready[name])
+            if (root.isReady(name))
                 WindowLayouts.use(`lua:${name}`);
         });
     }
@@ -134,9 +140,11 @@ Singleton {
         const job = root.queue[0];
         root.queue = root.queue.slice(1);
         root.job = job;
+        root.began = false;
         root.exited = false;
         root.read = false;
         root.output = "";
+        root.code = 0;
         if (job.removes) {
             worker.command = ["sh", "-c", 'cd -- "$1" 2>/dev/null || exit 0; shift; for name in "$@"; do rm -f -- "$name.lua"; done', "sh", root.folder].concat(job.removes);
         } else {
@@ -144,29 +152,34 @@ Singleton {
             const pairs = [];
             for (const model of job.writes)
                 pairs.push(model.name, LayoutLua.generate(model));
-            worker.command = ["sh", "-c", 'dir=$1; code=$2; shift 2; mkdir -p -- "$dir" || exit 1; while [ $# -gt 1 ]; do printf %s "$2" > "$dir/$1.lua.part" && mv -f -- "$dir/$1.lua.part" "$dir/$1.lua" || exit 1; shift 2; done; [ -n "$code" ] || exit 0; command -v hyprctl > /dev/null || exit 0; exec hyprctl eval "$code"', "sh", root.folder, code].concat(pairs);
+            worker.command = ["sh", "-c", 'exec 2>&1; dir=$1; code=$2; shift 2; mkdir -p -- "$dir" || exit 1; while [ $# -gt 1 ]; do printf %s "$2" > "$dir/$1.lua.part" && mv -f -- "$dir/$1.lua.part" "$dir/$1.lua" || exit 1; shift 2; done; [ -n "$code" ] || exit 0; command -v hyprctl > /dev/null || { echo "hyprctl is not installed"; exit 3; }; exec hyprctl eval "$code"', "sh", root.folder, code].concat(pairs);
         }
         worker.running = true;
     }
 
     function finish(): void {
         if (root.job && root.exited && root.read)
-            root.settle(root.output);
+            root.settle(root.output, root.code);
     }
 
-    function settle(output: string): void {
+    function settle(output: string, code: int): void {
         const job = root.job;
         root.job = null;
         if (job && job.writes) {
             const text = output.trim();
-            const loaded = root.possible && text !== "";
-            const broken = loaded ? LayoutLua.failedNames(text, job.names, root.folder) : [];
+            const evalError = text.startsWith("error:");
+            const answered = root.possible && (text === "ok" || evalError);
+            const broken = evalError ? LayoutLua.failedNames(text, job.names, root.folder) : [];
             const next = Object.assign({}, root.ready);
             for (const name of job.names)
-                next[name] = loaded && broken.indexOf(name) < 0;
+                next[name] = answered && broken.indexOf(name) < 0;
             root.ready = next;
-            root.failed = loaded && text !== "ok";
-            root.said = !root.possible ? "saved · loading needs Hyprland with a Lua config" : root.failed ? text.replace(/^error:\s*/, "") : job.names.length === 1 ? `lua:${job.names[0]} is loaded` : `${job.names.length} layouts loaded`;
+            root.failed = root.possible ? text !== "ok" : code !== 0;
+            const trouble = text.replace(/^error:\s*/, "") || `could not write ${root.folder}`;
+            if (!root.possible)
+                root.said = root.failed ? trouble : "saved · loading needs Hyprland with a Lua config";
+            else
+                root.said = root.failed ? trouble : job.names.length === 1 ? `lua:${job.names[0]} is loaded` : `${job.names.length} layouts loaded`;
             if (job.then)
                 job.then();
         }
@@ -195,7 +208,20 @@ Singleton {
             }
         }
 
-        onExited: {
+        onStarted: root.began = true
+
+        onExited: exitCode => {
+            root.code = exitCode;
+            root.exited = true;
+            root.finish();
+        }
+
+        onRunningChanged: {
+            if (worker.running || root.began || !root.job)
+                return;
+            root.code = -1;
+            root.output = "";
+            root.read = true;
             root.exited = true;
             root.finish();
         }

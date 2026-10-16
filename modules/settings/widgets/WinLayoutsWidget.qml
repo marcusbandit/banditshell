@@ -161,7 +161,7 @@ Column {
                 interactive: false
                 icon: "dashboard"
                 label: saved.modelData.name
-                detail: saved.inUse ? "in use" : WorkshopLayouts.ready[saved.modelData.name] ? "loaded" : WorkshopLayouts.possible ? "not loaded" : "needs Hyprland with a Lua config"
+                detail: saved.inUse ? "in use" : WorkshopLayouts.isReady(saved.modelData.name) ? "loaded" : WorkshopLayouts.possible ? "not loaded" : "needs Hyprland with a Lua config"
 
                 Row {
                     anchors.verticalCenter: parent.verticalCenter
@@ -172,7 +172,7 @@ Column {
                         icon: "play_arrow"
                         text: "Use"
                         visible: !saved.inUse
-                        interactive: !!WorkshopLayouts.ready[saved.modelData.name]
+                        interactive: WorkshopLayouts.isReady(saved.modelData.name)
                         onClicked: WindowLayouts.use(saved.layoutName)
                     }
 
