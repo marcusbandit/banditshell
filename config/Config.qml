@@ -284,6 +284,17 @@ Singleton {
 
                 currency: "DKK",
 
+                online: {
+                    translate: true,
+                    translateTo: "",
+                    define: true,
+                    packages: true,
+                    github: true,
+                    browser: true,
+                    speedtest: true,
+                    videos: true
+                },
+
                 hidden: ({}),
 
                 starred: ({}),

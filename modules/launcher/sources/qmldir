@@ -1,2 +1,9 @@
 module qs.modules.launcher.sources
+BrowserSource 1.0 BrowserSource.qml
+DefineSource 1.0 DefineSource.qml
 FallbackSource 1.0 FallbackSource.qml
+GithubSource 1.0 GithubSource.qml
+PackageSource 1.0 PackageSource.qml
+SpeedtestSource 1.0 SpeedtestSource.qml
+TranslateSource 1.0 TranslateSource.qml
+VideoDownloadSource 1.0 VideoDownloadSource.qml

@@ -6,7 +6,7 @@ id="${2:-}"
 case "$verb" in
 find | plan | remove | ask) ;;
 *)
-    echo "usage: uninstall-app.sh find|plan|remove|ask <desktop-id>" >&2
+    echo "usage: uninstall-app.sh find|plan|remove|ask <desktop-id> | --package <how> <package>" >&2
     exit 2
     ;;
 esac
@@ -104,30 +104,41 @@ classify() {
     return 1
 }
 
-file=""
-how=""
-package=""
-first=""
-while IFS= read -r candidate; do
-    [ -n "$first" ] || first="$candidate"
-    found="$(classify "$candidate")" || continue
-    kind="${found%%	*}"
-    [ "$kind" = entry ] && [ -n "$how" ] && continue
-    if [ -z "$how" ] || [ "$how" = entry ]; then
-        file="$candidate"
-        how="$kind"
-        package="${found#*	}"
-    fi
-    [ "$how" != entry ] && break
-done < <(candidates)
+if [ "$id" = --package ]; then
+    how="${3:-}"
+    package="${4:-}"
+    file=""
+    case "$how" in
+    pacman | apt | dnf | zypper | xbps | apk | flatpak-user | flatpak-system | snap) ;;
+    *) exit 2 ;;
+    esac
+    [ -n "$package" ] || exit 2
+else
+    file=""
+    how=""
+    package=""
+    first=""
+    while IFS= read -r candidate; do
+        [ -n "$first" ] || first="$candidate"
+        found="$(classify "$candidate")" || continue
+        kind="${found%%	*}"
+        [ "$kind" = entry ] && [ -n "$how" ] && continue
+        if [ -z "$how" ] || [ "$how" = entry ]; then
+            file="$candidate"
+            how="$kind"
+            package="${found#*	}"
+        fi
+        [ "$how" != entry ] && break
+    done < <(candidates)
 
-if [ -z "$first" ]; then
-    echo "no desktop file for $id" >&2
-    exit 1
-fi
-if [ -z "$how" ]; then
-    echo "$first does not come from a package this can remove" >&2
-    exit 3
+    if [ -z "$first" ]; then
+        echo "no desktop file for $id" >&2
+        exit 1
+    fi
+    if [ -z "$how" ]; then
+        echo "$first does not come from a package this can remove" >&2
+        exit 3
+    fi
 fi
 
 if [ "$verb" = find ]; then
