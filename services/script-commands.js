@@ -1,8 +1,16 @@
 .pragma library
 
-var MODES = ["silent", "compact", "fullOutput", "inline"];
+var MODES = ["silent", "compact", "fullOutput", "inline", "list"];
 
-var HEADER = /^\s*(?:#|\/\/|--|;)\s*@raycast\.([A-Za-z0-9]+)\s+(.*?)\s*$/;
+var HEADER = /^\s*(?:#|\/\/|--|;)\s*@(raycast|banditshell)\.([A-Za-z0-9]+)\s+(.*?)\s*$/;
+
+var ARGUMENT = /^argument([1-9])$/;
+
+var ICON_NAME = /^[a-z0-9_]+$/;
+
+var WEB = /^[a-z][a-z0-9+.-]*:\/\//i;
+
+var LIST_LIMIT = 50;
 
 var ESCAPES = /\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07/g;
 
@@ -76,21 +84,26 @@ function parseScript(path, head, executable) {
     var file = baseName(path);
     var lines = String(head || "").split("\n");
     var fields = {};
+    var own = {};
     var args = [];
     for (var i = 0; i < lines.length; i++) {
         var m = HEADER.exec(lines[i]);
         if (!m)
             continue;
-        var key = m[1];
-        var arg = /^argument([1-9])$/.exec(key);
+        var key = m[2];
+        var arg = ARGUMENT.exec(key);
         if (arg) {
-            var parsed = readArgument(m[2]);
+            var parsed = readArgument(m[3]);
             if (parsed)
                 args[Number(arg[1]) - 1] = parsed;
+        } else if (m[1] === "banditshell") {
+            if (own[key] === undefined)
+                own[key] = m[3];
         } else if (fields[key] === undefined) {
-            fields[key] = m[2];
+            fields[key] = m[3];
         }
     }
+    fields = Object.assign(fields, own);
     var interpreter = interpreterOf(lines[0]);
     var raycast = Object.keys(fields).length > 0 || args.length > 0;
     if (!executable && !interpreter && !raycast)
@@ -108,6 +121,7 @@ function parseScript(path, head, executable) {
         packageName: String(fields.packageName || ""),
         description: String(fields.description || ""),
         arguments: args.filter(Boolean).slice(0, 3),
+        selects: String(fields.onSelect || "").toLowerCase() === "run",
         executable: !!executable,
         interpreter: interpreter
     };
@@ -167,13 +181,18 @@ function askFor(script, text) {
                 exact: true,
                 values: []
             };
-        if (script.arguments.length && lower.indexOf(head + " ") === 0)
+        var lists = script.mode === "list";
+        if ((script.arguments.length || lists) && lower.indexOf(head + " ") === 0)
             return {
                 exact: true,
-                values: argumentsFrom(typed.slice(head.length + 1), script.arguments.length)
+                values: argumentsFrom(typed.slice(head.length + 1), lists ? Math.max(1, script.arguments.length) : script.arguments.length)
             };
     }
     return null;
+}
+
+function ambientScore(place) {
+    return place >= 2 ? 0.25 + place * 0.05 : 0;
 }
 
 function listAsk(text) {
@@ -184,18 +203,150 @@ function missing(script, values) {
     return script.arguments.filter((a, i) => !a.optional && !(values[i] ?? "")).map(a => a.placeholder);
 }
 
-function commandFor(script, values) {
-    var args = script.arguments.map((a, i) => {
-        var v = String(values[i] ?? "");
-        return a.percentEncoded ? encodeURIComponent(v) : v;
-    });
-    while (args.length && !args[args.length - 1] && script.arguments[args.length - 1].optional)
-        args.pop();
+function baseCommand(script) {
     if (script.executable)
-        return [script.path].concat(args);
+        return [script.path];
     if (script.interpreter)
-        return script.interpreter.concat([script.path], args);
-    return ["sh", script.path].concat(args);
+        return script.interpreter.concat([script.path]);
+    return ["sh", script.path];
+}
+
+function commandFor(script, values) {
+    var count = script.mode === "list" ? Math.max(script.arguments.length, values.length) : script.arguments.length;
+    var args = [];
+    for (var i = 0; i < count; i++) {
+        var v = String(values[i] ?? "");
+        args.push(script.arguments[i]?.percentEncoded ? encodeURIComponent(v) : v);
+    }
+    while (args.length && !args[args.length - 1] && (script.arguments[args.length - 1]?.optional ?? true))
+        args.pop();
+    return baseCommand(script).concat(args);
+}
+
+function selectCommand(script, arg) {
+    return baseCommand(script).concat(["--select", String(arg ?? "")]);
+}
+
+function firstLine(text) {
+    var lines = outputLines(text, 400);
+    for (var i = 0; i < lines.length; i++) {
+        var line = lines[i].trim();
+        if (line)
+            return line.length > 200 ? `${line.slice(0, 200)}…` : line;
+    }
+    return "";
+}
+
+function textOf(value) {
+    if (value === undefined || value === null)
+        return "";
+    if (Array.isArray(value))
+        return value.map(textOf).filter(Boolean).join(" ");
+    return typeof value === "object" ? "" : String(value);
+}
+
+function expandHome(path, home) {
+    var p = String(path || "");
+    return home && (p === "~" || p.indexOf("~/") === 0) ? `${home}${p.slice(1)}` : p;
+}
+
+function iconOf(icon, folder, home) {
+    var raw = icon && typeof icon === "object" ? icon.type === "fileicon" || icon.type === "filetype" ? "" : textOf(icon.path) : textOf(icon);
+    var t = raw.trim();
+    if (!t)
+        return {};
+    if (t.indexOf("/") >= 0 || IMAGE.test(t))
+        return {
+            file: t.charAt(0) === "/" || WEB.test(t) ? t : t.indexOf("~/") === 0 ? expandHome(t, home) : `${folder}/${t}`
+        };
+    if (ICON_NAME.test(t))
+        return {
+            name: t
+        };
+    return t.length <= 8 ? {
+        glyph: t
+    } : {};
+}
+
+function readItem(raw, folder, home) {
+    if (!raw || typeof raw !== "object")
+        return null;
+    var title = textOf(raw.title).trim();
+    if (!title)
+        return null;
+    var text = raw.text && typeof raw.text === "object" ? raw.text : {};
+    var type = textOf(raw.type).toLowerCase();
+    var arg = textOf(raw.arg);
+    var file = type.indexOf("file") === 0 && !!arg;
+    var icon = iconOf(raw.icon, folder, home);
+    return {
+        uid: textOf(raw.uid),
+        title: title,
+        subtitle: textOf(raw.subtitle).trim(),
+        arg: file ? expandHome(arg, home) : arg,
+        url: textOf(raw.url || raw.quicklookurl),
+        copy: textOf(raw.copy !== undefined ? raw.copy : text.copy),
+        file: file,
+        valid: raw.valid !== false,
+        autocomplete: textOf(raw.autocomplete),
+        icon: icon.name || "",
+        glyph: icon.glyph || "",
+        iconFile: icon.file || ""
+    };
+}
+
+function readItems(text, folder, home, limit) {
+    var parsed;
+    try {
+        parsed = JSON.parse(String(text || "").trim());
+    } catch (e) {
+        return null;
+    }
+    var list = Array.isArray(parsed) ? parsed : parsed && Array.isArray(parsed.items) ? parsed.items : null;
+    if (!list)
+        return null;
+    var out = [];
+    for (var i = 0; i < list.length && out.length < (limit || LIST_LIMIT); i++) {
+        var item = readItem(list[i], folder, home);
+        if (item)
+            out.push(item);
+    }
+    return out;
+}
+
+function readList(code, out, err, folder, home, limit) {
+    if (code !== 0)
+        return {
+            items: [],
+            error: firstLine(err) || firstLine(out) || `exit ${code}`,
+            code: code
+        };
+    var items = readItems(out, folder, home, limit);
+    if (items === null)
+        return {
+            items: [],
+            error: firstLine(err) || "printed no items",
+            code: code
+        };
+    return {
+        items: items,
+        error: "",
+        code: code
+    };
+}
+
+function itemAction(item, selects) {
+    if (!item.valid)
+        return item.autocomplete ? "complete" : "";
+    if (selects)
+        return "run";
+    if (item.url)
+        return "url";
+    if (item.copy)
+        return "copy";
+    if (item.file)
+        return "file";
+    return WEB.test(item.arg) ? "url" : "copy";
 }
 
 function outputLines(text, limit) {
@@ -210,15 +361,3 @@ function lastLine(text) {
 function runKey(script, values) {
     return [script.path].concat(values || []).join("\x1f");
 }
-
-var EXAMPLE = `#!/bin/sh
-
-# @raycast.schemaVersion 1
-# @raycast.title Hello
-# @raycast.mode compact
-# @raycast.icon 👋
-# @raycast.packageName Examples
-# @raycast.argument1 { "type": "text", "placeholder": "name", "optional": true }
-
-echo "Hello, \${1:-world}. It is $(date +%H:%M)."
-`;

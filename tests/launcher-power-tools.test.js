@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "EXAMPLE", "listAsk"]);
+const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "listAsk", "readItems", "readList", "itemAction", "selectCommand", "ambientScore"]);
 const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
 const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "readDisks", "bytesText", "uptimeText", "cpuText"]);
@@ -106,7 +106,7 @@ test.describe("script commands", () => {
     });
 
     test.it("ships an example that reads as a Raycast script", () => {
-        const s = Scripts.parseScript("/s/hello.sh", Scripts.EXAMPLE, true);
+        const s = Scripts.parseScript("/s/hello.sh", fs.readFileSync(path.join(ROOT, "docs/script-commands/hello.sh"), "utf8"), true);
         assert.strictEqual(s.title, "Hello");
         assert.strictEqual(s.arguments[0].optional, true);
         assert.deepStrictEqual(Scripts.missing(s, []), []);
@@ -489,5 +489,151 @@ test.describe("review fixes", () => {
     test.it("still takes arguments after leading spaces", () => {
         const s = Scripts.parseScript("/s/say.py", SAY, true);
         assert.deepStrictEqual(Scripts.askFor(s, "   say hi").values, ["hi"]);
+    });
+});
+
+test.describe("list scripts", () => {
+    const LIST = `#!/usr/bin/env python3
+# @raycast.title Unicode
+# @raycast.mode compact
+# @banditshell.mode list
+# @banditshell.onSelect run
+`;
+
+    test.it("reads the banditshell headers over the Raycast ones", () => {
+        const s = Scripts.parseScript("/s/unicode.py", LIST, true);
+        assert.strictEqual(s.mode, "list");
+        assert.strictEqual(s.selects, true);
+        assert.strictEqual(Scripts.parseScript("/s/a.sh", "#!/bin/sh\n# @raycast.mode list\n", true).mode, "list");
+        assert.strictEqual(Scripts.parseScript("/s/a.sh", "#!/bin/sh\n# @raycast.mode compact\n", true).selects, false);
+    });
+
+    test.it("passes the words as one argument and the choice after --select", () => {
+        const s = Scripts.parseScript("/s/unicode.py", LIST, true);
+        assert.deepStrictEqual(Scripts.askFor(s, "unicode left arrow").values, ["left arrow"]);
+        assert.deepStrictEqual(Scripts.askFor(s, "unicode").values, []);
+        assert.deepStrictEqual(Scripts.commandFor(s, ["left arrow"]), ["/s/unicode.py", "left arrow"]);
+        assert.deepStrictEqual(Scripts.commandFor(s, []), ["/s/unicode.py"]);
+        assert.deepStrictEqual(Scripts.selectCommand(Object.assign({}, s, {
+            executable: false
+        }), "2190"), ["/usr/bin/env", "python3", "/s/unicode.py", "--select", "2190"]);
+    });
+
+    test.it("reads Alfred style items", () => {
+        const items = Scripts.readItems(JSON.stringify({
+            items: [{
+                    title: "Leftwards Arrow",
+                    subtitle: "U+2190",
+                    arg: "2190",
+                    icon: "←",
+                    copy: "←"
+                }, {
+                    title: "Report",
+                    arg: "~/report.pdf",
+                    type: "file",
+                    icon: {
+                        path: "icons/pdf.png"
+                    }
+                }, {
+                    title: "Docs",
+                    quicklookurl: "https://example.org",
+                    icon: "menu_book",
+                    text: {
+                        copy: "from text"
+                    }
+                }, {
+                    subtitle: "no title"
+                }, "junk", {
+                    title: "More",
+                    valid: false,
+                    autocomplete: "more "
+                }]
+        }), "/s", "/home/a", 50);
+        assert.deepStrictEqual(items.map(i => i.title), ["Leftwards Arrow", "Report", "Docs", "More"]);
+        assert.strictEqual(items[0].glyph, "←");
+        assert.strictEqual(items[1].file, true);
+        assert.strictEqual(items[1].arg, "/home/a/report.pdf");
+        assert.strictEqual(items[1].iconFile, "/s/icons/pdf.png");
+        assert.strictEqual(items[2].icon, "menu_book");
+        assert.strictEqual(items[2].url, "https://example.org");
+        assert.strictEqual(items[2].copy, "from text");
+        assert.strictEqual(items[3].valid, false);
+    });
+
+    test.it("takes a bare array and stops at the cap", () => {
+        const many = Array.from({
+            length: 80
+        }, (_, i) => ({
+                title: `item ${i}`
+            }));
+        assert.strictEqual(Scripts.readItems(JSON.stringify(many), "/s", "", 50).length, 50);
+        assert.strictEqual(Scripts.readItems("not json", "/s", "", 50), null);
+        assert.strictEqual(Scripts.readItems('{"other": []}', "/s", "", 50), null);
+    });
+
+    test.it("turns failures into the first line of the error output", () => {
+        assert.strictEqual(Scripts.readList(1, "", "\n\x1b[31mTraceback: boom\x1b[0m\nmore\n", "/s", "", 50).error, "Traceback: boom");
+        assert.strictEqual(Scripts.readList(2, "", "", "/s", "", 50).error, "exit 2");
+        assert.strictEqual(Scripts.readList(0, "hello", "", "/s", "", 50).error, "printed no items");
+        assert.strictEqual(Scripts.readList(0, '{"items": []}', "", "/s", "", 50).error, "");
+    });
+
+    test.it("picks what Enter does", () => {
+        const item = (fields) => Object.assign({
+            valid: true,
+            url: "",
+            copy: "",
+            file: false,
+            arg: "",
+            autocomplete: ""
+        }, fields);
+        assert.strictEqual(Scripts.itemAction(item({
+            url: "https://a.b"
+        }), true), "run");
+        assert.strictEqual(Scripts.itemAction(item({
+            url: "https://a.b",
+            copy: "x"
+        }), false), "url");
+        assert.strictEqual(Scripts.itemAction(item({
+            copy: "x",
+            file: true
+        }), false), "copy");
+        assert.strictEqual(Scripts.itemAction(item({
+            file: true,
+            arg: "/a"
+        }), false), "file");
+        assert.strictEqual(Scripts.itemAction(item({
+            arg: "https://a.b"
+        }), false), "url");
+        assert.strictEqual(Scripts.itemAction(item({
+            arg: "plain"
+        }), false), "copy");
+        assert.strictEqual(Scripts.itemAction(item({
+            valid: false,
+            autocomplete: "x"
+        }), false), "complete");
+        assert.strictEqual(Scripts.itemAction(item({
+            valid: false
+        }), false), "");
+    });
+
+    test.it("keeps a plain-word script match below apps", () => {
+        assert.ok(Scripts.ambientScore(4) < 0.5);
+        assert.strictEqual(Scripts.ambientScore(1), 0);
+    });
+
+    test.it("ships a list example that runs and prints items", () => {
+        const example = path.join(ROOT, "docs/script-commands/unicode.py");
+        const s = Scripts.parseScript(example, fs.readFileSync(example, "utf8"), true);
+        assert.strictEqual(s.mode, "list");
+        let python = "";
+        try {
+            python = execFileSync("sh", ["-c", "command -v python3"]).toString().trim();
+        } catch (e) {}
+        if (!python)
+            return;
+        const result = Scripts.readList(0, execFileSync(python, [example, "leftwards", "arrow"]).toString(), "", path.dirname(example), "", 50);
+        assert.strictEqual(result.error, "");
+        assert.ok(result.items.some(i => i.title === "Leftwards Arrow" && i.copy === "←"));
     });
 });

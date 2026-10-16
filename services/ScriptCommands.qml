@@ -139,11 +139,192 @@ Singleton {
         root.runs = next;
     }
 
-    function createExample(): string {
-        const path = `${root.folder}/hello.sh`;
-        Quickshell.execDetached(["sh", "-c", 'mkdir -p "$1" && [ ! -e "$2" ] && printf "%s" "$3" > "$2" && chmod +x "$2"', "sh", root.folder, path, Scripts.EXAMPLE]);
-        restartListing.restart();
-        return path;
+    readonly property string examples: `${Quickshell.shellDir}/docs/script-commands`
+
+    function createExamples(): void {
+        if (!exampleWriter.running)
+            exampleWriter.running = true;
+    }
+
+    Process {
+        id: exampleWriter
+
+        command: ["sh", "-c", 'mkdir -p "$1" || exit 1; for f in "$2"/*.sh "$2"/*.py; do [ -f "$f" ] || continue; t="$1/${f##*/}"; [ -e "$t" ] || { cp "$f" "$t" && chmod +x "$t"; }; done', "sh", root.folder, root.examples]
+        onExited: code => {
+            restartListing.restart();
+            if (code === 0)
+                Files.show(root.folder);
+        }
+    }
+
+    readonly property int listDelay: 300
+    readonly property int listTimeoutMs: 5000
+    readonly property int listKeep: 24
+
+    property var lists: ({})
+    property var latestList: ({})
+    property var listOrder: []
+    property string listWanted: ""
+    property var listScript: null
+    property var listValues: []
+    property QtObject listRun: null
+    readonly property string listAsking: root.listRun?.key ?? ""
+
+    function listFor(path: string, key: string): var {
+        return root.lists[key] ?? root.lists[root.latestList[path] ?? ""] ?? null;
+    }
+
+    function listPending(key: string): bool {
+        return !!key && root.listWanted === key && (root.listAsking === key || listWait.running);
+    }
+
+    function wantList(script: var, values: var): void {
+        if (!script) {
+            root.listWanted = "";
+            listWait.stop();
+            root.cancelList();
+            return;
+        }
+        const key = Scripts.runKey(script, values);
+        if (key === root.listWanted)
+            return;
+        root.listWanted = key;
+        root.listScript = script;
+        root.listValues = values;
+        if (root.listRun && root.listRun.key !== key)
+            root.cancelList();
+        listWait.restart();
+    }
+
+    function rerunList(): void {
+        const script = root.listScript;
+        const values = root.listValues;
+        root.listWanted = "";
+        if (script)
+            root.wantList(script, values);
+    }
+
+    function cancelList(): void {
+        const run = root.listRun;
+        root.listRun = null;
+        if (!run)
+            return;
+        run.dropped = true;
+        run.running = false;
+        run.destroy();
+    }
+
+    function startList(): void {
+        const script = root.listScript;
+        if (!script || !root.listWanted)
+            return;
+        root.cancelList();
+        root.listRun = listRunner.createObject(root, {
+            key: root.listWanted,
+            path: script.path,
+            command: Scripts.commandFor(script, root.listValues),
+            workingDirectory: script.path.slice(0, script.path.lastIndexOf("/")) || "/"
+        });
+        root.listRun.running = true;
+    }
+
+    function finishList(run: var): void {
+        if (root.listRun === run)
+            root.listRun = null;
+        if (run.dropped)
+            return;
+        const folder = run.path.slice(0, run.path.lastIndexOf("/")) || "/";
+        const result = run.late ? {
+            items: [],
+            error: `stopped after ${root.listTimeoutMs / 1000} s`,
+            code: -1
+        } : Scripts.readList(run.code, run.out, run.err, folder, Files.home, 50);
+        const lists = Object.assign({}, root.lists);
+        lists[run.key] = Object.assign(result, {
+            key: run.key,
+            path: run.path,
+            at: Date.now()
+        });
+        const order = root.listOrder.filter(k => k !== run.key).concat([run.key]);
+        while (order.length > root.listKeep)
+            delete lists[order.shift()];
+        const latest = Object.assign({}, root.latestList);
+        latest[run.path] = run.key;
+        root.lists = lists;
+        root.listOrder = order;
+        root.latestList = latest;
+        run.destroy();
+    }
+
+    function select(script: var, arg: string): void {
+        Quickshell.execDetached({
+            command: Scripts.selectCommand(script, arg),
+            workingDirectory: script.path.slice(0, script.path.lastIndexOf("/")) || "/"
+        });
+    }
+
+    Timer {
+        id: listWait
+
+        interval: root.listDelay
+        onTriggered: root.startList()
+    }
+
+    Component {
+        id: listRunner
+
+        Process {
+            id: run
+
+            property string key: ""
+            property string path: ""
+            property bool dropped: false
+            property bool late: false
+            property bool settled: false
+            property int code: -1
+            property bool heardOut: false
+            property bool heardError: false
+            property string out: ""
+            property string err: ""
+
+            function settle(): void {
+                if (run.settled || run.dropped || run.code < 0 && !run.late || !run.late && !(run.heardOut && run.heardError))
+                    return;
+                run.settled = true;
+                root.finishList(run);
+            }
+
+            stdout: StdioCollector {
+                onStreamFinished: {
+                    run.out = text;
+                    run.heardOut = true;
+                    run.settle();
+                }
+            }
+
+            stderr: StdioCollector {
+                onStreamFinished: {
+                    run.err = text;
+                    run.heardError = true;
+                    run.settle();
+                }
+            }
+
+            property Timer limit: Timer {
+                interval: root.listTimeoutMs
+                running: true
+                onTriggered: {
+                    run.late = true;
+                    run.running = false;
+                    run.settle();
+                }
+            }
+
+            onExited: code => {
+                run.code = code;
+                run.settle();
+            }
+        }
     }
 
     Timer {
