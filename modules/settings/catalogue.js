@@ -408,9 +408,9 @@ const PAGES_SOURCE = {
                     why: "Ollama runs the model on this computer, so what you ask and select stays here. The other two send it to that service with your API key." },
                 { n: [], icon: "neurology", label: "Model", k: "aiModel", kind: "choice", o: s => s.aiModels, cfg: "launcher.ai.model", dis: s => !s.v("aiOn"), detail: s => s.aiModelNote, kw: "ai model llm qwen llama claude gpt" },
                 { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") === "ollama", kw: "ai api key token secret openai anthropic",
-                    why: "Kept in a file only you can read in the shell's state folder, never in config.json." },
-                { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp",
-                    why: "Any server that speaks the OpenAI chat API: OpenAI, OpenRouter, Groq, LM Studio or llama.cpp." }
+                    why: "Each backend keeps its own key, in a file only you can read in the shell's state folder, never in config.json." },
+                { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", detail: s => s.aiAddressNote, dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp",
+                    why: "Any server that speaks the OpenAI chat API: OpenAI, OpenRouter, Groq, LM Studio or llama.cpp. The key goes only to an https address or to this computer; a plain http server elsewhere is asked without it." }
             ] }
         ]
     },

@@ -1240,6 +1240,7 @@ Singleton {
             pulling: `downloading · ${Assistant.progress}%`,
             unreachable: "Ollama is not answering"
         })[Assistant.phase] ?? ""
+    readonly property string aiAddressNote: Assistant.keyHeld ? "plain http, so the key is not sent" : ""
     readonly property string aiModelNote: Assistant.modelName ? `${Assistant.modelName} in use` : ""
 
     readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"

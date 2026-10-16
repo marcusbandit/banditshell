@@ -21,9 +21,16 @@ Singleton {
     property var tools: ({})
     property bool probed: false
 
-    property string savedKey: ""
-    readonly property string key: root.local ? "" : root.savedKey || Quickshell.env(root.backend === "anthropic" ? "ANTHROPIC_API_KEY" : "OPENAI_API_KEY") || ""
-    readonly property string keyPath: `${Config.stateDir}/assistant-key`
+    property var keys: ({})
+    readonly property string savedKey: root.local ? "" : root.keys[root.backend] ?? ""
+    readonly property string environmentKey: root.backend === "anthropic" ? Quickshell.env("ANTHROPIC_API_KEY") ?? "" : Logic.officialOpenai(root.settings.openaiAddress) ? Quickshell.env("OPENAI_API_KEY") ?? "" : ""
+    readonly property string key: root.local ? "" : root.savedKey || root.environmentKey
+    readonly property bool keyless: Logic.keyless(root.backend, root.settings.openaiAddress)
+    readonly property bool keyHeld: !!root.key && root.backend === "openai" && !Logic.keySafe(root.settings.openaiAddress)
+
+    function keyPathFor(backend: string): string {
+        return `${Config.stateDir}/assistant-key-${backend}`;
+    }
 
     property var models: []
     property bool reachable: false
@@ -50,7 +57,7 @@ Singleton {
         if (!root.enabled)
             return "off";
         if (!root.local)
-            return root.key ? "ready" : "nokey";
+            return root.key || root.keyless ? "ready" : "nokey";
         if (root.setup)
             return root.setup;
         if (root.listed && root.reachable)
@@ -84,16 +91,28 @@ Singleton {
     property int status: 0
     property string leftover: ""
     property QtObject talk: null
+    property QtObject listRun: null
+    property int listGeneration: 0
+    property QtObject pullRun: null
+    property int pullGeneration: 0
+    property string origin: ""
+    property bool sourceCut: false
 
     readonly property var action: Logic.actionOf(root.actionId)
     readonly property string answer: root.kind === "rewrite" ? Logic.visibleText(root.raw).trim() : Logic.undash(Logic.visibleText(root.raw))
     readonly property string result: root.kind === "rewrite" ? Logic.tidyRewrite(root.raw, root.source) : root.answer.trim()
     readonly property int answeredTurns: Math.floor(root.turns.length / 2)
+    readonly property string refusal: root.kind === "rewrite" ? Logic.typeBackRefusal(root.result, root.source, root.sourceCut) : ""
+    readonly property bool typeable: root.canType && !!root.action?.replaces && !root.refusal && !!root.origin
 
     property string selection: ""
+    property string selectionOrigin: ""
     property bool selectionRead: false
 
-    Component.onCompleted: root.refresh()
+    Component.onCompleted: {
+        Quickshell.execDetached(["rm", "-f", "--", `${Config.stateDir}/assistant-key`]);
+        root.refresh();
+    }
 
     onListingChanged: if (root.enabled)
         Qt.callLater(root.list)
@@ -118,33 +137,54 @@ Singleton {
         };
     }
 
+    function wire(request: var, method: string): var {
+        const key = request.auth ? Logic.keyFor(request.url, root.key) : "";
+        return {
+            command: [root.script, request.url, key ? request.auth : "", method].concat(request.headers),
+            environment: {
+                BANDITSHELL_ASSISTANT_KEY: key || null
+            }
+        };
+    }
+
     function list(): void {
-        if (!root.local && !root.key) {
+        if (!root.local && !root.key && !root.keyless) {
             root.models = [];
             root.listed = true;
             root.listedFor = root.listing;
             return;
         }
-        const request = Logic.listRequest(root.backend, root.settingsFor(""));
-        lister.running = false;
-        lister.listing = root.listing;
-        lister.backend = root.backend;
-        lister.environment = {
-            BANDITSHELL_ASSISTANT_KEY: request.auth ? root.key : null
-        };
-        lister.command = [root.script, request.url, request.auth, "get"].concat(request.headers);
-        lister.running = true;
+        if (root.listRun && root.listRun.listing === root.listing)
+            return;
+        if (root.listRun)
+            root.listRun.running = false;
+        root.listGeneration += 1;
+        const wired = root.wire(Logic.listRequest(root.backend, root.settingsFor("")), "get");
+        root.listRun = listingRequest.createObject(root, {
+            generation: root.listGeneration,
+            listing: root.listing,
+            backend: root.backend,
+            environment: wired.environment,
+            command: wired.command
+        });
+        root.listRun.running = true;
     }
 
-    function takeList(text: string): void {
-        if (lister.listing !== root.listing)
+    function listEnded(generation: int): void {
+        if (generation === root.listGeneration)
+            root.listRun = null;
+    }
+
+    function takeList(text: string, generation: int, listing: string, backend: string): void {
+        if (generation !== root.listGeneration || listing !== root.listing)
             return;
+        root.listRun = null;
         const got = Logic.splitStatus(text);
-        const names = Logic.readModels(lister.backend, got.body);
+        const names = Logic.readModels(backend, got.body);
         root.reachable = got.status === 200 && names !== null;
         root.models = root.reachable ? names : [];
         root.listed = true;
-        root.listedFor = lister.listing;
+        root.listedFor = listing;
         root.listedAt = Date.now();
         if (root.setup === "starting" && root.reachable) {
             waitForServer.stop();
@@ -174,6 +214,9 @@ Singleton {
             root.flush();
             return;
         case "unknown":
+        case "installing":
+        case "starting":
+        case "pulling":
             return;
         }
         root.pending = null;
@@ -202,22 +245,27 @@ Singleton {
     }
 
     function download(name: string): void {
+        if (root.pullRun)
+            return;
         root.setup = "pulling";
         root.progress = 0;
         root.pulledBytes = 0;
         root.pullBytes = Logic.STARTER.bytes;
-        puller.got = null;
+        root.pullGeneration += 1;
         const request = Logic.pullRequest(root.settingsFor(""), name);
-        puller.running = false;
-        puller.body = request.body;
-        puller.stdinEnabled = true;
-        puller.command = [root.script, request.url, "", "stream"].concat(request.headers);
-        puller.running = true;
+        root.pullRun = pullingRequest.createObject(root, {
+            generation: root.pullGeneration,
+            body: request.body,
+            command: [root.script, request.url, "", "stream"].concat(request.headers)
+        });
+        root.pullRun.running = true;
     }
 
-    function takePull(line: string): void {
-        const state = Logic.readPull(puller.got, line);
-        puller.got = state;
+    function takePull(line: string, generation: int): void {
+        if (generation !== root.pullGeneration || !root.pullRun)
+            return;
+        const state = Logic.readPull(root.pullRun.got, line);
+        root.pullRun.got = state;
         if (state.error) {
             root.trouble = state.error;
             return;
@@ -232,9 +280,12 @@ Singleton {
         }
     }
 
-    function pullEnded(): void {
+    function pullEnded(generation: int, got: var): void {
+        if (generation !== root.pullGeneration)
+            return;
+        root.pullRun = null;
         root.setup = "";
-        if (!puller.got?.done && !root.trouble)
+        if (!got?.done && !root.trouble)
             root.trouble = "the download stopped";
         if (root.trouble)
             root.pending = null;
@@ -290,6 +341,7 @@ Singleton {
             });
             return;
         }
+        root.stop();
         const before = root.following ? root.turns : [];
         root.turns = Logic.trimTurns(before.concat([
             {
@@ -317,9 +369,12 @@ Singleton {
             });
             return;
         }
+        root.stop();
         root.following = false;
         root.inPlace = inPlace;
         root.actionId = actionId;
+        root.origin = root.selectionOrigin;
+        root.sourceCut = text.length > Logic.SELECTION_LIMIT;
         root.source = text.slice(0, Logic.SELECTION_LIMIT);
         root.begin("rewrite", topic, action.label, Logic.rewritePrompt(action), [Logic.rewriteMessage(root.source)]);
     }
@@ -344,13 +399,12 @@ Singleton {
         root.streaming = true;
         root.startedAt = Date.now();
         const request = Logic.chatRequest(root.backend, root.settingsFor(root.model), system, messages);
+        const wired = root.wire(request, "stream");
         root.talk = talking.createObject(root, {
             generation: root.generation,
             body: request.body,
-            environment: {
-                BANDITSHELL_ASSISTANT_KEY: request.auth ? root.key : null
-            },
-            command: [root.script, request.url, request.auth, "stream"].concat(request.headers)
+            environment: wired.environment,
+            command: wired.command
         });
         root.talk.running = true;
     }
@@ -455,29 +509,48 @@ Singleton {
             });
     }
 
-    function typeBack(text: string): void {
-        if (!text || !root.canType)
-            return;
-        typer.text = text;
-        typer.restart();
+    function notify(icon: string, title: string, body: string): void {
+        Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", icon, title, body]);
+    }
+
+    function copyInstead(text: string, why: string): void {
+        Clipboard.copy({
+            text: text
+        });
+        root.notify("content_copy", `${root.question} · copied`, why || Logic.snippet(text, 160));
     }
 
     function replace(): void {
-        root.typeBack(root.result);
+        if (!root.result)
+            return;
+        if (!root.typeable) {
+            root.copyInstead(root.result, root.refusal || (!root.canType ? "wtype is not installed" : "the window it came from is not known"));
+            return;
+        }
+        typer.text = root.result;
+        typer.origin = root.origin;
+        typer.restart();
+    }
+
+    function typeNow(): void {
+        if (!typer.origin || Hypr.focusedAddress !== typer.origin) {
+            root.copyInstead(typer.text, "the window changed, so it was not typed");
+            return;
+        }
+        Keystrokes.type(typer.text, []);
     }
 
     function deliver(): void {
         root.inPlace = false;
         if (root.error) {
-            Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "error", root.question, root.error]);
+            root.notify("error", root.question, root.error);
             return;
         }
-        if (root.action?.replaces && root.canType) {
-            root.typeBack(root.result);
+        if (root.action?.replaces) {
+            root.replace();
             return;
         }
-        root.copy();
-        Quickshell.execDetached(["notify-send", "-a", "banditshell", "-i", "content_copy", `${root.question} · copied`, Logic.snippet(root.result, 160)]);
+        root.copyInstead(root.result, "");
     }
 
     function warm(): void {
@@ -495,7 +568,12 @@ Singleton {
     }
 
     function setKey(value: string): void {
-        root.savedKey = value.trim();
+        if (root.local)
+            return;
+        const next = Object.assign({}, root.keys);
+        next[root.backend] = value.trim();
+        root.keys = next;
+        keySaver.backend = root.backend;
         keySaver.restart();
     }
 
@@ -521,9 +599,10 @@ Singleton {
         id: typer
 
         property string text: ""
+        property string origin: ""
 
         interval: 250
-        onTriggered: Keystrokes.type(typer.text, [])
+        onTriggered: root.typeNow()
     }
 
     Timer {
@@ -541,17 +620,22 @@ Singleton {
                 root.pending = null;
                 return;
             }
-            root.list();
+            if (!root.listRun)
+                root.list();
         }
     }
 
     Timer {
         id: keySaver
 
+        property string backend: ""
+
         interval: 600
         onTriggered: {
+            const secret = root.keys[keySaver.backend] ?? "";
             keyWriter.running = false;
-            keyWriter.secret = root.savedKey;
+            keyWriter.secret = secret;
+            keyWriter.command = ["sh", "-c", "umask 077 && mkdir -p -- \"$(dirname -- \"$1\")\" && if [ -n \"$2\" ]; then cat > \"$1.new\" && mv -f -- \"$1.new\" \"$1\"; else rm -f -- \"$1\"; fi", "sh", root.keyPathFor(keySaver.backend), secret ? "write" : ""];
             keyWriter.stdinEnabled = true;
             keyWriter.running = true;
             if (root.enabled && !root.local)
@@ -600,33 +684,53 @@ Singleton {
         }
     }
 
-    Process {
-        id: lister
+    Component {
+        id: listingRequest
 
-        property string listing: ""
-        property string backend: ""
+        Process {
+            id: lister
 
-        stdout: StdioCollector {
-            onStreamFinished: root.takeList(text)
+            property int generation: 0
+            property string listing: ""
+            property string backend: ""
+
+            stdout: StdioCollector {
+                onStreamFinished: root.takeList(text, lister.generation, lister.listing, lister.backend)
+            }
+
+            onRunningChanged: if (!lister.running) {
+                root.listEnded(lister.generation);
+                lister.destroy(2000);
+            }
         }
     }
 
-    Process {
-        id: puller
+    Component {
+        id: pullingRequest
 
-        property string body: ""
-        property var got: null
+        Process {
+            id: puller
 
-        onStarted: {
-            puller.write(puller.body);
-            puller.stdinEnabled = false;
+            property int generation: 0
+            property string body: ""
+            property var got: null
+
+            stdinEnabled: true
+
+            onStarted: {
+                puller.write(puller.body);
+                puller.stdinEnabled = false;
+            }
+
+            stdout: SplitParser {
+                onRead: line => root.takePull(line, puller.generation)
+            }
+
+            onExited: root.pullEnded(puller.generation, puller.got)
+
+            onRunningChanged: if (!puller.running)
+                puller.destroy(2000)
         }
-
-        stdout: SplitParser {
-            onRead: line => root.takePull(line)
-        }
-
-        onExited: root.pullEnded()
     }
 
     Process {
@@ -653,10 +757,11 @@ Singleton {
 
         property string then: ""
 
-        command: ["sh", "-c", "wl-paste --primary --no-newline --type text 2>/dev/null | head -c 48000"]
+        command: ["sh", "-c", "wl-paste --primary --no-newline --type text 2>/dev/null | head -c 60001"]
         stdout: StdioCollector {
             onStreamFinished: {
-                root.selection = text.slice(0, Logic.SELECTION_LIMIT);
+                root.selection = text;
+                root.selectionOrigin = Hypr.focusedAddress;
                 root.selectionRead = true;
                 const then = selectionReader.then;
                 selectionReader.then = "";
@@ -673,8 +778,6 @@ Singleton {
 
         property string secret: ""
 
-        command: ["sh", "-c", "umask 077 && mkdir -p -- \"$(dirname -- \"$1\")\" && if [ -n \"$2\" ]; then cat > \"$1.new\" && mv -f -- \"$1.new\" \"$1\"; else rm -f -- \"$1\"; fi", "sh", root.keyPath, root.savedKey ? "write" : ""]
-
         onStarted: {
             keyWriter.write(keyWriter.secret);
             keyWriter.secret = "";
@@ -682,11 +785,25 @@ Singleton {
         }
     }
 
-    FileView {
-        id: keyFile
+    function loadedKey(backend: string, text: string): void {
+        const next = Object.assign({}, root.keys);
+        next[backend] = text.trim();
+        root.keys = next;
+    }
 
-        path: root.keyPath
+    FileView {
+        id: openaiKey
+
+        path: root.keyPathFor("openai")
         printErrors: false
-        onLoaded: root.savedKey = keyFile.text().trim()
+        onLoaded: root.loadedKey("openai", openaiKey.text())
+    }
+
+    FileView {
+        id: anthropicKey
+
+        path: root.keyPathFor("anthropic")
+        printErrors: false
+        onLoaded: root.loadedKey("anthropic", anthropicKey.text())
     }
 }

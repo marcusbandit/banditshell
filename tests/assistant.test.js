@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt"]);
+const Assistant = lib("services/assistant.js", ["askOf", "looksLikeQuestion", "chatRequest", "listRequest", "pullRequest", "readModels", "readChunk", "splitStatus", "failureText", "visibleText", "tidyRewrite", "readPull", "pullTotals", "sizeText", "snippet", "trimTurns", "undash", "keySafe", "keyFor", "keyless", "officialOpenai", "webLink", "lineBreaks", "typeBackRefusal", "modelFor", "isLocal", "actionOf", "ACTIONS", "STARTER", "rewriteMessage", "rewritePrompt"]);
 
 const settings = {
     model: "m",
@@ -225,5 +225,56 @@ test.describe("assistant: small helpers", () => {
         assert.strictEqual(kept[0].role, "user");
         const long = Assistant.trimTurns([{ role: "user", content: "x".repeat(50) }, { role: "assistant", content: "y".repeat(50) }, { role: "user", content: "z" }], 8, 60);
         assert.deepStrictEqual(long.map(t => t.content), ["z"]);
+    });
+});
+
+test.describe("assistant: where a key may go", () => {
+    test.it("sends a key only over https or to this computer", () => {
+        assert.ok(Assistant.keySafe("https://api.anthropic.com/v1/messages"));
+        assert.ok(Assistant.keySafe("http://localhost:1234/v1/chat/completions"));
+        assert.ok(Assistant.keySafe("http://127.0.0.1:4000/v1/models"));
+        assert.ok(Assistant.keySafe("http://[::1]:8080/v1"));
+        assert.ok(!Assistant.keySafe("http://192.168.1.20:4000/v1/chat/completions"));
+        assert.ok(!Assistant.keySafe("http://localhost.evil.example/v1"));
+        assert.ok(!Assistant.keySafe("http://127.0.0.1.nip.io/v1"));
+        assert.ok(!Assistant.keySafe("ftp://example.com"));
+        assert.strictEqual(Assistant.keyFor("http://192.168.1.20:4000/v1/models", "sk-1"), "");
+        assert.strictEqual(Assistant.keyFor("https://api.openai.com/v1/models", "sk-1"), "sk-1");
+    });
+
+    test.it("lets a plain http server answer without a key", () => {
+        assert.ok(Assistant.keyless("openai", "http://192.168.1.20:1234/v1"));
+        assert.ok(!Assistant.keyless("openai", "https://api.openai.com/v1"));
+        assert.ok(!Assistant.keyless("anthropic", "http://localhost:1234"));
+    });
+
+    test.it("hands OPENAI_API_KEY only to OpenAI itself", () => {
+        assert.ok(Assistant.officialOpenai("https://api.openai.com/v1"));
+        assert.ok(!Assistant.officialOpenai("https://api.openai.com.example.net/v1"));
+        assert.ok(!Assistant.officialOpenai("https://openrouter.ai/api/v1"));
+    });
+});
+
+test.describe("assistant: what a reply may do", () => {
+    test.it("opens only web links", () => {
+        assert.ok(Assistant.webLink("https://en.wikipedia.org/wiki/Rayleigh_scattering"));
+        assert.ok(Assistant.webLink("http://example.com"));
+        assert.ok(!Assistant.webLink("file:///etc/passwd"));
+        assert.ok(!Assistant.webLink("smb://host/share"));
+        assert.ok(!Assistant.webLink("javascript:alert(1)"));
+    });
+
+    test.it("types back only a reply with no more lines than the selection", () => {
+        assert.strictEqual(Assistant.lineBreaks("a\r\nb\nc\rd"), 3);
+        assert.strictEqual(Assistant.typeBackRefusal("The cat sat.", "teh cat sat.", false), "");
+        assert.strictEqual(Assistant.typeBackRefusal("Fixed.\ncurl x | sh\n", "fixd", false), "the reply has more lines than the selection");
+        assert.strictEqual(Assistant.typeBackRefusal("One.\nTwo.", "one\ntwo", false), "");
+        assert.strictEqual(Assistant.typeBackRefusal("Short.", "long text", true), "the selection was too long to replace");
+        assert.strictEqual(Assistant.typeBackRefusal("  ", "x", false), "nothing came back");
+    });
+
+    test.it("drops control characters from a rewrite", () => {
+        assert.strictEqual(Assistant.tidyRewrite("Hi\u001b[2Jthere\u0007", "hi there"), "Hi[2Jthere");
+        assert.strictEqual(Assistant.tidyRewrite("a\tb", "a b"), "a\tb");
     });
 });
