@@ -10,6 +10,7 @@ ButtonPair 1.0 ButtonPair.qml
 Button 1.0 Button.qml
 CodeBlock 1.0 CodeBlock.qml
 ColourField 1.0 ColourField.qml
+CommandJob 1.0 CommandJob.qml
 CommandQueue 1.0 CommandQueue.qml
 CrossfadeText 1.0 CrossfadeText.qml
 DropShadow 1.0 DropShadow.qml

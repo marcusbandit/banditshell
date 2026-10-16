@@ -101,6 +101,21 @@ QtObject {
         },
         VideoDownloadSource {
             search: root
+        },
+        SshSource {
+            search: root
+        },
+        PortSource {
+            search: root
+        },
+        ServiceSource {
+            search: root
+        },
+        ContainerSource {
+            search: root
+        },
+        PhoneSource {
+            search: root
         }
     ]
 
