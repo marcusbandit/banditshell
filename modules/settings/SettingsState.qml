@@ -105,6 +105,10 @@ Singleton {
     }
 
     readonly property var configBacked: ({
+            aiOn: "launcher.ai.enabled",
+            aiBackend: "launcher.ai.backend",
+            aiModel: "launcher.ai.model",
+            aiAddress: "launcher.ai.openaiAddress",
             keepFresh: "network.keepListFresh",
             netCheck: "network.checkForInternet",
             portalUri: "network.portalUri",
@@ -339,6 +343,8 @@ Singleton {
             return Hotspot.ssid;
         case "hotspotPass":
             return Hotspot.password;
+        case "aiKey":
+            return Assistant.savedKey;
         case "hotspotBand":
             return Hotspot.band;
         case "warm":
@@ -520,6 +526,8 @@ Singleton {
             return Hotspot.setName(value);
         case "hotspotPass":
             return Hotspot.setPassword(value);
+        case "aiKey":
+            return Assistant.setKey(value);
         case "hotspotBand":
             return Hotspot.setBand(value);
         case "defBrowser":
@@ -1217,6 +1225,22 @@ Singleton {
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+
+    readonly property var aiModels: [["", "automatic"]].concat(Assistant.models.map(m => [m, Assistant.labelOf(m)]))
+    readonly property string aiNote: ({
+            off: "off",
+            unknown: "",
+            ready: Assistant.local ? `${Assistant.modelName} on this computer` : `${Assistant.modelName} over the internet`,
+            nokey: "no API key yet",
+            missing: "Ollama is not installed",
+            installing: "installing Ollama",
+            stopped: "Ollama is not running",
+            starting: "starting Ollama",
+            empty: "no model downloaded yet",
+            pulling: `downloading · ${Assistant.progress}%`,
+            unreachable: "Ollama is not answering"
+        })[Assistant.phase] ?? ""
+    readonly property string aiModelNote: Assistant.modelName ? `${Assistant.modelName} in use` : ""
 
     readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
     readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"

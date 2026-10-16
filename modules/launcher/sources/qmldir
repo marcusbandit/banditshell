@@ -1,2 +1,4 @@
 module qs.modules.launcher.sources
+AskSource 1.0 AskSource.qml
 FallbackSource 1.0 FallbackSource.qml
+RewriteSource 1.0 RewriteSource.qml

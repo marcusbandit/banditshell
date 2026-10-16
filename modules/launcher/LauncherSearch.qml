@@ -29,6 +29,12 @@ QtObject {
     readonly property list<QtObject> sources: [
         FallbackSource {
             search: root
+        },
+        AskSource {
+            search: root
+        },
+        RewriteSource {
+            search: root
         }
     ]
 

@@ -400,6 +400,17 @@ const PAGES_SOURCE = {
                 { n: 72, kind: "w", w: "chips", list: "hidden", kw: "hidden apps" },
                 { n: 72, kind: "w", w: "folders", kw: "app folders" },
                 { n: 73, kind: "w", w: "overrides", kw: "app icon overrides" }
+            ] },
+            { t: "AI", rows: [
+                { n: [], icon: "auto_awesome", label: "Answers and rewriting", k: "aiOn", kind: "toggle", cfg: "launcher.ai.enabled", detail: s => s.aiNote, kw: "ai assistant ask question answer chat llm ollama rewrite selected text grammar translate summarise",
+                    why: "Type ? and a question to get an answer under the search field. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it. Nothing is sent anywhere but the backend below." },
+                { n: [], icon: "dns", label: "Backend", k: "aiBackend", kind: "choice", o: [["ollama", "Ollama"], ["openai", "OpenAI compatible"], ["anthropic", "Anthropic"]], cfg: "launcher.ai.backend", dis: s => !s.v("aiOn"), kw: "ai backend provider ollama openai anthropic claude api local",
+                    why: "Ollama runs the model on this computer, so what you ask and select stays here. The other two send it to that service with your API key." },
+                { n: [], icon: "neurology", label: "Model", k: "aiModel", kind: "choice", o: s => s.aiModels, cfg: "launcher.ai.model", dis: s => !s.v("aiOn"), detail: s => s.aiModelNote, kw: "ai model llm qwen llama claude gpt" },
+                { n: [], icon: "key", label: "API key", k: "aiKey", kind: "secret", dis: s => !s.v("aiOn") || s.v("aiBackend") === "ollama", kw: "ai api key token secret openai anthropic",
+                    why: "Kept in a file only you can read in the shell's state folder, never in config.json." },
+                { n: [], icon: "link", label: "Address", k: "aiAddress", kind: "text", mono: true, cfg: "launcher.ai.openaiAddress", dis: s => !s.v("aiOn") || s.v("aiBackend") !== "openai", kw: "ai api address url endpoint base url openrouter groq lm studio llama.cpp",
+                    why: "Any server that speaks the OpenAI chat API: OpenAI, OpenRouter, Groq, LM Studio or llama.cpp." }
             ] }
         ]
     },

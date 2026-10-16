@@ -53,7 +53,7 @@ LauncherConcept {
             root.hide();
     }
 
-    answerless: search.intent || !!root.capture
+    answerless: search.intent || !!root.capture || assistantCard.shown
 
     LauncherSearch {
         id: search
@@ -146,6 +146,9 @@ LauncherConcept {
 
     onHidden: {
         sheet.close();
+        Assistant.following = false;
+        if (!Assistant.inPlace)
+            Assistant.stop();
         root.capture = null;
         search.armed = "";
         root.collapseToCentre = !panel.bottomAnchored;
@@ -159,6 +162,12 @@ LauncherConcept {
     function accept(): void {
         if (root.capture)
             return;
+        if (assistantCard.busy)
+            return;
+        if (assistantCard.holds) {
+            assistantCard.primary();
+            return;
+        }
         if (root.copyAnswer())
             return;
 
@@ -178,6 +187,7 @@ LauncherConcept {
 
     function move(delta: int): void {
         root.answerHolds = false;
+        assistantCard.released = true;
         if (root.quick) {
             root.tile = (root.tile + delta + root.tiles.length) % root.tiles.length;
             return;
@@ -339,7 +349,7 @@ LauncherConcept {
             return root.claimTileKey(event);
 
         const row = root.results[root.selected];
-        if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest"))))
+        if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest")) || search.complete(root.results.find(r => r.tab))))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
@@ -475,12 +485,14 @@ LauncherConcept {
         if (root.capture)
             return;
         root.answerHolds = false;
+        assistantCard.released = true;
         root.selected = index;
         root.accept();
     }
 
     function moveTo(index: int): void {
         root.answerHolds = false;
+        assistantCard.released = true;
         const n = root.results.length;
         if (n <= 0)
             return;
@@ -575,7 +587,7 @@ LauncherConcept {
 
         width: root.panelWidth
 
-        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
+        implicitHeight: Math.min(root.height - restY - root.inset, Appearance.padding.large * 2 + field.height + Appearance.padding.normal * 2 + separator.height + answerRow.height + (answerRow.visible ? Appearance.padding.normal : 0) + assistantCard.height + (assistantCard.visible ? Appearance.padding.normal : 0) + (symbols.visible ? symbols.height + Appearance.padding.normal : 0) + (root.quick ? quickLaunch.full : list.needed))
 
         height: grow.value * root.revealed
 
@@ -666,6 +678,30 @@ LauncherConcept {
                     onCopied: {
                         root.answerHolds = true;
                         root.accept();
+                    }
+                }
+
+                AssistantCard {
+                    id: assistantCard
+
+                    width: parent.width
+                    iconSize: Appearance.sizes.launcherIcon
+                    rowHeight: root.rowPitch
+                    typed: query.text
+
+                    onCopied: {
+                        Assistant.copy();
+                        root.hide();
+                    }
+                    onReplaced: {
+                        root.hide();
+                        Assistant.replace();
+                    }
+                    onContinued: {
+                        Assistant.followUp();
+                        query.text = "? ";
+                        query.cursorPosition = query.text.length;
+                        query.forceActiveFocus();
                     }
                 }
 
@@ -868,7 +904,7 @@ LauncherConcept {
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
 
-                                selected: line.index === root.selected && !root.answerHolds
+                                selected: line.index === root.selected && !root.answerHolds && !assistantCard.holds
 
                                 askable: true
                                 onActivated: root.chooseRow(line.index)
@@ -943,7 +979,7 @@ LauncherConcept {
                                 id: lineHover
                             }
 
-                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds && root.settled || lineHover.hovered)
+                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds && !assistantCard.holds && root.settled || lineHover.hovered)
 
                             property var shownButtons: []
                             property string shownSignature: ""
@@ -977,7 +1013,7 @@ LauncherConcept {
                         StyledText {
                             id: empty
 
-                            visible: !root.results.length && !root.answer
+                            visible: !root.results.length && !root.answer && !assistantCard.shown
                             text: query.text ? "nothing matches" : "no applications found"
                             color: Appearance.colour.textFaint
                             font.pixelSize: Appearance.font.size.small
