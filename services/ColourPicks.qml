@@ -5,6 +5,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import "colour-picks.js" as Picks
+import "projects.js" as Shells
 
 Singleton {
     id: root
@@ -159,7 +160,7 @@ Singleton {
                 return;
             }
             root.installing = "terminal";
-            Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `'${root.installer}' --ask ${root.packages.join(" ")}`]);
+            Quickshell.execDetached([`${Quickshell.shellDir}/scripts/in-terminal.sh`, `${Shells.quote(root.installer)} --ask ${root.packages.map(Shells.quote).join(" ")}`]);
             watch.restart();
         }
     }

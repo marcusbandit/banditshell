@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.services
 import "../search.js" as Search
 import "../../../services/system-monitor.js" as Monitor

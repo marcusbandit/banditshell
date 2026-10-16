@@ -27,8 +27,14 @@ Singleton {
             settle.restart();
     }
 
+    property bool rescanOwed: false
+
     function scan(): void {
-        scanner.running = false;
+        if (scanner.running) {
+            root.rescanOwed = true;
+            return;
+        }
+        root.rescanOwed = false;
         scanner.running = true;
     }
 
@@ -73,6 +79,9 @@ Singleton {
                 root.scannedAt = Date.now();
             }
         }
+
+        onExited: if (root.rescanOwed)
+            Qt.callLater(root.scan)
     }
 
     function script(path: string): var {

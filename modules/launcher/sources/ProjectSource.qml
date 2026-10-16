@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.services
 import "../../../services/ranking.js" as Ranking
 import "../../../services/projects.js" as Logic
@@ -40,7 +39,7 @@ QtObject {
         if (!root.ask && root.want.length < 2)
             return [];
         const hits = Logic.rank(Projects.projects, Projects.opened, root.want, Ranking.place, root.ask ? 12 : 4);
-        return hits.map(h => root.projectRow(h.project, h.last, root.ask ? Infinity : h.score - 1.5)).filter(r => r.score > 0);
+        return hits.map(h => root.projectRow(h.project, h.last, root.ask ? Infinity : Logic.ambientScore(h.score))).filter(r => r.score > 0);
     }
 
     readonly property var groups: [

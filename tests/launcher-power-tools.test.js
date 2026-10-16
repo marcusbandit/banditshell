@@ -11,13 +11,26 @@ function lib(file, names) {
 }
 
 const Scripts = lib("services/script-commands.js", ["parseScript", "readScan", "argumentsFrom", "askFor", "missing", "commandFor", "outputLines", "lastLine", "runKey", "titleFromFile", "EXAMPLE", "listAsk"]);
-const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand"]);
-const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk"]);
+const Projects = lib("services/projects.js", ["listFrom", "readScan", "rank", "ago", "editorFor", "terminalLine", "shellLine", "projectAsk", "parentWithin", "scanCommand", "ambientScore", "quote"]);
+const Notes = lib("services/notes.js", ["withoutSkipped", "vaultsFrom", "defaultVault", "readIndex", "search", "openUri", "newUri", "fileNameFor", "notesAsk", "indexCommand", "ambientScore"]);
 const Monitor = lib("services/system-monitor.js", ["monitorAsk", "readSample", "topProcesses", "readDisks", "bytesText", "uptimeText", "cpuText"]);
 const Pomodoro = lib("services/pomodoro.js", ["pomodoroAsk", "nextRound", "roundLabel", "notice", "readState"]);
 const Lorem = lib("services/lorem.js", ["loremAsk", "generate", "describe", "preview"]);
 const Picks = lib("services/colour-picks.js", ["colourAsk", "readPicked", "remember", "forget", "readHistory"]);
-const Ranking = lib("services/ranking.js", ["place"]);
+const Ranking = lib("services/ranking.js", ["place", "EXACT", "PREFIX", "WORD", "ANYWHERE"]);
+const os = require("node:os");
+const { execFileSync } = require("node:child_process");
+
+function scratch() {
+    return fs.mkdtempSync(path.join(os.tmpdir(), "power-tools-"));
+}
+
+function bare(tools) {
+    const bin = fs.mkdtempSync(path.join(os.tmpdir(), "power-bin-"));
+    for (const tool of tools)
+        fs.symlinkSync(execFileSync("sh", ["-c", `command -v ${tool}`]).toString().trim(), path.join(bin, tool));
+    return bin;
+}
 
 const SAY = `#!/usr/bin/env python3
 # @raycast.schemaVersion 1
@@ -401,5 +414,80 @@ test.describe("vaults left out", () => {
     test.it("keeps every vault when nothing is left out", () => {
         assert.strictEqual(Notes.withoutSkipped(vaults, "", "/home/u").length, 3);
         assert.strictEqual(Notes.withoutSkipped(vaults, " , ", "/home/u").length, 3);
+    });
+});
+
+test.describe("review fixes", () => {
+    test.it("finds repositories under a symlinked project folder", () => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, "real", "app", ".git"), {
+            recursive: true
+        });
+        fs.symlinkSync(path.join(dir, "real"), path.join(dir, "link"));
+        const command = Projects.scanCommand([path.join(dir, "link")], 2, "_archive");
+        const found = Projects.readScan(execFileSync(command[0], command.slice(1)).toString());
+        assert.deepStrictEqual(found.map(p => p.path), [path.join(dir, "link", "app")]);
+    });
+
+    test.it("indexes symlinked and dot-named vaults without fd", () => {
+        const dir = scratch();
+        fs.mkdirSync(path.join(dir, ".vault", ".obsidian"), {
+            recursive: true
+        });
+        fs.writeFileSync(path.join(dir, ".vault", "first.md"), "x");
+        fs.writeFileSync(path.join(dir, ".vault", ".obsidian", "hidden.md"), "x");
+        fs.mkdirSync(path.join(dir, "elsewhere"));
+        fs.writeFileSync(path.join(dir, "elsewhere", "second.md"), "x");
+        fs.symlinkSync(path.join(dir, "elsewhere"), path.join(dir, "linked"));
+        const vaults = Notes.vaultsFrom([], `${path.join(dir, ".vault")}/.obsidian\n${path.join(dir, "linked")}/.obsidian\n`);
+        const command = Notes.indexCommand(vaults, 100);
+        const env = {
+            PATH: bare(["sh", "nice", "find", "head", "stat", "xargs"])
+        };
+        const notes = Notes.readIndex(execFileSync(command[0], command.slice(1), {
+            env
+        }).toString(), vaults);
+        assert.deepStrictEqual(notes.map(n => n.name).sort(), ["first", "second"]);
+    });
+
+    test.it("counts an editor as a terminal one only by its whole name", () => {
+        assert.strictEqual(Projects.editorFor("neovide", "", []).terminal, false);
+        assert.strictEqual(Projects.editorFor("vivaldi", "", []).terminal, false);
+        assert.strictEqual(Projects.editorFor("/usr/bin/vim", "", []).terminal, true);
+        assert.strictEqual(Projects.editorFor("emacs -nw", "", []).terminal, true);
+        assert.strictEqual(Projects.editorFor("emacs", "", []).terminal, false);
+    });
+
+    test.it("keeps notes and projects below an app prefix match when not asked for", () => {
+        const app = 0.5;
+        for (const score of [Projects.ambientScore, Notes.ambientScore]) {
+            assert.ok(score(Ranking.EXACT) < app);
+            assert.ok(score(Ranking.EXACT) > score(Ranking.PREFIX));
+            assert.ok(score(Ranking.PREFIX) > score(Ranking.WORD));
+            assert.ok(score(Ranking.WORD) > 0);
+            assert.strictEqual(score(Ranking.ANYWHERE), 0);
+        }
+    });
+
+    test.it("keeps only the newest notes for a bare notes listing", () => {
+        const vaults = Notes.vaultsFrom([], "/v/.obsidian\n");
+        const lines = [];
+        for (let i = 0; i < 500; i++)
+            lines.push(`${(i * 7919) % 500}\t/v/note ${i}.md`);
+        const notes = Notes.readIndex(lines.join("\n"), vaults);
+        const top = Notes.search(notes, "", Ranking.place, 10);
+        const sorted = notes.slice().sort((a, b) => b.modified - a.modified).slice(0, 10);
+        assert.deepStrictEqual(top.map(h => h.note.path), sorted.map(n => n.path));
+        const named = Notes.search(notes, "note 1", Ranking.place, 3);
+        assert.strictEqual(named[0].note.name, "note 1");
+    });
+
+    test.it("quotes a shell path with a quote in it", () => {
+        assert.strictEqual(Projects.quote("/opt/bandit's shell/install.sh"), "'/opt/bandit'\\''s shell/install.sh'");
+    });
+
+    test.it("still takes arguments after leading spaces", () => {
+        const s = Scripts.parseScript("/s/say.py", SAY, true);
+        assert.deepStrictEqual(Scripts.askFor(s, "   say hi").values, ["hi"]);
     });
 });

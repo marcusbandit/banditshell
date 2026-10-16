@@ -12,6 +12,8 @@ var IMAGE = /\.(?:png|jpe?g|svg|gif|webp|ico)$/i;
 
 var MARK = "\x1e";
 
+var LEADING_SPACE = /^\s+/;
+
 var LISTING = /^(?:scripts|script commands|my scripts)$/i;
 
 var QUOTED = /^(["'])(.*)\1$/;
@@ -155,7 +157,7 @@ function argumentsFrom(rest, count) {
 }
 
 function askFor(script, text) {
-    var typed = String(text || "").replace(/^\s+/, "");
+    var typed = String(text || "").replace(LEADING_SPACE, "");
     var lower = typed.toLowerCase();
     var heads = [script.title.toLowerCase(), script.word].filter((h, i, all) => h && all.indexOf(h) === i);
     for (var i = 0; i < heads.length; i++) {

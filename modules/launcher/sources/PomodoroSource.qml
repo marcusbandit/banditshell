@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.services
 import "../../../services/pomodoro.js" as Logic
 

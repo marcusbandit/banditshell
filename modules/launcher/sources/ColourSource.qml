@@ -1,5 +1,4 @@
 import QtQuick
-import Quickshell
 import qs.services
 import "../../../services/ranking.js" as Ranking
 import "../../../services/colours.js" as Colours
