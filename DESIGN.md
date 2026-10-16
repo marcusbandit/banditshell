@@ -693,8 +693,13 @@ banditshell/
 │   ├── Polkit.qml               the shell as the polkit agent, so pkexec (an
 │   │                            install, an uninstall, the charge limit) asks
 │   │                            in the same card as the keyring. Only one agent
-│   │                            per session: with another running (hyprpolkit-
-│   │                            agent) this one is refused and that one asks
+│   │                            per session, so scripts/polkit-takeover.sh
+│   │                            stops any other (hyprpolkitagent, polkit-gnome,
+│   │                            the KDE one) BEFORE the shell registers, and
+│   │                            the setting being turned off starts them again.
+│   │                            It registers once: Quickshell crashes when an
+│   │                            agent is destroyed while its registration is
+│   │                            still in flight. Previews never take over
 │   ├── Tablet.qml               whether the machine is FOLDED OVER. The changes
 │   │                            come from the compositor (a switch bind execs
 │   │                            the CLI); the state at startup comes from
@@ -1207,6 +1212,9 @@ banditshell/
 │   ├── install-package.sh       one package by whichever manager is there:
 │   │                            quietly with sudo -n, through pkexec, or typed
 │   │                            in a terminal
+│   ├── polkit-takeover.sh       stops the other polkit agents of this user,
+│   │                            units by systemctl, the rest by name, and says
+│   │                            which, so they can be started again
 │   ├── uninstall-app.sh         which package a desktop id came from, and its
 │   │                            removal; refuses when apt or rpm would take
 │   │                            other packages with it

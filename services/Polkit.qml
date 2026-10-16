@@ -2,18 +2,26 @@ pragma Singleton
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Services.Polkit
+import qs.config
 
 Singleton {
     id: root
 
-    readonly property bool serving: agent.isRegistered
+    readonly property bool wanted: Config.values.polkit.agent && !Quickshell.env("BANDITSHELL_PREVIEW")
 
-    readonly property var flow: agent.flow
+    property PolkitAgent agent: null
+
+    property var stopped: []
+
+    readonly property bool serving: root.agent?.isRegistered ?? false
+
+    readonly property var flow: root.agent?.flow ?? null
 
     property bool showing: false
 
-    readonly property bool active: root.showing || agent.isActive && !!root.flow && !root.flow.isCompleted
+    readonly property bool active: root.showing || !!root.agent?.isActive && !!root.flow && !root.flow.isCompleted
 
     readonly property bool busy: !root.showing && root.active && !root.flow.isResponseRequired
 
@@ -81,12 +89,76 @@ Singleton {
         return names.includes(wanted) ? wanted : names[0] ?? "";
     }
 
-    PolkitAgent {
-        id: agent
+    function start(): void {
+        retire.stop();
+        if (root.agent || !root.wanted || !Config.loaded || takeover.running)
+            return;
+        takeover.running = true;
+    }
 
-        onAuthenticationRequestStarted: {
-            root.screenName = root.screenFor(Shell.offStageScreen);
-            root.asked += 1;
+    function handBack(): void {
+        for (const gone of root.stopped)
+            Quickshell.execDetached(gone.kind === "unit" ? ["systemctl", "--user", "start", gone.what] : [gone.what]);
+        root.stopped = [];
+    }
+
+    onWantedChanged: {
+        if (root.wanted)
+            root.start();
+        else if (root.agent)
+            retire.restart();
+    }
+
+    Connections {
+        target: Config
+
+        function onLoadedChanged(): void {
+            root.start();
+        }
+    }
+
+    Component.onCompleted: root.start()
+
+    Component {
+        id: agentMaker
+
+        PolkitAgent {
+            onAuthenticationRequestStarted: {
+                root.screenName = root.screenFor(Shell.offStageScreen);
+                root.asked += 1;
+            }
+        }
+    }
+
+    Timer {
+        id: retire
+
+        interval: 3000
+        onTriggered: {
+            if (root.wanted || !root.agent)
+                return;
+            root.agent.destroy();
+            root.agent = null;
+            root.handBack();
+        }
+    }
+
+    Process {
+        id: takeover
+
+        command: [Quickshell.shellPath("scripts/polkit-takeover.sh")]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const gone = text.split("\n").filter(Boolean).map(line => ({
+                            kind: line.slice(0, line.indexOf("\t")),
+                            what: line.slice(line.indexOf("\t") + 1)
+                        }));
+                root.stopped = [...root.stopped, ...gone.filter(g => !root.stopped.some(s => s.what === g.what))];
+            }
+        }
+        onExited: {
+            if (root.wanted && !root.agent)
+                root.agent = agentMaker.createObject(root);
         }
     }
 

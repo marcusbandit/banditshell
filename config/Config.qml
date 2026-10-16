@@ -227,6 +227,10 @@ Singleton {
                 acknowledged: false,
             },
 
+            polkit: {
+                agent: true
+            },
+
             blob: {
 
                 melt: 34,

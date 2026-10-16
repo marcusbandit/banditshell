@@ -42,7 +42,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "When something needs your password to run as admin, such as an install, the shell asks in the same card as the keyring prompt. It can only do this when no other polkit agent is running; with hyprpolkitagent running, that one keeps asking."
+          "text": "When something needs your password to run as admin, such as an install, the shell asks in the same card as the keyring prompt. Only one program can ask, so another password agent such as hyprpolkitagent is stopped while the shell runs. Turning off Settings › Shell › Ask for passwords starts it again."
         },
         {
           "type": "features",
@@ -72,7 +72,7 @@
         {
           "type": "config",
           "severity": "minor",
-          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency, webSearch, contents, fallbacks, aliases and hotkeys. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
+          "text": "config.json has new keys under launcher: list.pinned, list.recents, hiddenFiles, currency, webSearch, contents, fallbacks, aliases and hotkeys, and polkit.agent. The shell keeps the exchange rates in ~/.local/state/banditshell/rates.json."
         }
       ]
     },

@@ -1065,7 +1065,7 @@ Scope {
         target: "polkit"
 
         function status(): string {
-            return [`agent      ${Polkit.serving ? "the shell" : "another program (the shell could not register)"}`, `asking     ${Polkit.active}`, `title      ${Polkit.active ? Polkit.title : "-"}`, `message    ${Polkit.message || "-"}`, `warning    ${Polkit.warning || "-"}`, `screen     ${Polkit.screenName || "-"}`].join("\n");
+            return [`agent      ${Polkit.serving ? "the shell" : Polkit.wanted ? "another program (the shell could not register)" : "another program (polkit.agent is off)"}`, `stopped    ${Polkit.stopped.map(g => g.what.split("/").pop()).join(", ") || "-"}`, `asking     ${Polkit.active}`, `title      ${Polkit.active ? Polkit.title : "-"}`, `message    ${Polkit.message || "-"}`, `warning    ${Polkit.warning || "-"}`, `screen     ${Polkit.screenName || "-"}`].join("\n");
         }
 
         function refuse(): string {

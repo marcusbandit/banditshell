@@ -165,6 +165,7 @@ Singleton {
             listPinned: "launcher.list.pinned",
             listRecents: "launcher.list.recents",
             hiddenFiles: "launcher.hiddenFiles",
+            polkitAgent: "polkit.agent",
             webSearch: "launcher.webSearch",
             contents: "launcher.contents",
             fallbackWeb: "launcher.fallbacks.web",
@@ -1213,6 +1214,8 @@ Singleton {
     readonly property int trayCount: Tray.items.length
     readonly property int starredCount: Object.keys(Config.values.launcher.starred ?? {}).length
     readonly property var currencies: Currency.codes
+
+    readonly property string polkitNote: Polkit.serving ? "the shell asks" : "another program asks"
     readonly property string ratesNote: Currency.date ? `rates from ${Currency.date}` : "no rates yet"
 
     readonly property bool clipseImported: !Config.values.clipboard.importClipse

@@ -719,7 +719,9 @@ const PAGES_SOURCE = {
             { t: "Behaviour", rows: [
                 { n: 115, icon: "keyboard_tab", label: "Tab completion", k: "tabComplete", kind: "toggle", detail: "for the shell’s cli" },
                 { n: 116, icon: "edit_document", label: "Edit Hyprland files", k: "sourceEdits", kind: "toggle", cfg: "sourceEdits.acknowledged", detail: s => s.v("sourceEdits") ? "only its own include" : "hands off", kw: "permission to edit hyprland files",
-                    why: "The shell writes borders, screen layout and binds into one file it owns. Your own Hyprland files are never touched." }
+                    why: "The shell writes borders, screen layout and binds into one file it owns. Your own Hyprland files are never touched." },
+                { n: [], icon: "password", label: "Ask for passwords", k: "polkitAgent", kind: "toggle", cfg: "polkit.agent", detail: s => s.polkitNote, kw: "polkit password prompt authentication agent pkexec admin",
+                    why: "When a program needs your password to run as admin, the shell asks in its own card. Only one program can do this at a time, so another password agent that is running, such as hyprpolkitagent, is stopped." }
             ] },
             { t: "Recent changes", rows: [
                 { n: [], kind: "w", w: "recent", kw: "recent changes undo history" }
