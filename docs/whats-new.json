@@ -55,6 +55,11 @@
           "text": "Type ? and a question in the launcher and the answer appears under the search field, from a model running on your own computer. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it, then put the result back in place or copy it. If Ollama is not set up yet, the launcher installs it, starts it and downloads a small model for you, or you can add an API key in Settings › Launcher."
         },
         {
+          "type": "features",
+          "severity": "minor",
+          "text": "Draw your own tiling layout in Settings › Windows › Custom layout, or type layout workshop in the launcher. Place regions, choose where each new window goes and what happens on a narrow screen, and the shell writes a Hyprland layout and loads it right away without editing your config. Stage comes as a starting point, and your saved layouts show up next to it in the launcher's layout list."
+        },
+        {
           "type": "bugs",
           "severity": "minor",
           "text": "The processor temperature reads the processor's own sensor. On some boards it showed a fixed reading near 17 °C."
