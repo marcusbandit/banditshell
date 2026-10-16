@@ -3646,6 +3646,10 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   `actionsFor` returns `{ icon, label, short?, run, tucked? }`; the first is
   what Enter does, the rest become row buttons, and tucked ones sit under
   More. `complete` is Tab; return true when it handled it.
+- `confirmActionsFor(row)`: the buttons an armed row shows (the hub adds
+  Cancel). A dangerous action sets `search.armed` to a key on the first
+  Enter and only runs on the second; the row reads "Press Enter again to
+  ..." while armed.
 - `commands`: entries for the shared command list, `{ id, icon, label,
   words, detail?, toggle?, stay?, confirm?, run }`. These get aliases and
   hotkeys for free.
@@ -3656,6 +3660,18 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
 - `caps`: `{ groupKey: n }` to show more or fewer rows than the default.
 - `phrases`: `{ head, picks }` entries Tab completion offers, like
   `{ head: "emoji ", picks: ["smile", "heart"] }`.
+
+Scores: apps rank about 1 to 3 and settings at least 0.5. A row that shows
+up for a plain word the user did not clearly mean for a source stays below
+0.5; a clear ask of a source puts its first row at Infinity. Rows the user
+runs get a small lift next time from `services/LauncherMemory.qml`, which
+skips typed text, links, files and anything positional.
+
+The result list is not a binding: `arrangeInputs` lists everything
+`arrangement()` reads, and a change schedules one rebuild per event loop
+turn. Key handlers call `arrangeNow()` first. A source whose groups read a
+property the hub does not already list must still expose it through
+`groups`, which is in `arrangeInputs`.
 
 A hotkey runs a row through a LauncherSearch that the CLI makes and throws
 away at once, so anything that outlives the call (a Process, a timer) belongs
