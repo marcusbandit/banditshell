@@ -2,6 +2,7 @@ module qs.modules
 Chassis 1.0 Chassis.qml
 Cli 1.0 Cli.qml
 FrameExclusions 1.0 FrameExclusions.qml
+FullscreenBorder 1.0 FullscreenBorder.qml
 LazyPanel 1.0 LazyPanel.qml
 SettingsCorner 1.0 SettingsCorner.qml
 ShellWindow 1.0 ShellWindow.qml

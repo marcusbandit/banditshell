@@ -24,6 +24,8 @@ Item {
     readonly property var host: QsWindow.window?.screen ?? null
     readonly property string screenName: root.host?.name ?? ""
 
+    property bool yielded: false
+
     readonly property bool focused: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
     readonly property bool offStage: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
 
@@ -251,7 +253,7 @@ Item {
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
 
-    readonly property bool interactive: presence.value > 0.5 && (root.whole || root.bubbleKeys.length > 0)
+    readonly property bool interactive: !root.yielded && presence.value > 0.5 && (root.whole || root.bubbleKeys.length > 0)
 
     readonly property real compactHeight: Appearance.font.line.small + Appearance.padding.small * 2
     readonly property real slot: Appearance.font.line.small
@@ -897,6 +899,7 @@ Item {
         Item {
             id: scene
 
+            visible: !root.yielded
             width: root.fieldWidth
             height: root.fieldHeight
             anchors.horizontalCenter: parent.horizontalCenter

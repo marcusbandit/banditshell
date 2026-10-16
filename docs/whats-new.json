@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-16-4",
+      "id": "2026-10-16-6",
       "date": "2026-10-16",
       "changes": [
         {
@@ -98,6 +98,22 @@
           "type": "bugs",
           "severity": "minor",
           "text": "Snapping a window to a half, third or quarter places it instead of only floating it. The shell uses far less processor while music plays: the seek bar in the island, the media card and the lock screen no longer redraws its shapes from scratch every frame, and a settings page illustration stops animating when the panel is closed. Typing in the launcher is quicker even with everything above added: the results are put together once per key instead of once for every kind of result, and app and emoji searches narrow from the letters you already typed."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-16-5",
+      "date": "2026-10-16",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A fullscreen window now gets its whole monitor. The sidebar, the island and any panels on that monitor step aside, and only the thin line round the screen's edge stays, with its corners rounded as usual. The frame melts out to that line as the window grows and comes back the same way when it leaves fullscreen. Maximized windows and your other monitors are not affected."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Over a fullscreen window the shell no longer catches clicks at the screen's edges, and a panel shortcut no longer opens a launcher you cannot see that swallows your typing. On that monitor the shortcut now does nothing until the window leaves fullscreen."
         }
       ]
     },
