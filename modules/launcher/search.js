@@ -204,6 +204,9 @@ function clockOf(text, loose) {
 
 var CLOCK = "\\d{1,2}(?:[:.]\\d{2})?(?:\\s*(?:am|pm))?";
 
+var REMIND_FIRST = new RegExp(`^(at\\s+)?(${CLOCK})(?:\\s+(.*))?$`, "i");
+var REMIND_LAST = new RegExp(`^(.+?)\\s+at\\s+(${CLOCK})$`, "i");
+
 function reminderAsk(text) {
     const m = /^remind\s+me\s+(.+)$/i.exec(String(text || "").trim());
     if (!m)
@@ -211,14 +214,14 @@ function reminderAsk(text) {
     const rest = m[1].trim();
     const what = s => (s || "").trim().replace(/^to(?:\s+|$)/i, "");
 
-    const first = new RegExp(`^(at\\s+)?(${CLOCK})(?:\\s+(.*))?$`, "i").exec(rest);
+    const first = REMIND_FIRST.exec(rest);
     const early = first && clockOf(first[2], !!first[1]);
     if (early)
         return {
             at: early,
             label: what(first[3])
         };
-    const last = new RegExp(`^(.+?)\\s+at\\s+(${CLOCK})$`, "i").exec(rest);
+    const last = REMIND_LAST.exec(rest);
     const late = last && clockOf(last[2], true);
     if (late)
         return {
@@ -322,17 +325,21 @@ var ZONE_ABBREVIATIONS = {
     "nzdt": "Pacific/Auckland"
 };
 
+var ZONE_TIME = "(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)?|noon|midnight)";
+var ZONE_BETWEEN = new RegExp(`^${ZONE_TIME} (?:in )?(.+?) (?:in|to|->|→) (.+)$`);
+var ZONE_TO = new RegExp(`^${ZONE_TIME} (?:in|to) (.+)$`);
+var ZONE_AT = new RegExp(`^${ZONE_TIME} (.+?)(?: time)?$`);
+
 function zoneConvertAsk(text) {
     const t = String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
-    const time = "(\\d{1,2}(?:[:.]\\d{2})?\\s*(?:am|pm)?|noon|midnight)";
-    let m = new RegExp(`^${time} (?:in )?(.+?) (?:in|to|->|→) (.+)$`).exec(t);
+    let m = ZONE_BETWEEN.exec(t);
     let from = "", to = "";
     if (m) {
         from = m[2];
         to = m[3];
-    } else if ((m = new RegExp(`^${time} (?:in|to) (.+)$`).exec(t))) {
+    } else if ((m = ZONE_TO.exec(t))) {
         to = m[2];
-    } else if ((m = new RegExp(`^${time} (.+?)(?: time)?$`).exec(t))) {
+    } else if ((m = ZONE_AT.exec(t))) {
         from = m[2];
     } else {
         return null;
@@ -603,12 +610,15 @@ function layoutLabel(name) {
     return bare.charAt(0).toUpperCase() + bare.slice(1);
 }
 
+var LUA_COMMENTS = /--\[(=*)\[[\s\S]*?\]\1\]|--[^\n]*/g;
+
 function luaLayouts(texts) {
     const out = [];
     const find = /hl\.layout\.register\(\s*["']([^"']+)["']/g;
     for (const text of texts || []) {
+        const code = String(text).replace(LUA_COMMENTS, "");
         let m;
-        while ((m = find.exec(String(text))) !== null)
+        while ((m = find.exec(code)) !== null)
             if (out.indexOf(`lua:${m[1]}`) < 0)
                 out.push(`lua:${m[1]}`);
     }

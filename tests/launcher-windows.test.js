@@ -66,6 +66,7 @@ test.describe("moving and layouts", () => {
 
     test.it("finds layouts registered in the Lua config and names them", () => {
         assert.deepStrictEqual(Search.luaLayouts(['hl.layout.register("stage", { recalculate = r })', "hl.layout.register('grid', {})\nhl.layout.register(\"stage\", {})"]), ["lua:stage", "lua:grid"]);
+        assert.deepStrictEqual(Search.luaLayouts(['-- hl.layout.register("old", {})\nhl.layout.register("stage", {})\n--[[ hl.layout.register("gone", {}) ]]\n--[==[\nhl.layout.register("long", {})\n]==]']), ["lua:stage"]);
         assert.strictEqual(Search.layoutLabel("lua:stage"), "Stage");
         assert.strictEqual(Search.layoutLabel("dwindle"), "Dwindle");
     });

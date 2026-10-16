@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import "../modules/launcher/search.js" as Search
+import "hyprland-lua.js" as Lua
 
 Singleton {
     id: root
@@ -21,7 +22,7 @@ Singleton {
     function use(name: string): void {
         root.current = name;
         const bare = name.replace(/^lua:/, "");
-        Quickshell.execDetached(Hypr.lua ? ["hyprctl", "eval", `hl.config({ general = { layout = "${name}" } }) if apply_layout_binds then apply_layout_binds("${bare}") end`] : ["hyprctl", "keyword", "general:layout", name]);
+        Quickshell.execDetached(Hypr.lua ? ["hyprctl", "eval", `hl.config({ general = { layout = "${Lua.luaString(name)}" } }) if apply_layout_binds then apply_layout_binds("${Lua.luaString(bare)}") end`] : ["hyprctl", "keyword", "general:layout", name]);
         reread.restart();
     }
 

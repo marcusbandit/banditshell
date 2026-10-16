@@ -135,6 +135,7 @@ LauncherConcept {
     }
 
     onCleared: {
+        search.arrangeNow();
         root.selected = 0;
         root.tile = 0;
         if (root.unsized) {

@@ -35,8 +35,14 @@ Item {
 
     readonly property string readKey: root.wanted && (root.document || root.folder) ? `${root.document || root.folder}:${root.firstLine}` : ""
 
-    onReadKeyChanged: {
-        reader.running = false;
+    onReadKeyChanged: root.read()
+
+    function read(): void {
+        if (reader.running) {
+            reader.owed = true;
+            reader.running = false;
+            return;
+        }
         if (!root.readKey)
             return;
         reader.key = root.readKey;
@@ -48,6 +54,14 @@ Item {
         id: reader
 
         property string key: ""
+        property bool owed: false
+
+        onRunningChanged: {
+            if (!reader.running && reader.owed) {
+                reader.owed = false;
+                root.read();
+            }
+        }
 
         stdout: StdioCollector {
             onStreamFinished: {

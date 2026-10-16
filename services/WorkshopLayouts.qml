@@ -72,13 +72,19 @@ Singleton {
         next.splice(at < 0 ? next.length : Math.min(at, next.length), 0, model);
         root.layouts = next;
         root.persist();
+        const renamedInUse = !!previous && previous !== model.name && WindowLayouts.current === `lua:${previous}`;
         if (previous && previous !== model.name)
             root.forget(previous);
         root.enqueue({
             writes: [model],
             names: [model.name],
             afterReload: false,
-            then: then ?? null
+            then: () => {
+                if (renamedInUse && root.isReady(model.name))
+                    WindowLayouts.use(`lua:${model.name}`);
+                if (then)
+                    then();
+            }
         });
         return "";
     }
@@ -169,7 +175,8 @@ Singleton {
             const text = output.trim();
             const evalError = text.startsWith("error:");
             const answered = root.possible && (text === "ok" || evalError);
-            const broken = evalError ? LayoutLua.failedNames(text, job.names, root.folder) : [];
+            const named = evalError ? LayoutLua.failedNames(text, job.names, root.folder) : [];
+            const broken = evalError && !named.length ? job.names : named;
             const next = Object.assign({}, root.ready);
             for (const name of job.names)
                 next[name] = answered && broken.indexOf(name) < 0;
