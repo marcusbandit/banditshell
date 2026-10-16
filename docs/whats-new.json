@@ -47,7 +47,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "The launcher runs your own scripts: put one in ~/.config/banditshell/scripts and type its name, with any words after it as input. Type pick colour to grab a colour from the screen, colours for the ones you picked, projects to open a repository in your editor, notes or note something for Obsidian, and cpu, memory, disk or top to see what the machine is doing. pomodoro starts focus rounds with breaks between them, and lorem 3 copies three paragraphs of filler text. Settings › Launcher › Power tools sets the folders, and can leave a vault out of notes."
+          "text": "The launcher runs your own scripts: put one in ~/.config/banditshell/scripts and type its name, with any words after it as input. Type pick colour to grab a colour from the screen, colours for the ones you picked, projects to open a repository in your editor, notes or note something for Obsidian, and cpu, memory, disk or top to see what the machine is doing. pomodoro starts focus rounds with breaks between them, and lorem 3 copies three paragraphs of filler text. Settings › Launcher › Power tools sets the folders, and can leave a vault out of notes. A script can also show a list: add # @banditshell.mode list, print a little JSON, and type the script's name followed by what you are looking for; try unicode arrow after Create a script command."
         },
         {
           "type": "features",
