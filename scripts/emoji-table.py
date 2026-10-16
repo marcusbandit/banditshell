@@ -191,7 +191,7 @@ def fetch(folder):
     for name, url in SOURCES.items():
         path = os.path.join(folder, name)
         print(f"fetching {url}", file=sys.stderr)
-        with urllib.request.urlopen(url) as reply, open(path, "wb") as out:
+        with urllib.request.urlopen(url, timeout=60) as reply, open(path, "wb") as out:
             out.write(reply.read())
         paths[name] = path
     return paths

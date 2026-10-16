@@ -188,6 +188,10 @@ Singleton {
     Process {
         id: sender
 
+        environment: ({
+                LC_CTYPE: "C.UTF-8"
+            })
+
         onExited: root.finished = true
         onRunningChanged: if (!running)
             Qt.callLater(root.settle)

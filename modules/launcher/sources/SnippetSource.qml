@@ -1,6 +1,4 @@
 import QtQuick
-import Quickshell
-import qs.config
 import qs.services
 
 QtObject {
@@ -16,6 +14,8 @@ QtObject {
     readonly property var found: root.search.text.length < 2 && !root.explicit ? [] : Snippets.find(root.asked.term, root.explicit).slice(0, root.explicit ? 20 : 4)
 
     readonly property bool intent: root.explicit || root.found.some(f => f.keyed)
+
+    readonly property string deleting: root.search.armed.startsWith("snippetdelete:") ? root.search.armed.slice(14) : ""
 
     readonly property bool saving: root.explicit && root.asked.term !== "" && !Snippets.list.some(s => String(s?.name ?? "").toLowerCase() === root.asked.term.toLowerCase())
 
@@ -36,12 +36,14 @@ QtObject {
 
     function row(snippet: var, score: real): var {
         const preview = Snippets.preview(snippet);
+        const arming = snippet.id === root.deleting;
         return {
             key: `snippet:${snippet.id}`,
             kind: "snippet",
             snippet: snippet,
-            label: snippet.name || preview,
-            detail: snippet.keyword ? `${snippet.keyword} · ${preview}` : preview,
+            armed: arming,
+            label: arming ? `Press Enter again to delete ${snippet.name || preview}` : snippet.name || preview,
+            detail: arming ? "" : snippet.keyword ? `${snippet.keyword} · ${preview}` : preview,
             icon: "short_text",
             score: score
         };
@@ -109,7 +111,10 @@ QtObject {
     }
 
     function activate(row: var): void {
-        if (row.kind === "snippetnew")
+        if (row.armed) {
+            root.search.armed = "";
+            Snippets.remove(row.snippet.id);
+        } else if (row.kind === "snippetnew")
             root.edit();
         else if (Typist.found)
             root.type(row.snippet);
@@ -148,7 +153,7 @@ QtObject {
             icon: "delete",
             label: "Delete",
             tucked: true,
-            run: () => Snippets.remove(row.snippet.id)
+            run: () => root.search.armed = `snippetdelete:${row.snippet.id}`
         });
         if (!typing && Typist.probed)
             acts.push({

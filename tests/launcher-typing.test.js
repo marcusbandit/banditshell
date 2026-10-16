@@ -12,9 +12,13 @@ function lib(file, names) {
 
 const Table = lib("services/emoji-table.js", ["TABLE", "GROUPS", "FIRST_SYMBOL_GROUP"]);
 const Emoji = lib("services/emoji.js", ["parse", "index", "ask", "search", "toned", "modifierFor", "remember", "codeOf", "TONES", "POPULAR"]);
-const Snippets = lib("services/snippets.js", ["ask", "find", "expand", "preview", "suggestName", "newId", "cleanKeyword", "withSnippet", "withoutSnippet", "keywordHolder"]);
-const Quicklinks = lib("services/quicklinks.js", ["match", "resolve", "hostOf", "takes", "cleanKeyword", "withLink", "keywordHolder", "problem"]);
+const Snippets = lib("services/snippets.js", ["ask", "find", "expand", "preview", "previewText", "suggestName", "newId", "cleanKeyword", "withSnippet", "withoutSnippet", "keywordHolder"]);
+const Quicklinks = lib("services/quicklinks.js", ["KEYWORD_SCORE", "match", "resolve", "hostOf", "takes", "cleanKeyword", "withLink", "keywordHolder", "problem"]);
 const ClipboardSearch = lib("services/clipboard-search.js", ["ask", "index", "find", "firstLine"]);
+const { spawnSync } = require("node:child_process");
+const os = require("node:os");
+
+const APP_FLOOR = 0.5;
 
 const ALL = Emoji.parse(Table.TABLE, Table.GROUPS, Table.FIRST_SYMBOL_GROUP);
 const BY_CHAR = Emoji.index(ALL);
@@ -165,6 +169,22 @@ test.describe("snippets", () => {
         assert.strictEqual(found[0].keyed, true);
     });
 
+    test.it("ranks plain matches below apps unless the keyword is exact", () => {
+        for (const query of ["sign", "address", "addr", "bug rep"])
+            for (const found of Snippets.find(LIST, query, false))
+                assert.ok(found.score < APP_FLOOR, `${query}: ${found.snippet.name} scored ${found.score}`);
+        assert.strictEqual(Snippets.find(LIST, "bug", false)[0].score, Infinity);
+        const exact = Snippets.find(LIST, "address", false)[0].score;
+        const prefix = Snippets.find(LIST, "addr", false)[0].score;
+        assert.ok(exact > prefix);
+    });
+
+    test.it("shows the clipboard placeholder in previews, never what was copied", () => {
+        const shown = Snippets.previewText("Re: {clipboard} on {date}", { date: "16 Oct 2026", clipboard: "hunter2" }, 80);
+        assert.strictEqual(shown, "Re: {clipboard} on 16 Oct 2026");
+        assert.strictEqual(Snippets.expand("{clipboard}", { clipboard: "hunter2" }).text, "hunter2");
+    });
+
     test.it("finds by name in plain search and by text only when asked", () => {
         assert.deepStrictEqual(Snippets.find(LIST, "addr", false).map(f => f.snippet.id), ["b"]);
         assert.deepStrictEqual(Snippets.find(LIST, "street", false), []);
@@ -238,6 +258,18 @@ test.describe("quicklinks", () => {
         assert.strictEqual(Quicklinks.match(LINKS, "arch").exact[0].query, "");
     });
 
+    test.it("needs two letters before a keyword prefix counts, and stays below apps", () => {
+        assert.deepStrictEqual(Quicklinks.match(LINKS, "g").partial, []);
+        assert.deepStrictEqual(Quicklinks.match(LINKS, "y").partial, []);
+        assert.deepStrictEqual(Quicklinks.match(LINKS, "gh").partial, []);
+        assert.strictEqual(Quicklinks.match(LINKS, "gh").exact.length, 1);
+        assert.deepStrictEqual(Quicklinks.match(LINKS, "ma").partial.map(p => p.link.name), ["Mail"]);
+        for (const query of ["ar", "you", "wiki", "ma", "gi"])
+            for (const p of Quicklinks.match(LINKS, query).partial)
+                assert.ok(p.score < APP_FLOOR, `${query}: ${p.link.name} scored ${p.score}`);
+        assert.ok(Quicklinks.KEYWORD_SCORE <= APP_FLOOR);
+    });
+
     test.it("ignores words after a link that takes none", () => {
         assert.strictEqual(Quicklinks.match(LINKS, "mail now").exact.length, 0);
         assert.strictEqual(Quicklinks.match(LINKS, "mail").exact.length, 1);
@@ -276,6 +308,35 @@ test.describe("quicklinks", () => {
             assert.strictEqual(Quicklinks.problem(link), "", link.name);
             assert.ok(Quicklinks.takes(link), link.name);
         }
+    });
+});
+
+test.describe("clipboard privacy", () => {
+    test.it("leaves plain-word clipboard search off until asked for", () => {
+        const config = fs.readFileSync(path.join(ROOT, "config/Config.qml"), "utf8");
+        const typing = config.slice(config.indexOf("typing: {"));
+        assert.match(typing, /^typing: \{\s*skinTone: "none",\s*clipboard: false,/);
+    });
+
+    const record = types => {
+        const bin = fs.mkdtempSync(path.join(os.tmpdir(), "clip-record-"));
+        const store = path.join(bin, "store");
+        fs.writeFileSync(path.join(bin, "wl-paste"), `#!/bin/sh\ncase "$*" in\n*--list-types*) printf '%s\\n' ${types.map(t => `'${t}'`).join(" ")} ;;\n*) printf 'hunter2' ;;\nesac\n`, { mode: 0o755 });
+        const run = spawnSync("bash", [path.join(ROOT, "scripts/clip-record.sh")], {
+            env: { PATH: `${bin}:/usr/bin:/bin`, HOME: bin, BANDITSHELL_CLIP_STORE: store, CLIPBOARD_STATE: "data" },
+            encoding: "utf8"
+        });
+        fs.rmSync(bin, { recursive: true, force: true });
+        return JSON.parse(run.stdout.trim().split("\n").pop());
+    };
+
+    test.it("never records what a password manager marks as secret", { skip: spawnSync("sh", ["-c", "command -v jq"]).status !== 0 }, () => {
+        const secret = record(["text/plain", "x-kde-passwordManagerHint"]);
+        assert.strictEqual(secret.state, "sensitive");
+        assert.strictEqual(secret.text, undefined);
+        const plain = record(["text/plain"]);
+        assert.strictEqual(plain.state, "data");
+        assert.strictEqual(plain.text, "hunter2");
     });
 });
 

@@ -3,6 +3,8 @@
 var EXPLICIT = /^(?:snippets?|snip)(?:\s+([\s\S]*))?$/i;
 var PLACEHOLDERS = /\{(date|time|clipboard|cursor)\}/gi;
 var SPACES = /\s+/g;
+var AMBIENT = 0.35;
+var AMBIENT_STEP = 0.035;
 
 function ask(text) {
     var typed = String(text || "").trim();
@@ -54,7 +56,7 @@ function find(list, term, explicit) {
         if (keyed || best >= (explicit ? 1 : 2))
             out.push({
                 snippet: item,
-                score: keyed ? Infinity : best,
+                score: keyed ? Infinity : explicit ? best : AMBIENT + best * AMBIENT_STEP,
                 keyed: keyed
             });
     }
@@ -86,6 +88,15 @@ function expand(text, values) {
         text: out,
         back: marker < 0 ? 0 : countPoints(out.slice(marker))
     };
+}
+
+function previewText(text, values, length) {
+    var shown = {};
+    var keys = Object.keys(values || {});
+    for (var i = 0; i < keys.length; i++)
+        shown[keys[i]] = values[keys[i]];
+    shown.clipboard = "{clipboard}";
+    return preview(expand(text, shown).text, length);
 }
 
 function countPoints(text) {
