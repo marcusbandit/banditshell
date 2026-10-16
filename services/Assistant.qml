@@ -757,7 +757,7 @@ Singleton {
 
         property string then: ""
 
-        command: ["sh", "-c", "wl-paste --primary --no-newline --type text 2>/dev/null | head -c 60001"]
+        command: ["sh", "-c", "wl-paste --primary --list-types 2>/dev/null | grep -qx x-kde-passwordManagerHint && exit 0; wl-paste --primary --no-newline --type text 2>/dev/null | head -c 60001"]
         stdout: StdioCollector {
             onStreamFinished: {
                 root.selection = text;

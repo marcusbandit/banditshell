@@ -16,10 +16,13 @@ QtObject {
     readonly property bool listsWifi: root.asked !== null
     readonly property bool intent: root.asked !== null
 
-    onIntentChanged: Qt.callLater(root.viewNetworks)
+
+    readonly property bool viewing: root.intent && root.search.active
+
+    onViewingChanged: Qt.callLater(root.viewNetworks)
 
     function viewNetworks(): void {
-        Network.setViewing(root, root.intent);
+        Network.setViewing(root, root.viewing);
     }
     Component.onDestruction: Network.setViewing(root, false)
 

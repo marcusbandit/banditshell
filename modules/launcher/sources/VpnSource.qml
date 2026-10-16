@@ -19,7 +19,7 @@ QtObject {
     readonly property var vpnAsked: root.enabled ? Asks.vpnAsk(root.text) : null
     readonly property var tailAsked: root.enabled ? Asks.tailscaleAsk(root.text) : null
     readonly property bool near: root.enabled && !root.vpnAsked && !root.tailAsked && Asks.vpnNear(root.text)
-    readonly property bool watching: root.vpnAsked !== null || root.tailAsked !== null || root.near
+    readonly property bool watching: root.search.active && (root.vpnAsked !== null || root.tailAsked !== null || root.near)
 
     readonly property bool intent: root.vpnAsked !== null || root.tailAsked !== null
 

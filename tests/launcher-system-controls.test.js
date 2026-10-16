@@ -201,11 +201,12 @@ test.describe("tailscale status", () => {
         assert.deepStrictEqual(Tailscale.exitNodeCommand("100.3.3.3"), ["tailscale", "set", "--exit-node=100.3.3.3"]);
         assert.deepStrictEqual(Tailscale.exitNodeCommand(""), ["tailscale", "set", "--exit-node="]);
         assert.deepStrictEqual(Tailscale.exitNodeCommand("1.2.3.4; rm -rf ~"), []);
-        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/bin/tailscale", "bandit"), ["pkexec", "/usr/bin/tailscale", "set", "--operator=bandit"]);
-        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/bin/tailscale", "a b"), []);
+        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/bin/tailscale", "bandit", "/usr/bin/pkexec"), ["/usr/bin/pkexec", "/usr/bin/tailscale", "set", "--operator=bandit"]);
+        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/bin/tailscale", "a b", "/usr/bin/pkexec"), []);
+        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/bin/tailscale", "bandit", "pkexec"), []);
         assert.deepStrictEqual(Tailscale.operatorCommand("tailscale", "bandit"), []);
         assert.deepStrictEqual(Tailscale.operatorCommand("/home/u/.local/bin/tailscale", "bandit"), []);
-        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/sbin/tailscale", "bandit"), ["pkexec", "/usr/sbin/tailscale", "set", "--operator=bandit"]);
+        assert.deepStrictEqual(Tailscale.operatorCommand("/usr/sbin/tailscale", "bandit", "/usr/bin/pkexec"), ["/usr/bin/pkexec", "/usr/sbin/tailscale", "set", "--operator=bandit"]);
     });
 
     test.it("matches peers by name, host or address", () => {

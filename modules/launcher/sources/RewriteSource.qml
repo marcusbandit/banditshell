@@ -11,12 +11,23 @@ QtObject {
 
     readonly property var kinds: ["rewrite"]
 
+    property bool readThisTime: false
+
+    readonly property bool wanted: Assistant.enabled && root.search.active && root.search.text.length >= 3 && Logic.ACTIONS.some(a => root.score(a) > 0)
+
+    onWantedChanged: {
+        if (!root.wanted || root.readThisTime)
+            return;
+        root.readThisTime = true;
+        Assistant.readSelection();
+    }
+
     property Connections opening: Connections {
         target: root.search
 
         function onStartedChanged(): void {
-            if (root.search.started && Assistant.enabled)
-                Assistant.readSelection();
+            if (!root.search.started)
+                root.readThisTime = false;
         }
     }
 
@@ -24,7 +35,7 @@ QtObject {
 
     readonly property bool usable: Assistant.ready && !!root.selected && root.search.text.length >= 3
 
-    readonly property string quoted: root.selected ? `“${Logic.snippet(root.selected, 48)}”` : ""
+    readonly property string quoted: root.selected ? `${root.selected.length} characters selected` : ""
 
     function score(action: var): real {
         return Math.max(Ranking.place(action.label, root.search.text), Ranking.place(`${action.words} selection selected rewrite`, root.search.text) - 0.5);

@@ -183,6 +183,8 @@ QtObject {
 
     property bool quiet: false
 
+    property bool active: true
+
     property string target: ""
 
     onQueryChanged: {

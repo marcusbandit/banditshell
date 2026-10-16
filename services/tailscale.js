@@ -3,6 +3,7 @@
 var ADDRESS = /^[0-9A-Fa-f.:]+$/;
 var USER = /^[A-Za-z_][A-Za-z0-9_.-]{0,31}$/;
 var SYSTEM_BINARY = /^\/(?:usr\/)?(?:local\/)?s?bin\/tailscale$/;
+var SYSTEM_PKEXEC = /^\/(?:usr\/)?s?bin\/pkexec$/;
 
 function label(node) {
     var dns = String(node && node.DNSName || "");
@@ -111,10 +112,10 @@ function exitNodeCommand(address) {
     return ["tailscale", "set", "--exit-node=" + (address || "")];
 }
 
-function operatorCommand(binary, user) {
-    if (!USER.test(String(user || "")) || !SYSTEM_BINARY.test(String(binary || "")))
+function operatorCommand(binary, user, pkexec) {
+    if (!USER.test(String(user || "")) || !SYSTEM_BINARY.test(String(binary || "")) || !SYSTEM_PKEXEC.test(String(pkexec || "")))
         return [];
-    return ["pkexec", binary, "set", "--operator=" + user];
+    return [pkexec, binary, "set", "--operator=" + user];
 }
 
 function matches(peer, words) {

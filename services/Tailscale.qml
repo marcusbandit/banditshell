@@ -166,7 +166,7 @@ Singleton {
         }
 
         onExited: code => {
-            const command = code === 0 ? Logic.operatorCommand(ToolInstaller.pathOf("tailscale"), whoamiOutput.text.trim()) : [];
+            const command = code === 0 ? Logic.operatorCommand(ToolInstaller.pathOf("tailscale"), whoamiOutput.text.trim(), SystemBinaries.paths.pkexec ?? "") : [];
             if (command.length)
                 root.run("operator", command);
             else

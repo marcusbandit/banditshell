@@ -14,7 +14,7 @@ QtObject {
 
     readonly property bool intent: root.view !== ""
 
-    readonly property bool watching: root.view !== ""
+    readonly property bool watching: root.view !== "" && root.search.active
 
     onWatchingChanged: SystemMonitor.watch(root.watching)
 

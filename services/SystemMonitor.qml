@@ -89,11 +89,35 @@ Singleton {
     }
 
     function quitAsAdministrator(pid: int, name: string): void {
-        if (elevated.running)
+        if (elevated.running || verifier.running || !(pid > 1))
             return;
-        Polkit.expect(`Quit ${name}`, "kill");
-        elevated.command = ["pkexec", "/bin/kill", "-TERM", String(pid)];
-        elevated.running = true;
+        verifier.pid = pid;
+        verifier.name = name;
+        verifier.command = ["cat", `/proc/${pid}/comm`];
+        verifier.running = true;
+    }
+
+    Process {
+        id: verifier
+
+        property int pid: 0
+        property string name: ""
+
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const comm = text.trim();
+                const named = verifier.name;
+                const same = !!comm && (!named || named.indexOf(comm) === 0 || comm.indexOf(named) === 0);
+                const command = same ? SystemBinaries.elevated("kill", ["-TERM", String(verifier.pid)]) : null;
+                if (!command) {
+                    resample.restart();
+                    return;
+                }
+                Polkit.expect(`Quit ${named || comm}`, "kill");
+                elevated.command = command;
+                elevated.running = true;
+            }
+        }
     }
 
     Process {
