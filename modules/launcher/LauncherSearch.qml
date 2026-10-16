@@ -77,6 +77,27 @@ QtObject {
         },
         WorkshopSource {
             search: root
+        },
+        TranslateSource {
+            search: root
+        },
+        DefineSource {
+            search: root
+        },
+        PackageSource {
+            search: root
+        },
+        GithubSource {
+            search: root
+        },
+        BrowserSource {
+            search: root
+        },
+        SpeedtestSource {
+            search: root
+        },
+        VideoDownloadSource {
+            search: root
         }
     ]
 

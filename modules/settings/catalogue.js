@@ -421,6 +421,22 @@ const PAGES_SOURCE = {
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
                 { n: [], icon: "replay", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
             ] },
+            { t: "Online", rows: [
+                { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
+                    why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
+                { n: [], icon: "language", label: "Translate into", k: "onlineTranslateTo", kind: "choice", o: [["", "System language"], ["en", "English"], ["da", "Danish"], ["de", "German"], ["fr", "French"], ["es", "Spanish"], ["it", "Italian"], ["nl", "Dutch"], ["sv", "Swedish"], ["no", "Norwegian"], ["fi", "Finnish"], ["pl", "Polish"], ["pt", "Portuguese"], ["ja", "Japanese"], ["zh-CN", "Chinese"], ["ko", "Korean"]], cfg: "launcher.online.translateTo", dis: s => !s.v("onlineTranslate"), kw: "translate target language default" },
+                { n: [], icon: "menu_book", label: "Define words", k: "onlineDefine", kind: "toggle", cfg: "launcher.online.define", kw: "define dictionary meaning word",
+                    why: "Type define and a word. Meanings come from dictionaryapi.dev, or Wiktionary when that is down." },
+                { n: [], icon: "package_2", label: "Packages", k: "onlinePackages", kind: "toggle", cfg: "launcher.online.packages", kw: "install package pacman aur flatpak apt dnf software",
+                    why: "Type install and a name to search the system packages, the AUR and Flatpak, then install or remove from the row." },
+                { n: [], icon: "book", label: "GitHub", k: "onlineGithub", kind: "toggle", cfg: "launcher.online.github", kw: "github gh repos pull requests issues notifications",
+                    why: "Type gh for your repositories, open pull requests, assigned issues and notifications. Needs the gh command, signed in." },
+                { n: [], icon: "bookmark", label: "Bookmarks and history", k: "onlineBrowser", kind: "toggle", cfg: "launcher.online.browser", kw: "browser bookmarks history firefox zen chromium",
+                    why: "Pages from your browsers show up as you type. The list is read in the background at most every few minutes and stays on this computer." },
+                { n: [], icon: "speed", label: "Speed test", k: "onlineSpeedtest", kind: "toggle", cfg: "launcher.online.speedtest", kw: "speedtest internet speed bandwidth" },
+                { n: [], icon: "movie", label: "Video downloads", k: "onlineVideos", kind: "toggle", cfg: "launcher.online.videos", kw: "download video audio youtube yt-dlp",
+                    why: "Paste a video link to save the video or its sound to your Downloads folder with yt-dlp." }
+            ] },
             { t: "Aliases and hotkeys", rows: [
                 { n: [], kind: "w", w: "shortcuts", list: "aliases", kw: "launcher aliases short names" },
                 { n: [], kind: "w", w: "shortcuts", list: "hotkeys", kw: "launcher hotkeys global keys" }

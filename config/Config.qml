@@ -294,6 +294,17 @@ Singleton {
                     openaiAddress: "https://api.openai.com/v1"
                 },
 
+                online: {
+                    translate: true,
+                    translateTo: "",
+                    define: true,
+                    packages: true,
+                    github: true,
+                    browser: true,
+                    speedtest: true,
+                    videos: true
+                },
+
                 hidden: ({}),
 
                 starred: ({}),

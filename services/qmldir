@@ -7,6 +7,7 @@ singleton Assistant 1.0 Assistant.qml
 singleton Audio 1.0 Audio.qml
 singleton Battery 1.0 Battery.qml
 singleton Bluetooth 1.0 Bluetooth.qml
+singleton BrowserPlaces 1.0 BrowserPlaces.qml
 singleton Calculator 1.0 Calculator.qml
 singleton ChargeLimit 1.0 ChargeLimit.qml
 singleton CliMigration 1.0 CliMigration.qml
@@ -20,11 +21,13 @@ singleton DefaultApps 1.0 DefaultApps.qml
 singleton DesktopIndex 1.0 DesktopIndex.qml
 singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
+singleton Dictionary 1.0 Dictionary.qml
 singleton Display 1.0 Display.qml
 singleton Downloads 1.0 Downloads.qml
 singleton Emoji 1.0 Emoji.qml
 singleton FileSearch 1.0 FileSearch.qml
 singleton Files 1.0 Files.qml
+singleton GitHub 1.0 GitHub.qml
 singleton Hotspot 1.0 Hotspot.qml
 singleton HyprConfig 1.0 HyprConfig.qml
 singleton Hypr 1.0 Hypr.qml
@@ -39,6 +42,7 @@ singleton LayoutDraft 1.0 LayoutDraft.qml
 singleton Lid 1.0 Lid.qml
 singleton Localisation 1.0 Localisation.qml
 singleton Lock 1.0 Lock.qml
+Lookup 1.0 Lookup.qml
 singleton Lyrics 1.0 Lyrics.qml
 singleton Media 1.0 Media.qml
 singleton Modes 1.0 Modes.qml
@@ -51,6 +55,7 @@ singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
 singleton Notifications 1.0 Notifications.qml
 singleton Obs 1.0 Obs.qml
+singleton PackageSearch 1.0 PackageSearch.qml
 singleton Pacman 1.0 Pacman.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
@@ -66,6 +71,7 @@ singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
 singleton Snippets 1.0 Snippets.qml
+singleton SpeedTest 1.0 SpeedTest.qml
 singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
@@ -75,6 +81,7 @@ singleton Tablet 1.0 Tablet.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
 singleton TimeFormat 1.0 TimeFormat.qml
 singleton Tooltips 1.0 Tooltips.qml
+singleton Translator 1.0 Translator.qml
 singleton Tray 1.0 Tray.qml
 singleton Tunnels 1.0 Tunnels.qml
 singleton Typist 1.0 Typist.qml
@@ -83,6 +90,7 @@ singleton Update 1.0 Update.qml
 singleton UsageApps 1.0 UsageApps.qml
 singleton UsageLimits 1.0 UsageLimits.qml
 singleton Usage 1.0 Usage.qml
+singleton VideoDownloads 1.0 VideoDownloads.qml
 singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml
 singleton WhatsNew 1.0 WhatsNew.qml
