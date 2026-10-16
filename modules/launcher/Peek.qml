@@ -17,12 +17,14 @@ Item {
     property real longestFrame: Infinity
 
     readonly property var toplevel: root.row?.kind === "window" ? Hyprland.toplevels.values.find(t => Hypr.windowAddress(t.address) === root.row.address) ?? null : null
-    readonly property bool isFile: root.row?.kind === "file" && !root.row.dir
+    readonly property string peekPath: root.row?.peekPath ?? (root.row?.kind === "file" ? root.row.path : "")
+    readonly property bool peekDir: root.row?.peekPath ? !!root.row.peekDir : !!root.row?.dir
+    readonly property bool isFile: !!root.peekPath && !root.peekDir
     readonly property var clip: root.row?.kind === "clipboard" ? root.row.entry : null
-    readonly property string clipText: root.clip && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
-    readonly property string picture: root.isFile && Search.isPicture(root.row.path) ? root.row.path : root.clip?.kind === "image" && root.clip.file ? root.clip.file : ""
-    readonly property string document: root.isFile && !root.picture && Search.isText(root.row.path) ? root.row.path : ""
-    readonly property string folder: root.row?.kind === "file" && root.row.dir ? root.row.path : ""
+    readonly property string clipText: root.row?.peekText ? root.row.peekText : root.clip && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
+    readonly property string picture: root.isFile && Search.isPicture(root.peekPath) ? root.peekPath : root.clip?.kind === "image" && root.clip.file ? root.clip.file : ""
+    readonly property string document: root.isFile && !root.picture && Search.isText(root.peekPath) ? root.peekPath : ""
+    readonly property string folder: root.peekPath && root.peekDir ? root.peekPath : ""
     readonly property string listed: root.document || root.folder || (root.clipText ? "clipboard" : "")
     readonly property int hitLine: root.document ? root.row.line ?? 0 : 0
     readonly property int firstLine: Math.max(1, root.hitLine - 6)

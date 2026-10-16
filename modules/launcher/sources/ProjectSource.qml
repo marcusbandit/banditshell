@@ -27,6 +27,8 @@ QtObject {
             key: `project:${project.path}`,
             kind: "project",
             path: project.path,
+            peekPath: project.path,
+            peekDir: true,
             label: project.name,
             detail: [Logic.parentWithin(Projects.roots, project.path), project.branch, Logic.ago(last, Date.now())].filter(Boolean).join(" · "),
             icon: "folder_code",

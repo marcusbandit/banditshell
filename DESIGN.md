@@ -3632,6 +3632,9 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   row can also carry `glyph` (a character, such as an emoji, drawn as its
   icon) and `ask` (`{ prompt, icon, suggestion, take }`): Enter on it turns
   the field into a one-line question and hands the answer to `take(text)`.
+  `peekPath` (with `peekDir: true` for a folder) or `peekText` fills the card
+  beside the launcher when the row is selected: a picture, the first lines of
+  a text file, a folder's contents, or the full text.
   `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
   true` lets the row take Tab even when another row is selected. In
   `actionsFor`, a first action with `button: true` also shows as a button,

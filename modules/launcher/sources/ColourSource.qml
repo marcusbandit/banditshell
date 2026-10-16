@@ -17,7 +17,7 @@ QtObject {
     readonly property bool intent: root.ask !== ""
 
     readonly property real pickScore: {
-        if (root.ask === "pick")
+        if (root.ask === "pick" || root.ask === "history")
             return Infinity;
         const t = root.search.text;
         if (t.length < 3)

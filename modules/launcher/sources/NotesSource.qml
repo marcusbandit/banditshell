@@ -19,7 +19,7 @@ QtObject {
 
     readonly property var ask: Logic.notesAsk(root.search.text)
 
-    readonly property bool intent: !!root.ask
+    readonly property bool intent: !!root.ask || root.bare
 
     readonly property string want: root.ask ? root.ask.text : root.search.text
 
@@ -29,6 +29,7 @@ QtObject {
             key: `note:${note.path}`,
             kind: "note",
             note: note,
+            peekPath: note.path,
             label: note.name,
             detail: [note.vaultName, folder, Ages.ago(note.modified, Date.now())].filter(Boolean).join(" · "),
             icon: "description",
@@ -36,9 +37,32 @@ QtObject {
         };
     }
 
+    readonly property var bareAsk: /^(?:new )?note$/i
+    readonly property bool bare: root.bareAsk.test(root.search.text)
+
     readonly property var rows: {
         const out = [];
         const ask = root.ask;
+        if (root.bare && Notes.vault)
+            out.push({
+                key: "newnote",
+                kind: "newnote",
+                title: "",
+                label: "New note",
+                detail: Notes.vault.name,
+                icon: "note_add",
+                score: Infinity,
+                ask: {
+                    prompt: "Title of the new note",
+                    icon: "note_add",
+                    suggestion: "",
+                    take: text => {
+                        const title = Logic.fileNameFor(text);
+                        if (title)
+                            root.search.launch(() => Notes.create(title));
+                    }
+                }
+            });
         if (ask?.create && Notes.vault)
             out.push({
                 key: `newnote:${ask.create}`,

@@ -19,7 +19,7 @@ Singleton {
         trap 'rm -f "$backup"' EXIT
         curl -fsS --max-time 6 -A "banditshell launcher" "https://en.wiktionary.org/api/rest_v1/page/definition/$word" >"$backup" 2>/dev/null &
         if [ "$2" = 1 ]; then
-            out=$(curl -fsS --max-time 3 "https://api.dictionaryapi.dev/api/v2/entries/en/$word" 2>/dev/null)
+            out=$(curl -fsS --connect-timeout 1 --max-time 2.5 "https://api.dictionaryapi.dev/api/v2/entries/en/$word" 2>/dev/null)
             status=$?
             if [ -n "$out" ] && [ "\${out#\\[}" != "$out" ]; then
                 printf '%s\\n' "$out"

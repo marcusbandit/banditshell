@@ -41,6 +41,7 @@ QtObject {
                         icon: "menu_book",
                         word: root.word,
                         sense: sense,
+                        peekText: [sense.text, sense.example].filter(Boolean).join("\n\n"),
                         score: i === 0 ? Infinity : 9 - i * 0.01
                     }));
         return root.pending ? [
