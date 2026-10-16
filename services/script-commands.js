@@ -16,7 +16,7 @@ var ALLOWED_LINK = /^(?:https?:\/\/|mailto:|file:\/\/\/)/i;
 
 var SCHEME = /^([a-z][a-z0-9+.-]*):/i;
 
-var GROUP_STOP = 'kill -TERM -- "-$1" 2>/dev/null || { kill -TERM "$1" 2>/dev/null; exit 0; }; sleep 1; kill -0 -- "-$1" 2>/dev/null && kill -KILL -- "-$1" 2>/dev/null; exit 0';
+var GROUP_STOP = 'env kill -TERM -- "-$1" 2>/dev/null || { env kill -TERM "$1" 2>/dev/null; exit 0; }; sleep 1; env kill -0 -- "-$1" 2>/dev/null && env kill -KILL -- "-$1" 2>/dev/null; exit 0';
 
 var ESCAPES = /\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07/g;
 
