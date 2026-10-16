@@ -168,3 +168,12 @@ Checked on Hyprland 0.56.2 (Lua 5.5) on 2026-10-16, without touching
   layouts. Checked offscreen and against a mock `hl` in Lua 5.5.
 - Opening the Workshop on an existing layout in the first moment after the
   shell starts, before `layouts.json` is read, opens a fresh stage instead.
+
+- Checked live on 2026-10-16 by the orchestrator: the Stage starter, loaded
+  with `dofile` and put on a scratch workspace through a runtime
+  `hl.workspace_rule`, placed four windows exactly like `stage.lua` and
+  answered taller the same way. After promote the two differ: the Workshop
+  layout keeps weights with the window, stage keeps them with the slot.
+- `hyprctl -j workspaces` reports `tiledLayout: lua:stage` for every Lua
+  layout, including ones that are clearly running. Judge a Lua layout by
+  window geometry, never by that field.
