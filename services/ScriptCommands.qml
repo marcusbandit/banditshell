@@ -1,7 +1,6 @@
 pragma Singleton
 
 import QtQuick
-import Qt.labs.folderlistmodel
 import Quickshell
 import Quickshell.Io
 import qs.config
@@ -41,23 +40,6 @@ Singleton {
     onFolderChanged: {
         root.scripts = [];
         settle.restart();
-    }
-
-    FolderListModel {
-        id: listing
-
-        folder: `file://${root.folder}`
-        showDirs: false
-        showHidden: false
-        onCountChanged: settle.restart()
-    }
-
-    Connections {
-        target: listing
-
-        function onDataChanged(): void {
-            settle.restart();
-        }
     }
 
     Timer {

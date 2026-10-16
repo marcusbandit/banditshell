@@ -50,7 +50,7 @@ QtObject {
         {
             key: "history",
             title: "History",
-            items: root.found.filter(h => !h.place.bookmark).map((h, i) => root.placeRow(h, i))
+            items: root.asked?.only === "history" ? root.found.filter(h => !h.place.bookmark).map((h, i) => root.placeRow(h, i)) : []
         }
     ]
 

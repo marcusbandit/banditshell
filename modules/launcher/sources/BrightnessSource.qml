@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell.Hyprland
 import qs.config
 import qs.services
 import "../system-asks.js" as Asks
@@ -64,7 +65,9 @@ QtObject {
         return out;
     }
 
-    readonly property bool needsDdcutil: ToolInstaller.probed && (!ToolInstaller.has("ddcutil") || Display.ddcutilMissing)
+    readonly property var builtIn: /^(?:eDP|LVDS|DSI)/i
+    readonly property bool hasExternal: Hyprland.monitors.values.some(m => !root.builtIn.test(m.name))
+    readonly property bool needsDdcutil: root.hasExternal && ToolInstaller.probed && (!ToolInstaller.has("ddcutil") || Display.ddcutilMissing)
 
     function clamped(v: real): real {
         return Brightness.clamp(v, root.lowest);

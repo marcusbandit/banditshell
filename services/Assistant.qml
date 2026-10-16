@@ -109,10 +109,7 @@ Singleton {
     property string selectionOrigin: ""
     property bool selectionRead: false
 
-    Component.onCompleted: {
-        Quickshell.execDetached(["rm", "-f", "--", `${Config.stateDir}/assistant-key`]);
-        root.refresh();
-    }
+    Component.onCompleted: root.refresh()
 
     onListingChanged: if (root.enabled)
         Qt.callLater(root.list)
@@ -318,7 +315,7 @@ Singleton {
             return;
         }
         root.setup = "";
-        root.trouble = code === 126 ? "" : "Ollama did not install";
+        root.trouble = code === 126 ? "" : code === 3 ? "no Ollama package for this system" : "Ollama did not install";
         root.pending = null;
     }
 

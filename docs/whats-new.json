@@ -57,7 +57,7 @@
         {
           "type": "features",
           "severity": "minor",
-          "text": "Type hello in german, define serendipity or install spotify, and the launcher answers from the web, with packages from your package manager and Flatpak installed straight from the row. AUR packages ask twice and then build in a terminal, so you can read what they run first. Type gh for your GitHub repos, pull requests and notifications. Your browser bookmarks and history show up as you type, speedtest measures your connection, and a pasted video link saves the video or its sound to Downloads. Settings › Launcher › Online turns each of these off."
+          "text": "Type hello in german, define serendipity or install spotify, and the launcher answers from the web, with packages from your package manager and Flatpak installed straight from the row. AUR packages ask twice and then build in a terminal, so you can read what they run first. Type gh for your GitHub repos, pull requests and notifications. Your browser bookmarks show up as you type, history and a word searches what you visited, speedtest measures your connection, and a pasted video link saves the video or its sound to Downloads. Settings › Launcher › Online turns each of these off."
         },
         {
           "type": "features",
@@ -98,6 +98,11 @@
           "type": "bugs",
           "severity": "minor",
           "text": "Snapping a window to a half, third or quarter places it instead of only floating it. The shell uses far less processor while music plays: the seek bar in the island, the media card and the lock screen no longer redraws its shapes from scratch every frame, and a settings page illustration stops animating when the panel is closed. Typing in the launcher is quicker even with everything above added: the results are put together once per key instead of once for every kind of result, and app and emoji searches narrow from the letters you already typed."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "config.json has new groups under launcher: typing (with your snippets and quicklinks), powerTools, online, ai, systemControls, devOps and utilities, each with its own switches in Settings › Launcher. The shell also keeps launcher-rows.json (rows you ran), emoji.json, colours.json and drawn layouts (layouts.json and a layouts folder) in ~/.local/state/banditshell, AI keys there in assistant-key files only you can read, and online lookups in a private folder under ~/.cache/banditshell."
         }
       ]
     },
