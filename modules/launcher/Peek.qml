@@ -18,10 +18,12 @@ Item {
 
     readonly property var toplevel: root.row?.kind === "window" ? Hyprland.toplevels.values.find(t => Hypr.windowAddress(t.address) === root.row.address) ?? null : null
     readonly property bool isFile: root.row?.kind === "file" && !root.row.dir
-    readonly property string picture: root.isFile && Search.isPicture(root.row.path) ? root.row.path : ""
+    readonly property var clip: root.row?.kind === "clipboard" ? root.row.entry : null
+    readonly property string clipText: root.clip && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
+    readonly property string picture: root.isFile && Search.isPicture(root.row.path) ? root.row.path : root.clip?.kind === "image" && root.clip.file ? root.clip.file : ""
     readonly property string document: root.isFile && !root.picture && Search.isText(root.row.path) ? root.row.path : ""
     readonly property string folder: root.row?.kind === "file" && root.row.dir ? root.row.path : ""
-    readonly property string listed: root.document || root.folder
+    readonly property string listed: root.document || root.folder || (root.clipText ? "clipboard" : "")
     readonly property int hitLine: root.document ? root.row.line ?? 0 : 0
     readonly property int firstLine: Math.max(1, root.hitLine - 6)
     readonly property int lineCount: 32
@@ -29,7 +31,7 @@ Item {
     property var lines: []
     property string linesOf: ""
 
-    readonly property string readKey: root.wanted && root.listed ? `${root.listed}:${root.firstLine}` : ""
+    readonly property string readKey: root.wanted && (root.document || root.folder) ? `${root.document || root.folder}:${root.firstLine}` : ""
 
     onReadKeyChanged: {
         reader.running = false;
@@ -55,7 +57,8 @@ Item {
         }
     }
 
-    readonly property bool textReady: !!root.readKey && root.linesOf === root.readKey && root.lines.some(l => l.trim() !== "")
+    readonly property bool textReady: root.clipText ? root.wanted : !!root.readKey && root.linesOf === root.readKey && root.lines.some(l => l.trim() !== "")
+    readonly property var shownLines: root.clipText ? root.clipText.replace(/\t/g, "    ").split("\n").slice(0, root.lineCount) : root.lines
 
     readonly property var windowSize: root.toplevel?.lastIpcObject?.size ?? null
     readonly property real aspect: root.toplevel ? (root.windowSize ? root.windowSize[0] / Math.max(1, root.windowSize[1]) : 16 / 9) : image.ready ? image.aspect : 16 / 10
@@ -136,7 +139,7 @@ Item {
             width: parent.width
 
             Repeater {
-                model: root.textReady ? root.lines : []
+                model: root.textReady ? root.shownLines : []
 
                 delegate: Item {
                     id: textLine
@@ -163,7 +166,8 @@ Item {
 
                         width: parent.width
                         text: textLine.modelData || " "
-                        elide: Text.ElideRight
+                        wrapMode: root.clipText ? Text.Wrap : Text.NoWrap
+                        elide: root.clipText ? Text.ElideNone : Text.ElideRight
                         font.pixelSize: Appearance.font.size.small
                         color: textLine.hit ? Appearance.colour.text : Appearance.colour.textDim
                     }
