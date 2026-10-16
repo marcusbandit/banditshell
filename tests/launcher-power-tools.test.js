@@ -703,7 +703,12 @@ test.describe("list script safety", () => {
         const alive = pid => {
             try {
                 process.kill(pid, 0);
-                return true;
+            } catch (e) {
+                return false;
+            }
+            try {
+                const state = fs.readFileSync(`/proc/${pid}/stat`, "utf8").replace(/^.*\)\s+/, "").charAt(0);
+                return state !== "Z" && state !== "X";
             } catch (e) {
                 return false;
             }
