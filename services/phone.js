@@ -157,7 +157,35 @@ function validId(id) {
 }
 
 function expandPath(path, home) {
-    return String(path || "").replace(/^~(?=\/)/, home);
+    var p = String(path || "").trim();
+    var base = String(home || "").replace(/\/+$/, "");
+    if (!p || !base)
+        return p;
+    if (p === "~")
+        return base;
+    if (p.indexOf("~/") === 0)
+        return base + p.slice(1);
+    if (p.charAt(0) === "/")
+        return p;
+    return base + "/" + p.replace(/^\.\//, "");
+}
+
+var DOMAIN = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?::\d+)?(?:[\/?#]\S*)?$/;
+
+function linkFrom(text) {
+    var t = String(text || "").trim();
+    var asked = payloadOf(t);
+    if (asked.kind === "link")
+        return asked;
+    if (DOMAIN.test(t))
+        return {
+            kind: "link",
+            value: "https://" + t
+        };
+    return {
+        kind: "text",
+        value: t
+    };
 }
 
 function shareable(payload) {

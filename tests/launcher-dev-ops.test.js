@@ -12,10 +12,13 @@ function lib(file, names) {
 
 const Ranking = lib("services/ranking.js", ["place"]);
 const Ssh = lib("services/ssh-hosts.js", ["ask", "readCommand", "readFiles", "missingIncludes", "assemble", "configHosts", "readKnownHosts", "merged", "detailOf", "matching", "ambient", "validTarget", "terminalLine", "commandText"]);
-const Ports = lib("services/listening-ports.js", ["ask", "command", "readListeners", "readUsers", "matching", "detailOf", "labelOf", "browsable", "validPort", "ownerName"]);
+const Ports = lib("services/listening-ports.js", ["ask", "command", "readListeners", "readUsers", "readSockets", "withSockets", "killable", "freeable", "verifyCommand", "confirmedPids", "killOutcome", "matching", "detailOf", "labelOf", "browsable", "validPort", "ownerName"]);
 const Units = lib("services/systemd-units.js", ["ask", "readUnits", "matching", "detailOf", "stateOf", "controlCommand", "logsLine", "validUnit", "startable"]);
 const Boxes = lib("services/containers.js", ["ask", "readAll", "matching", "detailOf", "controlCommand", "logsLine", "shellLine", "validId"]);
-const Phone = lib("services/phone.js", ["ask", "readDevices", "matching", "detailOf", "commandFor", "payloadOf", "shareable", "expandPath", "payloadLabel"]);
+const Phone = lib("services/phone.js", ["ask", "readDevices", "matching", "detailOf", "commandFor", "payloadOf", "linkFrom", "shareable", "expandPath", "payloadLabel"]);
+const Binaries = lib("services/system-binaries.js", ["probeCommand", "readPaths", "systemPath", "elevated"]);
+const PATHS = Binaries.readPaths("pkexec\t/usr/bin/pkexec\nsystemctl\t/usr/bin/systemctl\nkill\t/usr/bin/kill\nfuser\t/usr/sbin/fuser");
+const elevate = (tool, args) => Binaries.elevated(PATHS, tool, args);
 
 const files = entries => entries.map(([pattern, list]) => `\u001d${pattern}\n` + list.map(([file, text]) => `\u001e${file}\n${text}\n`).join("")).join("");
 
@@ -243,11 +246,14 @@ test.describe("systemd services", () => {
     });
 
     test.it("runs system units through pkexec with a validated name and user units directly", () => {
-        assert.deepStrictEqual(Units.controlCommand({ name: "docker.service", scope: "system" }, "restart"), ["pkexec", "systemctl", "restart", "--", "docker.service"]);
-        assert.deepStrictEqual(Units.controlCommand({ name: "pipewire.service", scope: "user" }, "stop"), ["systemctl", "--user", "stop", "--", "pipewire.service"]);
-        assert.strictEqual(Units.controlCommand({ name: "docker.service", scope: "system" }, "mask"), null);
-        for (const bad of ["-x.service", "a b.service", "x;rm.service", "docker", "getty@.service", "$(id).service"])
-            assert.strictEqual(Units.controlCommand({ name: bad, scope: "system" }, "start"), null, bad);
+        assert.deepStrictEqual(Units.controlCommand({ name: "docker.service", scope: "system" }, "restart", elevate), ["/usr/bin/pkexec", "/usr/bin/systemctl", "restart", "--", "docker.service"]);
+        assert.deepStrictEqual(Units.controlCommand({ name: "pipewire.service", scope: "user" }, "stop", elevate), ["systemctl", "--user", "stop", "--", "pipewire.service"]);
+        assert.deepStrictEqual(Units.controlCommand({ name: "web.socket", names: ["web.socket", "web.service"], scope: "user" }, "stop", elevate), ["systemctl", "--user", "stop", "--", "web.socket", "web.service"]);
+        assert.strictEqual(Units.controlCommand({ name: "docker.service", scope: "system" }, "mask", elevate), null);
+        assert.strictEqual(Units.controlCommand({ name: "docker.service", scope: "system" }, "start", null), null);
+        assert.strictEqual(Units.controlCommand({ name: "docker.service", scope: "system" }, "start", (tool, args) => Binaries.elevated({ pkexec: "/usr/bin/pkexec" }, tool, args)), null);
+        for (const bad of ["-x.service", "a b.service", "x;rm.service", "docker", "getty@.service", "$(id).service", "web@.socket", "x.timer"])
+            assert.strictEqual(Units.controlCommand({ name: bad, scope: "system" }, "start", elevate), null, bad);
         assert.strictEqual(Units.logsLine({ name: "x;y", scope: "system" }), "");
         assert.ok(Units.logsLine({ name: "docker.service", scope: "system" }).startsWith("journalctl -u 'docker.service' -n 200 -f;"));
         assert.ok(Units.logsLine({ name: "pipewire.service", scope: "user" }).startsWith("journalctl --user -u 'pipewire.service'"));
@@ -353,6 +359,85 @@ test.describe("phone through KDE Connect", () => {
         assert.strictEqual(Phone.commandFor("de f", "ring", null), null);
         assert.strictEqual(Phone.commandFor("def", "unpair", null), null);
         assert.strictEqual(Phone.expandPath("~/a.pdf", "/home/me"), "/home/me/a.pdf");
+        assert.strictEqual(Phone.expandPath("Downloads/a.pdf", "/home/me/"), "/home/me/Downloads/a.pdf");
+        assert.strictEqual(Phone.expandPath("./a.pdf", "/home/me"), "/home/me/a.pdf");
+        assert.strictEqual(Phone.expandPath("/tmp/a.pdf", "/home/me"), "/tmp/a.pdf");
+        assert.ok(Phone.shareable({ kind: "file", value: Phone.expandPath("notes/a b.txt", "/home/me") }));
+        assert.deepStrictEqual(Phone.linkFrom("example.org/talk"), { kind: "link", value: "https://example.org/talk" });
+        assert.deepStrictEqual(Phone.linkFrom("https://a.b/c"), { kind: "link", value: "https://a.b/c" });
+        assert.deepStrictEqual(Phone.linkFrom("see you at noon"), { kind: "text", value: "see you at noon" });
         assert.strictEqual(Phone.payloadLabel({ kind: "file", value: "/home/me/a.pdf" }), "a.pdf");
+    });
+});
+
+test.describe("privileged commands", () => {
+    test.it("resolves programs only from the system folders and passes tool names as arguments", () => {
+        const command = Binaries.probeCommand(["pkexec", "kill", "bad name", "../x"]);
+        assert.deepStrictEqual(command.slice(3), ["sh", "pkexec", "kill"]);
+        assert.ok(!command[2].includes("PATH") && command[2].includes("/usr/bin /bin /usr/sbin /sbin"));
+        const paths = Binaries.readPaths("systemctl\t/home/me/.local/bin/systemctl\nkill\t/usr/bin/kill\npkexec\t/usr/local/bin/pkexec\nfuser\t/usr/bin/../../tmp/fuser\nkill\t/bin/kill");
+        assert.deepStrictEqual(paths, { kill: "/usr/bin/kill" });
+        assert.strictEqual(Binaries.elevated(paths, "kill", ["-TERM", "4"]), null);
+        assert.deepStrictEqual(Binaries.elevated(PATHS, "kill", ["-TERM", "4"]), ["/usr/bin/pkexec", "/usr/bin/kill", "-TERM", "4"]);
+        assert.deepStrictEqual(Binaries.elevated(PATHS, "fuser", ["-k"]), ["/usr/bin/pkexec", "/usr/sbin/fuser", "-k"]);
+        assert.ok(!Binaries.systemPath("/usr/bin/systemctl", "kill") && Binaries.systemPath("/sbin/fuser", "fuser"));
+    });
+});
+
+test.describe("quitting a port owner", () => {
+    const LINES = [
+        "LISTEN 0 4096 127.0.0.1:4713 0.0.0.0:* users:((\"systemd\",pid=1234,fd=40)) uid:1000 ino:9 sk:9 cgroup:/user.slice/user-1000.slice/user@1000.service/init.scope <->",
+        "LISTEN 0 4096 127.0.0.1:8000 0.0.0.0:* users:((\"python3\",pid=5555,fd=3),(\"systemd\",pid=1234,fd=41)) uid:1000 ino:10 sk:10 cgroup:/user.slice/user-1000.slice/user@1000.service/init.scope <->",
+        "LISTEN 0 4096 0.0.0.0:631 0.0.0.0:* ino:11 sk:11 cgroup:/init.scope <->",
+        "LISTEN 0 4096 0.0.0.0:7000 0.0.0.0:* users:((\"init\",pid=1,fd=7)) ino:12 sk:12 <->",
+        "LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:((\"node\",pid=4242,fd=20)) uid:1000 ino:1 sk:1 cgroup:/user.slice/app.slice/x.scope <->",
+        "LISTEN 0 511 127.0.0.1:9000 0.0.0.0:* uid:1001 ino:2 sk:2 cgroup:/user.slice/user-1001.slice/session-3.scope <->"
+    ].join("\n");
+    const SOCKETS_USER = JSON.stringify([{ listen: "127.0.0.1:4713", unit: "pipewire-pulse.socket", activates: "pipewire-pulse.service" }, { listen: "[::]:8000", unit: "web.socket", activates: "web.service" }, { listen: "/run/user/1000/bus", unit: "dbus.socket", activates: "dbus-broker.service" }]);
+    const SOCKETS_SYSTEM = JSON.stringify([{ listen: "[::]:631", unit: "cups.socket", activates: "cups.service" }, { listen: "0.0.0.0:7777", unit: "echo@.socket", activates: "" }, { listen: "[::]:9999", unit: "x.socket", activates: "echo@.service" }]);
+
+    test.it("never treats a systemd manager as a port owner", () => {
+        const all = Ports.withSockets(Ports.readListeners(LINES, "tcp"), Ports.readSockets(SOCKETS_SYSTEM, SOCKETS_USER));
+        const at = port => all.find(l => l.port === port);
+        assert.deepStrictEqual(at(4713).owners, []);
+        assert.strictEqual(at(4713).manager, true);
+        assert.deepStrictEqual(at(4713).socketUnit, { port: 4713, scope: "user", label: "pipewire-pulse.socket", names: ["pipewire-pulse.socket", "pipewire-pulse.service"] });
+        assert.strictEqual(Ports.labelOf(at(4713)), "Port 4713 · pipewire-pulse");
+        assert.deepStrictEqual(at(8000).owners, [{ name: "python3", pid: 5555 }]);
+        assert.strictEqual(at(8000).socketUnit.label, "web.socket");
+        assert.strictEqual(at(631).manager, true);
+        assert.strictEqual(at(631).unit, "");
+        assert.strictEqual(at(631).socketUnit.scope, "system");
+        assert.strictEqual(at(7000).manager, true);
+        assert.strictEqual(at(7000).socketUnit, null);
+        assert.strictEqual(Ports.labelOf(at(7000)), "Port 7000 · systemd");
+        for (const port of [4713, 8000, 631, 7000])
+            assert.ok(!Ports.killable(at(port)) && !Ports.freeable(at(port)), port);
+        assert.ok(Ports.killable(at(3000)) && !Ports.freeable(at(3000)));
+        assert.ok(!Ports.killable(at(9000)) && Ports.freeable(at(9000)));
+        assert.deepStrictEqual(Ports.readSockets(SOCKETS_SYSTEM, "").map(s => [s.label, s.names.length]), [["cups.socket", 2], ["x.socket", 1]]);
+    });
+
+    test.it("kills only pids that still own the port under the same name", () => {
+        const node = Ports.readListeners(LINES, "tcp").find(l => l.port === 3000);
+        const command = Ports.verifyCommand(node);
+        assert.deepStrictEqual(command.slice(3), ["sh", "-ltunpeH", "4242"]);
+        const fresh = "tcp LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:((\"node\",pid=4242,fd=20)) uid:1000 <->";
+        assert.deepStrictEqual(Ports.confirmedPids(node, `4242\tnode\n\u001e${fresh}`), [4242]);
+        assert.deepStrictEqual(Ports.confirmedPids(node, `4242\tbash\n\u001e${fresh}`), []);
+        assert.deepStrictEqual(Ports.confirmedPids(node, `4242\t\n\u001e${fresh}`), []);
+        assert.deepStrictEqual(Ports.confirmedPids(node, "4242\tnode\n\u001etcp LISTEN 0 511 127.0.0.1:3000 0.0.0.0:* users:((\"node\",pid=9999,fd=20)) <->"), []);
+        assert.deepStrictEqual(Ports.confirmedPids(node, "4242\tnode\n\u001etcp LISTEN 0 511 127.0.0.1:3001 0.0.0.0:* users:((\"node\",pid=4242,fd=20)) <->"), []);
+        assert.deepStrictEqual(Ports.confirmedPids(node, "4242\tnode"), []);
+    });
+
+    test.it("escalates only the pids kill was refused for", () => {
+        const both = Ports.killOutcome(1, "kill: sending signal to 10 failed: No such process\nkill: sending signal to 11 failed: Operation not permitted", [10, 11, 12]);
+        assert.deepStrictEqual([both.gone, both.denied, both.failed], [[10], [11], false]);
+        assert.deepStrictEqual(Ports.killOutcome(1, "kill: (10) - No such process", [10]), { gone: [10], denied: [], failed: false });
+        assert.deepStrictEqual(Ports.killOutcome(0, "", [10]), { gone: [], denied: [], failed: false });
+        const odd = Ports.killOutcome(-1, "the command did not start", [10]);
+        assert.deepStrictEqual([odd.denied, odd.failed], [[], true]);
+        assert.deepStrictEqual(Ports.killOutcome(1, "kill: sending signal to 77 failed: Operation not permitted", [10]).denied, []);
     });
 });

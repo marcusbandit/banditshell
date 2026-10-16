@@ -86,6 +86,7 @@ singleton SshHosts 1.0 SshHosts.qml
 singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
+singleton SystemBinaries 1.0 SystemBinaries.qml
 singleton SystemdUnits 1.0 SystemdUnits.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton SystemMonitor 1.0 SystemMonitor.qml
