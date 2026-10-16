@@ -214,6 +214,8 @@ Singleton {
             devOpsServices: "launcher.devOps.services",
             devOpsContainers: "launcher.devOps.containers",
             devOpsPhone: "launcher.devOps.phone",
+            passwordLength: "launcher.utilities.passwordLength",
+            reminderHour: "launcher.utilities.reminderHour",
             clip: "clipboard.record",
             clipMax: "clipboard.maxEntries",
             clipText: "clipboard.maxText",

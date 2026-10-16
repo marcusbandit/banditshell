@@ -128,6 +128,9 @@ QtObject {
         },
         VpnSource {
             search: root
+        },
+        DevSource {
+            search: root
         }
     ]
 
@@ -344,6 +347,7 @@ QtObject {
             icon: "volume_up",
             label: "Volume up",
             words: "volume up louder sound",
+            lead: Search.LOUDER,
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
@@ -354,6 +358,7 @@ QtObject {
             icon: "volume_down",
             label: "Volume down",
             words: "volume down quieter softer sound",
+            lead: Search.QUIETER,
             detail: root.volumeText,
             hidden: !Audio.ready,
             stay: true,
@@ -1098,7 +1103,7 @@ QtObject {
 
     property var zoneOffsets: ({})
 
-    readonly property var zoneIds: root.place ? Search.zoneMatches(Clock.allZones, root.place, Clock.cityOf).slice(0, 3) : []
+    readonly property var zoneIds: root.place ? Search.zoneMatches(Clock.allZones, root.place, Clock.cityOf, Clock.localZone).slice(0, 4) : []
 
     onZoneIdsChanged: {
         const unknown = root.zoneIds.filter(id => root.zoneOffsets[id] === undefined && Clock.validZone(id));
@@ -1125,7 +1130,7 @@ QtObject {
             kind: "zone",
             zone: id,
             time: time,
-            label: `${time} in ${Clock.cityOf(id)}`,
+            label: `${time} in ${Search.placeLabel(root.place, id, Clock.cityOf)}`,
             detail: `${Qt.locale().dayName(there.getUTCDay(), Locale.LongFormat)} · ${Clock.offsetLabel(offset + new Date(now).getTimezoneOffset())}`,
             icon: "schedule",
             score: Infinity
@@ -1135,11 +1140,11 @@ QtObject {
     function zoneFor(place: string): string {
         if (!place)
             return Clock.localZone;
-        return Search.ZONE_ABBREVIATIONS[place] ?? Search.zoneMatches(Clock.allZones, place, Clock.cityOf)[0] ?? "";
+        return Search.zoneMatches(Clock.allZones, place, Clock.cityOf, Clock.localZone)[0] ?? "";
     }
 
     function placeName(place: string, zone: string): string {
-        return Search.ZONE_ABBREVIATIONS[place] ? place.toUpperCase() : Clock.cityOf(zone);
+        return Search.placeLabel(place, zone, Clock.cityOf);
     }
 
     readonly property var conversion: {
@@ -1206,17 +1211,26 @@ QtObject {
         ];
     }
 
+    readonly property int reminderHour: Config.values.launcher.utilities.reminderHour
+
+    function dayWord(moment: real): string {
+        const now = new Date();
+        const days = Math.round((new Date(moment).setHours(12, 0, 0, 0) - new Date(now).setHours(12, 0, 0, 0)) / 86400000);
+        return days === 0 ? "today" : days === 1 ? "tomorrow" : TimeFormat.dateText(new Date(moment), "headline");
+    }
+
     function reminderRow(ask: var): var {
-        const about = ask.label ? ` to ${ask.label}` : "";
-        if (ask.at) {
-            const when = new Date();
-            when.setHours(ask.at.hour, ask.at.minute, 0, 0);
+        const about = ask.label ? ` ${ask.link || "to"} ${ask.label}` : "";
+        if (!ask.seconds) {
+            const moment = Search.reminderMoment(ask, new Date(), root.reminderHour, !TimeFormat.clock24 && Search.vagueHour(root.text));
+            const when = new Date(moment);
             return {
                 key: "reminder",
                 kind: "reminder",
                 ask: ask,
-                label: `Remind me at ${TimeFormat.clock(ask.at.hour, ask.at.minute)}${about}`,
-                detail: when.getTime() > Date.now() ? "today" : "tomorrow",
+                moment: moment,
+                label: moment ? `Remind me at ${TimeFormat.clock(when.getHours(), when.getMinutes())}${about}` : `Remind me${about}`,
+                detail: moment ? root.dayWord(moment) : "in the past",
                 icon: "notifications_active",
                 score: Infinity
             };
@@ -1466,7 +1480,8 @@ QtObject {
             root.leave(() => Clock.startTimer(row.ask.seconds, row.ask.label));
             return;
         case "reminder":
-            root.leave(() => root.remind(row.ask));
+            if (row.ask.seconds || row.moment)
+                root.leave(() => root.remind(row.ask, row.moment));
             return;
         case "zone":
             root.leave(() => Files.copyText(row.time));
@@ -1542,6 +1557,9 @@ QtObject {
             label: "Cancel",
             run: () => root.armed = ""
         };
+        const owner = root.sourceOf(row);
+        if (owner?.confirmActionsFor)
+            return owner.confirmActionsFor(row).concat([cancel]);
         if (row.kind === "app")
             return Uninstaller.plans[row.entry.id]?.refused ? [cancel] : [
                 {
@@ -1560,18 +1578,20 @@ QtObject {
         Uninstaller.plan(entry);
     }
 
-    function remind(ask: var): void {
-        if (!ask.at) {
+    function remind(ask: var, moment: real): void {
+        if (ask.seconds) {
             Clock.startTimer(ask.seconds, ask.label || "Reminder");
             return;
         }
+        const when = new Date(moment);
         const id = Clock.addAlarm();
         if (id)
             Clock.setAlarm(id, {
-                hour: ask.at.hour,
-                minute: ask.at.minute,
+                hour: when.getHours(),
+                minute: when.getMinutes(),
                 days: [],
-                label: ask.label || "Reminder"
+                label: ask.label || "Reminder",
+                at: moment
             });
     }
 

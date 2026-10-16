@@ -9,7 +9,8 @@ QtObject {
     required property var search
 
     readonly property string text: root.search.text
-    readonly property int masterLevel: Search.volumeAsk(root.text)
+    readonly property int asked: Search.volumeLevelAsk(root.text)
+    readonly property int masterLevel: root.asked > root.ceiling ? root.ceiling : Search.volumeAsk(root.text)
     readonly property var streamAsk: root.masterLevel < 0 ? Search.streamVolumeAsk(root.text) : null
     readonly property bool mixer: Search.mixerAsk(root.text)
     readonly property string named: root.masterLevel < 0 && !root.streamAsk ? Search.streamNameAsk(root.text) : ""
@@ -55,7 +56,7 @@ QtObject {
             return null;
         return root.levelRow(sink, "volume", level, score, {
             label: level >= 0 ? `Set volume to ${level}%` : "Volume",
-            detail: Audio.deviceLabel(sink),
+            detail: root.asked > root.ceiling ? `${Audio.deviceLabel(sink)} · ${root.ceiling}% is the most` : Audio.deviceLabel(sink),
             icon: Audio.deviceIcon(sink)
         });
     }

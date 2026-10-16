@@ -3,6 +3,7 @@ import Quickshell
 import qs.services
 import "../../../services/ranking.js" as Ranking
 import "../../../services/listening-ports.js" as Logic
+import "../search.js" as Search
 
 QtObject {
     id: root
@@ -11,7 +12,18 @@ QtObject {
 
     readonly property var kinds: ["port"]
 
-    readonly property var asked: ListeningPorts.enabled && ListeningPorts.found ? Logic.ask(root.search.text) : null
+    readonly property var asked: ListeningPorts.enabled && ListeningPorts.found ? Logic.ask(root.search.text) ?? root.phrased(Search.portAsk(root.search.text)) : null
+
+    function phrased(said: var): var {
+        return said ? {
+            port: String(said.port),
+            words: "",
+            udp: false,
+            tcp: true,
+            quit: !!said.kill,
+            exact: true
+        } : null;
+    }
     readonly property bool intent: root.asked !== null
 
     onAskedChanged: {

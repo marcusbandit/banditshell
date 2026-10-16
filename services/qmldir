@@ -22,6 +22,7 @@ singleton DarkMode 1.0 DarkMode.qml
 singleton DefaultApps 1.0 DefaultApps.qml
 singleton DesktopIndex 1.0 DesktopIndex.qml
 singleton Device 1.0 Device.qml
+singleton DevUtilities 1.0 DevUtilities.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Dictionary 1.0 Dictionary.qml
 singleton Display 1.0 Display.qml

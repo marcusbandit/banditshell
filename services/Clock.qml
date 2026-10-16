@@ -252,6 +252,8 @@ Singleton {
         if (fields.armed !== undefined)
             alarm.armed = !!fields.armed;
         root.reschedule(alarm);
+        if (fields.at > Date.now() && alarm.days.length === 0)
+            alarm.at = fields.at;
         root.alarms = root.alarms.slice();
         root.save();
     }

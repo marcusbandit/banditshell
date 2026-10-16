@@ -6,6 +6,7 @@ ClipboardSource 1.0 ClipboardSource.qml
 ColourSource 1.0 ColourSource.qml
 ContainerSource 1.0 ContainerSource.qml
 DefineSource 1.0 DefineSource.qml
+DevSource 1.0 DevSource.qml
 EmojiSource 1.0 EmojiSource.qml
 FallbackSource 1.0 FallbackSource.qml
 GithubSource 1.0 GithubSource.qml
