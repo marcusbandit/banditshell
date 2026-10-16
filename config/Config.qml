@@ -311,6 +311,14 @@ Singleton {
 
                 folders: ({}),
 
+                devOps: {
+                    ssh: true,
+                    ports: true,
+                    services: true,
+                    containers: true,
+                    phone: true
+                },
+
                 powerTools: {
                     scriptsFolder: "",
 

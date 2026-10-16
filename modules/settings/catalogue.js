@@ -421,6 +421,18 @@ const PAGES_SOURCE = {
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
                 { n: [], icon: "replay", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
             ] },
+            { t: "Developer tools", rows: [
+                { n: [], icon: "dns", label: "SSH hosts", k: "devOpsSsh", kind: "toggle", cfg: "launcher.devOps.ssh", kw: "ssh hosts servers remote connect terminal known_hosts",
+                    why: "Type ssh for the hosts in your SSH config and known hosts, then press Enter to connect in a terminal. Private keys are never read." },
+                { n: [], icon: "lan", label: "Listening ports", k: "devOpsPorts", kind: "toggle", cfg: "launcher.devOps.ports", kw: "ports listening sockets who uses port localhost server kill",
+                    why: "Type ports or port 3000 to see what listens there, then quit it or open it in the browser." },
+                { n: [], icon: "settings_suggest", label: "Services", k: "devOpsServices", kind: "toggle", cfg: "launcher.devOps.services", kw: "systemd services units systemctl start stop restart daemon",
+                    why: "Type services, service docker or restart sshd. System services ask for your password before they change." },
+                { n: [], icon: "deployed_code", label: "Containers", k: "devOpsContainers", kind: "toggle", cfg: "launcher.devOps.containers", kw: "containers podman docker logs shell exec",
+                    why: "Type containers, podman or docker to start and stop containers, follow their logs or open a shell inside." },
+                { n: [], icon: "mobile", label: "Phone through KDE Connect", k: "devOpsPhone", kind: "toggle", cfg: "launcher.devOps.phone", kw: "phone kde connect ring ping battery send file clipboard share link",
+                    why: "Type phone, ring phone or send to phone. Works with phones already paired in KDE Connect." }
+            ] },
             { t: "Online", rows: [
                 { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
                     why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
