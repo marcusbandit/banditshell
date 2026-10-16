@@ -339,7 +339,7 @@ LauncherConcept {
             return root.claimTileKey(event);
 
         const row = root.results[root.selected];
-        if (event.key === Qt.Key_Tab && search.complete(row))
+        if (event.key === Qt.Key_Tab && (search.complete(row) || search.complete(root.results.find(r => r.kind === "suggest"))))
             return true;
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && (event.modifiers & Qt.ControlModifier) && row && !row.header && !root.answerHolds) {
             root.actionsFor(row).slice(1).find(a => !a.tucked)?.run();
@@ -488,6 +488,24 @@ LauncherConcept {
         root.steered = true;
         root.selected = root.results[at].header ? Math.max(0, Search.nextPickable(root.results, at, 1)) : at;
         list.reveal(root.selected);
+    }
+
+    property bool settled: true
+
+    Timer {
+        id: settle
+
+        interval: 160
+        onTriggered: root.settled = true
+    }
+
+    Connections {
+        target: root.input
+
+        function onTextChanged(): void {
+            root.settled = false;
+            settle.restart();
+        }
     }
 
     property string listedQuery: ""
@@ -893,12 +911,13 @@ LauncherConcept {
                                     }
 
                                     Repeater {
-                                        model: line.buttons
+                                        model: line.shownButtons
 
                                         delegate: Button {
                                             id: button
 
                                             required property var modelData
+                                            required property int index
 
                                             icon: button.modelData.icon
                                             iconFill: button.modelData.fill ? 1 : 0
@@ -907,7 +926,7 @@ LauncherConcept {
                                             alarm: button.modelData.alarm ?? false
                                             size: 0
 
-                                            onClicked: button.modelData.run()
+                                            onClicked: (line.buttons[button.index] ?? button.modelData).run()
                                         }
                                     }
 
@@ -924,7 +943,21 @@ LauncherConcept {
                                 id: lineHover
                             }
 
-                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds || lineHover.hovered)
+                            readonly property bool opened: !line.modelData.header && !root.asking && !root.capture && (line.index === root.selected && !root.answerHolds && root.settled || lineHover.hovered)
+
+                            property var shownButtons: []
+                            property string shownSignature: ""
+
+                            function showButtons(): void {
+                                const signature = line.buttons.map(b => `${b.icon}|${b.short ?? b.label}|${b.fill ? 1 : 0}|${b.alarm ? 1 : 0}`).join(",");
+                                if (signature === line.shownSignature)
+                                    return;
+                                line.shownSignature = signature;
+                                line.shownButtons = line.buttons;
+                            }
+
+                            onButtonsChanged: line.showButtons()
+                            Component.onCompleted: line.showButtons()
 
                             readonly property var buttons: {
                                 if (!line.opened)

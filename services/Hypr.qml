@@ -305,6 +305,90 @@ Singleton {
         Hyprland.dispatch(`movewindowpixel exact ${rect.x} ${rect.y},address:${w}`);
     }
 
+    property var pending: null
+
+    function withLayout(job: var): void {
+        root.pending = job;
+        sizer.running = false;
+        sizer.running = true;
+    }
+
+    function snapWindow(addr: string, rectFor: var): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.withLayout((mons, clients) => {
+                const client = clients.find(c => root.windowAddress(c.address) === w);
+                const mon = mons.find(m => m.id === client?.monitor) ?? mons.find(m => m.focused);
+                if (client && mon)
+                    root.placeWindow(w, rectFor(mon));
+            });
+    }
+
+    function promoteWindow(addr: string, layout: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (layout === "master" || layout === "scrolling") {
+            root.send(`hl.dsp.layout("${layout === "master" ? "swapwithmaster" : "promote"}")`, `layoutmsg ${layout === "master" ? "swapwithmaster" : "promote"}`);
+            return;
+        }
+        root.withLayout((mons, clients) => {
+            const self = clients.find(c => root.windowAddress(c.address) === w);
+            if (!self || self.floating)
+                return;
+            const main = clients.filter(c => c.workspace?.id === self.workspace?.id && !c.floating && c.mapped !== false).sort((a, b) => b.size[0] * b.size[1] - a.size[0] * a.size[1])[0];
+            const other = root.windowAddress(main?.address);
+            if (other && other !== w)
+                root.send(`hl.dsp.window.swap({ target = "address:${other}", window = "address:${w}" })`, `swapwindow address:${other}`);
+        });
+    }
+
+    function swapWindow(addr: string, direction: string, layout: string): void {
+        const w = root.windowAddress(addr);
+        if (!w)
+            return;
+        if (layout === "scrolling" && (direction === "l" || direction === "r"))
+            root.send(`hl.dsp.layout("swapcol ${direction}")`, `layoutmsg swapcol ${direction}`);
+        else
+            root.send(`hl.dsp.window.swap({ direction = "${direction}", window = "address:${w}" })`, `swapwindow ${direction}`);
+    }
+
+    function moveWindowToward(addr: string, direction: string): void {
+        const w = root.windowAddress(addr);
+        if (w)
+            root.send(`hl.dsp.window.move({ direction = "${direction}", window = "address:${w}" })`, `movewindow ${direction}`);
+    }
+
+    function focusToward(direction: string, layout: string): void {
+        if (layout === "scrolling")
+            root.send(`hl.dsp.layout("focus ${direction}")`, `layoutmsg focus ${direction}`);
+        else
+            root.send(`hl.dsp.focus({ direction = "${direction}" })`, `movefocus ${direction}`);
+    }
+
+    function focusWorkspace(which: string): void {
+        root.send(`hl.dsp.focus({ workspace = "${which}" })`, `workspace ${which}`);
+    }
+
+    Process {
+        id: sizer
+
+        command: ["sh", "-c", "hyprctl -j monitors; echo @@; hyprctl -j clients"]
+        stdout: StdioCollector {
+            onStreamFinished: {
+                const job = root.pending;
+                root.pending = null;
+                const parts = text.split("@@");
+                try {
+                    if (job)
+                        job(JSON.parse(parts[0]), JSON.parse(parts[1]));
+                } catch (e) {
+                    console.warn(`Hypr: could not read monitors and windows: ${e}`);
+                }
+            }
+        }
+    }
+
     function moveToMonitor(addr: string, which: string): void {
         const w = root.windowAddress(addr);
         if (w)

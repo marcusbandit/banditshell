@@ -10,7 +10,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["usableArea", "cellRect", "TILES", "workspaceAsk", "layoutLabel", "luaLayouts"]);
+const Search = lib("modules/launcher/search.js", ["usableArea", "cellRect", "TILES", "workspaceAsk", "focusWorkspaceAsk", "layoutLabel", "luaLayouts"]);
 
 const WIDE = { x: 1200, y: 240, width: 5120, height: 1440, scale: 1, transform: 0, reserved: [62, 10, 10, 10] };
 const TURNED = { x: 0, y: 0, width: 1920, height: 1200, scale: 1, transform: 1, reserved: [62, 10, 10, 10] };
@@ -55,6 +55,13 @@ test.describe("moving and layouts", () => {
         assert.strictEqual(Search.workspaceAsk("move window to 7"), 7);
         assert.strictEqual(Search.workspaceAsk("send to ws 12"), 12);
         assert.strictEqual(Search.workspaceAsk("move to"), 0);
+    });
+
+    test.it("reads focus workspace, and keeps it apart from moving a window there", () => {
+        for (const text of ["focus workspace 2", "workspace 2", "go to workspace 2", "switch to ws 2", "ws 2"])
+            assert.strictEqual(Search.focusWorkspaceAsk(text), 2, text);
+        assert.strictEqual(Search.focusWorkspaceAsk("move to workspace 2"), 0);
+        assert.strictEqual(Search.workspaceAsk("focus workspace 2"), 0);
     });
 
     test.it("finds layouts registered in the Lua config and names them", () => {

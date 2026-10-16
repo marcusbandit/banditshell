@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
@@ -183,5 +183,25 @@ test.describe("uninstall-app.sh", () => {
         const out = spawnSync("/bin/bash", [UNINSTALL, "remove", "thing"], { env: { PATH: `${path.join(dir, "bin")}:${core}`, HOME: path.join(dir, "home"), XDG_DATA_DIRS: path.join(dir, "usr/share") }, encoding: "utf8" });
         fs.rmSync(dir, { recursive: true, force: true });
         assert.strictEqual(out.status, 4);
+    });
+});
+
+test.describe("tab completion", () => {
+    test.it("offers the phrase while its first words are typed", () => {
+        assert.deepStrictEqual(Search.suggestions("days u", {}), ["days until "]);
+        assert.ok(Search.suggestions("da", {}).includes("days since "));
+        assert.deepStrictEqual(Search.suggestions("x", {}), []);
+    });
+
+    test.it("offers what can follow the phrase, narrowed by what is typed", () => {
+        assert.ok(Search.suggestions("days until ", {}).includes("days until christmas"));
+        assert.deepStrictEqual(Search.suggestions("days until chr", {}), ["days until christmas", "days until christmas eve"]);
+        assert.deepStrictEqual(Search.suggestions("days until christmas eve", {}), []);
+    });
+
+    test.it("fills places, workspaces and apps from what the shell knows", () => {
+        assert.deepStrictEqual(Search.suggestions("time in to", { places: ["Tokyo", "Toronto", "Oslo"] }), ["time in tokyo", "time in toronto"]);
+        assert.deepStrictEqual(Search.suggestions("focus workspace ", { workspaces: ["1", "6"] }), ["focus workspace 1", "focus workspace 6"]);
+        assert.deepStrictEqual(Search.suggestions("time in", {}), []);
     });
 });

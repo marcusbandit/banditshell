@@ -563,6 +563,11 @@ function workspaceAsk(text) {
     return m ? parseInt(m[1], 10) : 0;
 }
 
+function focusWorkspaceAsk(text) {
+    const m = /^(?:focus |go to |goto |switch to |show |open )?(?:workspace|ws) (\d{1,2})$/i.exec(String(text || "").trim());
+    return m ? parseInt(m[1], 10) : 0;
+}
+
 function layoutLabel(name) {
     const bare = String(name || "").replace(/^lua:/, "");
     return bare.charAt(0).toUpperCase() + bare.slice(1);
@@ -576,6 +581,82 @@ function luaLayouts(texts) {
         while ((m = find.exec(String(text))) !== null)
             if (out.indexOf(`lua:${m[1]}`) < 0)
                 out.push(`lua:${m[1]}`);
+    }
+    return out;
+}
+
+var PHRASES = [
+    {
+        head: "days until ",
+        picks: ["christmas", "christmas eve", "new year", "easter", "halloween", "valentine's day", "next friday", "31 dec"]
+    },
+    {
+        head: "days since ",
+        picks: ["1 jan", "christmas", "easter", "last monday"]
+    },
+    {
+        head: "days between ",
+        picks: ["1 jan and 31 dec", "today and christmas"]
+    },
+    {
+        head: "weeks until ",
+        picks: ["christmas", "new year", "easter"]
+    },
+    {
+        head: "what day is ",
+        picks: ["christmas", "new year", "1 jan", "easter"]
+    },
+    {
+        head: "timer ",
+        picks: ["5m", "10m", "25m", "1h"]
+    },
+    {
+        head: "remind me ",
+        picks: ["in 20 min to ", "in 1h to ", "at 15:00 to "]
+    },
+    {
+        head: "keep awake ",
+        picks: ["30m", "1h", "2h"]
+    },
+    {
+        head: "time in ",
+        picks: "places"
+    },
+    {
+        head: "focus workspace ",
+        picks: "workspaces"
+    },
+    {
+        head: "move to workspace ",
+        picks: "workspaces"
+    },
+    {
+        head: "volume ",
+        picks: "playing"
+    },
+    {
+        head: "kill ",
+        picks: "processes"
+    }
+];
+
+function suggestions(text, found) {
+    const t = String(text || "").replace(/^\s+/, "").toLowerCase();
+    if (t.length < 2)
+        return [];
+    const out = [];
+    for (const p of PHRASES) {
+        const picks = typeof p.picks === "string" ? (found && found[p.picks]) || [] : p.picks;
+        if (t.indexOf(p.head) === 0) {
+            const rest = t.slice(p.head.length);
+            for (const pick of picks) {
+                const said = String(pick).toLowerCase();
+                if (said.indexOf(rest) === 0 && said !== rest && out.indexOf(p.head + said) < 0)
+                    out.push(p.head + said);
+            }
+        } else if (p.head.indexOf(t) === 0 && picks.length) {
+            out.push(p.head);
+        }
     }
     return out;
 }

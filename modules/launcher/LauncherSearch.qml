@@ -8,6 +8,7 @@ import qs.config
 import qs.services
 import qs.modules.settings
 import "search.js" as Search
+import "shellcli.js" as ShellCli
 import "../files/marks.js" as Marks
 import "../settings/catalogue.js" as Catalogue
 import "../../services/ranking.js" as Ranking
@@ -31,6 +32,9 @@ QtObject {
             windows: 5,
             devices: 4,
             processes: 8,
+            shell: 12,
+            output: 12,
+            suggestions: 6,
             sound: 5,
             files: 6,
             contents: 5
@@ -47,7 +51,7 @@ QtObject {
     readonly property var convert: Search.zoneConvertAsk(root.text)
     readonly property var killing: Search.killAsk(root.text)
 
-    readonly property bool intent: !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || !!root.streamAsk && root.streamRows.length > 0
+    readonly property bool intent: root.cliLine !== null || !!root.timer || !!root.reminder || root.volume >= 0 || root.zoneRows.length > 0 || root.convertRows.length > 0 || root.killing !== null || root.awakeFor > 0 || root.workspaceRows.length > 0 || !!root.streamAsk && root.streamRows.length > 0
 
     property bool started: false
 
@@ -68,17 +72,18 @@ QtObject {
             Clock.loadZoneList();
         if (Search.killAsk(root.query.trim()) !== null)
             root.listProcesses();
-        if (root.quiet)
+        if (root.quiet || ShellCli.ask(root.query) !== null)
             return;
         const typed = Search.pathQuery(root.query, Files.home);
-        if (typed) {
+        if (typed)
             FileSearch.list(typed.dir);
-            FileSearch.grep("");
-        } else {
+        else
             FileSearch.find(root.query);
-            FileSearch.grep(root.query);
-        }
     }
+
+    readonly property string grepFor: root.quiet || root.path || root.intent || root.aliasId || root.text.length < 4 || !/[a-z].*[a-z].*[a-z]/i.test(root.text) || Calculator.answerFor(root.text) ? "" : root.text
+
+    onGrepForChanged: FileSearch.grep(root.grepFor)
 
     function appScore(entry: var): real {
         const tier = Apps.tier(entry, root.text);
@@ -115,10 +120,17 @@ QtObject {
             run: () => Suspension.perform("hibernate")
         },
         {
+            id: "restartshell",
+            icon: "refresh",
+            label: "Restart shell",
+            words: "restart shell reload banditshell",
+            run: () => Quickshell.execDetached([root.cli, "restart"])
+        },
+        {
             id: "reboot",
             icon: "restart_alt",
-            label: "Restart",
-            words: "reboot restart",
+            label: "Restart computer",
+            words: "reboot restart computer",
             confirm: true,
             run: () => root.power("reboot")
         },
@@ -335,12 +347,33 @@ QtObject {
     readonly property string targetName: root.targetState.class ? Apps.nameFor(root.targetState.class) : ""
 
     function snap(tile: var): void {
-        const addr = root.windowTarget();
-        const mon = Hypr.toplevelFor(addr)?.workspace?.monitor ?? Hyprland.focusedMonitor;
-        const geometry = mon?.lastIpcObject;
-        if (addr && geometry?.width)
-            Hypr.placeWindow(addr, Search.cellRect(Search.usableArea(geometry), Compositor.gapsOut, Compositor.gapsIn, tile));
+        const outer = Compositor.gapsOut;
+        const inner = Compositor.gapsIn;
+        Hypr.snapWindow(root.windowTarget(), mon => Search.cellRect(Search.usableArea(mon), outer, inner, tile));
     }
+
+    readonly property var directions: [
+        {
+            short: "l",
+            name: "left",
+            icon: "west"
+        },
+        {
+            short: "r",
+            name: "right",
+            icon: "east"
+        },
+        {
+            short: "u",
+            name: "up",
+            icon: "north"
+        },
+        {
+            short: "d",
+            name: "down",
+            icon: "south"
+        }
+    ]
 
     function tileIcon(tile: var): string {
         if (tile.cols * tile.rows === 2)
@@ -355,21 +388,23 @@ QtObject {
         const named = c => Object.assign({
                 detail: root.targetName
             }, c);
+        const layout = WindowLayouts.current;
+        const full = root.targetState.fullscreen === 2;
+        const big = root.targetState.fullscreen === 1;
+        const floating = !!root.targetState.floating;
         return [
             {
                 id: "fullscreen",
-                icon: "fullscreen",
-                label: "Fullscreen",
-                words: "fullscreen full screen window",
-                toggle: root.targetState.fullscreen === 2,
+                icon: full ? "fullscreen_exit" : "fullscreen",
+                label: full ? "Exit fullscreen" : "Fullscreen",
+                words: "fullscreen full screen exit fullscreen leave window",
                 run: () => Hypr.fullscreenWindow(root.windowTarget(), "fullscreen")
             },
             {
                 id: "maximize",
-                icon: "open_in_full",
-                label: "Maximize",
-                words: "maximize maximise window bigger",
-                toggle: root.targetState.fullscreen === 1,
+                icon: big ? "close_fullscreen" : "open_in_full",
+                label: big ? "Unmaximize" : "Maximize",
+                words: "maximize maximise unmaximize unmaximise window bigger",
                 run: () => Hypr.fullscreenWindow(root.windowTarget(), "maximized")
             },
             {
@@ -381,11 +416,17 @@ QtObject {
             },
             {
                 id: "float",
-                icon: "picture_in_picture",
-                label: "Float window",
-                words: "float floating window tile tiled",
-                toggle: !!root.targetState.floating,
+                icon: floating ? "grid_view" : "picture_in_picture",
+                label: floating ? "Tile window" : "Float window",
+                words: "float floating tile tiled unfloat window",
                 run: () => Hypr.floatWindow(root.windowTarget())
+            },
+            {
+                id: "promote",
+                icon: "vertical_align_top",
+                label: "Promote window",
+                words: "promote window main master stage make main swap with master",
+                run: () => Hypr.promoteWindow(root.windowTarget(), layout)
             },
             {
                 id: "center",
@@ -415,7 +456,25 @@ QtObject {
                 words: "previous display monitor screen move window",
                 run: () => Hypr.moveToMonitor(root.windowTarget(), "-1")
             }
-        ] : [], [
+        ] : [], root.directions.map(d => ({
+                    id: `swap-${d.name}`,
+                    icon: d.icon,
+                    label: `Swap ${d.name}`,
+                    words: `swap ${d.name} window`,
+                    run: () => Hypr.swapWindow(root.windowTarget(), d.short, layout)
+                })), root.directions.map(d => ({
+                    id: `focus-${d.name}`,
+                    icon: d.icon,
+                    label: `Focus ${d.name}`,
+                    words: `focus ${d.name} window go`,
+                    run: () => Hypr.focusToward(d.short, layout)
+                })), root.directions.map(d => ({
+                    id: `move-${d.name}`,
+                    icon: d.icon,
+                    label: `Move window ${d.name}`,
+                    words: `move window ${d.name}`,
+                    run: () => Hypr.moveWindowToward(root.windowTarget(), d.short)
+                })), [
             {
                 id: "nextworkspace",
                 icon: "arrow_forward",
@@ -430,7 +489,22 @@ QtObject {
                 words: "previous workspace move window",
                 run: () => Hypr.moveToWorkspace(root.windowTarget(), "r-1")
             }
-        ]).map(named);
+        ]).map(named).concat([
+            {
+                id: "focusnextworkspace",
+                icon: "arrow_forward",
+                label: "Next workspace",
+                words: "next workspace focus go switch",
+                run: () => Hypr.focusWorkspace("r+1")
+            },
+            {
+                id: "focuspreviousworkspace",
+                icon: "arrow_back",
+                label: "Previous workspace",
+                words: "previous workspace focus go switch",
+                run: () => Hypr.focusWorkspace("r-1")
+            }
+        ]);
     }
 
     readonly property var layoutCommands: WindowLayouts.available.map(name => ({
@@ -446,8 +520,26 @@ QtObject {
             }))
 
     readonly property int workspaceWanted: Search.workspaceAsk(root.text)
+    readonly property int workspaceShown: Search.focusWorkspaceAsk(root.text)
 
     readonly property var workspaceRows: {
+        const shown = root.workspaceShown;
+        if (shown > 0)
+            return [
+                {
+                    key: "command:showworkspace",
+                    kind: "command",
+                    command: {
+                        id: "showworkspace",
+                        label: `Focus workspace ${shown}`,
+                        run: () => Hypr.focusWorkspace(String(shown))
+                    },
+                    label: `Focus workspace ${shown}`,
+                    detail: "",
+                    icon: "space_dashboard",
+                    score: Infinity
+                }
+            ];
         const n = root.workspaceWanted;
         if (n <= 0 || !root.targetToplevel)
             return [];
@@ -515,7 +607,10 @@ QtObject {
         };
     }
 
-    readonly property var appRows: Apps.search(root.text).map(entry => root.appRow(entry))
+    readonly property var appRows: {
+        const found = Apps.search(root.text);
+        return (root.text ? found.slice(0, root.caps.apps) : found).map(entry => root.appRow(entry));
+    }
 
     function commandRow(c: var): var {
         return {
@@ -709,7 +804,7 @@ QtObject {
                 score: f.score - Ranking.EXACT
             }), "file"))
 
-    readonly property var contentRows: root.path || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
+    readonly property var contentRows: !root.grepFor || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
                 key: `content:${hit.path}`,
                 kind: "file",
                 path: hit.path,
@@ -719,6 +814,118 @@ QtObject {
                 icon: Marks.iconFor(hit.path, hit.name, false, Files.home) || "draft",
                 score: -1
             }))
+
+    readonly property string cli: `${Quickshell.shellDir}/cli/banditshell`
+    readonly property var cliLine: ShellCli.ask(root.query)
+
+    property var help: null
+
+    property FileView helpFile: FileView {
+        path: root.cliLine !== null || root.help ? root.cli : ""
+        onLoaded: root.help = ShellCli.parseHelp(root.helpFile.text())
+    }
+
+    property var cliOutput: null
+
+    function runCli(line: string): void {
+        const command = [root.cli, ...line.split(/\s+/).filter(Boolean)];
+        if (ShellCli.detached(line)) {
+            root.leave(() => Quickshell.execDetached(command));
+            return;
+        }
+        root.cliOutput = {
+            line: line,
+            lines: ["…"]
+        };
+        root.cliRunner.running = false;
+        root.cliRunner.line = line;
+        root.cliRunner.command = command;
+        root.cliRunner.running = true;
+    }
+
+    property Process cliRunner: Process {
+        property string line: ""
+
+        stdout: StdioCollector {
+            id: cliSaid
+
+            onStreamFinished: root.cliOutput = {
+                line: root.cliRunner.line,
+                lines: cliSaid.text.split("\n").map(l => l.replace(/\x1b\[[0-9;]*m/g, "")).filter(l => l.trim()).slice(0, 40)
+            }
+        }
+    }
+
+    readonly property var shellRows: {
+        const line = root.cliLine;
+        if (line === null)
+            return [];
+        const trimmed = line.trim();
+        const usage = root.help && trimmed ? ShellCli.usageFor(root.help, trimmed) : null;
+        const next = root.help ? ShellCli.nextWords(root.help, line) : null;
+        const out = trimmed && (usage || !next?.words.length) ? [
+            {
+                key: `cli:${trimmed}`,
+                kind: "cli",
+                line: trimmed,
+                label: `banditshell ${trimmed}`,
+                detail: usage?.about ?? "",
+                icon: "terminal",
+                score: Infinity
+            }
+        ] : [];
+        if (!next)
+            return out;
+        const typed = next.typed.join(" ");
+        return out.concat(next.words.map(w => {
+            const text = `${typed}${typed ? " " : ""}${w.word}`;
+            return {
+                key: `suggest:bandit ${text}`,
+                kind: "suggest",
+                complete: `bandit ${text} `,
+                label: `banditshell ${text}`,
+                detail: w.about,
+                icon: "keyboard_tab",
+                score: 2
+            };
+        }));
+    }
+
+    readonly property var outputRows: !root.cliOutput || root.cliOutput.line !== (root.cliLine ?? "").trim() ? [] : root.cliOutput.lines.map((text, i) => ({
+                key: `output:${i}:${text}`,
+                kind: "output",
+                label: text,
+                detail: "",
+                icon: "subdirectory_arrow_right",
+                score: 1
+            }))
+
+    readonly property var cities: ["Tokyo", "New York", "London", "Los Angeles", "Paris", "Berlin", "Sydney", "Singapore", "Dubai", "Toronto"]
+
+    readonly property var suggestRows: {
+        const typed = root.query.replace(/^\s+/, "");
+        if (!typed || root.path)
+            return [];
+        const found = {
+            places: [...new Set([...Clock.places.map(z => Clock.cityOf(z)), ...root.cities])],
+            workspaces: Hyprland.workspaces.values.filter(w => w.id > 0).map(w => w.id).sort((a, b) => a - b).map(String),
+            playing: Audio.playing.map(n => Audio.streamLabel(n)),
+            processes: [...new Set(root.processes.map(p => p.name))]
+        };
+        const inside = Search.PHRASES.some(p => typed.toLowerCase().indexOf(p.head) === 0);
+        return Search.suggestions(typed, found).slice(0, root.caps.suggestions).map(text => {
+            const preview = Calculator.answerFor(text);
+            return {
+                key: `suggest:${text}`,
+                kind: "suggest",
+                complete: text,
+                label: text.endsWith(" ") ? `${text}…` : text,
+                detail: preview && !preview.missing ? preview.text : "",
+                icon: "keyboard_tab",
+                score: inside ? 3 : 0.4
+            };
+        });
+    }
 
     readonly property var fallbackRows: Search.fallbackRows(Config.values.launcher.fallbacks, root.text, Config.values.launcher.webSearch).map(f => ({
                 key: `fallback:${f.id}`,
@@ -1004,6 +1211,19 @@ QtObject {
             return root.appRows;
         if (root.path)
             return root.pathRows;
+        if (root.cliLine !== null)
+            return Search.arrange([
+                {
+                    key: "output",
+                    title: "Output",
+                    items: root.outputRows
+                },
+                {
+                    key: "shell",
+                    title: "banditshell",
+                    items: root.shellRows
+                }
+            ], root.caps);
         const groups = [];
         if (root.url)
             groups.push({
@@ -1028,6 +1248,10 @@ QtObject {
             key: "processes",
             title: "Processes",
             items: root.processRows
+        }, {
+            key: "suggestions",
+            title: "Suggestions",
+            items: root.suggestRows
         }, {
             key: "apps",
             title: "Apps",
@@ -1147,6 +1371,15 @@ QtObject {
         case "link":
             root.launch(() => Quickshell.execDetached(["xdg-open", root.url]));
             return;
+        case "suggest":
+            root.retype(row.complete);
+            return;
+        case "cli":
+            root.runCli(row.line);
+            return;
+        case "output":
+            root.leave(() => Files.copyText(row.label));
+            return;
         case "fallback":
             if (row.fallback.url) {
                 const url = row.fallback.url;
@@ -1232,6 +1465,10 @@ QtObject {
     }
 
     function complete(row: var): bool {
+        if (row?.kind === "suggest") {
+            root.retype(row.complete);
+            return true;
+        }
         if (row?.kind !== "file")
             return false;
         root.retype(`${Search.shortPath(row.path, Files.home)}${row.dir ? "/" : ""}`);

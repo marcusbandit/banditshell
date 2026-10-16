@@ -993,6 +993,10 @@ banditshell/
 │   │   │                        does. Apps, commands and settings have ids
 │   │   │                        (app:firefox, command:lock) that a hotkey or
 │   │   │                        the CLI runs without the launcher open
+│   │   ├── shellcli.js          the CLI's own help header (cli/banditshell) read
+│   │   │                        as usages, so typing bandit or banditshell in
+│   │   │                        the launcher runs any command and completes
+│   │   │                        the next word the way the terminal's Tab does
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places

@@ -7,6 +7,21 @@
         {
           "type": "features",
           "severity": "minor",
+          "text": "Type bandit, or banditshell, in the launcher to run the shell's own commands: bandit restart restarts the shell, bandit wallpaper next changes the picture, and the next word is suggested as you go, the same way Tab works in a terminal. What a command prints shows up underneath. Typing restart now offers both Restart shell and Restart computer."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Tab completes in the launcher. days until offers christmas, easter and other days with the count already worked out, and time in, timer, remind me, focus workspace, volume and kill offer what can follow them."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "More window rows that work in every layout: Promote window, Swap left, right, up and down, Focus left and the other directions, Move window left and so on, and focus workspace 2. Float window and Tile window are one row that names what it will do, and either word finds it; Fullscreen and Maximize turn into Exit fullscreen and Unmaximize the same way."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
           "text": "The launcher's calculator also reads dates and colours. days until christmas, monday in 3 weeks, 10 days ago and week number answer right under the field, and #ff8800 shows its rgb and hsl with a swatch of the colour. 5pm ldn in sf or 9am pst moves a time between places, daylight saving included. Coins work like money: 0.5 btc in dkk uses prices fetched only when you type one."
         },
         {
@@ -23,6 +38,11 @@
           "type": "bugs",
           "severity": "minor",
           "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Snapping a window to a half, third or quarter places it instead of only floating it. Typing in the launcher stutters less: rounded shapes are drawn once per size instead of on every keystroke, and the buttons on the selected row wait until you stop typing."
         }
       ]
     },
