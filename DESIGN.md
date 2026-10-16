@@ -3631,7 +3631,12 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   percentage beside it, and `warnAbove` moves the marker that is at 1. A
   row can also carry `glyph` (a character, such as an emoji, drawn as its
   icon) and `ask` (`{ prompt, icon, suggestion, take }`): Enter on it turns
-  the field into a one-line question and hands the answer to `take(text)`. Groups are ordered by their best score, like the built-in
+  the field into a one-line question and hands the answer to `take(text)`.
+  `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
+  true` lets the row take Tab even when another row is selected. In
+  `actionsFor`, a first action with `button: true` also shows as a button,
+  for rows whose Enter action belongs next to the others (Pause beside Skip
+  and Stop). Groups are ordered by their best score, like the built-in
   ones.
 - `kinds`: the row kinds this source owns. The hub hands `activate(row)`,
   `actionsFor(row)` and `complete(row)` for those kinds to this source.

@@ -45,6 +45,21 @@
           "text": "Type emoji heart, :smile or just thumbs up in the launcher and Enter types it into the app you were in. Symbols such as °, → and ½ work the same way. Snippets keep text you type often behind a keyword, with the date, time or clipboard filled in. Quicklinks such as yt cats or gh banditshell search a site straight away, and clip, or a few words you copied, finds it in your clipboard history and pastes it. Snippets and quicklinks are edited in Settings › Launcher."
         },
         {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher runs your own scripts: put one in ~/.config/banditshell/scripts and type its name, with any words after it as input. Type pick colour to grab a colour from the screen, colours for the ones you picked, projects to open a repository in your editor, notes or note something for Obsidian, and cpu, memory, disk or top to see what the machine is doing. pomodoro starts focus rounds with breaks between them, and lorem 3 copies three paragraphs of filler text. Settings › Launcher › Power tools sets the folders, and can leave a vault out of notes."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Type ? and a question in the launcher and the answer appears under the search field, from a model running on your own computer. Select text in any app, open the launcher and type fix, shorter, friendlier, summarise, translate or explain to work on it, then put the result back in place or copy it. If Ollama is not set up yet, the launcher installs it, starts it and downloads a small model for you, or you can add an API key in Settings › Launcher."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The processor temperature reads the processor's own sensor. On some boards it showed a fixed reading near 17 °C."
+        },
+        {
           "type": "bugs",
           "severity": "minor",
           "text": "Uninstall in the launcher now finds apps whose shortcut sits in a subfolder, such as the ones some KDE and Wine apps install."
