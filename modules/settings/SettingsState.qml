@@ -203,6 +203,8 @@ Singleton {
             breakMinutes: "launcher.powerTools.breakMinutes",
             longBreakMinutes: "launcher.powerTools.longBreakMinutes",
             roundsBeforeLongBreak: "launcher.powerTools.roundsBeforeLongBreak",
+            passwordLength: "launcher.utilities.passwordLength",
+            reminderHour: "launcher.utilities.reminderHour",
             clip: "clipboard.record",
             clipMax: "clipboard.maxEntries",
             clipText: "clipboard.maxText",

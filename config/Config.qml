@@ -330,6 +330,11 @@ Singleton {
                     colourHistory: 12
                 },
 
+                utilities: {
+                    passwordLength: 20,
+                    reminderHour: 9
+                },
+
                 alphabet: {
                     width: 760,
 

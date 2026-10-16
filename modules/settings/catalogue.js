@@ -421,6 +421,12 @@ const PAGES_SOURCE = {
                 { n: [], icon: "self_improvement", label: "Long break", k: "longBreakMinutes", kind: "step", min: 5, max: 60, step: 5, unit: " min", cfg: "launcher.powerTools.longBreakMinutes", kw: "pomodoro long break minutes" },
                 { n: [], icon: "replay", label: "Rounds before a long break", k: "roundsBeforeLongBreak", kind: "step", min: 2, max: 8, cfg: "launcher.powerTools.roundsBeforeLongBreak", fmt: v => `${v}`, kw: "pomodoro rounds long break" }
             ] },
+            { t: "Utilities", rows: [
+                { n: [], icon: "password", label: "Password length", k: "passwordLength", kind: "step", min: 8, max: 64, step: 4, cfg: "launcher.utilities.passwordLength", fmt: v => `${v} characters`, kw: "password generator random length uuid developer",
+                    why: "Typing password makes one this long. Ask for another length with password 32, or password 20 simple for one without symbols." },
+                { n: [], icon: "notifications_active", label: "Reminders without a time", k: "reminderHour", kind: "step", min: 5, max: 12, cfg: "launcher.utilities.reminderHour", fmt: v => `${v < 10 ? "0" : ""}${v}:00`, kw: "reminder default time morning tomorrow remind me",
+                    why: "Remind me tomorrow to call mum rings at this hour. Tonight, this afternoon and this evening ring at 20:00, 15:00 and 19:00." }
+            ] },
             { t: "Online", rows: [
                 { n: [], icon: "translate", label: "Translate", k: "onlineTranslate", kind: "toggle", cfg: "launcher.online.translate", kw: "translate translation language google",
                     why: "Type hello in german, translate bonjour or tr hola. The text goes to Google Translate." },
