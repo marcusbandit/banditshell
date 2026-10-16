@@ -29,6 +29,9 @@ QtObject {
     readonly property list<QtObject> sources: [
         FallbackSource {
             search: root
+        },
+        WorkshopSource {
+            search: root
         }
     ]
 

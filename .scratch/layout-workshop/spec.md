@@ -1,6 +1,6 @@
 # Layout Workshop
 
-Status: needs-triage
+Status: core built on branch layout-workshop (2026-10-16)
 
 A place in the shell to make a Hyprland tiling layout by drawing it: the user
 arranges regions on a canvas, sees windows fill them live, and the shell writes
@@ -77,3 +77,94 @@ enough:
   page that says custom layouts are still being worked out. The Workshop is
   what that row should open. The launcher's layout rows
   (`WindowLayouts.available`) should list Workshop layouts too.
+
+## Answers
+
+Checked on Hyprland 0.56.2 (Lua 5.5) on 2026-10-16, without touching
+`general.layout` or any Hyprland file.
+
+- **Loading works without editing Hyprland files.** `hyprctl eval
+  'dofile("<path>")'` runs a file the shell owns in Hyprland's own Lua state,
+  and `hl.layout.register` inside it makes `lua:<name>` available at once.
+  Probes registered `lua:bs_workshop_probe`, `lua:bs-workshop-check` and
+  `lua:bs-workshop-check2`, none applied to a workspace; they disappear on the
+  next reload. `dofile`, `io` and `os` are all present in that state.
+- **A name registers once per Lua state.** A second `hl.layout.register` with
+  the same name does not raise; it records a config error ("layout
+  'lua:x' is already registered") that `hyprctl eval` prints and
+  `hyprctl configerrors` lists until the next successful eval. So `pcall`
+  cannot guard it. The generated file keeps
+  `banditshell_workshop.registered[name]` and registers a thin forwarder only
+  once; loading the file again swaps the implementation behind the forwarder,
+  so "Use now" after an edit takes effect without a reload.
+- **After a reload, load again.** `ConfigManager.hpp` has `reinitLuaState()`
+  and `clearLuaLayoutProviders()`: a reload starts a fresh Lua state with no
+  Lua layouts. `services/WorkshopLayouts.qml` loads every saved layout when
+  the shell starts and again on every `configreloaded` event (first clearing
+  the registered table, in case a state ever survives), the same way launcher
+  hotkeys are bound again.
+- **Reading values back.** `hyprctl eval` prints only `ok` or `error: ...`, so
+  a probe reads a value with `error(tostring(x), 0)`. `hl.layout` has only
+  `register`; there is no list of registered layouts and no unregister.
+- **One source of truth.** The geometry engine is written twice, once in JS
+  (`modules/workshop/layout-model.js`, which draws the preview) and once in Lua
+  (embedded by `modules/workshop/layout-lua.js` in every generated file), line
+  for line. `tests/layout-workshop.test.js` runs the generated Lua under the
+  system `lua` with a mock `hl` and checks it against the JS for every starter
+  and 40 random layouts, with messages, and checks the stage model against
+  the hand-written `stage.lua` (copied to `tests/fixtures/stage.lua`) for 1 to
+  8 windows on 5120x1440, 1200x1920 and four other areas.
+- **Round-tripping.** The Workshop edits only what it made. Stage ships as a
+  starter drawn in the model instead of being parsed from Lua.
+- **Where it lives.** Models are kept in
+  `~/.local/state/banditshell/layouts.json`; the generated Lua goes to
+  `~/.local/state/banditshell/layouts/<name>.lua` and is written again from
+  the models on every load, so a shell update that changes the engine reaches
+  saved layouts by itself. Settings, Desktop, Windows: the "Custom layout"
+  row lists saved layouts (Use, Edit, remove) and "Draw one" opens the
+  Workshop inline, with the canvas in the side pane (a `workshop` pin) so it
+  stays in view while the inspector scrolls. Typing "layout workshop" in the
+  launcher opens it too. `WindowLayouts.available` lists every saved layout
+  that loaded, so the launcher's layout rows offer them.
+
+### The model as built
+
+- Regions nest: a `split` (row or column) holds children; leaves are `slot`
+  (one window), `stack` (many, along its axis, with per-window weights) or
+  `space` (holds nothing).
+- Sizes along a split: `aspect` (width:height against the cross size, capped
+  at what is left), `fraction` of the split, `pixels`, then `share` of the
+  rest. The last share takes the rounding remainder; with no share, the last
+  region takes what is left. A region marked collapse gives its space back
+  when it holds no window.
+- Fill order: `first` (one entry per window) then `repeat` (cycled). A full
+  slot is skipped; when everything in the pattern is full, the window joins
+  the region the pattern points at.
+- Arrangements: the first one whose conditions hold (fewest and most windows,
+  narrowest and widest area) and whose every slot and stack is at least `fit`
+  px is used; the last is the default. Stage is a main arrangement plus a
+  one-stack fallback that takes over when the side columns would be 0 px.
+- Messages: `taller`/`shorter` change the focused window's weight in a column
+  stack, else the share or fraction of the nearest region in a column split;
+  `wider`/`narrower` the same along rows; `promote` swaps the focused window
+  with the first one, the same `hl.dsp.window.swap` stage's `put_on_stage`
+  dispatches, deferred with `hl.timer` so it does not run inside the layout
+  callback; `reset` clears weights and shares. Unknown messages
+  are ignored, never refused, so no config error banner appears.
+- Known difference from stage.lua: in the one-stack fallback the first window
+  can grow with `taller`; stage.lua holds the stage window at weight 1 even
+  there.
+
+### Not done yet
+
+- Binds for the messages are copied (Copy binds), not bound live. Binding them
+  through `hyprctl eval` like launcher hotkeys would work, but
+  `apply_layout_binds` in the user's binds.lua unbinds by chord on every
+  layout switch, so the two would need agreeing first.
+- Dragging region edges on the canvas; sizes are set in the inspector.
+- Per-workspace layouts (workspace rules take a `layout`); "Use now" sets
+  `general.layout` like every other layout row.
+- Not tested live with a Workshop layout applied: the probes only registered
+  layouts. Checked offscreen and against a mock `hl` in Lua 5.5.
+- Opening the Workshop on an existing layout in the first moment after the
+  shell starts, before `layouts.json` is read, opens a fresh stage instead.

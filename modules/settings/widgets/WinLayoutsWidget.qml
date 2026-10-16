@@ -6,6 +6,8 @@ import qs.components
 import qs.modules.controls
 import qs.modules.settings
 import qs.modules.settings.scenes
+import qs.modules.workshop
+import qs.services
 import "../catalogue.js" as Catalogue
 
 Column {
@@ -125,27 +127,96 @@ Column {
 
     MenuLayer {
         width: root.width
-        open: root.picked === "custom" || root.customOpen
+        open: root.picked === "custom" || root.customOpen || LayoutDraft.editing
 
         SettingsRowFrame {
             width: parent.width
             interactive: false
             icon: "extension"
             label: "Custom layout"
-            detail: SettingsState.customInUse || SettingsState.v("customLayout") || "nothing set up yet"
-
-            SettingsTool {
-                anchors.verticalCenter: parent.verticalCenter
-                icon: "info"
-                tip: "custom layouts are still being worked out. this is where yours will plug in."
-            }
+            detail: SettingsState.customInUse || (WorkshopLayouts.layouts.length ? WorkshopLayouts.layouts.map(m => m.name).join(" · ") : "nothing drawn yet")
 
             Button {
                 anchors.verticalCenter: parent.verticalCenter
                 size: 0
-                text: "Add"
-                onClicked: SettingsView.drop("custom layouts are still being worked out · this will pick one", "extension")
+                icon: "draw"
+                text: "Draw one"
+                visible: !LayoutDraft.editing || LayoutDraft.original !== ""
+                onClicked: LayoutDraft.open("", "stage")
             }
+        }
+
+        Repeater {
+            model: WorkshopLayouts.layouts
+
+            delegate: SettingsRowFrame {
+                id: saved
+
+                required property var modelData
+
+                readonly property string layoutName: `lua:${saved.modelData.name}`
+                readonly property bool inUse: WindowLayouts.current === saved.layoutName
+
+                width: parent.width
+                interactive: false
+                icon: "dashboard"
+                label: saved.modelData.name
+                detail: saved.inUse ? "in use" : WorkshopLayouts.ready[saved.modelData.name] ? "loaded" : WorkshopLayouts.possible ? "not loaded" : "needs Hyprland with a Lua config"
+
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    spacing: Appearance.padding.small
+
+                    Button {
+                        size: 0
+                        icon: "play_arrow"
+                        text: "Use"
+                        visible: !saved.inUse
+                        interactive: !!WorkshopLayouts.ready[saved.modelData.name]
+                        onClicked: WindowLayouts.use(saved.layoutName)
+                    }
+
+                    Button {
+                        size: 0
+                        icon: "edit"
+                        text: "Edit"
+                        onClicked: LayoutDraft.open(saved.modelData.name, "stage")
+                    }
+
+                    SettingsTool {
+                        icon: "delete"
+                        tip: saved.inUse ? `remove it and go back to ${WorkshopLayouts.fallbackLayout.replace(/^lua:/, "")}` : "remove it"
+                        onClicked: WorkshopLayouts.remove(saved.modelData.name)
+                    }
+                }
+            }
+        }
+
+        Loader {
+            width: parent.width
+            active: LayoutDraft.editing
+            visible: active
+
+            sourceComponent: LayoutWorkshop {
+                withPreview: SettingsView.pin?.type !== "workshop"
+            }
+        }
+    }
+
+    function showWorkshop(): void {
+        if (LayoutDraft.editing && !SettingsView.compact && SettingsView.pin?.type !== "workshop")
+            SettingsView.openPin("workshop", LayoutDraft.model.name, "");
+        else if (!LayoutDraft.editing && SettingsView.pin?.type === "workshop")
+            SettingsView.unpin();
+    }
+
+    Component.onCompleted: root.showWorkshop()
+
+    Connections {
+        target: LayoutDraft
+
+        function onEditingChanged(): void {
+            root.showWorkshop();
         }
     }
 }

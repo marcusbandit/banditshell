@@ -21,7 +21,7 @@ const LAYOUTS = [
     { id: "master", name: "master", detail: "one big, the rest stack" },
     { id: "scrolling", name: "scrolling", detail: "columns on a strip · hyprscrolling" },
     { id: "hy3", name: "hy3", detail: "i3-style groups and tabs · hy3" },
-    { id: "custom", name: "add custom", detail: "your own · still being worked out" }
+    { id: "custom", name: "add custom", detail: "your own · drawn in the layout workshop" }
 ];
 
 const WIDGET_TITLES = {
@@ -41,7 +41,7 @@ const SEARCH_TITLES = {
 };
 
 const WIDGET_WHY = {
-    winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom is for your own layout; how it plugs in is still being worked out.",
+    winLayouts: "How Hyprland tiles windows on this screen. Scrolling and hy3 are plugins and need installing first. Custom opens the layout workshop: draw regions, pick where each new window goes, and the shell writes a Lua layout and loads it into Hyprland without touching your config files.",
     via: "Pick Custom under Board, then import the .json your keyboard’s maker publishes for usevia.app. Import lists the VIA files in Downloads; Browse opens any other. The sheet then draws your exact board, split halves and odd keys included. Add a keymap saved from VIA (Save + Load, Save) and the keys you bind light up on it. Open the file to edit it into your own board; the sheet follows your edits.",
     modes: "Like a focus on a phone. Pick one and it changes a handful of settings; pick none and they go back.",
     usage: "Time with each app in front of you today, counted only while you are active.",
@@ -346,7 +346,7 @@ const PAGES_SOURCE = {
         status: s => `${s.v("layout") === "custom" ? "custom layout" : s.v("layout")} · ${s.v("dropMode")} on drop`,
         groups: [
             { t: "Layout", rows: [
-                { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom" }
+                { n: [], kind: "w", w: "winLayouts", kw: "tiling layout dwindle master scrolling hy3 custom workshop draw lua" }
             ] },
             { t: "Moving", rows: [
                 { n: 66, icon: "vertical_align_top", label: "Bottom edge lifts windows", k: "edgeLift", kind: "toggle", cfg: "windows.edge", detail: "push down to peek" },
