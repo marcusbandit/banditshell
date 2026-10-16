@@ -49,16 +49,23 @@ Singleton {
     onSettledChanged: root.home()
 
     readonly property int known: Hyprland.workspaces.values.length
-    property bool homed: false
+
+    PersistentProperties {
+        id: kept
+
+        reloadableId: "hypr-home"
+
+        property bool homed: !!Quickshell.env("BANDITSHELL_PREVIEW")
+    }
 
     onKnownChanged: root.home()
     onParserKnownChanged: root.home()
     Component.onCompleted: root.home()
 
     function home(): void {
-        if (root.homed || root.known === 0 || !root.parserKnown || !root.settled)
+        if (kept.homed || root.known === 0 || !root.parserKnown || !root.settled)
             return;
-        root.homed = true;
+        kept.homed = true;
         const band = root.bandFor(root.focusedScreen);
         if (root.activeId < band || root.activeId >= band + root.count)
             root.switchTo(band);
