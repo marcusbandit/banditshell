@@ -1259,7 +1259,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.sourceGroupLists, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.sourceGroupLists, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1358,7 +1358,7 @@ QtObject {
             title: "Inside files",
             items: root.contentRows
         }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
-        return Search.arrange(groups, root.limits);
+        return Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);
     }
 
     function openSetting(row: var): void {
@@ -1367,6 +1367,8 @@ QtObject {
     }
 
     function activate(row: var): void {
+        if (row?.kind !== "app" && !row?.header)
+            LauncherMemory.record(row?.id ?? row?.key ?? "");
         const owner = root.sourceOf(row);
         if (owner) {
             owner.activate(row);

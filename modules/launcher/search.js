@@ -117,6 +117,29 @@ function webSearchUrl(template, text) {
     return String(template || "").replace("%s", encodeURIComponent(String(text || "").trim()));
 }
 
+function remembered(groups, bonusOf) {
+    return (groups || []).map(g => {
+        let lifted = false;
+        const items = g.items.map((it, i) => {
+            const bonus = it.kind === "app" || it.header || !isFinite(it.score ?? 0) ? 0 : bonusOf(it.key);
+            if (bonus > 0)
+                lifted = true;
+            return {
+                it: bonus > 0 ? Object.assign({}, it, {
+                    score: (it.score ?? 0) + bonus
+                }) : it,
+                i: i
+            };
+        });
+        if (!lifted)
+            return g;
+        items.sort((a, b) => (b.it.score ?? 0) - (a.it.score ?? 0) || a.i - b.i);
+        return Object.assign({}, g, {
+            items: items.map(x => x.it)
+        });
+    });
+}
+
 function arrange(groups, caps) {
     const best = g => g.items.reduce((m, it) => Math.max(m, it.score ?? 0), -Infinity);
     const live = (groups || []).map((g, i) => ({

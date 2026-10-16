@@ -38,6 +38,7 @@ singleton Keyring 1.0 Keyring.qml
 singleton Keystrokes 1.0 Keystrokes.qml
 singleton LatestFiles 1.0 LatestFiles.qml
 singleton LauncherHotkeys 1.0 LauncherHotkeys.qml
+singleton LauncherMemory 1.0 LauncherMemory.qml
 singleton Launching 1.0 Launching.qml
 singleton LayoutDraft 1.0 LayoutDraft.qml
 singleton Lid 1.0 Lid.qml

@@ -12,7 +12,7 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
@@ -234,5 +234,26 @@ test.describe("peek privacy", () => {
             assert.ok(Search.isSecretish(p), p);
         for (const p of ["/d/notes.md", "/h/Projects/banditshell/DESIGN.md", "/d/secretary/letter.txt", "/d/environment.md"])
             assert.ok(!Search.isSecretish(p), p);
+    });
+});
+
+test.describe("rows you use come back first", () => {
+    const groups = [{ key: "commands", title: "Commands", items: [
+        { key: "command:lock", kind: "command", score: 2 },
+        { key: "command:logout", kind: "command", score: 2 },
+        { key: "command:lead", kind: "command", score: Infinity }
+    ] }, { key: "apps", title: "Apps", items: [{ key: "app:x", kind: "app", score: 1 }] }];
+
+    test.it("lifts a used row above an equal match and leaves the rest alone", () => {
+        const out = Search.remembered(groups, key => key === "command:logout" ? 0.5 : 0);
+        assert.deepStrictEqual(out[0].items.map(r => r.key), ["command:lead", "command:logout", "command:lock"]);
+        assert.strictEqual(out[0].items[1].score, 2.5);
+        assert.strictEqual(out[1], groups[1]);
+    });
+
+    test.it("never touches apps, which keep their own record, or rows already first", () => {
+        const out = Search.remembered(groups, () => 0.9);
+        assert.strictEqual(out[1].items[0].score, 1);
+        assert.strictEqual(out[0].items[0].key, "command:lead");
     });
 });
