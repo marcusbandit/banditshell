@@ -72,3 +72,16 @@ function accumulated(entries, seen) {
 function severityOf(e) {
     return e && e.changes.some(c => c.severity === "major") ? "major" : "minor";
 }
+
+function readSeen(text) {
+    return String(text ?? "").split("\n")[0].trim();
+}
+
+function lastSeen(stored, legacy) {
+    const own = readSeen(stored);
+    return own !== "" ? own : readSeen(legacy);
+}
+
+function legacyToMove(stored, legacy) {
+    return readSeen(stored) === "" ? readSeen(legacy) : "";
+}

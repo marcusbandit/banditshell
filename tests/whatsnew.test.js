@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, readSeen, lastSeen, legacyToMove, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -158,4 +158,24 @@ test("an entry is Major when any change in it is", () => {
     assert.strictEqual(WhatsNew.severityOf(log[2]), "major");
     assert.strictEqual(WhatsNew.severityOf({ id: "e", changes: [] }), "minor");
     assert.strictEqual(WhatsNew.severityOf(undefined), "minor");
+});
+
+test("the seen mark is the first line of the state file, trimmed", () => {
+    assert.strictEqual(WhatsNew.readSeen("third\n"), "third");
+    assert.strictEqual(WhatsNew.readSeen("  third  \nignored"), "third");
+    assert.strictEqual(WhatsNew.readSeen(""), "");
+    assert.strictEqual(WhatsNew.readSeen(undefined), "");
+});
+
+test("the state file wins over the old config key, which stands in until it is moved", () => {
+    assert.strictEqual(WhatsNew.lastSeen("new\n", "old"), "new");
+    assert.strictEqual(WhatsNew.lastSeen("", "old"), "old");
+    assert.strictEqual(WhatsNew.lastSeen("", ""), "");
+    assert.deepStrictEqual(WhatsNew.accumulated(log, WhatsNew.lastSeen("", "first")).map(e => e.id), ["third", "skipped"]);
+});
+
+test("the old config key moves once, and only when the state file has no mark", () => {
+    assert.strictEqual(WhatsNew.legacyToMove("", "old"), "old");
+    assert.strictEqual(WhatsNew.legacyToMove("", ""), "");
+    assert.strictEqual(WhatsNew.legacyToMove("new\n", "old"), "");
 });
