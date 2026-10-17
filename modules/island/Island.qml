@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import Quickshell
+import Quickshell.Io
 import Quickshell.Wayland
 import Quickshell.Services.Notifications
 import qs.config
@@ -65,6 +66,27 @@ Item {
     }
 
     readonly property bool voice: root.focused && Dictation.live
+
+    readonly property bool trailing: root.voice && root.centreKey === "dictation" && root.openness === 0
+    readonly property bool alone: root.trailing && root.rest === "compact" && root.stackKeys.length === 1 && root.bubbleKeys.length === 0
+
+    property bool near: false
+    readonly property bool tucked: root.alone && root.near
+    readonly property bool watching: root.alone && !root.yielded && Hypr.requestSocket !== ""
+
+    readonly property real windowOffset: {
+        const box = Hypr.activeClient?.lastIpcObject;
+        if (!box?.at || !box?.size)
+            return 0;
+        const centre = box.at[0] + box.size[0] / 2 - (root.host?.x ?? 0);
+        const middle = box.at[1] + box.size[1] / 2 - (root.host?.y ?? 0);
+        if (centre < 0 || centre > root.width || middle < 0 || middle > (root.host?.height ?? 0))
+            return 0;
+        const room = root.border + Appearance.padding.large;
+        const lo = room + root.restWidth / 2;
+        const hi = root.width - room - root.restWidth / 2 - root.bubbleKeys.length * root.bubblePitch;
+        return hi < lo ? 0 : Math.max(lo, Math.min(hi, centre)) - root.width / 2;
+    }
 
     readonly property var deckEntries: {
         if (!root.notifies || !root.offStage)
@@ -232,7 +254,7 @@ Item {
         }
         const below = [...root.annKeys.map(k => root.named(k, root.announcing[k]?.items.length ?? 0)), ...(root.centreKey ? kinds : [])];
         const beside = root.bubbleKeys.map(k => root.named(k, k === "notification" ? 0 : (root.viewOf(k)?.items.length ?? 0)));
-        return [centre, below.length > 0 ? `below it: ${below.join(", ")}` : "", beside.length > 0 ? `beside it: ${beside.join(", ")}` : ""].filter(t => t).join(", ");
+        return [centre, below.length > 0 ? `below it: ${below.join(", ")}` : "", beside.length > 0 ? `beside it: ${beside.join(", ")}` : "", root.tucked ? "tucked away from the pointer" : ""].filter(t => t).join(", ");
     }
 
     readonly property bool out: root.rest !== "hidden" || root.openness > 0
@@ -280,13 +302,16 @@ Item {
     readonly property real fieldWidth: Math.ceil(root.largeWidth + (root.bubbleMax * root.bubblePitch + root.shadowRoom) * 2)
     readonly property real fieldHeight: Math.ceil((root.islandTop + Math.max(root.compactHeight * (root.launchMax + 3), overview.implicitHeight - overview.arrivals + deck.fullHeight, deck.fullHeight + root.compactHeight * 2) + root.shadowRoom) / root.fieldStep) * root.fieldStep
     readonly property real centreX: scene.width / 2
+    readonly property real surfaceX: Math.round((root.width - root.fieldWidth) / 2 + trail.value)
 
     readonly property real widening: Math.min(1, glide.value * 1.8)
     readonly property real pillWidth: wide.value + (root.largeWidth - wide.value) * root.widening
     readonly property real pillHeight: tall.value + (overviewTall.value - tall.value) * glide.value
     readonly property real pillX: root.centreX - root.pillWidth / 2
     readonly property real tuckedY: root.edge - root.pillHeight - Appearance.padding.small
-    readonly property real pillY: root.tuckedY + (root.islandTop - root.tuckedY) * presence.value
+    readonly property real lipY: root.edge + Appearance.padding.small - root.pillHeight
+    readonly property real dropY: root.tuckedY + (root.islandTop - root.tuckedY) * presence.value
+    readonly property real pillY: root.dropY - Math.max(0, root.dropY - root.lipY) * tuck.value
     readonly property real neck: Appearance.sizes.melt * (1 - settle.value)
     readonly property real squared: Math.max(0, Math.min(1, (root.pillHeight - root.compactHeight) / root.compactHeight))
     readonly property real pillRadius: root.pillHeight / 2 + (Appearance.rounding.normal - root.pillHeight / 2) * root.squared
@@ -424,7 +449,7 @@ Item {
         const parts = root.openness > 0.5 ? overview.mediaParts(scene) : root.rowOfKind("music")?.parts(scene);
         if (!parts?.cover)
             return null;
-        const shift = (root.width - root.fieldWidth) / 2;
+        const shift = root.surfaceX;
         const out = {
             body: Qt.rect(root.pillX + shift, root.pillY, root.pillWidth, root.pillHeight),
             radius: root.pillRadius,
@@ -560,6 +585,36 @@ Item {
             keys.forceActiveFocus();
     }
 
+    function retrail(): void {
+        if (root.trailing && islandHover.hovered)
+            return;
+        if (root.trailing)
+            trail.target = root.windowOffset;
+        else if (root.out)
+            trail.target = 0;
+        if (presence.value < 0.05)
+            trail.snap();
+    }
+
+    function judge(x: real, y: real): void {
+        if (!root.watching)
+            return;
+        const reach = Appearance.padding.large * (root.near ? 2 : 1);
+        const left = (root.host?.x ?? 0) + root.surfaceX + root.pillX - reach;
+        const top = root.host?.y ?? 0;
+        const bottom = top + root.y + root.islandTop + root.pillHeight + reach;
+        root.near = x >= left && x <= left + root.pillWidth + reach * 2 && y >= top && y <= bottom;
+    }
+
+    onTrailingChanged: root.retrail()
+    onWindowOffsetChanged: root.retrail()
+    onOutChanged: root.retrail()
+    onSurfaceXChanged: scene.Window.window?.update()
+    onWatchingChanged: if (!root.watching)
+        root.near = false
+    onVoiceChanged: if (root.voice)
+        Hypr.resync()
+
     onGroupsChanged: Qt.callLater(root.arrange)
     onStackKeysChanged: root.mergeStack()
     onBubbleKeysChanged: root.mergeBubbles()
@@ -607,6 +662,7 @@ Item {
         root.arrange(true);
         root.mergeStack();
         root.mergeBubbles();
+        root.retrail();
     }
 
     Component.onDestruction: {
@@ -673,8 +729,62 @@ Item {
         id: settle
 
         speed: settle.target > settle.value ? Appearance.animation.revealSpeed * 0.2 : Appearance.animation.revealSpeed
-        target: root.out ? 1 : 0
+        target: root.out && !root.tucked ? 1 : 0
         epsilon: 0.004
+    }
+
+    Follow {
+        id: trail
+
+        speed: Appearance.animation.trackSpeed / 2
+    }
+
+    Follow {
+        id: tuck
+
+        speed: Appearance.animation.revealSpeed
+        target: root.tucked ? 1 : 0
+        epsilon: 0.004
+    }
+
+    Socket {
+        id: pointer
+
+        property string reply: ""
+
+        path: Hypr.requestSocket
+
+        onConnectedChanged: {
+            if (!pointer.connected)
+                return;
+            pointer.reply = "";
+            pointer.write("j/cursorpos");
+            pointer.flush();
+        }
+
+        parser: SplitParser {
+            splitMarker: ""
+            onRead: data => {
+                pointer.reply += data;
+                let pos;
+                try {
+                    pos = JSON.parse(pointer.reply);
+                } catch (e) {
+                    return;
+                }
+                pointer.connected = false;
+                if (typeof pos.x === "number" && typeof pos.y === "number")
+                    root.judge(pos.x, pos.y);
+            }
+        }
+    }
+
+    Timer {
+        interval: 80
+        repeat: true
+        running: root.watching
+        onTriggered: if (!pointer.connected)
+            pointer.connected = true
     }
 
     readonly property real morphSpeed: Appearance.animation.resizeSpeed * 0.7
@@ -851,7 +961,7 @@ Item {
 
         readonly property Item over: !root.interactive ? null : root.whole ? hit : bubblesHit
 
-        x: (root.width - root.fieldWidth) / 2 + (pass.over?.x ?? 0)
+        x: root.surfaceX + (pass.over?.x ?? 0)
         y: pass.over?.y ?? 0
         width: pass.over?.width ?? 0
         height: pass.over?.height ?? 0
@@ -880,7 +990,9 @@ Item {
         screen: root.host
 
         anchors.top: true
+        anchors.left: true
         margins.top: root.y
+        margins.left: root.surfaceX
 
         implicitWidth: root.fieldWidth
         implicitHeight: root.fieldHeight
@@ -1224,7 +1336,7 @@ Item {
                         activity: row.item
                         lights: row.t > 0.5
                         live: root.focused && row.visible
-                        opacity: presence.value * appear.value * (row.carried ? 1 : Math.max(0, 1 - glide.value * 2.5))
+                        opacity: presence.value * appear.value * (1 - tuck.value) * (row.carried ? 1 : Math.max(0, 1 - glide.value * 2.5))
                         visible: opacity > 0.005
                         enabled: row.here && (root.openness === 0 || row.carried)
 
@@ -1390,6 +1502,8 @@ Item {
 
                 HoverHandler {
                     id: islandHover
+
+                    onHoveredChanged: root.retrail()
                 }
             }
 
