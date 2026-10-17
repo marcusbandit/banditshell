@@ -116,12 +116,15 @@ Column {
             anchors.fill: parent
             radius: height / 2
             color: tool.on ? Appearance.colour.accentFill : Appearance.colour.fill
-            opacity: tool.on || tool.hovered ? 1 : 0
+            opacity: toolFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.fast
-                }
+            Follow {
+                id: toolFade
+
+                target: tool.on || tool.hovered ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
         }
 
@@ -129,13 +132,16 @@ Column {
             anchors.centerIn: parent
 
             name: tool.icon
-            fill: tool.on ? 1 : 0
+            fill: toolFill.value
             color: tool.on ? Appearance.colour.accent : tool.hovered ? Appearance.colour.text : Appearance.colour.textFaint
 
-            Behavior on fill {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                }
+            Follow {
+                id: toolFill
+
+                target: tool.on ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
         }
 
@@ -392,14 +398,17 @@ Column {
 
             width: parent.width
 
-            opacity: root.takeover ? 0 : 1
+            opacity: listFade.value
 
             enabled: !root.takeover
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.normal
-                }
+            Follow {
+                id: listFade
+
+                target: root.takeover ? 0 : 1
+                speed: Appearance.animation.trackSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             Repeater {
