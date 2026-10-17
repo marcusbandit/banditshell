@@ -213,6 +213,64 @@ This implies a **hierarchy of prominence** driven by current context/intent:
 So a widget isn't "shown or hidden" - it has a *role* in the current context (focus vs
 ambient vs absent), and that role changes as intent moves around the screen.
 
+### 2.5 Motion: animate to teach, never to decorate
+
+Source: "The Ridiculous Engineering Of Animations" (Enrico Tartarotti, 18:36). Every frame of
+animation sits between the user's intent and the result, so it costs them time. Only information
+they do not already have earns that time.
+
+The rules, in the order the video builds them:
+
+- Motion is a map. An animation teaches where a thing lives and where it came from: an app grows
+  out of its icon, the volume slider slides out of the volume buttons, the island opens from
+  itself. The same object should leave and return through the same place every time. A panel that
+  enters from the top once and from the side the next time breaks the map, and the user feels it
+  before they can say why.
+- Copying nature is the starting point, not the goal. Physics (slow in, slow out, follow-through)
+  makes motion read as real. Once the motion is copied, the next question is whether it should run
+  at all.
+- Animate what the user did not start, or what they have not yet learned. The first time an action
+  happens, motion can teach. The thousandth time it only waits. A surface opened all day should
+  not animate in at all, because a keyboard action already announces its own outcome.
+- Animate what the user must find again. The video keeps a sidebar animated even when it hides by
+  default, because the user can summon it and has to learn that it exists. Rarity and
+  discoverability decide, not the kind of thing.
+- The curve sets the speed as much as the duration does. Enter and exit use ease-out: progress is
+  front-loaded, so the thing arrives fast and settles. Ease-in starts slow and is wrong for enter
+  and exit. Something already on screen that moves to a new place uses ease-in-out.
+- Motion can hide latency, but a result that arrives instantly can still be distrusted. A launch
+  animation buys time while an app starts. A short settle at the end of an instant transfer
+  convinced users the money had moved. Where the work is real, as with an upload, show the real
+  progress instead.
+- Every motion must be interruptible. A swipe can reverse mid-flight. A motion the user cannot
+  retarget feels like lag even when it is short. Section 2.3's smoothing retargets by construction.
+- When motion is switched off, the signal must survive. The game keeps its screen shake and its
+  throw animation with animations disabled, because the shake is the only sign that damage landed.
+  An animation that carries information needs a second channel for when it is removed: a state
+  change, a colour, a blink on the item that was acted on.
+- Tune against the thousandth repetition. macOS's desktop-switch slide shows where full-screen apps
+  live, and it is disliked enough that people fake a trackpad swipe to suppress it. A spatial
+  lesson that turns into friction gets switched off, and then it teaches nothing. Multiply each
+  duration by how often it runs: 400 ms on something opened a thousand times a day is about
+  6.7 minutes of waiting.
+- Personality comes from timing. Bounce, overshoot and a long ease-in-out read as playful or
+  premium. Work tools lean rigid and fast. This shell takes the rigid end: spring and bounce are
+  excluded by section 2.3, and the character comes from the pixel type and the chassis (section 6),
+  not from overshoot.
+
+Applied to this shell:
+
+- A keyboard-summoned surface (the launcher, a workspace switch) appears without travel. Its first
+  frame already shows it. Its response is the state change itself.
+- Section 2.3 asks for a visible or felt response to every interaction. That response does not have
+  to be movement. A colour, a dim, a blink or a fill can answer an action that should not travel.
+- Anything the pointer or the island summons grows from its source, so the eye can follow it back.
+  Section 18 holds the island's anatomy.
+- Hover reveals keep a dwell timer on the first hover. Once a tooltip is open, neighbouring
+  targets show theirs at once, because the user is already searching.
+- A surface that is not summoned by the user keeps its motion, because the user has not yet
+  learned it exists.
+
 ---
 
 ## 3. Feature completeness - menus handle the WHOLE domain
