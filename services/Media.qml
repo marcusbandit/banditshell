@@ -13,19 +13,82 @@ Singleton {
     property MprisPlayer chosen: null
     property MprisPlayer recent: null
 
+    readonly property var browserName: /^org\.mpris\.MediaPlayer2\.(?:firefox|zen|chromium|chrome|google-chrome|brave|vivaldi|opera|edge|librewolf|floorp)(?:\.|$)/
+    readonly property var watchPath: /^\/(?:watch|shorts\/|live\/|embed\/)/
+
+    function urlOf(player: MprisPlayer): string {
+        return String(player?.metadata?.["xesam:url"] ?? "");
+    }
+
+    function hostOf(url: string): string {
+        const m = /^[a-z][a-z0-9+.-]*:\/\/([^\/?#:]+)/i.exec(url);
+        return m ? m[1].toLowerCase().replace(/^(?:www|m)\./, "") : "";
+    }
+
+    function pathOfUrl(url: string): string {
+        const m = /^[a-z][a-z0-9+.-]*:\/\/[^\/?#]+(\/[^?#]*)?/i.exec(url);
+        return m?.[1] ?? "/";
+    }
+
+    function isBrowser(player: MprisPlayer): bool {
+        return root.browserName.test(player?.dbusName ?? "");
+    }
+
+    function isPreview(player: MprisPlayer): bool {
+        const url = root.urlOf(player);
+        if (!url || !root.isBrowser(player) || player.lengthSupported && player.length > 0)
+            return false;
+        const path = root.pathOfUrl(url);
+        return path === "/" || root.hostOf(url) === "youtube.com" && !root.watchPath.test(path);
+    }
+
+    function rank(player: MprisPlayer): int {
+        if (!player?.trackTitle)
+            return 0;
+        return root.isPreview(player) ? 1 : 2;
+    }
+
     readonly property MprisPlayer active: {
         const list = root.players;
         if (root.chosen && list.includes(root.chosen))
             return root.chosen;
-        if (root.recent?.isPlaying && list.includes(root.recent))
-            return root.recent;
-        const playing = list.find(p => p.isPlaying);
-        if (playing)
-            return playing;
-        if (root.recent && list.includes(root.recent))
-            return root.recent;
-        return list[0] ?? null;
+        let best = null;
+        let top = -1;
+        for (const p of list) {
+            const rank = root.rank(p);
+            const score = (p.isPlaying && rank > 1 ? 100 : 0) + rank * 10 + (p === root.recent ? 5 : 0);
+            if (score > top) {
+                top = score;
+                best = p;
+            }
+        }
+        return best;
     }
+
+    readonly property var siteNames: ({
+            "music.youtube.com": "YouTube Music",
+            "youtube.com": "YouTube",
+            "youtu.be": "YouTube",
+            "soundcloud.com": "SoundCloud",
+            "bandcamp.com": "Bandcamp",
+            "twitch.tv": "Twitch",
+            "open.spotify.com": "Spotify",
+            "netflix.com": "Netflix",
+            "vimeo.com": "Vimeo"
+        })
+
+    function sourceOf(player: MprisPlayer): string {
+        if (!player)
+            return "";
+        if (!root.isBrowser(player))
+            return player.identity || "";
+        const host = root.hostOf(root.urlOf(player));
+        const known = Object.keys(root.siteNames).find(k => host === k || host.endsWith(`.${k}`));
+        return known ? root.siteNames[known] : host || player.identity || "";
+    }
+
+    readonly property string source: root.sourceOf(root.active)
+    readonly property var choices: root.players.filter(p => root.rank(p) > 0)
 
     readonly property bool available: !!active
     readonly property bool playing: !!active?.isPlaying
@@ -54,6 +117,8 @@ Singleton {
     property string lastPlayer: ""
 
     function started(player: MprisPlayer): void {
+        if (root.rank(player) < 2)
+            return;
         root.recent = player;
         if (root.chosen !== player)
             root.chosen = null;
@@ -79,7 +144,7 @@ Singleton {
     }
 
     function cycle(step: int): void {
-        const list = root.players;
+        const list = root.choices;
         if (list.length < 2)
             return;
         const at = Math.max(0, list.indexOf(root.active));
@@ -158,7 +223,7 @@ Singleton {
 
     Component.onCompleted: {
         root.lastPlayer = root.active?.dbusName ?? "";
-        root.recent = root.players.find(p => p.isPlaying) ?? null;
+        root.recent = root.players.find(p => p.isPlaying && root.rank(p) > 1) ?? null;
         root.adoptLength();
         root.place(root.active?.position ?? 0);
     }

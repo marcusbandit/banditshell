@@ -378,7 +378,10 @@ LauncherConcept {
         if (row?.slider && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
             const stride = row.slider.step ?? 0.05;
             const step = (event.modifiers & Qt.ShiftModifier ? stride / 5 : stride) * (event.key === Qt.Key_Left ? -1 : 1);
-            row.slider.set(Math.max(0, Math.min(row.slider.to, Math.round((row.slider.value() + step) * 100) / 100)));
+            if (row.slider.nudge)
+                row.slider.nudge(step);
+            else
+                row.slider.set(Math.max(0, Math.min(row.slider.to, Math.round((row.slider.value() + step) * 100) / 100)));
             return true;
         }
 
@@ -1031,7 +1034,7 @@ LauncherConcept {
 
                                     Slider {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        visible: !!line.modelData.slider
+                                        visible: !!line.modelData.slider && !line.modelData.slider.bare
                                         width: root.panelWidth * 0.22
                                         to: line.modelData.slider?.to ?? 1
                                         warnAbove: line.modelData.slider?.warnAbove ?? 1
