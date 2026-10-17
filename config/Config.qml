@@ -950,7 +950,9 @@ Singleton {
 
             cli: {
 
-                bindsDeclined: false
+                bindsDeclined: false,
+
+                bindsDeclinedGeneration: 0
             },
 
             updates: {

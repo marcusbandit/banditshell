@@ -30,11 +30,12 @@ quote() { printf "'%s'" "${1//\'/\'\\\'\'}"; }
 deps() {
     printf '%s\n' "$REPO/cli/banditshell" "$RULES" "$SELF" \
         "$REPO/config/Themes.qml" "$REPO/modules/settings/catalogue.js" "$REPO/modules/keyboard/Layouts.qml" \
-        "$REPO/packages" "$REPO"/modules/*/module.json
+        "$REPO/packages" "$REPO"/modules/*/module.json \
+        "$REPO/api/actions.tsv"
 }
 
 generate() {
-    local table kind name text verbs="" rules="" panel="" theme="" page="" layer="" package=""
+    local table kind name text verbs="" rules="" panel="" theme="" page="" layer="" package="" id=""
     table="$("$RULES")" || return 1
     while IFS=$'\t' read -r kind name text; do
         case "$kind" in
@@ -47,6 +48,7 @@ generate() {
             page) page="$text" ;;
             layer) layer="$text" ;;
             package) package="$text" ;;
+            id) id="$text" ;;
             esac
             ;;
         esac
@@ -66,6 +68,7 @@ _bs_theme=( $theme )
 _bs_page=( $page )
 _bs_layer=( $layer )
 _bs_package=( $package )
+_bs_id=( $id )
 EOF
     cat <<'EOF'
 
@@ -77,7 +80,7 @@ _bs_stale() {
     [[ -x $_bs_repo/scripts/completion-rules.sh && -x $_bs_repo/scripts/bash-completion.sh ]] || return 1
     for dep in "$_bs_repo/cli/banditshell" "$_bs_repo/scripts/completion-rules.sh" "$_bs_repo/scripts/bash-completion.sh" \
         "$_bs_repo/config/Themes.qml" "$_bs_repo/modules/settings/catalogue.js" "$_bs_repo/modules/keyboard/Layouts.qml" \
-        "$_bs_repo/packages" "$_bs_repo"/modules/*/module.json; do
+        "$_bs_repo/packages" "$_bs_repo"/modules/*/module.json "$_bs_repo/api/actions.tsv"; do
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
@@ -142,6 +145,7 @@ _bs_offer() {
     command) values=("${_bs_verbs[@]}") ;;
     layer) values=("${_bs_layer[@]}") ;;
     package) values=("${_bs_package[@]}") ;;
+    id) values=("${_bs_id[@]}") ;;
     screen) mapfile -t values < <(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}') ;;
     key) mapfile -t values < <(_bs_config_keys) ;;
     app) mapfile -t values < <(_bs_desktop_ids) ;;

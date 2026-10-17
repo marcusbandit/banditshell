@@ -213,7 +213,7 @@ Singleton {
             if (!bind.dynamic) {
                 const em = /^hl\.dsp\.exec_cmd\("((?:[^"\\]|\\.)*)"$/.exec(bind.expr);
                 bind.cmd = em ? HyprlandLua.luaUnescape(em[1]) : "";
-                bind.action = bind.description || HyprlandLua.describeExpr(bind.expr) || bind.expr;
+                bind.action = bind.description || HyprlandLua.describeExpr(bind.expr, root.actionRows) || bind.expr;
             } else {
                 bind.action = "";
             }
@@ -252,6 +252,19 @@ Singleton {
         console.info("HyprConfig: scan done,", root.binds.length, "binds in", root.files.length, "files");
         root.scanned = true;
         Qt.callLater(root.drainRetries);
+    }
+
+    property var actionRows: []
+
+    FileView {
+        id: actionsReader
+
+        path: Quickshell.shellPath("api/actions.tsv")
+        blockLoading: true
+        watchChanges: false
+        printErrors: false
+
+        onLoaded: root.actionRows = HyprlandLua.actionTable(text())
     }
 
     FileView {

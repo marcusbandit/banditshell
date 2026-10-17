@@ -611,7 +611,7 @@ test("the dry run of restart and rollback touches no shell", () => {
 test("a shell run from the last known good copy still finds the checkout to update", () => {
     const world = makeWorld();
     assert.strictEqual(run(world, ["start"]).status, 0);
-    const pointer = fs.readFileSync(path.join(world.state, "banditshell/checkout"), "utf8").trim();
+    const pointer = fs.readFileSync(path.join(world.state, "banditshell/root"), "utf8").trim();
     assert.strictEqual(pointer, world.live);
     advance(world, "v2", { "shell.qml": "// v2\n" });
     const backup = path.join(world.cache, "banditshell/lastgood");

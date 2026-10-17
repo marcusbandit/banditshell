@@ -17,9 +17,11 @@ usage() {
     cat <<EOF
 usage: install.sh [--dry-run] [--no-ui] [--list] [--charge-limit]
 
-Installs what banditshell needs on Arch: the CLI into bin/, quickshell, the
-font, every package the shell calls, the C helpers (banditshell dev build) and tab
-completion for zsh and bash. When the Spotify desktop app is installed it also
+Installs what banditshell needs on Arch: the CLI into bin/ and, when nothing
+else provides one, ~/.local/bin/banditshell, quickshell, the font, every
+package the shell calls, the C helpers (banditshell dev build), tab completion
+for zsh and bash, and the Lua module your Hyprland binds load (a shim beside
+hyprland.lua and a pointer file under ~/.local/state/banditshell). When the Spotify desktop app is installed it also
 puts Spicetify and Spicy Lyrics into it, for word-timed lyrics in the media
 card; that restarts Spotify if it is running. Steps already satisfied are
 skipped, so a re-run retries only what failed (and re-patches Spotify after a
@@ -121,6 +123,8 @@ build_table() {
     add_step pkgconf                       "command -v pkg-config"                   pkgconf                       2 "finding the wayland client library"
     add_step helpers                       "helpers_built"                           @helpers                      2 "the pty, the directory lister and the gamma client"
     add_step completion                    "completion_present"                      @completion                   2 "tab completion for the CLI, in zsh and bash"
+    add_step path                          "path_present"                            @path                         2 "banditshell on your PATH: ~/.local/bin/banditshell, when nothing else provides one"
+    add_step lua-api                       "lua_api_present"                         @lua-api                      2 "the Lua module for binds: the shim beside hyprland.lua and the checkout pointer"
     add_step spicy-lyrics                  "spicy_lyrics_present"                    @spicy                        2 "word-timed lyrics: Spicetify and Spicy Lyrics, in Spotify"
 
     add_step polkit                        "command -v pkexec"                       polkit                        2 "pkexec, so installs and uninstalls ask for your password in the shell"
@@ -170,6 +174,39 @@ helpers_built() {
 
 install_helpers() {
     STEP_OUTPUT="$("$REPO/bin/banditshell" dev build 2>&1)"
+}
+
+LOCAL_BIN="$HOME/.local/bin"
+
+path_present() {
+    if [ "$(readlink -f "$LOCAL_BIN/banditshell" 2>/dev/null)" = "$(readlink -f "$REPO/cli/banditshell")" ]; then
+        case ":$PATH:" in
+        *":$LOCAL_BIN:"*) ;;
+        *) PROBE_NOTE="linked in $LOCAL_BIN, which is not on your PATH yet" ;;
+        esac
+        return 0
+    fi
+    command -v banditshell >/dev/null 2>&1
+}
+
+install_path() {
+    mkdir -p "$LOCAL_BIN" && ln -sfn "$REPO/cli/banditshell" "$LOCAL_BIN/banditshell"
+}
+
+lua_api_present() {
+    local state hypr
+    state="${XDG_STATE_HOME:-$HOME/.local/state}/banditshell/root"
+    hypr="${HYPR_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
+    [ "$(head -n 1 "$state" 2>/dev/null)" = "$REPO" ] || return 1
+    if [ ! -d "$hypr" ]; then
+        PROBE_NOTE="no Hyprland config yet; the shim goes in when there is one"
+        return 0
+    fi
+    cmp -s "$REPO/api/shim.lua" "$hypr/banditshell.lua"
+}
+
+install_lua_api() {
+    STEP_OUTPUT="$("$REPO/cli/banditshell" doctor api 2>&1)"
 }
 
 completion_present() {
@@ -557,6 +594,8 @@ run_step() {
         @monocraft) install_monocraft && ok=0 ;;
         @completion) install_completion && ok=0 ;;
         @cli) install_cli && ok=0 ;;
+        @path) install_path && ok=0 ;;
+        @lua-api) install_lua_api && ok=0 ;;
         @helpers) install_helpers && ok=0 ;;
         @spicy) install_spicy_lyrics && ok=0 ;;
         @charge-limit) install_charge_limit && ok=0 ;;
@@ -648,10 +687,14 @@ main() {
 
     say "  banditshell is ready."
     say "    in a new shell: banditshell <Tab> completes every command"
+    say "    your binds:     local bs = require(\"banditshell\") in your Hyprland lua;"
+    say "                    $REPO/docs/hyprland-binds.example.lua"
     say "    run it now:     $REPO/bin/banditshell start"
     say "    see it live:    $REPO/bin/banditshell dev run"
     say "    what it does:   $REPO/bin/banditshell help"
     return 0
 }
 
-main
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    main
+fi

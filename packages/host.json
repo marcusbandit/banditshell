@@ -17,20 +17,42 @@
       "previews/qmldir",
       "shell.qml"
     ],
-    "services": ["Shell"],
-    "scripts": ["scripts/bash-completion.sh", "scripts/completion-rules.sh", "scripts/zsh-completion.sh"],
-    "tests": ["tests/completion.test.js", "tests/fixtures/ipc-targets.json", "tests/ipc-targets.test.js"]
+    "services": [
+      "Shell"
+    ],
+    "scripts": [
+      "scripts/bash-completion.sh",
+      "scripts/completion-rules.sh",
+      "scripts/zsh-completion.sh"
+    ],
+    "tests": [
+      "tests/actions.test.js",
+      "tests/cli-plumbing.test.js",
+      "tests/completion.test.js",
+      "tests/fixtures/cli-stubs.js",
+      "tests/fixtures/ipc-targets.json",
+      "tests/ipc-targets.test.js",
+      "tests/lua",
+      "tests/lua-api.test.js"
+    ]
   },
   "requires": {
-    "packages": ["core", "compositor"],
+    "packages": [
+      "core",
+      "compositor"
+    ],
     "optional": []
   },
   "provides": {
     "singletons": [],
-    "ipc": ["border"]
+    "ipc": [
+      "border"
+    ]
   },
   "config": {
     "namespace": [],
-    "reads": ["edge"]
+    "reads": [
+      "edge"
+    ]
   }
 }
