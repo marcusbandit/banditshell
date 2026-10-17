@@ -33,8 +33,8 @@ Item {
         anchors.centerIn: parent
         visible: !Bluetooth.enabled
         name: "bluetooth_disabled"
-        size: 96
-        color: Appearance.colour.textGhost
+        size: Appearance.icon.hero
+        color: Appearance.colour.textFaint
     }
 
     Column {
@@ -105,13 +105,12 @@ Item {
                                 readonly property var f: Frames.at(root.ping, Frames.pulse(clock.value * 2.2, (near ? near.index : 0) * 0.5 + index * 1.1, 2.2), Frames.EASE_OUT)
 
                                 anchors.centerIn: parent
-                                width: Appearance.font.iconSize + 12
+                                width: Appearance.icon.normal + Appearance.padding.normal
                                 height: width
-                                radius: width / 2
-                                cornerPower: 2
+                                pill: "object"
                                 color: "transparent"
                                 stroke: Appearance.colour.accent
-                                strokeWidth: 2
+                                strokeWidth: Appearance.stroke.ring
                                 scale: f.s
                                 opacity: clock.moving ? f.o : 0
                             }

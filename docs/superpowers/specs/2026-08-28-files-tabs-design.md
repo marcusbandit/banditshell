@@ -5,7 +5,7 @@
 
 The browser works: it lists, previews, selects, drags, renames, deletes and has a
 real shell in it. What it does not have is the thing that makes a file manager a
-place you work rather than a place you look — two folders at once, and a terminal
+place you work rather than a place you look: two folders at once, and a terminal
 that knows which one you mean.
 
 Everything below is sequenced behind that, because tabs change what "the current
@@ -28,7 +28,7 @@ browser pane  <->  tmux pane      (vertical splits only, for now)
 ```
 
 **Eager, and both ways.** A new browser tab creates its tmux window at once and
-switches tmux to it, whether or not the terminal panel is visible — the panel
+switches tmux to it, whether or not the terminal panel is visible; the panel
 being hidden does not mean the session is not running. A window created from
 inside tmux (`C-Space c`) grows a browser tab to match.
 

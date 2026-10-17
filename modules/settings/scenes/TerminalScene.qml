@@ -63,7 +63,7 @@ Item {
         width: parent.width - Appearance.padding.card * 2
         textFormat: Text.StyledText
         font.family: SettingsState.v("termFont")
-        font.pixelSize: 13
+        font.pixelSize: Appearance.font.size.small
         lineHeight: 18
         lineHeightMode: Text.FixedHeight
         renderType: Text.NativeRendering

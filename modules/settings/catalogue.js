@@ -190,7 +190,7 @@ const PAGES_SOURCE = {
         status: s => s.v("alerts") ? `${s.v("alertSet")} alerts` : "alerts off",
         groups: [
             { t: "Alerts", rows: [
-                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", detail: "notifications · low battery · errors" },
+                { n: 22, icon: "notifications_active", label: "Alert sounds", k: "alerts", kind: "toggle", cfg: "sound.alerts", detail: s => s.alertsDetail },
                 { n: 22, icon: "music_note", label: "Sound set", k: "alertSet", kind: "seg", o: ["soft", "clear", "wood"], cfg: "sound.alertSet", dis: s => !s.v("alerts") },
                 { n: 22, icon: "volume_down", label: "Alert volume", k: "alertVol", kind: "slider", min: 0, max: 1, step: 0.01, fmt: pct, cfg: "sound.alertVolume", dis: s => !s.v("alerts") }
             ] },
@@ -1126,14 +1126,10 @@ function pagesCovered(page) {
     for (const g of page.groups)
         visit(g.rows);
     const nums = new Set();
-    const fresh = new Set();
     for (const r of rows)
-        for (const n of numbers(r)) {
+        for (const n of numbers(r))
             nums.add(n);
-            if (r.isNew)
-                fresh.add(n);
-        }
-    return { settings: nums.size, fresh: fresh.size };
+    return { settings: nums.size };
 }
 
 function rowCount(cat) {

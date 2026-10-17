@@ -26,7 +26,7 @@ Column {
         Icon {
             anchors.centerIn: parent
             name: root.d ? Bluetooth.icon(root.d) : "bluetooth"
-            size: 96
+            size: Appearance.icon.hero
             color: Appearance.colour.text
         }
     }

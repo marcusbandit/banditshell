@@ -15,7 +15,7 @@ ShellRoot {
         implicitWidth: Appearance.sizes.menuWidth + 300
         implicitHeight: 620
 
-        color: "#16211c"
+        color: Appearance.colour.surfaceSolid
         exclusiveZone: 0
         WlrLayershell.exclusionMode: ExclusionMode.Ignore
         WlrLayershell.layer: WlrLayer.Overlay

@@ -226,7 +226,7 @@ Item {
             y: plane.y + (1 - root.lightness) * plane.height - height / 2
             width: root.marker
             height: root.marker
-            radius: width / 2
+            pill: "object"
             color: Qt.hsla(root.hue, root.saturation, root.lightness, 1)
             stroke: root.lightness > 0.6 ? Appearance.colour.ink : Appearance.colour.text
             strokeWidth: 2
@@ -237,7 +237,7 @@ Item {
             y: root.centre - (root.centre - root.band / 2) * Math.sin(root.angleOf(root.hue)) - height / 2
             width: root.marker
             height: root.marker
-            radius: width / 2
+            pill: "object"
             color: Qt.hsla(root.hue, 1, 0.5, 1)
             stroke: Appearance.colour.text
             strokeWidth: 2

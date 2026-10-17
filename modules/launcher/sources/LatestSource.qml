@@ -35,7 +35,7 @@ QtObject {
             label: file.name,
             detail: Ages.ago(file.modified, Date.now()),
             iconSource: picture ? Search.fileUrl(file.path) : "",
-            icon: Marks.iconFor(file.path, file.name, file.dir, Files.home) || (file.dir ? "folder" : shelf.icon),
+            icon: Marks.iconFor(file.path, file.name, file.dir, System.home) || (file.dir ? "folder" : shelf.icon),
             peekPath: file.path,
             peekDir: file.dir,
             score: first ? Infinity : 100
@@ -80,7 +80,7 @@ QtObject {
             icon: "folder_open",
             label: "Show in folder",
             tucked: row.editable,
-            run: () => root.search.leave(() => Files.reveal(path))
+            run: () => root.search.leave(() => System.reveal(path))
         });
         return acts;
     }

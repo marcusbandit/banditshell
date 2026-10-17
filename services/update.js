@@ -1,3 +1,28 @@
+const CHANNELS = ["stable", "main"];
+
+function channelOf(raw) {
+    const name = String(raw ?? "").trim();
+    return CHANNELS.indexOf(name) >= 0 ? name : "main";
+}
+
+function branchFor(channel, branch) {
+    const named = String(branch ?? "").trim();
+    if (named !== "" && named !== "main")
+        return named;
+    return channelOf(channel) === "stable" ? "stable" : "main";
+}
+
+function following(head, branch) {
+    return head === branch || (branch === "stable" && head === "main");
+}
+
+function channelText(channel, branch) {
+    const followed = branchFor(channel, branch);
+    if (followed !== "stable" && followed !== "main")
+        return `following ${followed}`;
+    return `${followed} channel`;
+}
+
 function report(text) {
     const got = { failed: false, output: [], values: {} };
     for (const line of String(text ?? "").split("\n")) {
@@ -51,6 +76,8 @@ function explain(output, branch) {
         return "GitHub took too long to answer. Try again later.";
     if (/Could not resolve host|Failed to connect|Connection timed out|Connection refused|Network is unreachable|Could not connect/.test(text))
         return "Could not reach GitHub. Check the internet connection, then refresh.";
+    if (/couldn't find remote ref/.test(text) && branch === "stable")
+        return "GitHub has no stable version yet, so the stable channel has nothing to follow. Switch updates.channel to main in config.json, or wait for the first stable release.";
     if (/couldn't find remote ref/.test(text))
         return `GitHub has no branch called "${branch}".`;
     if (/Repository not found|does not appear to be a git repository|Could not read from remote repository|Permission denied|Authentication failed|terminal prompts disabled|Host key verification failed/.test(text))
@@ -78,3 +105,346 @@ function ago(when, now) {
         return `${hours}h ago`;
     return `${Math.floor(hours / 24)}d ago`;
 }
+
+function nameStatus(text) {
+    const files = [];
+    for (const line of String(text ?? "").split("\n")) {
+        const parts = line.replace(/\r$/, "").split("\t");
+        if (parts.length < 2 || !parts[0].trim())
+            continue;
+        const code = parts[0].trim()[0];
+        if (code === "R" && parts.length >= 3) {
+            files.push({ status: "D", path: parts[1] });
+            files.push({ status: "A", path: parts[2] });
+        } else if (code === "C" && parts.length >= 3) {
+            files.push({ status: "A", path: parts[2] });
+        } else {
+            files.push({ status: code, path: parts[1] });
+        }
+    }
+    return files;
+}
+
+function actionRows(text) {
+    const rows = {};
+    for (const line of String(text ?? "").split("\n")) {
+        if (!line.trim() || line.startsWith("#"))
+            continue;
+        const cols = line.split("\t");
+        if (cols.length >= 2)
+            rows[cols[0].trim()] = cols[1].trim();
+    }
+    return rows;
+}
+
+function removedActions(beforeText, afterText) {
+    const before = actionRows(beforeText);
+    const after = actionRows(afterText);
+    return Object.keys(before).filter(id => after[id] === "removed" ? before[id] !== "removed" : !(id in after) && before[id] !== "removed");
+}
+
+function stepNames(text) {
+    const names = [];
+    const pattern = /^[ \t]*add_step[ \t]+([A-Za-z0-9_.@+-]+)/gm;
+    const source = String(text ?? "");
+    let hit = pattern.exec(source);
+    while (hit !== null) {
+        names.push(hit[1]);
+        hit = pattern.exec(source);
+    }
+    return names;
+}
+
+function addedSteps(beforeText, afterText) {
+    const before = stepNames(beforeText);
+    return stepNames(afterText).filter(name => before.indexOf(name) < 0);
+}
+
+function strings(list) {
+    return Array.isArray(list) ? list.filter(s => typeof s === "string" && s.trim()).map(s => s.trim()) : [];
+}
+
+function impactOf(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return null;
+    return {
+        restart: raw.restart === true,
+        cli: raw.cli === true,
+        binds: strings(raw.binds),
+        deps: strings(raw.deps)
+    };
+}
+
+function logEntries(text) {
+    let doc;
+    try {
+        doc = JSON.parse(String(text ?? ""));
+    } catch (e) {
+        return [];
+    }
+    const list = Array.isArray(doc) ? doc : Array.isArray(doc?.entries) ? doc.entries : [];
+    const out = [];
+    for (const raw of list) {
+        if (!raw || typeof raw !== "object" || typeof raw.id !== "string" || !raw.id.trim())
+            continue;
+        const changes = [];
+        for (const c of Array.isArray(raw.changes) ? raw.changes : []) {
+            if (c && typeof c.text === "string" && c.text.trim())
+                changes.push({
+                    type: typeof c.type === "string" ? c.type : "",
+                    severity: c.severity === "major" ? "major" : "minor",
+                    text: c.text.trim()
+                });
+        }
+        out.push({
+            id: raw.id.trim(),
+            date: typeof raw.date === "string" ? raw.date.trim() : "",
+            example: raw.example === true,
+            changes: changes,
+            impact: impactOf(raw.impact)
+        });
+    }
+    return out;
+}
+
+function incomingEntries(beforeText, afterText) {
+    const known = {};
+    for (const e of logEntries(beforeText))
+        known[e.id] = true;
+    return logEntries(afterText).filter(e => !e.example && e.changes.length > 0 && !known[e.id]);
+}
+
+function unique(list) {
+    const out = [];
+    for (const item of list)
+        if (out.indexOf(item) < 0)
+            out.push(item);
+    return out;
+}
+
+function classify(input) {
+    const given = input ?? {};
+    const files = nameStatus(given.nameStatus);
+    const paths = files.map(f => f.path);
+    const noted = (Array.isArray(given.entries) ? given.entries : []).map(e => e.impact).filter(i => i);
+    const lines = value => Array.isArray(value) ? value : String(value ?? "").split("\n").filter(l => l);
+
+    const reasons = [];
+    if (paths.some(p => p === "qmldir" || p.endsWith("/qmldir")))
+        reasons.push("qmldir changed");
+    if (files.some(f => /\.qml$/.test(f.path) && (f.status === "A" || f.status === "D")))
+        reasons.push("a QML file was added or removed");
+    if (paths.indexOf("shell.qml") >= 0)
+        reasons.push("shell.qml changed");
+    if (noted.some(i => i.restart) && reasons.length === 0)
+        reasons.push("the notes for this version say so");
+
+    const runs = files.some(f => /\.(qml|js|qsb|frag|vert)$/.test(f.path) && !/^(tests|docs)\//.test(f.path));
+    const restart = reasons.length > 0;
+    const apiRemoved = removedActions(given.actionsBefore, given.actionsAfter);
+    const untracked = lines(given.untracked);
+
+    return {
+        files: files.length,
+        commits: Number(given.commits) || 0,
+        kind: restart ? "restart" : runs ? "reload" : "none",
+        restart: restart,
+        restartReasons: reasons,
+        cli: paths.some(p => /^(cli|api|lua)\//.test(p)) || noted.some(i => i.cli),
+        api: paths.indexOf("api/actions.tsv") >= 0,
+        apiRemoved: apiRemoved,
+        helpers: paths.some(p => /^src\/.*\.(c|h)$/.test(p)),
+        shaders: paths.some(p => /\.(frag|vert)$/.test(p)),
+        deps: unique(addedSteps(given.installBefore, given.installAfter).concat(...noted.map(i => i.deps))),
+        binds: unique([].concat(...noted.map(i => i.binds))),
+        config: paths.indexOf("config/Config.qml") >= 0,
+        dirty: lines(given.dirty).filter(p => paths.indexOf(p) >= 0),
+        blocked: files.filter(f => f.status === "A" && untracked.indexOf(f.path) >= 0).map(f => f.path)
+    };
+}
+
+function plural(n, one, many) {
+    return `${n} ${n === 1 ? one : many}`;
+}
+
+function listed(items) {
+    if (items.length <= 1)
+        return items.join("");
+    return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+
+function summary(c) {
+    const count = c.commits > 0 ? c.commits : c.files;
+    if (count === 0)
+        return "no changes";
+    const parts = [plural(count, "change", "changes")];
+    if (c.kind === "restart")
+        parts.push("restart needed");
+    else if (c.kind === "reload")
+        parts.push("no restart needed");
+    else
+        parts.push("nothing the shell runs changed");
+    if (c.cli)
+        parts.push("commands changed");
+    if (c.apiRemoved.length > 0)
+        parts.push(`${plural(c.apiRemoved.length, "command", "commands")} removed`);
+    if (c.binds.length > 0)
+        parts.push(`${plural(c.binds.length, "bind", "binds")} affected`);
+    if (c.helpers)
+        parts.push("helpers rebuild");
+    if (c.shaders)
+        parts.push("shaders changed");
+    if (c.deps.length > 0)
+        parts.push(`needs ${listed(c.deps)}`);
+    if (c.config)
+        parts.push("settings defaults changed");
+    if (c.dirty.length > 0)
+        parts.push(`${plural(c.dirty.length, "of your edits is", "of your edits are")} in the way`);
+    if (c.blocked.length > 0)
+        parts.push(`${plural(c.blocked.length, "file is", "files are")} in the way`);
+    return parts.join(", ");
+}
+
+function button(c) {
+    return c.restart ? "Update and restart" : "Update";
+}
+
+function parseCheck(text) {
+    try {
+        const doc = JSON.parse(String(text ?? ""));
+        return doc && typeof doc === "object" ? doc : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function phaseOf(line) {
+    const doc = parseCheck(line);
+    return doc && typeof doc.phase === "string" ? doc : null;
+}
+
+function outcomeText(result) {
+    if (!result)
+        return "";
+    const from = result.fromLabel || String(result.from ?? "").slice(0, 7);
+    const to = result.toLabel || String(result.to ?? "").slice(0, 7);
+    if (result.ok)
+        return `Updated to ${to}.`;
+    const why = result.why ? ` ${result.why}.` : "";
+    return `Update ${to} did not start, so you are back on ${from}.${why} It will be tried again when a newer version arrives.`;
+}
+
+function lineValues(lines) {
+    const values = {};
+    for (const line of String(lines ?? "").split("\n")) {
+        const eq = line.indexOf("=");
+        if (eq > 0)
+            values[line.slice(0, eq)] = line.slice(eq + 1);
+    }
+    return values;
+}
+
+function assess(facts) {
+    const meta = lineValues(facts.meta);
+    const entries = incomingEntries(facts.whatsnewBefore, facts.whatsnewAfter);
+    const c = classify({
+        nameStatus: facts.nameStatus,
+        dirty: facts.dirty,
+        untracked: facts.untracked,
+        actionsBefore: facts.actionsBefore,
+        actionsAfter: facts.actionsAfter,
+        installBefore: facts.installBefore,
+        installAfter: facts.installAfter,
+        entries: entries,
+        commits: Number(meta.behind) || 0
+    });
+    return Object.assign({}, meta, {
+        behind: Number(meta.behind) || 0,
+        ahead: Number(meta.ahead) || 0,
+        skipped: meta.skipped === "1",
+        checkedAt: Number(meta.checkedAt) || 0,
+        class: c,
+        summary: summary(c),
+        button: button(c),
+        entries: entries
+    });
+}
+
+function waitingText(report) {
+    const out = [`update waiting: ${report.summary}`];
+    for (const entry of report.entries) {
+        out.push(`  ${entry.id}`);
+        for (const change of entry.changes.slice(0, 6))
+            out.push(`    - ${change.text}`);
+        if (entry.changes.length > 6)
+            out.push(`    and ${entry.changes.length - 6} more`);
+    }
+    if (report.class.dirty.length > 0)
+        out.push(`  your edits to ${named(report.class.dirty)} will be set aside in git stash`);
+    out.push("run: banditshell update apply");
+    return out.join("\n");
+}
+
+function readFacts(dir) {
+    const fs = require("node:fs");
+    const read = name => {
+        try {
+            return fs.readFileSync(`${dir}/${name}`, "utf8");
+        } catch (e) {
+            return "";
+        }
+    };
+    return {
+        meta: read("meta"),
+        nameStatus: read("name-status"),
+        dirty: read("dirty"),
+        untracked: read("untracked"),
+        actionsBefore: read("actions.before"),
+        actionsAfter: read("actions.after"),
+        installBefore: read("install.before"),
+        installAfter: read("install.after"),
+        whatsnewBefore: read("whatsnew.before"),
+        whatsnewAfter: read("whatsnew.after")
+    };
+}
+
+function linesOf(report) {
+    const c = report.class;
+    return [
+        `kind=${c.kind}`,
+        `restart=${c.restart ? 1 : 0}`,
+        `cli=${c.cli ? 1 : 0}`,
+        `helpers=${c.helpers ? 1 : 0}`,
+        `files=${c.files}`,
+        `deps=${c.deps.join(" ")}`,
+        `dirty=${c.dirty.join("\t")}`,
+        `blocked=${c.blocked.join("\t")}`,
+        `button=${report.button}`,
+        `summary=${report.summary}`
+    ].join("\n");
+}
+
+function main(argv) {
+    const mode = argv[0];
+    if (mode === "report") {
+        const report = assess(readFacts(argv[1]));
+        const form = argv[2] ?? "--json";
+        if (form === "--lines")
+            process.stdout.write(linesOf(report) + "\n");
+        else if (form === "--text")
+            process.stdout.write(waitingText(report) + "\n");
+        else
+            process.stdout.write(JSON.stringify(report) + "\n");
+        return 0;
+    }
+    if (mode === "explain") {
+        const input = require("node:fs").readFileSync(0, "utf8");
+        process.stdout.write(explain(input.split("\n"), argv[1] ?? "main") + "\n");
+        return 0;
+    }
+    process.stderr.write("usage: node update.js report <facts-dir> [--json|--lines|--text] | explain <branch>\n");
+    return 2;
+}
+
+if (typeof require !== "undefined" && typeof module !== "undefined" && require.main === module)
+    process.exit(main(process.argv.slice(2)));

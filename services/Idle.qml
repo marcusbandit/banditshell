@@ -40,7 +40,7 @@ Singleton {
 
     function run(name: string): void {
         if (name === "lock")
-            Lock.lock();
+            SessionControl.requestLock();
         else if (name === "screensOff")
             root.switchScreens(false);
         else if (name === "sleep" && Battery.onBattery)

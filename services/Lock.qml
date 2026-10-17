@@ -86,6 +86,20 @@ Singleton {
         verdict.stop();
     }
 
+    Connections {
+        target: SessionControl
+
+        function onLockRequested(): void {
+            root.lock();
+        }
+    }
+
+    Binding {
+        target: SessionControl
+        property: "sleeping"
+        value: root.sleeping
+    }
+
     function lock(): void {
         if (root.opening || root.releasing) {
             root.opening = false;

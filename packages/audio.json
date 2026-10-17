@@ -1,0 +1,21 @@
+{
+  "name": "audio",
+  "summary": "audio devices and Bluetooth",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/ipc/AudioIpc.qml"],
+    "services": ["Audio", "Bluetooth"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Audio", "Bluetooth"],
+    "ipc": ["output"]
+  },
+  "config": {
+    "namespace": ["audio", "volume"],
+    "reads": []
+  }
+}

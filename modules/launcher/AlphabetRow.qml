@@ -313,7 +313,7 @@ Item {
             width: root.launcher.iconSize
             height: width
 
-            radius: width / 2
+            pill: "object"
 
             visible: !root.isSection
 
@@ -401,7 +401,7 @@ Item {
                 y: -height * 0.22
                 width: root.launcher.iconSize * 0.46
                 height: width
-                radius: width / 2
+                pill: "object"
 
                 visible: root.unread > 0
                 color: Appearance.colour.accent

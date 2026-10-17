@@ -30,7 +30,7 @@ FocusScope {
     property var guides: []
     property var corner: null
     property var held: null
-    property real shake: 0
+    readonly property real shake: shaker.value
 
     readonly property var fitted: Screens.fit(root.staged.length ? root.rects.concat(root.live) : root.rects, root.width, root.height - root.bar, root.pad)
     readonly property var view: root.held ?? root.fitted
@@ -78,7 +78,7 @@ FocusScope {
         const name = Monitors.selected;
         const to = Screens.nudge(root.rects, name, dx, dy);
         if (!to) {
-            bump.restart();
+            root.bump();
             return;
         }
         SettingsState.stageScreen(name, {
@@ -154,29 +154,37 @@ FocusScope {
         interval: 1400
     }
 
-    SequentialAnimation {
-        id: bump
+    Follow {
+        id: shaker
 
-        NumberAnimation {
-            target: root
-            property: "shake"
-            to: 4
-            duration: 50
-        }
+        target: 0
+        speed: Appearance.animation.snapSpeed
+        startsAtTarget: true
+    }
 
-        NumberAnimation {
-            target: root
-            property: "shake"
-            to: -4
-            duration: 80
-        }
+    Timer {
+        id: swing
 
-        NumberAnimation {
-            target: root
-            property: "shake"
-            to: 0
-            duration: 60
+        property int step: 0
+
+        onTriggered: {
+            if (swing.step === 1) {
+                shaker.target = -4;
+                swing.step = 2;
+                swing.interval = 80;
+                swing.restart();
+            } else {
+                shaker.target = 0;
+                swing.step = 0;
+            }
         }
+    }
+
+    function bump(): void {
+        shaker.target = 4;
+        swing.step = 1;
+        swing.interval = 50;
+        swing.restart();
     }
 
     MouseArea {
@@ -190,7 +198,7 @@ FocusScope {
     Repeater {
         model: root.editable ? root.names : []
 
-        delegate: Rectangle {
+        delegate: SquircleRect {
             id: ghost
 
             required property string modelData
@@ -204,16 +212,15 @@ FocusScope {
             width: (ghost.r?.w ?? 0) * vk.value
             height: (ghost.r?.h ?? 0) * vk.value
             radius: 6
-            color: "transparent"
-            border.width: 1
-            border.color: Appearance.colour.textGhost
+            stroke: Appearance.colour.textGhost
+            strokeWidth: Appearance.stroke.line
 
             StyledText {
                 x: 6
                 y: 4
                 visible: ghost.width > implicitWidth + 12
                 text: "now"
-                color: Appearance.colour.textGhost
+                color: Appearance.colour.textFaint
                 font.pixelSize: Appearance.font.size.small
             }
         }
@@ -353,12 +360,12 @@ FocusScope {
                 strokeWidth: mon.picked || mon.clashing ? 3 : 2
             }
 
-            Rectangle {
+            SquircleRect {
                 x: parent.width - width - 7
                 y: 7
                 width: 8
                 height: 8
-                radius: 4
+                pill: "object"
                 visible: root.editable && mon.changed
                 color: Appearance.colour.accent
             }
@@ -530,16 +537,16 @@ FocusScope {
             }
         }
 
-        Rectangle {
+        SquircleRect {
             visible: !!root.corner
             x: root.toX(root.corner?.x ?? 0) - width / 2
             y: root.toY(root.corner?.y ?? 0) - height / 2
             width: 12
             height: 12
-            radius: 6
+            pill: "object"
             color: Appearance.colour.accent
-            border.width: 2
-            border.color: Appearance.colour.surfaceSolid
+            stroke: Appearance.colour.surfaceSolid
+            strokeWidth: Appearance.stroke.ring
         }
     }
 

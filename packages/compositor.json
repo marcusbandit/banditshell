@@ -1,0 +1,28 @@
+{
+  "name": "compositor",
+  "summary": "the Hyprland bridge: windows, monitors, config files, chords",
+  "layer": 1,
+  "owns": {
+    "qml": ["modules/ipc/CompositorIpc.qml"],
+    "services": ["CliMigration", "CompositorSync", "Hypr", "HyprConfig", "Keymap", "Monitors"],
+    "js": [
+      "services/chords.js",
+      "services/cli-migration.js",
+      "services/hyprland-lua.js",
+      "services/monitor-rules.js"
+    ],
+    "tests": ["tests/cli-migration.test.js", "tests/hyprland-lua.test.js", "tests/monitor-rules.test.js"]
+  },
+  "requires": {
+    "packages": ["core"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Hypr", "HyprConfig", "Keymap", "Monitors"],
+    "ipc": ["migration"]
+  },
+  "config": {
+    "namespace": ["compositor", "cli"],
+    "reads": []
+  }
+}

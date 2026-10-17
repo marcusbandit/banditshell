@@ -48,12 +48,15 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: root.notice ? Appearance.colour.accentFill : Appearance.colour.fill
-        opacity: root.notice || root.hot || root.selected ? 1 : 0
+        opacity: plateShown.value
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-            }
+        Follow {
+            id: plateShown
+
+            target: root.notice || root.hot || root.selected ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
@@ -63,32 +66,30 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colour.accentFill
-        opacity: 0
+        opacity: flashLevel.value
 
-        SequentialAnimation {
-            id: flashRun
+        Follow {
+            id: flashLevel
 
-            PropertyAction {
-                target: flash
-                property: "opacity"
-                value: 1
-            }
+            target: 0
+            speed: Appearance.animation.settleSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
+        }
 
-            PauseAnimation {
-                duration: 560
-            }
+        Timer {
+            id: flashHold
 
-            NumberAnimation {
-                target: flash
-                property: "opacity"
-                to: 0
-                duration: 840
-            }
+            interval: 560
+            onTriggered: flashLevel.target = 0
         }
     }
 
-    onFlashingChanged: if (root.flashing)
-        flashRun.restart()
+    onFlashingChanged: if (root.flashing) {
+        flashLevel.target = 1;
+        flashLevel.snap();
+        flashHold.restart();
+    }
 
     HoverHandler {
         id: hover
@@ -112,7 +113,7 @@ Item {
         width: leadLoader.active ? leadLoader.width : Appearance.font.iconSize
         height: leadLoader.active ? leadLoader.height : Appearance.font.iconSize
         visible: leadLoader.active || root.icon !== ""
-        opacity: root.off ? 0.4 : 1
+        opacity: root.off ? Appearance.opacity.disabled : 1
 
         Icon {
             anchors.centerIn: parent
@@ -136,7 +137,7 @@ Item {
         x: root.padX + root.leadWidth
         y: root.padY + (root.lineHeight - implicitHeight) / 2
         width: root.wrapped ? root.inner - root.leadWidth : Math.max(0, root.inner - root.leadWidth - (root.trailWidth > 0 ? root.trailWidth + root.gapX : 0))
-        opacity: root.off ? 0.4 : 1
+        opacity: root.off ? Appearance.opacity.disabled : 1
 
         StyledText {
             width: parent.width
@@ -163,7 +164,7 @@ Item {
         x: root.width - root.padX - width
         y: root.wrapped ? root.padY + root.lineHeight + root.gapY : root.padY + (root.lineHeight - height) / 2
         spacing: Appearance.padding.normal
-        opacity: root.off ? 0.4 : 1
+        opacity: root.off ? Appearance.opacity.disabled : 1
         enabled: !root.off
     }
 }

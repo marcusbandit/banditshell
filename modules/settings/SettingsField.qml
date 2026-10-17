@@ -34,7 +34,7 @@ Item {
         radius: Appearance.rounding.small
         color: Appearance.colour.fillStrong
         stroke: input.activeFocus ? Appearance.colour.accent : "transparent"
-        strokeWidth: input.activeFocus ? 2 : 0
+        strokeWidth: input.activeFocus ? Appearance.stroke.ring : 0
     }
 
     TextInput {

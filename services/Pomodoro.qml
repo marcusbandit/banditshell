@@ -106,7 +106,12 @@ Singleton {
             const next = Logic.nextRound(finished, root.settings);
             const said = Logic.notice(finished, next);
             if (root.notifier)
-                Quickshell.execDetached(["notify-send", "-a", "banditshell", "-u", "normal", "-c", Notifications.categoryFor("alarm"), said.summary, said.body]);
+                Notify.post({
+                    urgency: "normal",
+                    summary: said.summary,
+                    body: said.body,
+                    kind: "alarm"
+                });
             root.begin(next.phase, next.minutes, next.round, finished.focusMinutes, finished.breakMinutes);
         }
 

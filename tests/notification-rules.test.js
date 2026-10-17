@@ -8,16 +8,16 @@ const src = fs.readFileSync(path.join(ROOT, "services/notification-rules.js"), "
 const Rules = new Function(src + "\nreturn { ruleFor, keyFor, withRule, fromList, candidates };")();
 
 test("an app with no rule pops, sounds and keeps its body off the lock screen", () => {
-    assert.deepStrictEqual(Rules.ruleFor({}, "firefox"), { pop: true, snd: true, lock: false });
-    assert.deepStrictEqual(Rules.ruleFor(undefined, "firefox"), { pop: true, snd: true, lock: false });
-    assert.deepStrictEqual(Rules.ruleFor({ firefox: { pop: false } }, ""), { pop: true, snd: true, lock: false });
+    assert.deepStrictEqual(Rules.ruleFor({}, "firefox"), { pop: true, snd: true, lock: false, muteUntil: 0 });
+    assert.deepStrictEqual(Rules.ruleFor(undefined, "firefox"), { pop: true, snd: true, lock: false, muteUntil: 0 });
+    assert.deepStrictEqual(Rules.ruleFor({ firefox: { pop: false } }, ""), { pop: true, snd: true, lock: false, muteUntil: 0 });
 });
 
 test("a rule overrides what it names and keeps the default for the rest", () => {
-    const rules = { signal: { pop: true, snd: false, lock: true }, steam: { pop: false, snd: "yes" } };
-    assert.deepStrictEqual(Rules.ruleFor(rules, "signal"), { pop: true, snd: false, lock: true });
-    assert.deepStrictEqual(Rules.ruleFor(rules, "steam"), { pop: false, snd: true, lock: false });
-    assert.deepStrictEqual(Rules.ruleFor(rules, "constructor"), { pop: true, snd: true, lock: false });
+    const rules = { signal: { pop: true, snd: false, lock: true, muteUntil: 0 }, steam: { pop: false, snd: "yes" } };
+    assert.deepStrictEqual(Rules.ruleFor(rules, "signal"), { pop: true, snd: false, lock: true, muteUntil: 0 });
+    assert.deepStrictEqual(Rules.ruleFor(rules, "steam"), { pop: false, snd: true, lock: false, muteUntil: 0 });
+    assert.deepStrictEqual(Rules.ruleFor(rules, "constructor"), { pop: true, snd: true, lock: false, muteUntil: 0 });
 });
 
 test("the key is the desktop entry the app resolves to, then what it called itself", () => {
@@ -28,16 +28,16 @@ test("the key is the desktop entry the app resolves to, then what it called itse
 });
 
 test("changing one switch leaves the other two and the other apps alone", () => {
-    const before = { a: { pop: true, snd: true, lock: true } };
+    const before = { a: { pop: true, snd: true, lock: true, muteUntil: 0 } };
     const after = Rules.withRule(before, "b", { snd: false });
-    assert.deepStrictEqual(after, { a: { pop: true, snd: true, lock: true }, b: { pop: true, snd: false, lock: false } });
-    assert.deepStrictEqual(before, { a: { pop: true, snd: true, lock: true } });
-    assert.deepStrictEqual(Rules.withRule(after, "a", { lock: false }).a, { pop: true, snd: true, lock: false });
+    assert.deepStrictEqual(after, { a: { pop: true, snd: true, lock: true, muteUntil: 0 }, b: { pop: true, snd: false, lock: false, muteUntil: 0 } });
+    assert.deepStrictEqual(before, { a: { pop: true, snd: true, lock: true, muteUntil: 0 } });
+    assert.deepStrictEqual(Rules.withRule(after, "a", { lock: false, muteUntil: 0 }).a, { pop: true, snd: true, lock: false, muteUntil: 0 });
 });
 
 test("the old planned list becomes the keyed object", () => {
-    const list = [{ id: "discord", name: "Discord", pop: true, snd: true, lock: false }, { id: "steam", name: "Steam", pop: false, snd: false, lock: false }, { name: "nobody" }];
-    assert.deepStrictEqual(Rules.fromList(list), { discord: { pop: true, snd: true, lock: false }, steam: { pop: false, snd: false, lock: false } });
+    const list = [{ id: "discord", name: "Discord", pop: true, snd: true, lock: false, muteUntil: 0 }, { id: "steam", name: "Steam", pop: false, snd: false, lock: false, muteUntil: 0 }, { name: "nobody" }];
+    assert.deepStrictEqual(Rules.fromList(list), { discord: { pop: true, snd: true, lock: false, muteUntil: 0 }, steam: { pop: false, snd: false, lock: false, muteUntil: 0 } });
     assert.deepStrictEqual(Rules.fromList(undefined), {});
 });
 
@@ -45,4 +45,19 @@ test("candidates are the apps that sent, once each, without a rule yet", () => {
     const keys = ["signal", "", "firefox", "signal", "steam", "mail"];
     assert.deepStrictEqual(Rules.candidates(keys, { steam: {} }, 10), ["signal", "firefox", "mail"]);
     assert.deepStrictEqual(Rules.candidates(keys, {}, 2), ["signal", "firefox"]);
+});
+
+test("a mute deadline is kept as a number and nothing else is", () => {
+    const rules = { a: { muteUntil: 5000 }, b: { muteUntil: "soon" }, c: { muteUntil: -1 }, d: { muteUntil: Infinity } };
+    assert.strictEqual(Rules.ruleFor(rules, "a").muteUntil, 5000);
+    assert.strictEqual(Rules.ruleFor(rules, "b").muteUntil, 0);
+    assert.strictEqual(Rules.ruleFor(rules, "c").muteUntil, 0);
+    assert.strictEqual(Rules.ruleFor(rules, "d").muteUntil, 0);
+});
+
+test("muting for a while and unmuting go through the same rule", () => {
+    const muted = Rules.withRule({}, "signal", { muteUntil: 9000 });
+    assert.deepStrictEqual(muted.signal, { pop: true, snd: true, lock: false, muteUntil: 9000 });
+    const back = Rules.withRule(muted, "signal", { pop: true, snd: true, muteUntil: 0 });
+    assert.deepStrictEqual(back.signal, { pop: true, snd: true, lock: false, muteUntil: 0 });
 });

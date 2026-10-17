@@ -12,25 +12,26 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["suggestions", "sameChord", "legacyChord", "chordText", "hotkeyCommand", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered", "looksLikeSecret"]);
+const Chords = lib("services/chords.js", ["sameChord", "legacyChord", "chordText", "hotkeyCommand"]);
+const Search = lib("modules/launcher/search.js", ["suggestions", "cleanAlias", "aliasTarget", "aliasesById", "withAlias", "fallbackRows", "contentRow", "ENGINES", "FALLBACKS", "isSecretish", "isText", "remembered", "looksLikeSecret"]);
 
 test.describe("hotkey chords", () => {
     test.it("treats the same keys in another order as the same chord", () => {
-        assert.ok(Search.sameChord("SUPER + SHIFT + F", "shift+super+f"));
-        assert.ok(!Search.sameChord("SUPER + F", "SUPER + SHIFT + F"));
-        assert.ok(!Search.sameChord("", ""));
+        assert.ok(Chords.sameChord("SUPER + SHIFT + F", "shift+super+f"));
+        assert.ok(!Chords.sameChord("SUPER + F", "SUPER + SHIFT + F"));
+        assert.ok(!Chords.sameChord("", ""));
     });
 
     test.it("writes the legacy keyword form and a readable form", () => {
-        assert.strictEqual(Search.legacyChord("SUPER + SHIFT + F"), "SUPER SHIFT, F");
-        assert.strictEqual(Search.chordText("SUPER + ALT + F12"), "Super Alt F12");
-        assert.strictEqual(Search.chordText("CTRL + ALT + T"), "Ctrl Alt T");
+        assert.strictEqual(Chords.legacyChord("SUPER + SHIFT + F"), "SUPER SHIFT, F");
+        assert.strictEqual(Chords.chordText("SUPER + ALT + F12"), "Super Alt F12");
+        assert.strictEqual(Chords.chordText("CTRL + ALT + T"), "Ctrl Alt T");
     });
 
     test.it("quotes the row id so app names with spaces survive the shell", () => {
-        assert.strictEqual(Search.hotkeyCommand("command:lock"), "banditshell panel launcher run 'command:lock'");
-        assert.strictEqual(Search.hotkeyCommand("app:Bloons TD 6"), "banditshell panel launcher run 'app:Bloons TD 6'");
-        const run = spawnSync("sh", ["-c", Search.hotkeyCommand("app:it's").replace("banditshell panel launcher run", "printf %s")], { encoding: "utf8" });
+        assert.strictEqual(Chords.hotkeyCommand("command:lock"), "banditshell action launcher.run 'command:lock'");
+        assert.strictEqual(Chords.hotkeyCommand("app:Bloons TD 6"), "banditshell action launcher.run 'app:Bloons TD 6'");
+        const run = spawnSync("sh", ["-c", Chords.hotkeyCommand("app:it's").replace("banditshell action launcher.run", "printf %s")], { encoding: "utf8" });
         assert.strictEqual(run.stdout, "app:it's");
     });
 });

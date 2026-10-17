@@ -1,2 +1,3 @@
 module qs.modules.session
+SessionIpc 1.0 SessionIpc.qml
 SessionMenu 1.0 SessionMenu.qml

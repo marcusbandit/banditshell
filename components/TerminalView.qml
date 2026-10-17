@@ -11,11 +11,13 @@ Item {
 
     required property int revision
     required property bool focused
+    required property real zoom
+    required property string face
 
     signal send(string bytes)
     signal resized(int cols, int rows)
 
-    readonly property int textSize: Math.round(Appearance.font.size.small * Appearance.sizes.filesZoom)
+    readonly property int textSize: Math.round(Appearance.font.size.small * root.zoom)
     readonly property real cellWidth: metrics.advanceWidth
     readonly property real cellHeight: Math.round(root.textSize * Appearance.font.leading)
 
@@ -59,8 +61,6 @@ Item {
         root.cursorRow = root.term ? root.term.cursorRow(root.scrollOffset) : 0;
         root.mouseMode = root.term ? root.term.mouse : 0;
     }
-
-    readonly property string face: Appearance.sizes.filesTerminalFont
 
     TextMetrics {
         id: metrics
@@ -148,7 +148,7 @@ Item {
         height: root.cellHeight
 
         color: Appearance.colour.accent
-        opacity: 0.55
+        opacity: Appearance.opacity.trail
     }
 
     function cellAt(x: real, y: real): var {

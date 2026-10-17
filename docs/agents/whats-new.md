@@ -23,6 +23,7 @@ Entries are listed newest first. Each entry has:
 | `date`              | `YYYY-MM-DD`, when the push landed.                                        |
 | `changes`           | One line each, in the order a reader should meet them.                     |
 | `example`           | `true` on the seed entry only. The shell skips it; the first real entry replaces it. |
+| `impact`            | Optional. What the update does to the person's setup, so the update menu can say so before they press the button. See below. |
 
 Each change carries:
 
@@ -31,6 +32,24 @@ Each change carries:
 | `type`    | One of: `issues` (a tracked issue was fixed), `bugs` (something broken was fixed), `features` (something new it can do), `ui` (something looks or moves differently), `config` (config.json keys or files the shell writes changed). |
 | `severity`| `major` or `minor`.                                                                                     |
 | `text`    | The one line the recipient reads.                                                                       |
+
+## Impact
+
+An entry may carry an `impact` object. Every key is optional:
+
+| Key       | What it is                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------- |
+| `restart` | `true` when the shell must restart for the entry to take effect.                            |
+| `cli`     | `true` when `banditshell` commands changed.                                                 |
+| `binds`   | Ids or old command strings of the binds the entry changes, as a list of strings.            |
+| `deps`    | Packages the entry newly needs, as a list of strings.                                       |
+
+`banditshell update check` reads the diff first (a changed qmldir or `shell.qml` means restart, a
+changed `cli/`, `api/` or `lua/` means commands, new `add_step` lines in `install.sh` mean
+packages) and uses `impact` to add to it. With no `impact` the diff alone decides. `impact` can
+turn a restart or a warning on; it cannot turn off what the diff found, so leave it out unless
+the diff cannot see the effect (a bind that now does something else, a package the code calls
+by name).
 
 ## Major and Minor
 
@@ -66,13 +85,31 @@ their last-seen version when they pull or update - not just the newest. Write
 each entry so it stands alone. Never write "as mentioned last time", because
 for most of your readers there was no last time.
 
+## The id is the version
+
+The `id` of the newest real entry is the version number of the build. `banditshell version`, the
+update menu and Settings > About show it, so it is what a person reads out when they report a bug.
+Keep it a date: `2026-10-17`, then `2026-10-17-2` for a second push the same day. An id that is not
+a date (`v1`) works in the shell but cannot be tagged and the promote script refuses it.
+
+## Tags and the stable channel
+
+A commit that reaches the `stable` branch gets a git tag made from its id: `v`, then the date with
+dots, then the number if there is one. `2026-10-17` is `v2026.10.17`, and `2026-10-16-7` is
+`v2026.10.16-7`. `main` pushes are not tagged. `scripts/promote-stable.sh` (or `banditshell dev
+promote`) checks main and prints the `git push origin main:stable` and the tag commands; it pushes
+nothing unless run with `--push`, and agents never run it with `--push`. Write the entry before
+promotion: the tag is made from the newest entry on main at that moment. `docs/architecture/updates.md`
+has the whole update loop and the channels.
+
 ## The card
 
 `services/WhatsNew.qml` reads this file; entries newer than the marker
-(`updates.seen` in the user's config.json) accumulate and surface in the
+(`whats-new-seen` in the shell's state dir; older copies kept `updates.seen` in config.json, which is copied over once and then left alone) accumulate and surface in the
 update menu when the user opens it; nothing summons it at launch. Entries
-are marked seen when the card has been believed on
-screen, not when it is dismissed. A config.json the shell creates on a first
+are marked seen when the person dismisses the card, not when it is shown.
+Entries that are only incoming, before the update is taken, are listed in
+the same menu from the target's copy of this file and are not marked. A config.json the shell creates on a first
 start begins at the newest entry, so a new install shows nothing until the
 next push. The example entry in the file is skipped by
 the shell and exists only to show the shape; replace it at the first push

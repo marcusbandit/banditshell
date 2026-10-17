@@ -14,8 +14,8 @@ Item {
     property bool lit: false
     property bool live: true
 
-    readonly property color pane: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.paper, 0.16)
-    readonly property color edge: root.big || root.lit ? Qt.rgba(Appearance.colour.accent.r, Appearance.colour.accent.g, Appearance.colour.accent.b, 0.55) : Appearance.colour.fillStronger
+    readonly property color pane: Appearance.colour.pane
+    readonly property color edge: root.big || root.lit ? Qt.alpha(Appearance.colour.accent, Appearance.opacity.trail) : Appearance.colour.fillStronger
     readonly property real edgeWidth: root.big || root.lit ? 1.5 : 1
     readonly property real winRadius: root.big ? Appearance.rounding.small : 3
 
@@ -243,7 +243,7 @@ Item {
                                 radius: root.winRadius
                                 color: modelData[1] === 1 ? Appearance.blend(root.pane, Appearance.colour.accent, 0.12) : modelData[1] === 2 ? Appearance.blend(root.pane, Appearance.colour.paper, 0.06) : root.pane
                                 stroke: Appearance.colour.fillStronger
-                                strokeWidth: 1
+                                strokeWidth: Appearance.stroke.line
 
                                 Icon {
                                     anchors.centerIn: parent

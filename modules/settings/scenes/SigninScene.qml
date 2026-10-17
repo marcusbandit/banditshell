@@ -48,9 +48,9 @@ Item {
             SquircleRect {
                 anchors.fill: parent
                 radius: 10
-                color: "#050506"
+                color: Appearance.colour.ink
                 stroke: Appearance.colour.fillStrong
-                strokeWidth: 1
+                strokeWidth: Appearance.stroke.line
             }
 
             Item {
@@ -86,7 +86,7 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 6
                             height: modelData ? 16 : 6
-                            radius: 3
+                            pill: "object"
                             color: modelData ? Appearance.colour.accent : Appearance.colour.fillStronger
                         }
                     }
@@ -103,7 +103,7 @@ Item {
                     SquircleRect {
                         anchors.fill: parent
                         radius: 6
-                        color: Appearance.blend(Appearance.colour.surfaceSolid, "#000000", 0.35)
+                        color: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.ink, 0.35)
                     }
 
                     Repeater {
@@ -128,9 +128,9 @@ Item {
                                 anchors.fill: parent
                                 anchors.margins: parent.width * 0.015
                                 radius: 5
-                                color: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.paper, 0.12)
+                                color: Appearance.colour.pane
                                 stroke: Appearance.colour.fillStronger
-                                strokeWidth: 1
+                                strokeWidth: Appearance.stroke.line
                                 opacity: Math.min(1, win.open)
                                 scale: 0.85 + 0.15 * win.open
 
@@ -146,8 +146,7 @@ Item {
                                 anchors.centerIn: parent
                                 width: 22
                                 height: 22
-                                radius: 11
-                                cornerPower: 2
+                                pill: "object"
                                 color: "transparent"
                                 stroke: Appearance.colour.accent
                                 strokeWidth: 3
@@ -158,7 +157,7 @@ Item {
                                     x: parent.width / 2
                                     width: parent.width / 2 + 1
                                     height: parent.height / 2 + 1
-                                    color: Appearance.blend(Appearance.colour.surfaceSolid, "#000000", 0.35)
+                                    color: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.ink, 0.35)
                                 }
                             }
                         }

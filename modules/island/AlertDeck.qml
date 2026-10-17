@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.modules.notifications
 import qs.services
 
 Item {
@@ -16,6 +17,8 @@ Item {
     property real maxHeight: 100000
 
     signal dismissed(var entry)
+    signal kept(var entry)
+    signal history
     signal advanced(bool forward, int count, var previous)
 
     readonly property real shuffleSpeed: Appearance.animation.revealSpeed * 0.45
@@ -321,18 +324,19 @@ Item {
                 Follow {
                     id: departure
 
-                    speed: Appearance.animation.revealSpeed * 1.5
+                    speed: Appearance.animation.snapSpeed
                     epsilon: 0.004
                     target: slot.leaving ? 1 : 0
                 }
 
-                NotificationAlert {
+                NotificationCard {
                     id: card
 
                     width: slot.width
                     entry: slot.modelData
 
-                    onDismissed: root.dismissed(slot.modelData)
+                    onReleased: root.dismissed(slot.modelData)
+                    onKept: root.kept(slot.modelData)
                     onScrolled: by => root.scrollBy(by)
                     onScrollEnded: speed => root.scrollGlide(speed)
                 }
@@ -362,7 +366,7 @@ Item {
 
             x: Appearance.padding.card
             y: (root.footerHeight - Appearance.padding.card - height) / 2
-            spacing: Appearance.padding.small / 2
+            spacing: Appearance.padding.hair
             opacity: 1 - root.fanned
             visible: opacity > 0.01
 
@@ -386,6 +390,21 @@ Item {
             color: Appearance.colour.textFaint
             opacity: 1 - root.fanned
             visible: opacity > 0.01
+        }
+
+        Button {
+            id: historyButton
+
+            anchors.left: parent.left
+            anchors.leftMargin: Appearance.padding.card
+            y: (root.footerHeight - Appearance.padding.card - height) / 2
+            size: 0
+            style: "outlined"
+            icon: "notifications"
+            text: "all notifications"
+            opacity: root.fanned
+            visible: opacity > 0.01
+            onClicked: root.history()
         }
 
         Button {

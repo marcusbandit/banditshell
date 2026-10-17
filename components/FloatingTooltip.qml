@@ -16,25 +16,21 @@ Item {
     width: label.implicitWidth + Appearance.padding.normal * 2
     height: label.implicitHeight + Appearance.padding.small * 2
 
-    opacity: root.up ? 1 : 0
-    visible: root.opacity > 0
-    scale: root.up ? 1 : 0.94
+    opacity: rise.value
+    visible: rise.value > 0.01 || rise.target > 0
+    scale: 0.94 + 0.06 * rise.value
     transformOrigin: Item.Bottom
 
     onShownChanged: if (!root.shown)
         root.up = false
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: Appearance.animation.fade.fast
-        }
-    }
+    Follow {
+        id: rise
 
-    Behavior on scale {
-        NumberAnimation {
-            duration: Appearance.animation.fast
-            easing.type: Easing.OutCubic
-        }
+        target: root.up ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     Timer {
@@ -47,7 +43,7 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         blur: Appearance.padding.normal
-        offset.y: Math.round(Appearance.padding.small / 2)
+        offset.y: Appearance.padding.hair
     }
 
     SquircleRect {
@@ -55,7 +51,7 @@ Item {
         radius: Appearance.rounding.small
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.fillStrong
-        strokeWidth: 1
+        strokeWidth: Appearance.stroke.line
     }
 
     StyledText {

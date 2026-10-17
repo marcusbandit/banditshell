@@ -1,0 +1,23 @@
+{
+  "name": "calculator",
+  "summary": "the calculator and currency rates",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/calculator", "previews/CalculatorPreview.qml"],
+    "services": ["Calculator", "Currency"],
+    "js": ["services/calculation.js", "services/currency.js", "services/dates.js"],
+    "assets": ["assets/applications"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "network"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["calculator"]
+  },
+  "config": {
+    "namespace": [],
+    "reads": []
+  }
+}

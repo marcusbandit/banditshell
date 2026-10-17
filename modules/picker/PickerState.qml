@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.config
+import qs.services
 
 Scope {
     id: root
@@ -80,13 +81,13 @@ Scope {
             const cx = Math.round(x * dpr);
             const cy = Math.round(y * dpr);
 
-            crop.exec(["sh", "-c", `mkdir -p "$(dirname "$1")" && ffmpeg -y -loglevel error -i "$2" -vf "crop=${cw}:${ch}:${cx}:${cy}" "$1" && ${root.deliver()}; rm -f "$2"`, "sh", out, frozen]);
+            crop.exec(["sh", "-c", `mkdir -p "$(dirname "$1")" && ffmpeg -y -loglevel error -i "$2" -vf "crop=${cw}:${ch}:${cx}:${cy}" "$1" && printf '%s\\n' "$1" && ${root.deliver()}; rm -f "$2"`, "sh", out, frozen]);
             root.close();
             return;
         }
 
         root.hiding = true;
-        liveDelay.pending = ["sh", "-c", `mkdir -p "$(dirname "$1")" && grim -g "${x + screen.x},${y + screen.y} ${w}x${h}" "$1" && ${root.deliver()}`, "sh", out];
+        liveDelay.pending = ["sh", "-c", `mkdir -p "$(dirname "$1")" && grim -g "${x + screen.x},${y + screen.y} ${w}x${h}" "$1" && printf '%s\\n' "$1" && ${root.deliver()}`, "sh", out];
         liveDelay.restart();
     }
 
@@ -101,9 +102,23 @@ Scope {
     }
     Process {
         id: crop
+
+        stdout: SplitParser {
+            onRead: line => {
+                if (line.startsWith("/"))
+                    Screenshots.captured(line);
+            }
+        }
     }
     Process {
         id: live
+
+        stdout: SplitParser {
+            onRead: line => {
+                if (line.startsWith("/"))
+                    Screenshots.captured(line);
+            }
+        }
     }
 
     Timer {

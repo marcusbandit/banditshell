@@ -10,7 +10,7 @@ Singleton {
 
     readonly property string installer: `${Quickshell.shellDir}/scripts/install-package.sh`
 
-    readonly property var tools: ["brightnessctl", "ddcutil", "wf-recorder", "wl-screenrec", "gpu-screen-recorder", "slurp", "tailscale", "hyprctl", "xdg-user-dir"]
+    readonly property var tools: ["brightnessctl", "ddcutil", "wf-recorder", "wl-screenrec", "gpu-screen-recorder", "slurp", "tailscale", "hyprctl", "xdg-user-dir", "theme-set", "pw-play", "obs"]
 
     readonly property var packages: ({
             brightnessctl: ["pacman:brightnessctl", "apt:brightnessctl", "dnf:brightnessctl", "zypper:brightnessctl", "xbps:brightnessctl", "apk:brightnessctl"],

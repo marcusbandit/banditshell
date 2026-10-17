@@ -667,7 +667,7 @@ LauncherConcept {
                 y: rail.y + root.scrubY - height / 2
                 width: root.badgeSize
                 height: width
-                radius: width / 2
+                pill: "object"
 
                 visible: bow.value > 0.01 && !!root.marked
                 opacity: bow.value
@@ -817,7 +817,7 @@ LauncherConcept {
                         width: parent.width - x
                         height: root.rowPitch
 
-                        radius: height / 2
+                        pill: "place"
                         color: Appearance.colour.fill
 
                         opacity: root.hovered >= 0 ? 1 : 0

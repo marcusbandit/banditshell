@@ -13,8 +13,16 @@ Item {
     readonly property real pitch: Appearance.font.line.small + Appearance.padding.small * 2
     readonly property real stageHeight: Appearance.padding.card * 2 + 5 * root.pitch + 4 * Appearance.padding.small
 
+    property bool populated: false
+
     ListModel {
         id: entries
+    }
+
+    Timer {
+        running: true
+        interval: 100
+        onTriggered: root.populated = true
     }
 
     Component.onCompleted: {
@@ -28,7 +36,7 @@ Item {
         id: tick
 
         interval: 900
-        running: root.recording && !SettingsView.reduceMotion && root.visible
+        running: root.recording && !SettingsView.reduceMotion && !Appearance.lessMotion && root.visible
         repeat: true
         onTriggered: {
             const showing = [];
@@ -61,60 +69,78 @@ Item {
             required property string text
             required property int index
 
+            property bool leaving: false
+            property real lastY: NaN
+
             width: list.width
             height: root.pitch
+            opacity: fade.value
 
-            SquircleRect {
-                anchors.fill: parent
-                radius: Appearance.rounding.normal
-                color: Appearance.colour.fill
+            ListView.delayRemove: entry.leaving
+            ListView.onRemove: {
+                entry.leaving = true;
+                fade.target = 0;
+            }
+
+            onYChanged: {
+                if (!isNaN(entry.lastY))
+                    slide.value -= entry.y - entry.lastY;
+                entry.lastY = entry.y;
+            }
+
+            Follow {
+                id: fade
+
+                target: 1
+                speed: entry.leaving ? Appearance.animation.snapSpeed : Appearance.animation.settleSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: !root.populated
+                onSettledChanged: if (settled && entry.leaving)
+                    entry.leaving = false
+            }
+
+            Follow {
+                id: slide
+
+                target: 0
+                speed: Appearance.animation.settleSpeed
+            }
+
+            Item {
+                width: parent.width
+                height: parent.height
+                y: slide.value
 
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
-                    color: Appearance.colour.accentFill
-                    opacity: entry.index === 0 ? 1 : 0
+                    color: Appearance.colour.fill
 
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.animation.fade.slow
+                    SquircleRect {
+                        anchors.fill: parent
+                        radius: Appearance.rounding.normal
+                        color: Appearance.colour.accentFill
+                        opacity: lead.value
+
+                        Follow {
+                            id: lead
+
+                            target: entry.index === 0 ? 1 : 0
+                            speed: Appearance.animation.settleSpeed
+                            epsilon: Appearance.animation.fadeEpsilon
+                            startsAtTarget: true
                         }
                     }
                 }
-            }
 
-            StyledText {
-                x: Appearance.padding.normal
-                anchors.verticalCenter: parent.verticalCenter
-                width: parent.width - Appearance.padding.normal * 2
-                text: entry.text
-                elide: Text.ElideRight
-                color: entry.index === 0 ? Appearance.colour.text : Appearance.colour.textDim
-            }
-        }
-
-        add: Transition {
-            NumberAnimation {
-                property: "opacity"
-                from: 0
-                to: 1
-                duration: 300
-            }
-        }
-
-        displaced: Transition {
-            NumberAnimation {
-                property: "y"
-                duration: 420
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        remove: Transition {
-            NumberAnimation {
-                property: "opacity"
-                to: 0
-                duration: 120
+                StyledText {
+                    x: Appearance.padding.normal
+                    anchors.verticalCenter: parent.verticalCenter
+                    width: parent.width - Appearance.padding.normal * 2
+                    text: entry.text
+                    elide: Text.ElideRight
+                    color: entry.index === 0 ? Appearance.colour.text : Appearance.colour.textDim
+                }
             }
         }
     }

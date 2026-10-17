@@ -1072,29 +1072,6 @@ function nextPickable(rows, from, step) {
     return -1;
 }
 
-function chordParts(chord) {
-    return String(chord || "").split("+").map(p => p.trim()).filter(Boolean);
-}
-
-function sameChord(a, b) {
-    const norm = c => chordParts(c).map(p => p.toUpperCase()).sort().join("+");
-    return !!norm(a) && norm(a) === norm(b);
-}
-
-function legacyChord(chord) {
-    const parts = chordParts(chord);
-    const key = parts.pop() || "";
-    return `${parts.join(" ")}, ${key}`;
-}
-
-function chordText(chord) {
-    return chordParts(chord).map(p => p.length <= 1 ? p : p.charAt(0) + p.slice(1).toLowerCase()).join(" ");
-}
-
-function hotkeyCommand(id) {
-    return `banditshell panel launcher run '${String(id).replace(/'/g, "'\\''")}'`;
-}
-
 function cleanAlias(text) {
     return String(text || "").trim().toLowerCase().replace(/\s+/g, " ");
 }
@@ -1258,21 +1235,6 @@ function focusWorkspaceAsk(text) {
 function layoutLabel(name) {
     const bare = String(name || "").replace(/^lua:/, "");
     return bare.charAt(0).toUpperCase() + bare.slice(1);
-}
-
-var LUA_COMMENTS = /--\[(=*)\[[\s\S]*?\]\1\]|--[^\n]*/g;
-
-function luaLayouts(texts) {
-    const out = [];
-    const find = /hl\.layout\.register\(\s*["']([^"']+)["']/g;
-    for (const text of texts || []) {
-        const code = String(text).replace(LUA_COMMENTS, "");
-        let m;
-        while ((m = find.exec(code)) !== null)
-            if (out.indexOf(`lua:${m[1]}`) < 0)
-                out.push(`lua:${m[1]}`);
-    }
-    return out;
 }
 
 var DIRECTIONS = ["left", "right", "up", "down"];

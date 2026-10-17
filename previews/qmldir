@@ -9,5 +9,6 @@ NotificationPreview 1.0 NotificationPreview.qml
 QrPreview 1.0 QrPreview.qml
 QuickControlsPreview 1.0 QuickControlsPreview.qml
 SettingsPreview 1.0 SettingsPreview.qml
+SidebarPreview 1.0 SidebarPreview.qml
 TerminalDebug 1.0 TerminalDebug.qml
 WindowPreview 1.0 WindowPreview.qml

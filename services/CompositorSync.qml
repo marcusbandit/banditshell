@@ -90,8 +90,7 @@ Singleton {
     readonly property color inactiveBorder: {
         const line = Appearance.colour.separator;
         const ground = Appearance.colour.surfaceSolid;
-        const over = (a, b, t) => a + (b - a) * t;
-        return Qt.rgba(over(ground.r, line.r, line.a), over(ground.g, line.g, line.a), over(ground.b, line.b, line.a), 1);
+        return Appearance.blend(ground, Appearance.withAlpha(line, 1), line.a);
     }
 
     onActiveBorderChanged: Qt.callLater(root.pushBorderColours)

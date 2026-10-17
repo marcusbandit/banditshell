@@ -12,25 +12,29 @@ Item {
     property string path: ""
     property var stat: null
 
+    property bool up: false
+
     function show(path: string): void {
         root.path = path;
         root.stat = null;
-        root.opacity = 1;
+        root.up = true;
         statter.exec([Files.helper("bs-ls"), "--stat", path]);
     }
 
     function close(): void {
-        root.opacity = 0;
+        root.up = false;
     }
 
-    visible: opacity > 0
-    opacity: 0
+    visible: root.up || fade.value > 0
+    opacity: fade.value
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: Appearance.animation.fade.fast
-            easing.type: Easing.OutQuad
-        }
+    Follow {
+        id: fade
+
+        target: root.up ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     Process {
@@ -89,7 +93,7 @@ Item {
         radius: Appearance.rounding.large
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.separator
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         Column {
             id: body
@@ -108,12 +112,12 @@ Item {
                     fileClass: root.stat ? root.stat.class : "unknown"
                     link: root.stat ? root.stat.link : false
                     broken: root.stat ? root.stat.broken : false
-                    size: Appearance.font.iconSize * 1.6
+                    size: Appearance.icon.large
                 }
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - Appearance.font.iconSize * 1.6 - Appearance.padding.normal
+                    width: parent.width - Appearance.icon.large - Appearance.padding.normal
 
                     text: root.stat ? root.stat.name : "…"
                     font.pixelSize: Appearance.font.size.normal

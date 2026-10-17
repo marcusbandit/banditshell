@@ -6,8 +6,8 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
-import "layout-model.js" as LayoutModel
-import "layout-lua.js" as LayoutLua
+import "../../services/layout-model.js" as LayoutModel
+import "../../services/layout-lua.js" as LayoutLua
 
 Column {
     id: root

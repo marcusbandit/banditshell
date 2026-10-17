@@ -68,13 +68,13 @@ Column {
                 anchors.verticalCenter: parent.verticalCenter
                 width: root.barWidth
                 height: Appearance.padding.small
-                radius: height / 2
+                pill: "place"
                 color: Appearance.colour.fill
 
                 SquircleRect {
                     width: parent.width * (app.modelData?.ms ?? 0) / root.peak
                     height: parent.height
-                    radius: height / 2
+                    pill: "place"
                     color: Appearance.colour.textDim
                 }
             }

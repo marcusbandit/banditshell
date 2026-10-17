@@ -17,7 +17,7 @@ Singleton {
 
     readonly property var appNoise: ["Cache", "Code Cache", "GPUCache", "CacheStorage", "Service Worker", "IndexedDB", "blob_storage", "Local Storage", "Session Storage", "Crashpad", "DawnCache", "DawnGraphiteCache", "DawnWebGPUCache", "GrShaderCache", "ShaderCache", "WebStorage", "Partitions", "CachedData", "workspaceStorage", "History", "logs"]
 
-    readonly property string configDir: `${Files.home}/.config`
+    readonly property string configDir: `${System.home}/.config`
     readonly property bool configSearched: root.hidden === ".config" || root.hidden === "all"
 
     readonly property int findLimit: 600
@@ -28,7 +28,7 @@ Singleton {
 
     function commands(text: string): var {
         const base = ["nice", "-n", "10", "fd", "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", String(root.findLimit), ...(text.indexOf("/") >= 0 ? ["--full-path"] : []), ...root.excluding("--exclude", root.noise, "")];
-        const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, Files.home])];
+        const out = [base.concat(root.hidden === "all" ? ["--hidden", "--exclude", "/.config"] : [], ["--", text, System.home])];
         if (root.configSearched)
             out.push(base.concat(["--no-ignore-vcs"], root.excluding("--exclude", root.appNoise, ""), ["--", text, root.configDir]));
         return out;
@@ -46,7 +46,7 @@ Singleton {
         if (within)
             return [base.concat(["--", text], within)];
         const walk = base.concat(["--threads", "2"], root.excluding("--glob", root.noise, "!"));
-        const out = [walk.concat(["--", text, Files.home])];
+        const out = [walk.concat(["--", text, System.home])];
         if (root.configSearched)
             out.push(walk.concat(["--no-ignore-vcs"], root.excluding("--glob", root.appNoise, "!"), ["--", text, root.configDir]));
         return out;

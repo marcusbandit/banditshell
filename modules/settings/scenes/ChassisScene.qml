@@ -112,21 +112,21 @@ Item {
                 SquircleRect {
                     width: parent.width * 0.4
                     height: 6
-                    radius: 3
+                    pill: "place"
                     color: Appearance.colour.textDim
                 }
 
                 SquircleRect {
                     width: parent.width
                     height: 6
-                    radius: 3
+                    pill: "place"
                     color: Appearance.colour.fillStrong
                 }
 
                 SquircleRect {
                     width: parent.width * 0.7
                     height: 6
-                    radius: 3
+                    pill: "place"
                     color: Appearance.colour.fillStrong
                 }
 

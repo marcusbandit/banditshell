@@ -5,7 +5,7 @@ import qs.config
 import qs.components
 import qs.services
 import qs.modules.settings
-import "../../launcher/search.js" as Search
+import "../../../services/chords.js" as Chords
 
 Column {
     id: root
@@ -20,7 +20,7 @@ Column {
 
     function textOf(name: string): string {
         const item = root.map[name];
-        return root.aliases ? `${name} · ${(item.label || item.id).toLowerCase()}` : `${Search.chordText(item.chord).toLowerCase()} · ${(item.label || name).toLowerCase()}`;
+        return root.aliases ? `${name} · ${(item.label || item.id).toLowerCase()}` : `${Chords.chordText(item.chord).toLowerCase()} · ${(item.label || name).toLowerCase()}`;
     }
 
     function drop(name: string): void {
@@ -28,7 +28,7 @@ Column {
         const next = Object.assign({}, root.map);
         delete next[name];
         Config.set(root.aliases ? "launcher.aliases" : "launcher.hotkeys", next);
-        SettingsView.drop(root.aliases ? `${name} is no longer an alias` : `${Search.chordText(item.chord).toLowerCase()} is free again`, root.aliases ? "label" : "keyboard", {
+        SettingsView.drop(root.aliases ? `${name} is no longer an alias` : `${Chords.chordText(item.chord).toLowerCase()} is free again`, root.aliases ? "label" : "keyboard", {
             label: "undo",
             run: () => {
                 const back = Object.assign({}, root.map);

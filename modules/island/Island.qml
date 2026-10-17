@@ -9,6 +9,7 @@ import qs.config
 import qs.components
 import qs.components.blob
 import qs.modules.media
+import qs.modules.notifications
 import qs.services
 
 Item {
@@ -28,7 +29,7 @@ Item {
     property bool yielded: false
 
     readonly property bool focused: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
-    readonly property bool offStage: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
+    readonly property bool offStage: !root.screenName || !Focus.offStageScreen || root.screenName === Focus.offStageScreen
 
     readonly property bool notifies: Config.values.notifications.placement === "island"
 
@@ -36,7 +37,7 @@ Item {
     readonly property int bubbleMax: 4
     readonly property int announceMs: 2500
 
-    readonly property var high: ["dictation", "launch", "notification"]
+    readonly property var high: ["dictation", "launch", "notification", "alarm", "timer", "external", "privacy"]
 
     readonly property var activities: {
         const out = [];
@@ -51,13 +52,6 @@ Item {
                 kind: "recording"
             });
         if (root.focused)
-            for (const timer of Clock.timers.filter(t => !t.finished && !t.quiet))
-                out.push({
-                    key: `timer:${timer.id}`,
-                    kind: "timer",
-                    timer: timer
-                });
-        if (root.focused)
             for (const rec of Launching.shown.slice(-root.launchMax))
                 out.push({
                     key: `launch:${rec.id}`,
@@ -68,7 +62,7 @@ Item {
                     rec: rec
                 });
         if (root.offStage)
-            out.push(...Notices.fresh);
+            out.push(...Notices.fresh, ...Activities.shown);
         return out;
     }
 
@@ -105,11 +99,17 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
-    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music"), ...(root.offStage ? Notices.settled : []), ...(Notifications.count > 0 ? [
+    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.offStage ? Notices.settled : []), ...(Notifications.quieted ? [
+                {
+                    key: "quiet",
+                    kind: "quiet",
+                    text: Notifications.quietLine
+                }
+            ] : []), ...(Notifications.unread > 0 ? [
                 {
                     key: "notifications",
                     kind: "notifications",
-                    count: Notifications.count
+                    count: Notifications.unread
                 }
             ] : [])]
 
@@ -234,6 +234,12 @@ Item {
             return n > 1 ? `${n} notifications` : "a notification";
         case "launch":
             return n > 1 ? `${n} launches` : "launch";
+        case "external":
+            return n > 1 ? `${n} activities` : "activity";
+        case "timer":
+            return n > 1 ? `${n} timers` : "timer";
+        case "privacy":
+            return "privacy";
         }
         return key;
     }
@@ -277,7 +283,8 @@ Item {
     readonly property Item stage: scene
 
     function pressable(activity: var): bool {
-        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer"].includes(activity?.kind ?? "");
+        const kind = activity?.kind ?? "";
+        return ["music", "download", "update", "kernel", "restart", "held", "notification", "recording", "timer", "alarm"].includes(kind) || ((kind === "external" || kind === "privacy") && !!activity.pressable);
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -395,6 +402,11 @@ Item {
                 delete told[k];
                 continue;
             }
+            if (k === "privacy" && company) {
+                next.push(k);
+                announce(k, arrived);
+                continue;
+            }
             if (card)
                 next.splice(1, 0, k);
             else
@@ -420,6 +432,11 @@ Item {
             delete told[root.summon];
         }
         root.summon = "";
+        if (g.alarm) {
+            next = ["alarm", ...next.filter(x => x !== "alarm")];
+            held = held.filter(x => x !== "alarm");
+            delete told.alarm;
+        }
         const counted = {};
         const known = {};
         for (const k of Object.keys(g)) {
@@ -489,6 +506,17 @@ Item {
         root.reforming = false;
         if (!root.hovering)
             root.spent = false;
+    }
+
+    property var heeded: []
+
+    function heed(): void {
+        const wanted = (root.groups.timer?.items ?? []).filter(i => i.ending).map(i => i.key);
+        const fresh = wanted.some(k => !root.heeded.includes(k));
+        if (wanted.join("|") !== root.heeded.join("|"))
+            root.heeded = wanted;
+        if (fresh)
+            root.summon = "timer";
     }
 
     function tapBubble(key: string): void {
@@ -622,14 +650,21 @@ Item {
     onVoiceChanged: if (root.voice)
         Hypr.resync()
 
-    onGroupsChanged: Qt.callLater(root.arrange)
+    onGroupsChanged: {
+        root.heed();
+        Qt.callLater(root.arrange);
+    }
     onStackKeysChanged: root.mergeStack()
     onBubbleKeysChanged: root.mergeBubbles()
     onAlertingChanged: if (!root.alerting && root.hovering && !root.expanded && !root.pulling)
         root.spent = true
 
-    onExpandedChanged: if (root.expanded)
-        Media.sync()
+    onExpandedChanged: {
+        if (root.expanded)
+            Media.sync();
+        else
+            Notifications.markSeen();
+    }
 
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
@@ -1047,9 +1082,9 @@ Item {
                     y: root.pillY + layer.stand - height + layer.reach
                     radius: root.pillRadius
                     cornerPower: root.pillPower
-                    color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth))
+                    color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
                     stroke: Appearance.colour.seam
-                    strokeWidth: Appearance.sizes.seam / 2
+                    strokeWidth: Appearance.stroke.line
                     opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
                     visible: layer.opacity > 0.01
 
@@ -1062,7 +1097,7 @@ Item {
                         clip: true
                         visible: layer.ghostness > 0.01
 
-                        NotificationAlert {
+                        NotificationCard {
                             y: -uncovered.y
                             width: root.largeWidth
                             entry: root.ghost
@@ -1096,8 +1131,8 @@ Item {
                         y: under.twin?.y ?? 0
                         width: under.twin?.width ?? 0
                         height: under.twin?.height ?? 0
-                        radius: width / 2
-                        opacity: settle.value * 0.8 * under.fade
+                        pill: "object"
+                        opacity: settle.value * Appearance.opacity.glow * under.fade
                         visible: opacity > 0.01
                     }
 
@@ -1124,11 +1159,10 @@ Item {
                             y: (under.twin?.y ?? 0) + root.stackStep * behind.d * behindShown.value
                             width: under.twin?.width ?? 0
                             height: width
-                            radius: width / 2
-                            cornerPower: 2
-                            color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, 0.06 * behind.d))
+                            pill: "object"
+                            color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
-                            strokeWidth: Appearance.sizes.seam / 2
+                            strokeWidth: Appearance.stroke.line
                             opacity: under.fade * behindShown.value
                             visible: opacity > 0.01
                         }
@@ -1142,7 +1176,7 @@ Item {
                 width: root.pillWidth
                 height: root.pillHeight
                 radius: root.pillRadius
-                opacity: settle.value * 0.8 * deal.value
+                opacity: settle.value * Appearance.opacity.glow * deal.value
             }
 
             IslandField {
@@ -1244,6 +1278,11 @@ Item {
                     enabled: root.deckRest || root.openness > 0
 
                     onDismissed: entry => Notifications.dismiss(entry)
+                    onKept: entry => Notifications.expire(entry)
+                    onHistory: root.chosen({
+                        key: "notifications",
+                        kind: "notifications"
+                    })
                     onAdvanced: (forward, count, previous) => {
                         if (root.fanning || root.openness > 0)
                             return;
@@ -1348,6 +1387,9 @@ Item {
                         enabled: row.here && (root.openness === 0 || row.carried)
 
                         onChosen: root.choose(row.item)
+                        onActed: name => root.choose(Object.assign({}, row.item, {
+                                action: name
+                            }))
                     }
                 }
             }
@@ -1419,7 +1461,7 @@ Item {
                     Follow {
                         id: hoverGlow
 
-                        speed: Appearance.animation.revealSpeed * 1.5
+                        speed: Appearance.animation.snapSpeed
                         epsilon: 0.004
                         target: tap.containsMouse && grow.value > 0.5 ? 1 : 0
                     }
@@ -1463,8 +1505,7 @@ Item {
                         y: parent.height + Appearance.padding.small + root.stackStep * 2
                         width: label.implicitWidth + Appearance.padding.normal * 2
                         height: label.implicitHeight + Appearance.padding.small
-                        radius: height / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.ink
                         opacity: hoverGlow.value
                         visible: opacity > 0.01 && !!face.label

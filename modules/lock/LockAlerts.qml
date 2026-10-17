@@ -15,6 +15,9 @@ Item {
     readonly property var waiting: Notifications.history.filter(entry => !entry.leaving)
     readonly property int total: root.waiting.length
 
+    readonly property int readableMax: 2
+    readonly property var readable: root.waiting.filter(entry => Notifications.ruleFor(entry).lock).slice(0, root.readableMax)
+
     readonly property int deepest: 3
 
     readonly property var apps: {
@@ -116,19 +119,17 @@ Item {
                 SquircleRect {
                     anchors.fill: parent
                     anchors.margins: -root.ring
-                    radius: width / 2
-                    cornerPower: 2
+                    pill: "object"
                     color: Appearance.colour.ink
                 }
 
                 SquircleRect {
                     anchors.fill: parent
-                    radius: width / 2
-                    cornerPower: 2
+                    pill: "object"
 
                     color: Appearance.colour.surfaceSolid
-                    stroke: Appearance.veil(0.12)
-                    strokeWidth: 1
+                    stroke: Appearance.colour.fillStrong
+                    strokeWidth: Appearance.stroke.line
                 }
 
                 Image {
@@ -182,15 +183,13 @@ Item {
             SquircleRect {
                 anchors.fill: parent
                 anchors.margins: -root.ring
-                radius: height / 2
-                cornerPower: 2
+                pill: "object"
                 color: Appearance.colour.ink
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
-                cornerPower: 2
+                pill: "object"
                 color: Appearance.colour.accent
             }
 
@@ -201,7 +200,7 @@ Item {
                 text: root.shownTotal
                 color: Appearance.colour.ink
                 font.family: root.family
-                font.pixelSize: Math.round(parent.height * 0.68)
+                font.pixelSize: Appearance.font.size.small
                 font.variableAxes: ({ "wght": 650 })
                 font.features: ({ "tnum": 1 })
                 renderType: Text.NativeRendering

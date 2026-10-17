@@ -10,7 +10,8 @@ function lib(file, names) {
     return new Function(`${src}\nreturn { ${names.join(", ")} };`)();
 }
 
-const Search = lib("modules/launcher/search.js", ["usableArea", "cellRect", "TILES", "workspaceAsk", "focusWorkspaceAsk", "layoutLabel", "luaLayouts"]);
+const Search = lib("modules/launcher/search.js", ["usableArea", "cellRect", "TILES", "workspaceAsk", "focusWorkspaceAsk", "layoutLabel"]);
+const Lua = lib("services/hyprland-lua.js", ["luaLayouts"]);
 
 const WIDE = { x: 1200, y: 240, width: 5120, height: 1440, scale: 1, transform: 0, reserved: [62, 10, 10, 10] };
 const TURNED = { x: 0, y: 0, width: 1920, height: 1200, scale: 1, transform: 1, reserved: [62, 10, 10, 10] };
@@ -65,8 +66,8 @@ test.describe("moving and layouts", () => {
     });
 
     test.it("finds layouts registered in the Lua config and names them", () => {
-        assert.deepStrictEqual(Search.luaLayouts(['hl.layout.register("stage", { recalculate = r })', "hl.layout.register('grid', {})\nhl.layout.register(\"stage\", {})"]), ["lua:stage", "lua:grid"]);
-        assert.deepStrictEqual(Search.luaLayouts(['-- hl.layout.register("old", {})\nhl.layout.register("stage", {})\n--[[ hl.layout.register("gone", {}) ]]\n--[==[\nhl.layout.register("long", {})\n]==]']), ["lua:stage"]);
+        assert.deepStrictEqual(Lua.luaLayouts(['hl.layout.register("stage", { recalculate = r })', "hl.layout.register('grid', {})\nhl.layout.register(\"stage\", {})"]), ["lua:stage", "lua:grid"]);
+        assert.deepStrictEqual(Lua.luaLayouts(['-- hl.layout.register("old", {})\nhl.layout.register("stage", {})\n--[[ hl.layout.register("gone", {}) ]]\n--[==[\nhl.layout.register("long", {})\n]==]']), ["lua:stage"]);
         assert.strictEqual(Search.layoutLabel("lua:stage"), "Stage");
         assert.strictEqual(Search.layoutLabel("dwindle"), "Dwindle");
     });

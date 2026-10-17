@@ -65,7 +65,7 @@ Item {
 
                 width: root.cell
                 height: body.implicitHeight + Appearance.padding.normal * 2
-                opacity: !card.modelData.wall && root.fromWall ? 0.4 : 1
+                opacity: !card.modelData.wall && root.fromWall ? Appearance.opacity.disabled : 1
 
                 SquircleRect {
                     anchors.fill: parent

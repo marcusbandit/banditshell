@@ -25,7 +25,7 @@ Item {
         x: Math.round(root.indent / 2)
         width: Math.max(2, Math.round(Appearance.sizes.sliderHeight / 3))
         height: parent.height
-        radius: width / 2
+        pill: "place"
         color: Appearance.colour.separator
     }
 

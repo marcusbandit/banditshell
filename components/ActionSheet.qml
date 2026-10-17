@@ -137,7 +137,7 @@ Item {
             radius: root.groupRadius
             color: Appearance.colour.surfaceSolid
             stroke: Appearance.colour.separator
-            strokeWidth: Appearance.font.stem
+            strokeWidth: Appearance.stroke.ring
         }
 
         SquircleRect {
@@ -179,23 +179,24 @@ Item {
 
                         name: cell.modelData.icon
                         size: Appearance.font.iconSize
-                        color: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                        color: markTone.value
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.normal
-                            }
+                        FollowColour {
+                            id: markTone
+
+                            target: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            speed: Appearance.animation.trackSpeed
                         }
                     }
 
-                    Rectangle {
+                    SquircleRect {
                         visible: cell.worn
 
                         anchors.centerIn: mark
 
                         width: mark.width
                         height: width
-                        radius: width / 2
+                        pill: "object"
                         color: Appearance.colour.accent
                     }
 
@@ -206,12 +207,13 @@ Item {
 
                         text: cell.modelData.label
 
-                        color: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                        color: labelTone.value
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.normal
-                            }
+                        FollowColour {
+                            id: labelTone
+
+                            target: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            speed: Appearance.animation.trackSpeed
                         }
                     }
 

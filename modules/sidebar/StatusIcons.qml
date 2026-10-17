@@ -6,6 +6,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import qs.modules.menu.content
+import "scrolling.js" as Scrolling
 
 Item {
     id: root
@@ -57,13 +58,28 @@ Item {
         epsilon: 0.005
     }
 
+    function naturalScroll(wheel: var): bool {
+        const touchpad = wheel.pixelDelta.x !== 0 || wheel.pixelDelta.y !== 0;
+        return wheel.inverted || (touchpad ? Compositor.naturalScrollTouchpad : Compositor.naturalScrollMouse);
+    }
+
+    function scrollVolume(wheel: var): void {
+        Audio.setVolume(Scrolling.scrolled(Audio.volume, wheel.angleDelta.y, root.naturalScroll(wheel), Config.values.volume.step, Audio.maxVolume));
+    }
+
+    function scrollBrightness(wheel: var): void {
+        if (Display.levelKnown)
+            Display.setLevel(Scrolling.scrolled(Display.level, wheel.angleDelta.y, root.naturalScroll(wheel), Config.values.volume.step, 1));
+    }
+
     readonly property var allGauges: [
         {
             key: "audio",
             title: "Sound",
             reading: sound,
             shown: Config.values.sidebar.status.sound,
-            body: soundMenu
+            body: soundMenu,
+            scroll: root.scrollVolume
         },
         {
             key: "network",
@@ -86,6 +102,14 @@ Item {
             present: Battery.available,
             shown: Config.values.sidebar.status.battery,
             body: batteryMenu
+        },
+        {
+            key: "brightness",
+            title: "Brightness",
+            reading: brightness,
+            present: Display.brightnessReady,
+            shown: Config.values.sidebar.status.brightness,
+            scroll: root.scrollBrightness
         }
     ].filter(g => g.present ?? true)
 
@@ -124,6 +148,14 @@ Item {
         readonly property Component mark: batteryMark
         readonly property bool active: Battery.charging
         readonly property bool alarm: Battery.low
+    }
+
+    QtObject {
+        id: brightness
+
+        readonly property string icon: "brightness_6"
+        readonly property bool active: Display.levelKnown
+        readonly property bool available: Display.levelKnown
     }
 
     readonly property var items: root.allGauges.filter(g => g.body !== undefined)
@@ -212,6 +244,11 @@ Item {
                 }
 
                 onActivated: root.requested(key, true)
+
+                onScrolled: wheel => {
+                    if (modelData.scroll)
+                        modelData.scroll(wheel);
+                }
 
                 HoverTip {
                     text: hasMenu ? "" : modelData.title

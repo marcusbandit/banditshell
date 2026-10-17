@@ -1,2 +1,3 @@
 module qs.modules.quickcontrols
 QuickControls 1.0 QuickControls.qml
+QuickControlsIpc 1.0 QuickControlsIpc.qml

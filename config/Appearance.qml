@@ -36,6 +36,22 @@ Singleton {
         return Qt.rgba(a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k, a.a + (b.a - a.a) * k);
     }
 
+    function withAlpha(c: color, alpha: real): color {
+        return Qt.rgba(c.r, c.g, c.b, alpha);
+    }
+
+    function rgb(r: real, g: real, b: real): color {
+        return Qt.rgba(r, g, b, 1);
+    }
+
+    function grey(level: real): color {
+        return Qt.rgba(level, level, level, 1);
+    }
+
+    function hsl(hue: real, saturation: real, lightness: real): color {
+        return Qt.hsla(hue, saturation, lightness, 1);
+    }
+
     function shade(c: color, tier: int): color {
         const w = root.labelAlphas;
         return Qt.rgba(c.r, c.g, c.b, w[Math.max(0, Math.min(tier, w.length - 1))]);
@@ -50,6 +66,14 @@ Singleton {
             return (x + (y - x) * t) / 255;
         };
         return Qt.rgba(lerp(16), lerp(8), lerp(0), alpha);
+    }
+
+    function roleColour(name: string): color {
+        if (name === "accent")
+            return root.colour.accent;
+        if (name === "alarm" || name === "bright" || name === "mid" || name === "dim")
+            return root.theme[name];
+        return name;
     }
 
     readonly property color tint: theme.ramp[theme.ramp.length - 1]
@@ -114,15 +138,36 @@ Singleton {
 
         readonly property var terminalPalette: root.config.files.terminal.palette === "theme" ? root.colour.themePalette : root.config.files.terminal.palette
 
-        readonly property color updateAvailable: root.config.updates.availableColour
-        readonly property color updateFailed: root.config.updates.failedColour
-        readonly property color updateReady: root.config.updates.readyColour
+        readonly property color updateAvailable: root.roleColour(root.config.updates.availableColour)
+        readonly property color updateFailed: root.roleColour(root.config.updates.failedColour)
+        readonly property color updateReady: root.roleColour(root.config.updates.readyColour)
 
         readonly property color frame: root.config.edge.outerColour
 
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)
 
         readonly property color seam: Qt.rgba(root.colour.paper.r, root.colour.paper.g, root.colour.paper.b, 0.08)
+
+        readonly property color pane: root.blend(root.colour.surfaceSolid, root.colour.paper, 0.12)
+    }
+
+    readonly property QtObject opacity: QtObject {
+        readonly property real disabled: 0.4
+        readonly property real trail: 0.55
+        readonly property real glow: 0.8
+    }
+
+    readonly property QtObject stroke: QtObject {
+        readonly property int line: 1
+        readonly property int ring: root.font.stem
+    }
+
+    readonly property QtObject icon: QtObject {
+        readonly property int small: Math.round(root.font.iconSize * 0.8)
+        readonly property int normal: root.font.iconSize
+        readonly property int large: Math.round(root.font.iconSize * 1.4)
+        readonly property int huge: root.font.iconSize * 2
+        readonly property int hero: root.font.iconSize * 3
     }
 
     readonly property QtObject font: QtObject {
@@ -156,6 +201,8 @@ Singleton {
         readonly property real ring: 0.94
         readonly property real ringHover: 1.12
         readonly property real glyph: 0.92
+        readonly property real lift: 1.15
+        readonly property real grab: 1.3
     }
 
     readonly property QtObject rounding: QtObject {
@@ -174,6 +221,7 @@ Singleton {
     }
 
     readonly property QtObject padding: QtObject {
+        readonly property int hair: Math.round(small / 2)
         readonly property int small: Math.round(root.tier(root.config.padding.base, root.config.padding.scale, 0))
         readonly property int normal: Math.round(root.tier(root.config.padding.base, root.config.padding.scale, 1))
 
@@ -224,6 +272,10 @@ Singleton {
         readonly property real railSpeed: root.config.anim.railSpeed
         readonly property real resizeSpeed: root.config.anim.resizeSpeed
         readonly property real scrollSpeed: root.config.anim.scrollSpeed
+        readonly property real settleSpeed: revealSpeed * 0.5
+        readonly property real snapSpeed: revealSpeed * 1.5
+
+        readonly property real fadeEpsilon: 0.002
 
         readonly property int grace: root.config.anim.grace
         readonly property int dwell: root.config.anim.dwell
@@ -236,6 +288,9 @@ Singleton {
 
         readonly property int border: root.follows ? Compositor.gapsOut : root.config.edge.border
         readonly property int sidebarWidth: root.config.sidebar.width
+        readonly property bool sidebarRail: root.config.sidebar.style === "rail"
+        readonly property int railWidth: Math.min(root.config.sidebar.railWidth, root.config.sidebar.width)
+        readonly property int sidebarReserve: sidebarRail ? railWidth : sidebarWidth
         readonly property int streamHeight: root.config.stream.height
         readonly property real sidebarFlare: root.rounding.at(root.config.sidebar.flareTier)
         readonly property int workspaceSlot: root.config.sidebar.workspaces.slot

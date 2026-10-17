@@ -163,7 +163,7 @@ Singleton {
 
     function drop(text: string, icon: string, action: var): void {
         if (icon === "error")
-            Notifications.alert("error");
+            Notify.alert("error");
         root.toast = {
             text,
             icon: icon || "check",

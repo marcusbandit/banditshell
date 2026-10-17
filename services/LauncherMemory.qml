@@ -23,7 +23,7 @@ Singleton {
         return used > 0 ? Math.min(1, Math.log(1 + used) / 2) : 0;
     }
 
-    readonly property var passing: /^(?:app|cli|suggest|output|scriptline|process|window|link|translation|video|newnote|latest|clipboard|definition|stream|answer|fallback|content|file|reminder|timer|zone|convert|developer|scriptitem|scriptproblem|place|github|port):/
+    readonly property var passing: /^(?:app|cli|suggest|output|scriptline|process|window|link|translation|video|newnote|latest|clipboard|notification|thread|definition|stream|answer|fallback|content|file|reminder|timer|zone|convert|developer|scriptitem|scriptproblem|place|github|port):/
 
     function remembers(key: string): bool {
         return !!key && key.length <= 80 && !root.passing.test(key);

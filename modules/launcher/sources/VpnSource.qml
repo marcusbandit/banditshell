@@ -283,7 +283,7 @@ QtObject {
         case "tailscalepeer":
             {
                 const address = row.address;
-                root.search.leave(() => Files.copyText(address));
+                root.search.leave(() => System.copyText(address));
                 return;
             }
         }
@@ -377,7 +377,7 @@ QtObject {
                         icon: "content_copy",
                         label: "Copy name",
                         tucked: true,
-                        run: () => root.search.leave(() => Files.copyText(dns))
+                        run: () => root.search.leave(() => System.copyText(dns))
                     });
                 if (row.online && dns)
                     acts.push({

@@ -135,8 +135,7 @@ Column {
                 visible: net.on
                 width: 6
                 height: 6
-                radius: 3
-                cornerPower: 2
+                pill: "object"
                 color: Appearance.colour.accent
             }
         }
