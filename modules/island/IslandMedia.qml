@@ -61,8 +61,8 @@ Item {
                     anchors.fill: parent
                     radius: Appearance.rounding.normal
                     blur: Appearance.padding.normal
-                    offset.y: Appearance.padding.small / 2
-                    opacity: art.ready ? 0.7 : 0
+                    offset.y: Appearance.padding.hair
+                    opacity: art.ready ? Appearance.opacity.glow : 0
                 }
 
                 SquircleRect {
@@ -92,12 +92,15 @@ Item {
                     visible: Media.canRaise
                     radius: Appearance.rounding.normal
                     color: Appearance.colour.scrim
-                    opacity: raise.containsMouse ? 1 : 0
+                    opacity: raiseFade.value
 
-                    Behavior on opacity {
-                        NumberAnimation {
-                            duration: Appearance.animation.fade.fast
-                        }
+                    Follow {
+                        id: raiseFade
+
+                        target: raise.containsMouse ? 1 : 0
+                        speed: Appearance.animation.revealSpeed
+                        epsilon: Appearance.animation.fadeEpsilon
+                        startsAtTarget: true
                     }
 
                     Icon {
@@ -122,13 +125,16 @@ Item {
                 anchors.margins: -Appearance.padding.small
                 radius: Appearance.rounding.normal
                 color: wordsPress.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill
-                opacity: wordsPress.containsMouse ? 1 : 0
+                opacity: wordsFade.value
                 visible: opacity > 0.01
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.animation.fade.fast
-                    }
+                Follow {
+                    id: wordsFade
+
+                    target: wordsPress.containsMouse ? 1 : 0
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
             }
 
@@ -212,13 +218,15 @@ Item {
                     width: Appearance.sizes.minTarget + Appearance.padding.small
                     height: width
 
-                    scale: growPress.pressed ? Appearance.press.ring : growPress.containsMouse ? Appearance.press.ringHover : 1
+                    scale: growScale.value
 
-                    Behavior on scale {
-                        NumberAnimation {
-                            duration: Appearance.animation.fast
-                            easing.type: Easing.OutCubic
-                        }
+                    Follow {
+                        id: growScale
+
+                        target: growPress.pressed ? Appearance.press.ring : growPress.containsMouse ? Appearance.press.ringHover : 1
+                        speed: Appearance.animation.revealSpeed
+                        epsilon: Appearance.animation.fadeEpsilon
+                        startsAtTarget: true
                     }
 
                     Icon {

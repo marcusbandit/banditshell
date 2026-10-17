@@ -903,7 +903,7 @@ Scope {
                 height: card.pad * 2 + whole.implicitHeight
                 color: Appearance.colour.surfaceSolid
                 stroke: Appearance.colour.fill
-                strokeWidth: 1
+                strokeWidth: Appearance.stroke.line
 
                 focus: true
                 Keys.onPressed: event => {
@@ -943,7 +943,7 @@ Scope {
                             anchors.right: closeButton.left
                             anchors.rightMargin: Appearance.padding.normal
                             anchors.verticalCenter: parent.verticalCenter
-                            spacing: Appearance.padding.small / 2
+                            spacing: Appearance.padding.hair
 
                             StyledText {
                                 width: parent.width
@@ -1047,7 +1047,7 @@ Scope {
                                         anchors.rightMargin: Appearance.padding.normal
                                         anchors.verticalCenter: parent.verticalCenter
                                         text: `${row.index + 1}`
-                                        color: Appearance.colour.textGhost
+                                        color: Appearance.colour.textFaint
                                     }
 
                                     MouseArea {
@@ -1325,7 +1325,7 @@ Scope {
                     StyledText {
                         width: parent.width
                         text: "↑ ↓ step through the situations · R replays the arrival · during the story → jumps to the next beat, space pauses · Esc ends. Hover and click the island itself; everything here is made up and goes away when this closes."
-                        color: Appearance.colour.textGhost
+                        color: Appearance.colour.textFaint
                         wrapMode: Text.Wrap
                     }
                 }
