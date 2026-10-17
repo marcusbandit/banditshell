@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-3",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell has a roadmap page at banditshell.marcusrosado.com. It lists where the shell is going, what is being built now and what is still undecided. Nothing in the shell itself changed."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-5",
       "date": "2026-10-17",
       "changes": [

@@ -1,0 +1,354 @@
+:root {
+    color-scheme: dark;
+
+    --ink: #08090b;
+    --ground: #0f1114;
+    --raised: #181b1f;
+    --rim: #3a4149;
+    --grey: #78838f;
+    --paper: #eef2f5;
+    --text: rgb(238 242 245 / 0.92);
+    --dim: rgb(238 242 245 / 0.58);
+    --line: rgb(238 242 245 / 0.1);
+    --fill: rgb(238 242 245 / 0.07);
+    --deep: #5b8fb0;
+    --mid: #7fb3d4;
+    --bright: #b8dcf0;
+    --gold: #d8c48c;
+
+    --base: 1.0625rem;
+    --small: calc(var(--base) * 0.8125);
+    --normal: var(--base);
+    --large: calc(var(--base) * 1.375);
+
+    --tight: 8px;
+    --near: 12px;
+    --apart: 16px;
+    --section: calc(var(--apart) * 3);
+    --radius: 15px;
+    --column: 46rem;
+    --gutter: 20px;
+    --target: 32px;
+
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", "DejaVu Sans Mono", monospace;
+}
+
+@media (pointer: coarse) {
+    :root {
+        --target: 44px;
+    }
+}
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    background: var(--ground);
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0 auto;
+    max-width: calc(var(--column) + 2 * var(--gutter));
+    padding: calc(var(--gutter) + 4px) var(--gutter) var(--section);
+    color: var(--text);
+    font: 400 var(--normal) / 1.55 var(--sans);
+    overflow-wrap: break-word;
+}
+
+::selection {
+    background: rgb(127 179 212 / 0.35);
+}
+
+h1,
+h2,
+p,
+ul,
+ol,
+figure {
+    margin: 0;
+}
+
+h1,
+h2 {
+    font-size: var(--large);
+    line-height: 1.25;
+    font-weight: 700;
+    color: var(--paper);
+    text-wrap: balance;
+}
+
+strong {
+    font-weight: 700;
+    color: var(--paper);
+}
+
+a {
+    color: var(--mid);
+    text-decoration-color: rgb(127 179 212 / 0.4);
+    text-underline-offset: 3px;
+}
+
+a:hover {
+    text-decoration-color: currentColor;
+}
+
+a:focus-visible {
+    outline: 2px solid var(--bright);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+code {
+    font: var(--small) / 1 var(--mono);
+    padding: 1px 4px;
+    border-radius: 6px;
+    corner-shape: squircle;
+    background: var(--fill);
+    overflow-wrap: anywhere;
+}
+
+.wordmark {
+    display: block;
+    width: 100%;
+    height: auto;
+}
+
+header h1 {
+    margin-top: calc(var(--apart) * 1.5);
+}
+
+.meta {
+    margin-top: var(--tight);
+    font-size: var(--small);
+    color: var(--dim);
+}
+
+.meta time {
+    font-family: var(--mono);
+}
+
+header > p:not(.meta) {
+    margin-top: var(--near);
+}
+
+nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--tight);
+    margin-top: var(--apart);
+}
+
+nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--target);
+    padding: 0 var(--near);
+    border-radius: 10px;
+    corner-shape: squircle;
+    background: var(--raised);
+    color: var(--text);
+    font-size: var(--small);
+    text-decoration: none;
+}
+
+nav a:hover {
+    background: var(--fill);
+}
+
+section {
+    margin-top: var(--section);
+    scroll-margin-top: var(--apart);
+}
+
+section h2 {
+    position: relative;
+    padding-left: 22px;
+}
+
+section h2::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.4em;
+    width: 0.45em;
+    height: 0.45em;
+    background: var(--marker, var(--rim));
+}
+
+#now {
+    --marker: var(--mid);
+}
+
+#next {
+    --marker: var(--deep);
+}
+
+#to-decide {
+    --marker: var(--gold);
+}
+
+#later {
+    --marker: var(--grey);
+}
+
+section > * + * {
+    margin-top: var(--near);
+}
+
+section > h2 + * {
+    margin-top: var(--tight);
+}
+
+ul {
+    padding: 0;
+    list-style: none;
+}
+
+ul > li {
+    position: relative;
+    padding-left: 22px;
+}
+
+ul > li::before {
+    content: "";
+    position: absolute;
+    left: 4px;
+    top: 0.68em;
+    width: 5px;
+    height: 5px;
+    background: var(--grey);
+}
+
+li + li {
+    margin-top: var(--tight);
+}
+
+ol {
+    padding: 0;
+    list-style: none;
+    counter-reset: rule;
+}
+
+ol > li {
+    position: relative;
+    counter-increment: rule;
+    padding: var(--near) var(--apart) var(--near) 48px;
+    border-radius: var(--radius);
+    corner-shape: squircle;
+    background: var(--raised);
+}
+
+ol > li::before {
+    content: counter(rule);
+    position: absolute;
+    left: var(--apart);
+    top: var(--near);
+    font: 700 var(--normal) / 1.55 var(--mono);
+    color: var(--mid);
+}
+
+.hero {
+    margin-top: var(--apart);
+}
+
+.hero img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    corner-shape: squircle;
+    background: var(--ink);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th {
+    padding: 0 var(--near) var(--tight) 0;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+}
+
+th,
+td::before {
+    font-size: var(--small);
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--dim);
+}
+
+td {
+    padding: var(--near) var(--near) var(--near) 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+
+td:first-child {
+    font-weight: 700;
+    color: var(--paper);
+}
+
+@media (max-width: 40rem) {
+    .table table,
+    .table tbody,
+    .table tr,
+    .table td {
+        display: block;
+    }
+
+    .table thead {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+    }
+
+    .table tr {
+        padding: var(--near) 0 var(--apart);
+        border-bottom: 1px solid var(--line);
+    }
+
+    .table td {
+        padding: 0;
+        border: 0;
+    }
+
+    .table td + td {
+        margin-top: var(--tight);
+    }
+
+    .table td + td::before {
+        content: attr(data-label);
+        display: block;
+    }
+
+    .table td:nth-child(2) {
+        margin-top: 0;
+        color: var(--dim);
+    }
+
+    .table td:nth-child(2)::before {
+        content: none;
+    }
+}
+
+footer {
+    margin-top: var(--section);
+    padding-top: var(--apart);
+    border-top: 1px solid var(--line);
+    font-size: var(--small);
+    color: var(--dim);
+}
+
+footer p + p {
+    margin-top: var(--tight);
+}
