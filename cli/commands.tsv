@@ -118,6 +118,7 @@ rule	dev modules --explain @package
 rule	dev lint
 rule	dev lint --all,--write-baseline
 rule	dev lint --rule @rule
+rule	dev promote --remote,--no-fetch
 rule	dev check island @dir
 rule	dev inspect island @screen
 rule	dev inspect close

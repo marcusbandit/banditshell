@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck };")();
+const Update = new Function(src + "\nreturn { report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck, channelOf, branchFor, channelText, following };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -274,4 +274,40 @@ test("the outcome tells where the person stands in plain words", () => {
     assert.strictEqual(Update.outcomeText({ ok: true, to: "abcdef123", toLabel: "2026-10-18" }), "Updated to 2026-10-18.");
     assert.strictEqual(Update.outcomeText({ ok: false, from: "1111111aaa", to: "2222222bbb", why: "The shell did not answer" }),
         "Update 2222222 did not start, so you are back on 1111111. The shell did not answer. It will be tried again when a newer version arrives.");
+});
+
+test("a channel is stable or main, and anything else reads as main", () => {
+    assert.strictEqual(Update.channelOf("stable"), "stable");
+    assert.strictEqual(Update.channelOf(" main "), "main");
+    assert.strictEqual(Update.channelOf("beta"), "main");
+    assert.strictEqual(Update.channelOf(undefined), "main");
+});
+
+test("the channel picks the branch, and a branch other than main overrides it", () => {
+    assert.strictEqual(Update.branchFor("main", "main"), "main");
+    assert.strictEqual(Update.branchFor("stable", "main"), "stable");
+    assert.strictEqual(Update.branchFor("stable", ""), "stable");
+    assert.strictEqual(Update.branchFor("stable", "dev"), "dev");
+    assert.strictEqual(Update.branchFor("main", "dev"), "dev");
+    assert.strictEqual(Update.branchFor(undefined, undefined), "main");
+});
+
+test("the menu names the channel, or the branch followed in its place", () => {
+    assert.strictEqual(Update.channelText("stable", "main"), "stable channel");
+    assert.strictEqual(Update.channelText("main", "main"), "main channel");
+    assert.strictEqual(Update.channelText("stable", "dev"), "following dev");
+});
+
+test("a copy on main follows stable, any other branch only follows itself", () => {
+    assert.strictEqual(Update.following("main", "stable"), true);
+    assert.strictEqual(Update.following("stable", "stable"), true);
+    assert.strictEqual(Update.following("feature", "stable"), false);
+    assert.strictEqual(Update.following("main", "dev"), false);
+    assert.strictEqual(Update.following("dev", "dev"), true);
+});
+
+test("a missing stable branch says there is no stable version yet", () => {
+    const text = "fatal: couldn't find remote ref stable";
+    assert.match(Update.explain(text.split("\n"), "stable"), /no stable version yet.*updates\.channel to main/);
+    assert.strictEqual(Update.explain(text.split("\n"), "dev"), 'GitHub has no branch called "dev".');
 });

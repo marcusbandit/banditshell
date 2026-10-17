@@ -1,3 +1,28 @@
+const CHANNELS = ["stable", "main"];
+
+function channelOf(raw) {
+    const name = String(raw ?? "").trim();
+    return CHANNELS.indexOf(name) >= 0 ? name : "main";
+}
+
+function branchFor(channel, branch) {
+    const named = String(branch ?? "").trim();
+    if (named !== "" && named !== "main")
+        return named;
+    return channelOf(channel) === "stable" ? "stable" : "main";
+}
+
+function following(head, branch) {
+    return head === branch || (branch === "stable" && head === "main");
+}
+
+function channelText(channel, branch) {
+    const followed = branchFor(channel, branch);
+    if (followed !== "stable" && followed !== "main")
+        return `following ${followed}`;
+    return `${followed} channel`;
+}
+
 function report(text) {
     const got = { failed: false, output: [], values: {} };
     for (const line of String(text ?? "").split("\n")) {
@@ -51,6 +76,8 @@ function explain(output, branch) {
         return "GitHub took too long to answer. Try again later.";
     if (/Could not resolve host|Failed to connect|Connection timed out|Connection refused|Network is unreachable|Could not connect/.test(text))
         return "Could not reach GitHub. Check the internet connection, then refresh.";
+    if (/couldn't find remote ref/.test(text) && branch === "stable")
+        return "GitHub has no stable version yet, so the stable channel has nothing to follow. Switch updates.channel to main in config.json, or wait for the first stable release.";
     if (/couldn't find remote ref/.test(text))
         return `GitHub has no branch called "${branch}".`;
     if (/Repository not found|does not appear to be a git repository|Could not read from remote repository|Permission denied|Authentication failed|terminal prompts disabled|Host key verification failed/.test(text))

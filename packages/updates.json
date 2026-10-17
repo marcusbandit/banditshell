@@ -16,9 +16,13 @@
     "tests": [
       "tests/fixtures/update",
       "tests/pacman.test.js",
+      "tests/promote-stable.test.js",
       "tests/update-cli.test.js",
       "tests/update.test.js",
       "tests/whatsnew.test.js"
+    ],
+    "scripts": [
+      "scripts/promote-stable.sh"
     ]
   },
   "requires": {

@@ -957,6 +957,8 @@ Singleton {
 
             updates: {
 
+                channel: "main",
+
                 branch: "main",
 
                 remote: "origin",

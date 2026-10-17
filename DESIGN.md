@@ -628,7 +628,8 @@ banditshell/
 │   │                            in it, tested in node
 │   ├── whatsnew.js               the What's new log as DATA: entries parsed
 │   │                            tolerantly and accumulated past the
-│   │                            last-shown marker. No QML in it, the way
+│   │                            last-shown marker, the newest id as the
+│   │                            version and the git tag for it. No QML in it, the way
 │   │                            hyprgen.js has none, tested the same way
 │   ├── update.js                the update's words: git's answer read into
 │   │                            values, a failure said plainly with the
@@ -639,7 +640,9 @@ banditshell/
 │   │                            entries) into restart or reload, commands,
 │   │                            helpers, deps and edits in the way. The CLI
 │   │                            runs it under node (`node update.js report`).
-│   │                            No QML in it, tested in node
+│   │                            It also says which branch a channel
+│   │                            (stable or main) and an updates.branch
+│   │                            override follow. No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── DesktopIndex.qml         every installed desktop entry read once: its
@@ -910,7 +913,10 @@ banditshell/
 │   │                            the new shell did not start, or failed. A
 │   │                            copy with commits of its own, or on another
 │   │                            branch (a tried worktree), is told so, not
-│   │                            offered a button that cannot work
+│   │                            offered a button that cannot work. Knows the
+│   │                            channel it follows and the version of both
+│   │                            sides; docs/architecture/updates.md tells the
+│   │                            whole loop
 │   ├── Notices.qml              what the shell itself has to say, as opposed
 │   │                            to an application's notification: an update on
 │   │                            GitHub, a new kernel, a restart it wants, a
@@ -1457,6 +1463,11 @@ banditshell/
 │   │                            JS the engine lacks, qmldir drift), counted per rule and
 │   │                            file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
+│   ├── promote-stable.sh        checks that main may become the stable channel (node
+│   │                            tests, check-modules, lint-rules, compile check, a
+│   │                            what's-new id) on a clean export of it, then PRINTS
+│   │                            the git push and git tag commands; pushes only with
+│   │                            --push (`banditshell dev promote`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes

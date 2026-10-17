@@ -85,3 +85,15 @@ function lastSeen(stored, legacy) {
 function legacyToMove(stored, legacy) {
     return readSeen(stored) === "" ? readSeen(legacy) : "";
 }
+
+function newestId(entries) {
+    for (const e of Array.isArray(entries) ? entries : [])
+        if (e && !e.example && typeof e.id === "string" && e.id.trim())
+            return e.id.trim();
+    return "";
+}
+
+function tagFor(id) {
+    const hit = /^(\d{4})-(\d{2})-(\d{2})(-\d+)?$/.exec(String(id ?? "").trim());
+    return hit ? `v${hit[1]}.${hit[2]}.${hit[3]}${hit[4] ?? ""}` : "";
+}

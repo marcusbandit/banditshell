@@ -21,7 +21,7 @@ SceneGauge {
     StyledText {
         width: parent.width
         horizontalAlignment: Text.AlignHCenter
-        text: `${Config.values.updates.branch} · ${Config.values.updates.remote}`
+        text: `${SettingsState.followedBranch} · ${Config.values.updates.remote}`
         color: Appearance.colour.textFaint
     }
 }

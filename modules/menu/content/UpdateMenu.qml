@@ -27,6 +27,13 @@ Column {
         color: Update.state === Update.failed ? Appearance.colour.updateFailed : Appearance.colour.text
     }
 
+    StyledText {
+        width: parent.width
+        alignInk: true
+        text: Update.version === "" ? Update.channelLabel : `Version ${Update.version}, ${Update.channelLabel}`
+        color: Appearance.colour.textFaint
+    }
+
     Row {
         id: metaRow
 
@@ -66,7 +73,7 @@ Column {
     StyledText {
         width: parent.width
         visible: Update.behind > 0 && !!Update.remoteHead
-        text: `latest: ${Update.remoteHead}`
+        text: `latest: ${Update.targetVersion || Update.remoteHead}`
         color: Appearance.colour.textFaint
     }
 

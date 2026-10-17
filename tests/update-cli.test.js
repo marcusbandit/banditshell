@@ -285,6 +285,112 @@ test("the remote and branch come from config.json", () => {
     assert.strictEqual(run(world, ["update", "check"]).status, 1);
 });
 
+function useChannel(world, channel, branch = "main") {
+    write(world.config, "banditshell/config.json", JSON.stringify({ updates: { remote: "origin", channel, branch, seen: "" } }, null, 2));
+}
+
+test("check carries the channel and the versions on both sides of the update", () => {
+    const world = makeWorld();
+    const current = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(current.channel, "main");
+    assert.strictEqual(current.version, "v1");
+    advance(world, "v2", { "services/Foo.qml": "// foo two\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    const waiting = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(waiting.channel, "main");
+    assert.strictEqual(waiting.version, "v1");
+    assert.strictEqual(waiting.targetVersion, "v2");
+});
+
+test("the stable channel follows the stable branch and only moves when stable does", () => {
+    const world = makeWorld();
+    git(world.work, "push", "-q", "origin", "HEAD:refs/heads/stable");
+    useChannel(world, "stable");
+    const target = advance(world, "v2", { "services/Foo.qml": "// foo two\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    const still = run(world, ["update", "check", "--json"]);
+    assert.strictEqual(still.status, 0, still.err);
+    const quiet = JSON.parse(still.out);
+    assert.strictEqual(quiet.state, "current");
+    assert.strictEqual(quiet.channel, "stable");
+    assert.strictEqual(quiet.branch, "stable");
+    assert.match(run(world, ["update", "check"]).out, /^up to date at [0-9a-f]{7} on stable\n$/);
+    git(world.work, "push", "-q", "origin", "main:refs/heads/stable");
+    const waiting = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(waiting.state, "available");
+    assert.strictEqual(waiting.target, target);
+    assert.strictEqual(waiting.targetVersion, "v2");
+    const before = liveHead(world);
+    const done = applyTo(world, target);
+    assert.strictEqual(done.status, 0, done.err + done.out);
+    assert.strictEqual(liveHead(world), target);
+    assert.notStrictEqual(before, target);
+    assert.strictEqual(git(world.live, "symbolic-ref", "--short", "HEAD"), "main");
+});
+
+test("a checkout ahead of stable is up to date, never taken back", () => {
+    const world = makeWorld();
+    git(world.work, "push", "-q", "origin", "HEAD:refs/heads/stable");
+    advance(world, "v2", { "docs/whats-new.json": whatsNew("v2", "v1") });
+    git(world.live, "pull", "-q", "--ff-only");
+    useChannel(world, "stable");
+    const head = liveHead(world);
+    const got = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(got.state, "current");
+    assert.strictEqual(liveHead(world), head);
+});
+
+test("a stable channel with no stable branch yet says so in plain words", () => {
+    const world = makeWorld();
+    useChannel(world, "stable");
+    const text = run(world, ["update", "check"]);
+    assert.strictEqual(text.status, 1);
+    assert.match(text.err, /no stable version yet/);
+    const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(json.state, "error");
+});
+
+test("a branch other than main overrides the channel", () => {
+    const world = makeWorld();
+    git(world.work, "push", "-q", "origin", "HEAD:refs/heads/dev");
+    useChannel(world, "stable", "dev");
+    const json = JSON.parse(run(world, ["update", "check", "--json"]).out);
+    assert.strictEqual(json.channel, "stable");
+    assert.strictEqual(json.branch, "dev");
+    assert.strictEqual(json.state, "paused");
+});
+
+test("a copy on a feature branch is paused on the stable channel too", () => {
+    const world = makeWorld();
+    git(world.work, "push", "-q", "origin", "HEAD:refs/heads/stable");
+    useChannel(world, "stable");
+    git(world.live, "switch", "-q", "-c", "elsewhere");
+    assert.strictEqual(JSON.parse(run(world, ["update", "check", "--json"]).out).state, "paused");
+});
+
+test("a channel that is neither stable nor main is turned down before anything is fetched", () => {
+    const world = makeWorld();
+    useChannel(world, "beta");
+    const got = run(world, ["update", "check"]);
+    assert.strictEqual(got.status, 1);
+    assert.match(got.err, /updates\.channel in config\.json is "beta", and it has to be stable or main/);
+});
+
+test("version names the version, the channel and the branch it follows", () => {
+    const world = makeWorld();
+    const first = run(world, ["version"]);
+    let rows = first.out;
+    assert.match(rows, /^version\s+v1$/m);
+    assert.match(rows, /^channel\s+main$/m);
+    assert.match(rows, /^follows\s+main$/m);
+    useChannel(world, "stable");
+    rows = run(world, ["version"]).out;
+    assert.match(rows, /^channel\s+stable$/m);
+    assert.match(rows, /^follows\s+stable$/m);
+    const json = JSON.parse(run(world, ["version", "--json"]).out);
+    assert.strictEqual(json.version, "v1");
+    assert.strictEqual(json.channel, "stable");
+    assert.strictEqual(json.follows, "stable");
+});
+
 test("a reload applies in place: previous recorded, no restart, backup refreshed, result written", () => {
     const world = makeWorld();
     const before = liveHead(world);
