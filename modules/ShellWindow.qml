@@ -185,6 +185,9 @@ PanelWindow {
         case "recording":
             ScreenRecorder.stop();
             return;
+        case "timer":
+            Clock.toggleTimer(notice.timer.id);
+            return;
         case "music":
             if (notice.origin && !mediaLayer.open) {
                 islandLayer.handOff();

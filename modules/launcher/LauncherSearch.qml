@@ -129,6 +129,9 @@ QtObject {
         VpnSource {
             search: root
         },
+        TimerSource {
+            search: root
+        },
         DevSource {
             search: root
         }

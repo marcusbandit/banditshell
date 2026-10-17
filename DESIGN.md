@@ -3346,7 +3346,8 @@ casts nothing.
 
 Every activity is a mark, words and a sign: Firefox's icon, "Firefox" and a ring
 that fills, then a check; a microphone, the live bars and the language; a cover,
-the title and an equalizer. The compact island is one ActivityRow, or a few of
+the title and an equalizer; a running timer, its name, the time left and a pause
+sign that a tap answers. The compact island is one ActivityRow, or a few of
 them when the centre holds several of one kind (two apps opening are two lines).
 The overview lists the same rows.
 
