@@ -106,6 +106,20 @@
 #                                show no popup and make no sound; the second word
 #                                is when quiet ends
 #
+# island                         post a task, a timer or a level to the island
+#   banditshell island           what the island shows now
+#   banditshell island push [--id <id>] [--text <text>] [--detail <text>] [--progress <fraction>] [--icon <name>] [--until <span>] [--priority <n>] [--run <command>]
+#                                show an activity; --id and --text are needed.
+#                                progress is 0 to 1, or unknown, which spins; until
+#                                is how long it may stay, like 30s or 2m; a press on
+#                                the row runs the command. An id pushed again
+#                                replaces the first
+#   banditshell island update <id> [--text <text>] [--detail <text>] [--progress <fraction>] [--icon <name>] [--until <span>]
+#                                change what it shows; a detail of - clears it
+#   banditshell island end <id> [done|failed|cancelled]
+#                                finish it: its mark stays for a moment, then it goes
+#   banditshell island list      every activity and where it stands
+#
 # tablet                         tablet mode, the lid and the pen's area
 #   banditshell tablet           the hinge, the lid and the pen's area
 #   banditshell tablet [on|off|toggle] [caller]
@@ -923,6 +937,66 @@ route_panel() {
     esac
 }
 
+activity_call() {
+    local reply
+    reply=$(ipc activity "$@") || return 1
+    case "$reply" in
+    "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
+    esac
+    if [ -n "$reply" ]; then printf '%s\n' "$reply"; fi
+}
+
+island_post() {
+    local verb="$1" id="" text="" detail="" progress="" icon="" lasts="" priority="" run="" flag
+    shift
+    if [ "$verb" = update ]; then
+        id="${1:-}"
+        if [ -z "$id" ] || [[ $id == --* ]]; then
+            say_usage "island update <id> [--text <text>] [--detail <text>] [--progress <fraction>] [--icon <name>] [--until <span>]"
+        fi
+        shift
+    fi
+    while [ $# -gt 0 ]; do
+        flag="$1"
+        [ $# -ge 2 ] || say_usage "island $verb: $flag needs a value"
+        case "$flag:$verb" in
+        --id:push) id="$2" ;;
+        --text:*) text="$2" ;;
+        --detail:*) detail="$2" ;;
+        --progress:*) progress="$2" ;;
+        --icon:*) icon="$2" ;;
+        --until:*) lasts="$2" ;;
+        --priority:push) priority="$2" ;;
+        --run:push) run="$2" ;;
+        *) nope island "$verb $flag" ;;
+        esac
+        shift 2
+    done
+    if [ "$verb" = push ]; then
+        if [ -z "$id" ] || [ -z "$text" ]; then
+            say_usage "island push --id <id> --text <text> [--detail <text>] [--progress <fraction>] [--icon <name>] [--until <span>]"
+        fi
+        activity_call push "$id" "$text" "$detail" "$progress" "$icon" "$lasts" "$priority" "$run"
+    else
+        activity_call update "$id" "$text" "$detail" "$progress" "$icon" "$lasts"
+    fi
+}
+
+route_island() {
+    local verb="${1:-}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$verb" in
+    "") ipc island status "" ;;
+    push | update) island_post "$verb" "$@" ;;
+    end)
+        [ $# -ge 1 ] || say_usage "island end <id> [done|failed|cancelled]"
+        activity_call end "$1" "${2:-done}"
+        ;;
+    list) activity_call list ;;
+    *) nope island "$verb" ;;
+    esac
+}
+
 route_output() {
     case "${1:-}" in
     "") ipc output status ;;
@@ -1422,8 +1496,8 @@ EOF
 check_island() {
     local out tally
     out=$(realpath -m "${1:-$SHOT_DIR/island}")
-    echo "walking the island through its situations, about half a minute; ctrl-c stops"
-    headless_preview IslandPreview "$out" 120 '.notifications.placement = "island"'
+    echo "walking the island through its situations, about a minute; ctrl-c stops"
+    headless_preview IslandPreview "$out" 150 '.notifications.placement = "island"'
     tally=$(sed 's/\x1b\[[0-9;]*m//g' "$preview_log" | grep -oE 'DONE [0-9]+/[0-9]+' | tail -1)
     tally="${tally#DONE }"
     if [ -z "$tally" ]; then
@@ -1654,6 +1728,9 @@ fi
 case "$cmd" in
 panel)
     route_panel "$@"
+    ;;
+island)
+    route_island "$@"
     ;;
 output)
     route_output "$@"

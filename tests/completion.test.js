@@ -118,6 +118,8 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("screen", "border", ""), ["off", "on", "toggle"]);
     assert.deepStrictEqual(bashComplete("output", ""), ["assign", "headphones", "list", "speakers", "toggle"]);
     assert.deepStrictEqual(bashComplete("clock", ""), ["alarm", "timer", "zone"]);
+    assert.deepStrictEqual(bashComplete("island", ""), ["end", "list", "push", "update"]);
+    assert.deepStrictEqual(bashComplete("island", "end", "build", ""), ["cancelled", "done", "failed"]);
     assert.deepStrictEqual(bashComplete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", ""), ["lid", "off", "on", "pen", "probe", "toggle"]);
     assert.deepStrictEqual(bashComplete("tablet", "lid", ""), ["closed", "open", "toggle"]);
@@ -130,6 +132,8 @@ test("each group offers its parts, and each part its actions", () => {
 test("flags complete after the words they belong to", () => {
     assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
     assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);
+    assert.deepStrictEqual(bashComplete("island", "push", ""), ["--detail", "--icon", "--id", "--priority", "--progress", "--run", "--text", "--until"]);
+    assert.deepStrictEqual(bashComplete("island", "update", "build", ""), ["--detail", "--icon", "--progress", "--text", "--until"]);
 });
 
 test("config offers the theme and the config keys", () => {

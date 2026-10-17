@@ -21,6 +21,8 @@ ShellRoot {
     readonly property var penButtons: PenButtons
     readonly property var currency: Currency
     readonly property var calculator: Calculator
+    readonly property var activities: Activities
+    readonly property var levels: Levels
 
     LockScreen {}
 
@@ -33,6 +35,8 @@ ShellRoot {
     IslandInspector {
         id: islandInspector
     }
+
+    ActivityIpc {}
 
     Cli {
         picker: picker
