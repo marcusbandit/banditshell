@@ -45,7 +45,6 @@ PanelWindow {
 
     readonly property LazyPanel settings: settingsLayer
 
-    readonly property NotificationTray notifications: popups
     readonly property Island island: islandLayer
     readonly property QuickControls quickControls: quickLayer
 
@@ -93,7 +92,6 @@ PanelWindow {
             menu: menuLayer.pinned ? menuLayer.currentKey : "",
             keyboard: keyboardLayer.open,
             quickControls: quickLayer.pinned,
-            notifications: popups.pinned,
             island: islandLayer.pinned
         })
 
@@ -118,7 +116,6 @@ PanelWindow {
                 if (resumer.was?.keyboard)
                     keyboardLayer.show();
                 quickLayer.pinned = !!resumer.was?.quickControls;
-                popups.pinned = !!resumer.was?.notifications;
                 islandLayer.pinned = !!resumer.was?.island;
                 win.resumed = true;
             }
@@ -146,7 +143,6 @@ PanelWindow {
             menuLayer.hide();
         if (here)
             return;
-        popups.pinned = false;
         islandLayer.pinned = false;
     }
 
@@ -195,8 +191,13 @@ PanelWindow {
             }
             break;
         case "notifications":
-            popups.pinned = true;
+            islandLayer.close();
+            launcherLayer.show("notifications ");
             return;
+        case "held":
+            islandLayer.close();
+            launcherLayer.show("notifications held ");
+            break;
         case "update":
             if (!win.openMenu("update", true))
                 Settings.show(win.screen?.name ?? "", "updates");
@@ -226,7 +227,7 @@ PanelWindow {
     exclusiveZone: 0
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
 
-    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || popups.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.underFullscreen ? WlrKeyboardFocus.None : (keyringLayer.item?.needsKeyboard ?? false) || (settingsLayer.item?.holdsKeys ?? false) || win.covering || win.claiming || quickLayer.pinned || menuLayer.needsKeyboard ? WlrKeyboardFocus.Exclusive : mediaLayer.open || menuLayer.wantsEscape || islandLayer.wantsEscape || settingsLayer.open ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.None
 
     WlrLayershell.namespace: "banditshell"
 
@@ -326,12 +327,7 @@ PanelWindow {
 
         Region {
             intersection: Intersection.Combine
-            item: popups.any ? popups.maskItem : null
-        }
-
-        Region {
-            intersection: Intersection.Combine
-            item: Appearance.bare ? null : popups.grabItem
+            item: corner.any ? corner.maskItem : null
         }
 
         Region {
@@ -394,8 +390,6 @@ PanelWindow {
                 menuLayer.hide();
             else if (islandLayer.wantsEscape)
                 islandLayer.pinned = false;
-            else if (popups.wantsEscape)
-                popups.pinned = false;
             else
                 return;
 
@@ -445,7 +439,7 @@ PanelWindow {
 
             railWanted: sidebar.railWanted
 
-            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
+            panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
         Sidebar {
@@ -547,16 +541,16 @@ PanelWindow {
             }
         }
 
-        NotificationTray {
-            id: popups
+        NotificationCopier {
+            entries: Notifications.history
+        }
+
+        NotificationCorner {
+            id: corner
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
             inset: win.border + Appearance.sizes.gap
-
-            edgeInset: win.border
-
-            keyboardHeld: win.panelOpen || menuLayer.needsKeyboard
         }
 
         Menus {

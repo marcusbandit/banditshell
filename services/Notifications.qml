@@ -41,6 +41,24 @@ Singleton {
         return Search.threads(list);
     }
 
+    readonly property int heldCount: root.history.filter(e => e.withheld && !e.leaving).length
+
+    function asking(text: string): bool {
+        return Search.ask(text).explicit;
+    }
+
+    function find(text: string): var {
+        return Search.find(root.history, Search.ask(text));
+    }
+
+    function muteLength(text: string): double {
+        return Timing.muteLength(text);
+    }
+
+    function snoozeLength(text: string): double {
+        return Timing.snoozeLength(text);
+    }
+
     function markSeenOf(list: var): void {
         let changed = false;
         for (const entry of list ?? [])

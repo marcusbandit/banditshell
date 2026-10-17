@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQml
 import Quickshell
+import Quickshell.Io
 import qs.services
 import qs.modules
 
@@ -20,8 +21,24 @@ Scope {
         }
     }
 
-    PanelIpc {
+    IpcHandler {
         target: "launcher"
+
+        function toggle(): string {
+            return PanelWindows.toggle("launcher", "") || PanelWindows.missing("");
+        }
+
+        function open(query: string): string {
+            const win = Shell.forScreen("");
+            if (!win)
+                return PanelWindows.missing("");
+            win.launcher.show(query);
+            return "open";
+        }
+
+        function close(): string {
+            return PanelWindows.close("launcher");
+        }
 
         function status(): string {
             const win = Shell.showing(w => w.launcher.open);

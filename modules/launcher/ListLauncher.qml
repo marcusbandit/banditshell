@@ -74,6 +74,7 @@ LauncherConcept {
             root.input.text = text;
             root.input.cursorPosition = text.length;
         }
+        onInquire: row => root.startCapture("ask", row)
     }
 
     readonly property int pinnedLimit: 12

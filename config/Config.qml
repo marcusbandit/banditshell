@@ -396,6 +396,8 @@ Singleton {
 
                     clipboard: false,
 
+                    notifications: false,
+
                     snippets: [],
 
                     quicklinks: [
@@ -530,7 +532,7 @@ Singleton {
 
                 cornerZone: 120,
 
-                placement: "corner",
+                placement: "island",
 
                 quiet: false,
 
