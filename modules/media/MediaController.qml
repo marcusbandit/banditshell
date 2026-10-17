@@ -246,6 +246,7 @@ Item {
 
             switch (event.key) {
             case Qt.Key_Escape:
+                Appearance.instantly();
                 root.hide();
                 break;
             case Qt.Key_Space:

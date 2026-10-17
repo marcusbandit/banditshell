@@ -957,6 +957,7 @@ Item {
 
         Keys.onPressed: event => {
             if (event.key === Qt.Key_Escape) {
+                Appearance.instantly();
                 root.pinned = false;
                 event.accepted = true;
             }
@@ -1322,10 +1323,9 @@ Item {
                                 Qt.callLater(root.purgeStack)
                         }
 
-                        Follow {
+                        Travel {
                             id: offset
 
-                            speed: root.morphSpeed
                             epsilon: 0.1
                             target: row.place * root.compactHeight
                         }

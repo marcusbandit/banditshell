@@ -377,10 +377,9 @@ Item {
                 transformOrigin: Item.Bottom
                 opacity: !slot.inView ? 0 : root.fanned > 0 ? slot.open : slot.step * slot.step * slot.open
 
-                Follow {
+                Travel {
                     id: promotion
 
-                    speed: root.shuffleSpeed
                     epsilon: 0.004
                     target: slot.isFront ? 1 : 0
                 }

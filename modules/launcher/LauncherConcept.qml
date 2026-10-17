@@ -176,10 +176,12 @@ Item {
 
         switch (event.key) {
         case Qt.Key_Escape:
+            Appearance.instantly();
             root.back();
             break;
         case Qt.Key_Return:
         case Qt.Key_Enter:
+            Appearance.instantly();
             root.accept();
             break;
         case Qt.Key_Down:

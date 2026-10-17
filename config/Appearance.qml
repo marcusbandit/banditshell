@@ -15,6 +15,25 @@ Singleton {
 
     readonly property bool lessMotion: root.config.access.lessMotion
 
+    property bool instant: false
+    property int instantFrames: 0
+
+    readonly property bool still: root.lessMotion || root.instant
+
+    function instantly(): void {
+        root.instantFrames = 0;
+        root.instant = true;
+    }
+
+    readonly property FrameAnimation instantEnd: FrameAnimation {
+        running: root.instant
+        onTriggered: {
+            root.instantFrames += 1;
+            if (root.instantFrames >= 4)
+                root.instant = false;
+        }
+    }
+
     readonly property real fontBase: root.config.access.largerText ? root.config.access.largerBase : root.config.font.base
 
     readonly property var labelAlphas: root.config.access.moreContrast ? root.config.access.contrastLabel : root.config.material.label
@@ -216,9 +235,9 @@ Singleton {
         }
 
         readonly property QtObject fade: QtObject {
-            readonly property int fast: root.lessMotion ? root.config.access.stillMs : root.animation.wait.fast
-            readonly property int normal: root.lessMotion ? root.config.access.stillMs : root.animation.wait.normal
-            readonly property int slow: root.lessMotion ? root.config.access.stillMs : root.animation.wait.slow
+            readonly property int fast: root.still ? root.config.access.stillMs : root.animation.wait.fast
+            readonly property int normal: root.still ? root.config.access.stillMs : root.animation.wait.normal
+            readonly property int slow: root.still ? root.config.access.stillMs : root.animation.wait.slow
         }
 
         readonly property int fast: fade.fast
@@ -226,6 +245,7 @@ Singleton {
         readonly property int slow: fade.slow
 
         readonly property real trackSpeed: root.config.anim.trackSpeed
+        readonly property real travelSpeed: root.config.anim.travelSpeed ?? 22
         readonly property real revealSpeed: root.config.anim.revealSpeed
         readonly property real railSpeed: root.config.anim.railSpeed
         readonly property real resizeSpeed: root.config.anim.resizeSpeed
