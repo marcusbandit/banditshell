@@ -400,6 +400,10 @@ banditshell/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
 │   ├── Themes.qml               SINGLETON. Named palettes (ramp + accents).
+│   ├── ControlTuning.qml        SINGLETON. The gesture tunables (`control.*`) and the
+│   │                            compositor's touchpad scroll direction, as the defaults
+│   │                            Pull, GlideList, ScrollGesture and SignalBars take; a
+│   │                            caller overrides them with the component's own property
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
