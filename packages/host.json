@@ -22,12 +22,15 @@
     ],
     "scripts": [
       "scripts/bash-completion.sh",
+      "scripts/boot-check-inner.sh",
+      "scripts/boot-check.js",
       "scripts/completion-rules.sh",
       "scripts/redact-config.js",
       "scripts/zsh-completion.sh"
     ],
     "tests": [
       "tests/actions.test.js",
+      "tests/boot-check.test.js",
       "tests/cli-plumbing.test.js",
       "tests/completion.test.js",
       "tests/fixtures/cli-stubs.js",
