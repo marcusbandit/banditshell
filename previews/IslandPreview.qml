@@ -343,6 +343,7 @@ ShellRoot {
         {
             name: "ninety more pile up: one card in front, the rest behind it",
             run: () => {
+                Notices.settle("music");
                 for (let i = 0; i < 90; i++)
                     preview.notify(["Discord", "Firefox", "Steam"][i % 3], `message ${i + 1}`, "the same old story", false);
             },
@@ -363,6 +364,8 @@ ShellRoot {
                 for (const e of [...Notifications.popups])
                     Notifications.dismiss(e);
                 Launching.shown = [];
+                for (const n of [...Notices.passing])
+                    Notices.settle(n.key);
                 preview.speak("idle");
             },
             wait: 1500,
