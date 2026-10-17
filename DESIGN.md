@@ -3408,8 +3408,10 @@ row, builds the card and asks for its lyrics before anything is clicked, so the
 click only starts the move: the cover is already decoded and the card already
 knows how wide its lyrics make it.
 
-The card is not the island. Closing it fades it where it is, nothing flies
-back, and the island stays usable while the card is up: the card's click-away
+The card is not the island. Closing it fades it near where it is and nothing
+flies back, but it drifts toward where it came from: up toward the island when
+the island opened it, down when a key raised it from below. The island stays
+usable while the card is up: the card's click-away
 catcher leaves the island's shape and the strip above it alone, and the card
 only briefly holds the keyboard exclusively (see the keyboard section), so the
 pointer on the island is on the island. An island that just handed its body
