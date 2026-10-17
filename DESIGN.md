@@ -3748,7 +3748,10 @@ away at once, so anything that outlives the call (a Process, a timer) belongs
 in a singleton service, not in the source. `FallbackSource.qml` is the
 smallest example; `SoundSource.qml` shows sliders. Typing into the window
 the user came from goes through `services/Typist.qml`, which waits for that
-window to have focus again and copies instead when wtype is missing.
+window to have focus again and copies instead when wtype is missing. Text
+with characters outside the keyboard map, such as an emoji, is pasted
+instead into Chromium and Electron windows, which ignore the keymap wtype
+swaps in, and the clipboard is put back a moment later.
 
 ---
 

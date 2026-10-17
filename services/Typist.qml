@@ -23,18 +23,37 @@ Singleton {
 
     property var job: null
 
+    readonly property var offKeymap: /[^\x20-\x7e\n\t]/
+
+    property var restoring: null
+
     function probe(): void {
         if (!prober.running)
             prober.running = true;
     }
 
     function type(text: string, back: int, address: string): void {
-        root.start({
+        const job = {
             kind: "text",
             text: text,
             back: Math.max(0, back),
-            address: Hypr.windowAddress(address)
-        });
+            address: Hypr.windowAddress(address),
+            way: root.offKeymap.test(text) ? "" : "keys"
+        };
+        root.start(job);
+        if (root.job === job && !job.way)
+            root.askWay(job);
+    }
+
+    function askWay(job: var): void {
+        const pid = Hypr.toplevelFor(job.address)?.lastIpcObject?.pid ?? 0;
+        if (!pid) {
+            job.way = "keys";
+            return;
+        }
+        wayProbe.job = job;
+        wayProbe.command = ["sh", "-c", 'd=$(dirname "$(readlink "/proc/$1/exe")") && { [ -e "$d/v8_context_snapshot.bin" ] || [ -e "$d/snapshot_blob.bin" ]; }', "sh", String(pid)];
+        wayProbe.running = true;
     }
 
     function paste(address: string): void {
@@ -78,7 +97,9 @@ Singleton {
         const now = Date.now();
         const focused = Hypr.focusedAddress === job.address || Hypr.windowAddress(Hyprland.activeToplevel?.address) === job.address;
         const released = Qt.application.state !== Qt.ApplicationActive || now - job.at >= root.grace;
-        if (focused && released) {
+        if (job.kind === "text" && !job.way && now - job.at >= root.patience / 2)
+            job.way = "keys";
+        if (focused && released && (job.kind !== "text" || job.way)) {
             if (!job.calm)
                 job.calm = now;
             if (now - job.calm >= root.settle && now - job.at >= root.least) {
@@ -101,13 +122,36 @@ Singleton {
             Keystrokes.send(job.terminal ? ["wtype", "-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"] : ["wtype", "-M", "ctrl", "-k", "v", "-m", "ctrl"]);
             return;
         }
-        Keystrokes.send(["wtype", "--", job.text]);
-        if (job.back > 0) {
-            const keys = ["wtype"];
-            for (let i = 0; i < job.back; i++)
-                keys.push("-k", "Left");
-            Keystrokes.send(keys);
+        if (job.way === "paste") {
+            root.pasteText(job);
+            return;
         }
+        Keystrokes.send(["wtype", "--", job.text]);
+        root.stepBack(job.back);
+    }
+
+    function stepBack(back: int): void {
+        if (back <= 0)
+            return;
+        const keys = ["wtype"];
+        for (let i = 0; i < back; i++)
+            keys.push("-k", "Left");
+        Keystrokes.send(keys);
+    }
+
+    function pasteText(job: var): void {
+        const before = Clipboard.entries.find(e => e.id === Clipboard.current) ?? null;
+        Clipboard.copy({
+            text: job.text
+        });
+        pasteLater.job = Object.assign({}, job, {
+            terminal: root.isTerminal(job.address)
+        });
+        root.restoring = before && before.text !== job.text ? {
+            entry: before,
+            text: job.text
+        } : null;
+        pasteLater.restart();
     }
 
     function giveUp(job: var, why: string): void {
@@ -126,6 +170,51 @@ Singleton {
             return;
         root.installing = "trying";
         quietInstall.running = true;
+    }
+
+    Timer {
+        id: pasteLater
+
+        property var job: null
+
+        interval: 120
+        onTriggered: {
+            const job = pasteLater.job;
+            pasteLater.job = null;
+            if (!job)
+                return;
+            root.fire({
+                kind: "paste",
+                terminal: job.terminal
+            });
+            root.stepBack(job.back);
+            if (root.restoring)
+                restoreLater.restart();
+        }
+    }
+
+    Timer {
+        id: restoreLater
+
+        interval: 1500
+        onTriggered: {
+            const was = root.restoring;
+            root.restoring = null;
+            if (was && Clipboard.entries.find(e => e.id === Clipboard.current)?.text === was.text)
+                Clipboard.copy(was.entry);
+        }
+    }
+
+    Process {
+        id: wayProbe
+
+        property var job: null
+
+        onExited: code => {
+            if (root.job === wayProbe.job && !wayProbe.job.way)
+                wayProbe.job.way = code === 0 ? "paste" : "keys";
+            wayProbe.job = null;
+        }
     }
 
     Timer {
