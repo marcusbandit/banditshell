@@ -58,21 +58,24 @@ Item {
         name: root.glyph
         fill: 1
         size: root.markSize
-        color: root.tint
+        color: tintTone.value
 
-        scale: press.pressed ? Appearance.press.glyph : 1
+        scale: pressScale.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: pressScale
+
+            target: press.pressed ? Appearance.press.glyph : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
 
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.normal
-            }
+        FollowColour {
+            id: tintTone
+
+            target: root.tint
+            speed: Appearance.animation.trackSpeed
         }
     }
 

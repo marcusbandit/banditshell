@@ -75,12 +75,13 @@ Item {
                 radius: root.bar / 2
                 topLeftRadius: 0
                 bottomLeftRadius: 0
-                color: slotItem.isActive ? Appearance.colour.accent : Appearance.colour.textGhost
+                color: emptyTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: emptyTone
+
+                    target: slotItem.isActive ? Appearance.colour.accent : Appearance.colour.fillStrong
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -98,26 +99,28 @@ Item {
 
                     x: 0
                     y: index * root.pitch
-                    width: root.reachOf(modelData, root.hovered === slotItem.index)
+                    width: reach.value
                     height: root.bar
 
                     radius: root.bar / 2
                     topLeftRadius: 0
                     bottomLeftRadius: 0
 
-                    color: windowBar.focused ? Appearance.colour.accent : slotItem.isActive ? Appearance.colour.accentFill : mouse.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                    color: barTone.value
 
-                    Behavior on width {
-                        NumberAnimation {
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutCubic
-                        }
+                    Follow {
+                        id: reach
+
+                        target: root.reachOf(windowBar.modelData, root.hovered === slotItem.index)
+                        speed: Appearance.animation.trackSpeed
+                        startsAtTarget: true
                     }
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.fast
-                        }
+                    FollowColour {
+                        id: barTone
+
+                        target: windowBar.focused ? Appearance.colour.accent : slotItem.isActive ? Appearance.colour.accentFill : mouse.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                        speed: Appearance.animation.revealSpeed
                     }
 
                     MouseArea {

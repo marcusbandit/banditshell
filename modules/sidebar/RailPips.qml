@@ -86,7 +86,7 @@ Item {
             height: Math.max(0, pip.geom.h)
             radius: Math.min(Appearance.rounding.small, Math.min(width, height) / 2)
 
-            color: pip.isOccupied ? Appearance.colour.textDim : Appearance.colour.textGhost
+            color: pip.isOccupied ? Appearance.colour.textDim : Appearance.colour.fillStrong
 
             SquircleRect {
                 anchors.fill: parent

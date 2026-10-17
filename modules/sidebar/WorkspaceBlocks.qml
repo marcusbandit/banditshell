@@ -69,12 +69,13 @@ Item {
                 width: root.block / 2
                 height: root.block / 2
                 radius: 0
-                color: slotItem.isActive ? Appearance.colour.accent : Appearance.colour.textGhost
+                color: emptyTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: emptyTone
+
+                    target: slotItem.isActive ? Appearance.colour.accent : Appearance.colour.fillStrong
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -96,12 +97,13 @@ Item {
                     height: root.block
                     radius: 0
 
-                    color: cell.focused ? Appearance.colour.accent : slotItem.isActive ? Appearance.colour.accentFill : mouse.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                    color: cellTone.value
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.fast
-                        }
+                    FollowColour {
+                        id: cellTone
+
+                        target: cell.focused ? Appearance.colour.accent : slotItem.isActive ? Appearance.colour.accentFill : mouse.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                        speed: Appearance.animation.revealSpeed
                     }
 
                     MouseArea {
