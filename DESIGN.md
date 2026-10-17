@@ -332,6 +332,18 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     contour that joins another shape reads as a seam through one object. A ring around a
     button joins nothing, and it is how to give a control a boundary without a solid fill.
     It is stroked INSIDE the item's bounds, because a ring is laid out as a target.
+  - **A pill is an object or a place, and the two have different ends.** Decided 2026-10-17:
+    both shapes stay, and every pill says which it is (`SquircleRect { pill: "object" }` or
+    `pill: "place"`; radius and corner power follow from that, and a pill drawn any other way
+    is a lint failure). An OBJECT gets true round ends (power 2): something you grab, press as
+    one round target, or that marks a count or a state. Knobs and beads, drag handles, dots,
+    badges and counts, round icon buttons, chips, the island's compact capsule and its
+    bubbles. A PLACE gets the shell's own corner power: something sits in it or moves along
+    it. Tracks, gauges and meters, text fields, rails, the highlight plate behind a row or a
+    segment, cards. When unsure, ask what the hand does with it: dragged or tapped as one
+    thing is an object; something lives in it or slides along it is a place. That is why a
+    toggle is two shapes, a place (the track) holding an object (the knob), and why the
+    island's capsule eases from round ends into the shell's corner as it grows into a card.
 - **At most three font sizes, shell-wide.** `small` / `normal` / `large` in
   `config/Appearance.qml` and nothing else. Hierarchy is carried by colour, weight and
   spacing instead. The one exception is `display` (one and a half times `large`), and
