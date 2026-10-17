@@ -21,12 +21,15 @@ Item {
         radius: height / 2
         color: Appearance.colour.fill
 
-        opacity: root.hovered ? 1 : 0
+        opacity: hoverFade.value
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-            }
+        Follow {
+            id: hoverFade
+
+            target: root.hovered ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
@@ -35,13 +38,14 @@ Item {
 
         name: "expand_more"
         color: root.open || root.hovered ? Appearance.colour.text : Appearance.colour.textFaint
-        rotation: root.open ? 180 : 0
+        rotation: turn.value
 
-        Behavior on rotation {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutBack
-            }
+        Follow {
+            id: turn
+
+            target: root.open ? 180 : 0
+            speed: Appearance.animation.revealSpeed
+            startsAtTarget: true
         }
     }
 
