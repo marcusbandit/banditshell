@@ -10,6 +10,21 @@
           "text": "Push a notification in the island back up to put it away. One card or the whole stack goes back into the island and stays in your history. Swiping sideways still dismisses one."
         },
         {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Anything you open with a shortcut appears at once, and Esc or the shortcut puts it away at once. Clicking still opens things from where they live, like the music card growing out of the island."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Settings, Look, Motion has a Workspace slide: how long the desktop slides when you change workspace, up to 250 ms, or off. It defaults to 200 ms, shorter than before, and needs no Hyprland edits."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Things that move across the screen, like the workspace marker or a menu gliding between sidebar icons, now ease in as well as out."
+        },
+        {
           "type": "bugs",
           "severity": "minor",
           "text": "With reduced motion on, sleep, restart and shut down on the lock screen need the full hold again. A tap could set them off."
@@ -32,7 +47,7 @@
         {
           "type": "ui",
           "severity": "minor",
-          "text": "Toggles, sliders and expand arrows no longer bounce. Password dots keep theirs."
+          "text": "Nothing bounces any more: toggles, sliders, arrows and password dots move straight to where they go, and the lock screen clock no longer leans toward the pointer."
         },
         {
           "type": "ui",
@@ -52,7 +67,7 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "With reduced motion on, looping animations stop: equaliser, scrubber wave, spinners, scrolling titles and animated wallpapers. The lock screen still shows when music is playing."
+          "text": "Reduced motion now means no motion at all: fades and looping animations stop too (equaliser, scrubber wave, spinners, scrolling titles, animated wallpapers), and the lock screen still shows when music is playing."
         },
         {
           "type": "bugs",
