@@ -113,7 +113,22 @@ function extent(radius, power) {
     return Math.abs(radius);
 }
 
+var drawn = {};
+var drawnCount = 0;
+
 function path(w, h, tl, tr, br, bl, power, ox, oy) {
+    const key = `${w}|${h}|${tl}|${tr}|${br}|${bl}|${power}|${ox || 0}|${oy || 0}`;
+    const kept = drawn[key];
+    if (kept !== undefined)
+        return kept;
+    if (++drawnCount > 4000) {
+        drawn = {};
+        drawnCount = 1;
+    }
+    return drawn[key] = outline(w, h, tl, tr, br, bl, power, ox, oy);
+}
+
+function outline(w, h, tl, tr, br, bl, power, ox, oy) {
     ox = ox || 0;
     oy = oy || 0;
 
