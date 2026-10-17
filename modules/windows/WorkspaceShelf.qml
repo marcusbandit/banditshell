@@ -126,28 +126,31 @@ Item {
             width: root.scaledW
             height: root.scaledH
 
-            scale: plate.aimed ? 1.08 : 1
+            scale: lift.value
 
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutCubic
-                }
+            Follow {
+                id: lift
+
+                target: plate.aimed ? 1.08 : 1
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             SquircleRect {
                 anchors.fill: parent
 
                 radius: Appearance.rounding.normal
-                color: plate.aimed ? Appearance.colour.fillStrong : Appearance.colour.fill
+                color: tone.value
 
                 stroke: plate.here ? Appearance.colour.accent : "transparent"
                 strokeWidth: Appearance.stroke.ring
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: tone
+
+                    target: plate.aimed ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 

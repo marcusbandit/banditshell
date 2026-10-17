@@ -503,13 +503,15 @@ Item {
         size: Appearance.sizes.launcherIcon
         color: Appearance.colour.text
 
-        scale: root.flipped ? 1.35 : 1
+        scale: markScale.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutBack
-            }
+        Follow {
+            id: markScale
+
+            target: root.flipped ? 1.35 : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
