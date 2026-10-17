@@ -510,6 +510,15 @@ banditshell/
 │   │                            hyprctl eval, so the files keep their own;
 │   │                            apply_layout_binds(name) runs after, when the
 │   │                            config defines one
+│   ├── chords.js                hotkey chords as pure functions: same chord,
+│   │                            legacy keyword form, readable form and the
+│   │                            command a launcher hotkey runs; the launcher,
+│   │                            the settings shortcuts list and LauncherHotkeys
+│   │                            all read it from here
+│   ├── layout-model.js          the window layout workshop's model: arrangements,
+│   │                            regions, rules, the edits and their problems
+│   ├── layout-lua.js            that model written as Lua for hyprland.lua, and
+│   │                            the loader and bind lines around it
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
 │   │                            (the file this compositor was handed with
 │   │                            -c, else hyprland.lua, else hyprland.conf,
@@ -1023,8 +1032,7 @@ banditshell/
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
 │   │   │                        (5pm ldn in sf, which date(1) converts so
-│   │   │                        daylight saving is right), aliases, chords,
-│   │   │                        fallbacks
+│   │   │                        daylight saving is right), aliases, fallbacks
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
