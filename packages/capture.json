@@ -4,7 +4,7 @@
   "layer": 2,
   "owns": {
     "qml": ["modules/picker"],
-    "services": ["ScreenRecorder"],
+    "services": ["ScreenRecorder", "Screenshots"],
     "js": ["services/recording.js"],
     "scripts": ["scripts/screen-record.sh"]
   },
@@ -13,7 +13,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": ["ScreenRecorder"],
+    "singletons": ["ScreenRecorder", "Screenshots"],
     "ipc": ["picker"]
   },
   "config": {

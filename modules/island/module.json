@@ -4,9 +4,10 @@
   "layer": 5,
   "owns": {
     "qml": ["modules/island", "previews/IslandPreview.qml"],
-    "services": ["Activities", "Levels", "Notices"],
-    "js": ["services/activities.js"],
-    "tests": ["tests/activities.test.js"]
+    "services": ["Activities", "Levels", "Moments", "Notices", "Privacy"],
+    "js": ["services/activities.js", "services/moments.js", "services/privacy.js"],
+    "assets": ["assets/inspector"],
+    "tests": ["tests/activities.test.js", "tests/moments.test.js", "tests/privacy.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor", "notifications", "media", "apps", "clock", "audio", "display"],
@@ -18,6 +19,6 @@
   },
   "config": {
     "namespace": ["island"],
-    "reads": ["control"]
+    "reads": ["control", "picker"]
   }
 }

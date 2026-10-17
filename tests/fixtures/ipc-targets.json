@@ -141,7 +141,8 @@
     "close(): string",
     "freeze(): string",
     "freezeclip(): string",
-    "open(): string"
+    "open(): string",
+    "taken(path: string): string"
   ],
   "polkit": [
     "demo(): string",

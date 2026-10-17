@@ -296,7 +296,10 @@ Singleton {
 
     property var offered: null
 
+    signal copied(var command, string input)
+
     function offer(command: var, input: string): void {
+        root.copied(command, input);
         root.offered = {
             command: command,
             input: input

@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import Quickshell
 import Quickshell.Io
+import qs.services
 
 Scope {
     id: root
@@ -28,6 +29,11 @@ Scope {
         function freezeclip(): string {
             root.picker.show(true, true);
             return "picker (frozen, to clipboard)";
+        }
+
+        function taken(path: string): string {
+            Screenshots.captured(path);
+            return "shown";
         }
 
         function close(): string {

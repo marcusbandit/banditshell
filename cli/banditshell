@@ -1339,6 +1339,7 @@ route_screenshot() {
             out="$dir/banditshell-$(date +%Y-%m-%d-%H%M%S).png"
         fi
         grim "$out"
+        ipc_quiet picker taken "$(realpath -- "$out")" >/dev/null || true
         echo "$out"
         return
         ;;

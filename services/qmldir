@@ -55,6 +55,7 @@ Lookup 1.0 Lookup.qml
 singleton Lyrics 1.0 Lyrics.qml
 singleton Media 1.0 Media.qml
 singleton Modes 1.0 Modes.qml
+singleton Moments 1.0 Moments.qml
 singleton Monitors 1.0 Monitors.qml
 singleton Network 1.0 Network.qml
 singleton NetworkEvents 1.0 NetworkEvents.qml
@@ -74,11 +75,13 @@ singleton Polkit 1.0 Polkit.qml
 singleton Pomodoro 1.0 Pomodoro.qml
 singleton Power 1.0 Power.qml
 singleton PowerProfile 1.0 PowerProfile.qml
+singleton Privacy 1.0 Privacy.qml
 PrivateFile 1.0 PrivateFile.qml
 singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
 singleton ScreenRecorder 1.0 ScreenRecorder.qml
+singleton Screenshots 1.0 Screenshots.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml

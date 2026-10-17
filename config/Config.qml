@@ -568,7 +568,18 @@ Singleton {
 
                 nowPlaying: true,
 
-                levels: true
+                levels: true,
+
+                moments: {
+
+                    screenshot: true,
+
+                    privacy: true,
+
+                    copied: true,
+
+                    bluetooth: true
+                }
             },
 
             weather: {
