@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-17-4",
+      "id": "2026-10-17-5",
       "date": "2026-10-17",
       "changes": [
         {
@@ -22,12 +22,49 @@
         {
           "type": "bugs",
           "severity": "minor",
-          "text": "Typing in the launcher does less work for each key. Rows build a slider or a switch only when they show one, and only the file results that fit in the list are prepared."
+          "text": "Searching inside files stops after 2 seconds, and the Inside files heading says so when it does. It also skips Python and conda environments, the Android SDK and binary files such as images and archives, so a word with no matches comes back in about half a second."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Typing in the launcher does less work for each key. Rows build a slider or a switch only when they show one, only the file results that fit in the list are prepared, and a row whose text changes is updated in place instead of built again."
         },
         {
           "type": "bugs",
           "severity": "minor",
           "text": "The shell no longer asks for the power profile every 30 seconds. It already hears about every change as it happens."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rounded shapes across the shell are drawn by the graphics card now. Their edges are a little smoother, and the open media panel uses about half the CPU it did while music plays."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-17-4",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell has a front page on GitHub now, with a short clip, install steps and the commands, and it is licensed under GPL-3.0. Nothing in the shell itself changed."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-17-3",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Muted sound now shows a speaker with a line through it. The Wi-Fi rows in the launcher show one, two or three bars, and a lock on secured networks you have not joined before."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Where windows overlap, the screenshot picker snaps to the one on top instead of whichever came first in Hyprland's list. A drag that has started stays a drag even when you move back near where you pressed."
         }
       ]
     },
