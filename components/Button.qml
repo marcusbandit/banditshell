@@ -150,11 +150,14 @@ Item {
 
         if (!root.interactive)
             return base;
-        if (root.pressed)
-            return Appearance.blend(base, root.fg, 0.18);
-        if (root.hovered)
-            return Appearance.blend(base, root.fg, 0.09);
-        return base;
+
+        const layer = root.pressed ? Appearance.colour.fillStrong : root.hovered ? Appearance.colour.fill : null;
+
+        if (!layer)
+            return base;
+        if (base.a === 0)
+            return layer;
+        return Appearance.blend(base, root.fg, layer.a);
     }
 
     property real radiusLeft: -1
@@ -185,27 +188,13 @@ Item {
 
                 visible: false
                 anchors.fill: parent
-                radius: root.targetRadius
-                topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-                bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-                topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-                bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-                cornerPower: root.platePower
+                radius: radiusGlide.value
+                topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
+                bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
+                topRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
+                bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
+                cornerPower: powerGlide.value
                 color: "black"
-
-                Behavior on radius {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                        easing.type: Easing.OutCubic
-                    }
-                }
-
-                Behavior on cornerPower {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                        easing.type: Easing.OutCubic
-                    }
-                }
             }
 
             MultiEffect {
@@ -224,44 +213,50 @@ Item {
         id: plate
 
         anchors.fill: parent
-        radius: root.targetRadius
-        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : root.targetRadius
-        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : root.targetRadius
-        cornerPower: root.platePower
-        color: root.bg
+        radius: radiusGlide.value
+        topLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
+        bottomLeftRadius: root.radiusLeft >= 0 ? root.radiusLeft : radiusGlide.value
+        topRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
+        bottomRightRadius: root.radiusRight >= 0 ? root.radiusRight : radiusGlide.value
+        cornerPower: powerGlide.value
+        color: tone.value
         stroke: root.ring
         strokeWidth: root.ringW
-
-        Behavior on radius {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        Behavior on cornerPower {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutCubic
-            }
-        }
-
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.fast
-            }
-        }
     }
 
-    scale: root.pressed ? Appearance.press.plate : 1
+    scale: pressGlide.value
 
-    Behavior on scale {
-        NumberAnimation {
-            duration: Appearance.animation.fast
-            easing.type: Easing.OutCubic
-        }
+    Follow {
+        id: radiusGlide
+
+        target: root.targetRadius
+        speed: Appearance.animation.revealSpeed
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: powerGlide
+
+        target: root.platePower
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: pressGlide
+
+        target: root.pressed ? Appearance.press.plate : 1
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+    }
+
+    FollowColour {
+        id: tone
+
+        target: root.bg
+        speed: Appearance.animation.revealSpeed
     }
 
     Row {

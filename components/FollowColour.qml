@@ -11,7 +11,11 @@ QtObject {
     property color origin: "transparent"
     property color destination: "transparent"
 
-    readonly property color value: Appearance.blend(root.origin, root.destination, glide.value)
+    readonly property color value: {
+        const from = root.origin.a === 0 ? Qt.rgba(root.destination.r, root.destination.g, root.destination.b, 0) : root.origin;
+        const to = root.destination.a === 0 ? Qt.rgba(root.origin.r, root.origin.g, root.origin.b, 0) : root.destination;
+        return Appearance.blend(from, to, glide.value);
+    }
 
     readonly property bool settled: glide.settled
 

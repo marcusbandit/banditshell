@@ -179,12 +179,13 @@ Item {
 
                         name: cell.modelData.icon
                         size: Appearance.font.iconSize
-                        color: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                        color: markTone.value
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.normal
-                            }
+                        FollowColour {
+                            id: markTone
+
+                            target: cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            speed: Appearance.animation.trackSpeed
                         }
                     }
 
@@ -207,12 +208,13 @@ Item {
 
                         text: cell.modelData.label
 
-                        color: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                        color: labelTone.value
 
-                        Behavior on color {
-                            ColorAnimation {
-                                duration: Appearance.animation.normal
-                            }
+                        FollowColour {
+                            id: labelTone
+
+                            target: cell.worn || cell.chosen ? Appearance.colour.text : Appearance.colour.textDim
+                            speed: Appearance.animation.trackSpeed
                         }
                     }
 
