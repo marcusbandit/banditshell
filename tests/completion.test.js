@@ -176,10 +176,10 @@ test("update offers its verbs, and each verb its flags", () => {
 
 test("dev lint offers its flags, then the rule ids after --rule", () => {
     const ids = table.find(r => r[0] === "values" && r[1] === "rule")[2].split(" ").sort();
-    assert.deepStrictEqual(ids, ["L1", "L10", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
+    assert.deepStrictEqual(ids, ["L1", "L10", "L11", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
     assert.deepStrictEqual(bashComplete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
     assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", ""), ids);
-    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10"]);
+    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10", "L11"]);
 });
 
 test("dev promote offers its two flags and no push", () => {
@@ -241,7 +241,7 @@ _banditshell`;
     assert.deepStrictEqual(complete("api", ""), ["check", "list", "show"]);
     assert.deepStrictEqual(complete("version", ""), ["--json"]);
     assert.deepStrictEqual(complete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
-    assert.deepStrictEqual(complete("dev", "lint", "--rule", ""), ["L1", "L10", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
+    assert.deepStrictEqual(complete("dev", "lint", "--rule", ""), ["L1", "L10", "L11", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 

@@ -43,6 +43,7 @@ const ENGINE_GAPS = [
 ];
 const HEX_COLOUR = /#(?:[0-9a-fA-F]{8}|[0-9a-fA-F]{6}|[0-9a-fA-F]{3,4})(?![\w])/g;
 const COLOUR_CALL = /(?<![\w.])Qt\.(rgba|hsla|hsva|tint|lighter|darker)\s*\(/g;
+const OBJECT_MEMBERS = ["objectName", "objectNameChanged", "destroyed", "deleteLater", "toString", "data", "dataChanged"];
 const REGEX_BEFORE = new Set("(,=:[!&|?{};+-*%<>~^".split(""));
 const REGEX_AFTER_WORD = new Set(["return", "typeof", "case", "do", "else", "in", "of", "new", "delete", "void", "throw", "yield"]);
 
@@ -430,7 +431,8 @@ const RULES = [
     { id: "L7", reason: "textGhost is for decorative rules, never the colour of text.", appliesTo: f => f.endsWith(".qml"), check: ruleL7 },
     { id: "L8", reason: "No em dashes or en dashes anywhere; use a comma, colon, semicolon or hyphen.", appliesTo: () => true, check: ruleL8, wantsText: true },
     { id: "L9", reason: "Quickshell's JS engine lacks matchAll, flat, flatMap, Object.fromEntries, at, structuredClone and regex lookbehind, and replaceAll is risky.", appliesTo: isShellCode, check: ruleL9 },
-    { id: "L10", reason: "Every QML folder carries a qmldir that matches scripts/qmldirs.sh; run it after adding, moving or renaming a file.", appliesTo: () => false, check: null, whole: true }
+    { id: "L10", reason: "Every QML folder carries a qmldir that matches scripts/qmldirs.sh; run it after adding, moving or renaming a file.", appliesTo: () => false, check: null, whole: true },
+    { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true }
 ];
 
 function ruleById(id) {
@@ -551,6 +553,217 @@ function checkQmldirs(root) {
     return found;
 }
 
+function escapePattern(text) {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function directoryOf(file) {
+    const cut = file.lastIndexOf("/");
+    return cut < 0 ? "" : file.slice(0, cut);
+}
+
+function joinPath(base, relative) {
+    const parts = base ? base.split("/") : [];
+    for (const part of relative.split("/")) {
+        if (part === "..")
+            parts.pop();
+        else if (part !== "." && part !== "")
+            parts.push(part);
+    }
+    return parts.join("/");
+}
+
+function declaredMembers(text) {
+    const scanned = scanSource(text);
+    const code = scanned.code;
+    const members = new Set(OBJECT_MEMBERS);
+    const root = /(?<![\w.])[A-Z][\w.]*\s*\{/.exec(code);
+    if (!root)
+        return members;
+    const open = root.index + root[0].length - 1;
+    const close = matchingBrace(code, open);
+    if (close < 0)
+        return members;
+    const own = ownLevel(code, { open, close });
+    const add = name => {
+        members.add(name);
+    };
+    const properties = /\bproperty\s+[\w.]+(?:<[^>]*>)?\s+(\w+)/g;
+    const functions = /\bfunction\s+(\w+)\s*\(/g;
+    const signals = /\bsignal\s+(\w+)/g;
+    let m;
+    while ((m = properties.exec(own)) !== null) {
+        add(m[1]);
+        add(`${m[1]}Changed`);
+    }
+    while ((m = functions.exec(own)) !== null)
+        add(m[1]);
+    while ((m = signals.exec(own)) !== null)
+        add(m[1]);
+    const enums = /\benum\s+(\w+)\s*\{([^}]*)\}/g;
+    const body = code.slice(open, close + 1);
+    while ((m = enums.exec(body)) !== null) {
+        add(m[1]);
+        for (const value of m[2].match(/\b[A-Za-z_]\w*/g) || [])
+            add(value);
+    }
+    return members;
+}
+
+function buildSingletonIndex(sources) {
+    const modules = new Map();
+    const directories = new Map();
+    for (const [file, text] of sources) {
+        if (path.posix.basename(file) !== "qmldir")
+            continue;
+        const dir = directoryOf(file);
+        const moduleLine = /^module\s+(\S+)/m.exec(text);
+        const singletons = new Map();
+        for (const line of text.split("\n")) {
+            const m = /^singleton\s+(\w+)\s+\S+\s+(\S+)/.exec(line.trim());
+            if (!m)
+                continue;
+            const target = joinPath(dir, m[2]);
+            const source = sources.get(target);
+            singletons.set(m[1], { file: target, members: source === undefined ? null : declaredMembers(source) });
+        }
+        directories.set(dir, singletons);
+        if (moduleLine)
+            modules.set(moduleLine[1], singletons);
+    }
+    return { modules, directories };
+}
+
+function importScope(file, plain, index) {
+    const visible = new Map();
+    const qualified = new Map();
+    const own = index.directories.get(directoryOf(file));
+    if (own)
+        for (const [name, singleton] of own)
+            visible.set(name, singleton);
+    const importPattern = /^[ \t]*import[ \t]+(?:"([^"]+)"|([\w.]+)(?:[ \t]+[\d.]+)?)(?:[ \t]+as[ \t]+(\w+))?/gm;
+    let m;
+    while ((m = importPattern.exec(plain)) !== null) {
+        const [, relative, moduleName, alias] = m;
+        if (relative && relative.endsWith(".js"))
+            continue;
+        const singletons = relative ? index.directories.get(joinPath(directoryOf(file), relative)) : index.modules.get(moduleName);
+        if (!singletons)
+            continue;
+        if (alias) {
+            qualified.set(alias, singletons);
+        } else {
+            for (const [name, singleton] of singletons)
+                visible.set(name, singleton);
+        }
+    }
+    return { visible, qualified };
+}
+
+function shadowsName(code, plain, name) {
+    const id = escapePattern(name);
+    const declarations = [
+        `\\bid\\s*:\\s*${id}\\b`,
+        `\\b(?:const|let|var|function|class|signal|enum)\\s+${id}\\b`,
+        `\\bproperty\\s+[\\w.]+(?:<[^>]*>)?\\s+${id}\\b`,
+        `\\b${id}\\s*=>`,
+        `\\([^()]*\\b${id}\\b[^()]*\\)\\s*=>`,
+        `\\bfunction\\s*\\w*\\s*\\([^()]*\\b${id}\\b`
+    ];
+    if (new RegExp(declarations.join("|")).test(code))
+        return true;
+    return new RegExp(`^[ \\t]*import[ \\t]+"[^"]+"[ \\t]+as[ \\t]+${id}\\b`, "m").test(plain);
+}
+
+function memberHits(text, scope) {
+    const scanned = scanSource(text);
+    const at = lineIndex(text);
+    const found = [];
+    const check = (singletonName, singleton, member, offset, label) => {
+        if (singleton.members === null || singleton.members.has(member))
+            return;
+        found.push({ line: at(offset), detail: `${label}.${member} is not a member of the ${singletonName} singleton (${singleton.file})` });
+    };
+    const names = [...scope.visible.keys()].filter(name => !shadowsName(scanned.code, scanned.plain, name));
+    if (names.length) {
+        const bare = new RegExp(`(?<![\\w$.])(${names.map(escapePattern).join("|")})\\s*\\.\\s*([A-Za-z_]\\w*)`, "g");
+        let m;
+        while ((m = bare.exec(scanned.code)) !== null)
+            check(m[1], scope.visible.get(m[1]), m[2], m.index, m[1]);
+    }
+    for (const [alias, singletons] of scope.qualified) {
+        if (shadowsName(scanned.code, scanned.plain, alias))
+            continue;
+        const qualifiedPattern = new RegExp(`(?<![\\w$.])${escapePattern(alias)}\\s*\\.\\s*(\\w+)\\s*\\.\\s*([A-Za-z_]\\w*)`, "g");
+        let m;
+        while ((m = qualifiedPattern.exec(scanned.code)) !== null) {
+            const singleton = singletons.get(m[1]);
+            if (singleton)
+                check(m[1], singleton, m[2], m.index, `${alias}.${m[1]}`);
+        }
+    }
+    return found.sort((a, b) => a.line - b.line);
+}
+
+function checkMembers(sources) {
+    const index = buildSingletonIndex(sources);
+    const importers = new Map();
+    const scopes = new Map();
+    const consumers = [...sources.keys()].filter(isShellCode).sort();
+    for (const file of consumers) {
+        const text = sources.get(file);
+        if (!file.endsWith(".qml"))
+            continue;
+        const plain = scanSource(text).plain;
+        scopes.set(file, importScope(file, plain, index));
+        const scriptImport = /^[ \t]*import[ \t]+"([^"]+\.js)"/gm;
+        let m;
+        while ((m = scriptImport.exec(plain)) !== null) {
+            const target = joinPath(directoryOf(file), m[1]);
+            if (!importers.has(target))
+                importers.set(target, []);
+            importers.get(target).push(file);
+        }
+    }
+    const found = [];
+    for (const file of consumers) {
+        let scope = scopes.get(file);
+        if (!scope) {
+            const users = importers.get(file) || [];
+            const text = sources.get(file);
+            if (/^\s*\.pragma\s+library/m.test(text) || !users.length)
+                continue;
+            scope = { visible: new Map(), qualified: new Map() };
+            for (const user of users) {
+                const used = scopes.get(user);
+                for (const [name, singleton] of used.visible)
+                    scope.visible.set(name, singleton);
+                for (const [alias, singletons] of used.qualified)
+                    scope.qualified.set(alias, singletons);
+            }
+        }
+        for (const hit of memberHits(sources.get(file), scope))
+            found.push({ rule: "L11", file, line: hit.line, detail: hit.detail });
+    }
+    return found;
+}
+
+function readMemberSources(root, files) {
+    const sources = new Map();
+    for (const file of files) {
+        if (path.posix.basename(file) !== "qmldir" && !(isShellCode(file)))
+            continue;
+        const text = readTextFile(root, file);
+        if (text !== null)
+            sources.set(file, text);
+    }
+    return sources;
+}
+
+function checkSingletonMembers(root, files) {
+    return checkMembers(readMemberSources(root, files));
+}
+
 function lint(root, onlyRule) {
     const files = listFiles(root);
     const findings = [];
@@ -577,6 +790,8 @@ function lint(root, onlyRule) {
     }
     if (active.some(rule => rule.id === "L10"))
         findings.push(...checkQmldirs(root));
+    if (active.some(rule => rule.id === "L11"))
+        findings.push(...checkSingletonMembers(root, files));
     findings.sort((a, b) => a.file < b.file ? -1 : a.file > b.file ? 1 : a.line - b.line || (a.rule < b.rule ? -1 : 1));
     return { files: files.length, findings };
 }
@@ -651,7 +866,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L10",
+        "  --rule <id>        only this rule, L1 to L11",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"
@@ -742,7 +957,7 @@ function run(argv, write) {
 }
 
 module.exports = {
-    RULES, LOOPING_CLOCKS, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, run
+    RULES, LOOPING_CLOCKS, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, run
 };
 
 if (require.main === module) {

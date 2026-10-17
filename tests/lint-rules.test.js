@@ -265,6 +265,115 @@ test("L10 agrees with scripts/qmldirs.sh in C order, whatever the caller's local
     fs.rmSync(repo, { recursive: true, force: true });
 });
 
+const FOCUS_SOURCE = [
+    "pragma Singleton",
+    "import QtQuick",
+    "import Quickshell",
+    "Singleton {",
+    "    id: root",
+    "    property string mode",
+    "    readonly property var screens: ({ inner: 1 })",
+    "    required property int need",
+    "    default property list<QtObject> kids",
+    "    property alias tint: box.color",
+    "    property list<string> names",
+    "    property var offStage: null",
+    "    signal pressed(int key)",
+    "    function reset(): void {",
+    "        const hidden = 1;",
+    "    }",
+    "    enum Kind { Idle, Busy }",
+    "    Rectangle {",
+    "        id: box",
+    "        property real nested",
+    "    }",
+    "    QtObject {",
+    "        function buried() {}",
+    "    }",
+    "}"
+].join("\n");
+
+function sourceMap(files) {
+    return new Map(Object.entries(files));
+}
+
+function memberHits(files) {
+    return lintRules.checkMembers(sourceMap({
+        "services/qmldir": "module qs.services\nsingleton Focus 1.0 Focus.qml\n",
+        "services/Focus.qml": FOCUS_SOURCE,
+        ...files
+    })).map(hit => `${hit.file}:${hit.line}`);
+}
+
+test("L11 flags a member the singleton does not declare and names the file and line", () => {
+    const found = lintRules.checkMembers(sourceMap({
+        "services/qmldir": "module qs.services\nsingleton Focus 1.0 Focus.qml\n",
+        "services/Focus.qml": FOCUS_SOURCE,
+        "modules/a/A.qml": "import qs.services\nItem {\n    x: Focus.mode\n    y: Focus.offStageScreen\n}\n"
+    }));
+    assert.deepStrictEqual(found.map(f => [f.rule, f.file, f.line]), [["L11", "modules/a/A.qml", 4]]);
+    assert.match(found[0].detail, /Focus\.offStageScreen is not a member of the Focus singleton \(services\/Focus\.qml\)/);
+});
+
+test("L11 knows every kind of declaration, its Changed signal, enums and the QObject basics", () => {
+    const reads = ["mode", "modeChanged", "screens", "need", "kids", "tint", "tintChanged", "names", "offStage", "pressed", "reset", "Kind", "Idle", "Busy", "objectName", "destroyed", "toString", "data"];
+    const imports = "import qs.services\n";
+    const body = reads.map(name => `    p${name}: Focus.${name}`).join("\n");
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": `${imports}Item {\n${body}\n}\n` }), []);
+});
+
+test("L11 does not count what is nested inside the singleton", () => {
+    const found = memberHits({ "modules/a/A.qml": "import qs.services\nItem {\n    a: Focus.nested\n    b: Focus.buried\n    c: Focus.box\n    d: Focus.root\n    e: Focus.hidden\n    f: Focus.inner\n}\n" });
+    assert.deepStrictEqual(found, [3, 4, 5, 6, 7, 8].map(line => `modules/a/A.qml:${line}`));
+});
+
+test("L11 only checks singletons the file imports or sits beside", () => {
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": "Item { x: Focus.missing }\n" }), []);
+    assert.deepStrictEqual(memberHits({ "services/Neighbour.qml": "Item { x: Focus.missing }\n" }), ["services/Neighbour.qml:1"]);
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": "import \"../../services\"\nItem { x: Focus.missing }\n" }), ["modules/a/A.qml:2"]);
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": "import qs.services\nItem { x: other.Focus.missing }\n" }), []);
+});
+
+test("L11 reads a qualified import as Alias.Name.member and not as Name.member", () => {
+    const text = "import qs.services as Services\nItem {\n    a: Services.Focus.mode\n    b: Services.Focus.missing\n    c: Focus.missing\n}\n";
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": text }), ["modules/a/A.qml:4"]);
+    const both = "import qs.services\nimport qs.services as Services\nItem {\n    a: Services.Focus.missing\n    b: Focus.missing\n}\n";
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": both }), ["modules/a/A.qml:4", "modules/a/A.qml:5"]);
+});
+
+test("L11 lets a local id, a script alias or a local variable shadow the singleton", () => {
+    const id = "import qs.services\nItem {\n    Item { id: Focus }\n    x: Focus.missing\n}\n";
+    const alias = "import qs.services\nimport \"focus.js\" as Focus\nItem { x: Focus.missing }\n";
+    const local = "import qs.services\nItem {\n    function f(Focus) { return Focus.missing; }\n}\n";
+    const constant = "import qs.services\nItem {\n    function f() { const Focus = {}; return Focus.missing; }\n}\n";
+    for (const text of [id, alias, local, constant])
+        assert.deepStrictEqual(memberHits({ "modules/a/A.qml": text }), [], text);
+});
+
+test("L11 ignores strings and comments", () => {
+    const text = "import qs.services\nItem {\n    a: \"Focus.missing\"\n    // Focus.missing\n    b: `${Focus.mode}.missing`\n}\n";
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": text }), []);
+});
+
+test("L11 follows a script the QML imports into the importer's scope and skips library scripts", () => {
+    const qml = "import qs.services\nimport \"logic.js\" as Logic\nItem {}\n";
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": qml, "modules/a/logic.js": "function f() { return Focus.missing; }\n" }), ["modules/a/logic.js:1"]);
+    assert.deepStrictEqual(memberHits({ "modules/a/A.qml": qml, "modules/a/logic.js": ".pragma library\nfunction f() { return Focus.missing; }\n" }), []);
+    assert.deepStrictEqual(memberHits({ "modules/a/logic.js": "function f() { return Focus.missing; }\n" }), []);
+});
+
+test("L11 runs over a repo through lint and honours the rule filter", () => {
+    const repo = makeRepo({
+        "services/qmldir": "module qs.services\nsingleton Focus 1.0 Focus.qml\n",
+        "services/Focus.qml": FOCUS_SOURCE,
+        "modules/a/A.qml": "import qs.services\nItem { x: Focus.gone }\n"
+    });
+    const found = lintRules.lint(repo, "L11").findings;
+    assert.deepStrictEqual(found.map(f => `${f.rule} ${f.file}:${f.line}`), ["L11 modules/a/A.qml:2"]);
+    assert.deepStrictEqual(lintRules.lint(repo, "L2").findings, []);
+    fs.rmSync(repo, { recursive: true, force: true });
+});
+
 test("a new violation fails, with its file and line, and a fixed one only prints a notice", () => {
     const repo = makeRepo({
         "modules/a.qml": "Item {\n    Rectangle { radius: 3 }\n}\n",
@@ -316,7 +425,7 @@ test("--all lists every violation and the options are checked", () => {
 });
 
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 10 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 11 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });
