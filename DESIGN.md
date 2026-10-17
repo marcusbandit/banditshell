@@ -3698,7 +3698,10 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   key. The card sits level with the launcher's top edge. With Animate
   preview on, its frame grows or shrinks to the next preview over content
   already laid out at its final size.
-  `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
+  `columns` (`[{ text, chars, tone }]`) replaces the detail with fixed
+  columns `chars` digits wide, so the same fields line up from row to row;
+  `tone` is `"lit"` (accent) or `"dim"`. `swatch` (a colour) draws a colour
+  chip in place of the icon, and `tab:
   true` lets the row take Tab even when another row is selected. In
   `actionsFor`, a first action with `button: true` also shows as a button,
   for rows whose Enter action belongs next to the others (Pause beside Skip

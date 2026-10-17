@@ -959,6 +959,8 @@ LauncherConcept {
                                 mark: line.modelData.swatch ? swatch : null
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
+                                columns: line.modelData.columns ?? []
+                                trailingRoom: line.modelData.columns ? Appearance.sizes.toggleWidth + Appearance.padding.normal : 0
 
                                 selected: line.index === root.selected && !root.answerHolds && !assistantCard.holds
 
