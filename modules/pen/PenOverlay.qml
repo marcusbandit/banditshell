@@ -291,20 +291,22 @@ PanelWindow {
         height: win.aimed.height
         radius: Appearance.sizes.windowRadius
 
-        color: win.aimedBound ? Appearance.colour.fill : Appearance.colour.accentFill
-        stroke: win.aimedBound ? Appearance.colour.textDim : Appearance.colour.accent
+        color: fillTone.value
+        stroke: edgeTone.value
         strokeWidth: Appearance.sizes.pickerOutline
 
-        Behavior on color {
-            ColorAnimation {
-                duration: Appearance.animation.normal
-            }
+        FollowColour {
+            id: fillTone
+
+            target: win.aimedBound ? Appearance.colour.fill : Appearance.colour.accentFill
+            speed: Appearance.animation.trackSpeed
         }
 
-        Behavior on stroke {
-            ColorAnimation {
-                duration: Appearance.animation.normal
-            }
+        FollowColour {
+            id: edgeTone
+
+            target: win.aimedBound ? Appearance.colour.textDim : Appearance.colour.accent
+            speed: Appearance.animation.trackSpeed
         }
 
         Item {
@@ -385,20 +387,22 @@ PanelWindow {
         radius: 0
         color: "transparent"
 
-        stroke: win.editable || PenMap.tracking ? Appearance.colour.accent : Appearance.colour.textFaint
-        strokeWidth: Appearance.sizes.pickerOutline * (PenMap.tracking ? 2 : 1)
+        stroke: outlineTone.value
+        strokeWidth: outlineWeight.value
 
-        Behavior on stroke {
-            ColorAnimation {
-                duration: Appearance.animation.normal
-            }
+        FollowColour {
+            id: outlineTone
+
+            target: win.editable || PenMap.tracking ? Appearance.colour.accent : Appearance.colour.textFaint
+            speed: Appearance.animation.trackSpeed
         }
 
-        Behavior on strokeWidth {
-            NumberAnimation {
-                duration: Appearance.animation.normal
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: outlineWeight
+
+            target: Appearance.sizes.pickerOutline * (PenMap.tracking ? 2 : 1)
+            speed: Appearance.animation.trackSpeed
+            startsAtTarget: true
         }
     }
 
@@ -420,12 +424,13 @@ PanelWindow {
             height: win.handle
             radius: Appearance.rounding.small
 
-            color: grip.live ? Appearance.colour.paper : Appearance.colour.accent
+            color: gripTone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: gripTone
+
+                target: grip.live ? Appearance.colour.paper : Appearance.colour.accent
+                speed: Appearance.animation.revealSpeed
             }
         }
     }
