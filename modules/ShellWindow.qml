@@ -438,6 +438,8 @@ PanelWindow {
 
             anchors.fill: parent
 
+            railWanted: sidebar.railWanted
+
             panels: [...body.barBlobs, ...body.lowered([...menuLayer.blobs, ...launcherLayer.blobs, ...clipLayer.blobs, ...wallpaperLayer.blobs, ...popups.blobs, ...launchEdge.blobs, ...quickLayer.blobs, ...sessionLayer.blobs, ...calcLayer.blobs, ...settingsLayer.blobs]), ...keyboardLayer.blobs, ...tip.blobs, ...body.lowered(settingsCorner.blobs)]
         }
 
@@ -452,7 +454,11 @@ PanelWindow {
             width: chassis.barWidth
             visible: chassis.sidebar
 
+            fullWidth: chassis.fullBarWidth
+            expansion: chassis.railOpen
+
             menusShown: menuLayer.open
+            openKey: menuLayer.currentKey
 
             pullSpan: Math.hypot(win.width, win.height)
 

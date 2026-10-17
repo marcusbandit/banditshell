@@ -18,6 +18,20 @@ Item {
 
     property string modeIcon: ""
 
+    property real fullWidth: width
+    property real expansion: 1
+    property string openKey: ""
+
+    readonly property bool rail: Appearance.sizes.sidebarRail
+    readonly property real revealed: root.rail ? Math.max(0, Math.min(1, (root.expansion - 0.3) / 0.5)) : 1
+    readonly property real railRestWidth: root.fullWidth - Appearance.sizes.sidebarWidth + Appearance.sizes.railWidth
+
+    property bool dwelt: false
+    readonly property bool holding: root.menusShown && root.menuKeys.indexOf(root.openKey) >= 0
+    readonly property bool railWanted: root.rail && (root.dwelt || root.holding)
+
+    clip: root.rail && root.expansion < 1
+
     readonly property string screen: QsWindow.window?.screen?.name ?? ""
 
     signal requested(string key)
@@ -75,31 +89,7 @@ Item {
         return group.sideGap + root.cornerRise(group.sideGap) + group.overhang - Appearance.sizes.band;
     }
 
-    TrayIcons {
-        id: tray
-
-        anchors.top: parent.top
-
-        anchors.topMargin: root.endMargin(tray)
-        anchors.left: parent.left
-        anchors.right: parent.right
-
-        onRequested: key => root.requested(key)
-        onReleased: root.released()
-        menusShown: root.menusShown
-    }
-
-    Workspaces {
-        id: workspaces
-
-        anchors.left: parent.left
-        anchors.right: parent.right
-        anchors.verticalCenter: parent.verticalCenter
-
-        screen: root.screen
-    }
-
-    readonly property var blobs: workspaces.blobs.map(b => ({
+    readonly property var blobs: root.expansion < 0.98 ? [] : workspaces.blobs.map(b => ({
                 x: b.x + workspaces.x,
                 y: b.y + workspaces.y,
                 w: b.w,
@@ -108,60 +98,22 @@ Item {
                 smooth: b.smooth
             }))
 
-    Column {
+    Item {
+        id: body
+
+        anchors.top: parent.top
         anchors.bottom: parent.bottom
-
-        anchors.bottomMargin: root.endMargin(status)
         anchors.left: parent.left
-        anchors.right: parent.right
+        width: root.fullWidth
+        opacity: root.revealed
+        visible: root.revealed > 0.01
 
-        spacing: Appearance.padding.large
+        TrayIcons {
+            id: tray
 
-        UpdateIndicator {
-            id: update
+            anchors.top: parent.top
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-
-            onRequested: deliberate => root.updateRequested(deliberate)
-        }
-
-        SidebarClock {
-            id: clock
-
-            anchors.left: parent.left
-            anchors.right: parent.right
-
-            pullSpan: root.pullSpan
-
-            onCalendarRequested: deliberate => root.calendarRequested(deliberate)
-            onCalendarPulled: root.calendarPulled()
-            onCalendarPullEnded: open => root.calendarPullEnded(open)
-
-            onClockRequested: deliberate => root.clockRequested(deliberate)
-            onClockPulled: root.clockPulled()
-            onClockPullEnded: open => root.clockPullEnded(open)
-        }
-
-        Item {
-            id: mode
-
-            anchors.left: parent.left
-            anchors.right: parent.right
-            height: Appearance.sizes.statusSlot
-            visible: root.modeIcon !== ""
-
-            Icon {
-                anchors.centerIn: parent
-                name: root.modeIcon || "radio_button_unchecked"
-                fill: 1
-                color: Appearance.colour.accent
-            }
-        }
-
-        StatusIcons {
-            id: status
-
+            anchors.topMargin: root.endMargin(tray)
             anchors.left: parent.left
             anchors.right: parent.right
 
@@ -169,6 +121,132 @@ Item {
             onReleased: root.released()
             menusShown: root.menusShown
         }
+
+        Workspaces {
+            id: workspaces
+
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.verticalCenter: parent.verticalCenter
+
+            screen: root.screen
+        }
+
+        Column {
+            anchors.bottom: parent.bottom
+
+            anchors.bottomMargin: root.endMargin(status)
+            anchors.left: parent.left
+            anchors.right: parent.right
+
+            spacing: Appearance.padding.large
+
+            UpdateIndicator {
+                id: update
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                onRequested: deliberate => root.updateRequested(deliberate)
+            }
+
+            SidebarClock {
+                id: clock
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                pullSpan: root.pullSpan
+
+                onCalendarRequested: deliberate => root.calendarRequested(deliberate)
+                onCalendarPulled: root.calendarPulled()
+                onCalendarPullEnded: open => root.calendarPullEnded(open)
+
+                onClockRequested: deliberate => root.clockRequested(deliberate)
+                onClockPulled: root.clockPulled()
+                onClockPullEnded: open => root.clockPullEnded(open)
+            }
+
+            Item {
+                id: mode
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+                height: Appearance.sizes.statusSlot
+                visible: root.modeIcon !== ""
+
+                Icon {
+                    anchors.centerIn: parent
+                    name: root.modeIcon || "radio_button_unchecked"
+                    fill: 1
+                    color: Appearance.colour.accent
+                }
+            }
+
+            StatusIcons {
+                id: status
+
+                anchors.left: parent.left
+                anchors.right: parent.right
+
+                onRequested: key => root.requested(key)
+                onReleased: root.released()
+                menusShown: root.menusShown
+            }
+        }
+    }
+
+    Loader {
+        id: resting
+
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        anchors.left: parent.left
+        width: root.railRestWidth
+        opacity: 1 - root.revealed
+        visible: opacity > 0.01
+        active: root.rail
+
+        sourceComponent: restingContent
+    }
+
+    Component {
+        id: restingContent
+
+        Item {
+            RailPips {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+
+                screen: root.screen
+            }
+
+            RailAnomalies {
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: root.endMargin(root.status)
+
+                modeIcon: root.modeIcon
+            }
+        }
+    }
+
+    HoverHandler {
+        id: pointer
+    }
+
+    Timer {
+        interval: Appearance.animation.dwell
+        running: root.rail && pointer.hovered && !root.dwelt
+        onTriggered: root.dwelt = true
+    }
+
+    Timer {
+        interval: Appearance.animation.grace
+        running: !pointer.hovered && root.dwelt
+        onTriggered: root.dwelt = false
     }
 
     Component {

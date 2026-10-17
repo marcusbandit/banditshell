@@ -14,6 +14,7 @@ Item {
     property Component mark: null
 
     signal activated
+    signal scrolled(var wheel)
 
     readonly property bool hovered: mouse.containsMouse
 
@@ -60,6 +61,11 @@ Item {
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         onClicked: root.activated()
+
+        onWheel: wheel => {
+            root.scrolled(wheel);
+            wheel.accepted = true;
+        }
     }
 
 }
