@@ -83,7 +83,7 @@ Item {
                 target: flash
                 property: "opacity"
                 to: 0
-                duration: 840
+                duration: Appearance.lessMotion ? Appearance.animation.fade.fast : 840
             }
         }
     }

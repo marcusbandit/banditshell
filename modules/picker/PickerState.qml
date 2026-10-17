@@ -111,7 +111,7 @@ Scope {
 
         property var pending: null
 
-        interval: Appearance.animation.fade.fast
+        interval: Appearance.animation.wait.fast
         onTriggered: {
             if (pending)
                 live.exec(pending);
