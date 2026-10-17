@@ -3683,13 +3683,21 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   set, to }`, where `value()` reads the live level and `set(v)` changes it)
   for a level the row can drag; Left and Right nudge the selected one by
   `step` (0.05 unless set), a fifth of that with Shift. `text()` replaces the
-  percentage beside it, and `warnAbove` moves the marker that is at 1. A
+  percentage beside it, and `warnAbove` moves the marker that is at 1.
+  `nudge(offset)` takes the keys' step instead of `set`, for levels that are
+  not a clamped fraction (seeking), and `bare: true` hides the bar while the
+  label and the keys stay. A
   row can also carry `glyph` (a character, such as an emoji, drawn as its
   icon) and `ask` (`{ prompt, icon, suggestion, take }`): Enter on it turns
   the field into a one-line question and hands the answer to `take(text)`.
   `peekPath` (with `peekDir: true` for a folder) or `peekText` fills the card
   beside the launcher when the row is selected: a picture, the first lines of
-  a text file, a folder's contents, or the full text.
+  a text file, a folder's contents, or the full text. `peekImage` shows a
+  picture by URL (cover art), and `peekColour` opens the card as a colour
+  picker; what is picked there lands in `search.colourEdit` under the row's
+  key. The card sits level with the launcher's top edge. With Animate
+  preview on, its frame grows or shrinks to the next preview over content
+  already laid out at its final size.
   `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
   true` lets the row take Tab even when another row is selected. In
   `actionsFor`, a first action with `button: true` also shows as a button,

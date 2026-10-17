@@ -3,6 +3,7 @@ AlphabetLauncher 1.0 AlphabetLauncher.qml
 AlphabetRow 1.0 AlphabetRow.qml
 AnswerRow 1.0 AnswerRow.qml
 AssistantCard 1.0 AssistantCard.qml
+ColourPicker 1.0 ColourPicker.qml
 LaunchEdge 1.0 LaunchEdge.qml
 LauncherConcept 1.0 LauncherConcept.qml
 Launcher 1.0 Launcher.qml
