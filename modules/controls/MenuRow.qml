@@ -22,6 +22,8 @@ Item {
 
     property string label: ""
     property string detail: ""
+    property var columns: []
+    property real trailingRoom: 0
     property bool selected: false
     property bool interactive: true
 
@@ -134,7 +136,7 @@ Item {
             anchors.left: parent.left
             anchors.top: parent.top
 
-            width: root.inlineDetail ? parent.width - detail.width - Appearance.padding.large : parent.width
+            width: root.columns.length ? Math.min(parent.width, fields.x - stack.x - Appearance.padding.large) : root.inlineDetail ? parent.width - detail.width - Appearance.padding.large : parent.width
 
             text: root.label
             font.pixelSize: root.labelSize
@@ -153,11 +155,45 @@ Item {
             width: root.inlineDetail ? Math.min(implicitWidth, Math.max(parent.width * 0.3, parent.width - title.implicitWidth - Appearance.padding.large)) : parent.width
             horizontalAlignment: root.inlineDetail ? Text.AlignRight : Text.AlignLeft
 
-            visible: !!root.detail
+            visible: !!root.detail && !root.columns.length
             text: root.detail
             font.pixelSize: Appearance.font.size.small
             color: Appearance.colour.textFaint
             elide: Text.ElideRight
+        }
+    }
+
+    FontMetrics {
+        id: digits
+
+        font.family: Appearance.font.family
+        font.pixelSize: Appearance.font.size.small
+    }
+
+    Row {
+        id: fields
+
+        anchors.right: parent.right
+        anchors.rightMargin: Appearance.padding.normal + root.trailingRoom
+        anchors.verticalCenter: parent.verticalCenter
+        spacing: Appearance.padding.large
+        visible: root.columns.length > 0
+
+        Repeater {
+            model: root.columns
+
+            delegate: StyledText {
+                id: field
+
+                required property var modelData
+
+                width: Math.ceil(digits.advanceWidth("0") * (field.modelData.chars ?? field.modelData.text.length))
+                opacity: fields.x + field.x + field.width <= trailingSlot.x - Appearance.padding.normal ? 1 : 0
+                text: field.modelData.text
+                font.pixelSize: Appearance.font.size.small
+                color: field.modelData.tone === "lit" ? Appearance.colour.accent : field.modelData.tone === "dim" ? Appearance.colour.textGhost : Appearance.colour.textFaint
+                elide: Text.ElideRight
+            }
         }
     }
 

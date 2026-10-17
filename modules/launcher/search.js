@@ -84,7 +84,15 @@ function pathRows(entries, query, hidden, home) {
             }));
 }
 
+function pathScore(path, query, place) {
+    const want = String(query || "").replace(/^\/+|\/+$/g, "");
+    const tail = path.split("/").slice(-want.split("/").length).join("/");
+    const placed = place(tail, want);
+    return placed > 0 ? placed : place(path, want) > 0 ? 0.5 : placed;
+}
+
 function fileRows(lines, query, place) {
+    const byPath = String(query || "").indexOf("/") >= 0;
     return (lines || []).filter(l => !!l).map(line => {
         const dir = line[line.length - 1] === "/";
         const path = dir ? line.slice(0, -1) : line;
@@ -94,7 +102,7 @@ function fileRows(lines, query, place) {
             name: name,
             dir: dir,
             fileClass: dir ? "directory" : "unknown",
-            score: place(name, query),
+            score: byPath ? pathScore(path, query, place) : place(name, query),
             depth: path.split("/").length
         };
     }).filter(f => f.score > 0).sort((a, b) => b.score - a.score || a.depth - b.depth || a.name.length - b.name.length || a.path.localeCompare(b.path));

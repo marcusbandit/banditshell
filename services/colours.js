@@ -115,3 +115,12 @@ function colourAnswer(text) {
         swatch: `#${c.a < 1 ? two(c.a * 255) : ""}${two(c.r)}${two(c.g)}${two(c.b)}`
     };
 }
+
+function withColour(text, hex) {
+    const m = /^(.+?)((?:\s+(?:to|in|as|->|→)\s+(?:hex|rgba?|hsla?))?)$/i.exec(String(text || "").trim());
+    const was = m ? parseColour(m[1]) : null;
+    const c = parseColour(hex);
+    if (!was || !c)
+        return "";
+    return FORMS[was.form](c) + m[2];
+}

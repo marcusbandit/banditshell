@@ -12,6 +12,12 @@ PanelWindow {
 
     property bool covering: false
 
+    property bool hosting: false
+    property bool taking: false
+    property var hostedBlobs: []
+
+    readonly property Item stage: stage
+
     readonly property real progress: settle.value
     readonly property bool yielded: settle.value > 0.01
 
@@ -26,7 +32,7 @@ PanelWindow {
     onCoveringChanged: if (win.covering)
         fade.value = 1
 
-    visible: !win.chassis.bare && (win.covering || win.yielded || fade.value > 0)
+    visible: win.hosting || !win.chassis.bare && (win.covering || win.yielded || fade.value > 0)
 
     anchors {
         top: true
@@ -40,10 +46,12 @@ PanelWindow {
 
     WlrLayershell.layer: WlrLayer.Overlay
     WlrLayershell.exclusionMode: ExclusionMode.Ignore
-    WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+    WlrLayershell.keyboardFocus: win.taking ? WlrKeyboardFocus.Exclusive : WlrKeyboardFocus.None
     WlrLayershell.namespace: "banditshell-fullscreen"
 
-    mask: Region {}
+    mask: Region {
+        item: win.taking ? stage : null
+    }
 
     Follow {
         id: settle
@@ -66,6 +74,7 @@ PanelWindow {
     BlobField {
         anchors.fill: parent
 
+        visible: !win.chassis.bare
         opacity: fade.value
 
         colour: Appearance.blend(Appearance.colour.surface, Appearance.colour.surfaceSolid, win.progress)
@@ -74,5 +83,23 @@ PanelWindow {
         gap: win.toward(win.chassis.gap, win.reach - win.ring)
         band: win.toward(Appearance.sizes.band, win.ring)
         baseRadius: Qt.vector4d(win.toward(win.chassis.corners.x, win.corner), win.toward(win.chassis.corners.y, win.corner), win.toward(win.chassis.corners.z, win.corner), win.toward(win.chassis.corners.w, win.corner))
+    }
+
+    Item {
+        id: stage
+
+        anchors.fill: parent
+        visible: win.hosting
+
+        BlobField {
+            anchors.fill: parent
+
+            panels: win.hostedBlobs
+            colour: Appearance.colour.surfaceSolid
+            content: Qt.vector4d(-width, -height, width * 3, height * 3)
+            gap: 0
+            band: 0
+            frameOn: 0
+        }
     }
 }

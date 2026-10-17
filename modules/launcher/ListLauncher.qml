@@ -8,6 +8,7 @@ import qs.components
 import qs.services
 import qs.modules.controls
 import "search.js" as Search
+import "../../services/colours.js" as Colours
 
 LauncherConcept {
     id: root
@@ -153,6 +154,7 @@ LauncherConcept {
             Assistant.stop();
         root.capture = null;
         search.armed = "";
+        search.colourEdit = null;
         root.collapseToCentre = !panel.bottomAnchored;
     }
 
@@ -376,7 +378,10 @@ LauncherConcept {
         if (row?.slider && (event.key === Qt.Key_Left || event.key === Qt.Key_Right)) {
             const stride = row.slider.step ?? 0.05;
             const step = (event.modifiers & Qt.ShiftModifier ? stride / 5 : stride) * (event.key === Qt.Key_Left ? -1 : 1);
-            row.slider.set(Math.max(0, Math.min(row.slider.to, Math.round((row.slider.value() + step) * 100) / 100)));
+            if (row.slider.nudge)
+                row.slider.nudge(step);
+            else
+                row.slider.set(Math.max(0, Math.min(row.slider.to, Math.round((row.slider.value() + step) * 100) / 100)));
             return true;
         }
 
@@ -527,6 +532,28 @@ LauncherConcept {
     }
 
     property bool settled: true
+    property bool retyping: false
+
+    readonly property string answerColour: root.answerHolds && root.answer?.swatch ? root.answer.swatch : ""
+
+    function takeColour(hex: string, done: bool): void {
+        if (root.answerColour && peek.colour === root.answerColour) {
+            const typed = done ? Colours.withColour(query.text, hex) : "";
+            if (!typed || typed === query.text)
+                return;
+            root.retyping = true;
+            query.text = typed;
+            query.cursorPosition = typed.length;
+            root.retyping = false;
+            return;
+        }
+        const row = root.results[root.selected];
+        if (row?.peekColour)
+            search.colourEdit = {
+                key: row.key,
+                hex: hex
+            };
+    }
 
     Timer {
         id: settle
@@ -539,6 +566,8 @@ LauncherConcept {
         target: root.input
 
         function onTextChanged(): void {
+            if (root.retyping)
+                return;
             root.settled = false;
             settle.restart();
         }
@@ -930,6 +959,8 @@ LauncherConcept {
                                 mark: line.modelData.swatch ? swatch : null
                                 label: line.modelData.label ?? ""
                                 detail: line.modelData.detail ?? ""
+                                columns: line.modelData.columns ?? []
+                                trailingRoom: line.modelData.columns ? Appearance.sizes.toggleWidth + Appearance.padding.normal : 0
 
                                 selected: line.index === root.selected && !root.answerHolds && !assistantCard.holds
 
@@ -1005,7 +1036,7 @@ LauncherConcept {
 
                                     Slider {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        visible: !!line.modelData.slider
+                                        visible: !!line.modelData.slider && !line.modelData.slider.bare
                                         width: root.panelWidth * 0.22
                                         to: line.modelData.slider?.to ?? 1
                                         warnAbove: line.modelData.slider?.warnAbove ?? 1
@@ -1100,27 +1131,21 @@ LauncherConcept {
             id: peek
 
             readonly property real gap: Appearance.padding.large
-            readonly property real rowTop: layout.y + body.y + list.y - list.contentY + root.results.slice(0, root.selected).reduce((sum, r) => sum + (r.header ? root.headerPitch : root.rowPitch), 0)
-            readonly property bool roomRight: panel.x + panel.width + peek.gap + peek.width <= root.width - root.inset
-            readonly property bool roomLeft: panel.x - peek.gap - peek.width >= root.inset
+            readonly property bool roomRight: panel.x + panel.width + peek.gap + peek.fullWidth <= root.width - root.inset
+            readonly property bool roomLeft: panel.x - peek.gap - peek.fullWidth >= root.inset
 
             parent: root
             x: peek.roomRight ? panel.x + panel.width + peek.gap : panel.x - peek.gap - peek.width
-            y: panel.y + glidePeek.value
+            y: panel.y + Math.max(root.inset - panel.y, Math.min(0, root.height - root.inset - panel.y - peek.height))
             z: 50
 
             row: root.results[root.selected] ?? null
-            wanted: root.open && !root.quick && root.settled && !root.capture && !root.asking && !root.answerHolds && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
+            colour: root.answerColour || (root.answerHolds || !peek.row?.peekColour ? "" : search.colourEdit?.key === peek.row.key ? search.colourEdit.hex : peek.row.peekColour)
+            growsLeft: !peek.roomRight
+            wanted: root.open && !root.quick && root.settled && !root.capture && !root.asking && (!root.answerHolds || !!root.answerColour) && !assistantCard.holds && (peek.roomRight || peek.roomLeft)
             longestFrame: root.longestFrame
 
-            Follow {
-                id: glidePeek
-
-                target: Math.max(0, Math.min(peek.rowTop + root.rowPitch / 2 - peek.height / 2, root.height - root.inset - panel.y - peek.height))
-                speed: Appearance.animation.trackSpeed
-                epsilon: 0.5
-                longestFrame: root.longestFrame
-            }
+            onColourPicked: (hex, done) => root.takeColour(hex, done)
         }
 
         ActionSheet {

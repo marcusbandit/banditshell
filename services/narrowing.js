@@ -1,9 +1,13 @@
 .pragma library
 
+function byPath(text) {
+    return String(text || "").indexOf("/") >= 0;
+}
+
 function narrows(previous, next) {
     const p = String(previous || "");
     const n = String(next || "");
-    return !!p && n.length >= p.length && n.toLowerCase().indexOf(p.toLowerCase()) >= 0;
+    return !!p && byPath(p) === byPath(n) && n.length >= p.length && n.toLowerCase().indexOf(p.toLowerCase()) >= 0;
 }
 
 function grepNarrows(previous, next) {
@@ -21,7 +25,8 @@ function baseName(path) {
 
 function keepNamed(lines, text) {
     const t = String(text || "").toLowerCase();
-    return (lines || []).filter(line => line && baseName(line).toLowerCase().indexOf(t) >= 0);
+    const whole = byPath(t);
+    return (lines || []).filter(line => line && (whole ? line.replace(/\/$/, "") : baseName(line)).toLowerCase().indexOf(t) >= 0);
 }
 
 function pathOf(hit) {

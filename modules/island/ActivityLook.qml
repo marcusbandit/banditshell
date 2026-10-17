@@ -2,6 +2,7 @@ import QtQuick
 import qs.config
 import qs.modules.media
 import qs.services
+import "../../services/obs.js" as Durations
 
 QtObject {
     id: root
@@ -46,6 +47,16 @@ QtObject {
                 trailing: "icon",
                 trailingIcon: "stop_circle",
                 trailingTone: Appearance.colour.alarm
+            };
+        case "timer":
+            return {
+                icon: a.timer?.paused ? "timer_pause" : "timer",
+                tone: Appearance.colour.accent,
+                text: `${a.timer?.label || "Timer"} ${Durations.duration(Clock.remainingOf(a.timer, Math.max(Clock.tick, Date.now() - Clock.tickMs)))}`,
+                dim: !!a.timer?.paused,
+                trailing: "icon",
+                trailingIcon: a.timer?.paused ? "play_circle" : "pause_circle",
+                trailingTone: Appearance.colour.accent
             };
         case "download":
             return {

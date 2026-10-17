@@ -1,7 +1,7 @@
 {
   "entries": [
     {
-      "id": "2026-10-17-3",
+      "id": "2026-10-17-4",
       "date": "2026-10-17",
       "changes": [
         {
@@ -12,7 +12,7 @@
       ]
     },
     {
-      "id": "2026-10-17-2",
+      "id": "2026-10-17-3",
       "date": "2026-10-17",
       "changes": [
         {
@@ -24,6 +24,77 @@
           "type": "bugs",
           "severity": "minor",
           "text": "Where windows overlap, the screenshot picker snaps to the one on top instead of whichever came first in Hyprland's list. A drag that has started stays a drag even when you move back near where you pressed."
+        }
+      ]
+    },
+    {
+      "id": "2026-10-17-2",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "The launcher opens over a fullscreen window. Only the launcher appears, and closing it leaves the window fullscreen as it was."
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Keys typed right after Super+Space reach the launcher instead of the window behind it. The shell now registers the launcher hotkey itself as banditshell:launcher. If your Hyprland bind runs banditshell panel launcher toggle, it still works, and changing it to bind = $mod, SPACE, global, banditshell:launcher makes it open about a tenth of a second sooner."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Select a colour in the launcher, or type one such as #ff8800, and the card beside the list becomes a colour picker with a hue ring, a saturation and lightness square and sliders. Copy hex, rgb and hsl copy what you picked, and a typed colour is rewritten as you pick."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "The preview card beside the launcher has a clean edge without the grey haze around it, sits level with the top of the launcher, and grows or shrinks smoothly to fit the next preview. Settings › Launcher › Animate preview turns that motion off."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Selecting what is playing shows its cover large in the card. The row says where the sound comes from, such as Spotify or YouTube, offers Switch when more than one player has something loaded, and Left and Right seek 5 seconds right away."
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A video preview that starts when the pointer passes over a YouTube thumbnail no longer takes the now playing row from the music you were listening to."
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "A search with a slash in it, such as hypr/lua, finds files and folders by their path. Files under .config that a dotfiles repository there leaves untracked, such as foot.ini, are found by name and by what is inside them."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Files and folders whose name matches what you type now come above settings in the launcher."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Tailscale devices in the launcher show their status, system and address in lined-up columns, with online devices in the accent colour and offline ones dimmed."
+        },
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "Running timers count down in the island, and tapping one pauses it. Type timers in the launcher to list them with the time left: Enter pauses or resumes, and Cancel removes one."
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Monitor brightness works on monitors whose highest level is not 100, and a monitor that stops answering for a few seconds after a change no longer throws the other monitor's level off. A dragged slider ends on the value you left it at."
+        },
+        {
+          "type": "issues",
+          "severity": "minor",
+          "text": "Emoji and other symbols picked in the launcher arrive in Chromium and Electron apps such as T3 Code. They go in as a paste, and what was on your clipboard is put back right after."
+        },
+        {
+          "type": "config",
+          "severity": "minor",
+          "text": "config.json has a new key, launcher.animatePreview, on by default."
         }
       ]
     },
