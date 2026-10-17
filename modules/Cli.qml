@@ -23,6 +23,8 @@ Scope {
 
     readonly property bool bootsLauncherHotkeys: LauncherHotkeys.possible
 
+    readonly property bool bootsWorkspaceSlide: WorkspaceSlide.ready
+
     function penmapStatus(): string {
         const r = PenMap.region;
         const lock = PenMap.aspectLocked ? "locked" : "free";

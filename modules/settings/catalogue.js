@@ -302,7 +302,9 @@ const PAGES_SOURCE = {
             ] },
             { t: "Motion", rows: [
                 { n: 57, icon: "motion_blur", label: "Pace", k: "anim", kind: "slider", min: 80, max: 500, step: 10, fmt: v => `${v} ms`, cfg: "anim.base", dis: s => s.v("reduceMotion"), kw: "animation speed",
-                    why: "The normal animation length. Fast and slow scale from it." }
+                    why: "The normal animation length. Fast and slow scale from it." },
+                { n: 57, icon: "swipe_vertical", label: "Workspace slide", k: "workspaceSlide", kind: "slider", min: 0, max: 250, step: 10, fmt: v => v > 0 ? `${v} ms` : "off", cfg: "anim.workspaceSlide", dis: s => s.v("reduceMotion"), kw: "workspace switch animation hyprland slide",
+                    why: "How long Hyprland slides the desktop when you change workspace. Off switches at once. The shell sets it live, so your Hyprland config is not edited." }
             ] }
         ]
     },
@@ -778,7 +780,7 @@ const PAGES_SOURCE = {
         status: s => [s.v("reduceMotion") && "less motion", s.v("largerText") && "larger text", s.v("contrast") && "more contrast"].filter(Boolean).join(" · ") || "nothing on",
         groups: [
             { rows: [
-                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "fades instead of slides", kw: "accessibility reduce motion" },
+                { n: 113, icon: "animation", label: "Less motion", k: "reduceMotion", kind: "toggle", cfg: "access.lessMotion", detail: "no motion at all", kw: "accessibility reduce motion" },
                 { n: 113, icon: "format_size", label: "Larger text", k: "largerText", kind: "toggle", cfg: "access.largerText", detail: s => `base ${s.v("fontBase")} becomes ${s.largerBase}`, kw: "accessibility larger text" },
                 { n: 113, icon: "contrast", label: "More contrast", k: "contrast", kind: "toggle", cfg: "access.moreContrast", detail: "faint text gets brighter", kw: "accessibility contrast" }
             ] }
