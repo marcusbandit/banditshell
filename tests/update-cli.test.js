@@ -191,7 +191,7 @@ test("check classifies a reload and lists the incoming notes before anything is 
     const world = makeWorld();
     const before = liveHead(world);
     advance(world, "v2", {
-        "services/Foo.qml": "// foo v2\n",
+        "services/Foo.qml": "// foo version two\n",
         "docs/whats-new.json": whatsNew("v2", "v1")
     });
     const text = run(world, ["update", "check"]);
@@ -289,7 +289,7 @@ test("a reload applies in place: previous recorded, no restart, backup refreshed
     const world = makeWorld();
     const before = liveHead(world);
     const pid = startShell(world);
-    const target = advance(world, "v2", { "services/Foo.qml": "// foo v2\n", "docs/whats-new.json": whatsNew("v2", "v1") });
+    const target = advance(world, "v2", { "services/Foo.qml": "// foo version two\n", "docs/whats-new.json": whatsNew("v2", "v1") });
     const got = applyTo(world, target, ["--json"]);
     assert.strictEqual(got.status, 0, got.err + got.out);
     const phases = got.out.trim().split("\n").map(l => JSON.parse(l).phase);
@@ -303,7 +303,7 @@ test("a reload applies in place: previous recorded, no restart, backup refreshed
     assert.strictEqual(result.fromLabel, "v1");
     assert.strictEqual(result.shown, false);
     assert.strictEqual(fs.existsSync(stateFile(world, "pending")), false);
-    assert.strictEqual(fs.readFileSync(backupFile(world, "services/Foo.qml"), "utf8"), "// foo v2\n");
+    assert.strictEqual(fs.readFileSync(backupFile(world, "services/Foo.qml"), "utf8"), "// foo version two\n");
     assert.strictEqual(fs.existsSync(path.join(world.cache, "banditshell/staged")), false);
 });
 
@@ -325,22 +325,58 @@ test("a restart class update restarts the shell into the new tree and refreshes 
     assert.ok(fs.existsSync(backupFile(world, "services/Thing.qml")));
 });
 
-test("apply with --detach hands the restart to a session of its own and returns at once", () => {
+const progress = world => {
+    try {
+        return readState(world, "progress.log").split("\n").filter(Boolean).map(l => JSON.parse(l));
+    } catch {
+        return [];
+    }
+};
+
+function waitForResult(world) {
+    const deadline = Date.now() + 30000;
+    const finished = () => ["done", "rolledback", "failed"].includes(progress(world).pop()?.phase);
+    while (!finished() && Date.now() < deadline)
+        spawnSync("sleep", ["0.2"]);
+    return JSON.parse(readState(world, "result.json"));
+}
+
+test("apply with --detach runs the whole update in a session of its own and reports through progress.log", () => {
     const world = makeWorld();
     const pid = startShell(world);
     const target = advance(world, "singleton", {
         "services/qmldir": "module qs.services\nsingleton Thing 1.0 Thing.qml\n",
         "services/Thing.qml": "pragma Singleton\n"
     });
-    const got = applyTo(world, target, ["--json", "--detach"]);
+    const got = applyTo(world, target, ["--detach"]);
     assert.strictEqual(got.status, 0, got.err + got.out);
-    const phases = got.out.trim().split("\n").map(l => JSON.parse(l).phase);
-    assert.deepStrictEqual(phases, ["stage", "verify", "apply", "restart"]);
-    const deadline = Date.now() + 30000;
-    while (!fs.existsSync(stateFile(world, "result.json")) && Date.now() < deadline)
-        spawnSync("sleep", ["0.2"]);
-    assert.strictEqual(JSON.parse(readState(world, "result.json")).ok, true);
+    assert.strictEqual(got.out, "");
+    assert.strictEqual(waitForResult(world).ok, true);
+    const lines = progress(world);
+    assert.deepStrictEqual(lines.map(l => l.phase), ["stage", "verify", "apply", "restart", "done"]);
+    assert.ok(lines.every(l => l.at > 1700000000));
     assert.notStrictEqual(pids(world)[0], pid);
+});
+
+test("a reload with --detach reports a health phase and leaves the shell running", () => {
+    const world = makeWorld();
+    const pid = startShell(world);
+    const target = advance(world, "foo", { "services/Foo.qml": "// foo version two\n" });
+    assert.strictEqual(applyTo(world, target, ["--detach"]).status, 0);
+    assert.strictEqual(waitForResult(world).ok, true);
+    assert.deepStrictEqual(progress(world).map(l => l.phase), ["stage", "verify", "apply", "health", "done"]);
+    assert.deepStrictEqual(pids(world), [pid]);
+});
+
+test("a detached update that goes back ends its progress with rolledback", () => {
+    const world = makeWorld();
+    startShell(world);
+    const target = advance(world, "bad", { NOANSWER: "x\n", "services/Foo.qml": "// foo version two\n" });
+    assert.strictEqual(applyTo(world, target, ["--detach"]).status, 0);
+    assert.strictEqual(waitForResult(world).ok, false);
+    const phases = progress(world).map(l => l.phase);
+    assert.strictEqual(phases[phases.length - 1], "rolledback");
+    assert.ok(!phases.includes("done"));
 });
 
 test("apply without --to fetches and takes what the check would have shown", () => {
@@ -437,7 +473,7 @@ test("a reload that breaks the running shell rolls back as well", () => {
     const world = makeWorld();
     const before = liveHead(world);
     startShell(world);
-    const target = advance(world, "throws", { REFERROR: "x\n", "services/Foo.qml": "// foo v2\n" });
+    const target = advance(world, "throws", { REFERROR: "x\n", "services/Foo.qml": "// foo version two\n" });
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 1, got.err + got.out);
     assert.strictEqual(liveHead(world), before);
@@ -449,7 +485,7 @@ test("errors that were already in the log before a reload are not the update's f
     const world = makeWorld();
     startShell(world);
     write(world.live, "REFERROR", "x\n");
-    const target = advance(world, "fine", { "services/Foo.qml": "// foo v2\n" });
+    const target = advance(world, "fine", { "services/Foo.qml": "// foo version two\n" });
     const got = applyTo(world, target);
     assert.strictEqual(got.status, 0, got.err + got.out);
     assert.strictEqual(liveHead(world), target);

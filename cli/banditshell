@@ -1748,7 +1748,7 @@ config_leaf() {
 UPDATE_JSON=0
 UPDATE_APPLYING=0
 U_DIR="" U_REMOTE="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
-A_KIND="" A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
+A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
 
@@ -1785,7 +1785,7 @@ update_fail() {
 
 update_phase() {
     if [ "$UPDATE_JSON" = 1 ]; then
-        printf '{"phase":%s,"text":%s}\n' "$(json_quote "$1")" "$(json_quote "$2")"
+        printf '{"phase":%s,"text":%s,"at":%s}\n' "$(json_quote "$1")" "$(json_quote "$2")" "$(date +%s)"
     else
         printf '%s%s%s\n' "$dim" "$2" "$plain"
     fi
@@ -1904,7 +1904,6 @@ update_load_class() {
     local key value
     while IFS='=' read -r key value; do
         case "$key" in
-        kind) A_KIND="$value" ;;
         restart) A_RESTART="$value" ;;
         helpers) A_HELPERS="$value" ;;
         deps) A_DEPS="$value" ;;
@@ -2081,16 +2080,17 @@ update_after_merge() {
     done
 }
 
-update_write_pending() {
-    local pid mark=0
+update_log_mark() {
+    local pid
     if pid=$(instance_of "$U_DIR"); then
-        mark=$(log_length "$pid" 2>/dev/null || echo 0)
+        log_length "$pid" 2>/dev/null || echo 0
+    else
+        echo 0
     fi
-    printf '%s\n' "kind=$A_KIND" "restart=$A_RESTART" "mark=$mark" >"$UPDATE_STATE/pending"
 }
 
 update_apply() {
-    local to="" detach=0 arg line
+    local to="" detach=0 arg line mark=0
     UPDATE_JSON=0
     while [ $# -gt 0 ]; do
         arg="$1"
@@ -2106,6 +2106,12 @@ update_apply() {
         esac
     done
     UPDATE_APPLYING=1
+    if [ "$detach" = 1 ] && ! dry; then
+        mkdir -p "$UPDATE_STATE"
+        : >"$UPDATE_STATE/progress.log"
+        (cd "$HOME" && setsid -f "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        return 0
+    fi
     update_prepare
     if ! dry; then
         update_lock -n
@@ -2154,7 +2160,7 @@ update_apply() {
     printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
     printf '%s\n' "$U_TARGET" >"$UPDATE_STATE/target"
     rm -f "$UPDATE_STATE/result.json"
-    update_write_pending
+    mark=$(update_log_mark)
     update_set_aside
     update_merge
     update_after_merge
@@ -2163,34 +2169,13 @@ update_apply() {
     for line in "${U_WARNINGS[@]}"; do
         update_phase warning "$line"
     done
-    if [ "$A_RESTART" = 1 ] && [ "$detach" = 1 ] && running; then
-        update_phase restart "Restarting..."
-        (cd "$HOME" && setsid -f "$(readlink -f "${BASH_SOURCE[0]}")" update finish 8>&- </dev/null >>"$UPDATE_STATE/finish.log" 2>&1) || true
-        return 0
-    fi
-    update_finish_work
-}
-
-update_finish() {
-    UPDATE_JSON=0
-    [ "${1:-}" != --json ] || UPDATE_JSON=1
-    UPDATE_APPLYING=1
-    update_prepare
-    dry || update_lock -w 30
-    [ -f "$UPDATE_STATE/pending" ] || update_fail "fatal: no update is waiting to finish"
-    update_finish_work
+    update_finish_work "$mark"
 }
 
 update_finish_work() {
-    local restart=0 mark=0 key value pid=""
-    while IFS='=' read -r key value; do
-        case "$key" in
-        restart) restart="$value" ;;
-        mark) mark="$value" ;;
-        esac
-    done <"$UPDATE_STATE/pending"
+    local mark="$1" restart="$A_RESTART" pid=""
     if ! running; then
-        update_conclude ok "" "Updated to $(update_label "$(cat "$UPDATE_STATE/target")"). The shell is not running; start it with banditshell start."
+        update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")"). The shell is not running; start it with banditshell start."
         return 0
     fi
     if [ "$restart" = 1 ]; then
@@ -2198,7 +2183,7 @@ update_finish_work() {
         stop_shell || true
         ensure_built || true
         if ! launch "$SHELL_DIR"; then
-            update_roll_back "the new version did not start: ${HEALTH_WHY:-it failed to load}"
+            update_roll_back "the new version did not start: ${HEALTH_WHY:-it failed to load}" 1
             return 1
         fi
         refresh_backup || true
@@ -2206,23 +2191,22 @@ update_finish_work() {
     else
         update_phase health "Checking it started..."
         if pid=$(instance_of "$SHELL_DIR") && ! health_check "$pid" "$mark"; then
-            update_roll_back "the new version did not start: $HEALTH_WHY"
+            update_roll_back "the new version did not start: $HEALTH_WHY" 1
             return 1
         fi
         [ -z "$pid" ] || refresh_backup || true
     fi
-    update_conclude ok "" "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
+    update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
 }
 
 update_conclude() {
     dry && return 0
-    update_result true "$2"
-    rm -f "$UPDATE_STATE/pending"
-    update_phase "done" "$3"
+    update_result true ""
+    update_phase "done" "$1"
 }
 
 update_roll_back() {
-    local why="$1" previous target out
+    local why="$1" relaunch="$2" previous target out
     previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
     target=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
     if dry; then
@@ -2231,21 +2215,21 @@ update_roll_back() {
     fi
     if ! out=$(ugit reset --keep --quiet "$previous" 2>&1); then
         update_result false "$why. Going back failed too: $(printf '%s' "$out" | tail -1)"
-        rm -f "$UPDATE_STATE/pending"
         update_phase failed "$why. Going back failed too."
         return 1
     fi
     printf '%s\n' "$target" >"$UPDATE_STATE/skip"
-    update_phase rolledback "Going back..."
     ensure_built || true
-    stop_shell || true
-    if launch "$SHELL_DIR"; then
-        refresh_backup || true
-    else
-        start_backup || true
+    if [ "$relaunch" = 1 ]; then
+        update_phase restart "Going back..."
+        stop_shell || true
+        if launch "$SHELL_DIR"; then
+            refresh_backup || true
+        else
+            start_backup || true
+        fi
     fi
     update_result false "$why"
-    rm -f "$UPDATE_STATE/pending"
     complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
     update_phase rolledback "Went back to $(update_label "$previous")"
 }
@@ -2261,7 +2245,7 @@ update_rollback() {
     [ -n "$previous" ] && [ "$previous" != "$head" ] || update_fail "fatal: there is no earlier version recorded to go back to"
     ugit cat-file -e "$previous^{commit}" 2>/dev/null || update_fail "fatal: the recorded earlier version is no longer in this copy"
     printf '%s\n' "$head" >"$UPDATE_STATE/target"
-    update_roll_back "rolled back by hand"
+    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)"
 }
 
 update_oneline() {
@@ -2332,7 +2316,6 @@ route_update() {
     "") update_status line ;;
     check) update_check "$@" ;;
     apply) update_apply "$@" ;;
-    finish) update_finish "$@" ;;
     rollback) update_rollback "$@" ;;
     status) update_status full "$@" ;;
     *) nope update "$sub" ;;
