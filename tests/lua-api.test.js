@@ -315,3 +315,37 @@ test("the shim does not mention a single action, verb or version of the CLI", ()
     for (const word of ["launcher", "panel", "toggle", "wallpaper", "actions.tsv", "action "])
         assert.ok(!text.includes(word), word);
 });
+
+test("the example bind file loads clean: every bound id exists and nothing notifies", { skip }, () => {
+    const example = path.join(ROOT, "docs/hyprland-binds.example.lua");
+    const r = run(checkout(), `
+        package.loaded["banditshell"] = load_api()
+        dofile(${JSON.stringify(example)})
+        for i = 1, #events.binds do
+            if events.binds[i].kind == "function" then press(i) end
+        end
+        return { count = #events.binds }
+    `);
+    assert.strictEqual(r.ok, true, r.error);
+    assert.deepStrictEqual(r.notifications, []);
+    assert.deepStrictEqual(r.press_errors, []);
+    assert.ok(r.result.count > 30);
+    const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n").filter(l => l && !l.startsWith("#")).map(l => l.split("\t")[0].split("."));
+    const ids = r.exec.map(c => /exec "\$cli" action '([a-z0-9_.]+)'/.exec(c)[1]);
+    assert.ok(ids.length > 30);
+    for (const id of ids) {
+        const parts = id.split(".");
+        assert.ok(rows.some(row => row.length === parts.length && row.every((s, i) => s === "*" || s === parts[i])), id);
+    }
+    const described = r.binds.filter(b => b.opts && b.opts.description);
+    assert.ok(described.length >= 1);
+});
+
+test("the hotkey sheet's scanner reads the example: plain binds, and only the switch pair is dynamic", () => {
+    const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
+    const scanner = new Function(src + "\nreturn { scanLua };")();
+    const binds = scanner.scanLua(fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.lua"), "utf8")).binds;
+    assert.ok(binds.length > 30);
+    assert.deepStrictEqual(binds.filter(b => b.dynamic).map(b => b.chord), ['"switch:on:" .. switch', '"switch:off:" .. switch']);
+    assert.ok(binds.some(b => b.expr === "bs.launcher.toggle" && !b.dynamic));
+});

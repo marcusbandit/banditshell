@@ -45,6 +45,11 @@ hl = {
             events.notifications[#events.notifications + 1] = spec.text
         end,
     },
+    dsp = {
+        exec_cmd = function(command)
+            return { dispatcher = "exec_cmd", command = command }
+        end,
+    },
     bind = function(keys, dispatcher, opts)
         events.binds[#events.binds + 1] = { keys = keys, kind = type(dispatcher), opts = opts, fn = dispatcher }
         return { keys = keys }

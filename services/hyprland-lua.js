@@ -1173,12 +1173,44 @@ const ACTION_WORDS = [
     [/^hl\.dsp\.submap\("reset"\)$/, "Leave the submap"]
 ];
 
-function describeExpr(expr) {
+function actionTable(text) {
+    const rows = [];
+    for (const line of String(text ?? "").split("\n")) {
+        if (!line || line[0] === "#")
+            continue;
+        const [id, , , , description] = line.split("\t");
+        if (id && description)
+            rows.push({ segments: id.split("."), description });
+    }
+    return rows;
+}
+
+function actionDescription(id, rows) {
+    const want = String(id).split(".");
+    let best = null;
+    for (const row of rows ?? []) {
+        if (row.segments.length !== want.length)
+            continue;
+        const stars = row.segments.filter(s => s === "*").length;
+        if (row.segments.every((s, i) => s === "*" || s === want[i]) && (!best || stars < best.stars))
+            best = { stars, description: row.description };
+    }
+    return best ? best.description : "";
+}
+
+function describeExpr(expr, actions) {
     const e = String(expr ?? "").trim();
 
     const exec = /^hl\.dsp\.exec_cmd\("((?:[^"\\]|\\.)*)"\)$/.exec(e);
     if (exec)
         return luaUnescape(exec[1]);
+
+    const named = /^bs\.([a-z0-9_]+(?:\.[a-z0-9_]+)*)$/.exec(e) || /^bs\.action\(\s*"([a-z0-9_]+(?:\.[a-z0-9_]+)*)"/.exec(e);
+    if (named && actions) {
+        const said = actionDescription(named[1], actions);
+        if (said)
+            return said;
+    }
 
     for (const [re, say] of ACTION_WORDS)
         if (re.test(e))

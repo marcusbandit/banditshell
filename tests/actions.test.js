@@ -306,3 +306,16 @@ test("--json turns a status block into an object and leaves exit codes alone", (
     assert.strictEqual(run.code, 0, run.err);
     assert.deepStrictEqual(JSON.parse(run.out), { compositor: "Hyprland", rounding: 12, open: true, count: 3, name: "a b", text: ["loose words"] });
 });
+
+test("the legacy .conf example calls only ids that exist, and no raw banditshell command line", () => {
+    const text = fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.conf"), "utf8");
+    const binds = text.split("\n").filter(l => /^bind[a-z]* = /.test(l) && l.includes("banditshell"));
+    assert.ok(binds.length > 20);
+    const patterns = table.rows.map(r => r.id.split("."));
+    for (const line of binds) {
+        const id = /exec, banditshell action ([a-z0-9_.]+)/.exec(line);
+        assert.ok(id, line);
+        const parts = id[1].split(".");
+        assert.ok(patterns.some(p => p.length === parts.length && p.every((s, i) => s === "*" || s === parts[i])), line);
+    }
+});
