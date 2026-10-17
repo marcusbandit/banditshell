@@ -13,7 +13,7 @@
     "optional": ["clipboard", "capture", "updates", "files"]
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Activities"],
     "ipc": ["island", "inspect", "activity"]
   },
   "config": {

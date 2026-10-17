@@ -34,7 +34,9 @@ Scope {
     CoreIpc {}
     DisplayIpc {}
     FilesIpc {}
-    HostIpc {}
+    HostIpc {
+        picker: root.picker
+    }
     HotkeysIpc {}
     InspectIpc {
         inspector: root.inspector

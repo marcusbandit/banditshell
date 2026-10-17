@@ -126,6 +126,9 @@
     "status(): string",
     "toggle(): string"
   ],
+  "panels": [
+    "closeAll(): string"
+  ],
   "penmap": [
     "aspect(): string",
     "cancel(): string",

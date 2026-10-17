@@ -23,6 +23,7 @@
     "scripts": [
       "scripts/bash-completion.sh",
       "scripts/completion-rules.sh",
+      "scripts/redact-config.js",
       "scripts/zsh-completion.sh"
     ],
     "tests": [
@@ -44,9 +45,10 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Shell"],
     "ipc": [
-      "border"
+      "border",
+      "panels"
     ]
   },
   "config": {

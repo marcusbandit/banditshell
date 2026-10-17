@@ -176,6 +176,10 @@
 #                                shim in your Hyprland config, the checkout
 #                                pointer, every action id, your binds and the
 #                                banditshell on your PATH; exits 1 on a failure
+#   banditshell doctor --report  for a bug report: the version, your config with
+#                                tokens, keys, passwords and cookies left out, the
+#                                last 40 log lines and whether the module and rules
+#                                checks pass
 #   banditshell doctor binds     the binds still in an old form, and where
 #   banditshell doctor binds rewrite
 #                                rewrite them, a dated .bak beside each file
@@ -201,6 +205,13 @@
 #                                the newest what's-new id, the commit and branch,
 #                                the checkout, the API number and the Quickshell
 #                                and Hyprland versions
+#
+# events                         follow the shell without polling
+#   banditshell events [--filter <names>]
+#                                one JSON line per event while it runs: workspace,
+#                                panel, mode, quiet, media, activity, notification
+#                                and update. --filter takes names or groups, like
+#                                panel,media.track; docs/events.md has every field
 #
 # completions                    tab completion for zsh and bash
 #   banditshell completions [install|status|remove|print] [zsh|bash]
@@ -1093,6 +1104,12 @@ close_panel() {
 close_everything() {
     local -a call
     local name closed=0
+    if ipc_quiet panels closeAll >/dev/null; then
+        ipc_quiet files close >/dev/null || true
+        ipc_quiet penmap cancel >/dev/null || true
+        echo "closed everything"
+        return 0
+    fi
     for name in menu picker penmap "${SURFACES[@]}"; do
         close_call "$name"
         if ipc_quiet "${call[@]}" >/dev/null; then
@@ -1542,6 +1559,12 @@ function list(name, items, count,   i, part) {
     }
     rest = line
     pairs = 0
+    if (match(rest, /^[a-z]+ [A-Za-z_][A-Za-z0-9_.-]*=/)) {
+        pairs++
+        pendingKey[pairs] = "state"
+        pendingVal[pairs] = substr(rest, 1, index(rest, " ") - 1)
+        rest = substr(rest, index(rest, " ") + 1)
+    }
     while (rest != "" && match(rest, /^[A-Za-z_][A-Za-z0-9_.-]*=("[^"]*"|[^ ]*)/)) {
         token = substr(rest, 1, RLENGTH)
         key = substr(token, 1, index(token, "=") - 1)
@@ -1559,7 +1582,7 @@ function list(name, items, count,   i, part) {
             keep(pendingKey[i], pendingVal[i])
         next
     }
-    if (match(line, / +/) && RSTART > 1 && RLENGTH >= 2) {
+    if (match(line, /  +/) && RSTART > 1) {
         label = substr(line, 1, RSTART - 1)
         if (label ~ /^[A-Za-z][A-Za-z0-9_. -]*$/ && length(label) <= 24) {
             key = tolower(label)
@@ -1587,6 +1610,7 @@ as_json() {
     case "$out" in
     "") ;;
     "{"* | "["*) printf '%s\n' "$out" ;;
+    open | closed) printf '{"state":"%s"}\n' "$out" ;;
     *) printf '%s\n' "$out" | awk "$JSON_TEXT_AWK" ;;
     esac
     exit "$status"
@@ -1998,6 +2022,46 @@ doctor_api() {
         report ok path "$found"
     fi
     return "$failed"
+}
+
+redact_config() {
+    if command -v node >/dev/null 2>&1 && [ -f "$SHELL_DIR/scripts/redact-config.js" ]; then
+        node "$SHELL_DIR/scripts/redact-config.js" "$CONFIG_FILE"
+    elif [ -r "$CONFIG_FILE" ]; then
+        echo "(node is missing, so every value under a secret-looking name is hidden by a plain filter)"
+        sed -E 's/("[^"]*([Tt]oken|[Kk]ey|[Ss]ecret|[Pp]assword|[Cc]ookie)[^"]*"[[:space:]]*:[[:space:]]*)("[^"]*"|[^,}[:space:]]+)/\1"[removed]"/' "$CONFIG_FILE"
+    else
+        echo "no config file"
+    fi
+}
+
+mask_log() {
+    sed -E 's/((token|secret|password|passwd|cookie|api[_-]?key)[=: ]+)[^[:space:]"]+/\1[removed]/Ig'
+}
+
+check_summary() {
+    local name="$1" script="$2" last
+    if ! command -v node >/dev/null 2>&1 || [ ! -f "$SHELL_DIR/scripts/$script" ]; then
+        echo "$name: not run (node or the script is missing)"
+        return 0
+    fi
+    last=$(cd "$SHELL_DIR" && node "scripts/$script" 2>&1 | tail -n 1) || true
+    echo "$name: ${last:-no answer}"
+}
+
+doctor_report() {
+    echo "## version"
+    route_version
+    echo
+    echo "## config (tokens, keys, passwords and cookies left out)"
+    redact_config
+    echo
+    echo "## log (last 40 lines)"
+    qs -p "$(live_dir || echo "$SHELL_DIR")" log 2>/dev/null | tail -n 40 | mask_log || true
+    echo
+    echo "## checks"
+    check_summary modules check-modules.js
+    check_summary rules lint-rules.js
 }
 
 doctor() {
@@ -3006,6 +3070,46 @@ update_last_result() {
     fi
 }
 
+route_events() {
+    local filter="" file name pattern="" words line follower_pid
+    local -a names
+    while [ $# -gt 0 ]; do
+        case "$1" in
+        --json) ;;
+        --filter)
+            [ $# -ge 2 ] || say_usage "events [--filter <names>]"
+            filter="$2"
+            shift
+            ;;
+        --filter=*) filter="${1#--filter=}" ;;
+        *) nope events "$1" ;;
+        esac
+        shift
+    done
+    if [ -n "$filter" ]; then
+        IFS=, read -ra names <<<"$filter"
+        for name in "${names[@]}"; do
+            [[ $name =~ ^[a-z]+(\.[a-z]+)?$ ]] || { complain "events --filter wants names like panel or media.track, not $name"; exit 2; }
+            pattern="${pattern:+$pattern|}${name//./\\.}"
+        done
+    fi
+    running || { complain "not running (try: banditshell start)"; exit 3; }
+    file="$RUN_DIR/events.jsonl"
+    mkdir -p "$RUN_DIR" 2>/dev/null || true
+    [ -e "$file" ] || : >"$file" 2>/dev/null || true
+    if [ -z "$pattern" ]; then
+        exec tail -n 0 -F "$file" 2>/dev/null
+    fi
+    words="\"event\":\"($pattern)(\\.[a-z]+)?\""
+    coproc follower { exec tail -n 0 -F "$file" 2>/dev/null; }
+    # shellcheck disable=SC2154
+    follower_pid="$follower_PID"
+    trap 'kill "$follower_pid" 2>/dev/null; exit 0' EXIT TERM INT HUP PIPE
+    while IFS= read -r line <&"${follower[0]}"; do
+        if [[ $line =~ $words ]]; then printf '%s\n' "$line"; fi
+    done
+}
+
 route_update() {
     local sub="${1:-}"
     if [ $# -gt 0 ]; then shift; fi
@@ -3053,7 +3157,7 @@ migrate_or_fail() {
     exit 2
 }
 
-if [ $# -gt 0 ] && [ "$1" != update ] && [ "${!#}" = --json ] && [ -z "${BANDITSHELL_JSON:-}" ]; then
+if [ $# -gt 0 ] && [ "$1" != update ] && [ "$1" != events ] && [ "${!#}" = --json ] && [ -z "${BANDITSHELL_JSON:-}" ]; then
     as_json "${@:1:$#-1}"
 fi
 
@@ -3130,6 +3234,7 @@ log)
 doctor)
     case "${1:-}" in
     "") doctor ;;
+    --report) [ $# -eq 1 ] || nope doctor "--report $2"; doctor_report ;;
     api) doctor_api ;;
     binds)
         case "${2:-}" in
@@ -3154,6 +3259,9 @@ api)
     ;;
 version)
     route_version
+    ;;
+events)
+    route_events "$@"
     ;;
 help | -h | --help)
     if [ $# -gt 0 ]; then

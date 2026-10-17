@@ -927,6 +927,14 @@ banditshell/
 │   │                            ordering, expiry, outcomes, the timer and
 │   │                            alarm items, the level moments. No QML,
 │   │                            tested in node
+│   ├── Events.qml               the event stream: watches the workspace, panels,
+│   │                            mode, quiet, media, activities, notifications and
+│   │                            update state, and appends one JSON line per change
+│   │                            to $XDG_RUNTIME_DIR/banditshell/events.jsonl for
+│   │                            `banditshell events` (docs/events.md)
+│   ├── events.js                the stream's rules: snapshot, diff into events,
+│   │                            filter match, the rotating writer script. No QML,
+│   │                            tested in node
 │   ├── Levels.qml               volume, mute, brightness and mic mute as a
 │   │                            second in the island, unless an open surface
 │   │                            already shows that level
@@ -1440,6 +1448,9 @@ banditshell/
 │   │                            JS the engine lacks, qmldir drift), counted per rule and
 │   │                            file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
+│   ├── redact-config.js         config.json with every key named like a token, key,
+│   │                            secret, password or cookie left out (node, no
+│   │                            dependencies; `banditshell doctor --report`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes
@@ -1730,7 +1741,8 @@ banditshell                        the commands, one line each
 banditshell <command> help         one command's page
 banditshell panel                  every panel and menu by name
 banditshell panel <name> [toggle|open|close|status] [screen]
-banditshell panel close            every panel away - the rescue
+banditshell panel close            every panel away - the rescue; one `panels closeAll`
+                                   call, the old per-panel loop when the shell lacks it
 banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
                                    open [page]|page <page>; files open
                                    [dir]; keyboard dock|float|page <layer>;
@@ -1752,10 +1764,11 @@ banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
                    |probe [lid]|pen [edit|commit|cancel|aspect|centre|follow
                    |area <x> <y> <w> <h>]]
 banditshell config get <key>|set <key> <value>|theme [<name>|list]
-banditshell start|stop|restart|status|log|doctor [api|binds [rewrite]]
+banditshell start|stop|restart|status|log|doctor [--report|api|binds [rewrite]]
 banditshell action <id> [args...]  a stable id, resolved when it runs (see below)
 banditshell api [list [pattern]|show <id>|check]   the table of ids
 banditshell version                which build is installed
+banditshell events [--filter <names>]   one JSON line per event (docs/events.md)
 banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
                 |check [island [dir]]|inspect island [screen]|inspect close

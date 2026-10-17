@@ -955,6 +955,11 @@ Singleton {
                 bindsDeclinedGeneration: 0
             },
 
+            events: {
+
+                notificationText: false
+            },
+
             updates: {
 
                 branch: "main",

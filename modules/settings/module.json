@@ -13,7 +13,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Modes"],
     "ipc": ["settings", "mode"]
   },
   "config": {
