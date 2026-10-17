@@ -4,6 +4,7 @@ import QtQuick
 import Quickshell
 import qs.config
 import qs.components
+import qs.modules.notifications
 import qs.services
 
 Item {
@@ -16,6 +17,7 @@ Item {
     property real maxHeight: 100000
 
     signal dismissed(var entry)
+    signal kept(var entry)
     signal advanced(bool forward, int count, var previous)
 
     readonly property real shuffleSpeed: Appearance.animation.revealSpeed * 0.45
@@ -326,13 +328,14 @@ Item {
                     target: slot.leaving ? 1 : 0
                 }
 
-                NotificationAlert {
+                NotificationCard {
                     id: card
 
                     width: slot.width
                     entry: slot.modelData
 
-                    onDismissed: root.dismissed(slot.modelData)
+                    onReleased: root.dismissed(slot.modelData)
+                    onKept: root.kept(slot.modelData)
                     onScrolled: by => root.scrollBy(by)
                     onScrollEnded: speed => root.scrollGlide(speed)
                 }

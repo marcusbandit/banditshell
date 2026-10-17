@@ -15,6 +15,9 @@ Item {
     readonly property var waiting: Notifications.history.filter(entry => !entry.leaving)
     readonly property int total: root.waiting.length
 
+    readonly property int readableMax: 2
+    readonly property var readable: root.waiting.filter(entry => Notifications.ruleFor(entry).lock).slice(0, root.readableMax)
+
     readonly property int deepest: 3
 
     readonly property var apps: {

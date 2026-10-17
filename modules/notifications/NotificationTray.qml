@@ -92,11 +92,63 @@ Item {
 
     readonly property bool any: root.items.length > 0 || root.expanded
 
-    onExpandedChanged: {
+    readonly property var groups: Notifications.threadsOf(root.items)
+
+    property var opened: []
+
+    function toggleThread(id: string): void {
+        root.opened = root.opened.includes(id) ? root.opened.filter(i => i !== id) : [...root.opened, id];
+    }
+
+    function letGo(entry: var): void {
         if (root.expanded)
-            Notifications.pause(root);
+            Notifications.forget(entry);
         else
+            Notifications.dismiss(entry);
+    }
+
+    onItemsChanged: if (root.expanded)
+        Notifications.markSeen()
+
+    component Slot: Item {
+        id: slot
+
+        required property var entry
+        property int count: 1
+        property bool countOpen: false
+        property string density: "alert"
+
+        signal countTapped
+        signal letGo(var gone)
+
+        width: parent.width
+        height: card.height + Appearance.padding.normal * card.open
+
+        NotificationCard {
+            id: card
+
+            width: slot.width
+            entry: slot.entry
+            density: slot.density
+            count: slot.count
+            countOpen: slot.countOpen
+            collapses: true
+            keepLeaves: false
+
+            onCountTapped: slot.countTapped()
+            onReleased: slot.letGo(slot.entry)
+            onKept: if (slot.entry)
+                slot.entry.pinned = !slot.entry.pinned
+        }
+    }
+
+    onExpandedChanged: {
+        if (root.expanded) {
+            Notifications.pause(root);
+            Notifications.markSeen();
+        } else {
             Notifications.resume(root);
+        }
     }
 
     Component.onDestruction: Notifications.resume(root)
@@ -295,21 +347,7 @@ Item {
                         id: header
 
                         width: parent.width
-                        implicitHeight: Math.max(title.implicitHeight, clearAll.implicitHeight)
-
-                        StyledText {
-                            id: title
-
-                            anchors.left: parent.left
-                            anchors.right: clearAll.visible ? clearAll.left : parent.right
-                            anchors.rightMargin: Appearance.padding.normal
-                            anchors.verticalCenter: parent.verticalCenter
-
-                            text: Notifications.count > 0 ? `${Notifications.count} unread` : "Nothing unread"
-                            font.pixelSize: Appearance.font.size.small
-                            color: Appearance.colour.textFaint
-                            elide: Text.ElideRight
-                        }
+                        implicitHeight: clearAll.implicitHeight
 
                         Button {
                             id: clearAll
@@ -328,26 +366,49 @@ Item {
                 Repeater {
 
                     model: ScriptModel {
-                        values: root.items
+                        values: root.groups
+                        objectProp: "id"
                     }
 
-                    delegate: Item {
-                        id: row
+                    delegate: Column {
+                        id: group
 
                         required property var modelData
 
+                        readonly property bool open: root.opened.includes(group.modelData.id)
+                        readonly property string density: root.expanded ? "page" : "alert"
+
+                        function letGo(entry: var, whole: bool): void {
+                            const all = whole ? group.modelData.entries.slice() : [entry];
+                            for (const e of all)
+                                root.letGo(e);
+                        }
+
                         width: list.width
-                        height: card.height + Appearance.padding.normal * card.open
 
-                        NotificationCard {
-                            id: card
+                        Slot {
+                            entry: group.modelData.newest
+                            count: group.modelData.entries.length
+                            countOpen: group.open
+                            density: group.density
 
-                            entry: row.modelData
-                            fullWidth: row.width
+                            onCountTapped: root.toggleThread(group.modelData.id)
+                            onLetGo: gone => group.letGo(gone, !group.open)
+                        }
 
-                            roomy: root.expanded
+                        Repeater {
+                            model: ScriptModel {
+                                values: group.open ? group.modelData.entries.slice(1) : []
+                            }
 
-                            onDismissed: root.expanded ? Notifications.forget(row.modelData) : Notifications.dismiss(row.modelData)
+                            delegate: Slot {
+                                required property var modelData
+
+                                entry: modelData
+                                density: group.density
+
+                                onLetGo: gone => group.letGo(gone, false)
+                            }
                         }
                     }
                 }

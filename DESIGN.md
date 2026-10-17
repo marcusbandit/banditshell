@@ -704,7 +704,11 @@ banditshell/
 │   ├── Notifications.qml        the notification DAEMON (a server, not a reader);
 │   │                            also where quiet lives: a notification always
 │   │                            lands in history, and quiet, the night window
-│   │                            and the sender's rule decide popup and sound
+│   │                            and the sender's rule decide popup and sound.
+│   │                            History is saved to the state directory and
+│   │                            comes back as dead entries (no buttons, no
+│   │                            reply); notification-store.js and
+│   │                            notification-search.js hold the pure parts
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
 │   ├── AlertSounds.qml          plays the three alert sounds (notification, low
@@ -988,11 +992,6 @@ banditshell/
 │   │   ├── AlertDeck.qml        the notifications that are up: the newest in
 │   │   │                        front with the rest peeking, spread into a list
 │   │   │                        on hover and inside the overview
-│   │   ├── NotificationAlert.qml a notification as the island tells it: tap for
-│   │   │                        its default action, flick it sideways to let
-│   │   │                        it go, drag it up or down to scroll the list,
-│   │   │                        its actions always there, a close mark on hover
-│   │   ├── NotificationMark.qml its picture, else its app's mark, else a bell
 │   │   ├── IslandIpc.qml        the island's `qs ipc` handler; InspectIpc.qml
 │   │   │                        holds the inspector's
 │   │   ├── IslandInspector.qml  `banditshell dev inspect island`: a panel that
@@ -1267,7 +1266,19 @@ banditshell/
 │   │   └── scenes/              the preview in the pane, one per page. Each loop is
 │   │                            one clock over keyframes copied from the mockup's
 │   │                            CSS (keyframes.js)
-│   ├── notifications/           discrete cards; NOT part of the blob field
+│   ├── notifications/           discrete cards; the tray is part of the blob field
+│   │   ├── NotificationCard.qml the one card, in four densities: alert (the
+│   │   │                        island), page (the tray's history, with the
+│   │   │                        reply field), row and line (the lock screen)
+│   │   ├── NotificationSwipe.qml the gesture under every card: tap, hold to
+│   │   │                        pin, flick right to let go, flick left to keep,
+│   │   │                        drag up or down to scroll, touchpad scroll
+│   │   ├── NotificationMark.qml its picture with the app's mark as a corner
+│   │   │                        badge, else the app's mark, else a bell
+│   │   ├── NotificationTray.qml the corner panel: popups and history, grouped
+│   │   │                        by thread
+│   │   └── NotificationCopier.qml keeps a copy of a borrowed or temporary
+│   │                            picture so history outlives the sender
 │   ├── menu/
 │   │   ├── Menus.qml            which menu is open, where it sits, when it closes
 │   │   ├── MenuPanel.qml        one panel: geometry and contents, NOT a shape

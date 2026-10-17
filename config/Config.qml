@@ -538,6 +538,8 @@ Singleton {
 
                 letAlarms: true,
 
+                criticalThrough: true,
+
                 nightly: false,
 
                 nightFrom: "22:00",

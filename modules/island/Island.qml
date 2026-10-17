@@ -9,6 +9,7 @@ import qs.config
 import qs.components
 import qs.components.blob
 import qs.modules.media
+import qs.modules.notifications
 import qs.services
 
 Item {
@@ -98,11 +99,17 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
-    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.offStage ? Notices.settled : []), ...(Notifications.count > 0 ? [
+    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.offStage ? Notices.settled : []), ...(Notifications.quieted ? [
+                {
+                    key: "quiet",
+                    kind: "quiet",
+                    text: Notifications.quietLine
+                }
+            ] : []), ...(Notifications.unread > 0 ? [
                 {
                     key: "notifications",
                     kind: "notifications",
-                    count: Notifications.count
+                    count: Notifications.unread
                 }
             ] : [])]
 
@@ -645,8 +652,12 @@ Item {
     onAlertingChanged: if (!root.alerting && root.hovering && !root.expanded && !root.pulling)
         root.spent = true
 
-    onExpandedChanged: if (root.expanded)
-        Media.sync()
+    onExpandedChanged: {
+        if (root.expanded)
+            Media.sync();
+        else
+            Notifications.markSeen();
+    }
 
     onHoveringChanged: {
         if (!root.hovering && !root.reforming)
@@ -1079,7 +1090,7 @@ Item {
                         clip: true
                         visible: layer.ghostness > 0.01
 
-                        NotificationAlert {
+                        NotificationCard {
                             y: -uncovered.y
                             width: root.largeWidth
                             entry: root.ghost
@@ -1261,6 +1272,7 @@ Item {
                     enabled: root.deckRest || root.openness > 0
 
                     onDismissed: entry => Notifications.dismiss(entry)
+                    onKept: entry => Notifications.expire(entry)
                     onAdvanced: (forward, count, previous) => {
                         if (root.fanning || root.openness > 0)
                             return;

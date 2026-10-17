@@ -90,3 +90,11 @@ function parseEnds(text) {
     ]);
     return words.get(want) ?? "";
 }
+
+function quietLine(state, at) {
+    if (state.quiet && (!(state.until > 0) || at < state.until))
+        return state.until > 0 ? `Quiet until ${clockTime(state.until)}` : "Quiet until you turn it off";
+    if (state.nightly && nightlyActive(at, state.from, state.to))
+        return `Quiet until ${state.to}`;
+    return "";
+}
