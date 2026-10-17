@@ -87,7 +87,7 @@ Item {
         return Qt.hsla(turn, accent.hslSaturation * 0.62, Math.max(0.62, accent.hslLightness), 1);
     }
 
-    Icon {
+    InkIcon {
         id: glyph
 
         anchors.centerIn: parent

@@ -168,7 +168,7 @@ Item {
                     color: root.rendered ? Appearance.colour.fillStrong : togglepress.containsMouse ? Appearance.colour.fill : "transparent"
                 }
 
-                Icon {
+                InkIcon {
                     id: toggleGlyph
 
                     anchors.centerIn: parent
@@ -272,7 +272,7 @@ Item {
                     strokeWidth: Appearance.font.stem
                 }
 
-                Icon {
+                InkIcon {
                     id: playGlyph
 
                     anchors.centerIn: parent

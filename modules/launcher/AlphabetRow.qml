@@ -182,7 +182,7 @@ Item {
 
         visible: marks.reach > 0.001
 
-        Icon {
+        InkIcon {
             id: leadMark
 
             anchors.left: parent.left
@@ -203,7 +203,7 @@ Item {
             }
         }
 
-        Icon {
+        InkIcon {
             id: trailMark
 
             anchors.right: parent.right
@@ -241,7 +241,7 @@ Item {
             }
         }
 
-        StyledText {
+        InkText {
             id: heading
 
             anchors.left: parent.left
@@ -261,7 +261,7 @@ Item {
             }
         }
 
-        Icon {
+        InkIcon {
             id: headingGlyph
 
             anchors.left: parent.left
@@ -281,7 +281,7 @@ Item {
             }
         }
 
-        StyledText {
+        InkText {
             id: headingLabel
 
             anchors.left: parent.left
@@ -381,7 +381,7 @@ Item {
                 }
             }
 
-            Icon {
+            InkIcon {
                 id: fallbackGlyph
 
                 anchors.centerIn: parent
@@ -406,7 +406,7 @@ Item {
                 visible: root.unread > 0
                 color: Appearance.colour.accent
 
-                StyledText {
+                InkText {
                     id: unreadCount
 
                     anchors.centerIn: parent

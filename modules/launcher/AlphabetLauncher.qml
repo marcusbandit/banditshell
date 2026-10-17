@@ -631,7 +631,7 @@ LauncherConcept {
                         width: rail.width
                         height: slot
 
-                        StyledText {
+                        InkText {
                             id: letter
 
                             anchors.centerIn: parent
@@ -643,7 +643,7 @@ LauncherConcept {
                             color: mark.tint
                         }
 
-                        Icon {
+                        InkIcon {
                             id: markGlyph
 
                             anchors.centerIn: parent
@@ -673,7 +673,7 @@ LauncherConcept {
                 opacity: bow.value
                 color: Appearance.colour.accent
 
-                StyledText {
+                InkText {
                     id: discLetter
 
                     anchors.centerIn: parent
@@ -685,7 +685,7 @@ LauncherConcept {
                     color: Appearance.colour.accentText
                 }
 
-                Icon {
+                InkIcon {
                     id: discGlyph
 
                     anchors.centerIn: parent

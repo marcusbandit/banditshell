@@ -35,7 +35,7 @@ Column {
         }
     }
 
-    StyledText {
+    InkText {
         width: parent.width
         alignInk: true
         text: Update.headline
@@ -55,14 +55,14 @@ Column {
             onClicked: Update.check()
         }
 
-        StyledText {
+        InkText {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
             text: "|"
             color: Appearance.colour.textGhost
         }
 
-        StyledText {
+        InkText {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
             text: Update.checkedAt.getTime() === 0 ? "Never checked" : `Last checked ${Update.ago(Update.checkedAt)}`
@@ -202,7 +202,7 @@ Column {
         visible: CliMigration.stale
         spacing: Appearance.padding.small
 
-        StyledText {
+        InkText {
             width: parent.width
             alignInk: true
             text: "Your keybinds are deprecated"
@@ -224,7 +224,7 @@ Column {
             }
         }
 
-        StyledText {
+        InkText {
             width: parent.width
             visible: root.declineConfirm
             alignInk: true

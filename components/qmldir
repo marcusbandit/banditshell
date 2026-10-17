@@ -20,8 +20,11 @@ FoldedText 1.0 FoldedText.qml
 Follow 1.0 Follow.qml
 Gauge 1.0 Gauge.qml
 GlideList 1.0 GlideList.qml
+singleton IconAudit 1.0 IconAudit.qml
 Icon 1.0 Icon.qml
 ImagePalette 1.0 ImagePalette.qml
+InkIcon 1.0 InkIcon.qml
+InkText 1.0 InkText.qml
 MenuLayer 1.0 MenuLayer.qml
 ProgressRing 1.0 ProgressRing.qml
 Pull 1.0 Pull.qml
