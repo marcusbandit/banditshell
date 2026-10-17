@@ -325,6 +325,14 @@ Singleton {
 
                 folders: ({}),
 
+                shell: {
+                    keys: true,
+                    tray: true,
+                    workspaces: true,
+                    actions: true,
+                    recent: true
+                },
+
                 devOps: {
                     ssh: true,
                     ports: true,
