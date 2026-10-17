@@ -755,8 +755,15 @@ banditshell/
 │   │                            and the sender's rule decide popup and sound.
 │   │                            History is saved to the state directory and
 │   │                            comes back as dead entries (no buttons, no
-│   │                            reply); notification-store.js and
-│   │                            notification-search.js hold the pure parts
+│   │                            reply); notification-store.js,
+│   │                            notification-search.js (the launcher's
+│   │                            query, threads, ages) and
+│   │                            notification-timing.js (mute and snooze
+│   │                            spans) hold the pure parts. A rule can mute
+│   │                            an app for a while (muteUntil); snooze puts
+│   │                            a popup away and brings it back; an entry
+│   │                            that arrives while quiet is marked withheld,
+│   │                            and the end of quiet tells Notices how many
 │   ├── AppNotifications.qml     the index over it: which application each one
 │   │                            came from, so a launcher row can carry its own
 │   ├── AlertSounds.qml          plays the three alert sounds (notification, low
@@ -1004,7 +1011,7 @@ banditshell/
 │   │   │                        status and its own verbs
 │   │   ├── ScreenPanelIpc.qml   the same, with a screen argument on toggle and open
 │   │   ├── PinnedPanelIpc.qml   the same for panels that are pinned rather than
-│   │   │                        shown (island, notifications)
+│   │   │                        shown (island)
 │   │   └── PanelWindows.qml     what those bases share, and what any handler asks
 │   │                            of the shell windows: the window on a screen,
 │   │                            toggle, open, close, pin, and the screen a verb
@@ -1145,7 +1152,11 @@ banditshell/
 │   │   │                        the launcher runs any command and completes
 │   │   │                        the next word the way the terminal's Tab does
 │   │   ├── sources/             one file per newer kind of result, plugged into
-│   │   │                        LauncherSearch's `sources` list (section 19)
+│   │   │                        LauncherSearch's `sources` list (section 19).
+│   │   │                        NotificationSource.qml is the notification
+│   │   │                        history: `notifications`, `unread`, `held`,
+│   │   │                        `from <app>` and free text, one row per
+│   │   │                        thread, with the card as its Peek
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
@@ -1316,17 +1327,21 @@ banditshell/
 │   │   └── scenes/              the preview in the pane, one per page. Each loop is
 │   │                            one clock over keyframes copied from the mockup's
 │   │                            CSS (keyframes.js)
-│   ├── notifications/           discrete cards; the tray is part of the blob field
+│   ├── notifications/           discrete cards; none of it is part of the blob
+│   │   │                        field, and the history is not here: it is a
+│   │   │                        launcher mode (NotificationSource)
 │   │   ├── NotificationCard.qml the one card, in four densities: alert (the
-│   │   │                        island), page (the tray's history, with the
-│   │   │                        reply field), row and line (the lock screen)
+│   │   │                        island and the corner), page (the launcher's
+│   │   │                        Peek, with the reply field), row and line (the
+│   │   │                        lock screen)
 │   │   ├── NotificationSwipe.qml the gesture under every card: tap, hold to
 │   │   │                        pin, flick right to let go, flick left to keep,
 │   │   │                        drag up or down to scroll, touchpad scroll
 │   │   ├── NotificationMark.qml its picture with the app's mark as a corner
 │   │   │                        badge, else the app's mark, else a bell
-│   │   ├── NotificationTray.qml the corner panel: popups and history, grouped
-│   │   │                        by thread
+│   │   ├── NotificationCorner.qml  the opt-in host for placement `corner`: live
+│   │   │                        popups at the top right on a plain plate, no
+│   │   │                        history and no arms. It also runs the copier
 │   │   └── NotificationCopier.qml keeps a copy of a borrowed or temporary
 │   │                            picture so history outlives the sender
 │   ├── menu/
@@ -1338,8 +1353,6 @@ banditshell/
 │   │       ├── CalendarMenu.qml a month; the clock's date is its opener
 │       ├── CalculatorMenu.qml the keypad. A menu BODY, so the panel above and
 │       │                    a menu are one object; the answer stays on the line
-│   │       ├── MediaMenu.qml    SystemMenu.qml    parked for the dashboard,
-│   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
 │   │       └── UpdateMenu.qml   the update's menu: the one-line summary of
@@ -1736,7 +1749,8 @@ banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
                                    [dir]; keyboard dock|float|page <layer>;
                                    clipboard list|use|pin|remove <n>|clear;
                                    calculator full|compact|answer <expression>;
-                                   notifications clear
+                                   launcher open [<query>]; notifications
+                                   clear|open|toggle|close
 banditshell output [speakers|headphones|toggle|list]|assign <role> <device>
 banditshell screen [brightness [<pct>|+n|-n]|temperature [<kelvin>|off]
                    |border [on|off|toggle]|sidebar [on|off|toggle] [screen|all]
@@ -1748,6 +1762,9 @@ banditshell clock [timer start <duration> [label]|pause|resume|toggle|cancel
                   [handle]]|[alarm add <time> [--days ..] [--label ..] [--run
                   ..|--ask ..]|list|snooze|stop|enable|disable|remove <handle>]
                   |[zone list|find|add|remove <place>]
+banditshell notifications [list [unread|held] [<app>]|open [<query>]|act
+                          |dismiss [front|all]|reply <text>|snooze [<span>]
+                          |mute <app> [hour|day|never]|unmute <app>|clear]
 banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
                    |probe [lid]|pen [edit|commit|cancel|aspect|centre|follow
                    |area <x> <y> <w> <h>]]
@@ -1878,8 +1895,10 @@ anything, so an unpinned menu opened from here would be taken away by the grace 
 of a second after the command printed `open`.
 
 The panels each follow a rule already stated elsewhere rather than inventing one.
-`notifications` and `notch` write the **pin** and nothing else: presence on both is a derived
-union (section 15), so a keybind and a hand land in the same state and leave by the same doors.
+`notch` writes the **pin** and nothing else: presence is a derived union (section 15), so a
+keybind and a hand land in the same state and leave by the same doors. `notifications` has no
+pin any more: its history is the launcher on `notifications `, so `open` and `toggle` open the
+launcher there and `close` closes it when it is showing a notification query.
 `settings` drives the service rather than any window, because the panel lives in each screen's
 shell window and the service says which one shows it; `open` takes an optional page or any
 setting's key, and `page` switches it without touching presence, so a keybind can walk the
@@ -2656,9 +2675,8 @@ it whenever the live object changes, keeping the handle itself only for talking
 back to the sender, so a notification whose sender dies simply stops updating.
 **A sender's death is not the shell's amnesia.**
 
-**Still placeholder: nothing.** Every menu in the sidebar is live. Notifications
-and the launcher (DESIGN.md sections 4 and 5) are the remaining capstones and
-have not been started.
+**Still placeholder: nothing.** Every menu in the sidebar is live, and the
+notification daemon and the launcher (DESIGN.md sections 4 and 5) are built.
 
 ---
 
@@ -2807,7 +2825,10 @@ next begins.
 **Peers have to be individually legible, and that is worth more than consistency
 with a technique.** They are discrete cards now, each with its own background, in
 a plain spaced stack, which is what caelestia does and what every other shell
-does, for this reason.
+does, for this reason. The island's deck and the optional corner host both draw
+them that way, and the corner host sits on a plate of its own that is not part of
+the blob field. The history is not drawn in the corner at all: it is rows in the
+launcher, so there is no panel for the cards to melt into or out of.
 
 The rule: melt where one thing emerges from another. Never between siblings.
 
@@ -2826,22 +2847,22 @@ Clicking still dismisses. A mouse user who expects that should not be told they
 are holding it wrong.
 
 **And the other direction is the opposite decision, not a second dismissal.** A
-notification card is dragged *right*, out through the edge the tray hangs off, to
-throw it away, and *left* to **pin** it. Pinning stops the countdown and buys the
-notification one dismissal's worth of protection: thrown away afterwards it only
-leaves the *screen*, and it is still in the hub when you go looking. A press and
-hold pins it too, because a finger has no other way of saying "I am reading this",
-and a swipe left again takes the pin back off.
+notification card is dragged *right*, out through the edge it hangs off, to
+throw it away, and *left* to **keep** it. Keeping stops the countdown and lets the
+card leave the *screen* while the notification stays in the history, which is the
+launcher on `notifications `. A press and hold pins it, because a finger has no
+other way of saying "I am reading this": a pinned card survives one dismissal, and
+a swipe left again takes the pin back off.
 
 The two gestures differ by direction alone, so the card has to say which one is
 happening before you let go: a rightward pull fades the card out, a leftward one
-deliberately does *not*, and the pin's own mark rides in with the pull so it is
-fully drawn exactly at the commit line. A dismissal that looked identical to a
+deliberately does *not*. A dismissal that looked identical to a
 keep until the instant it committed would be a coin toss with a hand on it.
 
-In the hub the pin means nothing, and a swipe there forgets. The hub is where a
-pin was keeping the notification in the first place; honouring one there would
-answer a deliberate swipe by putting the row straight back.
+In the history the pin means nothing, because the history is launcher rows and a
+row is let go with its Dismiss action or the card's close mark. A pin was only ever
+keeping a notification on screen; honouring one there would answer a deliberate
+dismissal by putting the row straight back.
 
 The touch-friendliness that follows is mostly free, and the rest is arithmetic:
 targets meet WCAG 2.2 SC 2.5.8's 24px floor, and the drag threshold is 6px rather
@@ -2863,7 +2884,7 @@ that does not exist on the machine this shell is used on most.
 `components/ScrollGesture.qml` is a non-visual item you feed wheel events to, and
 what it reports back is a gesture: `began` is the press, `moved(dx, dy)` is the
 delta, `ended` is the release. `Pull` adopts it once, so the settings corner, the
-notch and its push-back, the notification tray both ways, both launcher panels,
+notch and its push-back, both launcher panels,
 the wallpaper picker, the cheatsheet, the menus and the clock's summon all answer
 two fingers without a line changing at any of those call sites. That is exactly
 why it is a component and not a paragraph in this document: the rule is about
@@ -3024,7 +3045,7 @@ every one of them, so they are written down here once rather than a sixth time.
 **Where the rule holds today, honestly.**
 
 Free, through `Pull`, with nothing at the call site: the settings corner, the
-notch's pull-down and its push-back, the notification tray's corner and its push,
+notch's pull-down and its push-back,
 both launcher panels' put-away, the wallpaper picker's put-away, the cheatsheet's
 push, the menus' put-back, and the clock's summon of the calendar.
 
@@ -3125,7 +3146,7 @@ corner.** Putting a panel away is not a second gesture to design: it is this one
 pointed the other direction. So the rule for the whole shell is that **everything
 goes back into the edge or corner it came out of, by the gesture that brought it
 out, reversed.** The settings page pushes back down into its corner, the
-notification tray back up into its own, the launcher back down into the bottom
+launcher back down into the bottom
 edge it rose from, a menu back into the sidebar. Nothing has to be learned twice,
 and nothing needs a close button drawn on it, which matters because a close
 button is exactly the sort of small permanent control this shell is trying not to
@@ -3147,12 +3168,12 @@ back where it came from.
 nothing that will take it away on its own, so the push back into its edge is one
 way out and the keyboard is the other: **Escape closes whatever is open, however
 it was opened.** One sentence covers the launcher, the power panel, the hotkey
-sheet, a pinned menu, a pinned notification tray and a pinned notch, and it has
+sheet, a pinned menu and a pinned notch, and it has
 to hold for the routes that have no pointer in them at all, because a keybind
 running `banditshell panel notch open` leaves the cursor resting on somebody else's
 window.
 
-**Pinned is the whole set, and hover is deliberately not in it.** A tray the
+**Pinned is the whole set, and hover is deliberately not in it.** A panel the
 cursor is merely resting in is closed by the cursor leaving; it needs no key, and
 giving it one would cost far more than it saves. A layer surface receives no keys
 at all unless its window asks the compositor for them, and asking is not free:
@@ -3167,9 +3188,9 @@ The cost of a grab is that a pinned thing left up while you go back to typing
 swallows the keystrokes, and clicking the other window does not win the keyboard
 back, because an exclusive layer surface keeps it. For the panels that cover the
 work (the launcher, the power panel, the hotkey sheet) that is the point, and they
-still grab. For the island and the notification tray it was not: both sit beside
-the work, they stay pinned while you go on using the screen, and a pinned island
-made the whole screen feel dead until it was put away. So those two ask for keys
+still grab. For the island it was not: it sits beside
+the work, it stays pinned while you go on using the screen, and a pinned island
+made the whole screen feel dead until it was put away. So it asks for keys
 only once the shell has been clicked (on demand). The price is the case the old
 rule existed for: one summoned by a keybind has never been clicked, so Escape does
 nothing until it has been touched; the strip, the gesture reversed and the CLI
@@ -3708,7 +3729,7 @@ screen.
 ### Which screen answers
 
 Launches and dictation go to the focused screen. Notifications and notices go to
-`Shell.offStageScreen`, the rule the corner tray already followed, so streamer
+`Shell.offStageScreen`, the rule the corner host and the launcher rows follow, so streamer
 mode keeps them off the streamed screen. Every screen keeps its own clock.
 
 ### While I dictate
@@ -3755,14 +3776,36 @@ appearing and that would fight the island's own bloom.
 
 ### Notifications are a choice
 
-`notifications.placement` defaults to `corner`. Moving everyone's notifications
-is a big change to make for people who did not ask for it. Set to `island`, a
+`notifications.placement` defaults to `island`. The first version defaulted to `corner`,
+because moving everyone's notifications is a big change for people who did not ask
+for it; it moved once the corner no longer held the history, since a corner that
+only shows popups has nothing the island does not do better. Set to `island`, a
 notification takes the island at its large size. Tap runs its default action,
 its actions sit under the text from the start, and on hover a close mark appears
 in its corner. Nothing about a card's height depends on the pointer: when actions
 came out on hover, moving down a spread list grew and shrank the card under the
-pointer, so everything below it jumped up and down. The corner still opens the
-history either way, and the overview carries a row that opens it.
+pointer, so everything below it jumped up and down.
+
+**History is reached by intent, not by a corner.** The launcher is the shell's
+keyboard home and the island its pointer home, and the old corner tray was neither:
+it opened when the cursor swept past on the way to a window's close button. Now the
+history is the launcher with `notifications ` already typed (section 19, and
+`banditshell notifications open`). Three doors lead there from the island: the
+overview's "N notifications" row, the "all notifications" button at the foot of a
+spread stack, and the "N held while quiet" notice that shows for a moment when quiet
+ends and something was kept back, which opens `notifications held `. `Launcher.show`
+takes the text to start with. A person who chooses `corner` still gets the live
+popups in a slim `NotificationCorner` at the top right, with no history, no arms
+and no pin; reading the history is the launcher either way.
+
+Message text on a screen is private, so the rows appear only when the query is
+clearly about notifications (`notifications`, `unread`, `held`, with `from <app>` and
+free words after them). A plain word never finds a message unless
+`launcher.typing.notifications` is on, the same opt-in that
+`launcher.typing.clipboard` is for copied text; it is off by default. Free words
+list single messages, and a query with none lists one row per conversation, whose
+Enter drills into that conversation. On a screen the stream keeps private the rows
+are not offered at all.
 
 Letting one go is a sideways gesture, animated before anything changes
 underneath. Flick it either way and it follows the pointer, fading as it goes;
@@ -4010,7 +4053,15 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   the field into a one-line question and hands the answer to `take(text)`.
   `peekPath` (with `peekDir: true` for a folder) or `peekText` fills the card
   beside the launcher when the row is selected: a picture, the first lines of
-  a text file, a folder's contents, or the full text.
+  a text file, a folder's contents, or the full text. `peekCard` is a
+  Component whose root has an `entry` property; the card hosts it with the
+  row's `entry` set, for a row whose preview is a live item rather than text
+  (the notification rows show their card at page density this way). An action
+  can start the same one-line question as `ask` through `search.inquire(row)`,
+  where the row carries `ask`; the notification Reply, Snooze and Mute use it.
+  `search.onStage` is false on a screen the stream keeps private, and a source
+  whose rows carry message text returns nothing there; `search.copyText(text)`
+  closes the launcher and copies.
   `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
   true` lets the row take Tab even when another row is selected. In
   `actionsFor`, a first action with `button: true` also shows as a button,
