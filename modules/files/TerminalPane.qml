@@ -98,6 +98,8 @@ Item {
         term: Files.term
         revision: Files.revision
         focused: root.focused
+        zoom: Appearance.sizes.filesZoom
+        face: Appearance.sizes.filesTerminalFont
 
         onSend: bytes => Files.send(bytes)
         onResized: (cols, rows) => Files.resizeTerminal(cols, rows)

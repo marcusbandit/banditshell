@@ -1540,3 +1540,18 @@ function relocateEntry(entries, old) {
             best = entry;
     return best;
 }
+
+var LUA_COMMENTS = /--\[(=*)\[[\s\S]*?\]\1\]|--[^\n]*/g;
+
+function luaLayouts(texts) {
+    const out = [];
+    const find = /hl\.layout\.register\(\s*["']([^"']+)["']/g;
+    for (const text of texts || []) {
+        const code = String(text).replace(LUA_COMMENTS, "");
+        let m;
+        while ((m = find.exec(code)) !== null)
+            if (out.indexOf(`lua:${m[1]}`) < 0)
+                out.push(`lua:${m[1]}`);
+    }
+    return out;
+}

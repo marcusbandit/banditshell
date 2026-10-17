@@ -1,0 +1,22 @@
+{
+  "name": "wallpaper",
+  "summary": "the wallpaper, its picker and palette",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/WallpaperWindow.qml", "modules/wallpaper"],
+    "services": ["Wallpaper"],
+    "scripts": ["scripts/palette.py", "scripts/wallpaper-colours.py"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Wallpaper"],
+    "ipc": ["wallpaper", "wallpapers"]
+  },
+  "config": {
+    "namespace": ["wallpaper"],
+    "reads": ["control", "themeFromWallpaper"]
+  }
+}

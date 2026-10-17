@@ -1,0 +1,69 @@
+{
+  "name": "launcher-tools",
+  "summary": "the launcher's power tools, typing and utility sources",
+  "layer": 4,
+  "owns": {
+    "qml": [
+      "modules/launcher/sources/ClipboardSource.qml",
+      "modules/launcher/sources/ColourSource.qml",
+      "modules/launcher/sources/DevSource.qml",
+      "modules/launcher/sources/EmojiSource.qml",
+      "modules/launcher/sources/LatestSource.qml",
+      "modules/launcher/sources/LoremSource.qml",
+      "modules/launcher/sources/NotesSource.qml",
+      "modules/launcher/sources/PomodoroSource.qml",
+      "modules/launcher/sources/ProjectSource.qml",
+      "modules/launcher/sources/QuicklinkSource.qml",
+      "modules/launcher/sources/ScriptSource.qml",
+      "modules/launcher/sources/SnippetSource.qml"
+    ],
+    "services": [
+      "ColourPicks",
+      "DevUtilities",
+      "Emoji",
+      "FileSearch",
+      "LatestFiles",
+      "Notes",
+      "Pomodoro",
+      "Projects",
+      "ScriptCommands",
+      "Snippets",
+      "Typist"
+    ],
+    "js": [
+      "services/colour-picks.js",
+      "services/dev-utilities.js",
+      "services/emoji-table.js",
+      "services/emoji.js",
+      "services/latest-files.js",
+      "services/lorem.js",
+      "services/narrowing.js",
+      "services/notes.js",
+      "services/pomodoro.js",
+      "services/projects.js",
+      "services/quicklinks.js",
+      "services/script-commands.js",
+      "services/snippets.js"
+    ],
+    "scripts": ["scripts/emoji-table.py"],
+    "tests": [
+      "tests/launcher-dev-utilities.test.js",
+      "tests/launcher-latest-files.test.js",
+      "tests/launcher-power-tools.test.js",
+      "tests/launcher-typing.test.js",
+      "tests/narrowing.test.js"
+    ]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "launcher", "clipboard", "files"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["launcher.powerTools", "launcher.typing", "launcher.utilities"],
+    "reads": []
+  }
+}

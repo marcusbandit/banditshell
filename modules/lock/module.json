@@ -1,0 +1,22 @@
+{
+  "name": "lock",
+  "summary": "the lock screen",
+  "layer": 5,
+  "owns": {
+    "qml": ["modules/lock", "previews/LockPreview.qml"],
+    "services": ["Lock"],
+    "assets": ["assets/pam.d"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "media", "wallpaper", "clock", "power", "notifications"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["lock"],
+    "reads": []
+  }
+}

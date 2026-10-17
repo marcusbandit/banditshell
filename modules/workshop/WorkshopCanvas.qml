@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQuick
 import qs.config
 import qs.components
-import "layout-model.js" as LayoutModel
+import "../../services/layout-model.js" as LayoutModel
 
 Item {
     id: root

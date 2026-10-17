@@ -1,0 +1,28 @@
+{
+  "name": "network",
+  "summary": "network, hotspot, tunnels and Tailscale",
+  "layer": 2,
+  "owns": {
+    "services": ["Hotspot", "Network", "NetworkEvents", "Tailscale", "Tunnels", "WifiJoin"],
+    "js": [
+      "services/hotspot.js",
+      "services/nmcli.js",
+      "services/tailscale.js",
+      "services/tunnels.js",
+      "services/wifilist.js"
+    ],
+    "tests": ["tests/fixtures/network", "tests/network.test.js", "tests/wifilist.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Network", "Tailscale", "Tunnels", "WifiJoin"],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["network"],
+    "reads": ["control"]
+  }
+}

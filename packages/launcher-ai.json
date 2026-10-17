@@ -1,0 +1,28 @@
+{
+  "name": "launcher-ai",
+  "summary": "the launcher's assistant sources",
+  "layer": 4,
+  "owns": {
+    "qml": [
+      "modules/launcher/AssistantCard.qml",
+      "modules/launcher/sources/AskSource.qml",
+      "modules/launcher/sources/RewriteSource.qml"
+    ],
+    "services": ["Assistant"],
+    "js": ["services/assistant.js"],
+    "scripts": ["scripts/assistant-request.sh"],
+    "tests": ["tests/assistant.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "launcher", "clipboard"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["launcher.ai"],
+    "reads": []
+  }
+}

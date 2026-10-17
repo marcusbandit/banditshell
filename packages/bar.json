@@ -1,0 +1,21 @@
+{
+  "name": "bar",
+  "summary": "the sidebar, status icons and menus",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/menu", "modules/sidebar"],
+    "services": ["SidebarState", "Tray"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "apps", "audio", "network"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["menu", "sidebar"]
+  },
+  "config": {
+    "namespace": ["sidebar", "calendar"],
+    "reads": ["control"]
+  }
+}

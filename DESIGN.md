@@ -427,10 +427,20 @@ banditshell/
 │                                qs.services, ...) and every type in it; what lets
 │                                the LSP resolve `import qs.config`. Regenerate
 │                                with scripts/qmldirs.sh after adding files
+├── packages/                    one module.json per package that has no folder of its
+│                                own under modules/ (core, compositor, clock, ...);
+│                                the others keep theirs at modules/<name>/module.json.
+│                                docs/architecture/modules.md has the map
+├── modules.baseline.json        the module boundary violations that exist today;
+│                                `banditshell dev modules` fails on any not in it
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
 │   ├── Themes.qml               SINGLETON. Named palettes (ramp + accents).
+│   ├── ControlTuning.qml        SINGLETON. The gesture tunables (`control.*`) and the
+│   │                            compositor's touchpad scroll direction, as the defaults
+│   │                            Pull, GlideList, ScrollGesture and SignalBars take; a
+│   │                            caller overrides them with the component's own property
 │   └── Appearance.qml           SINGLETON. Config x Compositor x Themes -> the tokens.
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
@@ -542,6 +552,15 @@ banditshell/
 │   │                            hyprctl eval, so the files keep their own;
 │   │                            apply_layout_binds(name) runs after, when the
 │   │                            config defines one
+│   ├── chords.js                hotkey chords as pure functions: same chord,
+│   │                            legacy keyword form, readable form and the
+│   │                            command a launcher hotkey runs; the launcher,
+│   │                            the settings shortcuts list and LauncherHotkeys
+│   │                            all read it from here
+│   ├── layout-model.js          the window layout workshop's model: arrangements,
+│   │                            regions, rules, the edits and their problems
+│   ├── layout-lua.js            that model written as Lua for hyprland.lua, and
+│   │                            the loader and bind lines around it
 │   ├── HyprConfig.qml           the Hyprland config as a model: the tree
 │   │                            (the file this compositor was handed with
 │   │                            -c, else hyprland.lua, else hyprland.conf,
@@ -1102,8 +1121,7 @@ banditshell/
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
 │   │   │                        (5pm ldn in sf, which date(1) converts so
-│   │   │                        daylight saving is right), aliases, chords,
-│   │   │                        fallbacks
+│   │   │                        daylight saving is right), aliases, fallbacks
 │   │   ├── AlphabetLauncher.qml  text before icons; the alphabet on a rail.
 │   │   │                        Folders live in the favourites, a row carries
 │   │   │                        its application's notifications, and a swipe
@@ -1380,6 +1398,12 @@ banditshell/
 │       │                        one is held while it fades (tests/sidebar-anomalies)
 │       └── scrolling.js         a wheel turn as a step of volume or brightness
 ├── scripts/
+│   ├── check-modules.js         the module boundary check: reads every module.json,
+│   │                            decides who owns each file, and lists what imports,
+│   │                            singletons, config keys and IPC targets cross a
+│   │                            boundary the manifests do not allow; --matrix and
+│   │                            --explain <package> show the edges (node, no
+│   │                            dependencies; `banditshell dev modules`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes

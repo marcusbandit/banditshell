@@ -129,6 +129,14 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("dev", "keyring", ""), ["close", "demo", "status"]);
 });
 
+test("dev modules offers its flags, then the packages after --explain", () => {
+    const packages = table.find(r => r[0] === "values" && r[1] === "package")[2].split(" ").sort();
+    assert.ok(packages.includes("core") && packages.includes("launcher"));
+    assert.deepStrictEqual(bashComplete("dev", "modules", ""), ["--explain", "--matrix"]);
+    assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", ""), packages);
+    assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", "launcher-"), packages.filter(p => p.startsWith("launcher-")));
+});
+
 test("flags complete after the words they belong to", () => {
     assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
     assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);
@@ -177,6 +185,8 @@ _banditshell`;
     assert.deepStrictEqual(complete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(complete("panel", "launcher", ""), ["close", "open", "run", "status", "toggle"]);
     assert.deepStrictEqual(complete("panel", "close", ""), []);
+    assert.deepStrictEqual(complete("dev", "modules", ""), ["--explain", "--matrix"]);
+    assert.ok(complete("dev", "modules", "--explain", "").includes("compositor"));
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 

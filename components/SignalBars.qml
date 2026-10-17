@@ -5,7 +5,7 @@ Item {
     id: root
 
     property real strength: 0
-    property int steps: Config.values.control.signalBands
+    property int steps: ControlTuning.signalBands
     property color activeColour: Appearance.colour.text
 
     property color inactiveColour: Appearance.colour.fillStronger

@@ -1,0 +1,22 @@
+{
+  "name": "apps",
+  "summary": "installed applications, launching and startup apps",
+  "layer": 2,
+  "owns": {
+    "services": ["AppIcons", "Apps", "DefaultApps", "DesktopIndex", "LauncherMemory", "Launching", "StartupApps"],
+    "js": ["services/default-apps.js", "services/startup-apps.js"],
+    "tests": ["tests/default-apps.test.js", "tests/fixtures/apps", "tests/startup-apps.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["AppIcons", "Apps", "LauncherMemory", "Launching"],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["apps", "startup"],
+    "reads": []
+  }
+}

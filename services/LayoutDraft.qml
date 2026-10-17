@@ -3,7 +3,7 @@ pragma Singleton
 import QtQuick
 import Quickshell
 import Quickshell.Hyprland
-import "../modules/workshop/layout-model.js" as LayoutModel
+import "layout-model.js" as LayoutModel
 
 Singleton {
     id: root

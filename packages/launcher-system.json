@@ -1,0 +1,28 @@
+{
+  "name": "launcher-system",
+  "summary": "the launcher's system control sources",
+  "layer": 4,
+  "owns": {
+    "qml": [
+      "modules/launcher/sources/BrightnessSource.qml",
+      "modules/launcher/sources/RecordSource.qml",
+      "modules/launcher/sources/SoundSource.qml",
+      "modules/launcher/sources/VpnSource.qml",
+      "modules/launcher/sources/WifiSource.qml",
+      "modules/launcher/sources/WorkshopSource.qml"
+    ],
+    "tests": ["tests/launcher-system-controls.test.js", "tests/launcher-system.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "launcher", "network", "display", "audio", "capture"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["launcher.systemControls"],
+    "reads": []
+  }
+}
