@@ -9,7 +9,7 @@ Scope {
     required property var picker
 
     readonly property var hidden: ["launcher", "session", "clipboard", "media", "calculator", "keyboard", "settings", "hotkeys", "wallpapers"]
-    readonly property var pinned: ["quickControls", "notifications", "island"]
+    readonly property var pinned: ["quickControls", "island"]
 
     IpcHandler {
         target: "border"

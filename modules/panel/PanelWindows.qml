@@ -26,7 +26,7 @@ Singleton {
 
     function close(part: string): string {
         for (const win of Shell.windows)
-            win[part].hide();
+            win[part]?.hide();
         return "closed";
     }
 
@@ -39,7 +39,8 @@ Singleton {
 
     function unpin(part: string): string {
         for (const win of Shell.windows)
-            win[part].pinned = false;
+            if (win[part])
+                win[part].pinned = false;
         return "closed";
     }
 
