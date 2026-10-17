@@ -4,7 +4,7 @@ import Quickshell
 import Quickshell.Io
 import qs.config
 import qs.services
-import qs.modules
+import qs.modules.panel
 import "../cli.js" as Words
 
 Scope {

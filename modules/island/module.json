@@ -4,15 +4,17 @@
   "layer": 5,
   "owns": {
     "qml": ["modules/island", "previews/IslandPreview.qml"],
-    "services": ["Notices"]
+    "services": ["Activities", "Levels", "Notices"],
+    "js": ["services/activities.js"],
+    "tests": ["tests/activities.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "notifications", "media", "apps", "clock"],
+    "packages": ["core", "compositor", "notifications", "media", "apps", "clock", "audio", "display"],
     "optional": ["clipboard", "capture", "updates", "files"]
   },
   "provides": {
     "singletons": [],
-    "ipc": ["island", "inspect"]
+    "ipc": ["island", "inspect", "activity"]
   },
   "config": {
     "namespace": ["island"],

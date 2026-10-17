@@ -1,5 +1,5 @@
 import qs.services
-import qs.modules
+import qs.modules.panel
 
 PanelIpc {
     target: "calculator"

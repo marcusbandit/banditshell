@@ -5,11 +5,14 @@
   "owns": {
     "qml": [
       "config",
-      "modules/LazyPanel.qml",
+      "modules/cli.js",
       "modules/controls",
       "modules/gallery",
+      "modules/ipc/CoreIpc.qml",
+      "modules/panel",
       "previews/GalleryPreview.qml",
       "previews/QrPreview.qml",
+      "services/LevelCover.qml",
       "services/qmldir"
     ],
     "services": [
@@ -44,6 +47,7 @@
     "tests": [
       "tests/base64.test.js",
       "tests/check-modules.test.js",
+      "tests/cli.test.js",
       "tests/configuration.test.js",
       "tests/desktop-entries.test.js",
       "tests/engine-compat.test.js",
@@ -65,6 +69,7 @@
       "Compositor",
       "Config",
       "ControlTuning",
+      "PanelWindows",
       "Polkit",
       "Prompts",
       "Relaunch",
