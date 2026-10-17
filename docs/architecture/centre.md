@@ -117,7 +117,7 @@ violations are a committed baseline that can only shrink.
 
 ## The update loop, seen from the person who did not write it
 
-The owner's brother and friends run this shell. For them an update must say
+People who did not write this shell run it. For them an update must say
 what it is before it happens, check that the new version loads before it
 replaces the old one, restart only when restarting is needed, and come back on
 its own if the new version does not start. The branch moves the update logic
