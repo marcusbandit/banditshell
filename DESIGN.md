@@ -52,9 +52,9 @@ Rationale for staying on Quickshell rather than going lower-level (Rust/GTK/etc.
 how my whole system works" is satisfied by writing *every widget myself*. I don't also
 have to reimplement the compositor bindings to earn that. Quickshell keeps the project
 about *my shell*, not about fighting a new toolkit. I can always drop to C (or lower) for
-a specific widget that demands it. **caelestia stays on disk as a reference implementation**
-- a working, readable answer for the hard parts (wallpaper backend, lock screen, IPC
-face-unlock pill), not something to delete.
+a specific widget that demands it. **caelestia stays on disk as something to learn from.**
+It shows that the hard parts can be done (wallpaper backend, lock screen, IPC face-unlock
+pill). Read it for the idea, then close it and write ours. No code crosses over.
 
 ---
 
@@ -115,8 +115,9 @@ come back in.
 
 This is deliberately close to caelestia's construction. **We are rebuilding caelestia's main
 parts, with more control, because they are ours.** The point was never that caelestia is wrong;
-it is that I want the whole mental model. Where caelestia solved something well, copy the
-solution and understand it, don't invent a worse one to be different.
+it is that I want the whole mental model. Where caelestia solved something well, learn why
+the idea works and build our own version of it from scratch. Don't invent a worse idea to be
+different, and never copy its code: every line here is written here.
 
 **But it MAY reveal itself through interaction.** The direction I like: the border
 *deforms* near the cursor, so the reveal and the reaction are the same event. It isn't "a
@@ -2161,13 +2162,14 @@ Consequences worth knowing:
   shader looks like the surface has quietly lost its colour: the tint goes dark and desaturated
   while still obviously being there. Cost an hour; written down so it costs nothing next time.
 
-This is the same technique as caelestia's compiled `Caelestia.Blobs` plugin. Ours is a fragment
-shader instead, which is the answer to "why not C++": the maths is identical, and a shader is
-where per-pixel maths belongs anyway.
+caelestia's compiled `Caelestia.Blobs` plugin is where the idea came from: SDF panels melting
+into a frame. The maths here is our own, a polynomial smooth-min and superellipse corners, and
+it lives in a fragment shader, which is the answer to "why not C++": a shader is where
+per-pixel maths belongs anyway.
 
-**Still to come:** caelestia's blobs also carry spring physics (`damping`, `stiffness`,
-`deformMatrix`), so a panel squashes as it moves and settles. That is the next step, and the
-field is what makes it possible.
+**Still to come:** spring physics, so a panel squashes as it moves and settles. caelestia's
+blobs do this; ours gets worked out from the physics, not ported. That is the next step, and
+the field is what makes it possible.
 
 ### The workspace column: three attempts
 

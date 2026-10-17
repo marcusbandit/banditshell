@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-17-3",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Muted sound now shows a speaker with a line through it. The Wi-Fi rows in the launcher show one, two or three bars, and a lock on secured networks you have not joined before."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Where windows overlap, the screenshot picker snaps to the one on top instead of whichever came first in Hyprland's list. A drag that has started stays a drag even when you move back near where you pressed."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-2",
       "date": "2026-10-17",
       "changes": [
