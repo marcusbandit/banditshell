@@ -36,7 +36,21 @@ Singleton {
 
     property var displayLevels: ({})
 
-    property var unsentLevels: ({})
+    property var limits: ({})
+
+    property var pending: ({})
+
+    property var touchedAt: ({})
+
+    property var failures: ({})
+
+    property var rest: ({})
+
+    property var restUntil: ({})
+
+    readonly property int settleMs: 8000
+
+    readonly property int maxFailures: 5
 
     readonly property string warmthPath: `${Config.stateDir}/warmth`
 
@@ -62,7 +76,8 @@ Singleton {
     property bool easing: false
 
     function status(): string {
-        const brightness = !root.brightnessReady ? "none" : root.levelKnown ? `${Math.round(root.level * 100)}%` : "unknown";
+        const own = root.displays.filter(d => root.displayLevels[d.index] !== undefined);
+        const brightness = !root.brightnessReady ? "none" : own.length ? root.displays.map(d => `${d.name}:${Math.round(root.levelOf(d) * 100)}%`).join(",") : root.levelKnown ? `${Math.round(root.level * 100)}%` : "unknown";
         const names = root.displays.map(d => d.name).join(",") || "none";
         return `brightness=${brightness} displays=${names} warmth=${root.warm ? `${root.kelvin}K` : "off"}`;
     }
@@ -149,7 +164,7 @@ Singleton {
             return;
         root.level = f;
         root.displayLevels = ({});
-        root.unsentLevels = ({});
+        root.writeLevel();
         levelDebounce.restart();
     }
 
@@ -161,23 +176,93 @@ Singleton {
     function setDisplayLevel(display: var, v: real): void {
         if (!display?.index)
             return;
-        const f = Math.max(0, Math.min(1, v));
         const levels = Object.assign({}, root.displayLevels);
-        levels[display.index] = f;
+        levels[display.index] = Math.max(0, Math.min(1, v));
         root.displayLevels = levels;
-        const unsent = Object.assign({}, root.unsentLevels);
-        unsent[display.index] = Math.round(f * (display.max || 100));
-        root.unsentLevels = unsent;
-        displayDebounce.restart();
+        root.markPending([display.index]);
+    }
+
+    function markPending(indexes: var): void {
+        const pending = Object.assign({}, root.pending);
+        const touched = Object.assign({}, root.touchedAt);
+        const now = Date.now();
+        for (const index of indexes) {
+            pending[index] = true;
+            touched[index] = now;
+        }
+        root.pending = pending;
+        root.touchedAt = touched;
+        if (!displayDebounce.running)
+            displayDebounce.start();
+    }
+
+    function queued(kind: string): bool {
+        return root.queue.some(job => job.kind === kind);
+    }
+
+    function readCommand(display: var): var {
+        return ["ddcutil", ...Ddcutil.target(display), "getvcp", "10", "--brief"];
     }
 
     function sendDisplayLevels(): void {
-        const unsent = root.unsentLevels;
-        root.unsentLevels = ({});
-        for (const index of Object.keys(unsent)) {
-            root.queue = root.queue.filter(job => job.kind !== `write:${index}`);
-            root.enqueue(`write:${index}`, ["ddcutil", "--display", index, "setvcp", "10", `${unsent[index]}`, "--noverify"]);
+        const now = Date.now();
+        const left = {};
+        let wait = Infinity;
+        for (const index of Object.keys(root.pending)) {
+            const display = root.displays.find(d => d.index === index);
+            if (!display)
+                continue;
+            if (now < (root.restUntil[index] ?? 0)) {
+                left[index] = true;
+                wait = Math.min(wait, root.restUntil[index] - now);
+                continue;
+            }
+            if (root.limits[index] === undefined) {
+                left[index] = true;
+                if (!root.queued(`read:${index}`) && runner.kind !== `read:${index}`)
+                    root.enqueue(`read:${index}`, root.readCommand(display));
+                continue;
+            }
+            if (!root.queued(`write:${index}`))
+                root.enqueue(`write:${index}`, () => ["ddcutil", ...Ddcutil.target(display), "setvcp", "10", `${Ddcutil.rawLevel(root.levelOf(display), root.limits[index])}`, "--noverify"]);
         }
+        root.pending = left;
+        if (isFinite(wait)) {
+            restTimer.interval = Math.max(50, Math.ceil(wait));
+            restTimer.restart();
+        }
+    }
+
+    function failed(index: string): void {
+        const failures = Object.assign({}, root.failures);
+        failures[index] = (failures[index] ?? 0) + 1;
+        root.failures = failures;
+        const rest = Object.assign({}, root.rest);
+        rest[index] = Ddcutil.restAfter(rest[index], 2500, 12000);
+        root.rest = rest;
+        root.restUntil = Object.assign({}, root.restUntil, {
+            [index]: Date.now() + rest[index]
+        });
+        if (failures[index] > root.maxFailures) {
+            const pending = Object.assign({}, root.pending);
+            delete pending[index];
+            root.pending = pending;
+            console.warn(`Display: display ${index} stopped answering, so its brightness was left as it is`);
+            return;
+        }
+        if (root.pending[index] !== undefined || root.touchedAt[index] && Date.now() - root.touchedAt[index] < root.settleMs)
+            root.markPending([index]);
+    }
+
+    function succeeded(index: string, wrote: bool): void {
+        if (root.failures[index])
+            root.failures = Object.assign({}, root.failures, {
+                [index]: 0
+            });
+        if (wrote && root.rest[index])
+            root.restUntil = Object.assign({}, root.restUntil, {
+                [index]: Date.now() + root.rest[index]
+            });
     }
 
     property var levelsReadAt: ({})
@@ -187,10 +272,10 @@ Singleton {
             return;
         const now = Date.now();
         const stamps = Object.assign({}, root.levelsReadAt);
-        for (const display of Ddcutil.staleDisplays(root.displays, root.levelsReadAt, now, 30000)) {
+        for (const display of Ddcutil.staleDisplays(root.displays, root.levelsReadAt, now, 30000).filter(d => now >= (root.restUntil[d.index] ?? 0))) {
             stamps[display.index] = now;
             if (!root.queue.some(job => job.kind === `read:${display.index}`))
-                root.enqueue(`read:${display.index}`, ["ddcutil", "--display", display.index, "getvcp", "10", "--brief"]);
+                root.enqueue(`read:${display.index}`, root.readCommand(display));
         }
         root.levelsReadAt = stamps;
     }
@@ -225,7 +310,7 @@ Singleton {
         const next = root.queue[0];
         root.queue = root.queue.slice(1);
         runner.kind = next.kind;
-        runner.command = next.command;
+        runner.command = typeof next.command === "function" ? next.command() : next.command;
         runner.running = true;
     }
 
@@ -239,20 +324,36 @@ Singleton {
             }
             root.displays = code === 0 ? Ddcutil.parseDetect(output) : [];
             root.levelsReadAt = ({});
+            root.limits = ({});
             if (root.unwritten)
                 root.writeLevel();
-        } else if (kind.startsWith("read:") && code === 0) {
-            const read = Ddcutil.parseVcp(output);
+        } else if (kind.startsWith("read:")) {
             const index = kind.slice(5);
-            if (read && root.unsentLevels[index] === undefined && !root.queue.some(job => job.kind === `write:${index}`)) {
-                root.displays = root.displays.map(d => d.index === index ? Object.assign({}, d, {
-                        max: read.max
-                    }) : d);
-                const levels = Object.assign({}, root.displayLevels);
-                levels[index] = Math.max(0, Math.min(1, read.current / read.max));
-                root.displayLevels = levels;
+            const read = code === 0 ? Ddcutil.parseVcp(output) : null;
+            if (!read) {
+                root.failed(index);
+            } else {
+                root.succeeded(index, false);
+                root.limits = Object.assign({}, root.limits, {
+                    [index]: read.max
+                });
+                const quiet = root.pending[index] === undefined && !root.queued(`write:${index}`) && Date.now() - (root.touchedAt[index] ?? 0) > root.settleMs;
+                if (quiet) {
+                    const levels = Object.assign({}, root.displayLevels);
+                    levels[index] = Math.max(0, Math.min(1, read.current / read.max));
+                    root.displayLevels = levels;
+                } else if (root.pending[index] !== undefined) {
+                    Qt.callLater(root.sendDisplayLevels);
+                }
             }
+        } else if (kind.startsWith("write:")) {
+            const index = kind.slice(6);
+            if (code === 0)
+                root.succeeded(index, true);
+            else
+                root.failed(index);
         }
+        runner.kind = "";
         Qt.callLater(root.step);
     }
 
@@ -260,8 +361,7 @@ Singleton {
         root.unwritten = root.levelKnown && !root.brightnessReady;
         if (root.unwritten || !root.levelKnown)
             return;
-        root.queue = root.queue.filter(job => job.kind !== "write");
-        root.enqueue("write", ["sh", "-c", root.displays.map(d => `ddcutil --display ${d.index} setvcp 10 ${Math.round(root.level * d.max)} --noverify 2>/dev/null`).join("; ")]);
+        root.markPending(root.displays.map(d => d.index));
     }
 
     function minutesOf(text: string): int {
@@ -406,13 +506,16 @@ Singleton {
     }
 
     Timer {
+        id: restTimer
+
+        onTriggered: root.sendDisplayLevels()
+    }
+
+    Timer {
         id: levelDebounce
 
         interval: 300
-        onTriggered: {
-            Config.set("screen.level", Math.round(root.level * 100));
-            root.writeLevel();
-        }
+        onTriggered: Config.set("screen.level", Math.round(root.level * 100))
     }
 
     Process {
