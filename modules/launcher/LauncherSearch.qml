@@ -1329,8 +1329,7 @@ QtObject {
             return Object.assign({}, r, {
                 id: r.key,
                 alias: alias,
-                hotkey: hotkey,
-                key: `${r.key}|${r.label}|${r.toggle}|${r.detail}|${alias}|${hotkey}`
+                hotkey: hotkey
             });
         });
     }
