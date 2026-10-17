@@ -224,12 +224,15 @@ Item {
                             cornerPower: 2
                             color: Appearance.colour.fillStronger
                             visible: !root.tiny
-                            opacity: cat.open ? 1 : 0
+                            opacity: stem.value
 
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fade.fast
-                                }
+                            Follow {
+                                id: stem
+
+                                target: cat.open ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
                         }
 
@@ -373,13 +376,14 @@ Item {
             name: rr.icon
             size: Math.round(Appearance.font.iconSize * rr.iconScale)
             fill: rr.on ? 1 : 0
-            color: rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+            color: markTone.value
             opacity: rr.dimmed ? Appearance.opacity.disabled : 1
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: markTone
+
+                target: rr.on || rr.lit || hover.hovered ? Appearance.colour.text : Appearance.colour.textDim
+                speed: Appearance.animation.revealSpeed
             }
         }
 

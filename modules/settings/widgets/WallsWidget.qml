@@ -49,12 +49,15 @@ Item {
                 width: root.tile
                 height: Math.round(root.tile * 10 / 16)
                 opacity: root.usable ? 1 : Appearance.opacity.disabled
-                scale: hover.hovered && root.usable ? 0.97 : 1
+                scale: lift.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                Follow {
+                    id: lift
+
+                    target: hover.hovered && root.usable ? 0.97 : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {

@@ -62,18 +62,14 @@ Row {
                         radius: 4.5
                         cornerPower: 2
                         color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
-                        scale: 0
+                        scale: grow.value
 
-                        Component.onCompleted: grow.start()
-
-                        NumberAnimation on scale {
+                        Follow {
                             id: grow
 
-                            running: false
-                            from: 0
-                            to: 1
-                            duration: Appearance.animation.normal
-                            easing.type: Easing.OutBack
+                            target: 1
+                            speed: Appearance.animation.trackSpeed
+                            epsilon: Appearance.animation.fadeEpsilon
                         }
                     }
                 }

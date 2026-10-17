@@ -40,7 +40,7 @@ Item {
         onTriggered: {
             if (!root.pinned)
                 root.turn++;
-            if (SettingsView.reduceMotion)
+            if (SettingsView.reduceMotion || Appearance.lessMotion)
                 root.t = 1;
             else
                 fly.restart();

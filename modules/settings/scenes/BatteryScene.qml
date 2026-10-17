@@ -31,7 +31,7 @@ Item {
     readonly property bool charging: root.present && root.sim.charging
 
     FrameAnimation {
-        running: root.visible && !SettingsView.reduceMotion
+        running: root.visible && !SettingsView.reduceMotion && !Appearance.lessMotion
         onTriggered: root.sim = Sim.step(Math.min(0.1, frameTime), root.options)
     }
 
@@ -57,13 +57,14 @@ Item {
             height: Math.max(0, parent.height * root.sim.level / 100 - 8)
             y: parent.height - 4 - height
             radius: Math.max(0, Appearance.rounding.normal - 4)
-            color: root.low ? Appearance.colour.alarm : root.charging ? Appearance.colour.accent : Appearance.colour.text
+            color: levelTone.value
             opacity: root.low || root.charging ? Appearance.opacity.glow : Appearance.opacity.trail
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.normal
-                }
+            FollowColour {
+                id: levelTone
+
+                target: root.low ? Appearance.colour.alarm : root.charging ? Appearance.colour.accent : Appearance.colour.text
+                speed: Appearance.animation.trackSpeed
             }
         }
 

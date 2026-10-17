@@ -30,7 +30,7 @@ Item {
         to: 1
         duration: 6000
         loops: Animation.Infinite
-        running: root.walking && root.visible && !SettingsView.reduceMotion
+        running: root.walking && root.visible && !SettingsView.reduceMotion && !Appearance.lessMotion
     }
 
     readonly property var sample: [

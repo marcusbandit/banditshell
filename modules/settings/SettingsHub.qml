@@ -92,12 +92,15 @@ Column {
                 width: tile.lead ? grid.width : grid.cell
                 height: Appearance.padding.card * 2 + Appearance.icon.large + Appearance.padding.small + Appearance.font.line.small * 2 + 4
                 opacity: tile.off ? Appearance.opacity.disabled : 1
-                scale: press.pressed && !tile.off ? 0.96 : 1
+                scale: squeeze.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                Follow {
+                    id: squeeze
+
+                    target: press.pressed && !tile.off ? 0.96 : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {

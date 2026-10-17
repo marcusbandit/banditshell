@@ -30,7 +30,7 @@ FocusScope {
     property var guides: []
     property var corner: null
     property var held: null
-    property real shake: 0
+    readonly property real shake: shaker.value
 
     readonly property var fitted: Screens.fit(root.staged.length ? root.rects.concat(root.live) : root.rects, root.width, root.height - root.bar, root.pad)
     readonly property var view: root.held ?? root.fitted
@@ -78,7 +78,7 @@ FocusScope {
         const name = Monitors.selected;
         const to = Screens.nudge(root.rects, name, dx, dy);
         if (!to) {
-            bump.restart();
+            root.bump();
             return;
         }
         SettingsState.stageScreen(name, {
@@ -154,29 +154,37 @@ FocusScope {
         interval: 1400
     }
 
-    SequentialAnimation {
-        id: bump
+    Follow {
+        id: shaker
 
-        NumberAnimation {
-            target: root
-            property: "shake"
-            to: 4
-            duration: 50
-        }
+        target: 0
+        speed: Appearance.animation.snapSpeed
+        startsAtTarget: true
+    }
 
-        NumberAnimation {
-            target: root
-            property: "shake"
-            to: -4
-            duration: 80
-        }
+    Timer {
+        id: swing
 
-        NumberAnimation {
-            target: root
-            property: "shake"
-            to: 0
-            duration: 60
+        property int step: 0
+
+        onTriggered: {
+            if (swing.step === 1) {
+                shaker.target = -4;
+                swing.step = 2;
+                swing.interval = 80;
+                swing.restart();
+            } else {
+                shaker.target = 0;
+                swing.step = 0;
+            }
         }
+    }
+
+    function bump(): void {
+        shaker.target = 4;
+        swing.step = 1;
+        swing.interval = 50;
+        swing.restart();
     }
 
     MouseArea {
