@@ -1,6 +1,22 @@
 {
   "entries": [
     {
+      "id": "2026-10-17",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "While you dictate, the island sits over the window you are pointing at, so you can see where the words will land. It glides back to the middle when something else needs the island or the overview opens."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "When dictation is the only thing in the island, moving the pointer up to it makes it sink into the top bar so you can see what is behind it. A small bump stays to show it is still listening, and it comes back when the pointer leaves. A notification or anything else beside it keeps the island where it is."
+        }
+      ]
+    },
+    {
       "id": "2026-10-16-7",
       "date": "2026-10-16",
       "changes": [
