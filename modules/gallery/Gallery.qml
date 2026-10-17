@@ -36,24 +36,27 @@ Item {
 
         x: root.inset
         y: root.inset
-        width: root.navSpan - root.inset * 2
+        width: navGlide.value
         height: parent.height - root.inset * 2
         clip: true
 
-        opacity: root.navCollapsed ? 0 : 1
+        opacity: navFade.value
 
-        Behavior on width {
-            NumberAnimation {
-                duration: Appearance.animation.normal
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: navGlide
+
+            target: root.navSpan - root.inset * 2
+            speed: Appearance.animation.trackSpeed
+            startsAtTarget: true
         }
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.normal
-                easing.type: Easing.OutCubic
-            }
+        Follow {
+            id: navFade
+
+            target: root.navCollapsed ? 0 : 1
+            speed: Appearance.animation.trackSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
 
         Column {
