@@ -380,8 +380,8 @@ banditshell/
 ├── previews/                    the shell's pieces, opened alone in a window of
 │                                their own - battery, calculator, files, the
 │                                island, the lock face, notifications, qr,
-│                                settings, the terminal workbench, windows, the
-│                                gallery (`banditshell
+│                                settings, the sidebar in both styles, the
+│                                terminal workbench, windows, the gallery (`banditshell
 │                                dev preview gallery`, `... preview lock`). They
 │                                sit in a folder so the root stays just the two
 │                                entry points, and the folder holds because a
@@ -1313,7 +1313,13 @@ banditshell/
 │       │                        stands where the eye already goes, wearing
 │       │                        colours no ramp supplies
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
-│       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
+│       ├── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
+│       ├── RailPips.qml         the rail at rest: one mark per workspace, drawn from
+│       │                        WorkspaceModel, a bar as long as the windows it holds
+│       ├── RailAnomalies.qml    the rail at rest: a status icon only while it is unusual
+│       ├── anomalies.js         which marks are unusual, in what order, and how a gone
+│       │                        one is held while it fades (tests/sidebar-anomalies)
+│       └── scrolling.js         a wheel turn as a step of volume or brightness
 ├── scripts/
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
@@ -1506,6 +1512,27 @@ things are still honest scaffolding: the change
 is instant rather than the promised slide behind the left edge, which is still to come, and an
 entry that agrees with the default is deleted rather than kept, so `sidebar.perScreen` stays
 what its name says.
+
+**THE RAIL, 2026-10-17: `sidebar.style` is `full` or `rail`.** The launcher and the island now
+answer most of what the column used to be asked, so the column is allowed to be quiet. `full` is
+the sidebar as it was and stays the default. `rail` rests as a thin strip of the band
+(`sidebar.railWidth`, which is also what `FrameExclusions` reserves, so windows tile against the
+rail and not against the full column): one mark per workspace, and below them a status icon for
+whatever is unusual and nothing for what is normal. Unusual is decided in `anomalies.js`: a
+battery under 20 percent, the microphone live or muted while something records from it, a
+screen recording, a VPN, airplane mode (every radio off), quiet or a mode, an update waiting or
+stuck. A cap of four keeps the alarms and drops the quietest, and a mark that goes leaves by
+shrinking, not by blinking out.
+
+Pointing at the rail for `anim.dwell` grows it into the full column: the clock, tray, status
+icons and mode icon, with the workspaces turning from marks into plates. It is not a new panel.
+`Chassis` smooths one number (`railOpen`, through `Follow`) and the cutout's left edge simply
+moves, so the growth is the band swelling over the windows, and the content fades in as the
+edge passes it. Leaving for `anim.grace` collapses it, and it holds open while a menu opened
+from one of its icons is up, so every door the full column has is still there. The windows do
+not re-tile: the reservation stays at the rail, and the column only overlaps them while you are
+pointing at it. Scrolling the sound icon changes the volume in both styles, and the optional
+brightness icon (`sidebar.status.brightness`) does the same for the screen.
 
 **BARE, same day, the rest of the promise.** `edge.bare` is the chrome's master switch: the
 chassis draws nothing on any screen (a full-window hole, zero inset, zero radius, no

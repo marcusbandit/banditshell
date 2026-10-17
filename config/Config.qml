@@ -120,6 +120,10 @@ Singleton {
 
                 width: 52,
 
+                style: "full",
+
+                railWidth: 22,
+
                 enabled: true,
 
                 update: "new",
@@ -171,7 +175,8 @@ Singleton {
                     sound: true,
                     network: true,
                     bluetooth: true,
-                    battery: true
+                    battery: true,
+                    brightness: false
                 },
 
                 tray: {

@@ -1,4 +1,6 @@
 module qs.modules.sidebar
+RailAnomalies 1.0 RailAnomalies.qml
+RailPips 1.0 RailPips.qml
 ScratchpadEntry 1.0 ScratchpadEntry.qml
 SidebarClock 1.0 SidebarClock.qml
 SidebarIpc 1.0 SidebarIpc.qml

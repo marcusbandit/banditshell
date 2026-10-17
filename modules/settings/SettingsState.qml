@@ -148,6 +148,8 @@ Singleton {
             bare: "edge.bare",
             anim: "anim.base",
             sidebarW: "sidebar.width",
+            sbStyle: "sidebar.style",
+            sbBright: "sidebar.status.brightness",
             wsStyle: "sidebar.workspaces.style",
             iconMode: "sidebar.workspaces.iconMode",
             persistent: "sidebar.workspaces.persistent",

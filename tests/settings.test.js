@@ -271,6 +271,16 @@ test("sidebar rows point the replica at the part they change", () => {
     assert.strictEqual(Catalogue.zoneOf(null), "");
 });
 
+test("the sidebar style row offers full and rail and defaults to full", () => {
+    const row = Catalogue.ROW_BY_KEY.sbStyle;
+    assert.strictEqual(row.cfg, "sidebar.style");
+    assert.deepStrictEqual(row.o, ["full", "rail"]);
+    assert.strictEqual(lookup(DEFAULTS, "sidebar.style"), "full");
+    assert.strictEqual(lookup(DEFAULTS, "sidebar.status.brightness"), false);
+    assert.strictEqual(CONFIG_BACKED.sbStyle, "sidebar.style");
+    assert.strictEqual(Catalogue.zoneOf(Catalogue.ROW_BY_KEY.sbBright), "status");
+});
+
 test("modes only change settings that exist", () => {
     for (const m of Catalogue.MODES)
         for (const k of Object.keys(m.set))
