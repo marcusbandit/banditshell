@@ -171,6 +171,12 @@
 #   banditshell dev test [args]  run tests/*.test.js in node
 #   banditshell dev check        compile every QML file in a fresh engine, then
 #                                run the tests
+#   banditshell dev modules      check the module boundaries against
+#                                modules.baseline.json; a new violation fails
+#   banditshell dev modules [--matrix]
+#                                which package reaches for which, as a table
+#   banditshell dev modules --explain <package>
+#                                what a package needs, from which file and line
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -1540,6 +1546,17 @@ route_dev() {
         cd "$SHELL_DIR" || exit 1
         exec node --test 'tests/*.test.js' "$@"
         ;;
+    modules)
+        command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+        cd "$SHELL_DIR" || exit 1
+        case "${1:-}" in
+        "" | --matrix) exec node scripts/check-modules.js "$@" ;;
+        --explain)
+            [ -n "${2:-}" ] || say_usage "dev modules --explain <package>"
+            exec node scripts/check-modules.js "$@"
+            ;;
+        *) nope dev "modules $1" ;;
+        esac ;;
     check)
         case "${1:-}" in
         "") check_everything ;;

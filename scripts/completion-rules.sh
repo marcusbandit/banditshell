@@ -4,7 +4,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
 CLI="${1:-$REPO/cli/banditshell}"
 DESCRIPTION_COLUMN=31
-SOURCES=" panel menu screen theme key file dir page layer app place index worktree command "
+SOURCES=" panel menu screen theme key file dir page layer app place index worktree command package "
 
 case "${1:-}" in
 -h | --help)
@@ -44,7 +44,7 @@ split_on() {
     printf '%s\n' "$current"
 }
 
-plain_word() { [[ $1 =~ ^[a-z][a-z0-9-]*$ ]]; }
+plain_word() { [[ $1 =~ ^(--)?[a-z][a-z0-9-]*$ ]]; }
 
 placeholder() {
     if [[ $SOURCES == *" $1 "* ]]; then
@@ -183,10 +183,21 @@ verb_description() {
     fi
 }
 
+package_names() {
+    local file
+    for file in "$REPO"/modules/*/module.json; do
+        if [ -e "$file" ]; then basename "$(dirname "$file")"; fi
+    done
+    for file in "$REPO"/packages/*.json; do
+        if [ -e "$file" ]; then basename "$file" .json; fi
+    done
+}
+
 bake() {
     printf 'values\ttheme\t%s\n' "$(sed -n 's/^\s*readonly property Theme \([A-Za-z0-9_]*\):.*/\1/p' "$REPO/config/Themes.qml" | paste -sd' ' -)"
     printf 'values\tpage\t%s\n' "$(sed -n -e 's/^    { id: "\([a-z]*\)", name: "[^"]*", icon: "[^"]*",\( preview: "[^"]*",\)\{0,1\}$/\1/p' -e 's/^        id: "\([a-z]*\)", name: .*/\1/p' "$REPO/modules/settings/catalogue.js" | paste -sd' ' -)"
     printf 'values\tlayer\t%s\n' "$(sed -n 's/^ \{12\}\([a-zA-Z]*\): \[$/\1/p' "$REPO/modules/keyboard/Layouts.qml" | paste -sd' ' -)"
+    printf 'values\tpackage\t%s\n' "$(package_names | sort | paste -sd' ' -)"
 }
 
 parse | awk -F'\t' '$1 == "verb" && verbs[$2]++ { next } !seen[$0]++'
