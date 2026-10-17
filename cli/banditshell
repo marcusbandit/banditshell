@@ -2103,13 +2103,18 @@ doctor_api() {
 }
 
 redact_config() {
-    if command -v node >/dev/null 2>&1 && [ -f "$SHELL_DIR/scripts/redact-config.js" ]; then
-        node "$SHELL_DIR/scripts/redact-config.js" "$CONFIG_FILE"
-    elif [ -r "$CONFIG_FILE" ]; then
-        echo "(node is missing, so every value under a secret-looking name is hidden by a plain filter)"
-        sed -E 's/("[^"]*([Tt]oken|[Kk]ey|[Ss]ecret|[Pp]assword|[Cc]ookie)[^"]*"[[:space:]]*:[[:space:]]*)("[^"]*"|[^,}[:space:]]+)/\1"[removed]"/' "$CONFIG_FILE"
-    else
+    local out=""
+    if [ ! -r "$CONFIG_FILE" ]; then
         echo "no config file"
+        return 0
+    fi
+    if command -v node >/dev/null 2>&1 && [ -f "$SHELL_DIR/scripts/redact-config.js" ]; then
+        out=$(node "$SHELL_DIR/scripts/redact-config.js" "$CONFIG_FILE" 2>/dev/null) || out=""
+    fi
+    if [ -n "$out" ]; then
+        printf '%s\n' "$out"
+    else
+        echo "(the config is left out: taking the secrets out of it safely needs node)"
     fi
 }
 

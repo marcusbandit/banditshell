@@ -454,7 +454,7 @@ test("doctor --report prints versions, a config without secrets, the last 40 log
         hotkeys: ["a"]
     }));
     const log = Array.from({ length: 60 }, (_, i) => `line ${i}${i === 59 ? " token=SECRETVALUE" : ""}`).join("\n") + "\n";
-    const env = { ...recordingQuickshell(stub, { logLines: log }), XDG_CONFIG_HOME: path.join(home, "config") };
+    const env = { ...recordingQuickshell(stub, { logLines: log }), XDG_CONFIG_HOME: path.join(home, "config"), PATH: `${stub.dir}:${path.dirname(process.execPath)}:/usr/bin:/bin` };
     const run = cli(["doctor", "--report"], { stub, env, home });
     assert.strictEqual(run.code, 0, run.err);
     for (const head of ["## version", "## config", "## log (last 40 lines)", "## checks"])
@@ -469,6 +469,19 @@ test("doctor --report prints versions, a config without secrets, the last 40 log
     assert.strictEqual(logged[0], "line 20");
     assert.match(run.out, /^modules: .*/m);
     assert.match(run.out, /^rules: .*/m);
+});
+
+test("doctor --report without a working node leaves the config out instead of filtering it by hand", () => {
+    const stub = stubs();
+    const home = directory("home");
+    const config = path.join(home, "config/banditshell");
+    fs.mkdirSync(config, { recursive: true });
+    fs.writeFileSync(path.join(config, "config.json"), JSON.stringify({ keyboard: { height: 300 }, github: { token: "ghp_SECRET", nested: { password: "hunter2" } } }));
+    fs.writeFileSync(path.join(stub.dir, "node"), "#!/bin/sh\nexit 127\n", { mode: 0o755 });
+    const run = cli(["doctor", "--report"], { stub, env: { ...recordingQuickshell(stub), XDG_CONFIG_HOME: path.join(home, "config") }, home });
+    assert.strictEqual(run.code, 0, run.err);
+    assert.match(run.out, /the config is left out/);
+    assert.ok(!run.out.includes("ghp_SECRET") && !run.out.includes("hunter2"));
 });
 
 test("doctor --report copes with no config file", () => {
