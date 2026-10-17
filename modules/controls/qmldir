@@ -3,6 +3,5 @@ Expander 1.0 Expander.qml
 HoverTip 1.0 HoverTip.qml
 IdentityField 1.0 IdentityField.qml
 MenuRow 1.0 MenuRow.qml
-PathField 1.0 PathField.qml
 QrCode 1.0 QrCode.qml
 SecretField 1.0 SecretField.qml

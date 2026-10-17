@@ -10,20 +10,18 @@ yet. This spec is the plan for giving each of those a backend.
 
 All thirty tickets were built on 2026-10-14, on the `settings-backends` branch.
 Each ticket's `## Built` section says what landed and what a person still has to
-check. The one row still planned is the custom tiling layout (ticket 16), which
-waits on a design. Carrying an old planned value into config is generic:
+check. No row is planned any more: the custom layout card (ticket 16) is an
+entry point into the layout workshop and keeps no value of its own. Carrying an old planned value into config is generic:
 `SettingsState.adopt()` does it for every key that moves into `configBacked`.
 
-## How a planned setting works today
+## How the planned store works today
 
-- The row is marked `isNew` in `modules/settings/catalogue.js`. The pane says
-  "new · nothing behind it in the shell yet" under it.
-- Its value lives in `SettingsState.planned`, saved to
-  `~/.local/state/banditshell/settings.json`, with its default in
-  `SettingsState.planDefaults`. Flipping it changes the panel and its preview,
-  and is logged in recent changes, but the shell ignores it.
-- Some rows carry the config key the mockup proposed (`cfg`). The pane shows it.
-  Those keys do not exist in `config/Config.qml` yet.
+`SettingsState.planDefaults` is empty and no row is flagged new. The store
+survives for old files: values saved in `~/.local/state/banditshell/settings.json`
+under `planned` are carried into config by `SettingsState.adopt()` when their key
+is now config backed, and the restore file route still reads a `planned` table.
+A new planned setting would put a default in `planDefaults`; nothing marks the
+row as planned in the pane any more.
 
 ## How a backend lands
 
@@ -37,10 +35,9 @@ For each ticket:
 4. Carry the user's planned value over once: on load, if `planned[key]` exists
    and the config key is still at its default, write the planned value and drop
    it from `planned`.
-5. Drop `isNew` from the row (and its layer children) in `catalogue.js`.
-6. Update `tests/settings.test.js`: the test that every config key exists will
+5. Update `tests/settings.test.js`: the test that every config key exists will
    now cover the new key.
-7. Add a what's-new entry when it is pushed. Adding keys is not Major.
+6. Add a what's-new entry when it is pushed. Adding keys is not Major.
 
 ## Order
 

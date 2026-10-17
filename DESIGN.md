@@ -411,8 +411,9 @@ banditshell/
 ├── previews/                    the shell's pieces, opened alone in a window of
 │                                their own - battery, calculator, files, the
 │                                island, the lock face, notifications, qr,
-│                                settings, the sidebar in both styles, the
-│                                terminal workbench, windows, the gallery (`banditshell
+│                                the quick controls panel, settings, the
+│                                sidebar in both styles, the terminal
+│                                workbench, windows, the gallery (`banditshell
 │                                dev preview gallery`, `... preview lock`). They
 │                                sit in a folder so the root stays just the two
 │                                entry points, and the folder holds because a
@@ -554,9 +555,6 @@ banditshell/
 │   ├── FloatingTooltip.qml      a plain label floating above whatever it is
 │   │                            dropped into, after the tooltip delay; for
 │   │                            surfaces with no chassis to melt a tip out of
-│   ├── PathField.qml            a MenuRow until you press it, then a place to
-│   │                            type; the keyboard is claimed on the edit, not
-│   │                            on being visible
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
@@ -1416,7 +1414,7 @@ banditshell/
 │   │                             draws as a placeholder, not an error
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
-│       ├── Clock.qml            stacked HH / mm / date; the date opens the calendar
+│       ├── SidebarClock.qml     stacked HH / mm / date; the date opens the calendar
 │       ├── Workspaces.qml       picks which workspace style the sidebar wears
 │       ├── WorkspaceModel.qml   the column's layout + motion, shared by all of them
 │       ├── WorkspacePlates.qml  style: index tabs, length as state (`plates`/`icons`)
@@ -1759,7 +1757,7 @@ banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
                                    clipboard list|use|pin|remove <n>|clear;
                                    calculator full|compact|answer <expression>;
                                    notifications clear
-banditshell output [speakers|headphones|toggle|list]|assign <role> <device>
+banditshell output [speakers|headphones|toggle|list]|assign speakers|headphones <device>
 banditshell screen [brightness [<pct>|+n|-n]|temperature [<kelvin>|off]
                    |border [on|off|toggle]|sidebar [on|off|toggle] [screen|all]
                    |stream on [screen]|stream off]
@@ -1782,8 +1780,9 @@ banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
                 |check [island [dir]]|inspect island [screen]|inspect close
 banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
-banditshell dev menu current|hover|list|launcher scrub <0..1>
-                                   |keyring [status|demo|close]
+banditshell dev menu [current|hover|list]
+banditshell dev launcher scrub <fraction>
+banditshell dev keyring|polkit [status|demo|close]
 ```
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
@@ -2169,7 +2168,7 @@ repeats because two links to one picture are one wallpaper.
 `wallpaper.dir` is also the first setting in this shell that is **a piece of text**. Everything
 else on a settings page is a switch, a slider or a list of names, where the whole range is on
 the screen; a folder path is unbounded, and the only honest control for one is a place to type.
-`components/PathField.qml` is a MenuRow until you press it, so a page does not grow a
+The settings `path` row is a MenuRow until you press it, so a page does not grow a
 permanently open text box for a setting changed twice a year. The keyboard is claimed on the
 **edit** rather than on becoming visible, which is what `PasswordField` does and what would
 have made the settings panel hold the keyboard for as long as the page was open: a password

@@ -62,6 +62,8 @@ function world(extra) {
     };
 }
 
+const withSample = { planDefaults: { sample: "" } };
+
 function copyOf(config, planned) {
     return { config: config ?? {}, planned: planned ?? {} };
 }
@@ -180,17 +182,16 @@ test.describe("what would change", () => {
     });
 
     test.it("compares a planned setting against its default until it was ever changed", () => {
-        assert.ok("customLayout" in PLAN_DEFAULTS);
-        const untouched = Restore.diff(copyOf({}, { customLayout: "", kbDelay2: 1 }), world());
+        const untouched = Restore.diff(copyOf({}, { sample: "", kbDelay2: 1 }), world(withSample));
         assert.deepStrictEqual(untouched.changes, []);
         assert.deepStrictEqual(untouched.skipped, [{ key: "kbDelay2", why: "not a setting here" }]);
-        const changed = world({ planned: { customLayout: "orbit" } });
-        assert.deepStrictEqual(Restore.diff(copyOf({}, { customLayout: "orbit" }), changed).changes, []);
-        assert.deepStrictEqual(Restore.diff(copyOf({}, { customLayout: "" }), changed).changes, [{ route: "planned", path: "", key: "customLayout", from: "orbit", to: "" }]);
+        const changed = world({ planned: { sample: "orbit" }, planDefaults: { sample: "" } });
+        assert.deepStrictEqual(Restore.diff(copyOf({}, { sample: "orbit" }), changed).changes, []);
+        assert.deepStrictEqual(Restore.diff(copyOf({}, { sample: "" }), changed).changes, [{ route: "planned", path: "", key: "sample", from: "orbit", to: "" }]);
     });
 
     test.it("refuses a planned value of another kind", () => {
-        const out = Restore.diff(copyOf({}, { customLayout: 5, startup: {} }), world());
+        const out = Restore.diff(copyOf({}, { sample: 5, startup: {} }), world(withSample));
         assert.deepStrictEqual(out.changes, []);
         assert.strictEqual(out.skipped.length, 2);
     });
