@@ -11,6 +11,11 @@ Column {
 
     spacing: Appearance.padding.normal
 
+    LevelCover {
+        active: root.visible
+        kinds: ["volume", "mic"]
+    }
+
     component Level: Item {
         id: level
 

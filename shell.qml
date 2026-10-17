@@ -24,6 +24,8 @@ ShellRoot {
     readonly property var hyprConfig: HyprConfig
     readonly property var modes: Modes
     readonly property var launcherHotkeys: LauncherHotkeys
+    readonly property var activities: Activities
+    readonly property var levels: Levels
 
     LockScreen {}
 

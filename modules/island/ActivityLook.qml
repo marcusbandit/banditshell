@@ -81,6 +81,52 @@ QtObject {
                 trailing: "icon",
                 trailingIcon: "power_settings_new"
             };
+        case "external": {
+            const ended = a.state === "ended";
+            const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.alarm : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
+            return {
+                app: a.mark,
+                icon: a.icon || "bolt",
+                tone: tone,
+                text: a.text,
+                detail: a.detail,
+                dim: ended && a.outcome === "cancelled",
+                trailing: ended ? "icon" : a.progress < 0 ? "spin" : "ring",
+                trailingIcon: a.outcome === "failed" ? "error" : a.outcome === "cancelled" ? "cancel" : "check_circle",
+                trailingTone: tone,
+                ringValue: Math.max(0, a.progress)
+            };
+        }
+        case "timer":
+            return {
+                icon: a.paused ? "pause" : "timer",
+                tone: a.ending ? Appearance.colour.alarm : Appearance.colour.accent,
+                text: a.text,
+                markRing: a.progress,
+                trailing: "text",
+                trailingText: a.clock,
+                trailingSample: a.sample,
+                trailingTone: a.ending ? Appearance.colour.alarm : a.paused ? Appearance.colour.textFaint : Appearance.colour.textDim
+            };
+        case "alarm":
+            return {
+                icon: "alarm",
+                tone: Appearance.colour.alarm,
+                text: a.text,
+                trailing: "actions",
+                actions: a.actions ?? []
+            };
+        case "level":
+            return {
+                icon: a.icon,
+                tone: a.muted ? Appearance.colour.textFaint : Appearance.colour.accent,
+                text: a.text,
+                meter: a.meter,
+                trailing: a.readout ? "text" : "",
+                trailingText: a.readout,
+                trailingSample: "100%",
+                trailingTone: Appearance.colour.textDim
+            };
         case "notifications":
             return {
                 icon: "notifications",

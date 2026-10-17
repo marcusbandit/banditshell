@@ -93,6 +93,11 @@ Item {
         epsilon: 0.005
     }
 
+    LevelCover {
+        active: reveal.value > 0.2
+        kinds: ["volume", "brightness"]
+    }
+
     Timer {
         id: linger
 

@@ -33,8 +33,19 @@ Item {
             return a.upgrading ? "spin" : "";
         case "notification":
             return a.entry?.urgency === NotificationUrgency.Critical ? "alarm" : "";
+        case "external":
+            return a.state === "ended" ? "" : a.progress < 0 ? "spin" : "measure";
+        case "timer":
+            return "measure";
+        case "alarm":
+            return "alarm";
         }
         return "";
+    }
+
+    readonly property real measured: {
+        const a = root.front ?? {};
+        return Math.max(0, Math.min(1, a.progress ?? 0));
     }
 
     readonly property var badge: {
@@ -52,6 +63,20 @@ Item {
         if (root.kind === "notification" && root.count > 1)
             return {
                 text: `${root.count}`
+            };
+        if (root.kind === "external" && a.state === "ended")
+            return {
+                icon: a.outcome === "failed" ? "priority_high" : a.outcome === "cancelled" ? "close" : "check",
+                tone: a.outcome === "failed" ? Appearance.colour.alarm : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent
+            };
+        if (root.kind === "timer")
+            return {
+                text: a.clock,
+                tone: a.ending ? Appearance.colour.alarm : Appearance.colour.text
+            };
+        if ((root.kind === "external" || root.kind === "timer" || root.kind === "alarm") && root.items.length > 1)
+            return {
+                text: `${root.items.length}`
             };
         if (root.kind === "download" && a.more > 0)
             return {
@@ -78,6 +103,12 @@ Item {
             if (root.count > 1)
                 return `${root.count} notifications`;
             return [a.entry?.appName, a.entry?.summary].filter(t => t).join(": ") || "A notification";
+        case "external":
+            return root.items.length > 1 ? `${root.items.length} activities` : [a.text, a.detail].filter(t => t).join(": ");
+        case "timer":
+            return root.items.length > 1 ? `${root.items.length} timers` : `${a.text}, ${a.clock} left`;
+        case "alarm":
+            return a.text;
         }
         return "";
     }
@@ -91,6 +122,14 @@ Item {
         root.shownRing = root.ring
 
     property real trackProgress: 0
+
+    Follow {
+        id: measure
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.002
+        target: root.measured
+    }
 
     Follow {
         id: badgeIn
@@ -161,6 +200,16 @@ Item {
             track: "transparent"
             colour: root.shownRing === "track" && !Media.playing ? Appearance.colour.textFaint : Appearance.colour.accent
             value: root.shownRing === "progress" && root.front?.rec ? Launching.progress(root.front.rec) : root.trackProgress
+        }
+
+        ProgressRing {
+            anchors.centerIn: parent
+            visible: root.shownRing === "measure"
+            size: root.size - root.thickness
+            thickness: root.thickness
+            track: Appearance.colour.fillStrong
+            colour: root.front?.ending ? Appearance.colour.alarm : Appearance.colour.accent
+            value: measure.value
         }
 
         ProgressRing {

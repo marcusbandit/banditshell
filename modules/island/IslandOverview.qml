@@ -204,6 +204,9 @@ Item {
                     enabled: !root.carried.includes(modelData.key)
 
                     onChosen: root.chosen(modelData)
+                    onActed: name => root.chosen(Object.assign({}, modelData, {
+                            action: name
+                        }))
                 }
             }
         }

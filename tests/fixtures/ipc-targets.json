@@ -1,4 +1,11 @@
 {
+  "activity": [
+    "end(id: string, outcome: string): string",
+    "list(): string",
+    "push(id: string, text: string, detail: string, progress: string, icon: string, until: string, priority: string, run: string): string",
+    "reply(error: string, done: string): string",
+    "update(id: string, text: string, detail: string, progress: string, icon: string, until: string): string"
+  ],
   "alarm": [
     "add(time: string, days: string, label: string, mode: string, payload: string): string",
     "disable(handle: string): string",

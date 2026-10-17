@@ -865,6 +865,20 @@ banditshell/
 │   │                            for a few seconds, held while you look; the
 │   │                            standing ones then wait under the clock until
 │   │                            they are dealt with
+│   ├── Activities.qml           the island's front door: a registry any source
+│   │                            posts to (`push`, `update`, `end`), plus the
+│   │                            running timers and the ringing alarm read from
+│   │                            Clock. The island draws `shown`; a press goes
+│   │                            to `activate`. In memory only
+│   ├── activities.js            the registry's rules: ids, spans, progress,
+│   │                            ordering, expiry, outcomes, the timer and
+│   │                            alarm items, the level moments. No QML,
+│   │                            tested in node
+│   ├── Levels.qml               volume, mute, brightness and mic mute as a
+│   │                            second in the island, unless an open surface
+│   │                            already shows that level
+│   ├── LevelCover.qml           what a surface declares while it shows a
+│   │                            level, so Levels stays quiet about it
 │   ├── Downloads.qml            inotifywait on the XDG download folder. A name
 │   │                            counts once it is a non-empty file with no
 │   │                            .part or .crdownload beside it, which is what
@@ -969,6 +983,8 @@ banditshell/
 │   │   │                        bubble
 │   │   ├── ActivityBubble.qml   a kind beside the centre: its mark, plus the
 │   │   │                        ring and badge that keep its state readable
+│   │   ├── ActivityIpc.qml      the `activity` IPC target behind
+│   │   │                        `banditshell island push|update|end|list`
 │   │   ├── AlertDeck.qml        the notifications that are up: the newest in
 │   │   │                        front with the rest peeking, spread into a list
 │   │   │                        on hover and inside the overview
@@ -3653,6 +3669,9 @@ headlessly, checks each and photographs it.
 | Dictation or an app, while something else has the big spot | appears as a row below it for a moment, then takes the big spot; the old one glides into the nearest bubble and the newcomer slides up |
 | Another of a kind that already has the big spot (a second app) | another line, at the bottom |
 | Another of a kind that sits in a bubble | only the newcomer has its moment below; the bubble keeps the others |
+| An activity someone posted, or a running timer | the same as an app opening: below the big spot for a moment, then in it, and a bubble once something newer takes over |
+| A timer in its last ten seconds | comes to the big spot at once, whatever it was in |
+| An alarm, or a timer that ended | takes the big spot whatever is happening, even from a critical notification, with its buttons |
 | A music change, a download, an update, the kernel | a row at the bottom of the big spot, or the big spot itself if nothing else is live, for as long as its moment lasts; then it is gone, never a bubble |
 | Anything while the pointer is on the island | has its moment below and then waits as the nearest bubble, its timer held; nothing moves under the pointer, and it takes the big spot once the pointer leaves |
 | A critical notification | takes the big spot whatever is happening |
@@ -3729,6 +3748,44 @@ lifts a plate and shows its close mark. Rows that do nothing get no plate, so a
 plate always means a click. A finished launch focuses its window, the dictation
 row opens the transcription history, and a waiting notification comes out when
 pressed.
+
+### Anything can post to it
+
+The island used to know ten kinds, all written into it. Now it has a front door.
+`Activities` is a registry: a script, a build, an agent or a download manager
+posts `{id, text, detail, progress, icon, priority, until, act}` and the island
+draws it with the anatomy everything else has, a mark, words and a sign.
+`banditshell island push --id build --text "Building" --progress 0.4` does it
+from a terminal, `update` moves the progress or the words, `end` finishes it,
+`list` says what is up. The same four verbs are the `activity` IPC target
+(`ActivityIpc.qml`), so a program that can run a command can use the island.
+
+Progress is a ring in the row and around the bubble; left out, the ring spins.
+Ending is a mark, not a disappearance: a check, a red mark or a cross takes the
+ring's place for a moment, then the row goes. `until` is how long a forgotten
+activity may stay. Posting an id again replaces it, twelve is the most, and the
+thirteenth pushes out a finished one first, then the weakest. Pressing the row
+runs the command it was given, and a row with none does nothing, so it never
+gets a plate. The rules are in `activities.js`.
+
+A timer from the clock menu shows as a ring around a small timer mark with the
+time left on the right, always as wide as its longest reading so the capsule
+does not breathe every second. Beside something else it is a bubble with its
+ring around the edge and the time as its badge. In its last ten seconds it
+comes to the big spot, and pressing it pauses or resumes. When it ends, and
+when an alarm rings, the island holds an alarm row: Stop, and Snooze for a real
+alarm. That row takes the big spot from everything, a critical notification
+included, which waits in a bubble; the clock's own notification still lands in
+the history. Quiet timers, the pomodoro's, stay out.
+
+Volume, mute, brightness and mic mute are a moment, not a thing that stays: a
+row with a mark, a bar and the number, for a second, at the bottom of whatever
+holds the big spot. Nothing in the shell answered the volume keys before, which
+read as dead. `Levels` watches Audio, Display and Backlight and keeps quiet when
+a surface that already shows that level is open (the sound menu, the quick
+controls, the settings volume row declare it with `LevelCover`), when the device
+just changed, and for the first seconds after the shell starts.
+`island.levels` turns it off.
 
 ### The kernel
 

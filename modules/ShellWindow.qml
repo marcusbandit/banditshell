@@ -180,6 +180,11 @@ PanelWindow {
         case "recording":
             ScreenRecorder.stop();
             return;
+        case "external":
+        case "timer":
+        case "alarm":
+            Activities.activate(notice);
+            return;
         case "music":
             if (notice.origin && !mediaLayer.open) {
                 islandLayer.handOff();

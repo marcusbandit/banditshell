@@ -1,5 +1,6 @@
 module qs.modules.island
 ActivityBubble 1.0 ActivityBubble.qml
+ActivityIpc 1.0 ActivityIpc.qml
 ActivityLook 1.0 ActivityLook.qml
 ActivityMark 1.0 ActivityMark.qml
 ActivityRow 1.0 ActivityRow.qml

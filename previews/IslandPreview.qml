@@ -3,6 +3,7 @@ import Quickshell
 import Quickshell.Services.Notifications
 import qs.services
 import qs.modules.island
+import "../services/activities.js" as Logic
 
 ShellRoot {
     id: preview
@@ -10,6 +11,137 @@ ShellRoot {
     readonly property string shots: Quickshell.env("BANDITSHELL_SHOTS") ?? ""
 
     readonly property var steps: [
+        {
+            name: "a timer runs: a row with a ring and the time left",
+            run: () => Activities.staged = [preview.timer("tea", "Tea", 450000, 600000, false)],
+            expect: "timer"
+        },
+        {
+            name: "a second timer, paused: two lines, the paused ring holds",
+            run: () => Activities.staged = [preview.timer("tea", "Tea", 450000, 600000, false), preview.timer("laundry", "Laundry", 1500000, 3000000, true)],
+            expect: "2 timers"
+        },
+        {
+            name: "dictation starts while a timer runs: it shows below first",
+            run: () => {
+                Activities.staged = [preview.timer("tea", "Tea", 450000, 600000, false)];
+                preview.speak("listening");
+            },
+            expect: "timer, below it: dictation"
+        },
+        {
+            name: "then dictation takes the big spot and the timer is a ring bubble with its time",
+            run: () => {},
+            wait: 2600,
+            expect: "dictation, beside it: timer"
+        },
+        {
+            name: "the timer enters its last seconds: it grows to a row in the big spot",
+            run: () => Activities.staged = [preview.timer("tea", "Tea", 8000, 600000, false)],
+            expect: "timer, beside it: dictation"
+        },
+        {
+            name: "the timer is done: the alarm takes the big spot with Stop",
+            run: () => Activities.staged = [Logic.alarmItem("timer:tea", "Tea is done", Logic.alarmActions(false))],
+            expect: "alarm, beside it: dictation"
+        },
+        {
+            name: "an alarm rings: Snooze and Stop in the big spot",
+            run: () => Activities.staged = [Logic.alarmItem("wake", "07:30  Wake up", Logic.alarmActions(true))],
+            expect: "alarm, beside it: dictation"
+        },
+        {
+            name: "stopped, and dictation ends: nothing left",
+            run: () => {
+                Activities.staged = [];
+                preview.speak("idle");
+            },
+            expect: "hidden"
+        },
+        {
+            name: "a script pushes a build at 40 percent",
+            run: () => Activities.push({
+                    id: "build",
+                    text: "Building",
+                    detail: "compiling shaders",
+                    progress: 0.4,
+                    icon: "hardware"
+                }),
+            expect: "activity"
+        },
+        {
+            name: "it moves on, and a second task with no progress starts",
+            run: () => {
+                Activities.update("build", {
+                    progress: 0.8
+                });
+                Activities.push({
+                    id: "sync",
+                    text: "Syncing photos",
+                    icon: "sync"
+                });
+            },
+            expect: "2 activities"
+        },
+        {
+            name: "the build is done and the sync failed: each shows its mark",
+            run: () => {
+                Activities.end("build", "done");
+                Activities.end("sync", "failed");
+            },
+            expect: "2 activities"
+        },
+        {
+            name: "the marks go and so do the rows",
+            run: () => {},
+            wait: 3600,
+            expect: "hidden"
+        },
+        {
+            name: "the volume changes: a level row for a second",
+            run: () => Notices.pass(Logic.levelMoment("volume", 0.45, false, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the volume is muted",
+            run: () => Notices.pass(Logic.levelMoment("volume", 0.45, true, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the brightness changes",
+            run: () => Notices.pass(Logic.levelMoment("brightness", 0.7, false, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the microphone is muted",
+            run: () => Notices.pass(Logic.levelMoment("mic", 1, true, 1)),
+            wait: 400,
+            expect: "level"
+        },
+        {
+            name: "the level row is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "the volume changes while dictating: the level row sits below the bars",
+            run: () => {
+                preview.speak("listening");
+                Notices.pass(Logic.levelMoment("volume", 0.8, false, 1));
+            },
+            wait: 400,
+            expect: "dictation, below it: level"
+        },
+        {
+            name: "dictation ends and the level row is gone",
+            run: () => preview.speak("idle"),
+            wait: 1500,
+            expect: "hidden"
+        },
         {
             name: "dictating",
             run: () => preview.speak("listening"),
@@ -236,6 +368,20 @@ ShellRoot {
                 levels.push(Math.abs(Math.sin(i * 0.37)) * (0.35 + 0.65 * Math.abs(Math.sin(i * 0.11))));
             Dictation.levels = levels;
         }
+    }
+
+    function timer(id: string, label: string, left: real, total: real, paused: bool): var {
+        const now = Date.now();
+        return Logic.timerItem({
+            id: id,
+            label: label,
+            total: total,
+            deadline: now + left,
+            left: left,
+            paused: paused,
+            finished: false,
+            quiet: false
+        }, now);
     }
 
     function launch(id: string, name: string, state: string): void {

@@ -25,6 +25,7 @@ Scope {
     required property var picker
     required property var inspector
 
+    ActivityIpc {}
     AudioIpc {}
     CalculatorIpc {}
     ClipboardIpc {}
