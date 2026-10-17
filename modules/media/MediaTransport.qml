@@ -119,7 +119,7 @@ Item {
                     radius: width / 2
                     color: "transparent"
                     stroke: Appearance.colour.text
-                    strokeWidth: Appearance.font.stem
+                    strokeWidth: Appearance.stroke.ring
                 }
 
                 Icon {
@@ -135,7 +135,7 @@ Item {
                 SquircleRect {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: glyph.bottom
-                    anchors.topMargin: -Appearance.padding.small / 2
+                    anchors.topMargin: -Appearance.padding.hair
                     width: Appearance.font.stem * 3
                     height: width
                     radius: width / 2

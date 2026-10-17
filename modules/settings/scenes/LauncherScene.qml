@@ -283,7 +283,7 @@ Item {
                     radius: 13
                     cornerPower: 2
                     z: -1
-                    color: Qt.rgba(Appearance.colour.text.r, Appearance.colour.text.g, Appearance.colour.text.b, 0.18)
+                    color: Appearance.colour.fillStronger
                 }
             }
         }

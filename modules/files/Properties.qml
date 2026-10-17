@@ -89,7 +89,7 @@ Item {
         radius: Appearance.rounding.large
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.separator
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         Column {
             id: body
@@ -108,12 +108,12 @@ Item {
                     fileClass: root.stat ? root.stat.class : "unknown"
                     link: root.stat ? root.stat.link : false
                     broken: root.stat ? root.stat.broken : false
-                    size: Appearance.font.iconSize * 1.6
+                    size: Appearance.icon.large
                 }
 
                 StyledText {
                     anchors.verticalCenter: parent.verticalCenter
-                    width: parent.width - Appearance.font.iconSize * 1.6 - Appearance.padding.normal
+                    width: parent.width - Appearance.icon.large - Appearance.padding.normal
 
                     text: root.stat ? root.stat.name : "…"
                     font.pixelSize: Appearance.font.size.normal

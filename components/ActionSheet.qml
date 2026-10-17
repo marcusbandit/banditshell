@@ -137,7 +137,7 @@ Item {
             radius: root.groupRadius
             color: Appearance.colour.surfaceSolid
             stroke: Appearance.colour.separator
-            strokeWidth: Appearance.font.stem
+            strokeWidth: Appearance.stroke.ring
         }
 
         SquircleRect {

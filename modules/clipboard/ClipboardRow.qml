@@ -127,7 +127,7 @@ Item {
                 visible: root.entry.kind === "colour"
                 color: root.swatch
                 stroke: Appearance.colour.separator
-                strokeWidth: Appearance.font.stem
+                strokeWidth: Appearance.stroke.ring
             }
 
             Icon {
@@ -153,7 +153,7 @@ Item {
             anchors.right: trailing.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Appearance.padding.small / 2
+            spacing: Appearance.padding.hair
 
             StyledText {
                 width: parent.width

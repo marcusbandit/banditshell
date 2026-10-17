@@ -79,7 +79,7 @@ Item {
 
         radius: Appearance.rounding.small
         stroke: root.focused ? Appearance.colour.accent : "transparent"
-        strokeWidth: root.focused ? Appearance.font.stem : 0
+        strokeWidth: root.focused ? Appearance.stroke.ring : 0
     }
 
     TerminalView {

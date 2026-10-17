@@ -73,7 +73,7 @@ Item {
             height: parent.height
             radius: height / 2
             color: root.lit
-            opacity: 0.55
+            opacity: Appearance.opacity.trail
         }
 
         SquircleRect {
@@ -83,7 +83,7 @@ Item {
             height: parent.height
             radius: width / 2
             color: Appearance.colour.accentText
-            opacity: 0.55
+            opacity: Appearance.opacity.trail
         }
     }
 

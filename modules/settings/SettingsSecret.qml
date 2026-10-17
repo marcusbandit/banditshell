@@ -37,7 +37,7 @@ Row {
             radius: Appearance.rounding.normal
             color: Appearance.colour.fill
             stroke: input.activeFocus ? Appearance.colour.accent : "transparent"
-            strokeWidth: input.activeFocus ? 2 : 0
+            strokeWidth: input.activeFocus ? Appearance.stroke.ring : 0
         }
 
         Item {

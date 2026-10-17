@@ -20,7 +20,7 @@ Item {
     implicitWidth: root.size
     implicitHeight: root.size
 
-    opacity: root.enabled ? 1 : 0.3
+    opacity: root.enabled ? 1 : Appearance.opacity.disabled
 
     SquircleRect {
         anchors.fill: parent

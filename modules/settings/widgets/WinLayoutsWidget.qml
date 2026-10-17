@@ -53,7 +53,7 @@ Column {
 
                 width: root.cell
                 height: Appearance.padding.normal * 2 + mini.height + Appearance.padding.small + Appearance.font.line.small
-                opacity: card.ready ? 1 : 0.5
+                opacity: card.ready ? 1 : Appearance.opacity.disabled
 
                 SquircleRect {
                     anchors.fill: parent

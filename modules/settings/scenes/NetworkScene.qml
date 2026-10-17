@@ -51,7 +51,7 @@ SceneGauge {
             cornerPower: 2
             color: "transparent"
             stroke: Appearance.colour.accent
-            strokeWidth: 2
+            strokeWidth: Appearance.stroke.ring
             visible: root.live && clock.moving
             scale: f.s
             opacity: f.o

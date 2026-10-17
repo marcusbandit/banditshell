@@ -47,7 +47,7 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.small
         blur: Appearance.padding.normal
-        offset.y: Math.round(Appearance.padding.small / 2)
+        offset.y: Appearance.padding.hair
     }
 
     SquircleRect {
@@ -55,7 +55,7 @@ Item {
         radius: Appearance.rounding.small
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.fillStrong
-        strokeWidth: 1
+        strokeWidth: Appearance.stroke.line
     }
 
     StyledText {

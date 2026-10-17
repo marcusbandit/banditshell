@@ -60,7 +60,7 @@ Item {
             radius: Appearance.rounding.large
             color: Appearance.colour.surface
             stroke: Appearance.colour.separator
-            strokeWidth: Appearance.font.stem
+            strokeWidth: Appearance.stroke.ring
         }
 
         Grid {

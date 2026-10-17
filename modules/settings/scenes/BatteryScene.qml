@@ -48,7 +48,7 @@ Item {
             radius: Appearance.rounding.normal
             color: "transparent"
             stroke: Appearance.colour.fillStronger
-            strokeWidth: 2
+            strokeWidth: Appearance.stroke.ring
         }
 
         SquircleRect {
@@ -58,7 +58,7 @@ Item {
             y: parent.height - 4 - height
             radius: Math.max(0, Appearance.rounding.normal - 4)
             color: root.low ? Appearance.colour.alarm : root.charging ? Appearance.colour.accent : Appearance.colour.text
-            opacity: root.low || root.charging ? 0.8 : 0.55
+            opacity: root.low || root.charging ? Appearance.opacity.glow : Appearance.opacity.trail
 
             Behavior on color {
                 ColorAnimation {
@@ -103,7 +103,7 @@ Item {
 
             ShapePath {
                 strokeColor: "transparent"
-                fillColor: Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.06)
+                fillColor: Appearance.colour.fill
 
                 PathPolyline {
                     path: hist.pts.concat([Qt.point(hist.width, hist.height), Qt.point(hist.pts[0].x, hist.height)])
@@ -112,8 +112,8 @@ Item {
 
             ShapePath {
                 fillColor: "transparent"
-                strokeColor: root.low ? Appearance.colour.alarm : Qt.rgba(Appearance.colour.paper.r, Appearance.colour.paper.g, Appearance.colour.paper.b, 0.6)
-                strokeWidth: 2
+                strokeColor: root.low ? Appearance.colour.alarm : Appearance.colour.textDim
+                strokeWidth: Appearance.stroke.ring
 
                 PathPolyline {
                     path: hist.pts
@@ -123,7 +123,7 @@ Item {
             ShapePath {
                 fillColor: "transparent"
                 strokeColor: root.limit && root.present ? Appearance.colour.accent : "transparent"
-                strokeWidth: 1
+                strokeWidth: Appearance.stroke.line
                 strokeStyle: ShapePath.DashLine
                 dashPattern: [4, 4]
 
@@ -135,7 +135,7 @@ Item {
             ShapePath {
                 fillColor: "transparent"
                 strokeColor: Appearance.colour.alarm
-                strokeWidth: 1
+                strokeWidth: Appearance.stroke.line
                 strokeStyle: ShapePath.DashLine
                 dashPattern: [2, 4]
 

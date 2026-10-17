@@ -96,7 +96,7 @@ Item {
             anchors.right: useIt.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Appearance.padding.small / 2
+            spacing: Appearance.padding.hair
 
             StyledText {
                 width: parent.width
@@ -181,7 +181,7 @@ Item {
                 radius: Appearance.rounding.large
                 color: root.isColour ? root.swatch : "transparent"
                 stroke: Appearance.colour.separator
-                strokeWidth: Appearance.font.stem
+                strokeWidth: Appearance.stroke.ring
             }
 
             StyledText {
@@ -227,7 +227,7 @@ Item {
                     anchors.leftMargin: Appearance.padding.normal
                     anchors.right: parent.right
                     anchors.verticalCenter: parent.verticalCenter
-                    spacing: Appearance.padding.small / 2
+                    spacing: Appearance.padding.hair
 
                     StyledText {
                         width: parent.width

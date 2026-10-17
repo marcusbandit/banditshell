@@ -349,7 +349,7 @@ Item {
                         radius: Appearance.sizes.windowRadius * root.drawScale
                         color: "transparent"
                         stroke: Appearance.colour.separator
-                        strokeWidth: Appearance.font.stem
+                        strokeWidth: Appearance.stroke.ring
                         opacity: 1 - land.value
                     }
 

@@ -125,9 +125,9 @@ Item {
         anchors.fill: parent
 
         radius: Appearance.rounding.small
-        color: Appearance.veil(0.07)
-        stroke: Appearance.blend(Appearance.veil(0.14), Appearance.colour.alarm, root.alarm * 0.7)
-        strokeWidth: 1
+        color: Appearance.colour.fill
+        stroke: Appearance.blend(Appearance.colour.fillStrong, Appearance.colour.alarm, root.alarm * 0.7)
+        strokeWidth: Appearance.stroke.line
     }
 
     Item {

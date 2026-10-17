@@ -40,7 +40,7 @@ Column {
                 readonly property bool on: root.mode === mode.modelData.id
 
                 width: root.cell
-                height: Appearance.padding.card * 2 + Math.round(Appearance.font.iconSize * 1.4) + 4 + 4 + Appearance.font.line.small
+                height: Appearance.padding.card * 2 + Appearance.icon.large + 4 + 4 + Appearance.font.line.small
 
                 SquircleRect {
                     anchors.fill: parent
@@ -62,7 +62,7 @@ Column {
                     Icon {
                         anchors.horizontalCenter: parent.horizontalCenter
                         name: mode.modelData.icon
-                        size: Math.round(Appearance.font.iconSize * 1.4)
+                        size: Appearance.icon.large
                         fill: mode.on ? 1 : 0
                         color: mode.on ? Appearance.colour.accent : Appearance.colour.textFaint
                         bottomPadding: 4

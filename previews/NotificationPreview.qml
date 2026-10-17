@@ -100,7 +100,7 @@ ShellRoot {
     FloatingWindow {
         implicitWidth: 520
         implicitHeight: 700
-        color: "#16211c"
+        color: Appearance.colour.surfaceSolid
 
         NotificationTray {
             id: tray

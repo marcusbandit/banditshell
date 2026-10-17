@@ -9,7 +9,7 @@ Item {
 
     property bool playing: false
     property color color: Appearance.colour.text
-    property real size: Appearance.font.iconSize * 0.7
+    property real size: Appearance.icon.small
 
     readonly property real bar: Math.max(2, Math.round(root.size / 5))
 

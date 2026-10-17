@@ -60,7 +60,7 @@ Item {
     readonly property real rowScale: root.docked + (1 - root.docked) * arm.value
 
     readonly property int marksFit: Math.max(1, Math.floor((root.scaledW - root.markGap) / (Appearance.sizes.workspaceIcon + root.markGap)))
-    readonly property real markGap: Math.round(Appearance.padding.small / 2)
+    readonly property real markGap: Appearance.padding.hair
 
     readonly property real scaledPitch: root.pitch * root.rowScale
     readonly property real scaledW: root.plateW * root.rowScale
@@ -102,7 +102,7 @@ Item {
 
     visible: reveal.value > 0.01
 
-    opacity: reveal.value * (0.55 + 0.45 * arm.value)
+    opacity: reveal.value * (Appearance.opacity.trail + (1 - Appearance.opacity.trail) * arm.value)
 
     Repeater {
         model: root.slots
@@ -142,7 +142,7 @@ Item {
                 color: plate.aimed ? Appearance.colour.fillStrong : Appearance.colour.fill
 
                 stroke: plate.here ? Appearance.colour.accent : "transparent"
-                strokeWidth: Appearance.font.stem
+                strokeWidth: Appearance.stroke.ring
 
                 Behavior on color {
                     ColorAnimation {

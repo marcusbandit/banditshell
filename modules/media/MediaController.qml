@@ -346,7 +346,7 @@ Item {
             width: hull.width
             height: hull.height
             radius: hull.radius
-            opacity: 0.8 * (1 - root.flown)
+            opacity: Appearance.opacity.glow * (1 - root.flown)
             visible: opacity > 0.01
         }
 
@@ -375,7 +375,7 @@ Item {
                 radius: hull.radius
                 cornerPower: hull.power
                 stroke: Appearance.colour.seam
-                strokeWidth: Appearance.sizes.seam
+                strokeWidth: Appearance.stroke.ring
                 opacity: 1 - root.flown
                 visible: opacity > 0.01
             }
@@ -434,8 +434,8 @@ Item {
                                 anchors.fill: art
                                 radius: artBox.corner
                                 blur: Appearance.padding.normal / artBox.size
-                                offset.y: Appearance.padding.small / 2 / artBox.size
-                                opacity: art.ready ? 0.7 : 0
+                                offset.y: Appearance.padding.hair / artBox.size
+                                opacity: art.ready ? Appearance.opacity.glow : 0
                             }
 
                             SquircleRect {
@@ -479,7 +479,7 @@ Item {
 
                                     Icon {
                                         anchors.horizontalCenter: parent.horizontalCenter
-                                        size: Appearance.font.iconSize * 1.6
+                                        size: Appearance.icon.large
                                         name: "open_in_new"
                                     }
 
@@ -511,7 +511,7 @@ Item {
                             id: lines
 
                             width: parent.width
-                            spacing: Appearance.padding.small / 2
+                            spacing: Appearance.padding.hair
 
                             Item {
                                 id: titleLine

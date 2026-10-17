@@ -545,7 +545,7 @@ Item {
 
         color: Qt.rgba(root.body.r, root.body.g, root.body.b, root.body.a * tuck.value)
         stroke: Appearance.colour.fillStronger
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         WindowView {
             id: shot

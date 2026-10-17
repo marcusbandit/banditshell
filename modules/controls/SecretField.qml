@@ -82,8 +82,8 @@ Item {
         color: Appearance.colour.fill
         stroke: root.alarm ? Appearance.colour.alarm : field.activeFocus ? Appearance.colour.accent : Appearance.colour.seam
 
-        strokeWidth: Appearance.sizes.seam * (1 + focusIn.value)
-        opacity: root.busy ? 0.5 : 1
+        strokeWidth: Appearance.stroke.ring * (1 + focusIn.value)
+        opacity: root.busy ? Appearance.opacity.disabled : 1
     }
 
     TextInput {

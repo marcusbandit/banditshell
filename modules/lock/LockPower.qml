@@ -160,7 +160,7 @@ Item {
                         cornerPower: 2
                         color: press.containsMouse ? Appearance.colour.surfaceSolid : Qt.rgba(Appearance.colour.ink.r, Appearance.colour.ink.g, Appearance.colour.ink.b, 0.85)
                         stroke: Appearance.colour.seam
-                        strokeWidth: 1
+                        strokeWidth: Appearance.stroke.line
                     }
 
                     ProgressRing {

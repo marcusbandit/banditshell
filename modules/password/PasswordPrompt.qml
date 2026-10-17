@@ -124,7 +124,7 @@ Item {
             color: Appearance.colour.surface
 
             stroke: Appearance.colour.seam
-            strokeWidth: Appearance.sizes.seam
+            strokeWidth: Appearance.stroke.ring
 
             Column {
                 id: body

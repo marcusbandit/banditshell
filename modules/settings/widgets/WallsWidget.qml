@@ -48,7 +48,7 @@ Item {
 
                 width: root.tile
                 height: Math.round(root.tile * 10 / 16)
-                opacity: root.usable ? 1 : 0.35
+                opacity: root.usable ? 1 : Appearance.opacity.disabled
                 scale: hover.hovered && root.usable ? 0.97 : 1
 
                 Behavior on scale {
@@ -92,8 +92,8 @@ Item {
                     anchors.margins: 4
                     visible: wp.moving
                     name: SettingsState.v("wallAnim") ? "animation" : "pause"
-                    size: 16
-                    color: "white"
+                    size: Appearance.icon.small
+                    color: Appearance.colour.paper
                 }
 
                 HoverHandler {

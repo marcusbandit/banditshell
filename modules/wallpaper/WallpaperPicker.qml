@@ -534,7 +534,7 @@ Item {
                         radius: Appearance.rounding.normal
                         color: "transparent"
                         stroke: Appearance.colour.accent
-                        strokeWidth: Appearance.font.stem * 2
+                        strokeWidth: Appearance.stroke.ring * 2
                         visible: root.keyboardNavigating && card.entry === Math.round(strip.goal)
                     }
                 }
@@ -701,7 +701,7 @@ Item {
                             cornerPower: 2
                             color: "transparent"
                             stroke: Appearance.colour.text
-                            strokeWidth: Appearance.font.stem
+                            strokeWidth: Appearance.stroke.ring
                             visible: swatch.picked
                         }
 
@@ -713,7 +713,7 @@ Item {
                             cornerPower: 2
                             color: swatch.modelData.colour
                             stroke: Appearance.colour.textGhost
-                            strokeWidth: 1
+                            strokeWidth: Appearance.stroke.line
                             scale: tap.containsMouse ? 1.15 : 1
 
                             Behavior on scale {

@@ -103,7 +103,7 @@ Item {
 
                         width: body.cellWidth
                         height: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12
-                        opacity: fi.dot ? 0.55 : 1
+                        opacity: fi.dot ? Appearance.opacity.trail : 1
 
                         SquircleRect {
                             anchors.fill: parent

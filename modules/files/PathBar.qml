@@ -66,7 +66,7 @@ Item {
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: Appearance.padding.small / 2
+                    anchors.margins: Appearance.padding.hair
 
                     radius: Appearance.rounding.small
                     color: press.containsMouse && button.modelData.enabled ? Appearance.colour.fill : "transparent"
@@ -146,7 +146,7 @@ Item {
                     radius: Appearance.rounding.small
                     color: root.receiving === crumb.index ? Appearance.colour.accentFill : hover.hovered ? Appearance.colour.fill : "transparent"
                     stroke: root.receiving === crumb.index ? Appearance.colour.accent : "transparent"
-                    strokeWidth: root.receiving === crumb.index ? Appearance.font.stem : 0
+                    strokeWidth: root.receiving === crumb.index ? Appearance.stroke.ring : 0
                 }
 
                 StyledText {
@@ -208,7 +208,7 @@ Item {
         radius: Appearance.rounding.small
         color: Appearance.colour.fill
         stroke: Appearance.colour.accent
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         TextInput {
             id: entry

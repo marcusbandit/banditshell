@@ -38,7 +38,7 @@ Item {
     readonly property color ink: root.latched || root.lit ? Appearance.colour.text : Appearance.colour.textGhost
 
     readonly property color edge: root.selected ? Appearance.colour.accent : root.blocked ? Appearance.colour.separator : "transparent"
-    readonly property real edgeWidth: root.selected || root.blocked ? Appearance.font.stem : 0
+    readonly property real edgeWidth: root.selected || root.blocked ? Appearance.stroke.ring : 0
 
     property color paint: root.fill
 
@@ -134,7 +134,7 @@ Item {
         Item {
             id: pair
 
-            readonly property real gap: Appearance.padding.small / 2
+            readonly property real gap: Appearance.padding.hair
 
             anchors.centerIn: parent
             width: Math.min(sigil.implicitWidth + pair.gap + word.implicitWidth, head.width - root.margin * 2)

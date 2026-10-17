@@ -112,7 +112,7 @@ Item {
         width: leadLoader.active ? leadLoader.width : Appearance.font.iconSize
         height: leadLoader.active ? leadLoader.height : Appearance.font.iconSize
         visible: leadLoader.active || root.icon !== ""
-        opacity: root.off ? 0.4 : 1
+        opacity: root.off ? Appearance.opacity.disabled : 1
 
         Icon {
             anchors.centerIn: parent
@@ -136,7 +136,7 @@ Item {
         x: root.padX + root.leadWidth
         y: root.padY + (root.lineHeight - implicitHeight) / 2
         width: root.wrapped ? root.inner - root.leadWidth : Math.max(0, root.inner - root.leadWidth - (root.trailWidth > 0 ? root.trailWidth + root.gapX : 0))
-        opacity: root.off ? 0.4 : 1
+        opacity: root.off ? Appearance.opacity.disabled : 1
 
         StyledText {
             width: parent.width
@@ -163,7 +163,7 @@ Item {
         x: root.width - root.padX - width
         y: root.wrapped ? root.padY + root.lineHeight + root.gapY : root.padY + (root.lineHeight - height) / 2
         spacing: Appearance.padding.normal
-        opacity: root.off ? 0.4 : 1
+        opacity: root.off ? Appearance.opacity.disabled : 1
         enabled: !root.off
     }
 }

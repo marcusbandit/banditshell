@@ -147,7 +147,7 @@ Item {
         radius: Appearance.rounding.large
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.separator
-        strokeWidth: Appearance.font.stem
+        strokeWidth: Appearance.stroke.ring
 
         Row {
             id: header
@@ -314,7 +314,7 @@ Item {
                                     radius: Appearance.rounding.small
                                     color: binding.waiting ? Appearance.colour.accentFill : press.containsMouse ? Appearance.colour.fill : "transparent"
                                     stroke: binding.waiting ? Appearance.colour.accent : "transparent"
-                                    strokeWidth: binding.waiting ? Appearance.font.stem : 0
+                                    strokeWidth: binding.waiting ? Appearance.stroke.ring : 0
                                 }
 
                                 StyledText {

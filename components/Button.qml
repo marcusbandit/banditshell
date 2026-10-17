@@ -34,7 +34,7 @@ Item {
     readonly property bool hasIcon: root.icon !== ""
     readonly property real markSpan: root.hasIcon ? markSize + (root.hasText ? markGap : 0) : 0
 
-    opacity: root.interactive ? 1 : 0.45
+    opacity: root.interactive ? 1 : Appearance.opacity.disabled
 
     readonly property var skins: ({
             "default": {
@@ -63,7 +63,7 @@ Item {
                     bg: "transparent",
                     fg: Appearance.colour.text,
                     ring: Appearance.colour.fillStrong,
-                    ringW: Appearance.font.stem,
+                    ringW: Appearance.stroke.ring,
                     shape: "round"
                 },
                 text: {
@@ -103,7 +103,7 @@ Item {
                     bg: "transparent",
                     fg: Appearance.colour.text,
                     ring: Appearance.colour.fillStrong,
-                    ringW: Appearance.font.stem,
+                    ringW: Appearance.stroke.ring,
                     shape: "round"
                 }
             },
