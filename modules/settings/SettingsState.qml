@@ -1882,8 +1882,14 @@ Singleton {
             return `${Update.behind} new on ${Update.branch}`;
         case Update.downloading:
             return "getting it";
-        case Update.downloaded:
-            return "restart to finish";
+        case Update.verifying:
+            return "checking it loads";
+        case Update.restarting:
+            return "restarting";
+        case Update.updated:
+            return "updated";
+        case Update.rolledback:
+            return "went back";
         case Update.failed:
             return "could not look";
         }
