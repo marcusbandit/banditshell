@@ -396,6 +396,12 @@ banditshell/
 │                                qs.services, ...) and every type in it; what lets
 │                                the LSP resolve `import qs.config`. Regenerate
 │                                with scripts/qmldirs.sh after adding files
+├── packages/                    one module.json per package that has no folder of its
+│                                own under modules/ (core, compositor, clock, ...);
+│                                the others keep theirs at modules/<name>/module.json.
+│                                docs/architecture/modules.md has the map
+├── modules.baseline.json        the module boundary violations that exist today;
+│                                `banditshell dev modules` fails on any not in it
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
@@ -1295,6 +1301,12 @@ banditshell/
 │       ├── TrayIcons.qml        the tray, at the TOP: what runs without a window
 │       └── TrayIcon.qml         one of them; StatusIcon's drawing, three buttons
 ├── scripts/
+│   ├── check-modules.js         the module boundary check: reads every module.json,
+│   │                            decides who owns each file, and lists what imports,
+│   │                            singletons, config keys and IPC targets cross a
+│   │                            boundary the manifests do not allow; --matrix and
+│   │                            --explain <package> show the edges (node, no
+│   │                            dependencies; `banditshell dev modules`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes
