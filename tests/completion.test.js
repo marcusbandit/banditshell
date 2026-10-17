@@ -127,6 +127,14 @@ test("each group offers its parts, and each part its actions", () => {
     assert.deepStrictEqual(bashComplete("dev", "keyring", ""), ["close", "demo", "status"]);
 });
 
+test("update offers its verbs, and each verb its flags", () => {
+    assert.deepStrictEqual(bashComplete("update", ""), ["apply", "check", "rollback", "status"]);
+    assert.deepStrictEqual(bashComplete("update", "check", ""), ["--json", "--no-fetch"]);
+    assert.deepStrictEqual(bashComplete("update", "apply", ""), ["--detach", "--json", "--to"]);
+    assert.deepStrictEqual(bashComplete("update", "status", ""), ["--json"]);
+    assert.deepStrictEqual(bashComplete("update", "rollback", ""), []);
+});
+
 test("flags complete after the words they belong to", () => {
     assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
     assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);

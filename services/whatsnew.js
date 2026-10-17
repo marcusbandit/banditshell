@@ -1,5 +1,7 @@
 const TYPES = ["issues", "bugs", "features", "ui", "config"];
 
+const IMPACT_KEYS = ["restart", "cli", "binds", "deps"];
+
 function change(raw) {
     if (!raw || typeof raw !== "object")
         return null;
@@ -12,6 +14,21 @@ function change(raw) {
     };
 }
 
+function names(list) {
+    return Array.isArray(list) ? list.filter(s => typeof s === "string" && s.trim()).map(s => s.trim()) : [];
+}
+
+function impact(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return null;
+    return {
+        restart: raw.restart === true,
+        cli: raw.cli === true,
+        binds: names(raw.binds),
+        deps: names(raw.deps)
+    };
+}
+
 function entry(raw) {
     if (!raw || typeof raw !== "object")
         return null;
@@ -21,6 +38,7 @@ function entry(raw) {
         id: raw.id.trim(),
         date: typeof raw.date === "string" ? raw.date.trim() : "",
         example: raw.example === true,
+        impact: impact(raw.impact),
         changes: Array.isArray(raw.changes) ? raw.changes.map(change).filter(c => c) : []
     };
 }
