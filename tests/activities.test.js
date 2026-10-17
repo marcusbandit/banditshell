@@ -389,3 +389,33 @@ test.describe("surfaces that already show a level", () => {
         assert.strictEqual(A.levelWanted(false, [], "volume"), false);
     });
 });
+
+test.describe("styles, data and actions", () => {
+    test.it("carries a style, data and actions through to the island item", () => {
+        const spec = { id: "s", text: "Shot", style: "screenshot", data: { path: "/a.png" }, actions: [{ name: "copy", label: "Copy" }], pressable: true };
+        const item = A.itemOf(A.push([], spec, NOW).entry);
+        assert.strictEqual(item.style, "screenshot");
+        assert.strictEqual(item.data.path, "/a.png");
+        assert.deepStrictEqual(item.actions, [{ name: "copy", label: "Copy" }]);
+        assert.strictEqual(item.pressable, true);
+    });
+
+    test.it("refuses an unknown style and malformed actions", () => {
+        assert.ok(A.push([], { id: "a", text: "x", style: "glitter" }, NOW).error);
+        assert.ok(A.push([], { id: "a", text: "x", actions: "copy" }, NOW).error);
+        assert.ok(A.push([], { id: "a", text: "x", actions: [{ name: "go", label: "a label that is far too long" }] }, NOW).error);
+        assert.ok(A.push([], { id: "a", text: "x", actions: [1, 2, 3, 4, 5].map(n => ({ name: `a${n}`, label: "A" })) }, NOW).error);
+    });
+
+    test.it("keys a privacy item by its kind so it does not join the external group", () => {
+        const item = A.itemOf(A.push([], { id: "privacy:mic", kind: "privacy", style: "privacy", text: "Mic" }, NOW).entry);
+        assert.strictEqual(item.key, "privacy:privacy:mic");
+        assert.strictEqual(item.kind, "privacy");
+    });
+
+    test.it("lets an update replace the data", () => {
+        const list = A.push([], { id: "b", text: "B", data: { battery: -1 } }, NOW).list;
+        const next = A.update(list, "b", { data: { battery: 70 } }, NOW + 1);
+        assert.strictEqual(next.entry.data.battery, 70);
+    });
+});

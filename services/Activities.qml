@@ -76,16 +76,16 @@ Singleton {
             root.answer(item);
             return;
         case "external":
-            root.run(root.entries.find(e => e.id === item.id));
+            root.run(root.entries.find(e => e.id === item.id), item.action ?? "");
             return;
         }
     }
 
-    function run(entry: var): void {
+    function run(entry: var, action: string): void {
         if (!entry || entry.state === "ended" || !entry.act)
             return;
         if (typeof entry.act === "function")
-            entry.act(entry);
+            entry.act(entry, action);
         else
             Quickshell.execDetached(["sh", "-c", String(entry.act)]);
     }

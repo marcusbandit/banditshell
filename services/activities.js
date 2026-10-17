@@ -6,7 +6,10 @@ const DETAIL_MAX = 200;
 const ENDING_MS = 10000;
 const LEVEL_MS = 1000;
 const OUTCOMES = ["done", "failed", "cancelled"];
-const KINDS = ["external"];
+const KINDS = ["external", "privacy"];
+const STYLES = ["", "screenshot", "copied", "bluetooth", "privacy"];
+const ACTIONS_MAX = 4;
+const ACTION_LABEL_MAX = 12;
 const LEVEL_KINDS = ["volume", "brightness", "mic"];
 const ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,63}$/;
 const SPAN_PIECE = /(\d+(?:\.\d+)?)(ms|h|m|s)/g;
@@ -59,6 +62,22 @@ function readPriority(value) {
     return { value: Math.max(-100, Math.min(100, Math.round(number))) };
 }
 
+function readActions(value) {
+    if (value === undefined || value === null)
+        return { value: [] };
+    if (!Array.isArray(value) || value.length > ACTIONS_MAX)
+        return { error: `actions are a list of at most ${ACTIONS_MAX}` };
+    const out = [];
+    for (const a of value) {
+        const name = String(a && a.name !== undefined ? a.name : "");
+        const label = String(a && a.label !== undefined ? a.label : "");
+        if (name === "" || label === "" || label.length > ACTION_LABEL_MAX)
+            return { error: `an action is a name and a label of up to ${ACTION_LABEL_MAX} characters` };
+        out.push({ name: name, label: label });
+    }
+    return { value: out };
+}
+
 function made(spec, now) {
     const source = spec || {};
     const id = String(source.id === undefined || source.id === null ? "" : source.id);
@@ -84,6 +103,12 @@ function made(spec, now) {
     const span = parseSpan(source.until);
     if (span < 0)
         return { error: `until is a span like 30s, 2m or 1h30m, up to 7 days: ${source.until}` };
+    const style = source.style === undefined || source.style === null ? "" : source.style;
+    if (!STYLES.includes(style))
+        return { error: `style is one of ${STYLES.filter(s => s !== "").join(", ")}` };
+    const actions = readActions(source.actions);
+    if (actions.error)
+        return actions;
     return {
         entry: {
             id: id,
@@ -97,6 +122,10 @@ function made(spec, now) {
             until: span,
             deadline: span > 0 ? now + span : 0,
             act: source.act || null,
+            style: style,
+            data: source.data || null,
+            actions: actions.value,
+            pressable: !!source.pressable,
             source: String(source.source || ""),
             state: "running",
             outcome: "",
@@ -163,6 +192,8 @@ function update(list, id, patch, now) {
         next.mark = String(given.mark);
     if (given.act)
         next.act = given.act;
+    if (given.data)
+        next.data = given.data;
     if (given.until !== undefined && given.until !== "") {
         const span = parseSpan(given.until);
         if (span < 0)
@@ -217,7 +248,7 @@ function ordered(list) {
 
 function itemOf(entry) {
     return {
-        key: `external:${entry.id}`,
+        key: `${entry.kind}:${entry.id}`,
         id: entry.id,
         kind: entry.kind,
         text: entry.text,
@@ -228,7 +259,10 @@ function itemOf(entry) {
         state: entry.state,
         outcome: entry.outcome,
         priority: entry.priority,
-        pressable: !!entry.act,
+        pressable: !!(entry.act || entry.pressable),
+        style: entry.style,
+        data: entry.data,
+        actions: entry.actions,
         source: entry.source
     };
 }
