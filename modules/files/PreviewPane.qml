@@ -255,13 +255,15 @@ Item {
 
                 readonly property real ring: Appearance.font.iconSize + Appearance.padding.normal * 2
 
-                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                scale: pressScale.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                        easing.type: Easing.OutBack
-                    }
+                Follow {
+                    id: pressScale
+
+                    target: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {

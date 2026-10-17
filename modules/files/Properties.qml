@@ -12,25 +12,29 @@ Item {
     property string path: ""
     property var stat: null
 
+    property bool up: false
+
     function show(path: string): void {
         root.path = path;
         root.stat = null;
-        root.opacity = 1;
+        root.up = true;
         statter.exec([Files.helper("bs-ls"), "--stat", path]);
     }
 
     function close(): void {
-        root.opacity = 0;
+        root.up = false;
     }
 
-    visible: opacity > 0
-    opacity: 0
+    visible: root.up || fade.value > 0
+    opacity: fade.value
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: Appearance.animation.fade.fast
-            easing.type: Easing.OutQuad
-        }
+    Follow {
+        id: fade
+
+        target: root.up ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     Process {

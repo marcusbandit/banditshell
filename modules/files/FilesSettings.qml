@@ -15,19 +15,17 @@ Item {
 
     function show(): void {
         root.up = true;
-        root.opacity = 1;
         Qt.callLater(root.forceActiveFocus);
     }
 
     function close(): void {
         root.rebinding = "";
         root.up = false;
-        root.opacity = 0;
         root.dismissed();
     }
 
-    visible: root.up || root.opacity > 0
-    opacity: 0
+    visible: root.up || fade.value > 0
+    opacity: fade.value
     focus: root.up
 
     property string rebinding: ""
@@ -121,11 +119,13 @@ Item {
         }
     }
 
-    Behavior on opacity {
-        NumberAnimation {
-            duration: Appearance.animation.fade.fast
-            easing.type: Easing.OutQuad
-        }
+    Follow {
+        id: fade
+
+        target: root.up ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
     }
 
     Rectangle {
