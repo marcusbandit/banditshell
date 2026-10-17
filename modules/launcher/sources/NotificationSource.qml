@@ -19,7 +19,7 @@ QtObject {
 
     readonly property bool active: (root.explicit || root.blending) && root.search.onStage && root.search.text.length > 0
 
-    readonly property var found: root.active ? NotificationSearch.find(Notifications.history, root.asked).slice(0, root.explicit ? 40 : 3) : []
+    readonly property var found: root.active ? NotificationSearch.find(Notifications.history.filter(e => !Notifications.leaving.includes(e)), root.asked).slice(0, root.explicit ? 40 : 3) : []
 
     readonly property bool intent: root.explicit && root.search.onStage
 

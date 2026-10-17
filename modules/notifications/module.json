@@ -11,6 +11,7 @@
     "tests": [
       "tests/alert-sounds.test.js",
       "tests/notification-rules.test.js",
+      "tests/notifications-cli.test.js",
       "tests/notification-search.test.js",
       "tests/notification-store.test.js",
       "tests/notification-timing.test.js",

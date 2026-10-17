@@ -356,6 +356,8 @@ Singleton {
     function wake(entry: var): void {
         if (!root.history.includes(entry) || entry.leaving)
             return;
+        if (!(entry.timeout > 0) && entry.urgency !== NotificationUrgency.Critical)
+            entry.timeout = root.defaultTimeout;
         entry.remaining = 1;
         entry.seen = false;
         const shown = [entry, ...root.popups.filter(e => e !== entry)];
