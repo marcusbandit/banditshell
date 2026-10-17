@@ -559,7 +559,9 @@ Singleton {
 
                 downloads: true,
 
-                nowPlaying: true
+                nowPlaying: true,
+
+                levels: true
             },
 
             weather: {

@@ -56,8 +56,8 @@ Singleton {
         root.holders = root.holders.filter(h => h && h !== who);
     }
 
-    function glance(key: string): void {
-        root.left[key] = root.glanceMs;
+    function glance(key: string, ms: var): void {
+        root.left[key] = ms > 0 ? ms : root.glanceMs;
         if (!root.glancing.includes(key))
             root.glancing = [...root.glancing, key];
     }
@@ -72,7 +72,7 @@ Singleton {
 
     function pass(notice: var): void {
         root.passing = [notice, ...root.passing.filter(n => n.key !== notice.key)].slice(0, root.passingMax);
-        root.glance(notice.key);
+        root.glance(notice.key, notice.ms);
         root.prune();
     }
 
