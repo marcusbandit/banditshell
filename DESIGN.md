@@ -101,6 +101,11 @@ Bare and a floating stream panel draw no edge at rest, so they draw none here ei
 reservations stay as they were, so the windows underneath do not re-tile on the way in or
 out. Other monitors are untouched.
 
+The launcher is the one exception (2026-10-17). Summoned over a fullscreen window, it opens on
+the overlay surface that draws the edge ring, as one solid panel rising out of the ring with no
+band or sidebar behind it. It takes the keyboard while it is open and closes back to the plain
+fullscreen window. Every other panel and menu still refuses to open there.
+
 The change is a motion, not a cut. Hyprland fades every top-layer surface out under a
 fullscreen window, so the overlay carries the transition: it starts as an exact copy of the
 chassis at rest and melts the band out to the edge ring at `revealSpeed`, which tracks the
