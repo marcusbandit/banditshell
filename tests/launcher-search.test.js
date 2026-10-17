@@ -154,6 +154,25 @@ test.describe("arrange", () => {
         assert.deepStrictEqual(Search.arrange([groups[0]], {}).map(r => r.key), ["a1", "a2", "a3"]);
     });
 
+    test.it("keeps an empty section that carries a note, and names the note in its header", () => {
+        const cut = { key: "contents", title: "Inside files", note: "stopped after 2 s", items: [] };
+        const rows = Search.arrange([groups[0], cut], { apps: 2 });
+        assert.deepStrictEqual(rows.map(r => r.key), ["header:apps", "a1", "a2", "header:contents"]);
+        assert.strictEqual(rows[3].title, "Inside files · stopped after 2 s");
+        assert.strictEqual(rows[3].header, true);
+    });
+
+    test.it("adds the note to a section that has rows, and leaves an unnoted one alone", () => {
+        const hit = { key: "contents", title: "Inside files", note: "stopped after 2 s", items: [{ key: "c", score: 1 }] };
+        const rows = Search.arrange([groups[0], hit], {});
+        assert.strictEqual(rows.find(r => r.key === "header:contents").title, "Inside files · stopped after 2 s");
+        assert.strictEqual(rows.find(r => r.key === "header:apps").title, "Apps");
+    });
+
+    test.it("returns nothing when the only section is a note with no rows", () => {
+        assert.deepStrictEqual(Search.arrange([{ key: "contents", title: "Inside files", note: "stopped after 2 s", items: [] }], {}), []);
+    });
+
     test.it("steps over headers, wrapping around", () => {
         const rows = Search.arrange(groups, { apps: 2 });
         assert.strictEqual(Search.nextPickable(rows, 0, 1), 1);
