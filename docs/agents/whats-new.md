@@ -23,6 +23,7 @@ Entries are listed newest first. Each entry has:
 | `date`              | `YYYY-MM-DD`, when the push landed.                                        |
 | `changes`           | One line each, in the order a reader should meet them.                     |
 | `example`           | `true` on the seed entry only. The shell skips it; the first real entry replaces it. |
+| `impact`            | Optional. What the update does to the person's setup, so the update menu can say so before they press the button. See below. |
 
 Each change carries:
 
@@ -31,6 +32,24 @@ Each change carries:
 | `type`    | One of: `issues` (a tracked issue was fixed), `bugs` (something broken was fixed), `features` (something new it can do), `ui` (something looks or moves differently), `config` (config.json keys or files the shell writes changed). |
 | `severity`| `major` or `minor`.                                                                                     |
 | `text`    | The one line the recipient reads.                                                                       |
+
+## Impact
+
+An entry may carry an `impact` object. Every key is optional:
+
+| Key       | What it is                                                                                  |
+| --------- | ------------------------------------------------------------------------------------------- |
+| `restart` | `true` when the shell must restart for the entry to take effect.                            |
+| `cli`     | `true` when `banditshell` commands changed.                                                 |
+| `binds`   | Ids or old command strings of the binds the entry changes, as a list of strings.            |
+| `deps`    | Packages the entry newly needs, as a list of strings.                                       |
+
+`banditshell update check` reads the diff first (a changed qmldir or `shell.qml` means restart, a
+changed `cli/`, `api/` or `lua/` means commands, new `add_step` lines in `install.sh` mean
+packages) and uses `impact` to add to it. With no `impact` the diff alone decides. `impact` can
+turn a restart or a warning on; it cannot turn off what the diff found, so leave it out unless
+the diff cannot see the effect (a bind that now does something else, a package the code calls
+by name).
 
 ## Major and Minor
 
@@ -71,8 +90,9 @@ for most of your readers there was no last time.
 `services/WhatsNew.qml` reads this file; entries newer than the marker
 (`updates.seen` in the user's config.json) accumulate and surface in the
 update menu when the user opens it; nothing summons it at launch. Entries
-are marked seen when the card has been believed on
-screen, not when it is dismissed. A config.json the shell creates on a first
+are marked seen when the person dismisses the card, not when it is shown.
+Entries that are only incoming, before the update is taken, are listed in
+the same menu from the target's copy of this file and are not marked. A config.json the shell creates on a first
 start begins at the newest entry, so a new install shows nothing until the
 next push. The example entry in the file is skipped by
 the shell and exists only to show the shape; replace it at the first push

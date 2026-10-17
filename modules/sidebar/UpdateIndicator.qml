@@ -10,16 +10,18 @@ Item {
 
     readonly property string state: Update.state
 
+    readonly property bool busy: Update.busy
+
     readonly property bool stale: CliMigration.stale
 
     readonly property bool quiet: root.state === Update.idle && !root.stale
 
-    readonly property bool stuck: root.state === Update.failed || (root.state === Update.available && Update.diverged)
+    readonly property bool stuck: root.state === Update.failed || root.state === Update.rolledback || (root.state === Update.available && Update.diverged)
 
     readonly property string glyph: {
-        if (root.state === Update.downloaded)
+        if (root.state === Update.updated)
             return "download_done";
-        if (root.state === Update.downloading)
+        if (root.busy)
             return "cloud_download";
         if (root.stuck)
             return "sync_problem";
@@ -33,7 +35,7 @@ Item {
     readonly property real markSize: root.quiet ? Math.round(Appearance.font.iconSize * 0.8) : Appearance.font.iconSize
 
     readonly property color tint: {
-        if (root.state === Update.downloaded)
+        if (root.state === Update.updated)
             return Appearance.colour.updateReady;
         if (root.stuck)
             return Appearance.colour.updateFailed;

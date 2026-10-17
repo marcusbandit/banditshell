@@ -963,6 +963,8 @@ Singleton {
 
                 seen: "",
 
+                skip: "",
+
                 availableColour: "alarm",
                 failedColour: "bright",
                 readyColour: "accent"

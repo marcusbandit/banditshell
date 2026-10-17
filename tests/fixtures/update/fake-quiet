@@ -1,0 +1,2 @@
+#!/usr/bin/env bash
+printf '%s %s\n' "$(basename "$0")" "$*" >>"${FAKE_QS_DIR:?}/notes"
