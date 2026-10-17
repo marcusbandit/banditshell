@@ -78,15 +78,10 @@ Singleton {
         Clipboard.copy({
             text: hex
         });
-        const launcher = Shell.forScreen(root.screen)?.launcher ?? null;
-        if (!launcher)
-            return;
-        launcher.show();
-        const input = launcher.concept?.input ?? null;
-        if (input) {
-            input.text = hex;
-            input.cursorPosition = hex.length;
-        }
+        Panels.open("launcher", {
+            screen: root.screen,
+            text: hex
+        });
     }
 
     function remove(hex: string): void {

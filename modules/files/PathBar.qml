@@ -231,7 +231,7 @@ Item {
             function resolve(text: string): string {
                 let out = text.trim();
                 if (out.startsWith("~"))
-                    out = Files.home + out.slice(1);
+                    out = System.home + out.slice(1);
                 if (out.length > 1 && out.endsWith("/"))
                     out = out.slice(0, -1);
                 return out;

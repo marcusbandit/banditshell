@@ -887,7 +887,9 @@ banditshell/
 │   │                            Keys.onPressed in the repo
 │   ├── Files.qml                the file browser's whole mind: where it is,
 │   │                            what is there, and the shell session it is
-│   │                            having. THE SHELL OWNS THE DIRECTORY; see 17
+│   │                            having. THE SHELL OWNS THE DIRECTORY; see 17.
+│   │                            home and openWith forward to System, and a
+│   │                            reveal request from System lands here
 │   ├── FileSearch.qml           files by name under home (fd), words inside
 │   │                            them (ripgrep, one line a file, eight files,
 │   │                            stopped the moment the line changes; never
@@ -980,7 +982,24 @@ banditshell/
 │   │                            (SHA-256, since QML has no crypto), which
 │   │                            sources are camera, screen, mic or desktop
 │   │                            audio, and the stream's rate and drops
-│   └── Shell.qml                which ShellWindows exist
+│   ├── Shell.qml                which ShellWindows exist, and the host end of
+│   │                            Panels (open, toggle and isOpen by panel name)
+│   ├── SessionControl.qml       core interface: lockRequested() and sleeping, so
+│   │                            idle, suspend and the battery services never
+│   │                            name Lock; Lock answers the request and
+│   │                            publishes sleeping
+│   ├── Notify.qml               core interface: alert(kind) and post(spec) for
+│   │                            services that raise a sound or a notification;
+│   │                            Notifications answers. notify.js builds the
+│   │                            notify-send command and the category
+│   ├── Focus.qml                core interface: focusedScreen (Hypr publishes
+│   │                            it) and offStageScreen, the screen the
+│   │                            streamer is not on (StreamState pins it)
+│   ├── Panels.qml               core interface: open(name, args), toggle(name)
+│   │                            and isOpen(name); Shell answers for the window
+│   │                            panels, Settings claims its own name
+│   └── System.qml               core interface: home, copyText, openWith and
+│                                reveal, the helpers that used to live on Files
 ├── modules/                     actual shell UI
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
 │   ├── Chassis.qml              the band + sidebar as ONE shape
@@ -1596,7 +1615,10 @@ events force a refresh, id arithmetic) in one place, and leaves widgets purely v
 `services/` is state that outlives any one widget. Mostly that is the outside world, but it
 also holds `Shell.qml`, the registry of which windows exist: the things that need it (the IPC
 handler, later keybinds) sit outside the window tree entirely, and threading a reference down
-to them would couple files with nothing else to say to each other.
+to them would couple files with nothing else to say to each other. A service that wants a window
+or a screen does not name `Shell`, `Lock` or `Notifications`; it calls the small core
+singletons `Panels`, `Focus`, `SessionControl` and `Notify`, which the package that owns the
+thing answers (`docs/architecture/modules.md`).
 
 **One surface, one field. REVISED TWICE on 2026-08-01.**
 

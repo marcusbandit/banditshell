@@ -116,7 +116,7 @@ QtObject {
                 {
                     icon: "content_copy",
                     label: "Copy",
-                    run: () => root.search.leave(() => Files.copyText(`${row.label} · ${row.detail}`))
+                    run: () => root.search.leave(() => System.copyText(`${row.label} · ${row.detail}`))
                 }
             ];
         const pid = row.pid;

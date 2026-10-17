@@ -457,7 +457,12 @@ Singleton {
     }
 
     function notify(urgency: string, summary: string, body: string, kind: string): void {
-        root.spawn(["notify-send", "-a", "banditshell", "-u", urgency, "-c", Notifications.categoryFor(kind), summary, body ?? ""], null);
+        Notify.post({
+            urgency,
+            summary,
+            body,
+            kind
+        });
     }
 
     function report(alarm: var, code: int, output: string): void {

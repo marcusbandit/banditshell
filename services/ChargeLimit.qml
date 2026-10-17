@@ -77,10 +77,10 @@ Singleton {
     }
 
     Connections {
-        target: Lock
+        target: SessionControl
 
         function onSleepingChanged(): void {
-            if (!Lock.sleeping && root.hold)
+            if (!SessionControl.sleeping && root.hold)
                 root.request();
         }
     }

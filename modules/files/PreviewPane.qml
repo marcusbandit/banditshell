@@ -379,7 +379,7 @@ Item {
                 color: Appearance.colour.text
                 linkColor: Appearance.colour.accent
 
-                onLinkActivated: link => Files.openWith(link)
+                onLinkActivated: link => System.openWith(link)
             }
         }
 

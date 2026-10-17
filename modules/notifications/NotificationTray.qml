@@ -82,7 +82,7 @@ Item {
 
     readonly property string screenName: QsWindow.window?.screen?.name ?? ""
 
-    readonly property bool mine: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
+    readonly property bool mine: !root.screenName || !Focus.offStageScreen || root.screenName === Focus.offStageScreen
 
     readonly property bool corner: Config.values.notifications.placement !== "island"
 

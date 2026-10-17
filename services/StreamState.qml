@@ -12,6 +12,18 @@ Singleton {
 
     readonly property bool enabled: Config.values.stream.enabled && root.screen !== ""
 
+    Binding {
+        target: Focus
+        property: "offStagePinned"
+        value: root.enabled
+    }
+
+    Binding {
+        target: Focus
+        property: "pinnedScreen"
+        value: root.screen
+    }
+
     readonly property bool connected: Quickshell.screens.some(s => s.name === root.screen)
 
     readonly property int reserve: Appearance.sizes.streamHeight + (Appearance.bare ? Appearance.sizes.gap : 0)

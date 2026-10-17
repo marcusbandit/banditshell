@@ -29,7 +29,7 @@ Item {
     property bool yielded: false
 
     readonly property bool focused: !root.screenName || !Hypr.focusedScreen || root.screenName === Hypr.focusedScreen
-    readonly property bool offStage: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
+    readonly property bool offStage: !root.screenName || !Focus.offStageScreen || root.screenName === Focus.offStageScreen
 
     readonly property bool notifies: Config.values.notifications.placement === "island"
 

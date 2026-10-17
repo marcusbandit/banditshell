@@ -17,7 +17,7 @@ Singleton {
     property string cookies: ""
     property var queued: null
 
-    readonly property string folder: Downloads.dir || `${Files.home}/Downloads`
+    readonly property string folder: Downloads.dir || `${System.home}/Downloads`
 
     property var jobs: []
     property var runs: ({})

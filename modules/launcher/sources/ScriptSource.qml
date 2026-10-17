@@ -167,7 +167,7 @@ QtObject {
             key: "scriptfolder",
             kind: "scriptfolder",
             label: ScriptCommands.folderExists ? "Open scripts folder" : "Create a script command",
-            detail: ScriptCommands.folderExists ? (ScriptCommands.scripts.length === 1 ? "1 script" : `${ScriptCommands.scripts.length} scripts`) : ScriptCommands.folder.replace(Files.home, "~"),
+            detail: ScriptCommands.folderExists ? (ScriptCommands.scripts.length === 1 ? "1 script" : `${ScriptCommands.scripts.length} scripts`) : ScriptCommands.folder.replace(System.home, "~"),
             icon: ScriptCommands.folderExists ? "folder_open" : "add",
             score: root.listing ? Infinity : 0.4
         }
@@ -246,7 +246,7 @@ QtObject {
                 icon: "open_in_new",
                 label: "Open link",
                 short: "Open",
-                run: () => root.search.launch(() => Files.openWith(link))
+                run: () => root.search.launch(() => System.openWith(link))
             },
             copy: {
                 icon: "content_copy",
@@ -258,7 +258,7 @@ QtObject {
             file: {
                 icon: "open_in_new",
                 label: "Open",
-                run: () => root.search.launch(() => Files.openWith(item.arg))
+                run: () => root.search.launch(() => System.openWith(item.arg))
             },
             complete: {
                 icon: "keyboard_tab",
@@ -282,7 +282,7 @@ QtObject {
                 icon: "drive_file_move",
                 label: "Show in folder",
                 short: "Folder",
-                run: () => root.search.leave(() => Files.reveal(item.arg))
+                run: () => root.search.leave(() => System.reveal(item.arg))
             });
         return out.concat([
             {
@@ -307,7 +307,7 @@ QtObject {
             root.run(row);
             return;
         case "scriptline":
-            root.search.leave(() => Files.copyText(row.label));
+            root.search.leave(() => System.copyText(row.label));
             return;
         case "scriptfolder":
             root.openFolder();
@@ -369,7 +369,7 @@ QtObject {
                 icon: "content_copy",
                 label: "Copy output",
                 short: "Copy",
-                run: () => root.search.leave(() => Files.copyText(run.lines.join("\n")))
+                run: () => root.search.leave(() => System.copyText(run.lines.join("\n")))
             });
         return out.concat([
             {
@@ -382,7 +382,7 @@ QtObject {
                 icon: "drive_file_move",
                 label: "Show in folder",
                 tucked: true,
-                run: () => root.search.leave(() => Files.reveal(script.path))
+                run: () => root.search.leave(() => System.reveal(script.path))
             }
         ]);
     }

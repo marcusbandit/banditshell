@@ -42,7 +42,7 @@ QtObject {
 
     function activate(row: var): void {
         const text = row.text;
-        root.search.leave(() => Files.copyText(text));
+        root.search.leave(() => System.copyText(text));
     }
 
     function actionsFor(row: var): var {

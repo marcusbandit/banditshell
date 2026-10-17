@@ -66,7 +66,7 @@ launcher's groups in the config.
 
 | package | layer | owns | requires | IPC | config namespace |
 |---|---|---|---|---|---|
-| core | 0 | Config, Appearance, Themes, ControlTuning, generic components, the controls kit, Relaunch, Prompts, Tooltips, TimeFormat, Polkit, modules/panel, cli.js, LevelCover | none | shell | theme, themeFromWallpaper, font, material, rounding, padding, button, anim, colour, edge, access, control, blob, region, polkit, sourceEdits |
+| core | 0 | Config, Appearance, Themes, ControlTuning, generic components, the controls kit, Relaunch, Prompts, Tooltips, TimeFormat, Polkit, modules/panel, cli.js, LevelCover, and the interface singletons Focus, Notify, Panels, SessionControl, System | none | shell | theme, themeFromWallpaper, font, material, rounding, padding, button, anim, colour, edge, access, control, blob, region, polkit, sourceEdits |
 | compositor | 1 | Hypr, HyprConfig, Monitors, Keymap, CompositorSync, chords and Lua helpers | core | migration | compositor, cli |
 | apps | 2 | Apps, AppIcons, DesktopIndex, Launching, DefaultApps, StartupApps | core, compositor | none | apps, startup |
 | audio | 2 | Audio, Bluetooth | core, compositor | output | audio, volume |
@@ -95,13 +95,33 @@ launcher's groups in the config.
 | launcher-devops | 4 | containers, ports, phone, ssh, systemd and monitor sources | core, compositor, launcher, files | none | launcher.devOps |
 | launcher-system | 4 | brightness, wifi, vpn, record, sound and workshop sources | core, compositor, launcher, network, display, audio, capture | none | launcher.systemControls |
 | launcher-tools | 4 | colour, dev, notes, snippets, emoji, typing, latest files and file search sources | core, compositor, launcher, clipboard, files | none | launcher.powerTools, launcher.typing, launcher.utilities |
-| power | 4 | Battery, ChargeLimit, Power, PowerProfile, Lid, Suspension, Idle | core, compositor, notifications | none | battery, power, idle |
+| power | 4 | Battery, ChargeLimit, Power, PowerProfile, Lid, Suspension, Idle | core, compositor | none | battery, power, idle |
 | updates | 4 | Update, Pacman, WhatsNew | core, compositor | none | updates, packages |
 | island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
 | session | 5 | modules/session | core, compositor, power | session | session |
+
+## Interface singletons
+
+A service that needs something from a package above it does not name that package. It calls a small
+singleton in core, and the package that owns the thing answers. The edge then points down, and the
+caller runs without the answering package (the call does nothing). Each one is a signal or a
+property on the singleton, or a handler the answering package registers.
+
+| interface (core) | callers use | answered by |
+|---|---|---|
+| `SessionControl` | `requestLock()`, `sleeping` (Suspension, Idle, Battery, ChargeLimit, the launcher and settings lock rows) | `Lock` (lock) connects to `lockRequested()` and publishes `sleeping` |
+| `Notify` | `alert(kind)`, `post({urgency, summary, body, kind})` (Battery, Clock, Pomodoro, Launching, the settings error toast) | `Notifications` (notifications) plays the sound, honouring quiet, and sends the post through notify-send with the `x-banditshell.<kind>` category; `notify.js` builds the command |
+| `Focus` | `focusedScreen`, `offStageScreen` (Polkit, Keyring, PasswordRequest, Island, MenuPanel, NotificationTray, SettingsIpc) | `Hypr` (compositor) publishes `focusedScreen`; `StreamState` (stream) pins the off stage screen while streaming |
+| `Panels` | `open(name, args)`, `toggle(name, args)`, `isOpen(name)`; args carry `screen`, and `text` for a panel with an input (ColourPicks, WifiJoin, the launcher clipboard and wallpaper rows) | `Shell` (host) answers for the window panels by name; `Settings` claims `settings` for itself |
+| `System` | `home`, `copyText(text)`, `openWith(path)`, `reveal(path)` (the launcher sources and the services that were reading `Files.home`) | core runs `wl-copy` and `xdg-open`; `Files` (files) answers `reveal` by showing the path in its window |
+
+`Files.home` and `Files.openWith` stay as forwarders for one release, since the launcher is under
+work elsewhere. `Files.copyText` stays for the file browser, which shows a failed copy in its own
+error line. `PanelWindows` and the IPC files still reach `Shell` directly; those lines go when the
+`Panels` registry replaces them.
 
 The `host` package is the shell window and everything that wires panels together. Today it still
 imports most of the feature modules, which is rule R11 below, and that is the main thing the next
@@ -181,11 +201,11 @@ the baseline is the progress report.
 1. Done: `modules/Cli.qml` is split into one IPC file per package on a shared `PanelIpc` base in
    `modules/panel`, with a snapshot test of the target names. What is left is that these files
    reach `Shell` (host) and `Hypr`, which the `Focus` and `Panels` steps below remove.
-2. Break the small cycles with interface singletons: `Notify` for alerts, `SessionControl` for the
-   lock, `Focus` for the off stage screen, and `Panels.open` for opening settings and the launcher.
-   Split `services/Shell.qml` into a window registry and `Focus`.
-3. Move the general helpers out of `Files` (`home`, `copyText`, `openWith`, `reveal`) into a core
-   `System` singleton, so the launcher no longer needs the file browser.
+2. Done: the small cycles are broken with interface singletons: `Notify` for alerts, `SessionControl`
+   for the lock, `Focus` for the off stage screen, and `Panels.open` for opening settings and the
+   launcher. `services/Shell.qml` is the window registry and the host end of `Panels`.
+3. Done: the general helpers (`home`, `copyText`, `openWith`, `reveal`) moved out of `Files` into a
+   core `System` singleton, so the launcher no longer needs the file browser for them.
 4. Move the single consumer components and shaders into the package that uses them, and move
    `modules/controls`, `Prompts` and `Tooltips` into a core kit.
 5. Give each package its own size tokens and take them out of `Appearance`, which clears the R5 lines

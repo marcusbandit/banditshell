@@ -121,13 +121,13 @@ QtObject {
                 icon: "drive_file_move",
                 label: "Show in folder",
                 short: "Folder",
-                run: () => root.search.leave(() => Files.reveal(path))
+                run: () => root.search.leave(() => System.reveal(path))
             },
             {
                 icon: "content_copy",
                 label: "Copy path",
                 short: "Copy",
-                run: () => root.search.leave(() => Files.copyText(path))
+                run: () => root.search.leave(() => System.copyText(path))
             }
         ];
     }

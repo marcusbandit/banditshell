@@ -10,7 +10,7 @@ Scope {
     id: root
 
     function settingsScreen(screen: string): string {
-        return screen || Shell.offStageScreen || "";
+        return screen || Focus.offStageScreen || "";
     }
 
     function unknownSetting(page: string): string {

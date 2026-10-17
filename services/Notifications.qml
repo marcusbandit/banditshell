@@ -70,8 +70,6 @@ Singleton {
     readonly property string nightTo: Config.values.notifications.nightTo
     readonly property var rules: Config.values.notifications.rules
 
-    readonly property string categoryPrefix: "x-banditshell."
-
     property double stamp: Date.now()
 
     readonly property bool nightHolding: root.nightly && QuietHours.nightlyActive(root.stamp, root.nightFrom, root.nightTo)
@@ -150,12 +148,7 @@ Singleton {
     }
 
     function kindOf(entry: var): string {
-        const category = entry?.category ?? "";
-        return category.startsWith(root.categoryPrefix) ? category.slice(root.categoryPrefix.length) : "";
-    }
-
-    function categoryFor(kind: string): string {
-        return `${root.categoryPrefix}${kind}`;
+        return Notify.kindOf(entry?.category ?? "");
     }
 
     function rulesFromList(list: var): var {
@@ -185,6 +178,18 @@ Singleton {
     function alert(kind: string): void {
         if (!root.holdingAt(Date.now()))
             AlertSounds.play(kind);
+    }
+
+    Connections {
+        target: Notify
+
+        function onAlertRequested(kind: string): void {
+            root.alert(kind);
+        }
+
+        function onPostRequested(spec: var): void {
+            Quickshell.execDetached(Notify.commandFor(spec));
+        }
     }
 
     property var pausedBy: []

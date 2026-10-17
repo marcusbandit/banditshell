@@ -36,7 +36,7 @@ QtObject {
             starting: job.title,
             downloading: [progress, job.title].filter(Boolean).join(" · "),
             processing: job.title,
-            done: [Search.shortPath(job.file.slice(0, job.file.lastIndexOf("/")) || "/", Files.home), job.file.slice(job.file.lastIndexOf(".") + 1)].join(" · "),
+            done: [Search.shortPath(job.file.slice(0, job.file.lastIndexOf("/")) || "/", System.home), job.file.slice(job.file.lastIndexOf(".") + 1)].join(" · "),
             failed: job.error,
             cancelled: job.title
         }[job.phase];
@@ -109,12 +109,12 @@ QtObject {
                 {
                     icon: "play_arrow",
                     label: "Open",
-                    run: () => root.search.launch(() => Files.openWith(file))
+                    run: () => root.search.launch(() => System.openWith(file))
                 },
                 {
                     icon: "drive_file_move",
                     label: "Show in folder",
-                    run: () => root.search.leave(() => Files.reveal(file))
+                    run: () => root.search.leave(() => System.reveal(file))
                 },
                 {
                     icon: "refresh",

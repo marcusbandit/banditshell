@@ -209,7 +209,7 @@ PanelWindow {
             sessionLayer.show();
             break;
         case "download":
-            Files.reveal(notice.path);
+            System.reveal(notice.path);
             break;
         }
         if (notice.key)
