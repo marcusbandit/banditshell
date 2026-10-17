@@ -19,6 +19,7 @@ Item {
     property bool flashing: false
     property real minHeight: Appearance.sizes.rowHeight
     property Component lead: null
+    property Component under: null
 
     default property alias trailing: trail.data
 
@@ -154,6 +155,13 @@ Item {
             maximumLineCount: root.detailLines
             color: root.notice ? Appearance.colour.textDim : root.detailColour
             visible: root.detail !== ""
+        }
+
+        Loader {
+            width: parent.width
+            active: !!root.under
+            visible: active
+            sourceComponent: root.under
         }
     }
 
