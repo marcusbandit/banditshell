@@ -16,6 +16,16 @@ ShellRoot {
             expect: "dictation"
         },
         {
+            name: "the pointer comes up to it: dictation alone tucks into the band",
+            run: () => island.near = true,
+            expect: "dictation, tucked away from the pointer"
+        },
+        {
+            name: "the pointer leaves: it drips back out",
+            run: () => island.near = false,
+            expect: "dictation"
+        },
+        {
             name: "pin the island while dictating: the bars travel",
             run: () => island.pinned = true,
             wait: 140,
@@ -128,6 +138,30 @@ ShellRoot {
                 for (const e of [...Notifications.popups])
                     Notifications.dismiss(e);
             },
+            expect: "dictation"
+        },
+        {
+            name: "tucked away from the pointer",
+            run: () => island.near = true,
+            expect: "dictation, tucked away from the pointer"
+        },
+        {
+            name: "a notification while it is tucked: the island comes back for it",
+            run: () => preview.notify("Signal", "Mum", "call me when you get a minute", false),
+            wait: 200,
+            expect: "one notification, beside it: dictation"
+        },
+        {
+            name: "the notification goes and the pointer is still there: tucked again",
+            run: () => {
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+            },
+            expect: "dictation, tucked away from the pointer"
+        },
+        {
+            name: "the pointer leaves",
+            run: () => island.near = false,
             expect: "dictation"
         },
         {

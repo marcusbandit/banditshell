@@ -3426,6 +3426,34 @@ Launches and dictation go to the focused screen. Notifications and notices go to
 `Shell.offStageScreen`, the rule the corner tray already followed, so streamer
 mode keeps them off the streamed screen. Every screen keeps its own clock.
 
+### While I dictate
+
+The words land in the focused window, so while dictation holds the big spot
+the island slides along the band to sit over that window's middle. Focus
+follows the mouse, so it is the window under the pointer, and I can see where
+the words will go before they are typed. It keeps the band's padding from the
+screen's sides, appears straight over the window rather than sliding there from
+the centre, and glides back to the centre once anything else takes the big spot
+or the overview opens. The summon strip stays at the top centre wherever the
+island is, because the overview always opens there; going up to a trailing
+island is how I look past it, not how I open it. The island's surface moves by
+its left margin. A
+screen-wide surface would have let the scene slide inside it, but then the
+whole strip would redraw every frame the voice moves; the margin costs one frame
+per step of a glide and nothing in between. Each step asks for that frame,
+because Qt skips frames when nothing in the scene changed and the new margin
+would wait unsent.
+
+When dictation is the only thing in the island, it gets out of the pointer's
+way. Bringing the pointer up to it, anywhere from the top of the screen down to
+just under the pill, sinks it back into the band, the drip in reverse, and only
+a lip stays below the band to say it is still listening. It drips out again
+once the pointer leaves. The island is click-through then and has no hover of
+its own, so the pointer is read from Hyprland's request socket about twelve
+times a second, only while dictation is alone. Anything else in the island, a
+notification, an app opening, a bubble, keeps it where it is: then it has
+something to say, and the pointer may well be going for it.
+
 ### Summoning, and what passes through
 
 Cursor to the top centre with a dwell, a tap on the strip to pin, a pull down to
@@ -3625,11 +3653,11 @@ restart is not the shell's call.
 ### What went
 
 SummonZone, MicIndicator, LaunchNotice and MediaPreview, whose only home was
-the notch. The mic pill's habit of tucking away from the pointer went with it.
-That pill tracked the focused window and sat on top of whatever was there; the
-island sits at the screen's centre and is click-through while dictating, so
-there is nothing to tuck away from. The island hangs under the stream band the
-way the notch did.
+the notch. The mic pill's two habits, following the focused window and tucking
+away from the pointer, went with it at first. Both came back on 2026-10-17
+(see While I dictate): a click-through island still covers what is under it,
+and a fixed one at the centre no longer says which window the words are for.
+The island hangs under the stream band the way the notch did.
 
 ## 19. Launcher sources
 
