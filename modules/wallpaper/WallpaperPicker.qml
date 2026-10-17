@@ -714,12 +714,15 @@ Item {
                             color: swatch.modelData.colour
                             stroke: Appearance.colour.textGhost
                             strokeWidth: Appearance.stroke.line
-                            scale: tap.containsMouse ? 1.15 : 1
+                            scale: swell.value
 
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fast
-                                }
+                            Follow {
+                                id: swell
+
+                                target: tap.containsMouse ? Appearance.press.lift : 1
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
                         }
 

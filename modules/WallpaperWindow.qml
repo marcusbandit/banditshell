@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Wayland
 import qs.config
+import qs.components
 import qs.services
 import qs.modules.wallpaper
 
@@ -43,16 +44,19 @@ PanelWindow {
         id: view
 
         anchors.fill: parent
-        opacity: Wallpaper.enabled ? 1 : 0
+        opacity: shown.value
 
         output: win.output
         playing: Wallpaper.enabled && Config.values.wallpaper.animate && win.bare
         audible: Config.values.wallpaper.audio
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.slow
-            }
+        Follow {
+            id: shown
+
+            target: Wallpaper.enabled ? 1 : 0
+            speed: Appearance.animation.settleSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 }
