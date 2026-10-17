@@ -17,6 +17,7 @@ Item {
 
     signal dismissed(var entry)
     signal advanced(bool forward, int count, var previous)
+    signal lifted
 
     readonly property real shuffleSpeed: Appearance.animation.revealSpeed * 0.45
     readonly property real notch: Appearance.font.line.small * 4
@@ -74,6 +75,60 @@ Item {
         scroll.target = Math.max(0, Math.min(root.scrollMax, Math.min(scroll.target, root.scrollMax) - by));
         scroll.snap();
     }
+
+    property real lift: 0
+    property bool lifting: false
+    property var liftedAway: []
+
+    readonly property real naturalView: root.foldedHeight + (root.spreadHeight - root.foldedHeight) * root.fanned
+    readonly property real liftTravel: Math.max(1, root.naturalView + root.footerHeight * footing.value)
+    readonly property real raised: root.lifting ? root.lift : rise.value
+    readonly property real liftFade: 1 - Math.min(1, root.raised / root.liftTravel)
+
+    function dragBy(by: real): void {
+        const canScroll = root.scrollMax > 0 && root.fanned >= 0.5;
+        let rest = Math.abs(by);
+        if (by < 0) {
+            if (canScroll && root.lift <= 0) {
+                const from = Math.min(scroll.target, root.scrollMax);
+                const used = Math.min(root.scrollMax - from, rest);
+                if (used > 0) {
+                    scroll.target = from + used;
+                    scroll.snap();
+                    rest -= used;
+                }
+            }
+            if (rest > 0) {
+                root.lifting = true;
+                root.lift += rest;
+            }
+        } else if (by > 0) {
+            const used = Math.min(root.lift, rest);
+            root.lift -= used;
+            rest -= used;
+            if (rest > 0 && root.lift <= 0)
+                root.scrollBy(rest);
+        }
+    }
+
+    function dragEnd(speed: real): void {
+        if (!root.lifting) {
+            root.scrollGlide(speed);
+            return;
+        }
+        const thrown = speed < -root.throwSpeed;
+        const gone = thrown || root.lift > root.liftTravel * Config.values.control.pullCommit;
+        rise.value = root.lift;
+        rise.target = gone ? root.liftTravel : 0;
+        root.lift = 0;
+        root.lifting = false;
+        if (gone) {
+            root.liftedAway = [...root.standing];
+            root.lifted();
+        }
+    }
+
+    readonly property real throwSpeed: 0.6
 
     function scrollGlide(speed: real): void {
         if (root.scrollMax <= 0 || root.fanned < 0.5)
@@ -164,13 +219,25 @@ Item {
     }
 
     onEntriesChanged: {
+        if (root.entries.length === 0) {
+            root.liftedAway = [];
+            rise.target = 0;
+            rise.snap();
+        }
         root.outgoing = root.outgoing.filter(e => root.entries.includes(e) && !e.leaving);
         if (root.sweeping && root.swept.every(e => !root.entries.includes(e)))
             root.sweeping = false;
     }
 
-    onStandingChanged: if (root.sweeping && root.standing.some(e => !root.swept.includes(e)))
-        root.sweeping = false
+    onStandingChanged: {
+        if (root.sweeping && root.standing.some(e => !root.swept.includes(e)))
+            root.sweeping = false;
+        if (rise.target > 0 && root.standing.some(e => !root.liftedAway.includes(e))) {
+            root.liftedAway = [];
+            rise.target = 0;
+            rise.snap();
+        }
+    }
 
     onFannedChanged: if (root.fanned === 0) {
         scroll.target = 0;
@@ -178,6 +245,13 @@ Item {
     }
 
     implicitHeight: view.height + footer.height
+
+    Follow {
+        id: rise
+
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.5
+    }
 
     Timer {
         id: clear
@@ -217,8 +291,9 @@ Item {
         id: view
 
         width: root.width
-        height: root.foldedHeight + (root.spreadHeight - root.foldedHeight) * root.fanned
+        height: Math.max(0, root.naturalView - root.raised)
         clip: true
+        opacity: root.liftFade
 
         layer.enabled: root.scrollMax > 0 && root.fanned > 0
         layer.effect: ShaderEffect {
@@ -295,7 +370,7 @@ Item {
 
                 width: view.width
                 height: root.fanned > 0 ? slot.room : slot.cardHeight
-                y: root.fanned > 0 ? slot.spreadY : slot.away * Appearance.padding.normal
+                y: (root.fanned > 0 ? slot.spreadY : slot.away * Appearance.padding.normal) - root.raised
                 z: root.fanned > 0 ? 0 : slot.step
                 clip: root.fanned > 0 && slot.height < slot.cardHeight - 0.5
                 scale: root.fanned > 0 ? 1 : 1 - 0.06 * slot.away
@@ -333,8 +408,8 @@ Item {
                     entry: slot.modelData
 
                     onDismissed: root.dismissed(slot.modelData)
-                    onScrolled: by => root.scrollBy(by)
-                    onScrollEnded: speed => root.scrollGlide(speed)
+                    onScrolled: by => root.dragBy(by)
+                    onScrollEnded: speed => root.dragEnd(speed)
                 }
 
                 Separator {
@@ -352,9 +427,9 @@ Item {
 
         y: view.height
         width: root.width
-        height: root.footerHeight * footing.value
+        height: Math.max(0, root.footerHeight * footing.value - Math.max(0, root.raised - root.naturalView))
         clip: true
-        opacity: footing.value
+        opacity: footing.value * root.liftFade
         visible: footing.value > 0.01
 
         Row {
