@@ -559,9 +559,15 @@ banditshell/
 │   │                            last-shown marker. No QML in it, the way
 │   │                            hyprgen.js has none, tested the same way
 │   ├── update.js                the update's words: git's answer read into
-│   │                            values, and a failure said plainly with the
-│   │                            files in the way named, never git's last
-│   │                            line alone. No QML in it, tested in node
+│   │                            values, a failure said plainly with the
+│   │                            files in the way named, and classify() and
+│   │                            summary(), which read `git diff
+│   │                            --name-status` (plus api/actions.tsv,
+│   │                            install.sh and the incoming What's new
+│   │                            entries) into restart or reload, commands,
+│   │                            helpers, deps and edits in the way. The CLI
+│   │                            runs it under node (`node update.js report`).
+│   │                            No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── DesktopIndex.qml         every installed desktop entry read once: its
@@ -811,21 +817,22 @@ banditshell/
 │   │                            folder listed for a typed path, for the
 │   │                            launcher; which hidden ones count is a setting
 │   ├── Update.qml               whether the public repo is ahead of this
-│   │                            checkout, found by fetching the tracked
-│   │                            branch at every launch and counting what it
-│   │                            has that HEAD does not. Four states, one
-│   │                            direction: idle -> available (red) ->
-│   │                            downloading -> downloaded (blue, and
-│   │                            terminal until a restart). The download is a
-│   │                            fast-forward to THE COMMIT THE CHECK SHOWED
-│   │                            or nothing, the restart goes through the
-│   │                            CLI, and the branch tracked is a config
-│   │                            choice, never a menu one. "Downloaded"
-│   │                            outlives the hot reload the pull itself
-│   │                            sets off. A copy with commits of its own, or
-│   │                            on another branch (a tried worktree), is
-│   │                            told so, not offered a button that cannot
-│   │                            work. A failed fetch is not a check
+│   │                            checkout, and the one update in flight. It
+│   │                            runs nothing of its own: `banditshell
+│   │                            update check --json` finds what is waiting
+│   │                            and what kind of change it is, and
+│   │                            `update apply --detach` does the update in a
+│   │                            session of its own, so a restart or a hot
+│   │                            reload cannot kill it. Its progress is read
+│   │                            back from update/progress.log and its
+│   │                            outcome from update/result.json, which a
+│   │                            fresh shell reads on start too. States: idle
+│   │                            -> available -> downloading -> verifying ->
+│   │                            restarting -> updated, or rolledback when
+│   │                            the new shell did not start, or failed. A
+│   │                            copy with commits of its own, or on another
+│   │                            branch (a tried worktree), is told so, not
+│   │                            offered a button that cannot work
 │   ├── Notices.qml              what the shell itself has to say, as opposed
 │   │                            to an application's notification: an update on
 │   │                            GitHub, a new kernel, a restart it wants, a
@@ -1201,16 +1208,14 @@ banditshell/
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
-│   │       └── UpdateMenu.qml   the update's menu: what the check found and
-│   │                            the one deed the state asks for - download
-│   │                            in the red state, restart in the blue one,
-│   │                            search in the quiet one, and none at all
-│   │                            when the deed could not work. The branch is
-│   │                            named, not chosen: it is a config choice.
-│   │                            The What's new card lives here too, every
-│   │                            entry accumulated past the marker, and it
-│   │                            is marked seen only once the panel
-│   │                            believes it has been read
+│   │       └── UpdateMenu.qml   the update's menu: the one-line summary of
+│   │                            what is coming ("5 changes, restart
+│   │                            needed, commands changed"), the What's new
+│   │                            entries of the change BEFORE it is taken,
+│   │                            one button that says Update or Update and
+│   │                            restart, and the outcome of the last
+│   │                            update, a rollback included. The What's
+│   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because
@@ -2107,6 +2112,29 @@ Three things worth keeping in mind, all learned the hard way:
   that a machine is in this world.
 
 ---
+
+### How an update works
+
+`banditshell update check` fetches and classifies the incoming change from facts: `restart` when
+any qmldir changed, a QML file was added or removed, or `shell.qml` changed (a hot reload misses a
+new qmldir entry), otherwise `reload`. The whats-new entries may carry an `impact` object that
+can add a restart, a commands change, binds and packages; it never removes what the diff found.
+`update apply` stages the target with `git archive` into `~/.cache/banditshell/staged`, runs
+`scripts/qml-compile-check.sh` on it and builds the helpers there, and refuses when either fails,
+so the live checkout is untouched until the new tree is known to load. Only then does it record the
+previous HEAD in `~/.local/state/banditshell/update/previous`, set aside the edits the update also
+touches (a fixed identity, so a fresh machine can stash), `git merge --ff-only`, copy the helpers,
+refresh the completions and restart when the class says so. `launch()` counts a shell as up only
+when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds (8) and its log
+shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
+good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
+--keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+
+`BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
+what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop
+against a throwaway bare origin and clone with a fake `qs` (`tests/fixtures/update/fake-qs`), never
+the real checkout or home.
 
 ## 10. The metaball chassis
 
