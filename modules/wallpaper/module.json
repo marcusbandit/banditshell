@@ -3,7 +3,7 @@
   "summary": "the wallpaper, its picker and palette",
   "layer": 2,
   "owns": {
-    "qml": ["modules/WallpaperWindow.qml", "modules/wallpaper"],
+    "qml": ["modules/wallpaper"],
     "services": ["Wallpaper"],
     "scripts": ["scripts/palette.py", "scripts/wallpaper-colours.py"]
   },

@@ -3,6 +3,7 @@
   "summary": "brightness, night light, dark mode and tablet state",
   "layer": 2,
   "owns": {
+    "qml": ["modules/ipc/DisplayIpc.qml"],
     "services": ["Backlight", "DarkMode", "Display", "Tablet"],
     "js": ["services/brightness.js", "services/ddcutil.js", "services/nightlight.js"],
     "scripts": ["scripts/tablet-state.py"],

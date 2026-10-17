@@ -6,7 +6,11 @@ to say, in files a program can read, which part owns which file and which parts 
 page describes that map, the rules a script checks against it, and the steps that come next. It
 comes from the architecture audit of 2026-10-17.
 
-Nothing has moved. Every file is where it was, and the manifests describe it.
+Most files are where they were, and the manifests describe them. The panel contract (`LazyPanel`, the
+three panel IPC bases and `PanelWindows`) lives in `modules/panel`, which core owns. `PanelWindows`
+asks the window registry (`Shell`, host) and `Hypr` for the windows, so it stays a baseline reach
+until the `Panels` registry exists; keeping it in core means every package that serves a panel needs
+only core to import it. The root `modules/` folder holds host files only.
 
 ## Manifests
 
@@ -62,7 +66,7 @@ launcher's groups in the config.
 
 | package | layer | owns | requires | IPC | config namespace |
 |---|---|---|---|---|---|
-| core | 0 | Config, Appearance, Themes, ControlTuning, generic components, the controls kit, Relaunch, Prompts, Tooltips, TimeFormat, Polkit | none | shell | theme, themeFromWallpaper, font, material, rounding, padding, button, anim, colour, edge, access, control, blob, region, polkit, sourceEdits |
+| core | 0 | Config, Appearance, Themes, ControlTuning, generic components, the controls kit, Relaunch, Prompts, Tooltips, TimeFormat, Polkit, modules/panel, cli.js, LevelCover | none | shell | theme, themeFromWallpaper, font, material, rounding, padding, button, anim, colour, edge, access, control, blob, region, polkit, sourceEdits |
 | compositor | 1 | Hypr, HyprConfig, Monitors, Keymap, CompositorSync, chords and Lua helpers | core | migration | compositor, cli |
 | apps | 2 | Apps, AppIcons, DesktopIndex, Launching, DefaultApps, StartupApps | core, compositor | none | apps, startup |
 | audio | 2 | Audio, Bluetooth | core, compositor | output | audio, volume |
@@ -72,14 +76,14 @@ launcher's groups in the config.
 | clock | 2 | Clock, Localisation, Weather | core, compositor | timer, alarm, zone | clock, weather |
 | display | 2 | Display, Backlight, DarkMode, Tablet, bs-gamma | core, compositor | screen, tablet | screen, tablet |
 | files | 2 | Files, Downloads, modules/files, bs-ls, bs-pty | core, compositor | files | files |
-| host | 2 | shell.qml, ShellWindow, Chassis, Cli, the Shell window registry | core, compositor | border | none |
+| host | 2 | shell.qml, ShellWindow, Chassis, Ipc (the list of every target), the Shell window registry | core, compositor | border | none |
 | media | 2 | Media, Lyrics, modules/media | core, compositor | media | media |
 | network | 2 | Network, Hotspot, Tunnels, Tailscale, WifiJoin | core, compositor | none | network |
 | password | 2 | Keyring, PasswordRequest, modules/password | core, compositor | keyring, polkit | none |
 | pen | 2 | PenMap, PenButtons, modules/pen | core, compositor | penmap | pen |
 | settings | 2 | modules/settings, Settings, Modes, ThemeSwitcher | core, compositor | settings, mode | settings, corner, menu |
-| wallpaper | 2 | Wallpaper, modules/wallpaper, WallpaperWindow | core, compositor | wallpaper, wallpapers | wallpaper |
-| bar | 3 | modules/sidebar, modules/menu, Tray, SidebarState | core, compositor, apps, audio, network | menu, sidebar | sidebar, calendar |
+| wallpaper | 2 | Wallpaper, modules/wallpaper (with WallpaperWindow) | core, compositor | wallpaper, wallpapers | wallpaper |
+| bar | 3 | modules/sidebar, modules/menu, Tray, SidebarState | core, compositor, apps, audio, network, display | menu, sidebar | sidebar, calendar |
 | calculator | 3 | Calculator, Currency, modules/calculator | core, compositor, network | calculator | none |
 | keyboard | 3 | modules/keyboard, Keystrokes | core, compositor, display | keyboard | tablet.autoKeyboard, tablet.height, tablet.seam, tablet.repeat, tablet.repeatDelay, tablet.repeatInterval |
 | launcher | 3 | the launcher itself, LauncherHotkeys, search.js | core, compositor, apps | launcher | launcher |
@@ -93,7 +97,7 @@ launcher's groups in the config.
 | launcher-tools | 4 | colour, dev, notes, snippets, emoji, typing, latest files and file search sources | core, compositor, launcher, clipboard, files | none | launcher.powerTools, launcher.typing, launcher.utilities |
 | power | 4 | Battery, ChargeLimit, Power, PowerProfile, Lid, Suspension, Idle | core, compositor, notifications | none | battery, power, idle |
 | updates | 4 | Update, Pacman, WhatsNew | core, compositor | none | updates, packages |
-| island | 5 | modules/island, Notices | core, compositor, notifications, media, apps, clock (optional: clipboard, capture, updates, files) | island, inspect | island |
+| island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
@@ -174,9 +178,9 @@ file in a folder no package owns, or a new top level folder, needs an `owns` ent
 These are steps 4 onward of the audit's refactor plan, in order. Each one removes a group of baseline lines, so
 the baseline is the progress report.
 
-1. Split `modules/Cli.qml` into one IPC file per package, with a shared `PanelIpc` base and a
-   snapshot test of the 33 target names. This clears the R6 lines for targets defined in the wrong
-   package.
+1. Done: `modules/Cli.qml` is split into one IPC file per package on a shared `PanelIpc` base in
+   `modules/panel`, with a snapshot test of the target names. What is left is that these files
+   reach `Shell` (host) and `Hypr`, which the `Focus` and `Panels` steps below remove.
 2. Break the small cycles with interface singletons: `Notify` for alerts, `SessionControl` for the
    lock, `Focus` for the off stage screen, and `Panels.open` for opening settings and the launcher.
    Split `services/Shell.qml` into a window registry and `Focus`.

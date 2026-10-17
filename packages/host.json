@@ -5,12 +5,13 @@
   "owns": {
     "qml": [
       "modules/Chassis.qml",
-      "modules/Cli.qml",
       "modules/FrameExclusions.qml",
       "modules/FullscreenBorder.qml",
-      "modules/SettingsCorner.qml",
+      "modules/Ipc.qml",
       "modules/ShellWindow.qml",
       "modules/Tooltip.qml",
+      "modules/ipc/HostIpc.qml",
+      "modules/ipc/qmldir",
       "modules/qmldir",
       "preview.qml",
       "previews/qmldir",
@@ -18,7 +19,7 @@
     ],
     "services": ["Shell"],
     "scripts": ["scripts/bash-completion.sh", "scripts/completion-rules.sh", "scripts/zsh-completion.sh"],
-    "tests": ["tests/completion.test.js"]
+    "tests": ["tests/completion.test.js", "tests/fixtures/ipc-targets.json", "tests/ipc-targets.test.js"]
   },
   "requires": {
     "packages": ["core", "compositor"],
