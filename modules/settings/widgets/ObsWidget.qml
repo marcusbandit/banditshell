@@ -15,7 +15,7 @@ Column {
         case "idle":
             return "comes up with streamer mode";
         case "unset":
-            return "obs websocket is off in obs";
+            return Obs.installed ? "obs websocket is off in obs" : "obs is not installed here";
         case "ready":
             return Obs.scene ? `obs · scene ${Obs.scene.toLowerCase()}` : "obs · connected";
         case "refused":

@@ -509,6 +509,11 @@ Singleton {
         case "region":
             return root.setLocale(value, Localisation.formats, Localisation.setFormats);
         case "theme":
+            if (!ThemeSwitcher.available) {
+                root.denied = true;
+                root.refused(ThemeSwitcher.unavailableWhy, "");
+                return;
+            }
             return ThemeSwitcher.apply(value);
         case "sidebar":
             return SidebarState.setAll(value);
@@ -1229,6 +1234,7 @@ Singleton {
     readonly property string vpnOn: Tunnels.activeName
 
     readonly property string hotspotStatus: Hotspot.status
+    readonly property string alertsDetail: AlertSounds.available ? "notifications · low battery · errors" : "pw-play is not installed, so alerts stay silent"
     readonly property bool hotspotBlocked: Hotspot.blocker !== "" && !Hotspot.on
     readonly property string hotspotPasswordTrouble: Hotspot.passwordTrouble
     readonly property string wifiState: Hotspot.active ? "running your hotspot" : root.wifiNet || "not connected"
