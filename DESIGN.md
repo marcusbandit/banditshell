@@ -1395,7 +1395,7 @@ banditshell/
 │   │                             draws as a placeholder, not an error
 │   └── sidebar/
 │       ├── Sidebar.qml          layout of what sits in the chassis's left band
-│       ├── Clock.qml            stacked HH / mm / date; the date opens the calendar
+│       ├── SidebarClock.qml     stacked HH / mm / date; the date opens the calendar
 │       ├── Workspaces.qml       picks which workspace style the sidebar wears
 │       ├── WorkspaceModel.qml   the column's layout + motion, shared by all of them
 │       ├── WorkspacePlates.qml  style: index tabs, length as state (`plates`/`icons`)
@@ -1735,7 +1735,7 @@ banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
                                    clipboard list|use|pin|remove <n>|clear;
                                    calculator full|compact|answer <expression>;
                                    notifications clear
-banditshell output [speakers|headphones|toggle|list]|assign <role> <device>
+banditshell output [speakers|headphones|toggle|list]|assign speakers|headphones <device>
 banditshell screen [brightness [<pct>|+n|-n]|temperature [<kelvin>|off]
                    |border [on|off|toggle]|sidebar [on|off|toggle] [screen|all]
                    |stream on [screen]|stream off]
@@ -1758,8 +1758,9 @@ banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
                 |check [island [dir]]|inspect island [screen]|inspect close
 banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
-banditshell dev menu current|hover|list|launcher scrub <0..1>
-                                   |keyring [status|demo|close]
+banditshell dev menu [current|hover|list]
+banditshell dev launcher scrub <fraction>
+banditshell dev keyring|polkit [status|demo|close]
 ```
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01

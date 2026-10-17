@@ -19,7 +19,7 @@ Scope {
 
         function demo(): string {
             Keyring.demo();
-            return "showing a made-up question; escape or `banditshell panel keyring close` puts it away";
+            return "showing a made-up question; escape or `banditshell dev keyring close` puts it away";
         }
     }
 
