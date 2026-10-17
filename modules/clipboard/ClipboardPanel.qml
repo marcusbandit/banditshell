@@ -235,7 +235,8 @@ Item {
     }
 
     function commonKey(event: var): bool {
-        const page = Math.max(1, Math.floor(list.height / Math.max(1, list.pitch)) - 1);
+        const pitch = list.count > 0 ? list.contentHeight / list.count : list.pitch;
+        const page = Math.max(1, Math.floor(list.height / Math.max(1, pitch)) - 1);
 
         switch (event.key) {
         case Qt.Key_Return:
