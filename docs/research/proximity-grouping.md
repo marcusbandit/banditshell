@@ -8,56 +8,56 @@ grouping?
 Method: primary pages were fetched and read in full (NN/g articles, Laws of UX, Material 3 specs
 via reader proxy, Apple HIG via the developer docs JSON API, AOSP settings guidelines, libadwaita
 docs, A List Apart, Europe PMC for perceptual research). Claims are cited inline by URL. Where a
-popular "rule" could not be traced to a primary source, that is recorded explicitly — this report
+popular "rule" could not be traced to a primary source, that is recorded explicitly, this report
 distinguishes *measured/specified numbers* from *practitioner folklore*.
 
 ---
 
-## TL;DR — the laws, with numbers where numbers exist
+## TL;DR: the laws, with numbers where numbers exist
 
 1. **Proximity is an inequality, not a fixed ratio.** Items near each other are perceived as one
    group; items spaced apart are perceived as separate groups. The derived rule is directional:
-   *space between related items must be clearly smaller than space between unrelated items*
-   — every source states the inequality; none of the primary sources states a mandatory ratio.
-   (nngroup.com — /articles/gestalt-proximity/)
+   *space between related items must be clearly smaller than space between unrelated items*;
+   every source states the inequality; none of the primary sources states a mandatory ratio.
+   (nngroup.com, /articles/gestalt-proximity/)
 2. **The popular multipliers (1:2, 1:2.5, 1:3) are practitioner folklore, not measured law.**
    I could not trace them to a primary source in this pass. They are consistent with the
    inequality and with shipped design systems; treat them as heuristics, with 1:2 as the floor
    and 1:3 as a comfortable target. (See §5.2 for what could and couldn't be verified.)
 3. **A header belongs to the group below it.** NN/g: text "from the corresponding section is
-   usually placed closer to the heading than the text from the preceding section" — i.e., the
+   usually placed closer to the heading than the text from the preceding section", i.e., the
    gap above a group header must exceed the gap between the header and its first child.
-   (nngroup.com — /articles/gestalt-proximity/)
+   (nngroup.com, /articles/gestalt-proximity/)
 4. **Common region (a card) is the strongest grouping cue and overpowers proximity and
-   similarity** — use it when whitespace alone cannot make the grouping clear, not as a
-   default decoration. (nngroup.com — /articles/common-region/, citing Palmer 1992)
+   similarity**, use it when whitespace alone cannot make the grouping clear, not as a
+   default decoration. (nngroup.com, /articles/common-region/, citing Palmer 1992)
 5. **Prefer whitespace-only grouping; containers add clutter and "false floors."** NN/g
    explicitly warns that borders "aren't necessary" when proximity suffices, and that
    full-width blocks can stop scrolling because the page looks finished.
-   (nngroup.com — /articles/common-region/)
+   (nngroup.com, /articles/common-region/)
 6. **Material 3 ships a hard number for card gaps: "padding between cards: 8dp max."** Card
-   padding is 16dp left/right, radius 12dp. (m3.material.io — components/cards/specs)
+   padding is 16dp left/right, radius 12dp. (m3.material.io, components/cards/specs)
 7. **Material 3 list rows are tight inside a group:** item heights 56/72/88dp, 16dp leading /
    24dp trailing padding, **0dp** padding above/below dividers, 48dp minimum target.
-   (m3.material.io — components/lists/specs, overview)
+   (m3.material.io, components/lists/specs, overview)
 8. **Android platform Settings: dividers cluster, not separate.** Dividers are used to *bind a
    group* of related settings; a group heading should always be paired with a divider; footer
-   explanatory text is separated by a divider; >10–15 items per screen is overwhelming.
-   (source.android.com — devices/tech/settings/settings-guidelines)
+   explanatory text is separated by a divider; >10-15 items per screen is overwhelming.
+   (source.android.com, devices/tech/settings/settings-guidelines)
 9. **Apple's grouped lists express grouping as headers + footers + additional space, and
    Apple publishes no pixel values.** Inset grouped = "grouped sections … inset with rounded
-   corners." (developer.apple.com — HIG lists-and-tables; UIKit groupedHeader())
+   corners." (developer.apple.com, HIG lists-and-tables; UIKit groupedHeader())
 10. **GNOME/libadwaita's settings pattern is a "PreferencesGroup": a title + description riding
-    above a visually boxed list of rows** — i.e., the desktop-Linux canon pairs a header with a
+    above a visually boxed list of rows**, i.e., the desktop-Linux canon pairs a header with a
     contained list, with an option to split rows into separate boxes.
-    (gnome.pages.gitlab.gnome.org — libadwaita Adw.PreferencesGroup)
+    (gnome.pages.gitlab.gnome.org, libadwaita Adw.PreferencesGroup)
 11. **Grouping by proximity is bistable and hysteretic in perception research** on dot lattices:
     small changes in distance flip perceived grouping, and the perception persists briefly
-    (hysteresis) — spacing decisions are perceptually "sticky," so get the inequality clearly
+    (hysteresis), spacing decisions are perceptually "sticky," so get the inequality clearly
     right rather than marginally right. (Moazzen et al. 2025, Sci Rep, PMC12705819)
 12. **Whitespace is itself the hierarchy device:** macro whitespace (between groups) vs. micro
     whitespace (within groups) is the standard vocabulary, and adding macro whitespace around an
-    element is an emphasis/structuring act. (Boulton, A List Apart — /article/whitespace/)
+    element is an emphasis/structuring act. (Boulton, A List Apart, /article/whitespace/)
 
 ---
 
@@ -73,11 +73,11 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
   Connectedness), tied to Prägnanz.
   https://lawsofux.com/law-of-proximity/
 - NN/g (Aurora Harley, Aug 2020): "Principle of proximity: items close together are likely to be
-  perceived as part of the same group — sharing similar functionality or traits." Key additions:
+  perceived as part of the same group, sharing similar functionality or traits." Key additions:
   - Proximity "can overpower competing visual cues such as similarity of color or shape."
   - "Using varying amounts of whitespace to either unite or separate elements is key."
   - Headings: "the text from the corresponding section is usually placed closer to the heading
-    than the text from the preceding section" — the quantitative asymmetry behind "space above a
+    than the text from the preceding section", the quantitative asymmetry behind "space above a
     header must exceed the space below it."
   - Forms: related fields grouped by whitespace make a 15-field form read as 3 short forms;
     "a minimal amount of spacing between a top-aligned label and its corresponding form field
@@ -95,7 +95,7 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
   boundary are perceived as a group and assumed to share some common characteristic or
   functionality." Findings:
   - "Common region is a strong visual cue that **can overpower other grouping principles** such
-    as proximity or similarity" — the documented demo flips proximity grouping with two boxes.
+    as proximity or similarity", the documented demo flips proximity grouping with two boxes.
   - Cards fixed the Food Network tablet app's proximity failure ("the card-layout style to
     create a common region" for title + byline + rating).
   - **Caution:** "When possible, using whitespace alone to create clear groupings reduces the
@@ -104,20 +104,20 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
     scrolling. Checklist before adding a border: "are they necessary to understand the
     grouping? Can I communicate this grouping by simply adding or removing whitespace?"
   - Primary reference: Palmer, S.E. (1992). "Common region: A new principle of perceptual
-    grouping." *Cognitive Psychology*, 24(3), 436–447.
+    grouping." *Cognitive Psychology*, 24(3), 436-447.
   https://www.nngroup.com/articles/common-region/
 
 ### 1.3 The quantitative "rule" people derive
 
-- The inequality: NN/g's framing — whitespace "unite or separate" — implies
+- The inequality: NN/g's framing, whitespace "unite or separate", implies
   `gap(related) < gap(unrelated)` *clearly enough to be perceived*. That is the entire rule.
 - Circulating multipliers (1:2, 1:2.5, 1:3) could **not** be verified against a primary source
   in this pass; they recur in design-system blogs and social media as rules of thumb. Where
-  this report needs a number, it uses numbers that design systems actually publish (see §4–5
+  this report needs a number, it uses numbers that design systems actually publish (see §4-5
   tables) rather than the folklore ratios.
 - Closest citable quantitative anchors found:
-  - Material 3 cards: "Padding between cards **8dp max**" — i.e., sibling cards in a grid behave
-    like *one* group at ≤8dp; contrast with section-level spacing in practice (24–48dp).
+  - Material 3 cards: "Padding between cards **8dp max**", i.e., sibling cards in a grid behave
+    like *one* group at ≤8dp; contrast with section-level spacing in practice (24-48dp).
     https://m3.material.io/components/cards/specs
   - NN/g form rule: the label-to-field gap must be the smallest gap in the row stack.
     https://www.nngroup.com/articles/form-design-white-space/
@@ -137,7 +137,7 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
 - NN/g's definition of the card pattern as a grouping device:
   https://www.nngroup.com/articles/cards-component/ (referenced from the common-region article
   as the standard fix for ambiguous proximity).
-- Apple: the *inset grouped* list style is the settings canon — a contained, rounded group of
+- Apple: the *inset grouped* list style is the settings canon, a contained, rounded group of
   rows on a contrasting background, per UIKit: "A table view where the grouped sections are
   inset with rounded corners."
   https://developer.apple.com/documentation/uikit/uitableview/style-swift.enum/insetgrouped
@@ -156,9 +156,9 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
 
 - Header *typography numbers* (pt/px size, weight, color) are **not published** by Apple, GNOME
   docs, or AOSP. iOS's familiar 13pt-uppercase-secondary-label header is community-measured
-  folklore, not Apple documentation — treat it as unverified.
+  folklore, not Apple documentation, treat it as unverified.
 - What *is* documented: the header's spatial relationship (closer to its group than to the
-  previous group — NN/g §1.1) and the header+divider pairing (AOSP §3 table).
+  previous group, NN/g §1.1) and the header+divider pairing (AOSP §3 table).
 
 ## 4. Settings pages specifically
 
@@ -170,15 +170,15 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
   https://developer.apple.com/design/human-interface-guidelines/settings
   (text via https://developer.apple.com/tutorials/data/design/human-interface-guidelines/settings.json)
 - Anatomy of grouping (HIG Lists and tables): "the grouped style uses headers, footers, and
-  additional space to separate groups of data" — grouping = header + footer text + extra space.
+  additional space to separate groups of data", grouping = header + footer text + extra space.
   https://developer.apple.com/design/human-interface-guidelines/lists-and-tables
 
 ### Android (AOSP settings guidelines, fetched)
 - https://source.android.com/devices/tech/settings/settings-guidelines
-- Page-level numbers: >10–15 items per screen is overwhelming; frequently used at top.
+- Page-level numbers: >10-15 items per screen is overwhelming; frequently used at top.
 - Grouping: dividers cluster; heading + divider together; footer text always separated by a
   divider at top.
-- (The old M2 preference spec — 72dp preference rows, category headers — is superseded by M3
+- (The old M2 preference spec, 72dp preference rows, category headers, is superseded by M3
   list geometry: 56/72/88dp heights. https://m3.material.io/components/lists/overview)
 
 ### GNOME
@@ -202,7 +202,7 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
   guidance:
   - the inequality `between > within`, "clearly" (NN/g §1);
   - "2x/3x line-height" and "1:2 / 1:2.5 / 1:3" figures circulate in practitioner writing but
-    **could not be traced to a primary source in this pass** — record them as folklore;
+    **could not be traced to a primary source in this pass**, record them as folklore;
   - shipped-system comparison (the only table of real numbers):
 
 | Quantity | Value | System | Source |
@@ -212,39 +212,39 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
 | List row heights | 56 / 72 / 88dp | Material 3 | m3.material.io/components/lists/specs |
 | List divider padding | 0dp above/below | Material 3 | m3.material.io/components/lists/specs |
 | List min touch target | 48dp | Material 3 | m3.material.io/components/lists/specs |
-| Max settings items per screen | 10–15 | Android AOSP | source.android.com …settings-guidelines |
+| Max settings items per screen | 10-15 | Android AOSP | source.android.com …settings-guidelines |
 | Group header↔divider pairing | always | Android AOSP | source.android.com …settings-guidelines |
 
 ## 6. Labels inside vs. outside components
 
 - Verified (NN/g, forms): "place the label closer to the associated text field than to other
-  text fields" — proximity between label and field must beat all neighboring gaps; top-aligned
+  text fields", proximity between label and field must beat all neighboring gaps; top-aligned
   labels recommended; left-aligned labels must still sit "as close to the text fields as
   possible." No px number given. https://www.nngroup.com/articles/form-design-white-space/
-- The often-quoted "field labels 4–8px from the field" could not be verified in this pass;
+- The often-quoted "field labels 4-8px from the field" could not be verified in this pass;
   record as folklore. The structural version (label gap is the smallest gap) is the citable
   form.
-- Group label ↔ first child vs. previous sibling: NN/g's heading rule is the citable form —
+- Group label ↔ first child vs. previous sibling: NN/g's heading rule is the citable form,
   header-to-own-group < previous-section-to-header (§1.1, §3).
 
 ## 7. Applied perceptual research (grouping thresholds)
 
 - Wagemans, Elder, Kubovy, Palmer, Peterson, Singh, von der Heydt (2012). "A century of Gestalt
-  psychology in visual perception: I. Perceptual grouping and figure–ground organization."
-  *Psychological Bulletin* 138(6), 1172–1217. The modern authoritative review of grouping laws
+  psychology in visual perception: I. Perceptual grouping and figure-ground organization."
+  *Psychological Bulletin* 138(6), 1172-1217. The modern authoritative review of grouping laws
   incl. proximity (Wertheimer 1923 origins). DOI 10.1037/a0029333 (Europe PMC PMC3482144).
 - Kubovy, M. (1994). "The perceptual organization of dot lattices." *Psychon Bull Rev* 1(2),
-  182–190. DOI 10.3758/bf03200772 — proximity quantified as multistable perception in dot
+  182-190. DOI 10.3758/bf03200772, proximity quantified as multistable perception in dot
   lattices.
 - Kubovy, M., & Yu, M. (2012). "Multistability, cross-modal binding and the additivity of
-  conjoined grouping principles." *Phil Trans R Soc B* 367, 954–964. DOI 10.1098/rstb.2011.0365
-  — grouping principles combine additively.
+  conjoined grouping principles." *Phil Trans R Soc B* 367, 954-964. DOI 10.1098/rstb.2011.0365:
+  grouping principles combine additively.
 - Moazzen, Gharibzadeh, Bakouie (2025). "Bistability and hysteresis in the proximity-based
   grouping of dot lattices." *Scientific Reports* 15, 43751. DOI 10.1038/s41598-025-25575-3
-  (open access, PMC12705819) — grouping by distance is bistable near threshold and shows
+  (open access, PMC12705819), grouping by distance is bistable near threshold and shows
   hysteresis: once grouped, the grouping survives further spacing change.
 - Palmer, S.E. (1992). "Common region: A new principle of perceptual grouping."
-  *Cognitive Psychology* 24(3), 436–447. (via NN/g common-region reference, §1.2)
+  *Cognitive Psychology* 24(3), 436-447. (via NN/g common-region reference, §1.2)
 
 ---
 
@@ -253,38 +253,38 @@ distinguishes *measured/specified numbers* from *practitioner folklore*.
 Our current choices: 12px between blocks within a group, 36px between groups, small faint group
 headers above each group, plain rows (no cards).
 
-**1. The 12 vs. 36 spacing (1:3) — validated.** The inequality rule is the only citable law and
+**1. The 12 vs. 36 spacing (1:3), validated.** The inequality rule is the only citable law and
 we satisfy it comfortably: 36/12 = 3:1, above the folklore 1:2 floor and matching the
 "comfortable target" end. Nothing in Material, AOSP, Apple, or NN/g suggests 36px is too much
-at our scale; AOSP even allows generous breaks between 10–15 item screens. The one caution is
-the opposite direction: NN/g's tunnel-vision finding — over-separating related content makes it
+at our scale; AOSP even allows generous breaks between 10-15 item screens. The one caution is
+the opposite direction: NN/g's tunnel-vision finding, over-separating related content makes it
 overlooked. 36px is a *break*, not a page split; keep it whitespace, not a full-width divider or
 background band (false-floor risk, §1.2).
 
-**2. Small, faint group headers — half-wrong, per the sources.** Small is right (Apple's system
+**2. Small, faint group headers, half-wrong, per the sources.** Small is right (Apple's system
 header config is deliberately small; GNOME's title is modest). Faint is a contrast decision the
 sources don't dictate, but two documented constraints apply: (a) the header must be *spatially
-owned* by its group — gap above header must exceed gap between header and first child (NN/g
+owned* by its group, gap above header must exceed gap between header and first child (NN/g
 §1.1). If we place 36px above the header and 12px between header and first block, we comply;
 (b) AOSP pairs group headings with dividers *always*; Apple pairs them with footers+extra space.
 If we keep faint headers, strengthen the break with either the asymmetric spacing (mandatory) or
 a hairline divider above each group header (AOSP-style), not both-heavy chrome. A too-faint
-header plus a big uniform gap risks the header reading as belonging to *neither* group —
+header plus a big uniform gap risks the header reading as belonging to *neither* group,
 exactly the grouping failure NN/g illustrates with text layouts.
 
-**3. Plain rows vs. cards — validated for our case, with a documented fallback.** NN/g's rule:
+**3. Plain rows vs. cards, validated for our case, with a documented fallback.** NN/g's rule:
 whitespace-only grouping when proximity is unambiguous; containers "overpower other groupings"
 and add clutter/false floors. With a 1:3 spacing ratio and distinct headers, our groups are
-already unambiguous — cards would be "borders added in abundance of caution." The fallback
+already unambiguous, cards would be "borders added in abundance of caution." The fallback
 triggers if (a) rows get heterogeneous (wrapped multi-line content, like NN/g's Food Network
 example), (b) we need dual groupings at once, or (c) the pane is wide enough that row-to-row
 proximity weakens. If we card a group, M3 numbers apply: ≤8dp between sibling cards, 16dp inner
 padding, 12dp radius; filled = subtle, outlined = strongest emphasis.
 
-**4. Within-group rhythm — consistent with M3/AOSP.** M3 keeps intra-list gaps at 0dp
-(divider-touching) with 56–72dp rows; our 12px between *blocks* within a group is larger than
+**4. Within-group rhythm, consistent with M3/AOSP.** M3 keeps intra-list gaps at 0dp
+(divider-touching) with 56-72dp rows; our 12px between *blocks* within a group is larger than
 M3's row gap but we're spacing blocks, not rows. The watch-item: any label/heading inside a
-group (e.g., a sub-block title) must sit closer to its own block than 12px — that is NN/g's
+group (e.g., a sub-block title) must sit closer to its own block than 12px, that is NN/g's
 label-proximity rule.
 
 **5. What to change, concretely:** keep 12/36; enforce header asymmetry (≥ 12px header→first
@@ -292,8 +292,8 @@ child, 36px previous group→header, i.e., 1:3 repeated at the header level); co
 hairline above each header only if the faint text alone doesn't survive squint-testing; stay
 card-free unless rows become visually ragged; don't introduce full-width bands between groups.
 
-**6. Unverified folklore to ignore in review discussions:** "labels must be 4–8px from fields,"
-"the ratio must be exactly 1:2.5," iOS's "13pt header" as an Apple-specified value — none of
+**6. Unverified folklore to ignore in review discussions:** "labels must be 4-8px from fields,"
+"the ratio must be exactly 1:2.5," iOS's "13pt header" as an Apple-specified value, none of
 these trace to a primary source; the documented forms are the inequality, the asymmetry rule,
 and the shipped-system numbers tabulated in §5.2.
 

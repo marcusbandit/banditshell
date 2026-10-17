@@ -1520,11 +1520,12 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
-│   ├── lint-rules.js            the house rules as ten checks (L1 to L10: comments,
+│   ├── lint-rules.js            the house rules as eleven checks (L1 to L11: comments,
 │   │                            Rectangle radius, motion outside Follow, spring easing,
 │   │                            font sizes, colour literals, textGhost text, dashes,
-│   │                            JS the engine lacks, qmldir drift), counted per rule and
-│   │                            file against rules.baseline.json (node, no
+│   │                            JS the engine lacks, qmldir drift, Name.member reads
+│   │                            of a member the singleton does not declare), counted
+│   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
 │   ├── promote-stable.sh        checks that main may become the stable channel (node
 │   │                            tests, check-modules, lint-rules, compile check, a

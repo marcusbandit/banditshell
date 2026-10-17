@@ -1,4 +1,5 @@
 import QtQuick
+import qs.config
 
 Item {
     id: root
@@ -70,7 +71,7 @@ Item {
         for (const p of px)
             counts[root.nearest(p, centres)] += 1;
         const out = centres.map((c, i) => ({
-                    colour: Qt.rgba(c[0] / 255, c[1] / 255, c[2] / 255, 1),
+                    colour: Appearance.rgb(c[0] / 255, c[1] / 255, c[2] / 255),
                     share: counts[i] / px.length
                 })).filter(c => c.share > 0).sort((a, b) => b.share - a.share);
         const kept = out.filter(c => c.share >= root.floor);

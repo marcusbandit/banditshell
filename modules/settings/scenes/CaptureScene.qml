@@ -53,27 +53,27 @@ Item {
 
         Rectangle {
             anchors.fill: parent
-            color: Qt.rgba(0, 0, 0, 0.25)
+            color: Appearance.withAlpha(Appearance.colour.scrim, 0.25)
         }
 
         Rectangle {
             width: parent.width
             height: area.sy
-            color: Qt.rgba(0, 0, 0, 0.25 * root.f.o)
+            color: Appearance.withAlpha(Appearance.colour.scrim, 0.25 * root.f.o)
         }
 
         Rectangle {
             y: area.sy + area.sh
             width: parent.width
             height: parent.height - y
-            color: Qt.rgba(0, 0, 0, 0.25 * root.f.o)
+            color: Appearance.withAlpha(Appearance.colour.scrim, 0.25 * root.f.o)
         }
 
         Rectangle {
             y: area.sy
             width: area.sx
             height: area.sh
-            color: Qt.rgba(0, 0, 0, 0.25 * root.f.o)
+            color: Appearance.withAlpha(Appearance.colour.scrim, 0.25 * root.f.o)
         }
 
         Rectangle {
@@ -81,7 +81,7 @@ Item {
             y: area.sy
             width: parent.width - x
             height: area.sh
-            color: Qt.rgba(0, 0, 0, 0.25 * root.f.o)
+            color: Appearance.withAlpha(Appearance.colour.scrim, 0.25 * root.f.o)
         }
 
         SquircleRect {

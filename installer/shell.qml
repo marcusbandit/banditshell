@@ -172,7 +172,7 @@ ShellRoot {
                         }
                         GradientStop {
                             position: 0.55
-                            color: Qt.rgba(0.09, 0.12, 0.15, 1)
+                            color: Theme.mist
                         }
                         GradientStop {
                             position: 1
