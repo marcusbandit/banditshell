@@ -40,12 +40,13 @@ Item {
     readonly property color edge: root.selected ? Appearance.colour.accent : root.blocked ? Appearance.colour.separator : "transparent"
     readonly property real edgeWidth: root.selected || root.blocked ? Appearance.stroke.ring : 0
 
-    property color paint: root.fill
+    readonly property color paint: paintTone.value
 
-    Behavior on paint {
-        ColorAnimation {
-            duration: Appearance.animation.fast
-        }
+    FollowColour {
+        id: paintTone
+
+        target: root.fill
+        speed: Appearance.animation.revealSpeed
     }
 
     function steppedPath(w: real, h: real, head: real, leg: real, r: real, inset: real): string {
