@@ -37,7 +37,7 @@ Item {
     readonly property int bubbleMax: 4
     readonly property int announceMs: 2500
 
-    readonly property var high: ["dictation", "launch", "notification", "alarm", "timer", "external"]
+    readonly property var high: ["dictation", "launch", "notification", "alarm", "timer", "external", "privacy"]
 
     readonly property var activities: {
         const out = [];
@@ -238,6 +238,8 @@ Item {
             return n > 1 ? `${n} activities` : "activity";
         case "timer":
             return n > 1 ? `${n} timers` : "timer";
+        case "privacy":
+            return "privacy";
         }
         return key;
     }
@@ -282,7 +284,7 @@ Item {
 
     function pressable(activity: var): bool {
         const kind = activity?.kind ?? "";
-        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer", "alarm"].includes(kind) || (kind === "external" && !!activity.pressable);
+        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer", "alarm"].includes(kind) || ((kind === "external" || kind === "privacy") && !!activity.pressable);
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -398,6 +400,11 @@ Item {
             if (k === "notification") {
                 next.unshift(k);
                 delete told[k];
+                continue;
+            }
+            if (k === "privacy" && company) {
+                next.push(k);
+                announce(k, arrived);
                 continue;
             }
             if (card)

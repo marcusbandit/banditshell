@@ -21,7 +21,7 @@ Item {
     readonly property real inset: Appearance.padding.small
     readonly property real gap: Appearance.padding.normal
 
-    readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "notifications", "notification", "recording", "timer"].includes(root.kind) || (root.kind === "external" && !!root.activity?.pressable && root.activity?.state !== "ended") || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
+    readonly property bool pressable: ["music", "download", "update", "kernel", "restart", "notifications", "notification", "recording", "timer"].includes(root.kind) || ((root.kind === "external" || root.kind === "privacy") && !!root.activity?.pressable && root.activity?.state !== "ended") || (root.lights && (root.kind === "dictation" || (root.kind === "launch" && root.activity?.state === "here")))
 
     readonly property bool hovered: press.containsMouse
 
@@ -288,7 +288,10 @@ Item {
     MouseArea {
         id: press
 
-        anchors.fill: parent
+        anchors.left: parent.left
+        anchors.top: parent.top
+        anchors.bottom: parent.bottom
+        width: root.width - (root.actions.length > 0 ? root.actionsWidth + root.inset + root.gap : 0)
         enabled: root.pressable
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
