@@ -933,6 +933,8 @@ QtObject {
                 score: -Ranking.EXACT * 3
             }))
 
+    readonly property string contentNote: root.grepFor ? FileSearch.noteFor(root.text) : ""
+
     readonly property string cli: `${Quickshell.shellDir}/cli/banditshell`
     readonly property var cliLine: ShellCli.ask(root.query)
 
@@ -1335,7 +1337,7 @@ QtObject {
         });
     }
 
-    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.sourceGroupLists, root.limits]
+    readonly property var arrangeInputs: [LauncherMemory.usage, root.text, root.path, root.pathRows, root.cliLine, root.outputRows, root.shellRows, root.url, root.clockRows, root.processRows, root.suggestRows, root.appRows, root.aliasRow, root.awakeRows, root.workspaceRows, root.commandRows, root.settingRows, root.windowRows, root.deviceRows, root.fileRows, root.contentRows, root.contentNote, root.sourceGroupLists, root.limits]
 
     property var arranged: []
     property bool arrangePending: false
@@ -1432,6 +1434,7 @@ QtObject {
         }, {
             key: "contents",
             title: "Inside files",
+            note: root.contentNote,
             items: root.contentRows
         }, ...root.sourceGroupLists.reduce((out, list) => out.concat(list), []));
         return Search.arrange(Search.remembered(groups, key => LauncherMemory.bonusOf(key, Date.now())), root.limits);

@@ -163,14 +163,16 @@ function arrange(groups, caps) {
                 g: g,
                 i: i,
                 best: best(g)
-            })).filter(x => x.g.items.length > 0).sort((a, b) => b.best - a.best || a.i - b.i);
+            })).filter(x => x.g.items.length > 0 || x.g.note).sort((a, b) => b.best - a.best || a.i - b.i);
     const out = [];
+    if (live.every(x => !x.g.items.length))
+        return out;
     for (const x of live) {
         if (live.length > 1)
             out.push({
                 header: true,
                 key: `header:${x.g.key}`,
-                title: x.g.title
+                title: x.g.note ? `${x.g.title} · ${x.g.note}` : x.g.title
             });
         const cap = caps?.[x.g.key];
         for (const it of cap === undefined ? x.g.items : x.g.items.slice(0, cap))
