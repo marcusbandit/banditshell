@@ -508,7 +508,7 @@ Item {
         Behavior on scale {
             NumberAnimation {
                 duration: Appearance.animation.fast
-                easing.type: Easing.OutBack
+                easing.type: Easing.OutCubic
             }
         }
     }

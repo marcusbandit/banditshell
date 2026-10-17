@@ -276,8 +276,6 @@ Item {
                         size: Math.round(root.digitHeight / 0.73)
                         family: root.family
                         weight: 220 + 400 * presence.value
-                        lean: 220 * presence.value
-                        pointer: time.mapFromItem(root, root.cursor.x, root.cursor.y)
                         opacity: 0.6 + 0.4 * presence.value
                     }
 

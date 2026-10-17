@@ -23,11 +23,6 @@ Item {
 
     property real weight: 600
 
-    property real lean: 0
-
-    property point pointer: Qt.point(-100000, -100000)
-
-    readonly property real reach: root.size * 0.8
     readonly property real advance: figure.advanceWidth
     readonly property real colonAdvance: colon.advanceWidth
     readonly property real lineStep: Math.round(root.size * 0.86)
@@ -117,18 +112,6 @@ Item {
                 onValueChanged: glyph.settle()
             }
 
-            Follow {
-                id: near
-
-                target: {
-                    const dx = root.pointer.x - (glyph.x + glyph.width / 2);
-                    const dy = root.pointer.y - (glyph.y + glyph.height / 2);
-                    return Math.exp(-(dx * dx + dy * dy) / (2 * root.reach * root.reach));
-                }
-                speed: Appearance.animation.trackSpeed * 0.5
-                epsilon: 0.002
-            }
-
             Text {
                 anchors.horizontalCenter: parent.horizontalCenter
 
@@ -140,7 +123,7 @@ Item {
                 font.pixelSize: root.size
                 font.features: ({ "tnum": 1, "case": 1 })
                 font.variableAxes: ({
-                        "wght": Math.max(100, Math.min(900, (root.weight + root.lean * near.value) * (0.25 + 0.75 * turn.value))),
+                        "wght": Math.max(100, Math.min(900, root.weight * (0.25 + 0.75 * turn.value))),
                         "opsz": 32
                     })
                 renderType: Text.NativeRendering

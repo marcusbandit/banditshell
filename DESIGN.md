@@ -176,10 +176,9 @@ gently when close, safe at any dt.
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
 or follows goes through `components/Follow.qml`. A `NumberAnimation` or a `Behavior` on a
 position is a bug, with exactly one exception: a **looping clock** with no target being chased
-at all (the mic indicator's processing ripple and typing caret are the whole list). Spring is
-not in this shell, and overshoot is rationed by how often a thing runs: never on a control hit
-all day (toggles, slider beads, expand chevrons), allowed on a rare moment (password dots, the
-file preview's play button, the touch drag's mode icon).
+at all (the mic indicator's processing ripple and typing caret are the whole list). No
+overshoot, bounce or flourish anywhere, for now: the shell starts from no play at all, and
+anything playful comes back later one deliberate piece at a time.
 
 Three corollaries, each of them learned by shipping the mistake:
 
