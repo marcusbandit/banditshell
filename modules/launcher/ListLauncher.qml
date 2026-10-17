@@ -148,6 +148,7 @@ LauncherConcept {
     }
 
     onHidden: {
+        FileSearch.halt();
         sheet.close();
         Assistant.following = false;
         if (!Assistant.inPlace)
@@ -1034,22 +1035,30 @@ LauncherConcept {
                                         color: line.modelData.toggle === false ? Appearance.colour.textFaint : Appearance.colour.textDim
                                     }
 
-                                    Slider {
+                                    Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        visible: !!line.modelData.slider && !line.modelData.slider.bare
-                                        width: root.panelWidth * 0.22
-                                        to: line.modelData.slider?.to ?? 1
-                                        warnAbove: line.modelData.slider?.warnAbove ?? 1
-                                        value: line.modelData.slider ? line.modelData.slider.value() : 0
-                                        dimmed: line.modelData.toggle === false
-                                        onMoved: v => line.modelData.slider.set(v)
+                                        active: !!line.modelData.slider && !line.modelData.slider.bare
+                                        visible: active
+
+                                        sourceComponent: Slider {
+                                            width: root.panelWidth * 0.22
+                                            to: line.modelData.slider?.to ?? 1
+                                            warnAbove: line.modelData.slider?.warnAbove ?? 1
+                                            value: line.modelData.slider ? line.modelData.slider.value() : 0
+                                            dimmed: line.modelData.toggle === false
+                                            onMoved: v => line.modelData.slider.set(v)
+                                        }
                                     }
 
-                                    Toggle {
+                                    Loader {
                                         anchors.verticalCenter: parent.verticalCenter
-                                        visible: line.modelData.toggle !== undefined
-                                        checked: !!line.modelData.toggle
-                                        onToggled: search.activate(line.modelData)
+                                        active: line.modelData.toggle !== undefined
+                                        visible: active
+
+                                        sourceComponent: Toggle {
+                                            checked: !!line.modelData.toggle
+                                            onToggled: search.activate(line.modelData)
+                                        }
                                     }
                                 }
                             }

@@ -94,6 +94,14 @@ Singleton {
         root.grepping.forEach(run => run.running = false);
     }
 
+    function halt(): void {
+        settle.stop();
+        grepSettle.stop();
+        root.findGeneration += 1;
+        root.finding.forEach(run => run.running = false);
+        root.stopGrep();
+    }
+
     function hit(generation: int, query: string, line: string): void {
         if (generation !== root.grepGeneration || root.grepFound.length >= root.hitLimit || root.grepFound.indexOf(line) >= 0)
             return;

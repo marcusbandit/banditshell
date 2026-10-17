@@ -1,6 +1,37 @@
 {
   "entries": [
     {
+      "id": "2026-10-17-4",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Music playing with everything closed no longer keeps the screens redrawing. A seek bar hidden in the island was animating out of sight; it now waits until you can see it, and the shell sits close to idle."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Memory no longer grows with every song. The island reads its colours from each cover and now lets the cover go afterwards; before, every cover played stayed in memory until the shell restarted."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing the launcher stops its search inside files. A word with no matches could keep reading your whole home folder for up to a minute after the launcher was gone."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Typing in the launcher does less work for each key. Rows build a slider or a switch only when they show one, and only the file results that fit in the list are prepared."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The shell no longer asks for the power profile every 30 seconds. It already hears about every change as it happens."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-2",
       "date": "2026-10-17",
       "changes": [

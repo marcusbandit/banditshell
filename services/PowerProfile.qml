@@ -111,7 +111,7 @@ fi
 
     Timer {
         interval: 30000
-        running: root.available
+        running: root.available && !watcher.running
         repeat: true
         onTriggered: root.refresh()
     }
