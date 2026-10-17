@@ -2,9 +2,9 @@ module qs.modules.sidebar
 RailAnomalies 1.0 RailAnomalies.qml
 RailPips 1.0 RailPips.qml
 ScratchpadEntry 1.0 ScratchpadEntry.qml
+Sidebar 1.0 Sidebar.qml
 SidebarClock 1.0 SidebarClock.qml
 SidebarIpc 1.0 SidebarIpc.qml
-Sidebar 1.0 Sidebar.qml
 StatusIcon 1.0 StatusIcon.qml
 StatusIcons 1.0 StatusIcons.qml
 TrayIcon 1.0 TrayIcon.qml

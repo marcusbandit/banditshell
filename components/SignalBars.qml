@@ -16,12 +16,14 @@ Item {
     readonly property real gap: Math.max(1, Math.round(barWidth / 2))
 
     implicitWidth: steps * barWidth + (steps - 1) * gap
-    implicitHeight: Math.round(Appearance.font.iconSize * 0.75)
+    implicitHeight: Appearance.icon.small
 
     Repeater {
         model: root.steps
 
         delegate: SquircleRect {
+            id: bar
+
             required property int index
 
             width: root.barWidth
@@ -31,12 +33,13 @@ Item {
             x: index * (root.barWidth + root.gap)
             y: root.height - height
 
-            color: index < root.lit ? root.activeColour : root.inactiveColour
+            color: tone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: tone
+
+                target: bar.index < root.lit ? root.activeColour : root.inactiveColour
+                speed: Appearance.animation.revealSpeed
             }
         }
     }

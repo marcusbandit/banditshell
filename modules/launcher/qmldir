@@ -4,9 +4,9 @@ AlphabetRow 1.0 AlphabetRow.qml
 AnswerRow 1.0 AnswerRow.qml
 AssistantCard 1.0 AssistantCard.qml
 LaunchEdge 1.0 LaunchEdge.qml
+Launcher 1.0 Launcher.qml
 LauncherConcept 1.0 LauncherConcept.qml
 LauncherIpc 1.0 LauncherIpc.qml
-Launcher 1.0 Launcher.qml
 LauncherSearch 1.0 LauncherSearch.qml
 ListLauncher 1.0 ListLauncher.qml
 Peek 1.0 Peek.qml

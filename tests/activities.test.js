@@ -350,7 +350,7 @@ test.describe("level moments", () => {
     test.it("shows the microphone as a state", () => {
         const off = A.levelMoment("mic", 0.5, true, 1);
         assert.strictEqual(off.icon, "mic_off");
-        assert.strictEqual(off.text, "Microphone muted");
+        assert.strictEqual(off.text, "Mic muted");
         assert.strictEqual(off.meter, -1);
         assert.strictEqual(A.levelMoment("mic", 0.5, false, 1).icon, "mic");
     });

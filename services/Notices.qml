@@ -7,12 +7,16 @@ import qs.config
 Singleton {
     id: root
 
+    readonly property bool live: !Quickshell.env("BANDITSHELL_PREVIEW")
+
     readonly property int glanceMs: Math.max(1, Config.values.island.glanceSeconds) * 1000
 
-    readonly property bool updateShown: Update.state === Update.available && Config.values.sidebar.update !== "never"
+    readonly property bool updateShown: root.live && Update.state === Update.available && Config.values.sidebar.update !== "never"
 
     readonly property var standing: {
         const out = [];
+        if (!root.live)
+            return out;
         if (root.updateShown)
             out.push({
                 key: `update:${Update.target}`,
@@ -145,6 +149,7 @@ Singleton {
 
     Connections {
         target: Downloads
+        enabled: root.live
 
         function onArrived(names: var, dir: string): void {
             const at = Date.now();

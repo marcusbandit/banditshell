@@ -232,7 +232,7 @@ Item {
             value: 0.3
 
             RotationAnimation on rotation {
-                running: root.live && root.shownRing === "spin"
+                running: root.live && root.shownRing === "spin" && !Appearance.lessMotion
                 from: 0
                 to: 360
                 duration: 1100

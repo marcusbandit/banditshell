@@ -10,6 +10,7 @@
       "modules/launcher/LaunchEdge.qml",
       "modules/launcher/Launcher.qml",
       "modules/launcher/LauncherConcept.qml",
+      "modules/launcher/LauncherIpc.qml",
       "modules/launcher/LauncherSearch.qml",
       "modules/launcher/ListLauncher.qml",
       "modules/launcher/Peek.qml",

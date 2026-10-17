@@ -1,0 +1,6 @@
+module qs.modules.panel
+LazyPanel 1.0 LazyPanel.qml
+PanelIpc 1.0 PanelIpc.qml
+singleton PanelWindows 1.0 PanelWindows.qml
+PinnedPanelIpc 1.0 PinnedPanelIpc.qml
+ScreenPanelIpc 1.0 ScreenPanelIpc.qml

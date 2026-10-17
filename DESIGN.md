@@ -433,6 +433,29 @@ banditshell/
 │                                docs/architecture/modules.md has the map
 ├── modules.baseline.json        the module boundary violations that exist today;
 │                                `banditshell dev modules` fails on any not in it
+├── cli/
+│   ├── banditshell              the CLI; bin/banditshell links to it
+│   └── commands.tsv             the command table scripts/completion-rules.sh
+│                                parses out of the CLI's help header: verbs, rules,
+│                                value lists. GENERATED and committed (`scripts/
+│                                completion-rules.sh --write`); a test fails when
+│                                it is stale. `banditshell api check` walks it
+├── api/                         the stable API a user's binds are written against
+│   ├── actions.tsv              the contract: one row per action id, its status,
+│   │                            the API number it appeared in, the command it
+│   │                            stands for today, one line of description
+│   ├── released.txt             every id ever shipped, sorted. Append only; a test
+│   │                            fails if the table loses one
+│   └── shim.lua                 copied beside hyprland.lua as banditshell.lua. It
+│                                never names an action or a verb and carries a
+│                                format number, so it is replaced only by a newer
+│                                format. Finds the checkout, loads lua/banditshell.lua
+├── lua/
+│   └── banditshell.lua          what a user's config requires: the ids as callable
+│                                names, bs.bind, bs.describe, bs.run. At press time
+│                                it does one hl.exec_cmd and nothing else
+├── rules.baseline.json          how many violations of each house rule each file holds
+│                                today; `banditshell dev lint` fails on any more
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
@@ -610,9 +633,15 @@ banditshell/
 │   │                            last-shown marker. No QML in it, the way
 │   │                            hyprgen.js has none, tested the same way
 │   ├── update.js                the update's words: git's answer read into
-│   │                            values, and a failure said plainly with the
-│   │                            files in the way named, never git's last
-│   │                            line alone. No QML in it, tested in node
+│   │                            values, a failure said plainly with the
+│   │                            files in the way named, and classify() and
+│   │                            summary(), which read `git diff
+│   │                            --name-status` (plus api/actions.tsv,
+│   │                            install.sh and the incoming What's new
+│   │                            entries) into restart or reload, commands,
+│   │                            helpers, deps and edits in the way. The CLI
+│   │                            runs it under node (`node update.js report`).
+│   │                            No QML in it, tested in node
 │   ├── Tray.qml                 StatusNotifierItem host: what runs without a window
 │   ├── AppIcons.qml             what each app looks like: seen, picked, suggested
 │   ├── DesktopIndex.qml         every installed desktop entry read once: its
@@ -866,21 +895,22 @@ banditshell/
 │   │                            folder listed for a typed path, for the
 │   │                            launcher; which hidden ones count is a setting
 │   ├── Update.qml               whether the public repo is ahead of this
-│   │                            checkout, found by fetching the tracked
-│   │                            branch at every launch and counting what it
-│   │                            has that HEAD does not. Four states, one
-│   │                            direction: idle -> available (red) ->
-│   │                            downloading -> downloaded (blue, and
-│   │                            terminal until a restart). The download is a
-│   │                            fast-forward to THE COMMIT THE CHECK SHOWED
-│   │                            or nothing, the restart goes through the
-│   │                            CLI, and the branch tracked is a config
-│   │                            choice, never a menu one. "Downloaded"
-│   │                            outlives the hot reload the pull itself
-│   │                            sets off. A copy with commits of its own, or
-│   │                            on another branch (a tried worktree), is
-│   │                            told so, not offered a button that cannot
-│   │                            work. A failed fetch is not a check
+│   │                            checkout, and the one update in flight. It
+│   │                            runs nothing of its own: `banditshell
+│   │                            update check --json` finds what is waiting
+│   │                            and what kind of change it is, and
+│   │                            `update apply --detach` does the update in a
+│   │                            session of its own, so a restart or a hot
+│   │                            reload cannot kill it. Its progress is read
+│   │                            back from update/progress.log and its
+│   │                            outcome from update/result.json, which a
+│   │                            fresh shell reads on start too. States: idle
+│   │                            -> available -> downloading -> verifying ->
+│   │                            restarting -> updated, or rolledback when
+│   │                            the new shell did not start, or failed. A
+│   │                            copy with commits of its own, or on another
+│   │                            branch (a tried worktree), is told so, not
+│   │                            offered a button that cannot work
 │   ├── Notices.qml              what the shell itself has to say, as opposed
 │   │                            to an application's notification: an update on
 │   │                            GitHub, a new kernel, a restart it wants, a
@@ -966,14 +996,16 @@ banditshell/
 │   │                            names and function signatures are frozen by
 │   │                            tests/ipc-targets.test.js against
 │   │                            tests/fixtures/ipc-targets.json
-│   ├── PanelIpc.qml             the handler base for a panel with no screen
-│   │                            argument: toggle, open, close on the panel named
-│   │                            by its target. A module subclasses it and adds
-│   │                            status and its own verbs
-│   ├── ScreenPanelIpc.qml       the same, with a screen argument on toggle and open
-│   ├── PinnedPanelIpc.qml       the same for panels that are pinned rather than
-│   │                            shown (island, notifications)
-│   ├── PanelWindows.qml         what those bases share, and what any handler asks
+│   ├── panel/                   the panel contract, owned by core
+│   │   ├── LazyPanel.qml        a panel built the first time it is asked for
+│   │   ├── PanelIpc.qml         the handler base for a panel with no screen
+│   │   │                        argument: toggle, open, close on the panel named
+│   │   │                        by its target. A module subclasses it and adds
+│   │   │                        status and its own verbs
+│   │   ├── ScreenPanelIpc.qml   the same, with a screen argument on toggle and open
+│   │   ├── PinnedPanelIpc.qml   the same for panels that are pinned rather than
+│   │   │                        shown (island, notifications)
+│   │   └── PanelWindows.qml     what those bases share, and what any handler asks
 │   │                            of the shell windows: the window on a screen,
 │   │                            toggle, open, close, pin, and the screen a verb
 │   │                            means. A handler's own helpers cannot live on
@@ -1085,9 +1117,6 @@ banditshell/
 │   │                            seconds; camera, screen and the audio toggles
 │   │                            act on the scene on air, and a muted mic or a
 │   │                            hidden screen stays red until it is undone
-│   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
-│   ├── WallpaperWindow.qml      background layer, below every window; a
-│   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field that answers what you type;
@@ -1216,6 +1245,8 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
+│   │   ├── WallpaperWindow.qml  background layer, below every window; a
+│   │   │                        WallpaperView, motion only on an empty workspace
 │   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
 │   │   │                        you are on as a hero 30% of the height, the
 │   │   │                        rest cropped to strips either side that never
@@ -1245,6 +1276,7 @@ banditshell/
 │   │   │                        has no catcher: the desktop stays usable, the X
 │   │   │                        or the corner closes it, and it steps aside while
 │   │   │                        another panel or a menu is up on its screen
+│   │   ├── SettingsCorner.qml   the bottom-right corner as a way in: hover, press
 │   │   ├── catalogue.js         every setting as data: ten categories, their hubs
 │   │   │                        (tiles, one suggestion, page rows) and pages of
 │   │   │                        grouped rows; search, aliases, formats. No QML
@@ -1310,16 +1342,14 @@ banditshell/
 │   │       ├── PowerMenu.qml    NotificationMenu.qml   not reachable from the bar
 │   │       ├── TrayMenu.qml     one tray item: what it says, and "show it"
 │   │       ├── TrayEntries.qml  its own menu, off the bus. CONTAINS ITSELF
-│   │       └── UpdateMenu.qml   the update's menu: what the check found and
-│   │                            the one deed the state asks for - download
-│   │                            in the red state, restart in the blue one,
-│   │                            search in the quiet one, and none at all
-│   │                            when the deed could not work. The branch is
-│   │                            named, not chosen: it is a config choice.
-│   │                            The What's new card lives here too, every
-│   │                            entry accumulated past the marker, and it
-│   │                            is marked seen only once the panel
-│   │                            believes it has been read
+│   │       └── UpdateMenu.qml   the update's menu: the one-line summary of
+│   │                            what is coming ("5 changes, restart
+│   │                            needed, commands changed"), the What's new
+│   │                            entries of the change BEFORE it is taken,
+│   │                            one button that says Update or Update and
+│   │                            restart, and the outcome of the last
+│   │                            update, a rollback included. The What's
+│   │                            new card is marked seen when dismissed
 │   ├── files/                   the file browser, in a window of its own. Four
 │   │   │                        panels, one keyboard, one directory (see 17)
 │   │   ├── FilesWindow.qml      the body: a real window, kept alive, because
@@ -1404,6 +1434,12 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
+│   ├── lint-rules.js            the house rules as ten checks (L1 to L10: comments,
+│   │                            Rectangle radius, motion outside Follow, spring easing,
+│   │                            font sizes, colour literals, textGhost text, dashes,
+│   │                            JS the engine lacks, qmldir drift), counted per rule and
+│   │                            file against rules.baseline.json (node, no
+│   │                            dependencies; `banditshell dev lint`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes
@@ -1415,6 +1451,10 @@ banditshell/
 │   ├── zsh-completion.sh        the CLI's tab completion, GENERATED by parsing
 │   │                            bin/banditshell's own `--help` block, so there is
 │   │                            no second list of verbs to fall out of date
+│   ├── bash-completion.sh       the same table for bash
+│   ├── completion-rules.sh      the one parser of the help header; both of the above
+│   │                            read its table, and `--write` saves it as
+│   │                            cli/commands.tsv
 │   ├── palette.py               a wallpaper's dominant colours
 │   ├── spicy-lyrics.py          reads one track's lyrics out of Spicy Lyrics'
 │   │                            cache in Spotify's own profile, by the cache's
@@ -1465,11 +1505,13 @@ banditshell/
 │   │                            stat, and `ls` is output for a person
 │   └── bs-b64.h                 the wire codec's other half
 ├── bin/
-│   ├── banditshell              the CLI (linked into ~/bin)
+│   ├── banditshell              the CLI, a link to cli/banditshell
 │   └── bs-pty, bs-ls            build output; NOT committed, unlike the .qsb
 │                                shaders, because they are ELF for one machine
 └── docs/
-    ├── hyprland-binds.example.conf   the CLI as keybinds: a worked set to copy
+    ├── hyprland-binds.example.lua    the stable API as keybinds: a worked set to copy
+    ├── hyprland-binds.example.conf   the same set for the legacy .conf parser, as
+    │                                 `banditshell action <id>` lines
     └── whats-new.json                the What's new log, read out by the
                                        shell itself: one entry per push,
                                        newest first, written for the
@@ -1669,9 +1711,13 @@ bare or not; a shell reduced to a wallpaper runner is still the machine looking 
 
 ## 9. Driving it from a terminal
 
-`bin/banditshell` (linked into `~/bin`) wraps a Quickshell `IpcHandler`. It is a symlink to
-`cli/banditshell`, never a copy: every start, restart and `doctor` recreates the link, so a
-merge that changes the CLI cannot leave Hyprland's binds running an old copy (issue #20).
+`bin/banditshell` wraps a Quickshell `IpcHandler`. It is a symlink to `cli/banditshell`, never a
+copy: every start, restart and `doctor` recreates that link inside the checkout, so a merge that
+changes the CLI cannot leave Hyprland's binds running an old copy (issue #20). The link in
+`~/bin` is made by `doctor` alone, and `doctor` leaves a `~/bin/banditshell` that is a real file
+(a wrapper someone wrote) as it is. Nothing used to put `banditshell` on a PATH, so `install.sh`
+now links `~/.local/bin/banditshell` to `cli/banditshell` when no other `banditshell` is found,
+and `doctor api` says whether the one on the PATH is this checkout.
 
 It exists because **menus open on hover, and hover is impossible to assert**. You cannot script
 a cursor into a corner and check what happened, so the gesture and the thing it opens have to
@@ -1686,7 +1732,7 @@ banditshell panel                  every panel and menu by name
 banditshell panel <name> [toggle|open|close|status] [screen]
 banditshell panel close            every panel away - the rescue
 banditshell panel <name> <action>  a panel's own: launcher run <app>; settings
-                                   open [page]|page <page>|float; files open
+                                   open [page]|page <page>; files open
                                    [dir]; keyboard dock|float|page <layer>;
                                    clipboard list|use|pin|remove <n>|clear;
                                    calculator full|compact|answer <expression>;
@@ -1706,7 +1752,10 @@ banditshell tablet [on|off|toggle [caller]|lid open|closed|toggle [caller]
                    |probe [lid]|pen [edit|commit|cancel|aspect|centre|follow
                    |area <x> <y> <w> <h>]]
 banditshell config get <key>|set <key> <value>|theme [<name>|list]
-banditshell start|stop|restart|status|log|doctor [binds [rewrite]]
+banditshell start|stop|restart|status|log|doctor [api|binds [rewrite]]
+banditshell action <id> [args...]  a stable id, resolved when it runs (see below)
+banditshell api [list [pattern]|show <id>|check]   the table of ids
+banditshell version                which build is installed
 banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
                 |check [island [dir]]|inspect island [screen]|inspect close
@@ -1773,10 +1822,14 @@ work: the wrapper rewrites any old form through the map on the way in. A command
 another program is rewritten to that program (`banditshell set volume +` becomes `wpctl
 set-volume -l 1 @DEFAULT_AUDIO_SINK@ 5%+`), and the fallback runs it and says so on stderr. The
 sidebar's update icon wears a "published_with_changes" glyph in the accent colour while old
-binds exist (any update state wins over it), and its menu offers the one-click rewrite (a .bak beside the file); `banditshell doctor binds` lists
-them and `banditshell doctor binds rewrite` is the same rewrite. Refusing is a two-click path - the second
-asks, because "no" means "I will fix the config by hand" - and a confirmed refusal is written
-to `cli.bindsDeclined` and never nagged about again.
+binds exist (any update state wins over it), and its menu offers the one-click rewrite (a dated
+`.bak-YYYYMMDD-HHMMSS` beside the file, one per rewrite, never replacing an earlier one);
+`banditshell doctor binds` lists them and `banditshell doctor binds rewrite` is the same rewrite.
+Refusing is a two-click path - the second asks, because "no" means "I will fix the config by
+hand" - and a confirmed refusal is written to `cli.bindsDeclinedGeneration` as the rules
+generation it was made against (`CliMigration.generation`, mirrored by `GENERATION` in
+`cli-migration.js`, a test holds them equal), so a later regroup asks again; a `true` left in
+the old `cli.bindsDeclined` counts as generation 1.
 
 The table maps the verb-first forms only. The noun-first rules were retired with this
 revision, because every bind had already been through them and three of their nouns
@@ -1833,7 +1886,10 @@ setting's key, and `page` switches it without touching presence, so a keybind ca
 panel while it stays put. A menu answers to the same words as a built-in panel: `panel calendar
 toggle` toggles an ordinary menu registered in the sidebar, and `panel calendar` says whether it
 is the open one.
-`docs/hyprland-binds.example.conf` is a worked set of Hyprland binds onto all of it.
+`docs/hyprland-binds.example.lua` is a worked set of Hyprland binds onto all of it, written
+against the stable API below; `docs/hyprland-binds.example.conf` is the same set for a Hyprland
+still on the legacy parser. Neither is installed by the shell: the Settings action that the
+old example promised never existed, and the example no longer says it does.
 
 `wallpaper` is the one group whose whole job is **reading before writing**. Every action on it
 is a write to `config.json` that `config set wallpaper.enabled` or `config set
@@ -1850,6 +1906,70 @@ an ink floor of its own.
 `panel wallpaper`, the picker, is a **surface** rather than a setting: everything on it opens
 and closes something on the screen and writes nothing, where everything on `wallpaper` writes
 something and draws nothing.
+
+### A stable API for binds
+
+The command line was the interface binds were written against, and it was regrouped twice in
+thirteen days. Every regroup needed a rule table, an offer in the sidebar and a run-time shim,
+and a bind written two generations back had no path at all. So a bind no longer names the
+command line. It names an **action id**, and ids are the one thing promised never to change.
+
+`api/actions.tsv` is the contract: `id`, `status`, `since` (the API number it appeared in), the
+`argv` the id stands for today, and a description. `*` in an id matches one segment and shows up
+as `$1`, `$2` in the argv, so `panel.*.toggle` is every panel at once. An id is never deleted:
+a rename adds the new row and turns the old one into `deprecated=<new id>`, a removal turns it
+into `removed=<new id>` and keeps it mapping to the closest replacement. `api/released.txt`
+lists every id ever shipped and a test fails when the table loses one. The first line, `# api N`,
+changes only when the module's own calling convention does.
+
+`banditshell action <id> [args...]` is the one command line that is frozen. It looks the id up
+when it runs, so a key pressed after an update resolves against the files that update left on
+disk; a deprecated or removed id prints one notice per session and still works. `banditshell api
+list|show|check` read the same table, and `check` holds every row against the help header the
+completion is generated from. `tests/actions.test.js` also runs every row in a dry mode that
+prints the `qs ipc` call instead of making it, and holds that target and function against the
+handlers in `modules/Cli.qml`; that is the check that would have caught `panel settings float`,
+which no handler answered for two weeks and which is gone now.
+
+`lua/banditshell.lua` is what a Hyprland config requires. The ids are nested names that are
+plain functions, so `hl.bind(keys, bs.launcher.toggle)` works as it stands, and a name with
+arguments is called once to get the function to bind: `bs.wallpaper.set("/path")`. Pass an
+action, never call it: `bs.launcher.toggle()` runs it at load. At press time the module does
+one `hl.exec_cmd` and reads no file, because a bind callback has 100 ms before the compositor
+gives up on it; everything else, the table and the checkout's path, is read when the config
+loads. The command it runs finds the checkout again by itself (the load-time root, then the
+pointer file, then the PATH), so a checkout that moved or updated after the config loaded still
+answers. A name that does not exist, a removed id, a half id like `bs.panel.clipboard`, or a
+missing table never raise: they give a function that does nothing and shows a notice once, and
+the module wraps `hl.bind` so even a chain like `bs.volume.up` binds as that function. `bs.bind`
+is `hl.bind` that also fills the description from the table, `bs.describe` reads one, and
+`services/hyprland-lua.js` reads the same table so the hotkey sheet says "Open or close the
+launcher" for a plain `hl.bind(keys, bs.launcher.toggle)`.
+
+`api/shim.lua` is the only file placed in the user's config tree, as `<hypr dir>/banditshell.lua`,
+so `require("banditshell")` works. It is frozen: no action, no verb, a format number in its first
+line, replaced only by a higher format, and a `banditshell.lua` that is not ours (no such first
+line, or a link) is never touched. It finds the checkout through `$BANDITSHELL_DIR`, then the
+pointer file `$XDG_STATE_HOME/banditshell/root`, then the two usual homes of a clone, and with
+none it returns a hollow object that never raises. A pointer file, because the repo is not always
+where the owner keeps it, and a link would dangle after a move and make `require` raise in a
+config we do not own. `ensure_lua` writes the pointer and the shim on `start`, `restart`,
+`doctor` and a tried worktree (`dev try`, `dev back`), atomically, and never from the last good
+copy. `banditshell doctor api` reports it, the table, the user's own binds and the PATH.
+
+The rest of the CLI gives scripts the same footing. Exit codes are written in the header: 0 done,
+1 failed, 2 usage, 3 the shell is not running, 4 the shell refused (a handler that answers
+`refused:`, `no shell window` or `no such ...` is a 4, and a running shell that did not take the
+call is a 4 that says so instead of claiming it is not running). `--json` after a status
+command prints an object. `banditshell version` names the newest what's-new id, the commit, the
+checkout, the API number and the Quickshell and Hyprland versions. The instance pid is cached in
+`$XDG_RUNTIME_DIR/banditshell/pid` and checked with `kill -0`, so a bind no longer pays for
+`qs list --all` first.
+
+`cli-migration.js` can rewrite `exec_cmd("banditshell ...")` strings onto ids where exactly one
+id fits (`--stable-scan`, `--stable-check`, `--stable-write`). Nothing calls those modes yet; the
+write path wants the `Hyprland --verify-config` step `HyprConfig.commit` already has before it
+touches a real file.
 
 ### One wallpaper per monitor: a default, plus the screens that disagree
 
@@ -2249,6 +2369,29 @@ Three things worth keeping in mind, all learned the hard way:
   that a machine is in this world.
 
 ---
+
+### How an update works
+
+`banditshell update check` fetches and classifies the incoming change from facts: `restart` when
+any qmldir changed, a QML file was added or removed, or `shell.qml` changed (a hot reload misses a
+new qmldir entry), otherwise `reload`. The whats-new entries may carry an `impact` object that
+can add a restart, a commands change, binds and packages; it never removes what the diff found.
+`update apply` stages the target with `git archive` into `~/.cache/banditshell/staged`, runs
+`scripts/qml-compile-check.sh` on it and builds the helpers there, and refuses when either fails,
+so the live checkout is untouched until the new tree is known to load. Only then does it record the
+previous HEAD in `~/.local/state/banditshell/update/previous`, set aside the edits the update also
+touches (a fixed identity, so a fresh machine can stash), `git merge --ff-only`, copy the helpers,
+refresh the completions and restart when the class says so. `launch()` counts a shell as up only
+when it answers `shell status` over IPC within `BANDITSHELL_HEALTH_WAIT` seconds (8) and its log
+shows no ReferenceError or "Failed to load" for `BANDITSHELL_HEALTH_SCAN` seconds (3); the last
+good copy is refreshed after that and not before. A failed check goes back by itself: `git reset
+--keep` to the recorded commit, relaunch, `update/result.json` for the next shell to read, and
+`update/skip` plus `updates.skip` so the same commit is not offered again; a newer one is.
+
+`BANDITSHELL_DRY=1` makes `stop`, `start`, `restart`, `update apply` and `update rollback` print
+what they would do (`dry: ...`) and change nothing. `tests/update-cli.test.js` runs the whole loop
+against a throwaway bare origin and clone with a fake `qs` (`tests/fixtures/update/fake-qs`), never
+the real checkout or home.
 
 ## 10. The metaball chassis
 

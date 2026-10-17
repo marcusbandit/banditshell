@@ -22,8 +22,8 @@ singleton Currency 1.0 Currency.qml
 singleton DarkMode 1.0 DarkMode.qml
 singleton DefaultApps 1.0 DefaultApps.qml
 singleton DesktopIndex 1.0 DesktopIndex.qml
-singleton Device 1.0 Device.qml
 singleton DevUtilities 1.0 DevUtilities.qml
+singleton Device 1.0 Device.qml
 singleton Dictation 1.0 Dictation.qml
 singleton Dictionary 1.0 Dictionary.qml
 singleton Display 1.0 Display.qml
@@ -33,8 +33,8 @@ singleton FileSearch 1.0 FileSearch.qml
 singleton Files 1.0 Files.qml
 singleton GitHub 1.0 GitHub.qml
 singleton Hotspot 1.0 Hotspot.qml
-singleton HyprConfig 1.0 HyprConfig.qml
 singleton Hypr 1.0 Hypr.qml
+singleton HyprConfig 1.0 HyprConfig.qml
 singleton Idle 1.0 Idle.qml
 singleton Keyboards 1.0 Keyboards.qml
 singleton Keymap 1.0 Keymap.qml
@@ -56,8 +56,8 @@ singleton Lyrics 1.0 Lyrics.qml
 singleton Media 1.0 Media.qml
 singleton Modes 1.0 Modes.qml
 singleton Monitors 1.0 Monitors.qml
-singleton NetworkEvents 1.0 NetworkEvents.qml
 singleton Network 1.0 Network.qml
+singleton NetworkEvents 1.0 NetworkEvents.qml
 singleton Notes 1.0 Notes.qml
 singleton Notices 1.0 Notices.qml
 singleton NotificationBrief 1.0 NotificationBrief.qml
@@ -72,8 +72,8 @@ singleton PenMap 1.0 PenMap.qml
 singleton Phone 1.0 Phone.qml
 singleton Polkit 1.0 Polkit.qml
 singleton Pomodoro 1.0 Pomodoro.qml
-singleton PowerProfile 1.0 PowerProfile.qml
 singleton Power 1.0 Power.qml
+singleton PowerProfile 1.0 PowerProfile.qml
 PrivateFile 1.0 PrivateFile.qml
 singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
@@ -90,9 +90,9 @@ singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
 singleton SystemBinaries 1.0 SystemBinaries.qml
-singleton SystemdUnits 1.0 SystemdUnits.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton SystemMonitor 1.0 SystemMonitor.qml
+singleton SystemdUnits 1.0 SystemdUnits.qml
 singleton Tablet 1.0 Tablet.qml
 singleton Tailscale 1.0 Tailscale.qml
 singleton ThemeSwitcher 1.0 ThemeSwitcher.qml
@@ -105,9 +105,9 @@ singleton Tunnels 1.0 Tunnels.qml
 singleton Typist 1.0 Typist.qml
 singleton Uninstaller 1.0 Uninstaller.qml
 singleton Update 1.0 Update.qml
+singleton Usage 1.0 Usage.qml
 singleton UsageApps 1.0 UsageApps.qml
 singleton UsageLimits 1.0 UsageLimits.qml
-singleton Usage 1.0 Usage.qml
 singleton VideoDownloads 1.0 VideoDownloads.qml
 singleton Wallpaper 1.0 Wallpaper.qml
 singleton Weather 1.0 Weather.qml

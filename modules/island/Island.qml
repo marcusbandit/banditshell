@@ -1075,9 +1075,9 @@ Item {
                     y: root.pillY + layer.stand - height + layer.reach
                     radius: root.pillRadius
                     cornerPower: root.pillPower
-                    color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth))
+                    color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, layer.depth < 1 ? 0.06 * layer.depth : 0.09 - 0.03 * layer.depth)
                     stroke: Appearance.colour.seam
-                    strokeWidth: Appearance.sizes.seam / 2
+                    strokeWidth: Appearance.stroke.line
                     opacity: Math.max(layer.shown * layer.kept, layer.ghostness)
                     visible: layer.opacity > 0.01
 
@@ -1125,7 +1125,7 @@ Item {
                         width: under.twin?.width ?? 0
                         height: under.twin?.height ?? 0
                         radius: width / 2
-                        opacity: settle.value * 0.8 * under.fade
+                        opacity: settle.value * Appearance.opacity.glow * under.fade
                         visible: opacity > 0.01
                     }
 
@@ -1154,9 +1154,9 @@ Item {
                             height: width
                             radius: width / 2
                             cornerPower: 2
-                            color: Qt.tint(Appearance.colour.ink, Qt.rgba(1, 1, 1, 0.06 * behind.d))
+                            color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
-                            strokeWidth: Appearance.sizes.seam / 2
+                            strokeWidth: Appearance.stroke.line
                             opacity: under.fade * behindShown.value
                             visible: opacity > 0.01
                         }
@@ -1170,7 +1170,7 @@ Item {
                 width: root.pillWidth
                 height: root.pillHeight
                 radius: root.pillRadius
-                opacity: settle.value * 0.8 * deal.value
+                opacity: settle.value * Appearance.opacity.glow * deal.value
             }
 
             IslandField {
@@ -1451,7 +1451,7 @@ Item {
                     Follow {
                         id: hoverGlow
 
-                        speed: Appearance.animation.revealSpeed * 1.5
+                        speed: Appearance.animation.snapSpeed
                         epsilon: 0.004
                         target: tap.containsMouse && grow.value > 0.5 ? 1 : 0
                     }

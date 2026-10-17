@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/hyprland-lua.js"), "utf8");
 const HyprlandLua = new Function(src
-    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
+    + "\nreturn { parseChord, luaString, luaUnescape, scanLua, composeBind, composeEntry, describeExpr, actionTable, entryReplacement, entriesForHost, relocateEntry, verifyReport, baselineRefusal, parseBandSpec, spliceLines, appendSplice, configFromCommandLine, confSources };")();
 
 test("chords parse into modifiers and a key", () => {
     assert.deepStrictEqual(HyprlandLua.parseChord("SUPER + SHIFT + Slash"), {
@@ -1083,4 +1083,25 @@ test("an entry is found again by its text after lines above it moved", () => {
     assert.strictEqual(HyprlandLua.relocateEntry(now, old).id, "lua/binds.lua:9x");
     assert.strictEqual(HyprlandLua.relocateEntry(now.slice(0, 1), old), null);
     assert.strictEqual(HyprlandLua.relocateEntry([], old), null);
+});
+
+
+test("a bind on a stable id reads as what the table says it does", () => {
+    const fs = require("node:fs");
+    const rows = HyprlandLua.actionTable(fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8"));
+    assert.strictEqual(HyprlandLua.describeExpr("bs.launcher.toggle", rows), "Open or close the launcher");
+    assert.strictEqual(HyprlandLua.describeExpr("bs.panel.close", rows), "Close every panel and menu");
+    assert.match(HyprlandLua.describeExpr("bs.panel.clipboard.toggle", rows), /^Open or close a panel or menu/);
+    assert.match(HyprlandLua.describeExpr('bs.action("tablet.on", "compositor")', rows), /^Tablet mode on/);
+    assert.strictEqual(HyprlandLua.describeExpr("bs.launcher.toggle"), "bs.launcher.toggle");
+    assert.strictEqual(HyprlandLua.describeExpr("bs.no.such.thing", rows), "bs.no.such.thing");
+    assert.strictEqual(HyprlandLua.describeExpr('hl.dsp.exec_cmd("grim")', rows), "grim");
+});
+
+test("the scanner reads hl.bind with a stable id as an ordinary bind with that expression", () => {
+    const r = HyprlandLua.scanLua('local bs = require("banditshell")\nhl.bind("SUPER + SPACE", bs.launcher.toggle)\nhl.bind("SUPER + V", bs.panel.clipboard.toggle, { locked = true })');
+    assert.deepStrictEqual(r.binds.map(b => [b.chord, b.expr, b.dynamic, b.locked]), [
+        ["SUPER + SPACE", "bs.launcher.toggle", false, false],
+        ["SUPER + V", "bs.panel.clipboard.toggle", false, true]
+    ]);
 });

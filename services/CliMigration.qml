@@ -21,7 +21,11 @@ Singleton {
 
     property string lastResult: ""
 
-    readonly property bool declined: Config.values.cli.bindsDeclined === true
+    readonly property int generation: 1
+
+    readonly property int declinedGeneration: Config.values.cli.bindsDeclinedGeneration > 0 ? Config.values.cli.bindsDeclinedGeneration : (Config.values.cli.bindsDeclined === true ? 1 : 0)
+
+    readonly property bool declined: root.declinedGeneration >= root.generation
 
     readonly property bool stale: !root.declined && root.deprecated > 0
 
@@ -52,7 +56,7 @@ Singleton {
     function decline(): void {
         if (root.declined)
             return;
-        Config.set("cli.bindsDeclined", true);
+        Config.set("cli.bindsDeclinedGeneration", root.generation);
     }
 
     Process {

@@ -7,9 +7,9 @@ ActivityRow 1.0 ActivityRow.qml
 AlertDeck 1.0 AlertDeck.qml
 DictationWave 1.0 DictationWave.qml
 InspectIpc 1.0 InspectIpc.qml
+Island 1.0 Island.qml
 IslandInspector 1.0 IslandInspector.qml
 IslandIpc 1.0 IslandIpc.qml
 IslandMedia 1.0 IslandMedia.qml
 IslandOverview 1.0 IslandOverview.qml
-Island 1.0 Island.qml
 MockNotification 1.0 MockNotification.qml

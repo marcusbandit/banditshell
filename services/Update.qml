@@ -12,7 +12,10 @@ Singleton {
     readonly property string idle: "idle"
     readonly property string available: "available"
     readonly property string downloading: "downloading"
-    readonly property string downloaded: "downloaded"
+    readonly property string verifying: "verifying"
+    readonly property string restarting: "restarting"
+    readonly property string updated: "updated"
+    readonly property string rolledback: "rolledback"
     readonly property string failed: "failed"
 
     property string state: root.idle
@@ -28,10 +31,21 @@ Singleton {
     readonly property bool diverged: root.behind > 0 && root.ahead > 0
 
     property string error: ""
+    property string phaseText: ""
+    property var warnings: []
+
+    property var entries: []
+    property string summaryText: ""
+    property string buttonText: "Update"
+    property bool restartNeeded: false
+
+    property var result: null
+    readonly property bool resultPending: root.result !== null && root.result.shown !== true
+    readonly property string resultText: Words.outcomeText(root.result)
 
     property date checkedAt: new Date(0)
 
-    readonly property bool busy: root.state === root.downloading
+    readonly property bool busy: root.state === root.downloading || root.state === root.verifying || root.state === root.restarting
 
     property bool checking: false
 
@@ -39,8 +53,11 @@ Singleton {
     readonly property string remote: Config.values.updates.remote
 
     readonly property string dir: Quickshell.shellDir
+    readonly property string cli: Quickshell.shellPath("cli/banditshell")
 
     readonly property string statePath: `${Config.stateDir}/update.json`
+    readonly property string resultPath: `${Config.stateDir}/update/result.json`
+    readonly property string progressPath: `${Config.stateDir}/update/progress.log`
     readonly property real fetchGap: 30 * 60 * 1000
 
     property real fetchedAt: 0
@@ -49,13 +66,22 @@ Singleton {
     property bool remembered: false
     property bool fetching: false
 
+    property string lastPhase: ""
+    property real startedAt: 0
+
     readonly property string headline: {
-        if (root.state === root.downloaded)
-            return "Downloaded - restart to apply";
+        if (root.state === root.updated)
+            return "Updated";
+        if (root.state === root.rolledback)
+            return "Update rolled back";
+        if (root.state === root.restarting)
+            return "Restarting...";
+        if (root.state === root.verifying)
+            return "Checking it loads...";
         if (root.state === root.downloading)
             return "Updating...";
         if (root.state === root.failed)
-            return "Update failed - nothing was changed";
+            return "Update failed";
         if (root.paused)
             return `This copy is on ${root.headBranch === "HEAD" ? "no branch" : root.headBranch}, so it does not follow ${root.branch}`;
         if (root.diverged)
@@ -63,17 +89,6 @@ Singleton {
         if (root.behind > 0)
             return `${root.behind} new commit${root.behind === 1 ? "" : "s"} on ${root.branch}`;
         return "You are up to date";
-    }
-
-    function nameable(name: string): bool {
-        return !!name && !name.startsWith("-");
-    }
-
-    function refuse(): bool {
-        if (root.nameable(root.remote) && root.nameable(root.branch))
-            return false;
-        root.error = "the update remote or branch is not a name git can take";
-        return true;
     }
 
     function commit(sha: string): bool {
@@ -94,33 +109,11 @@ Singleton {
 
         root.checkedBranch = root.branch;
         root.error = "";
-        if (root.refuse())
-            return;
         root.checking = true;
         root.fetching = fetch;
         watchdog.restart();
 
-        checker.command = ["sh", "-c", `
-            export GIT_TERMINAL_PROMPT=0 LC_ALL=C
-            top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null)
-            if [ -z "$top" ] || [ "$top" != "$(cd "$1" && pwd -P)" ]; then
-                printf 'failed\\n|fatal: not a git repository\\n'
-                exit 0
-            fi
-            if [ "$4" = fetch ]; then
-                out=$(timeout -k 10 120 git -C "$1" fetch --quiet -- "$2" "$3" 2>&1)
-                case $? in
-                    0) ;;
-                    124|137) printf 'failed\\n|timed out\\n'; exit 0 ;;
-                    *) echo failed; printf '%s\\n' "$out" | sed 's/^/|/'; exit 0 ;;
-                esac
-            fi
-            printf 'branch=%s\\n' "$(git -C "$1" symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)"
-            printf 'head=%s\\n' "$(git -C "$1" rev-parse --verify --quiet HEAD 2>/dev/null)"
-            printf 'target=%s\\n' "$(git -C "$1" rev-parse --verify --quiet --end-of-options "$2/$3^{commit}" 2>/dev/null)"
-            printf 'count=%s\\n' "$(git -C "$1" rev-list --count --end-of-options "HEAD..$2/$3" 2>/dev/null)"
-            printf 'ahead=%s\\n' "$(git -C "$1" rev-list --count --end-of-options "$2/$3..HEAD" 2>/dev/null)"
-        `, "sh", root.dir, root.remote, root.branch, fetch ? "fetch" : "local"];
+        checker.command = fetch ? ["bash", root.cli, "update", "check", "--json"] : ["bash", root.cli, "update", "check", "--json", "--no-fetch"];
         checker.running = true;
     }
 
@@ -141,8 +134,8 @@ Singleton {
         }));
     }
 
-    function download(): void {
-        if (root.busy || root.checking || root.paused || root.diverged || root.state === root.downloaded)
+    function apply(): void {
+        if (root.busy || root.checking || root.paused || root.diverged)
             return;
 
         root.error = "";
@@ -151,45 +144,97 @@ Singleton {
             return;
         }
         root.state = root.downloading;
-        root.checking = true;
-        kept.installedTo = root.target;
+        root.phaseText = "Getting it...";
+        root.warnings = [];
+        root.lastPhase = "";
+        root.startedAt = Math.floor(Date.now() / 1000) - 1;
         watchdog.restart();
+        silence.restart();
 
-        puller.command = ["sh", "-c", `
-            export GIT_TERMINAL_PROMPT=0 LC_ALL=C
-            incoming=$(git -C "$1" diff --name-only HEAD "$2" --)
-            both=$(git -C "$1" diff --name-only HEAD -- | INCOMING="$incoming" awk 'BEGIN { n = split(ENVIRON["INCOMING"], f, "\\n"); for (i = 1; i <= n; i++) if (f[i] != "") seen[f[i]] = 1 } $0 in seen')
-            if [ -n "$both" ]; then
-                if out=$(printf '%s\\n' "$both" | git --literal-pathspecs -C "$1" stash push --quiet --message "banditshell update to $(printf '%.7s' "$2"): edits set aside" --pathspec-from-file=- 2>&1); then
-                    printf 'aside=%s\\n' "$(printf '%s\\n' "$both" | paste -sd '\\t' -)"
-                else
-                    echo failed
-                    printf '%s\\n' "$out" | sed 's/^/|/'
-                    exit 0
-                fi
-            fi
-            if out=$(git -C "$1" merge --ff-only --quiet "$2" 2>&1); then
-                printf 'head=%s\\n' "$(git -C "$1" rev-parse HEAD)"
-            else
-                echo failed
-                printf '%s\\n' "$out" | sed 's/^/|/'
-            fi
-        `, "sh", root.dir, root.target];
-        puller.running = true;
+        Quickshell.execDetached(["bash", root.cli, "update", "apply", "--detach", "--to", root.target]);
     }
 
     function restart(): void {
-        const cli = `${Quickshell.env("HOME")}/bin/banditshell`;
-        Quickshell.execDetached(["sh", "-c",
-            `if [ -x '${cli}' ]; then exec '${cli}' restart; else exec banditshell restart; fi`]);
+        Quickshell.execDetached(["setsid", "-f", "bash", root.cli, "restart"]);
     }
 
-    PersistentProperties {
-        id: kept
+    function dismissResult(): void {
+        if (root.result === null)
+            return;
+        const kept = JSON.parse(JSON.stringify(root.result));
+        kept.shown = true;
+        resultFile.setText(JSON.stringify(kept));
+        root.result = kept;
+        if (root.state === root.updated || root.state === root.rolledback)
+            root.state = root.idle;
+    }
 
-        reloadableId: "update"
+    function followProgress(text: string): void {
+        const started = root.startedAt;
+        const lines = String(text ?? "").split("\n");
+        const warnings = [];
+        let last = null;
+        let failure = [];
+        for (const line of lines) {
+            const phase = Words.phaseOf(line);
+            if (phase === null || (Number(phase.at) || 0) < started)
+                continue;
+            last = phase;
+            if (phase.phase === "warning")
+                warnings.push(phase.text);
+            else if (phase.phase === "failed")
+                failure = phase.output ?? [phase.text ?? ""];
+        }
+        if (last === null)
+            return;
+        const final = last.phase === "done" || last.phase === "rolledback" || last.phase === "failed";
+        const fresh = Date.now() / 1000 - (Number(last.at) || 0) < 600;
+        if (!root.busy && started === 0 && (final || !fresh))
+            return;
 
-        property string installedTo: ""
+        silence.stop();
+        root.lastPhase = last.phase;
+        root.phaseText = last.text ?? "";
+        root.warnings = warnings;
+        if (last.phase === "stage" || last.phase === "apply")
+            root.state = root.downloading;
+        else if (last.phase === "verify")
+            root.state = root.verifying;
+        else if (last.phase === "restart" || last.phase === "health")
+            root.state = root.restarting;
+        else if (last.phase === "done") {
+            root.behind = 0;
+            root.ahead = 0;
+            root.state = root.updated;
+            resultFile.reload();
+        } else if (last.phase === "rolledback") {
+            root.state = root.rolledback;
+            resultFile.reload();
+        } else if (last.phase === "failed") {
+            root.state = root.failed;
+            root.error = Words.explain(failure, root.branch);
+        }
+        if (final)
+            watchdog.stop();
+    }
+
+    function takeResult(text: string): void {
+        const data = Words.parseCheck(text);
+        if (data === null || typeof data.ok !== "boolean") {
+            root.result = null;
+            return;
+        }
+        root.result = data;
+        if (data.shown === true)
+            return;
+        if (data.ok) {
+            root.state = root.updated;
+            root.behind = 0;
+        } else {
+            root.state = root.rolledback;
+            if (data.to && Config.values.updates.skip !== data.to)
+                Config.set("updates.skip", data.to);
+        }
     }
 
     FileView {
@@ -211,6 +256,51 @@ Singleton {
         }
 
         onLoadFailed: root.remembered = true
+    }
+
+    FileView {
+        id: resultFile
+
+        path: root.resultPath
+        printErrors: false
+        watchChanges: true
+
+        onFileChanged: resultFile.reload()
+        onLoaded: root.takeResult(text())
+        onLoadFailed: root.result = null
+    }
+
+    FileView {
+        id: progressFile
+
+        path: root.progressPath
+        printErrors: false
+        watchChanges: true
+
+        onFileChanged: progressFile.reload()
+        onLoaded: root.followProgress(text())
+    }
+
+    Timer {
+        interval: 700
+        running: root.busy
+        repeat: true
+        onTriggered: {
+            progressFile.reload();
+            resultFile.reload();
+        }
+    }
+
+    Timer {
+        id: silence
+
+        interval: 30000
+        onTriggered: {
+            if (root.state !== root.downloading || root.lastPhase !== "")
+                return;
+            root.state = root.failed;
+            root.error = "The update did not start. banditshell update status tells where this copy stands.";
+        }
     }
 
     Timer {
@@ -236,17 +326,16 @@ Singleton {
     Timer {
         id: watchdog
 
-        interval: 180000
+        interval: 600000
 
         onTriggered: {
-            if (!root.checking)
+            if (!root.checking && !root.busy)
                 return;
             root.checking = false;
             checker.running = false;
-            puller.running = false;
-            if (root.state === root.downloading) {
+            if (root.busy) {
                 root.state = root.failed;
-                root.error = "git stopped answering and was stopped. Refresh to see where this copy stands.";
+                root.error = "The update stopped answering and was stopped. Refresh to see where this copy stands.";
             } else {
                 root.error = "The check stopped answering and was given up.";
             }
@@ -263,57 +352,38 @@ Singleton {
                 root.checking = false;
                 watchdog.stop();
 
-                const got = Words.report(text);
-                if (!got.failed && root.fetching)
-                    root.remember();
-                root.checkedAt = new Date(root.fetchedAt);
-
-                if (got.failed) {
-                    root.error = Words.explain(got.output, root.branch);
-                    console.warn(`Update: ${got.output.join(" / ")}`);
+                const got = Words.parseCheck(text);
+                if (got === null) {
+                    root.error = "The check gave no answer.";
+                    console.warn("Update: banditshell update check printed nothing readable");
+                    return;
+                }
+                if (got.state === "error") {
+                    root.error = Words.explain(got.output ?? [], root.branch);
+                    console.warn(`Update: ${(got.output ?? []).join(" / ")}`);
                     return;
                 }
 
-                root.headBranch = got.values.branch ?? "";
-                root.target = root.commit(got.values.target ?? "") ? got.values.target : "";
-                root.behind = root.paused ? 0 : Number(got.values.count) || 0;
-                root.ahead = root.paused ? 0 : Number(got.values.ahead) || 0;
+                if (root.fetching)
+                    root.remember();
+                root.checkedAt = new Date(root.fetchedAt);
 
-                if (kept.installedTo !== "" && got.values.head === kept.installedTo)
-                    root.state = root.downloaded;
+                const counts = got.state === "available" || got.state === "diverged";
+                root.headBranch = got.headBranch ?? "";
+                root.target = root.commit(got.target ?? "") ? got.target : "";
+                root.behind = counts ? Number(got.behind) || 0 : 0;
+                root.ahead = counts ? Number(got.ahead) || 0 : 0;
+                root.entries = got.entries ?? [];
+                root.summaryText = got.summary ?? "";
+                root.buttonText = got.button ?? "Update";
+                root.restartNeeded = got.class?.restart === true;
 
+                if (root.busy || root.state === root.updated || root.state === root.rolledback)
+                    return;
                 if (root.behind > 0)
                     root.state = root.available;
                 else if (root.state === root.available || root.state === root.failed)
                     root.state = root.idle;
-            }
-        }
-    }
-
-    Process {
-        id: puller
-
-        stdout: StdioCollector {
-            onStreamFinished: {
-                if (!root.checking)
-                    return;
-                root.checking = false;
-                watchdog.stop();
-
-                const got = Words.report(text);
-                const aside = Words.setAside(got.values.aside);
-                if (got.failed) {
-                    kept.installedTo = "";
-                    root.error = [aside, Words.explain(got.output, root.branch)].filter(Boolean).join(" ");
-                    root.state = root.failed;
-                    console.warn(`Update: ${got.output.join(" / ")}`);
-                    return;
-                }
-
-                root.behind = 0;
-                root.ahead = 0;
-                root.error = aside;
-                root.state = root.downloaded;
             }
         }
     }

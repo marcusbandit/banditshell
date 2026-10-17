@@ -2,15 +2,23 @@
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+WRITE=0
+if [ "${1:-}" = --write ]; then
+    WRITE=1
+    shift
+fi
 CLI="${1:-$REPO/cli/banditshell}"
+TABLE_FILE="$REPO/cli/commands.tsv"
 DESCRIPTION_COLUMN=31
-SOURCES=" panel menu screen theme key file dir page layer app place index worktree command package "
+SOURCES=" panel menu screen theme key file dir page layer app place index worktree command package id rule "
 
 case "${1:-}" in
 -h | --help)
     echo "usage: completion-rules.sh [cli]"
+    echo "       completion-rules.sh --write"
     echo "  print the completion table that scripts/zsh-completion.sh and"
-    echo "  scripts/bash-completion.sh both build from the CLI's header"
+    echo "  scripts/bash-completion.sh both build from the CLI's header;"
+    echo "  --write saves it as cli/commands.tsv, the committed copy"
     exit 0
     ;;
 esac
@@ -198,7 +206,34 @@ bake() {
     printf 'values\tpage\t%s\n' "$(sed -n -e 's/^    { id: "\([a-z]*\)", name: "[^"]*", icon: "[^"]*",\( preview: "[^"]*",\)\{0,1\}$/\1/p' -e 's/^        id: "\([a-z]*\)", name: .*/\1/p' "$REPO/modules/settings/catalogue.js" | paste -sd' ' -)"
     printf 'values\tlayer\t%s\n' "$(sed -n 's/^ \{12\}\([a-zA-Z]*\): \[$/\1/p' "$REPO/modules/keyboard/Layouts.qml" | paste -sd' ' -)"
     printf 'values\tpackage\t%s\n' "$(package_names | sort | paste -sd' ' -)"
+    printf 'values\trule\t%s\n' "$(sed -n 's/^    { id: "\(L[0-9]*\)".*/\1/p' "$REPO/scripts/lint-rules.js" | paste -sd' ' -)"
 }
 
-parse | awk -F'\t' '$1 == "verb" && verbs[$2]++ { next } !seen[$0]++'
-bake
+bake_ids() {
+    local surfaces
+    surfaces="$(sed -n 's/^SURFACES=(\(.*\))$/\1/p' "$CLI")"
+    printf 'values\tid\t%s\n' "$(awk -F'\t' -v surfaces="$surfaces" '
+        /^#/ || NF < 4 { next }
+        $1 !~ /\*/ { print $1; next }
+        $1 ~ /^panel\.\*\./ {
+            n = split(surfaces, names, " ")
+            for (i = 1; i <= n; i++) {
+                id = $1
+                sub(/\*/, names[i], id)
+                print id
+            }
+        }
+    ' "$REPO/api/actions.tsv" 2>/dev/null | paste -sd' ' -)"
+}
+
+table() {
+    parse | awk -F'\t' '$1 == "verb" && verbs[$2]++ { next } !seen[$0]++'
+    bake
+    bake_ids
+}
+
+if [ "$WRITE" -eq 1 ]; then
+    table >"$TABLE_FILE.tmp" && mv "$TABLE_FILE.tmp" "$TABLE_FILE"
+else
+    table
+fi

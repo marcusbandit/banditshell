@@ -3,6 +3,7 @@
   "summary": "the Hyprland bridge: windows, monitors, config files, chords",
   "layer": 1,
   "owns": {
+    "qml": ["modules/ipc/CompositorIpc.qml"],
     "services": ["CliMigration", "CompositorSync", "Hypr", "HyprConfig", "Keymap", "Monitors"],
     "js": [
       "services/chords.js",

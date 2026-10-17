@@ -8,6 +8,7 @@ import qs.modules.island
 import qs.modules.lock
 import qs.modules.pen
 import qs.modules.picker
+import qs.modules.wallpaper
 
 ShellRoot {
     readonly property var compositorSync: CompositorSync

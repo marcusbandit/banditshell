@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, TYPES };")();
+    + "\nreturn { parse, accumulated, severityOf, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -29,6 +29,46 @@ test("the shipped log parses and is well formed", () => {
             assert.ok(["major", "minor"].includes(c.severity));
         }
     }
+});
+
+function impactProblems(raw) {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw))
+        return ["impact is not an object"];
+    const problems = Object.keys(raw).filter(k => !WhatsNew.IMPACT_KEYS.includes(k)).map(k => `unknown key ${k}`);
+    for (const flag of ["restart", "cli"])
+        if (flag in raw && typeof raw[flag] !== "boolean")
+            problems.push(`${flag} is not true or false`);
+    for (const list of ["binds", "deps"])
+        if (list in raw && !(Array.isArray(raw[list]) && raw[list].every(s => typeof s === "string" && s.trim())))
+            problems.push(`${list} is not a list of names`);
+    return problems;
+}
+
+test("the shipped log keeps impact to its documented shape", () => {
+    const doc = JSON.parse(fs.readFileSync(path.join(ROOT, "docs/whats-new.json"), "utf8"));
+    for (const e of doc.entries)
+        if ("impact" in e)
+            assert.deepStrictEqual(impactProblems(e.impact), [], e.id);
+});
+
+test("the impact validator rejects what the loader would quietly drop", () => {
+    assert.deepStrictEqual(impactProblems({ restart: true, cli: false, binds: ["launcher.toggle"], deps: ["fd"] }), []);
+    assert.deepStrictEqual(impactProblems({}), []);
+    assert.deepStrictEqual(impactProblems({ restart: "yes" }), ["restart is not true or false"]);
+    assert.deepStrictEqual(impactProblems({ binds: "x" }), ["binds is not a list of names"]);
+    assert.deepStrictEqual(impactProblems({ colour: 1 }), ["unknown key colour"]);
+    assert.deepStrictEqual(impactProblems([]), ["impact is not an object"]);
+});
+
+test("impact is read when present and null when not", () => {
+    const parsed = WhatsNew.parse(JSON.stringify([
+        { id: "with", changes: [{ text: "x" }], impact: { restart: true, binds: ["a", 1, " b "], deps: "no" } },
+        { id: "without", changes: [{ text: "x" }] },
+        { id: "wrong", changes: [{ text: "x" }], impact: [1] }
+    ]));
+    assert.deepStrictEqual(parsed[0].impact, { restart: true, cli: false, binds: ["a", "b"], deps: [] });
+    assert.strictEqual(parsed[1].impact, null);
+    assert.strictEqual(parsed[2].impact, null);
 });
 
 test("garbage parses as an empty log, not a throw", () => {

@@ -142,20 +142,65 @@
 #   banditshell config theme [<theme>|list]
 #                                the theme; bare, its name
 #
+# update                         the shell's own version: look, apply, go back
+#   banditshell update           one line: where this copy stands
+#   banditshell update check [--json] [--no-fetch]
+#                                fetch, then say what the new version changes
+#                                (restart or reload, commands, dependencies, your
+#                                edits in the way); exit 0 when current, 10 when
+#                                a version is waiting, 1 on an error; --no-fetch
+#                                reads what the last fetch brought
+#   banditshell update apply [--to <sha>] [--detach] [--json]
+#                                stage the new version, check that it loads,
+#                                move the checkout up, restart when it needs
+#                                one and go back on its own if it does not start
+#   banditshell update rollback  the version before the last update; it is
+#                                skipped until a newer one arrives
+#   banditshell update status [--json]
+#                                where this copy stands, the last update's
+#                                outcome and the version it replaced
+#
 # start|stop|restart|status|log|doctor
 #                                the shell itself
 #   banditshell start            start the shell and wait until it is up
 #   banditshell stop             stop it, a tried worktree included
 #   banditshell restart          stop it and start it again, a tried worktree
 #                                included
-#   banditshell status           what the shell thinks the compositor said
+#   banditshell status [--json]  what the shell thinks the compositor said
 #   banditshell log [args]       the running shell's log
-#   banditshell doctor           repair bin/, the helpers and ~/bin/banditshell,
-#                                then report quickshell, dkms, failed units and
-#                                binds in an old form
+#   banditshell doctor [--json]  repair bin/, the helpers and ~/bin/banditshell,
+#                                put the Lua module in place, then report
+#                                quickshell, dkms, failed units and binds in an
+#                                old form
+#   banditshell doctor api       put the Lua module in place and check it: the
+#                                shim in your Hyprland config, the checkout
+#                                pointer, every action id, your binds and the
+#                                banditshell on your PATH; exits 1 on a failure
 #   banditshell doctor binds     the binds still in an old form, and where
 #   banditshell doctor binds rewrite
-#                                rewrite them, a .bak beside each file
+#                                rewrite them, a dated .bak beside each file
+#
+# action                         run a stable action by its id
+#   banditshell action <id> [args...]
+#                                the names a bind keeps across updates. The id is
+#                                looked up in api/actions.tsv when it runs, then
+#                                run as whatever command it stands for today, so
+#                                a renamed command never breaks a bind
+#
+# api                            the table of stable action ids
+#   banditshell api list [<pattern>] [--json]
+#                                every id with its status and what it does; a
+#                                pattern like 'panel.*' narrows the list
+#   banditshell api show <id>    one id: the command it runs, since which API
+#   banditshell api check        every id against the commands this CLI has, and
+#                                the table against the Lua module; exits 1 on a
+#                                failure
+#
+# version                        which build is installed
+#   banditshell version [--json]
+#                                the newest what's-new id, the commit and branch,
+#                                the checkout, the API number and the Quickshell
+#                                and Hyprland versions
 #
 # completions                    tab completion for zsh and bash
 #   banditshell completions [install|status|remove|print] [zsh|bash]
@@ -190,6 +235,14 @@
 #                                which package reaches for which, as a table
 #   banditshell dev modules --explain <package>
 #                                what a package needs, from which file and line
+#   banditshell dev lint         check the house rules (comments, radii, motion,
+#                                font sizes, colours, dashes, qmldirs) against
+#                                rules.baseline.json; a new violation fails
+#   banditshell dev lint [--all] [--write-baseline]
+#                                every violation with file and line, or record
+#                                today's counts as the new baseline
+#   banditshell dev lint --rule <rule>
+#                                one rule only, L1 to L10
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -227,13 +280,27 @@
 #
 # help                           this list; banditshell help <command> for one
 #   banditshell help [<command>]
+#
+# exit codes: 0 done, 1 failed, 2 usage, 3 the shell is not running, 4 the shell
+# refused. --json after a status command prints it as JSON.
 
 set -euo pipefail
 
 SHELL_DIR="${BANDITSHELL_DIR:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)}"
 SHOT_DIR="${BANDITSHELL_SHOTS:-${XDG_RUNTIME_DIR:-/tmp}/banditshell}"
+RUN_DIR="${XDG_RUNTIME_DIR:-/tmp}/banditshell"
+PID_FILE="$RUN_DIR/pid"
+STATE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/banditshell"
+HYPR_DIR="${HYPR_DIR:-${XDG_CONFIG_HOME:-$HOME/.config}/hypr}"
+SHIM_NAME=banditshell.lua
 BACKUP="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/lastgood"
 FAILED_LOG="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/failed.log"
+STAGED="${XDG_CACHE_HOME:-$HOME/.cache}/banditshell/staged"
+STATE_ROOT="${XDG_STATE_HOME:-$HOME/.local/state}/banditshell"
+UPDATE_STATE="$STATE_ROOT/update"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/banditshell/config.json"
+HEALTH_WAIT="${BANDITSHELL_HEALTH_WAIT:-8}"
+HEALTH_SCAN="${BANDITSHELL_HEALTH_SCAN:-3}"
 SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
 
@@ -537,6 +604,24 @@ list_worktrees() {
     done <<<"$entries"
 }
 
+cached_pid() {
+    local pid dir
+    [ -r "$PID_FILE" ] || return 1
+    IFS=$'\t' read -r pid dir <"$PID_FILE" || return 1
+    [ "$dir" = "$SHELL_DIR" ] || return 1
+    [[ $pid =~ ^[0-9]+$ ]] || return 1
+    kill -0 "$pid" 2>/dev/null || return 1
+    case "$(cat "/proc/$pid/comm" 2>/dev/null)" in
+    qs | quickshell*) echo "$pid" ;;
+    *) return 1 ;;
+    esac
+}
+
+remember_pid() {
+    mkdir -p "$RUN_DIR" 2>/dev/null || return 0
+    printf '%s\t%s\n' "$1" "$SHELL_DIR" >"$PID_FILE" 2>/dev/null || true
+}
+
 resolve_target() {
     if [ "$qs_target_resolved" = 1 ]; then
         return 0
@@ -544,6 +629,10 @@ resolve_target() {
     qs_target_resolved=1
 
     local pid path exact="" any=""
+    if pid=$(cached_pid); then
+        qs_target=(--pid "$pid")
+        return 0
+    fi
     while IFS=$'\t' read -r pid path; do
         case "$path" in
         "$SHELL_DIR/shell.qml") exact="$pid" ;;
@@ -554,6 +643,7 @@ resolve_target() {
     local pick="${exact:-$any}"
     if [ -n "$pick" ]; then
         qs_target=(--pid "$pick")
+        remember_pid "$pick"
     else
         qs_target=(-p "$SHELL_DIR")
     fi
@@ -564,20 +654,51 @@ complain() {
     hyprctl notify -1 5000 "rgb(e06c75)" "banditshell: $1" >/dev/null 2>&1 || true
 }
 
+reply_of() {
+    case "$1" in
+    "refused: "*)
+        echo "banditshell: ${1#refused: }" >&2
+        return 4
+        ;;
+    "no shell window"* | "no such "*)
+        echo "banditshell: $1" >&2
+        return 4
+        ;;
+    "usage: "*)
+        echo "banditshell: $1" >&2
+        return 2
+        ;;
+    esac
+    [ -z "$1" ] || printf '%s\n' "$1"
+    return 0
+}
+
 ipc() {
-    resolve_target
     local out
-    if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
-        [ -n "$out" ] && printf '%s\n' "$out"
+    if [ -n "${BANDITSHELL_DRY:-}" ]; then
+        echo "ipc $*"
         return 0
     fi
+    resolve_target
+    if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
+        reply_of "$out"
+        return $?
+    fi
+    if [ "${qs_target[0]}" = --pid ] && kill -0 "${qs_target[1]}" 2>/dev/null; then
+        complain "the shell is running but did not take \`$*\` (a build older than this CLI? try: banditshell restart)"
+        return 4
+    fi
     complain "not running (try: banditshell start)"
-    return 1
+    return 3
 }
 
 ipc_quiet() {
-    resolve_target
     local out
+    if [ -n "${BANDITSHELL_DRY:-}" ]; then
+        echo "ipc $*"
+        return 0
+    fi
+    resolve_target
     if out=$(cd "$HOME" && qs ipc "${qs_target[@]}" call "$@" 2>/dev/null); then
         [ -n "$out" ] && printf '%s\n' "$out"
         return 0
@@ -586,6 +707,7 @@ ipc_quiet() {
 }
 
 running() {
+    cached_pid >/dev/null && return 0
     qs list --all 2>/dev/null | awk '
         /^[[:space:]]*Config path:/ {
             p = $0
@@ -596,37 +718,124 @@ running() {
     '
 }
 
+dry() { [ -n "${BANDITSHELL_DRY:-}" ] && [ "${BANDITSHELL_DRY:-}" != 0 ]; }
+
+say_dry() { echo "${dim}dry: $*$plain"; }
+
 refresh_backup() {
+    if dry; then
+        say_dry "refresh the last known good copy at $BACKUP"
+        return 0
+    fi
+    [ "$(readlink -f "$SHELL_DIR")" != "$(readlink -f "$BACKUP")" ] || return 0
     mkdir -p "$BACKUP"
-    rsync -a --delete --exclude .git --exclude .claude --exclude .scratch \
-        "$SHELL_DIR/" "$BACKUP/"
+    if command -v rsync >/dev/null 2>&1 &&
+        rsync -a --delete --exclude .git --exclude .claude --exclude .scratch "$SHELL_DIR/" "$BACKUP/"; then
+        return 0
+    fi
+    find "$BACKUP" -mindepth 1 -delete
+    find "$SHELL_DIR" -mindepth 1 -maxdepth 1 ! -name .git ! -name .claude ! -name .scratch -exec cp -a {} "$BACKUP/" \;
+}
+
+remember_checkout() {
+    dry && return 0
+    [ -e "$SHELL_DIR/.git" ] || return 0
+    local tmp
+    mkdir -p "$STATE_DIR" || return 0
+    tmp=$(mktemp "$STATE_DIR/.root.XXXXXX") || return 0
+    printf '%s\n' "$SHELL_DIR" >"$tmp" && mv -f "$tmp" "$STATE_DIR/root"
+}
+
+shell_answers() {
+    local pid="$1" tries limit=$((HEALTH_WAIT * 4))
+    for ((tries = 0; tries <= limit; tries++)); do
+        (cd "$HOME" && qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && return 0
+        kill -0 "$pid" 2>/dev/null || return 1
+        sleep 0.25
+    done
+    return 1
+}
+
+log_trouble() {
+    local pid="$1" mark="${2:-0}"
+    (cd "$HOME" && qs log --pid "$pid" 2>&1) | sed 's/\x1b\[[0-9;]*m//g' | tail -n +"$((mark + 1))" |
+        grep -E 'ReferenceError|Failed to load' | head -5 || true
+}
+
+log_length() {
+    (cd "$HOME" && qs log --pid "$1" 2>/dev/null) | wc -l
+}
+
+health_check() {
+    local pid="$1" mark="${2:-0}" tries steps=$((HEALTH_SCAN * 2)) trouble=""
+    HEALTH_WHY=""
+    if ! shell_answers "$pid"; then
+        HEALTH_WHY="the shell did not answer shell status within ${HEALTH_WAIT} seconds"
+        return 1
+    fi
+    for ((tries = 0; tries <= steps; tries++)); do
+        trouble=$(log_trouble "$pid" "$mark")
+        if [ -n "$trouble" ]; then
+            HEALTH_WHY="the log shows errors: ${trouble%%$'\n'*}"
+            return 1
+        fi
+        kill -0 "$pid" 2>/dev/null || { HEALTH_WHY="the shell exited"; return 1; }
+        [ "$tries" -lt "$steps" ] && sleep 0.5
+    done
+    return 0
+}
+
+stop_pid() {
+    local tries
+    kill "$1" 2>/dev/null || return 0
+    for ((tries = 0; tries < 40; tries++)); do
+        kill -0 "$1" 2>/dev/null || return 0
+        sleep 0.05
+    done
+}
+
+launch_failed() {
+    HEALTH_WHY="$3"
+    mkdir -p "$(dirname "$FAILED_LOG")"
+    {
+        printf '%s %s: %s\n' "$(date '+%F %T')" "$1" "$3"
+        cat "$2"
+    } >>"$FAILED_LOG"
+    rm -f "$2"
 }
 
 launch() {
-    local out tries=0
+    local out tries=0 pid=""
+    if dry; then
+        say_dry "start $1 with qs -d -p"
+        say_dry "wait up to ${HEALTH_WAIT}s for shell status to answer over ipc"
+        say_dry "watch the log for ${HEALTH_SCAN}s for ReferenceError or Failed to load"
+        return 0
+    fi
     out=$(mktemp)
-    if ! (cd "$HOME" && qs -d -p "$1") >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
-        mkdir -p "$(dirname "$FAILED_LOG")"
-        cat "$out" >>"$FAILED_LOG"
-        rm -f "$out"
+    if ! (cd "$HOME" && qs -d -p "$1") 8>&- >"$out" 2>&1 || grep -q "Failed to load configuration" "$out"; then
+        launch_failed "$1" "$out" "did not load"
         return 1
     fi
     while [ "$tries" -lt 30 ]; do
-        if instance_of "$1" >/dev/null; then
-            sleep 1
-            if instance_of "$1" >/dev/null; then
-                rm -f "$out"
-                return 0
-            fi
+        if pid=$(instance_of "$1"); then
             break
         fi
+        pid=""
         sleep 0.2
         tries=$((tries + 1))
     done
-    mkdir -p "$(dirname "$FAILED_LOG")"
-    cat "$out" >>"$FAILED_LOG"
+    if [ -z "$pid" ]; then
+        launch_failed "$1" "$out" "never appeared in qs list"
+        return 1
+    fi
+    if ! health_check "$pid" 0; then
+        launch_failed "$1" "$out" "$HEALTH_WHY"
+        stop_pid "$pid"
+        return 1
+    fi
     rm -f "$out"
-    return 1
+    return 0
 }
 
 start_backup() {
@@ -643,6 +852,10 @@ stop_shell() {
     local pid alive tries=0
     mapfile -t pids < <(shell_pids)
     [ "${#pids[@]}" -gt 0 ] || return 1
+    if dry; then
+        say_dry "stop the running shell (${pids[*]})"
+        return 0
+    fi
     kill "${pids[@]}" 2>/dev/null || true
     while [ "$tries" -lt 40 ]; do
         alive=0
@@ -659,9 +872,11 @@ stop_shell() {
 }
 
 start_checkout() {
+    ensure_lua || true
     ensure_built || complain "checkout incomplete, starting anyway (run: banditshell doctor)"
     if launch "$SHELL_DIR"; then
-        refresh_backup
+        refresh_backup || true
+        remember_checkout
         echo "$green$1$plain"
     else
         start_backup || exit 1
@@ -673,6 +888,7 @@ start_checkout() {
 try_worktree() {
     local target="$1" name live
     name=$(branch_of "$target")
+    (SHELL_DIR="$target" && ensure_lua) || true
     (SHELL_DIR="$target" && ensure_built) || complain "$name: helpers not built, trying it anyway (run: banditshell dev build in it)"
     live=$(live_dir || true)
     [ -z "$live" ] || [ "$live" = "$target" ] || echo "${dim}leaving $(branch_of "$live") for $name$plain"
@@ -702,6 +918,9 @@ usage() {
             name = ""
         }
         NR == 1 { print; print ""; next }
+        /^exit codes/ { emit(); foot = $0; infoot = 1; next }
+        infoot && /^[^ ]/ { foot = foot "\n" $0; next }
+        { infoot = 0 }
         /^[a-z][a-z|]*( |$)/ && !/^[a-z]+ [^ ]/ {
             emit()
             name = $1
@@ -718,7 +937,11 @@ usage() {
             next
         }
         { emit() }
-        END { emit() }
+        END {
+            emit()
+            if (foot != "")
+                print "\n" foot
+        }
     '
 }
 
@@ -813,15 +1036,6 @@ labelled() {
     awk -v label="$1" '{ printf "%-11s %s\n", NR == 1 ? label : "", $0 }' <<<"$out"
 }
 
-stream_on() {
-    local reply
-    reply=$(ipc stream on "${1:-}") || return 1
-    case "$reply" in
-    "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
-    esac
-    printf '%s\n' "$reply"
-}
-
 panel_ipc() {
     case "$1" in
     wallpaper) echo wallpapers ;;
@@ -887,7 +1101,7 @@ close_everything() {
     done
     if [ "$closed" = 0 ]; then
         complain "not running (try: banditshell start)"
-        return 1
+        return 3
     fi
     echo "closed everything"
 }
@@ -1039,7 +1253,7 @@ route_screen() {
     stream)
         case "${1:-}" in
         "") ipc stream status ;;
-        on) stream_on "${2:-}" ;;
+        on) ipc stream on "${2:-}" ;;
         off) ipc stream off ;;
         *) nope screen "stream $1" ;;
         esac ;;
@@ -1206,33 +1420,18 @@ route_clock() {
 }
 
 route_mode() {
-    local reply
     case "${1:-}" in
     "") ipc mode status ;;
     list) ipc mode list ;;
-    *)
-        reply=$(ipc mode choose "$1") || return 1
-        case "$reply" in
-        "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
-        esac
-        printf '%s\n' "$reply" ;;
+    *) ipc mode choose "$1" ;;
     esac
 }
 
 route_quiet() {
-    local reply
     case "${1:-}" in
     "") ipc quiet status ;;
-    on | off | toggle)
-        if [ "$1" = off ]; then
-            reply=$(ipc quiet off) || return 1
-        else
-            reply=$(ipc quiet "$1" "${2:-}") || return 1
-        fi
-        case "$reply" in
-        "refused: "*) echo "banditshell: ${reply#refused: }" >&2; return 1 ;;
-        esac
-        printf '%s\n' "$reply" ;;
+    off) ipc quiet off ;;
+    on | toggle) ipc quiet "$1" "${2:-}" ;;
     *) nope focus "quiet $1" ;;
     esac
 }
@@ -1297,15 +1496,521 @@ route_config() {
     esac
 }
 
+JSON_AWK='
+function jstr(s,   out, i, c, n) {
+    out = ""
+    n = length(s)
+    for (i = 1; i <= n; i++) {
+        c = substr(s, i, 1)
+        if (c == "\\") out = out "\\\\"
+        else if (c == "\"") out = out "\\\""
+        else if (c == "\t") out = out "\\t"
+        else if (c == "\r") out = out "\\r"
+        else out = out c
+    }
+    return "\"" out "\""
+}
+function jvalue(v) {
+    if (v ~ /^-?[0-9]+(\.[0-9]+)?$/ || v == "true" || v == "false")
+        return v
+    return jstr(v)
+}
+'
+
+JSON_TEXT_AWK="$JSON_AWK"'
+function keep(k, v) {
+    if (!(k in seen)) {
+        seen[k] = 1
+        order[++fields] = k
+    }
+    value[k] = v
+}
+function list(name, items, count,   i, part) {
+    part = "\"" name "\":["
+    for (i = 1; i <= count; i++)
+        part = part (i > 1 ? "," : "") items[i]
+    return part "]"
+}
+{
+    line = $0
+    if (line == "")
+        next
+    if (match(line, /^(ok|warn|fail) +[a-z]+ +/)) {
+        split(line, words, " ")
+        checks[++nchecks] = "{\"status\":" jstr(words[1]) ",\"name\":" jstr(words[2]) ",\"detail\":" jstr(substr(line, RLENGTH + 1)) "}"
+        next
+    }
+    rest = line
+    pairs = 0
+    while (rest != "" && match(rest, /^[A-Za-z_][A-Za-z0-9_.-]*=("[^"]*"|[^ ]*)/)) {
+        token = substr(rest, 1, RLENGTH)
+        key = substr(token, 1, index(token, "=") - 1)
+        val = substr(token, index(token, "=") + 1)
+        if (val ~ /^".*"$/)
+            val = substr(val, 2, length(val) - 2)
+        pairs++
+        pendingKey[pairs] = key
+        pendingVal[pairs] = val
+        rest = substr(rest, RLENGTH + 1)
+        sub(/^ +/, "", rest)
+    }
+    if (pairs > 0 && rest == "") {
+        for (i = 1; i <= pairs; i++)
+            keep(pendingKey[i], pendingVal[i])
+        next
+    }
+    if (match(line, / +/) && RSTART > 1 && RLENGTH >= 2) {
+        label = substr(line, 1, RSTART - 1)
+        if (label ~ /^[A-Za-z][A-Za-z0-9_. -]*$/ && length(label) <= 24) {
+            key = tolower(label)
+            gsub(/[ .-]+/, "_", key)
+            keep(key, substr(line, RSTART + RLENGTH))
+            next
+        }
+    }
+    quoted[++lines] = jstr(line)
+}
+END {
+    out = ""
+    for (i = 1; i <= fields; i++)
+        out = out (out == "" ? "" : ",") jstr(order[i]) ":" jvalue(value[order[i]])
+    if (nchecks > 0)
+        out = out (out == "" ? "" : ",") list("checks", checks, nchecks)
+    if (lines > 0)
+        out = out (out == "" ? "" : ",") list("text", quoted, lines)
+    print "{" out "}"
+}'
+
+as_json() {
+    local out status=0
+    out=$(BANDITSHELL_JSON=1 "$(readlink -f "${BASH_SOURCE[0]}")" "$@") || status=$?
+    case "$out" in
+    "") ;;
+    "{"* | "["*) printf '%s\n' "$out" ;;
+    *) printf '%s\n' "$out" | awk "$JSON_TEXT_AWK" ;;
+    esac
+    exit "$status"
+}
+
+api_table() { printf '%s' "${BANDITSHELL_API_TABLE:-$SHELL_DIR/api/actions.tsv}"; }
+
+api_number() { awk '/^# api [0-9]+/ { print $3; exit }' "$(api_table)" 2>/dev/null; }
+
+module_number() { sed -n 's/^local API = \([0-9][0-9]*\)$/\1/p' "$SHELL_DIR/lua/banditshell.lua" 2>/dev/null | head -n 1 || true; }
+
+valid_id() { [[ $1 =~ ^[a-z0-9_]+(\.[a-z0-9_]+)*$ ]]; }
+
+resolve_action() {
+    valid_id "$1" || return 1
+    awk -F'\t' -v want="$1" '
+        BEGIN { n = split(want, w, ".") }
+        /^#/ || NF < 4 { next }
+        {
+            m = split($1, p, ".")
+            if (m != n)
+                next
+            hits = 0
+            split("", cap)
+            for (i = 1; i <= m; i++) {
+                if (p[i] == "*") {
+                    hits++
+                    cap[hits] = w[i]
+                } else if (p[i] != w[i]) {
+                    next
+                }
+            }
+            if (!found || hits < bestHits) {
+                found = 1
+                bestHits = hits
+                out = $4
+                for (i = 1; i <= hits; i++)
+                    gsub("\\$" i, cap[i], out)
+                best = $1 "\t" $2 "\t" out "\t" $3 "\t" $5
+            }
+        }
+        END { if (found) print best }
+    ' "$(api_table)" 2>/dev/null
+}
+
+tell_once() {
+    local id="$1" status="$2" mark message
+    mark="$RUN_DIR/told-$id"
+    [ ! -e "$mark" ] || return 0
+    if mkdir -p "$RUN_DIR" 2>/dev/null; then : >"$mark" 2>/dev/null || true; fi
+    case "$status" in
+    deprecated=*) message="the action $id is deprecated, use ${status#deprecated=}; it still works" ;;
+    removed=*) message="the action $id is gone, it now runs ${status#removed=}" ;;
+    *) message="the action $id is gone" ;;
+    esac
+    echo "banditshell: $message" >&2
+    if running; then
+        notify-send -a banditshell "banditshell" "$message" 2>/dev/null || true
+    else
+        hyprctl notify -1 6000 "rgb(e5c07b)" "banditshell: $message" >/dev/null 2>&1 || true
+    fi
+}
+
+route_action() {
+    local id="${1:-}" row matched status argv since about
+    local -a words
+    [ -n "$id" ] || say_usage "action <id> [args...]"
+    shift
+    row=$(resolve_action "$id") || row=""
+    if [ -z "$row" ]; then
+        complain "no action called $id (banditshell api list shows them)"
+        exit 2
+    fi
+    IFS=$'\t' read -r matched status argv since about <<<"$row"
+    case "$status" in
+    deprecated=* | removed*) tell_once "$id" "$status" ;;
+    esac
+    read -ra words <<<"$argv"
+    exec "$(readlink -f "${BASH_SOURCE[0]}")" "${words[@]}" "$@"
+}
+
+api_rows() {
+    local pattern="${1:-*}" id rest
+    while IFS=$'\t' read -r id rest; do
+        case "$id" in
+        "" | "#"*) continue ;;
+        esac
+        # shellcheck disable=SC2254
+        case "$id" in
+        $pattern) printf '%s\t%s\n' "$id" "$rest" ;;
+        esac
+    done <"$(api_table)"
+}
+
+api_list() {
+    local rows
+    [ -r "$(api_table)" ] || { echo "banditshell: no action table at $(api_table)" >&2; return 1; }
+    rows=$(api_rows "${1:-*}")
+    [ -n "$rows" ] || { echo "banditshell: no action matches ${1:-*}" >&2; return 1; }
+    if [ -n "${BANDITSHELL_JSON:-}" ]; then
+        printf '%s\n' "$rows" | awk -F'\t' "$JSON_AWK"'
+            BEGIN { printf "[" }
+            {
+                printf "%s{\"id\":%s,\"status\":%s,\"since\":%s,\"argv\":%s,\"description\":%s}", (NR > 1 ? "," : ""), jstr($1), jstr($2), jvalue($3), jstr($4), jstr($5)
+            }
+            END { print "]" }
+        '
+        return 0
+    fi
+    printf '%s\n' "$rows" | awk -F'\t' '
+        { id[NR] = $1; status[NR] = $2; about[NR] = $5; if (length($1) > width) width = length($1) }
+        END { for (i = 1; i <= NR; i++) printf "%-*s  %-16s %s\n", width, id[i], status[i], about[i] }
+    '
+}
+
+api_show() {
+    local row matched status argv since about
+    row=$(resolve_action "$1") || row=""
+    if [ -z "$row" ]; then
+        echo "banditshell: no action called $1 (banditshell api list shows them)" >&2
+        return 2
+    fi
+    IFS=$'\t' read -r matched status argv since about <<<"$row"
+    printf '%-11s %s\n' id "$1"
+    [ "$matched" = "$1" ] || printf '%-11s %s\n' pattern "$matched"
+    printf '%-11s %s\n' status "$status" since "$since" runs "banditshell $argv" about "$about"
+}
+
+report() { printf '%-5s %-8s %s\n' "$1" "$2" "$3"; }
+
+command_table() {
+    local committed="$SHELL_DIR/cli/commands.tsv"
+    if [ -r "$committed" ] && [ ! "$SHELL_DIR/cli/banditshell" -nt "$committed" ]; then
+        cat "$committed"
+    else
+        "$SHELL_DIR/scripts/completion-rules.sh" "$SHELL_DIR/cli/banditshell"
+    fi
+}
+
+api_check() {
+    local table rules_file failed=0 version module count problems line
+    table=$(api_table)
+    if [ ! -r "$table" ]; then
+        report fail table "no action table at $table"
+        return 1
+    fi
+    version=$(api_number)
+    module=$(module_number)
+    if [ -z "$version" ]; then
+        report fail table "$table has no '# api N' first line"
+        failed=1
+    elif [ -n "$module" ] && [ "$module" != "$version" ]; then
+        report fail table "the table says api $version, lua/banditshell.lua says api $module"
+        failed=1
+    fi
+    rules_file=$(mktemp)
+    command_table 2>/dev/null | awk -F'\t' '$1 == "rule" { print $2 }' >"$rules_file" || true
+    problems=$(awk -F'\t' '
+        function reachable(argv,   words, n, i, j, k, parts, alternatives, ok, last, flags, hit, positions, w) {
+            n = split(argv, words, " ")
+            for (r = 1; r <= nrules; r++) {
+                k = split(rule[r], parts, " ")
+                flags = ""
+                if (k > 1 && parts[k] ~ /^--/) {
+                    flags = "," parts[k] ","
+                    k--
+                }
+                positions = 0
+                ok = 1
+                for (i = 1; i <= n; i++) {
+                    w = words[i]
+                    if (w ~ /^--/) {
+                        if (index(flags, "," w ",") == 0)
+                            ok = 0
+                        continue
+                    }
+                    positions++
+                    if (positions > k) {
+                        ok = 0
+                        break
+                    }
+                    split(parts[positions], alternatives, ",")
+                    hit = 0
+                    for (j in alternatives)
+                        if (alternatives[j] == w || alternatives[j] == "*" || alternatives[j] ~ /^@/)
+                            hit = 1
+                    if (!hit)
+                        ok = 0
+                }
+                if (ok)
+                    return 1
+            }
+            return 0
+        }
+        FNR == NR { rule[++nrules] = $0; next }
+        /^#/ || $0 == "" { next }
+        {
+            rows++
+            if (NF < 5) { print $1 ": needs five tab separated columns"; next }
+            if ($1 !~ /^[a-z0-9_*]+(\.[a-z0-9_*]+)*$/) print $1 ": not a valid id"
+            if (seen[$1]++) print $1 ": listed twice"
+            if ($2 !~ /^(stable|deprecated=[a-z0-9_.*]+|removed=[a-z0-9_.*]+)$/) print $1 ": bad status " $2
+            if ($3 !~ /^[0-9]+$/) print $1 ": bad since " $3
+            argv = $4
+            gsub(/\$[1-9]/, "x", argv)
+            if (!reachable(argv)) print $1 ": " argv " is not a command this CLI has"
+        }
+        END { if (rows == 0) print "the table has no rows" }
+    ' "$rules_file" "$table")
+    rm -f "$rules_file"
+    count=$(awk -F'\t' '!/^#/ && NF >= 4 { n++ } END { print n + 0 }' "$table")
+    if [ -n "$problems" ]; then
+        while IFS= read -r line; do
+            report fail action "$line"
+        done <<<"$problems"
+        failed=1
+    fi
+    [ "$failed" = 0 ] && report ok actions "$count ids, api ${version:-?}, each one a command this CLI has"
+    return "$failed"
+}
+
+route_api() {
+    local what="${1:-list}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$what" in
+    list) api_list "${1:-*}" ;;
+    show)
+        [ $# -ge 1 ] || say_usage "api show <id>"
+        api_show "$1"
+        ;;
+    check) api_check ;;
+    *) nope api "$what" ;;
+    esac
+}
+
+route_version() {
+    local release commit branch quickshell hyprland number
+    release=$(grep -m1 -o '"id": *"[^"]*"' "$SHELL_DIR/docs/whats-new.json" 2>/dev/null | sed 's/.*: *"\(.*\)"/\1/') || release=""
+    commit=$(git -C "$SHELL_DIR" describe --always --dirty --tags 2>/dev/null) || commit=""
+    branch=$(git -C "$SHELL_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=""
+    quickshell=$(qs --version 2>/dev/null | head -n 1 | sed 's/ (revision.*//') || quickshell=""
+    hyprland=$(Hyprland --version 2>/dev/null | head -n 1 | sed 's/ built from.*//') || hyprland=""
+    number=$(api_number)
+    printf '%-11s %s\n' release "${release:-unknown}" commit "${commit:-unknown}" branch "${branch:-unknown}" \
+        checkout "$SHELL_DIR" api "${number:-none}" quickshell "${quickshell:-unknown}" hyprland "${hyprland:-unknown}"
+}
+
+shim_format() { sed -n '1s/^-- banditshell shim, format \([0-9][0-9]*\)\..*/\1/p' "$1" 2>/dev/null; }
+
+write_atomic() {
+    local tmp
+    tmp=$(mktemp "$(dirname "$2")/.banditshell.XXXXXX") || return 1
+    if cat "$1" >"$tmp" && chmod 644 "$tmp" && mv -f "$tmp" "$2"; then
+        return 0
+    fi
+    rm -f "$tmp"
+    return 1
+}
+
+lua_notes=()
+
+point_at() {
+    local root="$1" tmp
+    [ "$root" != "$BACKUP" ] || return 0
+    [ "$(head -n 1 "$STATE_DIR/root" 2>/dev/null)" != "$root" ] || return 0
+    mkdir -p "$STATE_DIR" || return 1
+    tmp=$(mktemp "$STATE_DIR/.root.XXXXXX") || return 1
+    if printf '%s\n' "$root" >"$tmp" && mv -f "$tmp" "$STATE_DIR/root"; then
+        lua_notes+=("pointer now $root")
+        return 0
+    fi
+    rm -f "$tmp"
+    return 1
+}
+
+install_shim() {
+    local source="$SHELL_DIR/api/shim.lua" target="$HYPR_DIR/$SHIM_NAME" have want
+    [ -f "$source" ] || return 1
+    [ -d "$HYPR_DIR" ] || return 0
+    want=$(shim_format "$source")
+    [ -n "$want" ] || return 1
+    if [ -L "$target" ]; then
+        return 0
+    elif [ -e "$target" ]; then
+        have=$(shim_format "$target")
+        [ -n "$have" ] || return 0
+        [ "$have" -lt "$want" ] || return 0
+    fi
+    write_atomic "$source" "$target" || return 1
+    lua_notes+=("shim written to $target")
+}
+
+ensure_lua() {
+    lua_notes=()
+    point_at "$SHELL_DIR" || return 1
+    install_shim
+}
+
+scan_binds() {
+    local file legacy=0 count token id row status entry
+    local -a files=() unknown=() retired=() bare=()
+    local -A firsts=()
+    [ -d "$HYPR_DIR" ] || return 0
+    while IFS= read -r file; do files+=("$file"); done < <(find -L "$HYPR_DIR" -maxdepth 3 -type f \( -name '*.lua' -o -name '*.conf' \) ! -name "$SHIM_NAME" 2>/dev/null | sort)
+    while IFS= read -r id; do firsts[${id%%.*}]=1; done < <(api_rows | cut -f1)
+    for file in "${files[@]}"; do
+        count=$(grep -hE '(exec_cmd|exec[ ,]).*banditshell +[a-z]' "$file" 2>/dev/null | grep -cvE '^[[:space:]]*(--|#)') || count=0
+        legacy=$((legacy + count))
+        if grep -qE 'require *\(? *["'\'']banditshell["'\'']' "$file" 2>/dev/null; then
+            while IFS= read -r token; do
+                id="${token#bs.}"
+                case "$id" in
+                api | action | bind | describe | has | need | cli | root | run) continue ;;
+                esac
+                row=$(resolve_action "$id") || row=""
+                if [ -z "$row" ]; then
+                    unknown+=("$token")
+                    continue
+                fi
+                IFS=$'\t' read -r _ status _ <<<"$row"
+                case "$status" in
+                deprecated=* | removed*) retired+=("$token") ;;
+                esac
+            done < <(grep -ohE '\bbs\.[a-z_][a-z0-9_.]*' "$file" | sed 's/\.*$//' | sort -u)
+        else
+            for entry in "${!firsts[@]}"; do
+                if grep -qE "\\bbs\\.$entry\\b" "$file" 2>/dev/null; then
+                    bare+=("$file")
+                    break
+                fi
+            done
+        fi
+    done
+    if [ "$legacy" -gt 0 ]; then
+        report warn binds "$legacy bind(s) still call banditshell by its command line; they work, but ids survive updates (banditshell doctor binds)"
+    fi
+    if [ "${#unknown[@]}" -gt 0 ]; then
+        report warn binds "not in the action table: ${unknown[*]}"
+    fi
+    if [ "${#retired[@]}" -gt 0 ]; then
+        report warn binds "deprecated or removed: ${retired[*]}"
+    fi
+    if [ "${#bare[@]}" -gt 0 ]; then
+        report warn binds "uses bs. without require(\"banditshell\"): ${bare[*]}"
+    fi
+    if [ "$legacy" -eq 0 ] && [ "${#unknown[@]}" -eq 0 ] && [ "${#retired[@]}" -eq 0 ] && [ "${#bare[@]}" -eq 0 ]; then
+        report ok binds "${#files[@]} file(s) read, nothing to change"
+    fi
+}
+
+doctor_api() {
+    local failed=0 note target source pointed here found
+    local -a missing=()
+    target="$HYPR_DIR/$SHIM_NAME"
+    source="$SHELL_DIR/api/shim.lua"
+    if ensure_lua; then
+        for note in "${lua_notes[@]}"; do
+            report ok fixed "$note"
+        done
+    else
+        report fail setup "could not write the pointer or the shim (state $STATE_DIR, config $HYPR_DIR)"
+        failed=1
+    fi
+
+    if [ ! -d "$HYPR_DIR" ]; then
+        report warn shim "no Hyprland config at $HYPR_DIR, so no shim (set HYPR_DIR if it lives elsewhere)"
+    elif [ -L "$target" ] || { [ -e "$target" ] && [ -z "$(shim_format "$target")" ]; }; then
+        report fail shim "$target is not banditshell's, so require(\"banditshell\") loads that instead; move it aside and run: banditshell doctor api"
+        failed=1
+    elif [ ! -e "$target" ]; then
+        report fail shim "missing: $target"
+        failed=1
+    elif cmp -s "$source" "$target"; then
+        report ok shim "$target"
+    else
+        report ok shim "$target (format $(shim_format "$target"), the checkout has $(shim_format "$source"))"
+    fi
+
+    pointed=$(head -n 1 "$STATE_DIR/root" 2>/dev/null) || pointed=""
+    if [ -z "$pointed" ] && [ "$SHELL_DIR" = "$BACKUP" ]; then
+        report warn pointer "running from the last good copy; no pointer to check"
+    elif [ -z "$pointed" ]; then
+        report fail pointer "no pointer at $STATE_DIR/root"
+        failed=1
+    else
+        for found in cli/banditshell lua/banditshell.lua api/actions.tsv; do
+            [ -e "$pointed/$found" ] || missing+=("$found")
+        done
+        if [ "${#missing[@]}" -gt 0 ]; then
+            report fail pointer "$pointed has no ${missing[*]}"
+            failed=1
+        elif [ "$pointed" = "$SHELL_DIR" ]; then
+            report ok pointer "$pointed"
+        else
+            report ok pointer "$pointed (this CLI is $SHELL_DIR)"
+        fi
+    fi
+
+    api_check || failed=1
+    scan_binds
+
+    here=$(readlink -f "$SHELL_DIR/cli/banditshell")
+    found=$(command -v banditshell 2>/dev/null) || found=""
+    if [ -z "$found" ]; then
+        report warn path "banditshell is not on your PATH; run: ln -s $here ~/.local/bin/banditshell"
+    elif [ "$(readlink -f "$found")" != "$here" ]; then
+        report warn path "banditshell on your PATH is $found, not this checkout ($here)"
+    else
+        report ok path "$found"
+    fi
+    return "$failed"
+}
+
 doctor() {
-    local failed binds
+    local failed binds status=0
     if ensure_built; then
         echo "bin/ current, helpers in place"
     else
         complain "bin/ not rebuilt (run: bash $SHELL_DIR/install.sh)"
     fi
     mkdir -p "$HOME/bin"
-    if [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$(readlink -f "$SHELL_DIR/bin/banditshell")" ]; then
+    if [ -e "$HOME/bin/banditshell" ] && [ ! -L "$HOME/bin/banditshell" ]; then
+        echo "kept your own ~/bin/banditshell"
+    elif [ ! -e "$HOME/bin/banditshell" ] || [ "$(readlink -f "$HOME/bin/banditshell")" != "$(readlink -f "$SHELL_DIR/bin/banditshell")" ]; then
         ln -sfn "$SHELL_DIR/bin/banditshell" "$HOME/bin/banditshell"
         echo "exec symlink restored: ~/bin/banditshell"
     fi
@@ -1331,6 +2036,8 @@ doctor() {
     else
         echo "the shell itself: not running (try: banditshell start)"
     fi
+    doctor_api || status=1
+    return "$status"
 }
 
 build_helpers() {
@@ -1629,6 +2336,17 @@ route_dev() {
             ;;
         *) nope dev "modules $1" ;;
         esac ;;
+    lint)
+        command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+        cd "$SHELL_DIR" || exit 1
+        case "${1:-}" in
+        "" | --all | --write-baseline) exec node scripts/lint-rules.js "$@" ;;
+        --rule)
+            [ -n "${2:-}" ] || say_usage "dev lint --rule <rule>"
+            exec node scripts/lint-rules.js "$@"
+            ;;
+        *) nope dev "lint $1" ;;
+        esac ;;
     check)
         case "${1:-}" in
         "") check_everything ;;
@@ -1696,6 +2414,611 @@ route_completions() {
     esac
 }
 
+json_quote() {
+    local s="$1"
+    s=${s//\\/\\\\}
+    s=${s//\"/\\\"}
+    s=${s//$'\t'/\\t}
+    s=${s//$'\r'/}
+    s=${s//$'\n'/\\n}
+    printf '"%s"' "$s"
+}
+
+json_list() {
+    local item out=""
+    for item in "$@"; do
+        out+="${out:+,}$(json_quote "$item")"
+    done
+    printf '[%s]' "$out"
+}
+
+config_leaf() {
+    local body value
+    body=$(tr -d '\n' 2>/dev/null <"$CONFIG_FILE" | sed -n "s/.*\"$1\"[[:space:]]*:[[:space:]]*{\([^}]*\)}.*/\1/p") || body=""
+    value=$(sed -n "s/.*\"$2\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" <<<"$body")
+    printf '%s' "${value:-$3}"
+}
+
+UPDATE_JSON=0
+UPDATE_APPLYING=0
+U_DIR="" U_REMOTE="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
+A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
+U_WARNINGS=()
+HEALTH_WHY=""
+
+ugit() { GIT_TERMINAL_PROMPT=0 LC_ALL=C git -C "$U_DIR" "$@"; }
+
+update_has_node() { command -v node >/dev/null 2>&1 && [ -f "$U_DIR/services/update.js" ]; }
+
+update_explain() {
+    local text="$1" said
+    if update_has_node; then
+        printf '%s\n' "$text" | node "$U_DIR/services/update.js" explain "${U_BRANCH:-main}" && return 0
+    fi
+    said=$(printf '%s\n' "$text" | grep -v '^[[:space:]]*$' | tail -1)
+    printf '%s\n' "${said#fatal: }"
+}
+
+update_fail() {
+    local text="$1" line
+    local -a lines=()
+    if [ "$UPDATE_JSON" = 1 ]; then
+        while IFS= read -r line; do
+            lines+=("$line")
+        done <<<"$text"
+        if [ "$UPDATE_APPLYING" = 1 ]; then
+            printf '{"phase":"failed","text":%s,"output":%s}\n' "$(json_quote "$(update_explain "$text")")" "$(json_list "${lines[@]}")"
+        else
+            printf '{"state":"error","output":%s}\n' "$(json_list "${lines[@]}")"
+        fi
+    else
+        echo "${red}banditshell: $(update_explain "$text")$plain" >&2
+    fi
+    exit 1
+}
+
+update_phase() {
+    if [ "$UPDATE_JSON" = 1 ]; then
+        printf '{"phase":%s,"text":%s,"at":%s}\n' "$(json_quote "$1")" "$(json_quote "$2")" "$(date +%s)"
+    else
+        printf '%s%s%s\n' "$dim" "$2" "$plain"
+    fi
+}
+
+update_prepare() {
+    local top="" saved
+    top=$(git -C "$SHELL_DIR" rev-parse --show-toplevel 2>/dev/null || true)
+    if [ -z "$top" ] || [ "$top" != "$(cd "$SHELL_DIR" && pwd -P)" ]; then
+        saved=$(cat "$STATE_DIR/root" 2>/dev/null || true)
+        if [ -n "$saved" ] && [ -d "$saved" ] && [ "$(git -C "$saved" rev-parse --show-toplevel 2>/dev/null)" = "$(cd "$saved" && pwd -P)" ]; then
+            top="$saved"
+        else
+            update_fail "fatal: not a git repository"
+        fi
+    fi
+    SHELL_DIR="$top"
+    U_DIR="$top"
+    U_REMOTE=$(config_leaf updates remote origin)
+    U_BRANCH=$(config_leaf updates branch main)
+    case "$U_REMOTE:$U_BRANCH" in
+    -* | *:-* | :* | *:) update_fail "fatal: the update remote or branch is not a name git can take" ;;
+    esac
+}
+
+update_fetch() {
+    local out code=0
+    out=$(GIT_TERMINAL_PROMPT=0 LC_ALL=C timeout -k 10 120 git -C "$U_DIR" fetch --quiet -- "$U_REMOTE" "$U_BRANCH" 2>&1) || code=$?
+    case "$code" in
+    0) ;;
+    124 | 137) update_fail "timed out" ;;
+    *) update_fail "$out" ;;
+    esac
+}
+
+update_skipped() {
+    local skips
+    skips=$({ cat "$UPDATE_STATE/skip" 2>/dev/null || true; echo; config_leaf updates skip ""; echo; })
+    grep -qxF -- "$1" <<<"$skips"
+}
+
+update_read() {
+    U_BRANCH_NOW=$(ugit symbolic-ref --quiet --short HEAD 2>/dev/null || echo HEAD)
+    U_HEAD=$(ugit rev-parse --verify --quiet HEAD 2>/dev/null || true)
+    U_TARGET=$(ugit rev-parse --verify --quiet --end-of-options "$U_REMOTE/$U_BRANCH^{commit}" 2>/dev/null || true)
+    [ -n "$U_TARGET" ] || update_fail "fatal: there is no fetched copy of $U_REMOTE/$U_BRANCH yet"
+    U_BEHIND=$(ugit rev-list --count --end-of-options "HEAD..$U_REMOTE/$U_BRANCH" 2>/dev/null || echo 0)
+    U_AHEAD=$(ugit rev-list --count --end-of-options "$U_REMOTE/$U_BRANCH..HEAD" 2>/dev/null || echo 0)
+    if [ "$U_BRANCH_NOW" != "$U_BRANCH" ]; then
+        U_STATE=paused U_BEHIND=0 U_AHEAD=0
+    elif [ "$U_BEHIND" -gt 0 ] && [ "$U_AHEAD" -gt 0 ]; then
+        U_STATE=diverged
+    elif [ "$U_BEHIND" -gt 0 ]; then
+        U_STATE=available
+        if update_skipped "$U_TARGET"; then
+            U_STATE=skipped
+        fi
+    else
+        U_STATE=current
+    fi
+}
+
+update_fetched_at() {
+    local file mtime
+    file=$(ugit rev-parse --path-format=absolute --git-path FETCH_HEAD 2>/dev/null || true)
+    mtime=$(stat -c %Y "$file" 2>/dev/null || echo 0)
+    echo $((mtime * 1000))
+}
+
+update_meta() {
+    printf '%s\n' "state=$U_STATE" "head=$U_HEAD" "target=$U_TARGET" "branch=$U_BRANCH" "headBranch=$U_BRANCH_NOW" \
+        "remote=$U_REMOTE" "behind=$U_BEHIND" "ahead=$U_AHEAD" "skipped=$([ "$U_STATE" = skipped ] && echo 1 || echo 0)" \
+        "checkedAt=$(update_fetched_at)"
+}
+
+update_meta_json() {
+    printf '{"state":%s,"head":%s,"target":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s' \
+        "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_BRANCH")" \
+        "$(json_quote "$U_BRANCH_NOW")" "$(json_quote "$U_REMOTE")" "$U_BEHIND" "$U_AHEAD" \
+        "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)"
+}
+
+update_facts() {
+    local dir="$1" pair name file
+    update_meta >"$dir/meta"
+    ugit -c core.quotepath=off diff --name-status --no-renames HEAD "$U_TARGET" -- >"$dir/name-status"
+    ugit -c core.quotepath=off diff --name-only HEAD -- >"$dir/dirty"
+    ugit -c core.quotepath=off ls-files --others --exclude-standard >"$dir/untracked"
+    for pair in actions:api/actions.tsv install:install.sh whatsnew:docs/whats-new.json; do
+        name="${pair%%:*}" file="${pair#*:}"
+        ugit show "HEAD:$file" >"$dir/$name.before" 2>/dev/null || : >"$dir/$name.before"
+        ugit show "$U_TARGET:$file" >"$dir/$name.after" 2>/dev/null || : >"$dir/$name.after"
+    done
+}
+
+update_fallback_lines() {
+    local dir="$1" helpers=0 dirty blocked count
+    count=$(wc -l <"$dir/name-status")
+    grep -qE $'^[A-Z]\tsrc/.*\\.[ch]$' "$dir/name-status" && helpers=1
+    dirty=$(cut -f2 "$dir/name-status" | grep -Fxf - "$dir/dirty" | paste -sd '\t' - || true)
+    blocked=$(awk -F'\t' '$1 == "A" { print $2 }' "$dir/name-status" | grep -Fxf - "$dir/untracked" | paste -sd '\t' - || true)
+    printf '%s\n' "kind=restart" "restart=1" "cli=0" "helpers=$helpers" "files=$count" "deps=" "dirty=$dirty" "blocked=$blocked" \
+        "button=Update and restart" "summary=$U_BEHIND changes, restart assumed (node is missing, so they were not read)"
+}
+
+update_classify() {
+    local dir="$1"
+    if update_has_node; then
+        node "$U_DIR/services/update.js" report "$dir" --lines
+    else
+        update_fallback_lines "$dir"
+    fi
+}
+
+update_load_class() {
+    local key value
+    while IFS='=' read -r key value; do
+        case "$key" in
+        restart) A_RESTART="$value" ;;
+        helpers) A_HELPERS="$value" ;;
+        deps) A_DEPS="$value" ;;
+        dirty) A_DIRTY="$value" ;;
+        blocked) A_BLOCKED="$value" ;;
+        button) A_BUTTON="$value" ;;
+        summary) A_SUMMARY="$value" ;;
+        esac
+    done
+}
+
+update_state_text() {
+    case "$U_STATE" in
+    current) echo "up to date at ${U_HEAD:0:7} on $U_BRANCH" ;;
+    paused) echo "this copy is on ${U_BRANCH_NOW/#HEAD/no branch}, so it does not follow $U_BRANCH" ;;
+    diverged) echo "$U_BEHIND new on $U_BRANCH, but this copy has $U_AHEAD commit(s) of its own, so it cannot just move forward" ;;
+    skipped) echo "${U_TARGET:0:7} did not start last time and is skipped until a newer version arrives" ;;
+    esac
+}
+
+update_check() {
+    local fetch=1 dir out="" arg
+    UPDATE_JSON=0
+    [ -z "${BANDITSHELL_JSON:-}" ] || UPDATE_JSON=1
+    for arg in "$@"; do
+        case "$arg" in
+        --json) UPDATE_JSON=1 ;;
+        --no-fetch) fetch=0 ;;
+        *) say_usage "update check [--json] [--no-fetch]" ;;
+        esac
+    done
+    update_prepare
+    [ "$fetch" = 0 ] || update_fetch
+    update_read
+    if [ "$U_STATE" = available ]; then
+        dir=$(mktemp -d)
+        update_facts "$dir"
+        if update_has_node; then
+            out=$(node "$U_DIR/services/update.js" report "$dir" "$([ "$UPDATE_JSON" = 1 ] && echo --json || echo --text)")
+        else
+            update_load_class < <(update_classify "$dir")
+            if [ "$UPDATE_JSON" = 1 ]; then
+                out="$(update_meta_json),\"class\":{\"kind\":\"restart\",\"restart\":true,\"dirty\":[],\"blocked\":[]},\"summary\":$(json_quote "$A_SUMMARY"),\"button\":$(json_quote "$A_BUTTON"),\"entries\":[]}"
+            else
+                out="update waiting: $A_SUMMARY"$'\n'"run: banditshell update apply"
+            fi
+        fi
+        rm -rf "$dir"
+        printf '%s\n' "$out"
+        exit 10
+    fi
+    if [ "$UPDATE_JSON" = 1 ]; then
+        printf '%s}\n' "$(update_meta_json)"
+    else
+        update_state_text
+    fi
+    exit 0
+}
+
+update_label() {
+    local label=""
+    [ -n "$1" ] || return 0
+    label=$(ugit show "$1:docs/whats-new.json" 2>/dev/null | sed -n 's/^[[:space:]]*"id":[[:space:]]*"\([^"]*\)".*/\1/p' | head -1) || label=""
+    printf '%s' "${label:-${1:0:7}}"
+}
+
+update_result() {
+    local ok="$1" why="$2" from to aside_items=() line
+    from=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    to=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
+    while IFS= read -r line; do
+        [ -z "$line" ] || aside_items+=("$line")
+    done 2>/dev/null <"$UPDATE_STATE/aside" || true
+    printf '{"ok":%s,"from":%s,"to":%s,"fromLabel":%s,"toLabel":%s,"why":%s,"aside":%s,"log":%s,"at":%s,"shown":false}\n' \
+        "$ok" "$(json_quote "$from")" "$(json_quote "$to")" "$(json_quote "$(update_label "$from")")" \
+        "$(json_quote "$(update_label "$to")")" "$(json_quote "$why")" "$(json_list "${aside_items[@]}")" \
+        "$(json_quote "$FAILED_LOG")" "$(date +%s)" >"$UPDATE_STATE/result.json.next"
+    mv -f "$UPDATE_STATE/result.json.next" "$UPDATE_STATE/result.json"
+}
+
+update_lock() {
+    mkdir -p "$UPDATE_STATE"
+    exec 8>"$UPDATE_STATE/lock"
+    flock "$@" 8 || update_fail "fatal: another update is already running"
+}
+
+update_plan() {
+    say_dry "stage $U_TARGET into $STAGED with git archive"
+    say_dry "run scripts/qml-compile-check.sh on the staged tree and refuse if it fails"
+    say_dry "check that scripts/qmldirs.sh leaves the staged qmldir files alone"
+    [ "$A_HELPERS" != 1 ] || say_dry "build the helpers in the staged tree"
+    say_dry "record ${U_HEAD:0:7} in $UPDATE_STATE/previous"
+    [ -z "$A_DIRTY" ] || say_dry "set aside ${A_DIRTY//$'\t'/, } with git stash"
+    say_dry "git merge --ff-only ${U_TARGET:0:7}"
+    [ "$A_HELPERS" != 1 ] || say_dry "copy the staged helpers into bin/"
+    say_dry "ensure bin/banditshell, refresh completions"
+    if [ "$A_RESTART" = 1 ]; then
+        say_dry "restart the shell, then wait for shell status and scan the log"
+    else
+        say_dry "leave the running shell to reload, then wait for shell status and scan the log"
+    fi
+    say_dry "on a failed health check: git reset --keep ${U_HEAD:0:7}, relaunch, write result.json, skip ${U_TARGET:0:7}"
+}
+
+update_stage() {
+    rm -rf "$STAGED"
+    mkdir -p "$STAGED"
+    ugit archive "$U_TARGET" | tar -x -C "$STAGED" || update_fail "fatal: could not unpack the new version"
+}
+
+update_verify() {
+    local checker out before after
+    checker="$U_DIR/scripts/qml-compile-check.sh"
+    [ -f "$checker" ] || checker="$STAGED/scripts/qml-compile-check.sh"
+    mkdir -p "$UPDATE_STATE"
+    if [ -f "$checker" ]; then
+        if ! out=$(bash "$checker" "$STAGED" 2>&1); then
+            printf '%s\n' "$out" >"$UPDATE_STATE/verify.log"
+            [ "$UPDATE_JSON" = 1 ] || printf '%s\n' "$out" | tail -n 8 >&2
+            rm -rf "$STAGED"
+            update_fail "fatal: the new version does not load, so nothing was changed (details: $UPDATE_STATE/verify.log)"
+        fi
+    else
+        U_WARNINGS+=("this copy has no compile check, so the new version was not tried before applying")
+    fi
+    if [ -f "$STAGED/scripts/qmldirs.sh" ]; then
+        before=$(cd "$STAGED" && find . -name qmldir -exec cksum {} + | sort | cksum)
+        BANDITSHELL_DIR="$STAGED" bash "$STAGED/scripts/qmldirs.sh" >/dev/null 2>&1 || true
+        after=$(cd "$STAGED" && find . -name qmldir -exec cksum {} + | sort | cksum)
+        [ "$before" = "$after" ] || U_WARNINGS+=("the new version's qmldir files are out of date; run scripts/qmldirs.sh in it")
+    fi
+    if [ "$A_HELPERS" = 1 ]; then
+        mkdir -p "$UPDATE_STATE"
+        if ! (SHELL_DIR="$STAGED" && build_helpers) >"$UPDATE_STATE/build.log" 2>&1; then
+            rm -rf "$STAGED"
+            update_fail "fatal: the helpers in the new version did not build, so nothing was changed (details: $UPDATE_STATE/build.log)"
+        fi
+    fi
+}
+
+update_set_aside() {
+    local out
+    : >"$UPDATE_STATE/aside"
+    [ -n "$A_DIRTY" ] || return 0
+    if out=$(printf '%s\n' "${A_DIRTY//$'\t'/$'\n'}" | ugit -c user.name=banditshell -c user.email=banditshell@localhost --literal-pathspecs \
+        stash push --quiet --message "banditshell update to ${U_TARGET:0:7}: edits set aside" --pathspec-from-file=- 2>&1); then
+        printf '%s\n' "${A_DIRTY//$'\t'/$'\n'}" >"$UPDATE_STATE/aside"
+    else
+        update_fail "$out"
+    fi
+}
+
+update_merge() {
+    local out
+    if ! out=$(ugit merge --ff-only --quiet "$U_TARGET" 2>&1); then
+        if [ -s "$UPDATE_STATE/aside" ]; then
+            ugit -c user.name=banditshell -c user.email=banditshell@localhost stash pop --quiet >/dev/null 2>&1 || true
+        fi
+        update_fail "$out"
+    fi
+}
+
+update_after_merge() {
+    local helper
+    if [ "$A_HELPERS" = 1 ]; then
+        mkdir -p "$U_DIR/bin"
+        for helper in "${HELPERS[@]}"; do
+            [ ! -x "$STAGED/bin/$helper" ] || cp -f "$STAGED/bin/$helper" "$U_DIR/bin/$helper"
+        done
+    fi
+    ensure_built || U_WARNINGS+=("bin/ was not rebuilt; run banditshell doctor")
+    for helper in zsh bash; do
+        [ ! -x "$U_DIR/scripts/$helper-completion.sh" ] || "$U_DIR/scripts/$helper-completion.sh" install --quiet >/dev/null 2>&1 ||
+            U_WARNINGS+=("$helper completion was not refreshed; run banditshell completions install")
+    done
+}
+
+update_log_mark() {
+    local pid
+    if pid=$(instance_of "$U_DIR"); then
+        log_length "$pid" 2>/dev/null || echo 0
+    else
+        echo 0
+    fi
+}
+
+update_apply() {
+    local to="" detach=0 arg line mark=0
+    UPDATE_JSON=0
+    [ -z "${BANDITSHELL_JSON:-}" ] || UPDATE_JSON=1
+    while [ $# -gt 0 ]; do
+        arg="$1"
+        shift
+        case "$arg" in
+        --json) UPDATE_JSON=1 ;;
+        --detach) detach=1 ;;
+        --to)
+            [ $# -gt 0 ] || say_usage "update apply [--to <sha>] [--detach] [--json]"
+            to="$1"
+            shift ;;
+        *) say_usage "update apply [--to <sha>] [--detach] [--json]" ;;
+        esac
+    done
+    UPDATE_APPLYING=1
+    if [ "$detach" = 1 ] && ! dry; then
+        mkdir -p "$UPDATE_STATE"
+        : >"$UPDATE_STATE/progress.log"
+        (cd "$HOME" && setsid -f "$(readlink -f "${BASH_SOURCE[0]}")" update apply --json ${to:+--to "$to"} 8>&- </dev/null >>"$UPDATE_STATE/progress.log" 2>>"$UPDATE_STATE/apply.log")
+        return 0
+    fi
+    update_prepare
+    if ! dry; then
+        update_lock -n
+    fi
+    if [ -n "$to" ]; then
+        [[ $to =~ ^[0-9a-f]{40,64}$ ]] || update_fail "fatal: $to is not a full commit id"
+        ugit cat-file -e "$to^{commit}" 2>/dev/null || update_fail "fatal: that version is not in this copy; check for updates first"
+        ugit merge-base --is-ancestor HEAD "$to" 2>/dev/null || update_fail "fatal: Not possible to fast-forward, aborting."
+        update_read
+        U_TARGET="$to"
+        U_BEHIND=$(ugit rev-list --count "HEAD..$to")
+        U_AHEAD=0
+        U_STATE=current
+        [ "$U_BEHIND" -eq 0 ] || U_STATE=available
+        [ "$U_BRANCH_NOW" = "$U_BRANCH" ] || U_STATE=paused
+    else
+        update_fetch
+        update_read
+    fi
+    case "$U_STATE" in
+    paused) update_fail "fatal: $(update_state_text)" ;;
+    diverged) update_fail "fatal: Not possible to fast-forward, aborting." ;;
+    current)
+        update_phase "done" "Already up to date."
+        return 0 ;;
+    esac
+    local facts
+    facts=$(mktemp -d)
+    update_facts "$facts"
+    update_load_class < <(update_classify "$facts")
+    rm -rf "$facts"
+    if [ -n "$A_BLOCKED" ]; then
+        update_fail "error: The following untracked working tree files would be overwritten by merge:"$'\n'"	${A_BLOCKED//$'\t'/$'\n\t'}"$'\n'"Please move or remove them before you merge."
+    fi
+    if dry; then
+        update_phase plan "$A_SUMMARY"
+        update_plan
+        return 0
+    fi
+    update_phase stage "Getting it..."
+    update_stage
+    update_phase verify "Checking it loads..."
+    update_verify
+    update_phase apply "Applying..."
+    mkdir -p "$UPDATE_STATE"
+    printf '%s\n' "$U_HEAD" >"$UPDATE_STATE/previous"
+    printf '%s\n' "$U_TARGET" >"$UPDATE_STATE/target"
+    rm -f "$UPDATE_STATE/result.json"
+    mark=$(update_log_mark)
+    update_set_aside
+    update_merge
+    update_after_merge
+    rm -rf "$STAGED"
+    [ -z "$A_DEPS" ] || U_WARNINGS+=("this version needs $A_DEPS; run bash $U_DIR/install.sh")
+    for line in "${U_WARNINGS[@]}"; do
+        update_phase warning "$line"
+    done
+    update_finish_work "$mark"
+}
+
+update_finish_work() {
+    local mark="$1" restart="$A_RESTART" pid=""
+    if ! running; then
+        update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")"). The shell is not running; start it with banditshell start."
+        return 0
+    fi
+    if [ "$restart" = 1 ]; then
+        update_phase restart "Restarting..."
+        stop_shell || true
+        ensure_built || true
+        if ! launch "$SHELL_DIR"; then
+            update_roll_back "the new version did not start: ${HEALTH_WHY:-it failed to load}" 1
+            return 1
+        fi
+        refresh_backup || true
+        remember_checkout
+    else
+        update_phase health "Checking it started..."
+        if pid=$(instance_of "$SHELL_DIR") && ! health_check "$pid" "$mark"; then
+            update_roll_back "the new version did not start: $HEALTH_WHY" 1
+            return 1
+        fi
+        [ -z "$pid" ] || refresh_backup || true
+    fi
+    update_conclude "Updated to $(update_label "$(cat "$UPDATE_STATE/target")")"
+}
+
+update_conclude() {
+    dry && return 0
+    update_result true ""
+    update_phase "done" "$1"
+}
+
+update_roll_back() {
+    local why="$1" relaunch="$2" previous target out
+    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    target=$(cat "$UPDATE_STATE/target" 2>/dev/null || true)
+    if dry; then
+        say_dry "git reset --keep ${previous:0:7}, relaunch, write result.json, skip ${target:0:7}"
+        return 0
+    fi
+    if ! out=$(ugit reset --keep --quiet "$previous" 2>&1); then
+        update_result false "$why. Going back failed too: $(printf '%s' "$out" | tail -1)"
+        update_phase failed "$why. Going back failed too."
+        return 1
+    fi
+    printf '%s\n' "$target" >"$UPDATE_STATE/skip"
+    ensure_built || true
+    if [ "$relaunch" = 1 ]; then
+        update_phase restart "Going back..."
+        stop_shell || true
+        if launch "$SHELL_DIR"; then
+            refresh_backup || true
+        else
+            start_backup || true
+        fi
+    fi
+    update_result false "$why"
+    complain "update $(update_label "$target") did not start, back on $(update_label "$previous")"
+    update_phase rolledback "Went back to $(update_label "$previous")"
+}
+
+update_rollback() {
+    local previous target head
+    UPDATE_JSON=0
+    UPDATE_APPLYING=1
+    update_prepare
+    dry || update_lock -n
+    previous=$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)
+    head=$(ugit rev-parse HEAD)
+    [ -n "$previous" ] && [ "$previous" != "$head" ] || update_fail "fatal: there is no earlier version recorded to go back to"
+    ugit cat-file -e "$previous^{commit}" 2>/dev/null || update_fail "fatal: the recorded earlier version is no longer in this copy"
+    printf '%s\n' "$head" >"$UPDATE_STATE/target"
+    update_roll_back "rolled back by hand" "$(running && echo 1 || echo 0)"
+}
+
+update_oneline() {
+    case "$U_STATE" in
+    available) echo "${U_HEAD:0:7} on $U_BRANCH, update waiting: $1" ;;
+    *) echo "${U_HEAD:0:7} on $U_BRANCH_NOW, $(update_state_text)" ;;
+    esac
+}
+
+update_status() {
+    local full="$1" json=0 dir summary="" arg result last
+    shift
+    [ -z "${BANDITSHELL_JSON:-}" ] || json=1
+    for arg in "$@"; do
+        case "$arg" in
+        --json) json=1 ;;
+        *) say_usage "update status [--json]" ;;
+        esac
+    done
+    UPDATE_JSON=$json
+    update_prepare
+    update_read
+    if [ "$U_STATE" = available ]; then
+        dir=$(mktemp -d)
+        update_facts "$dir"
+        if update_has_node; then
+            if [ "$json" = 1 ]; then
+                summary=$(node "$U_DIR/services/update.js" report "$dir" --json)
+            else
+                summary=$(node "$U_DIR/services/update.js" report "$dir" --lines | sed -n 's/^summary=//p')
+            fi
+        else
+            summary="$U_BEHIND changes (node is missing, so they were not read)"
+            [ "$json" = 0 ] || summary="$(update_meta_json),\"summary\":$(json_quote "$summary")}"
+        fi
+        rm -rf "$dir"
+    fi
+    result=$(cat "$UPDATE_STATE/result.json" 2>/dev/null || true)
+    if [ "$json" = 1 ]; then
+        [ -n "$summary" ] || summary="$(update_meta_json)}"
+        printf '%s,"previous":%s,"result":%s}\n' "${summary%\}}" "$(json_quote "$(cat "$UPDATE_STATE/previous" 2>/dev/null || true)")" "${result:-null}"
+        exit 0
+    fi
+    update_oneline "$summary"
+    [ "$full" = full ] || exit 0
+    last=$(update_last_result "$result")
+    [ -z "$last" ] || echo "$last"
+    [ ! -s "$UPDATE_STATE/previous" ] || echo "before the last update: $(head -c 7 "$UPDATE_STATE/previous") (banditshell update rollback goes back)"
+    exit 0
+}
+
+update_last_result() {
+    local ok why to
+    [ -n "$1" ] || return 0
+    ok=$(sed -n 's/.*"ok":\(true\|false\).*/\1/p' <<<"$1")
+    to=$(sed -n 's/.*"toLabel":"\([^"]*\)".*/\1/p' <<<"$1")
+    why=$(sed -n 's/.*"why":"\([^"]*\)".*/\1/p' <<<"$1")
+    if [ "$ok" = true ]; then
+        echo "last update: reached $to"
+    else
+        echo "last update: $to did not start${why:+ ($why)}; it is skipped until a newer version arrives"
+    fi
+}
+
+route_update() {
+    local sub="${1:-}"
+    if [ $# -gt 0 ]; then shift; fi
+    case "$sub" in
+    "") update_status line ;;
+    check) update_check "$@" ;;
+    apply) update_apply "$@" ;;
+    rollback) update_rollback "$@" ;;
+    status) update_status full "$@" ;;
+    *) nope update "$sub" ;;
+    esac
+}
+
 migrate_or_fail() {
     local rewritten lead i suffix
     local -a words kept lead_words external
@@ -1729,6 +3052,10 @@ migrate_or_fail() {
     usage >&2
     exit 2
 }
+
+if [ $# -gt 0 ] && [ "$1" != update ] && [ "${!#}" = --json ] && [ -z "${BANDITSHELL_JSON:-}" ]; then
+    as_json "${@:1:$#-1}"
+fi
 
 cmd="${1:-help}"
 shift || true
@@ -1771,6 +3098,9 @@ tablet)
 config)
     route_config "$@"
     ;;
+update)
+    route_update "$@"
+    ;;
 start)
     running && { echo "already running"; exit 0; }
     start_checkout "started"
@@ -1800,6 +3130,7 @@ log)
 doctor)
     case "${1:-}" in
     "") doctor ;;
+    api) doctor_api ;;
     binds)
         case "${2:-}" in
         "") ipc migration status ;;
@@ -1814,6 +3145,15 @@ completions)
     ;;
 dev)
     route_dev "$@"
+    ;;
+action)
+    route_action "$@"
+    ;;
+api)
+    route_api "$@"
+    ;;
+version)
+    route_version
     ;;
 help | -h | --help)
     if [ $# -gt 0 ]; then

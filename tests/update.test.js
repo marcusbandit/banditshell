@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/update.js"), "utf8");
-const Update = new Function(src + "\nreturn { report, explain, setAside, ago };")();
+const Update = new Function(src + "\nreturn { report, explain, setAside, ago, nameStatus, classify, summary, button, removedActions, addedSteps, incomingEntries, assess, waitingText, linesOf, outcomeText, phaseOf, parseCheck };")();
 
 const said = text => Update.explain(text.split("\n"), "main");
 
@@ -78,4 +78,200 @@ test("edits set aside are named, and nothing set aside says nothing", () => {
     assert.strictEqual(Update.setAside(""), "");
     assert.strictEqual(Update.setAside(undefined), "");
     assert.match(Update.setAside("scripts/zsh-completion.sh\tmodules/Bar.qml"), /zsh-completion\.sh, modules\/Bar\.qml were in the way/);
+});
+
+const status = (...rows) => rows.join("\n") + "\n";
+
+const entriesText = list => JSON.stringify({ entries: list });
+
+test("name-status rows are read, renames become a removal and an addition", () => {
+    const got = Update.nameStatus(status("M\tshell.qml", "A\tservices/New.qml", "D\told.txt", "R100\ta.qml\tb.qml", "C75\tc.qml\td.qml", "", "junk"));
+    assert.deepStrictEqual(got, [
+        { status: "M", path: "shell.qml" },
+        { status: "A", path: "services/New.qml" },
+        { status: "D", path: "old.txt" },
+        { status: "D", path: "a.qml" },
+        { status: "A", path: "b.qml" },
+        { status: "A", path: "d.qml" }
+    ]);
+    assert.deepStrictEqual(Update.nameStatus(""), []);
+    assert.deepStrictEqual(Update.nameStatus(undefined), []);
+});
+
+test("a qmldir change is a restart, whatever else came with it", () => {
+    const c = Update.classify({ nameStatus: status("M\tservices/qmldir", "M\tservices/Bar.qml") });
+    assert.strictEqual(c.kind, "restart");
+    assert.strictEqual(c.restart, true);
+    assert.deepStrictEqual(c.restartReasons, ["qmldir changed"]);
+});
+
+test("a QML file added or removed, or shell.qml touched, is a restart", () => {
+    assert.strictEqual(Update.classify({ nameStatus: status("A\tmodules/Foo.qml") }).kind, "restart");
+    assert.strictEqual(Update.classify({ nameStatus: status("D\tmodules/Foo.qml") }).kind, "restart");
+    assert.strictEqual(Update.classify({ nameStatus: status("M\tshell.qml") }).kind, "restart");
+    assert.deepStrictEqual(Update.classify({ nameStatus: status("M\tshell.qml") }).restartReasons, ["shell.qml changed"]);
+});
+
+test("editing files in place is a reload", () => {
+    const c = Update.classify({ nameStatus: status("M\tmodules/bar/Bar.qml", "M\tservices/update.js") });
+    assert.strictEqual(c.kind, "reload");
+    assert.strictEqual(c.restart, false);
+    assert.deepStrictEqual(c.restartReasons, []);
+});
+
+test("docs, tests and scripts alone change nothing the shell runs", () => {
+    const c = Update.classify({ nameStatus: status("M\tdocs/whats-new.json", "M\ttests/update.test.js", "M\tREADME.md") });
+    assert.strictEqual(c.kind, "none");
+    assert.strictEqual(c.cli, false);
+});
+
+test("cli, api and lua paths mean the commands changed", () => {
+    for (const path of ["cli/banditshell", "api/actions.tsv", "lua/banditshell.lua"])
+        assert.strictEqual(Update.classify({ nameStatus: status(`M\t${path}`) }).cli, true, path);
+    assert.strictEqual(Update.classify({ nameStatus: status("M\tmodules/Cli.qml") }).cli, false);
+});
+
+test("api rows that turned removed are named, rows still alive are not", () => {
+    const before = "# id\tstatus\tsince\targv\tdescription\nlauncher.toggle\tstable\t1\tpanel launcher toggle\tx\nold.thing\tdeprecated\t1\told\tx\ngone.thing\tstable\t1\tgone\tx\nlong.gone\tremoved\t1\tx\tx\n";
+    const after = "# id\tstatus\tsince\targv\tdescription\nlauncher.toggle\tstable\t1\tpanel launcher toggle\tx\nold.thing\tremoved\t1\told\tx\nlong.gone\tremoved\t1\tx\tx\n";
+    assert.deepStrictEqual(Update.removedActions(before, after), ["old.thing", "gone.thing"]);
+    assert.deepStrictEqual(Update.removedActions("", after), []);
+    const c = Update.classify({ nameStatus: status("M\tapi/actions.tsv"), actionsBefore: before, actionsAfter: after });
+    assert.strictEqual(c.api, true);
+    assert.deepStrictEqual(c.apiRemoved, ["old.thing", "gone.thing"]);
+});
+
+test("helpers, shaders and settings defaults are flagged from their paths", () => {
+    const c = Update.classify({ nameStatus: status("M\tsrc/bs-pty.c", "M\tcomponents/blob/blob.frag", "M\tcomponents/blob/blob.frag.qsb", "M\tconfig/Config.qml") });
+    assert.strictEqual(c.helpers, true);
+    assert.strictEqual(c.shaders, true);
+    assert.strictEqual(c.config, true);
+    assert.strictEqual(Update.classify({ nameStatus: status("M\tsrc/gamma-client-protocol.h") }).helpers, true);
+    assert.strictEqual(Update.classify({ nameStatus: status("M\tsrc/wlr-gamma-control-unstable-v1.xml") }).helpers, false);
+});
+
+test("new install steps are the deps, the definition line is not a step", () => {
+    const before = "add_step() {\n}\nmain() {\n    add_step jq   \"command -v jq\"  jq 2 \"x\"\n}\n";
+    const after = before + "    add_step fd   \"command -v fd\"  fd 2 \"x\"\n    add_step ripgrep \"command -v rg\" ripgrep 2 \"x\"\n";
+    assert.deepStrictEqual(Update.addedSteps(before, after), ["fd", "ripgrep"]);
+    assert.deepStrictEqual(Update.addedSteps(after, before), []);
+    assert.deepStrictEqual(Update.addedSteps("", ""), []);
+    assert.deepStrictEqual(Update.classify({ nameStatus: status("M\tinstall.sh"), installBefore: before, installAfter: after }).deps, ["fd", "ripgrep"]);
+});
+
+test("edits here that the update also touches are listed, others are not", () => {
+    const c = Update.classify({
+        nameStatus: status("M\tservices/A.qml", "M\tservices/B.qml"),
+        dirty: "services/A.qml\nservices/Mine.qml\n"
+    });
+    assert.deepStrictEqual(c.dirty, ["services/A.qml"]);
+});
+
+test("an untracked file the update would add is blocked", () => {
+    const c = Update.classify({ nameStatus: status("A\tnotes.txt", "M\tservices/A.qml"), untracked: "notes.txt\nother.txt\n" });
+    assert.deepStrictEqual(c.blocked, ["notes.txt"]);
+});
+
+test("the notes can add a restart, a deps list and binds, never remove what the diff found", () => {
+    const entries = [{ id: "e", changes: [{ text: "x" }], impact: { restart: true, cli: true, binds: ["launcher.toggle"], deps: ["fd"] } }];
+    const c = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), entries });
+    assert.strictEqual(c.kind, "restart");
+    assert.deepStrictEqual(c.restartReasons, ["the notes for this version say so"]);
+    assert.strictEqual(c.cli, true);
+    assert.deepStrictEqual(c.binds, ["launcher.toggle"]);
+    assert.deepStrictEqual(c.deps, ["fd"]);
+    const quiet = Update.classify({ nameStatus: status("M\tservices/qmldir"), entries: [{ id: "e", changes: [], impact: { restart: false, cli: false, binds: [], deps: [] } }] });
+    assert.strictEqual(quiet.kind, "restart");
+});
+
+test("without notes the diff alone decides", () => {
+    const c = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), entries: [{ id: "e", changes: [], impact: null }] });
+    assert.strictEqual(c.kind, "reload");
+    assert.deepStrictEqual(c.binds, []);
+});
+
+test("the summary names what the person must know, in order", () => {
+    const c = Update.classify({
+        nameStatus: status("M\tservices/qmldir", "M\tcli/banditshell"),
+        commits: 5
+    });
+    assert.strictEqual(Update.summary(c), "5 changes, restart needed, commands changed");
+    assert.strictEqual(Update.button(c), "Update and restart");
+});
+
+test("a reload says so, and a quiet change says nothing runs differently", () => {
+    const reload = Update.classify({ nameStatus: status("M\tmodules/Bar.qml"), commits: 1 });
+    assert.strictEqual(Update.summary(reload), "1 change, no restart needed");
+    assert.strictEqual(Update.button(reload), "Update");
+    const quiet = Update.classify({ nameStatus: status("M\tdocs/a.md"), commits: 2 });
+    assert.strictEqual(Update.summary(quiet), "2 changes, nothing the shell runs changed");
+    assert.strictEqual(Update.summary(Update.classify({ nameStatus: "" })), "no changes");
+});
+
+test("the summary lists deps, removed commands, binds and edits in the way", () => {
+    const entries = [{ id: "e", changes: [{ text: "x" }], impact: { restart: false, cli: false, binds: ["a", "b"], deps: [] } }];
+    const c = Update.classify({
+        nameStatus: status("M\tmodules/Bar.qml", "M\tinstall.sh", "M\tsrc/bs-ls.c", "M\tapi/actions.tsv", "M\tconfig/Config.qml"),
+        installBefore: "    add_step jq x\n",
+        installAfter: "    add_step jq x\n    add_step fd x\n    add_step ripgrep x\n    add_step jq2 x\n",
+        actionsBefore: "a\tstable\nb\tstable\n",
+        actionsAfter: "a\tremoved\nb\tstable\n",
+        dirty: "modules/Bar.qml\nconfig/Config.qml",
+        entries,
+        commits: 3
+    });
+    assert.strictEqual(Update.summary(c), "3 changes, no restart needed, commands changed, 1 command removed, 2 binds affected, helpers rebuild, needs fd, ripgrep and jq2, settings defaults changed, 2 of your edits are in the way");
+});
+
+test("incoming entries are the ones the local log lacks, examples and empty ones left out", () => {
+    const before = entriesText([{ id: "old", changes: [{ type: "ui", severity: "minor", text: "Old." }] }]);
+    const after = entriesText([
+        { id: "new", date: "2026-10-18", changes: [{ type: "bugs", severity: "major", text: " Fixed. " }], impact: { restart: true, binds: ["x", 3] } },
+        { id: "silent", changes: [] },
+        { id: "example", example: true, changes: [{ text: "Shape." }] },
+        { id: "old", changes: [{ type: "ui", severity: "minor", text: "Old." }] }
+    ]);
+    const got = Update.incomingEntries(before, after);
+    assert.strictEqual(got.length, 1);
+    assert.strictEqual(got[0].id, "new");
+    assert.strictEqual(got[0].changes[0].text, "Fixed.");
+    assert.deepStrictEqual(got[0].impact, { restart: true, cli: false, binds: ["x"], deps: [] });
+    assert.deepStrictEqual(Update.incomingEntries("not json", after).map(e => e.id), ["new", "old"]);
+    assert.deepStrictEqual(Update.incomingEntries(before, "garbage"), []);
+});
+
+test("a report from facts joins meta, classification, summary and entries", () => {
+    const report = Update.assess({
+        meta: "state=available\nhead=aaa\ntarget=bbb\nbranch=main\nbehind=2\nahead=0\nskipped=0\ncheckedAt=1700000000000\n",
+        nameStatus: status("M\tservices/qmldir"),
+        dirty: "", untracked: "", actionsBefore: "", actionsAfter: "", installBefore: "", installAfter: "",
+        whatsnewBefore: entriesText([]),
+        whatsnewAfter: entriesText([{ id: "n", changes: [{ type: "ui", severity: "minor", text: "Looks different." }] }])
+    });
+    assert.strictEqual(report.state, "available");
+    assert.strictEqual(report.behind, 2);
+    assert.strictEqual(report.skipped, false);
+    assert.strictEqual(report.summary, "2 changes, restart needed");
+    assert.strictEqual(report.button, "Update and restart");
+    assert.deepStrictEqual(report.entries.map(e => e.id), ["n"]);
+    assert.match(Update.waitingText(report), /^update waiting: 2 changes, restart needed\n  n\n    - Looks different\.\nrun: banditshell update apply$/);
+    const lines = Update.linesOf(report).split("\n");
+    assert.ok(lines.includes("kind=restart"));
+    assert.ok(lines.includes("restart=1"));
+    assert.ok(lines.includes("button=Update and restart"));
+});
+
+test("a made check line and a phase line read back, anything else is null", () => {
+    assert.deepStrictEqual(Update.phaseOf('{"phase":"verify","text":"Checking it loads..."}'), { phase: "verify", text: "Checking it loads..." });
+    assert.strictEqual(Update.phaseOf("plain text"), null);
+    assert.strictEqual(Update.phaseOf('{"nophase":1}'), null);
+    assert.strictEqual(Update.parseCheck(""), null);
+    assert.strictEqual(Update.parseCheck("[1]") instanceof Array, true);
+});
+
+test("the outcome tells where the person stands in plain words", () => {
+    assert.strictEqual(Update.outcomeText(null), "");
+    assert.strictEqual(Update.outcomeText({ ok: true, to: "abcdef123", toLabel: "2026-10-18" }), "Updated to 2026-10-18.");
+    assert.strictEqual(Update.outcomeText({ ok: false, from: "1111111aaa", to: "2222222bbb", why: "The shell did not answer" }),
+        "Update 2222222 did not start, so you are back on 1111111. The shell did not answer. It will be tried again when a newer version arrives.");
 });

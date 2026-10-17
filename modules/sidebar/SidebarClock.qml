@@ -79,14 +79,7 @@ Column {
             spacing: 0
             visible: root.timeStyle !== "one line"
 
-            scale: clockSummon.pressed ? Appearance.press.plate : 1
-
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutCubic
-                }
-            }
+            scale: timeScale.value
 
             StyledText {
                 id: hourText
@@ -115,14 +108,16 @@ Column {
             font.pixelSize: Appearance.font.size.small
             rotation: -90
 
-            scale: clockSummon.pressed ? Appearance.press.plate : 1
+            scale: timeScale.value
+        }
 
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutCubic
-                }
-            }
+        Follow {
+            id: timeScale
+
+            target: clockSummon.pressed ? Appearance.press.plate : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 
@@ -161,6 +156,13 @@ Column {
             onFinished: open => root.calendarPullEnded(open)
         }
 
+        FollowColour {
+            id: dateTone
+
+            target: summon.pressed ? Appearance.colour.text : Appearance.colour.textFaint
+            speed: Appearance.animation.revealSpeed
+        }
+
         Column {
             id: drawn
 
@@ -171,13 +173,7 @@ Column {
                 anchors.horizontalCenter: parent.horizontalCenter
                 text: Qt.formatDateTime(clock.date, "d")
                 font.pixelSize: Appearance.font.size.small
-                color: summon.pressed ? Appearance.colour.text : Appearance.colour.textFaint
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
-                }
+                color: dateTone.value
             }
 
             StyledText {
@@ -185,13 +181,7 @@ Column {
                 visible: root.dateStyle !== "day"
                 text: Qt.formatDateTime(clock.date, "MMM").toUpperCase()
                 font.pixelSize: Appearance.font.size.small
-                color: summon.pressed ? Appearance.colour.text : Appearance.colour.textFaint
-
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
-                }
+                color: dateTone.value
             }
         }
     }

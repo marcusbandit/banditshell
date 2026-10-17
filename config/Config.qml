@@ -952,7 +952,9 @@ Singleton {
 
             cli: {
 
-                bindsDeclined: false
+                bindsDeclined: false,
+
+                bindsDeclinedGeneration: 0
             },
 
             updates: {
@@ -964,6 +966,8 @@ Singleton {
                 interval: 30,
 
                 seen: "",
+
+                skip: "",
 
                 availableColour: "alarm",
                 failedColour: "bright",

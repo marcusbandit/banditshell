@@ -3,6 +3,7 @@
   "summary": "audio devices and Bluetooth",
   "layer": 2,
   "owns": {
+    "qml": ["modules/ipc/AudioIpc.qml"],
     "services": ["Audio", "Bluetooth"]
   },
   "requires": {
