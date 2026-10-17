@@ -100,7 +100,7 @@ test("after a panel's name, its own actions sit beside the shared ones", () => {
 
 test("a command that ends here is not also read as a placeholder", () => {
     assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
-    assert.deepStrictEqual(bashComplete("doctor", ""), ["--json", "api", "binds"]);
+    assert.deepStrictEqual(bashComplete("doctor", ""), ["--json", "--report", "api", "binds"]);
     assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
 });
 
@@ -164,6 +164,10 @@ test("dev modules offers its flags, then the packages after --explain", () => {
     assert.deepStrictEqual(bashComplete("dev", "modules", ""), ["--explain", "--matrix"]);
     assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", ""), packages);
     assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", "launcher-"), packages.filter(p => p.startsWith("launcher-")));
+});
+
+test("events offers its filter flag", () => {
+    assert.deepStrictEqual(bashComplete("events", ""), ["--filter"]);
 });
 
 test("update offers its verbs, and each verb its flags", () => {

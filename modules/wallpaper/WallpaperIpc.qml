@@ -138,7 +138,7 @@ Scope {
             if (!win)
                 return "no shell window";
             const on = win.screen?.name ?? "";
-            return `${win.wallpapers.open ? "open" : "closed"} on=${on || "?"} scope=${win.wallpapers.item?.everywhere ? "all" : "here"} showing=${Wallpaper.shownNameOn(on) || "-"} set=${Wallpaper.nameOf(Wallpaper.currentOn(on)) || "-"} of ${Wallpaper.available.length}`;
+            return `${win.wallpapers.open ? "open" : "closed"} on=${on || "?"} scope=${win.wallpapers.item?.everywhere ? "all" : "here"} showing=${Wallpaper.shownNameOn(on) || "-"} set=${Wallpaper.nameOf(Wallpaper.currentOn(on)) || "-"} total=${Wallpaper.available.length}`;
         }
     }
 }

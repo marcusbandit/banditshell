@@ -299,6 +299,7 @@
     "R3 shell.qml uses ChargeLimit of power without requiring it",
     "R3 shell.qml uses CompositorSync, private to compositor",
     "R3 shell.qml uses Currency of calculator without requiring it",
+    "R3 shell.qml uses Events of events without requiring it",
     "R3 shell.qml uses Idle of power without requiring it",
     "R3 shell.qml uses LauncherHotkeys of launcher without requiring it",
     "R3 shell.qml uses Levels of island without requiring it",

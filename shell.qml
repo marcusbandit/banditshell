@@ -27,6 +27,7 @@ ShellRoot {
     readonly property var launcherHotkeys: LauncherHotkeys
     readonly property var activities: Activities
     readonly property var levels: Levels
+    readonly property var events: Events
 
     LockScreen {}
 

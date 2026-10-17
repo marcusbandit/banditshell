@@ -339,3 +339,194 @@ test("help names the new verbs and writes the exit codes down", () => {
         assert.strictEqual(cli([word, "help"]).code, 0, word);
     assert.match(cli(["api", "help"]).out, /banditshell api list \[<pattern>\] \[--json\]/);
 });
+
+function recordingQuickshell(stub, { failOn = "", reply = "", logLines = "" } = {}) {
+    fs.writeFileSync(path.join(stub.dir, "qs"), `#!/bin/sh
+echo "qs $*" >>"$STUB_LOG"
+case "$*" in *" log") printf '%s' "$QS_LOG_LINES"; exit 0 ;; esac
+case "$1" in
+list) printf '%s' "$QS_LIST" ;;
+ipc)
+    case "$*" in *"$QS_FAIL_ON"*) [ -z "$QS_FAIL_ON" ] || exit 1 ;; esac
+    [ -z "$QS_REPLY" ] || printf '%s\\n' "$QS_REPLY"
+    ;;
+esac
+`, { mode: 0o755 });
+    return { QS_LIST: instance(process.pid), QS_REPLY: reply, QS_FAIL_ON: failOn, QS_LOG_LINES: logLines };
+}
+
+test("panel close is one closeAll call and the two things no window owns", () => {
+    const stub = stubs();
+    const env = recordingQuickshell(stub);
+    const run = cli(["panel", "close"], { stub, env });
+    assert.strictEqual(run.code, 0, run.err);
+    assert.strictEqual(run.out, "closed everything\n");
+    const calls = run.calls.filter(c => c.startsWith("qs ipc"));
+    assert.deepStrictEqual(calls.map(c => c.replace(/^qs ipc (--pid \d+|-p \S+) call /, "")), ["panels closeAll", "files close", "penmap cancel"]);
+});
+
+test("panel close falls back on the old loop when the shell does not know closeAll", () => {
+    const stub = stubs();
+    const env = recordingQuickshell(stub, { failOn: "closeAll" });
+    const run = cli(["panel", "close"], { stub, env });
+    assert.strictEqual(run.code, 0, run.err);
+    assert.strictEqual(run.out, "closed everything\n");
+    const calls = run.calls.filter(c => c.startsWith("qs ipc")).map(c => c.replace(/^qs ipc (--pid \d+|-p \S+) call /, ""));
+    assert.strictEqual(calls[0], "panels closeAll");
+    for (const wanted of ["menu close", "picker close", "penmap cancel", "launcher close", "wallpapers close", "files close"])
+        assert.ok(calls.includes(wanted), wanted);
+    assert.ok(calls.length >= 15);
+});
+
+test("panel close with no shell is exit 3", () => {
+    const stub = stubs();
+    const env = { ...fakeQuickshell(stub, { code: 1 }) };
+    const run = cli(["panel", "close"], { stub, env });
+    assert.strictEqual(run.code, 3);
+    assert.match(run.err, /not running/);
+});
+
+test("events refuses a stray word and a bad filter, and wants a running shell", () => {
+    const stub = stubs();
+    const env = recordingQuickshell(stub);
+    assert.strictEqual(cli(["events", "now"], { stub, env }).code, 2);
+    assert.strictEqual(cli(["events", "--filter"], { stub, env }).code, 2);
+    const bad = cli(["events", "--filter", "panel,Not Valid"], { stub, env });
+    assert.strictEqual(bad.code, 2);
+    assert.match(bad.err, /names like panel or media\.track/);
+    const none = cli(["events"], { stub: stubs(), env: { QS_LIST: "" } });
+    assert.strictEqual(none.code, 3);
+});
+
+function follow(args, lines, { count = 1, wait = 8000 } = {}) {
+    const stub = stubs();
+    const home = directory("home");
+    const env = { PATH: `${stub.dir}:/usr/bin:/bin`, HOME: home, XDG_RUNTIME_DIR: path.join(home, "run"), STUB_LOG: stub.log, NO_COLOR: "1", ...recordingQuickshell(stub) };
+    const file = path.join(home, "run/banditshell/events.jsonl");
+    const child = spawn("bash", [path.join(ROOT, "cli/banditshell"), ...args], { cwd: ROOT, env, stdio: ["ignore", "pipe", "pipe"] });
+    let out = "";
+    child.stdout.on("data", chunk => { out += chunk; });
+    return new Promise(resolve => {
+        const finish = () => {
+            clearInterval(pump);
+            clearTimeout(giveUp);
+            child.kill();
+            resolve(out.split("\n").filter(Boolean));
+        };
+        const giveUp = setTimeout(finish, wait);
+        const pump = setInterval(() => {
+            if (fs.existsSync(file))
+                fs.appendFileSync(file, lines.join("\n") + "\n");
+            if (out.split("\n").filter(Boolean).length >= count)
+                setTimeout(finish, 300);
+        }, 100);
+    });
+}
+
+test("events follows the stream: one JSON line per event, from now on", async () => {
+    const got = await follow(["events"], ['{"event":"panel.opened","time":1,"panel":"launcher","screen":"DP-1"}']);
+    assert.ok(got.length >= 1);
+    assert.deepStrictEqual(JSON.parse(got[0]), { event: "panel.opened", time: 1, panel: "launcher", screen: "DP-1" });
+});
+
+test("events --filter keeps the named events and their groups only", async () => {
+    const lines = [
+        '{"event":"workspace.changed","time":1,"workspace":2,"previous":1}',
+        '{"event":"panel.opened","time":2,"panel":"launcher","screen":"DP-1"}',
+        '{"event":"media.state","time":3,"playing":true,"app":"x"}',
+        '{"event":"media.track","time":4,"title":"a"}'
+    ];
+    const got = await follow(["events", "--filter", "panel,media.track"], lines, { count: 2 });
+    assert.ok(got.length >= 2);
+    const names = new Set(got.map(l => JSON.parse(l).event));
+    assert.deepStrictEqual([...names].sort(), ["media.track", "panel.opened"]);
+});
+
+test("doctor --report prints versions, a config without secrets, the last 40 log lines and the checks", () => {
+    const stub = stubs();
+    const home = directory("home");
+    const config = path.join(home, "config/banditshell");
+    fs.mkdirSync(config, { recursive: true });
+    fs.writeFileSync(path.join(config, "config.json"), JSON.stringify({
+        theme: "slate",
+        keyboard: { height: 300 },
+        github: { token: "ghp_SECRET", apiKey: "abc", nested: { password: "hunter2", cookie_jar: "x", name: "kept" } },
+        hotkeys: ["a"]
+    }));
+    const log = Array.from({ length: 60 }, (_, i) => `line ${i}${i === 59 ? " token=SECRETVALUE" : ""}`).join("\n") + "\n";
+    const env = { ...recordingQuickshell(stub, { logLines: log }), XDG_CONFIG_HOME: path.join(home, "config") };
+    const run = cli(["doctor", "--report"], { stub, env, home });
+    assert.strictEqual(run.code, 0, run.err);
+    for (const head of ["## version", "## config", "## log (last 40 lines)", "## checks"])
+        assert.ok(run.out.includes(head), head);
+    assert.match(run.out, /^version\s+\S/m);
+    const config_text = run.out.slice(run.out.indexOf("## config"), run.out.indexOf("## log"));
+    const parsed = JSON.parse(config_text.slice(config_text.indexOf("{"), config_text.lastIndexOf("}") + 1));
+    assert.deepStrictEqual(parsed, { theme: "slate", keyboard: { height: 300 }, github: { nested: { name: "kept" } }, hotkeys: ["a"] });
+    assert.ok(!run.out.includes("ghp_SECRET") && !run.out.includes("hunter2") && !run.out.includes("SECRETVALUE"));
+    const logged = run.out.slice(run.out.indexOf("## log"), run.out.indexOf("## checks")).split("\n").filter(l => l.startsWith("line "));
+    assert.strictEqual(logged.length, 40);
+    assert.strictEqual(logged[0], "line 20");
+    assert.match(run.out, /^modules: .*/m);
+    assert.match(run.out, /^rules: .*/m);
+});
+
+test("doctor --report copes with no config file", () => {
+    const stub = stubs();
+    const home = directory("home");
+    const run = cli(["doctor", "--report"], { stub, env: { ...recordingQuickshell(stub), XDG_CONFIG_HOME: path.join(home, "nowhere") }, home });
+    assert.strictEqual(run.code, 0, run.err);
+    assert.match(run.out, /no config file/);
+});
+
+test("redact-config drops secret-looking names and keeps look-alikes", () => {
+    const { isSecret, redact } = require("../scripts/redact-config.js");
+    for (const name of ["token", "apiKey", "api_key", "githubToken", "client-secret", "passwordHash", "cookies", "authToken", "sessionKey"])
+        assert.ok(isSecret(name), name);
+    for (const name of ["keyboard", "hotkeys", "theme", "monkey", "tokenizer", "turkey"])
+        assert.ok(!isSecret(name), name);
+    assert.deepStrictEqual(redact({ a: [{ key: 1, b: 2 }], password: "x" }), { a: [{ b: 2 }] });
+});
+
+const STATUS_REPLIES = [
+    [["panel", "launcher", "status"], "open=false", { open: false }],
+    [["panel", "island", "status"], 'pinned=false showing=rest activities=0 notifications=0 situation="nothing going on"', { pinned: false, showing: "rest", activities: 0, notifications: 0, situation: "nothing going on" }],
+    [["panel", "wallpaper", "status"], "closed on=DP-1 scope=here showing=a.png set=a.png total=12", { state: "closed", on: "DP-1", scope: "here", showing: "a.png", set: "a.png", total: 12 }],
+    [["panel", "settings", "status"], "open", { open: true }],
+    [["wallpaper"], "on default image forest.jpg 12 in /home/x/Pictures", { text: ["on default image forest.jpg 12 in /home/x/Pictures"] }],
+    [["clock", "timer"], "no timers (4 at a time)", { text: ["no timers (4 at a time)"] }],
+    [["focus", "quiet"], "quiet        off\nevery night  off\nalarms       let through", { quiet: "off", every_night: "off", alarms: "let through" }],
+    [["focus", "mode"], "work (focus on one thing)", { text: ["work (focus on one thing)"] }],
+    [["status"], "compositor  hyprland\nfollowing   true", { compositor: "hyprland", following: true }],
+    [["screen", "brightness"], "brightness=80% displays=DP-1 warmth=off", { brightness: "80%", displays: "DP-1", warmth: "off" }]
+];
+
+test("every status verb comes out as one JSON object through the global --json", () => {
+    for (const [args, reply, expected] of STATUS_REPLIES) {
+        const stub = stubs();
+        const env = fakeQuickshell(stub, { list: instance(process.pid), reply });
+        const run = cli([...args, "--json"], { stub, env });
+        assert.strictEqual(run.code, 0, `${args.join(" ")}: ${run.err}`);
+        const parsed = JSON.parse(run.out);
+        if (args.join(" ") === "panel settings status")
+            assert.deepStrictEqual(parsed, { state: "open" });
+        else
+            assert.deepStrictEqual(parsed, expected, args.join(" "));
+    }
+});
+
+test("a status verb under --json keeps its exit code and sends nothing to stdout when the shell is away", () => {
+    const stub = stubs();
+    const env = fakeQuickshell(stub, { code: 1 });
+    const run = cli(["panel", "launcher", "status", "--json"], { stub, env });
+    assert.strictEqual(run.code, 3);
+    assert.strictEqual(run.out, "");
+});
+
+test("update status --json and version --json are objects", () => {
+    const status = cli(["update", "status", "--json"]);
+    assert.strictEqual(typeof JSON.parse(status.out).state, "string");
+    const version = cli(["version", "--json"]);
+    assert.strictEqual(version.code, 0, version.err);
+    assert.ok(JSON.parse(version.out).version);
+});

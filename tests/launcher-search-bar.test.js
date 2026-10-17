@@ -29,9 +29,9 @@ test.describe("hotkey chords", () => {
     });
 
     test.it("quotes the row id so app names with spaces survive the shell", () => {
-        assert.strictEqual(Chords.hotkeyCommand("command:lock"), "banditshell panel launcher run 'command:lock'");
-        assert.strictEqual(Chords.hotkeyCommand("app:Bloons TD 6"), "banditshell panel launcher run 'app:Bloons TD 6'");
-        const run = spawnSync("sh", ["-c", Chords.hotkeyCommand("app:it's").replace("banditshell panel launcher run", "printf %s")], { encoding: "utf8" });
+        assert.strictEqual(Chords.hotkeyCommand("command:lock"), "banditshell action launcher.run 'command:lock'");
+        assert.strictEqual(Chords.hotkeyCommand("app:Bloons TD 6"), "banditshell action launcher.run 'app:Bloons TD 6'");
+        const run = spawnSync("sh", ["-c", Chords.hotkeyCommand("app:it's").replace("banditshell action launcher.run", "printf %s")], { encoding: "utf8" });
         assert.strictEqual(run.stdout, "app:it's");
     });
 });

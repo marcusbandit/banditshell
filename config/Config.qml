@@ -968,6 +968,11 @@ Singleton {
                 bindsDeclinedGeneration: 0
             },
 
+            events: {
+
+                notificationText: false
+            },
+
             updates: {
 
                 channel: "main",

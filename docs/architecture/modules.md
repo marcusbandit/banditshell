@@ -19,7 +19,7 @@ package has one `module.json`.
 
 A package named after a folder under `modules/` keeps its manifest in that folder, at
 `modules/<name>/module.json`. Every other package has `packages/<name>.json` at the repo root. The
-name inside the file must match its place. There are 36 packages and the split is 18 and 18.
+name inside the file must match its place. There are 37 packages and the split is 18 and 19.
 
 A manifest has these fields, and the check refuses any other.
 
@@ -102,6 +102,7 @@ launcher's groups in the config.
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
 | session | 5 | modules/session | core, compositor, power | session | session |
+| events | 6 | Events (the event stream behind `banditshell events`) | core, compositor, host, settings, files, media, notifications, updates, island | none | events |
 
 ## Interface singletons
 
