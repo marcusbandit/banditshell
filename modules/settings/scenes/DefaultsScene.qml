@@ -34,7 +34,7 @@ Item {
 
     Timer {
         interval: 2000
-        running: root.visible
+        running: root.visible && !Appearance.lessMotion
         repeat: true
         triggeredOnStart: true
         onTriggered: {

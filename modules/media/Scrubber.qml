@@ -101,7 +101,7 @@ Item {
         duration: Math.round(root.wavelength / Appearance.sizes.scrubWaveSpeed * 1000)
         loops: Animation.Infinite
 
-        running: root.watched && root.visible && Media.playing && swell.value > 0
+        running: root.watched && root.visible && Media.playing && swell.value > 0 && !Appearance.lessMotion
     }
 
     Item {

@@ -158,7 +158,7 @@ Column {
 
             Equalizer {
                 anchors.verticalCenter: parent.verticalCenter
-                playing: Media.playing && !Appearance.lessMotion
+                playing: Media.playing
                 color: Appearance.colour.accent
             }
         }

@@ -101,7 +101,7 @@ Item {
         to: Math.PI * 2
         duration: 2400
         loops: Animation.Infinite
-        running: root.gap && root.singing && root.visible
+        running: root.gap && root.singing && root.visible && !Appearance.lessMotion
     }
 
     Row {

@@ -78,7 +78,7 @@ Item {
             opacity: Wallpaper.enabled ? 1 : 0
 
             output: root.output
-            playing: Wallpaper.enabled && Config.values.wallpaper.animate
+            playing: Wallpaper.enabled && Config.values.wallpaper.animate && !Appearance.lessMotion
         }
     }
 }

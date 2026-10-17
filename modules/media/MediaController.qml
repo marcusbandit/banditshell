@@ -750,7 +750,7 @@ Item {
                                 color: !Lyrics.enabled ? Appearance.colour.textFaint : Lyrics.ready ? Appearance.colour.text : Appearance.colour.textGhost
 
                                 SequentialAnimation on opacity {
-                                    running: Lyrics.loading && root.open
+                                    running: Lyrics.loading && root.open && !Appearance.lessMotion
                                     loops: Animation.Infinite
                                     alwaysRunToEnd: true
 
