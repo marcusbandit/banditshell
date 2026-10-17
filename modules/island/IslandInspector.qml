@@ -7,6 +7,7 @@ import Quickshell.Services.Notifications
 import qs.config
 import qs.components
 import qs.services
+import "../../services/activities.js" as Logic
 
 Scope {
     id: root
@@ -20,6 +21,8 @@ Scope {
     property int drawn: 0
     property bool timing: false
     property var notices: []
+    property var stagedKinds: []
+    property var taskKinds: []
     property int chosenAt: -1
     property string clicked: ""
 
@@ -135,6 +138,88 @@ Scope {
             },
             music: {
                 kind: "music"
+            },
+            volume: Logic.levelMoment("volume", 0.45, false, 1),
+            mute: Logic.levelMoment("volume", 0.45, true, 1),
+            brightness: Logic.levelMoment("brightness", 0.7, false, 1),
+            mic: Logic.levelMoment("mic", 1, true, 1)
+        })
+
+    readonly property var stagedLooks: ({
+            timer: {
+                key: "timer:mock-tea",
+                id: "mock-tea",
+                kind: "timer",
+                text: "Tea",
+                remaining: 450000,
+                clock: "7:30",
+                sample: "00:00",
+                progress: 0.75,
+                paused: false,
+                ending: false,
+                mock: true
+            },
+            paused: {
+                key: "timer:mock-paused",
+                id: "mock-paused",
+                kind: "timer",
+                text: "Laundry",
+                remaining: 1500000,
+                clock: "25:00",
+                sample: "00:00",
+                progress: 0.5,
+                paused: true,
+                ending: false,
+                mock: true
+            },
+            ending: {
+                key: "timer:mock-eggs",
+                id: "mock-eggs",
+                kind: "timer",
+                text: "Eggs",
+                remaining: 8000,
+                clock: "0:08",
+                sample: "00:00",
+                progress: 0.04,
+                paused: false,
+                ending: true,
+                mock: true
+            },
+            alarm: Object.assign(Logic.alarmItem("mock-alarm", "07:30  Wake up", Logic.alarmActions(true)), {
+                mock: true
+            }),
+            done: Object.assign(Logic.alarmItem("timer:mock-done", "Tea is done", Logic.alarmActions(false)), {
+                mock: true
+            })
+        })
+
+    readonly property var taskLooks: ({
+            build: {
+                id: "mock-build",
+                text: "Building",
+                detail: "compiling shaders",
+                progress: 0.4,
+                icon: "hardware"
+            },
+            sync: {
+                id: "mock-sync",
+                text: "Syncing photos",
+                icon: "sync"
+            },
+            built: {
+                id: "mock-built",
+                text: "Build",
+                detail: "412 files",
+                icon: "hardware",
+                outcome: "done"
+            },
+            broke: {
+                id: "mock-broke",
+                text: "Deploy",
+                detail: "exit 2",
+                progress: 0.8,
+                icon: "rocket_launch",
+                outcome: "failed"
             }
         })
 
@@ -142,6 +227,10 @@ Scope {
             launch: "focuses the app's window",
             dictation: "opens the transcription history",
             music: "opens the media panel",
+            external: "runs the command it was given, if any",
+            timer: "pauses or resumes the timer",
+            alarm: "stops or snoozes the alarm from its buttons",
+            level: "nothing, it only shows",
             notifications: "opens the notification list",
             update: "opens the update menu",
             kernel: "starts the kernel upgrade",
@@ -216,6 +305,73 @@ Scope {
             launches: ["waiting", "waiting"],
             notices: ["music"],
             notes: 1
+        },
+        {
+            name: "A timer running",
+            staged: ["timer"]
+        },
+        {
+            name: "A timer, paused",
+            staged: ["paused"]
+        },
+        {
+            name: "A timer almost done",
+            staged: ["ending"]
+        },
+        {
+            name: "A timer while dictating",
+            voice: "listening",
+            staged: ["timer"]
+        },
+        {
+            name: "A timer is done",
+            staged: ["done"]
+        },
+        {
+            name: "An alarm rings",
+            staged: ["alarm"]
+        },
+        {
+            name: "An alarm rings over a notification",
+            notes: 1,
+            staged: ["alarm"]
+        },
+        {
+            name: "A build with progress",
+            tasks: ["build"]
+        },
+        {
+            name: "A task with no progress",
+            tasks: ["sync"]
+        },
+        {
+            name: "Two tasks",
+            tasks: ["build", "sync"]
+        },
+        {
+            name: "A task finished and one failed",
+            tasks: ["built", "broke"]
+        },
+        {
+            name: "A build while dictating",
+            voice: "listening",
+            tasks: ["build"]
+        },
+        {
+            name: "The volume changes",
+            notices: ["volume"]
+        },
+        {
+            name: "The volume is muted",
+            notices: ["mute"]
+        },
+        {
+            name: "The brightness changes",
+            notices: ["brightness"]
+        },
+        {
+            name: "The microphone is muted",
+            notices: ["mic"]
         },
         {
             name: "The overview",
@@ -442,6 +598,8 @@ Scope {
         root.setVoice("off");
         root.setLaunches([]);
         root.setNotices([]);
+        root.setStaged([]);
+        root.setTasks([]);
         root.setNotes(0, false);
         root.island?.dragEnd(false);
         if (root.island)
@@ -460,6 +618,8 @@ Scope {
         root.setVoice(s.voice ?? "off");
         root.setLaunches(s.launches ?? []);
         root.setNotices(s.notices ?? []);
+        root.setStaged(s.staged ?? []);
+        root.setTasks(s.tasks ?? []);
         root.island.pinned = s.pinned ?? false;
         root.setNotes(s.notes ?? 0, s.urgent ?? false);
         root.island.arrange(true);
@@ -592,6 +752,34 @@ Scope {
         root.notices = kinds;
     }
 
+    function setStaged(kinds: var): void {
+        root.stagedKinds = kinds;
+        Activities.staged = kinds.map(k => root.stagedLooks[k]);
+    }
+
+    function flipStaged(kind: string): void {
+        root.setStaged(root.stagedKinds.includes(kind) ? root.stagedKinds.filter(k => k !== kind) : [...root.stagedKinds, kind]);
+    }
+
+    function setTasks(kinds: var): void {
+        for (const k of root.taskKinds.filter(k => !kinds.includes(k)))
+            Activities.remove(root.taskLooks[k].id);
+        for (const k of kinds.filter(k => !root.taskKinds.includes(k))) {
+            const look = root.taskLooks[k];
+            Activities.push(Object.assign({}, look, {
+                source: "inspector",
+                act: () => root.clicked = `${look.text}: its own command ran`
+            }));
+            if (look.outcome)
+                Activities.end(look.id, look.outcome, 600000);
+        }
+        root.taskKinds = kinds;
+    }
+
+    function flipTask(kind: string): void {
+        root.setTasks(root.taskKinds.includes(kind) ? root.taskKinds.filter(k => k !== kind) : [...root.taskKinds, kind]);
+    }
+
     function flipNotice(kind: string): void {
         root.setNotices(root.notices.includes(kind) ? root.notices.filter(k => k !== kind) : [...root.notices, kind]);
     }
@@ -667,13 +855,13 @@ Scope {
     }
 
     Timer {
-        interval: 1000
+        interval: 500
         repeat: true
         running: root.open && root.notices.length > 0
 
         onTriggered: {
             for (const k of root.notices)
-                Notices.glance(`mock:${k}`);
+                Notices.glance(`mock:${k}`, root.noticeLooks[k]?.ms);
         }
     }
 
@@ -1007,7 +1195,7 @@ Scope {
                                 spacing: Appearance.padding.small
 
                                 Repeater {
-                                    model: ["download", "update", "kernel", "restart", "music"]
+                                    model: ["download", "update", "kernel", "restart", "music", "volume", "mute", "brightness", "mic"]
 
                                     Button {
                                         required property string modelData
@@ -1017,6 +1205,54 @@ Scope {
                                         checkable: true
                                         checked: root.notices.includes(modelData)
                                         onToggled: root.flipNotice(modelData)
+                                    }
+                                }
+                            }
+
+                            StyledText {
+                                text: "timers and alarms"
+                                color: Appearance.colour.textFaint
+                            }
+
+                            Flow {
+                                width: parent.width
+                                spacing: Appearance.padding.small
+
+                                Repeater {
+                                    model: ["timer", "paused", "ending", "done", "alarm"]
+
+                                    Button {
+                                        required property string modelData
+
+                                        text: modelData
+                                        style: "outlined"
+                                        checkable: true
+                                        checked: root.stagedKinds.includes(modelData)
+                                        onToggled: root.flipStaged(modelData)
+                                    }
+                                }
+                            }
+
+                            StyledText {
+                                text: "tasks pushed through the activity api"
+                                color: Appearance.colour.textFaint
+                            }
+
+                            Flow {
+                                width: parent.width
+                                spacing: Appearance.padding.small
+
+                                Repeater {
+                                    model: ["build", "sync", "built", "broke"]
+
+                                    Button {
+                                        required property string modelData
+
+                                        text: modelData
+                                        style: "outlined"
+                                        checkable: true
+                                        checked: root.taskKinds.includes(modelData)
+                                        onToggled: root.flipTask(modelData)
                                     }
                                 }
                             }
