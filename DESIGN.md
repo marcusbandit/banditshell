@@ -411,8 +411,9 @@ banditshell/
 ├── previews/                    the shell's pieces, opened alone in a window of
 │                                their own - battery, calculator, files, the
 │                                island, the lock face, notifications, qr,
-│                                settings, the sidebar in both styles, the
-│                                terminal workbench, windows, the gallery (`banditshell
+│                                the quick controls panel, settings, the
+│                                sidebar in both styles, the terminal
+│                                workbench, windows, the gallery (`banditshell
 │                                dev preview gallery`, `... preview lock`). They
 │                                sit in a folder so the root stays just the two
 │                                entry points, and the folder holds because a
@@ -554,9 +555,6 @@ banditshell/
 │   ├── FloatingTooltip.qml      a plain label floating above whatever it is
 │   │                            dropped into, after the tooltip delay; for
 │   │                            surfaces with no chassis to melt a tip out of
-│   ├── PathField.qml            a MenuRow until you press it, then a place to
-│   │                            type; the keyboard is claimed on the edit, not
-│   │                            on being visible
 │   ├── QrScanner.qml            the camera, and whatever code it finds; needs
 │   │                            zxing-cpp's `ZXingReader` on PATH to decode
 │   └── QrCode.qml               the same square the other way round: a string as
@@ -2147,7 +2145,7 @@ repeats because two links to one picture are one wallpaper.
 `wallpaper.dir` is also the first setting in this shell that is **a piece of text**. Everything
 else on a settings page is a switch, a slider or a list of names, where the whole range is on
 the screen; a folder path is unbounded, and the only honest control for one is a place to type.
-`components/PathField.qml` is a MenuRow until you press it, so a page does not grow a
+The settings `path` row is a MenuRow until you press it, so a page does not grow a
 permanently open text box for a setting changed twice a year. The keyboard is claimed on the
 **edit** rather than on becoming visible, which is what `PasswordField` does and what would
 have made the settings panel hold the keyboard for as long as the page was open: a password
