@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-17-3",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell has a front page on GitHub now, with a short clip, install steps and the commands, and it is licensed under GPL-3.0. Nothing in the shell itself changed."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-2",
       "date": "2026-10-17",
       "changes": [
