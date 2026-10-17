@@ -10,9 +10,8 @@
 #                                the file browser, in a folder
 #   banditshell panel settings open [page] [screen]
 #   banditshell panel settings page <page>
-#   banditshell panel settings float
-#                                settings on a page, another page while it stays
-#                                put, or settings as a window
+#                                settings on a page, or another page while it
+#                                stays put
 #   banditshell panel launcher run <app|row>
 #                                start an app the way the launcher does, or run
 #                                any launcher row by its id, like command:lock
@@ -906,7 +905,6 @@ route_panel() {
     case "$name:$action" in
     launcher:run) [ $# -ge 1 ] || say_usage "panel launcher run <app|row>"; ipc launcher run "$1" ;;
     settings:page) [ $# -ge 1 ] || say_usage "panel settings page <page>"; ipc settings page "$1" ;;
-    settings:float) ipc settings float ;;
     keyboard:dock | keyboard:float) ipc keyboard "$action" ;;
     keyboard:page) [ $# -ge 1 ] || say_usage "panel keyboard page <layer> [screen]"; ipc keyboard page "$1" "${2:-}" ;;
     clipboard:list | clipboard:clear) ipc clipboard "$action" ;;
