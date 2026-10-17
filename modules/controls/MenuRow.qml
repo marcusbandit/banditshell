@@ -43,14 +43,14 @@ Item {
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
-        color: Appearance.colour.fill
-        opacity: root.hovered || root.selected ? 1 : 0
+        color: plate.value
+    }
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-            }
-        }
+    FollowColour {
+        id: plate
+
+        target: root.selected ? Appearance.colour.fillStrong : root.hovered ? Appearance.colour.fill : "transparent"
+        speed: Appearance.animation.revealSpeed
     }
 
     MouseArea {

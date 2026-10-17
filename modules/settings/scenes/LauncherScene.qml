@@ -258,11 +258,11 @@ Item {
                     y: index * nia.step + (nia.step - height) / 2
                     text: modelData
                     font.family: Appearance.font.family
-                    font.pixelSize: 12
+                    font.pixelSize: Appearance.font.size.small
                     renderType: Text.NativeRendering
                     scale: 1 + f * 0.5
                     transformOrigin: Item.Right
-                    color: nia.pos !== null && Math.abs(index - nia.pos) < 0.5 ? Appearance.colour.accent : has ? Appearance.colour.textFaint : Appearance.colour.textGhost
+                    color: nia.pos !== null && Math.abs(index - nia.pos) < 0.5 ? Appearance.colour.accent : Appearance.colour.textFaint
                 }
             }
 
@@ -283,7 +283,7 @@ Item {
                     radius: 13
                     cornerPower: 2
                     z: -1
-                    color: Qt.rgba(Appearance.colour.text.r, Appearance.colour.text.g, Appearance.colour.text.b, 0.18)
+                    color: Appearance.colour.fillStronger
                 }
             }
         }

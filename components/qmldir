@@ -17,6 +17,7 @@ DropShadow 1.0 DropShadow.qml
 FittedImage 1.0 FittedImage.qml
 FloatingTooltip 1.0 FloatingTooltip.qml
 FoldedText 1.0 FoldedText.qml
+FollowColour 1.0 FollowColour.qml
 Follow 1.0 Follow.qml
 Gauge 1.0 Gauge.qml
 GlideList 1.0 GlideList.qml

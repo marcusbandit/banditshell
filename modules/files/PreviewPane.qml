@@ -162,7 +162,7 @@ Item {
 
                 SquircleRect {
                     anchors.fill: parent
-                    anchors.margins: Appearance.padding.small / 2
+                    anchors.margins: Appearance.padding.hair
 
                     radius: Appearance.rounding.small
                     color: root.rendered ? Appearance.colour.fillStrong : togglepress.containsMouse ? Appearance.colour.fill : "transparent"
@@ -242,7 +242,7 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 fileClass: "audio"
-                size: Appearance.font.iconSize * 3
+                size: Appearance.icon.hero
             }
 
             Item {
@@ -255,13 +255,15 @@ Item {
 
                 readonly property real ring: Appearance.font.iconSize + Appearance.padding.normal * 2
 
-                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                scale: pressScale.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                        easing.type: Easing.OutBack
-                    }
+                Follow {
+                    id: pressScale
+
+                    target: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {
@@ -269,7 +271,7 @@ Item {
 
                     radius: width / 2
                     stroke: Appearance.colour.text
-                    strokeWidth: Appearance.font.stem
+                    strokeWidth: Appearance.stroke.ring
                 }
 
                 Icon {
@@ -340,7 +342,7 @@ Item {
                     fileClass: line.modelData.class
                     link: line.modelData.link
                     broken: line.modelData.broken
-                    size: Appearance.font.iconSize * 0.8
+                    size: Appearance.icon.small
                 }
 
                 StyledText {
@@ -400,8 +402,8 @@ Item {
                 anchors.horizontalCenter: parent.horizontalCenter
 
                 name: root.stat && !root.stat.readable || root.contentsError ? "lock" : root.isFolder ? "folder_open" : "visibility_off"
-                size: Appearance.font.iconSize * 2
-                color: Appearance.colour.textGhost
+                size: Appearance.icon.huge
+                color: Appearance.colour.textFaint
             }
 
             StyledText {

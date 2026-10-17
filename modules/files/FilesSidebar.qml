@@ -43,10 +43,10 @@ Item {
                     text: section.modelData.title.toUpperCase()
                     font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     font.letterSpacing: Files.zoomed(Appearance.font.size.small) * 0.12
-                    color: Appearance.colour.textGhost
+                    color: Appearance.colour.textFaint
 
                     leftPadding: Appearance.padding.normal
-                    bottomPadding: Appearance.padding.small / 2
+                    bottomPadding: Appearance.padding.hair
                     topPadding: Appearance.padding.small
                 }
 
@@ -75,7 +75,7 @@ Item {
                             radius: Appearance.rounding.small
                             color: root.receiving === place.modelData.path ? Appearance.colour.accentFill : place.here ? Appearance.colour.fillStrong : hover.hovered ? Appearance.colour.fill : "transparent"
                             stroke: root.receiving === place.modelData.path ? Appearance.colour.accent : "transparent"
-                            strokeWidth: root.receiving === place.modelData.path ? Appearance.font.stem : 0
+                            strokeWidth: root.receiving === place.modelData.path ? Appearance.stroke.ring : 0
                         }
 
                         Icon {
@@ -85,7 +85,7 @@ Item {
                             anchors.leftMargin: Appearance.padding.normal
                             anchors.verticalCenter: place.usage ? undefined : parent.verticalCenter
                             anchors.top: place.usage ? parent.top : undefined
-                            anchors.topMargin: place.usage ? Appearance.padding.small / 2 : 0
+                            anchors.topMargin: place.usage ? Appearance.padding.hair : 0
 
                             name: place.modelData.icon
                             size: Files.zoomed(Appearance.font.iconSize)
@@ -114,7 +114,7 @@ Item {
 
                             text: place.modelData.detail ?? ""
                             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-                            color: Appearance.colour.textGhost
+                            color: Appearance.colour.textFaint
                         }
 
                         Item {

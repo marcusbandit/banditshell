@@ -94,7 +94,7 @@ Item {
             anchors.horizontalCenter: parent.horizontalCenter
             text: TimeFormat.time(new Date(root.now), false)
             font.pixelSize: Appearance.font.size.large
-            color: "white"
+            color: Appearance.colour.paper
         }
 
         Item {
@@ -106,7 +106,7 @@ Item {
                 anchors.fill: parent
                 radius: 16
                 cornerPower: 2
-                color: Qt.rgba(1, 1, 1, 0.14)
+                color: Appearance.colour.fillStrong
             }
 
             Row {

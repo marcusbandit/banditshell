@@ -59,7 +59,7 @@ Column {
             anchors.verticalCenter: parent.verticalCenter
             alignInk: true
             text: "|"
-            color: Appearance.colour.textGhost
+            color: Appearance.colour.textFaint
         }
 
         StyledText {

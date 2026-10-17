@@ -47,10 +47,54 @@ Item {
 
     readonly property real offset: slide.value * Config.values.control.dragResistance
 
+    property bool placed: false
+    property bool leaving: false
+    property real lastY: 0
+
+    opacity: leave.value
+
+    Timer {
+        running: true
+        interval: 1
+        onTriggered: root.placed = true
+    }
+
+    onYChanged: {
+        if (root.placed)
+            displace.value += root.lastY - root.y;
+        root.lastY = root.y;
+    }
+
+    ListView.onRemove: {
+        root.ListView.delayRemove = true;
+        root.leaving = true;
+    }
+
+    Follow {
+        id: displace
+
+        target: 0
+        speed: Appearance.animation.trackSpeed
+        startsAtTarget: true
+    }
+
+    Follow {
+        id: leave
+
+        target: root.leaving ? 0 : 1
+        speed: Appearance.animation.revealSpeed
+        epsilon: Appearance.animation.fadeEpsilon
+        startsAtTarget: true
+
+        onSettledChanged: if (settled && root.leaving)
+            root.ListView.delayRemove = false
+    }
+
     Item {
         id: card
 
         x: root.offset
+        y: displace.value
         width: root.width
         height: root.height - Appearance.padding.small
 
@@ -61,12 +105,15 @@ Item {
 
             radius: Appearance.rounding.normal
             color: root.selected ? Appearance.colour.fillStrong : Appearance.colour.fill
-            opacity: root.focused ? 1 : 0
+            opacity: focusFade.value
 
-            Behavior on opacity {
-                NumberAnimation {
-                    duration: Appearance.animation.fade.fast
-                }
+            Follow {
+                id: focusFade
+
+                target: root.focused ? 1 : 0
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
         }
 
@@ -127,7 +174,7 @@ Item {
                 visible: root.entry.kind === "colour"
                 color: root.swatch
                 stroke: Appearance.colour.separator
-                strokeWidth: Appearance.font.stem
+                strokeWidth: Appearance.stroke.ring
             }
 
             Icon {
@@ -135,12 +182,13 @@ Item {
                 visible: !root.isImage && root.entry.kind !== "colour"
                 name: Clipboard.markFor(root.entry.kind)
                 size: Appearance.sizes.clipboardIcon
-                color: root.selected ? Appearance.colour.text : Appearance.colour.textFaint
+                color: markTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: markTone
+
+                    target: root.selected ? Appearance.colour.text : Appearance.colour.textFaint
+                    speed: Appearance.animation.revealSpeed
                 }
             }
         }
@@ -153,21 +201,22 @@ Item {
             anchors.right: trailing.left
             anchors.rightMargin: Appearance.padding.normal
             anchors.verticalCenter: parent.verticalCenter
-            spacing: Appearance.padding.small / 2
+            spacing: Appearance.padding.hair
 
             StyledText {
                 width: parent.width
                 text: root.title
-                color: root.selected ? Appearance.colour.text : Appearance.colour.textDim
+                color: titleTone.value
 
                 maximumLineCount: root.isImage ? 1 : Appearance.sizes.clipboardLines
                 wrapMode: Text.Wrap
                 elide: Text.ElideRight
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: titleTone
+
+                    target: root.selected ? Appearance.colour.text : Appearance.colour.textDim
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
@@ -197,12 +246,13 @@ Item {
                     name: "keep"
                     fill: root.entry.pinned ? 1 : 0
                     size: Appearance.font.iconSize
-                    color: root.entry.pinned ? Appearance.colour.accent : pinPress.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                    color: pinTone.value
 
-                    Behavior on color {
-                        ColorAnimation {
-                            duration: Appearance.animation.fast
-                        }
+                    FollowColour {
+                        id: pinTone
+
+                        target: root.entry.pinned ? Appearance.colour.accent : pinPress.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
+                        speed: Appearance.animation.revealSpeed
                     }
                 }
 

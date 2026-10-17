@@ -534,7 +534,7 @@ Item {
                         radius: Appearance.rounding.normal
                         color: "transparent"
                         stroke: Appearance.colour.accent
-                        strokeWidth: Appearance.font.stem * 2
+                        strokeWidth: Appearance.stroke.ring * 2
                         visible: root.keyboardNavigating && card.entry === Math.round(strip.goal)
                     }
                 }
@@ -701,7 +701,7 @@ Item {
                             cornerPower: 2
                             color: "transparent"
                             stroke: Appearance.colour.text
-                            strokeWidth: Appearance.font.stem
+                            strokeWidth: Appearance.stroke.ring
                             visible: swatch.picked
                         }
 
@@ -713,13 +713,16 @@ Item {
                             cornerPower: 2
                             color: swatch.modelData.colour
                             stroke: Appearance.colour.textGhost
-                            strokeWidth: 1
-                            scale: tap.containsMouse ? 1.15 : 1
+                            strokeWidth: Appearance.stroke.line
+                            scale: swell.value
 
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fast
-                                }
+                            Follow {
+                                id: swell
+
+                                target: tap.containsMouse ? Appearance.press.lift : 1
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
                         }
 
@@ -801,7 +804,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
                             text: "Search by name"
-                            color: Appearance.colour.textGhost
+                            color: Appearance.colour.textFaint
                         }
                     }
                 }

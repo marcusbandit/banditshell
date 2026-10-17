@@ -61,7 +61,7 @@ Item {
                 radius: Appearance.rounding.normal
                 color: Appearance.colour.fill
                 stroke: Appearance.colour.fillStronger
-                strokeWidth: 2
+                strokeWidth: Appearance.stroke.ring
             }
 
             Item {
@@ -83,7 +83,7 @@ Item {
                         radius: width / 2
                         cornerPower: 2
                         color: Appearance.colour.text
-                        opacity: clock.moving ? f.o : 0.55
+                        opacity: clock.moving ? f.o : Appearance.opacity.trail
                     }
                 }
             }

@@ -124,9 +124,9 @@ Item {
             x: root.f.cx / 100 * area.width
             y: root.f.cy / 100 * area.height
             name: "near_me"
-            size: 22
+            size: Appearance.icon.normal
             fill: 1
-            color: "white"
+            color: Appearance.colour.paper
             opacity: root.f.o
         }
     }

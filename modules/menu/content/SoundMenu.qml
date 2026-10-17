@@ -100,7 +100,7 @@ Column {
 
             width: Appearance.font.iconSize
             height: name.implicitHeight
-            opacity: channel.muted ? 0.4 : 1
+            opacity: channel.muted ? Appearance.opacity.disabled : 1
 
             Image {
                 id: shot

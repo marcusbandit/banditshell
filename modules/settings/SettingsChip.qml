@@ -21,7 +21,7 @@ Item {
         cornerPower: 2
         color: root.adder ? "transparent" : Appearance.colour.fill
         stroke: root.adder ? Appearance.colour.fillStrong : "transparent"
-        strokeWidth: root.adder ? 2 : 0
+        strokeWidth: root.adder ? Appearance.stroke.ring : 0
     }
 
     Row {

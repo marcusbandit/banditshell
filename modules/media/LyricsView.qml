@@ -149,7 +149,7 @@ Item {
                     width: parent.width - Appearance.padding.normal * 2
                     wrapMode: Text.Wrap
                     text: (Lyrics.writers.length > 0 ? `written by ${Lyrics.writers.join(", ")}\n` : "") + (Lyrics.plain ? `lyrics from ${Lyrics.source}, not synced` : `lyrics from ${Lyrics.source}`) + (Lyrics.spicyAbsent && Lyrics.spotifyId ? "\nword timing needs Spicy Lyrics in Spotify: run install.sh" : "")
-                    color: Appearance.colour.textGhost
+                    color: Appearance.colour.textFaint
                 }
             }
         }

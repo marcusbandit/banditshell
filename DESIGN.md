@@ -170,8 +170,19 @@ gently when close, safe at any dt.
 **This is a rule, not a default.** Anything in this shell that moves, tracks, reveals, resizes
 or follows goes through `components/Follow.qml`. A `NumberAnimation` or a `Behavior` on a
 position is a bug, with exactly one exception: a **looping clock** with no target being chased
-at all (the mic indicator's processing ripple and typing caret are the whole list). Spring and
-bounce are not in this shell.
+at all. The whole list: the mic indicator's processing ripple and typing caret, the battery
+charge sweep and low-charge throb, the scrolling-text marquee, the scrubber's wave phase, the
+equalizer, the lyric line's sung-gap clock, the lyrics loading pulse, the activity bubble's and
+the settings keyboard widget's spinners, and the demo clocks of the
+settings scenes. Every one of them stops or freezes when `Appearance.lessMotion` is true.
+Spring and bounce are not in this shell.
+
+**Fades are motion too.** An opacity or a colour that changes goes through `Follow`
+(`epsilon: Appearance.animation.fadeEpsilon`, since the default epsilon is in pixels) or
+`components/FollowColour.qml`, never a `Behavior`. Both snap under `lessMotion`, so a reduced
+motion setting now stills the fades as well. Speeds come from `Appearance.animation`:
+`revealSpeed` for what used to be a fast fade, `trackSpeed` for normal, `settleSpeed` for slow,
+`snapSpeed` for small knobs.
 
 Three corollaries, each of them learned by shipping the mistake:
 
@@ -335,6 +346,26 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
     `rounding = 15`. Hyprland is already drawing superellipse corners there
     (`rounding_power = 4.0`), the same idea as our G2 smoothing.
   - If the theme conf changes, the render changes, and the shell follows it. One direction.
+- **One state recipe.** Hover, press, selection and disabled look the same everywhere, built from
+  the palette's fill steps and nothing else. Colour changes between states fade through
+  `FollowColour`.
+
+  | State | List row | Card or tile |
+  |---|---|---|
+  | rest | transparent | `fill` |
+  | hover | `fill` | `fillStrong` |
+  | pressed | `fillStrong` | `fillStronger` |
+  | selected | `fillStrong`, label in `text` | `accentFill`, glyph in `accent` |
+  | disabled | `Appearance.opacity.disabled` | `Appearance.opacity.disabled` |
+  | focus | `Appearance.stroke.ring` in `accent` | `Appearance.stroke.ring` in `accent` |
+
+  Applied in `MenuRow`, `Button` (a transparent plate takes the row column, an opaque one blends
+  toward its label colour by the same fill step) and the settings tiles. `textGhost` is for
+  decorative rules only; readable text, placeholders and disabled glyphs use `textFaint`.
+- **Small constants have names.** `Appearance.padding.hair` (4), `Appearance.stroke.line` (1) and
+  `ring` (the font stem), `Appearance.opacity.disabled` / `trail` / `glow`, the icon ladder
+  `Appearance.icon.small` to `hero`, `Appearance.press.lift` and `grab`, and
+  `Appearance.colour.pane` for the mock panels in settings scenes.
 - **Distinctive, not generic.** Never trade a distinctive look for a generic "clean" one.
   Since I'm establishing the style from scratch, commit to an idiom early (the clock sets it)
   and build every later widget in that idiom.
@@ -428,6 +459,7 @@ banditshell/
 │   ├── ProgressRing.qml         a ring that fills: an app on its way
 │   ├── AppMark.qml             one window's mark, from a spec: symbol/glyph/mono/image
 │   ├── Follow.qml               a value that chases a target by exponential smoothing
+│   ├── FollowColour.qml         the same for a colour; every colour fade goes through it
 │   ├── Pull.qml                 a directional swipe; the way in, and back out, that needs no hover
 │   ├── ScrollGesture.qml        two fingers on a touchpad, delivered as that same swipe
 │   ├── GlideList.qml            a list that scrolls by pixels and coasts when let go

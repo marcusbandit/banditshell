@@ -30,7 +30,7 @@ Item {
         })
 
     readonly property real scale: Math.min(root.width / root.shape.width, root.height / root.shape.height)
-    readonly property real gap: Math.max(2, Math.round(Appearance.padding.small / 2))
+    readonly property real gap: Math.max(2, Appearance.padding.hair)
 
     function regionAt(x: real, y: real): var {
         let hit = null;
@@ -88,12 +88,12 @@ Item {
                     radius: Appearance.rounding.small
                     color: !area.leaf || area.modelData.kind === "space" ? "transparent" : Appearance.colour.fillStrong
                     stroke: area.chosen ? Appearance.colour.accent : area.modelData.kind === "space" ? Appearance.colour.textGhost : "transparent"
-                    strokeWidth: area.chosen ? 2 : 1
+                    strokeWidth: area.chosen ? Appearance.stroke.ring : Appearance.stroke.line
                 }
 
                 StyledText {
                     x: Appearance.padding.small
-                    y: Appearance.padding.small / 2
+                    y: Appearance.padding.hair
                     width: parent.width - Appearance.padding.small * 2
                     visible: area.empty && area.height > Appearance.font.line.small * 2
                     text: area.modelData.id
@@ -154,7 +154,7 @@ Item {
                     radius: Appearance.rounding.small
                     color: window.index === 0 ? Appearance.colour.accentFill : Appearance.colour.fillStronger
                     stroke: window.inChosen ? Appearance.colour.accent : "transparent"
-                    strokeWidth: 1
+                    strokeWidth: Appearance.stroke.line
                 }
 
                 Column {

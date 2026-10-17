@@ -92,12 +92,15 @@ Item {
         anchors.fill: parent
         radius: Appearance.rounding.normal
         color: Appearance.colour.fill
-        opacity: pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
+        opacity: hoverFade.value
 
-        Behavior on opacity {
-            NumberAnimation {
-                duration: Appearance.animation.fade.fast
-            }
+        Follow {
+            id: hoverFade
+
+            target: pointer.containsMouse || pointer.pressed || scroll.active ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 

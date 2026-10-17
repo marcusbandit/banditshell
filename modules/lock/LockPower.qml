@@ -95,7 +95,7 @@ Item {
             color: Appearance.colour.textDim
             opacity: telling.value
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+            font.pixelSize: Appearance.font.size.small
             renderType: Text.NativeRendering
         }
 
@@ -160,7 +160,7 @@ Item {
                         cornerPower: 2
                         color: press.containsMouse ? Appearance.colour.surfaceSolid : Qt.rgba(Appearance.colour.ink.r, Appearance.colour.ink.g, Appearance.colour.ink.b, 0.85)
                         stroke: Appearance.colour.seam
-                        strokeWidth: 1
+                        strokeWidth: Appearance.stroke.line
                     }
 
                     ProgressRing {

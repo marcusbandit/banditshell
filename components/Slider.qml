@@ -73,7 +73,7 @@ Item {
             height: parent.height
             radius: height / 2
             color: root.lit
-            opacity: 0.55
+            opacity: Appearance.opacity.trail
         }
 
         SquircleRect {
@@ -83,7 +83,7 @@ Item {
             height: parent.height
             radius: width / 2
             color: Appearance.colour.accentText
-            opacity: 0.55
+            opacity: Appearance.opacity.trail
         }
     }
 
@@ -97,13 +97,15 @@ Item {
         radius: width / 2
         color: root.lit
 
-        scale: pointer.pressed ? 1.15 : root.active ? 1.3 : 1
+        scale: swell.value
 
-        Behavior on scale {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutBack
-            }
+        Follow {
+            id: swell
+
+            target: pointer.pressed ? Appearance.press.lift : root.active ? Appearance.press.grab : 1
+            speed: Appearance.animation.revealSpeed
+            epsilon: Appearance.animation.fadeEpsilon
+            startsAtTarget: true
         }
     }
 

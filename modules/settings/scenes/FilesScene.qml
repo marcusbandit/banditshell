@@ -103,7 +103,7 @@ Item {
 
                         width: body.cellWidth
                         height: root.list ? Appearance.font.line.small + 8 : Math.round(28 * root.zoom) + 16 + 4 + 12
-                        opacity: fi.dot ? 0.55 : 1
+                        opacity: fi.dot ? Appearance.opacity.trail : 1
 
                         SquircleRect {
                             anchors.fill: parent
@@ -131,7 +131,7 @@ Item {
                                 text: fi.modelData[0]
                                 elide: Text.ElideRight
                                 font.family: Appearance.font.family
-                                font.pixelSize: 12
+                                font.pixelSize: Appearance.font.size.small
                                 renderType: Text.NativeRendering
                                 color: fi.sel ? Appearance.colour.text : Appearance.colour.textDim
                             }
@@ -217,7 +217,7 @@ Item {
 
                             text: modelData
                             font.family: Appearance.sizes.filesTerminalFont
-                            font.pixelSize: 11
+                            font.pixelSize: Appearance.font.size.small
                             renderType: Text.NativeRendering
                             color: Appearance.colour.textDim
                         }

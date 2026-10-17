@@ -471,7 +471,7 @@ Column {
                     height: parent.height
                     radius: height / 2
                     color: Appearance.colour.text
-                    opacity: 0.55
+                    opacity: Appearance.opacity.trail
                 }
             }
 

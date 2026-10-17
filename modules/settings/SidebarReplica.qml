@@ -116,7 +116,7 @@ Item {
                         Icon {
                             anchors.centerIn: parent
                             name: modelData.windows.length ? Apps.iconFor(Hypr.classOf(modelData.windows[0])) : "stacks"
-                            size: 14
+                            size: Appearance.icon.small
                             color: Appearance.colour.textDim
                         }
                     }

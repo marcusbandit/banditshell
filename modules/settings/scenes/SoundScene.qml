@@ -94,7 +94,7 @@ SceneGauge {
                 height: Audio.muted ? 4 : 4 + (28 * Math.min(1.2, root.v) - 4) * (clock.moving ? swing : 1)
                 radius: 2
                 color: Appearance.colour.text
-                opacity: 0.55
+                opacity: Appearance.opacity.trail
             }
         }
     }

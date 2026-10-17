@@ -102,13 +102,15 @@ Item {
                 width: button.size
                 height: root.ring
 
-                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                scale: pressScale.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                        easing.type: Easing.OutCubic
-                    }
+                Follow {
+                    id: pressScale
+
+                    target: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {
@@ -119,7 +121,7 @@ Item {
                     radius: width / 2
                     color: "transparent"
                     stroke: Appearance.colour.text
-                    strokeWidth: Appearance.font.stem
+                    strokeWidth: Appearance.stroke.ring
                 }
 
                 Icon {
@@ -129,13 +131,13 @@ Item {
                     size: button.small ? root.glyph * 0.8 : root.glyph
                     name: button.modelData.icon
                     fill: button.modelData.primary ? 1 : 0
-                    color: !button.modelData.enabled ? Appearance.colour.textGhost : button.small && !button.modelData.lit ? Appearance.colour.textFaint : Appearance.colour.text
+                    color: !button.modelData.enabled || button.small && !button.modelData.lit ? Appearance.colour.textFaint : Appearance.colour.text
                 }
 
                 SquircleRect {
                     anchors.horizontalCenter: parent.horizontalCenter
                     anchors.top: glyph.bottom
-                    anchors.topMargin: -Appearance.padding.small / 2
+                    anchors.topMargin: -Appearance.padding.hair
                     width: Appearance.font.stem * 3
                     height: width
                     radius: width / 2

@@ -28,7 +28,9 @@ var rLarge = 24;
 
 var power = 5.0;
 
-var padSmall = 6;
+var padHair = 4;
+var padSmall = 8;
 var padNormal = 12;
+var padCard = 16;
 var padLarge = 24;
-var padHuge = 36;
+var padHuge = 32;

@@ -15,7 +15,7 @@ Item {
     readonly property string layout: SettingsView.layoutHover || SettingsState.v("layout")
     readonly property var about: Catalogue.LAYOUTS.find(l => l.id === root.layout) ?? Catalogue.LAYOUTS[0]
     readonly property bool swap: SettingsState.v("dropMode") === "swap"
-    readonly property color pane: Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.paper, 0.09)
+    readonly property color pane: Appearance.colour.pane
 
     SceneClock {
         id: clock
@@ -102,12 +102,12 @@ Item {
                 radius: Appearance.rounding.small
                 color: modelData[2] === 2 ? Appearance.blend(root.pane, Appearance.blend(Appearance.colour.surfaceSolid, Appearance.colour.accent, 0.2), f.lit) : root.pane
                 stroke: Appearance.blend(Appearance.colour.fillStronger, Appearance.colour.accent, f.lit)
-                strokeWidth: 2
+                strokeWidth: Appearance.stroke.ring
 
                 Icon {
                     anchors.centerIn: parent
                     name: modelData[0]
-                    size: 28
+                    size: Appearance.icon.large
                     color: Appearance.colour.textDim
                 }
             }
@@ -120,7 +120,7 @@ Item {
             y: f.y / 100 * desk.height
             z: 3
             name: "near_me"
-            size: 22
+            size: Appearance.icon.normal
             fill: 1
             color: Appearance.colour.text
         }

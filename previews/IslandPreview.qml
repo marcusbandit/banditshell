@@ -280,7 +280,7 @@ ShellRoot {
     FloatingWindow {
         implicitWidth: 200
         implicitHeight: 100
-        color: "#16211c"
+        color: Appearance.colour.surfaceSolid
 
         Island {
             id: island
