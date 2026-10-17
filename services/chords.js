@@ -20,5 +20,5 @@ function chordText(chord) {
 }
 
 function hotkeyCommand(id) {
-    return `banditshell panel launcher run '${String(id).replace(/'/g, "'\\''")}'`;
+    return `banditshell action launcher.run '${String(id).replace(/'/g, "'\\''")}'`;
 }
