@@ -36,7 +36,7 @@ Item {
     readonly property int bubbleMax: 4
     readonly property int announceMs: 2500
 
-    readonly property var high: ["dictation", "launch", "notification"]
+    readonly property var high: ["dictation", "launch", "notification", "alarm", "timer", "external"]
 
     readonly property var activities: {
         const out = [];
@@ -61,7 +61,7 @@ Item {
                     rec: rec
                 });
         if (root.offStage)
-            out.push(...Notices.fresh);
+            out.push(...Notices.fresh, ...Activities.shown);
         return out;
     }
 
@@ -98,7 +98,7 @@ Item {
 
     readonly property var alerts: root.deckEntries.filter(e => !e.leaving)
 
-    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music"), ...(root.offStage ? Notices.settled : []), ...(Notifications.count > 0 ? [
+    readonly property var overviewRows: [...root.activities.filter(a => a.kind !== "music" && a.kind !== "level"), ...(root.offStage ? Notices.settled : []), ...(Notifications.count > 0 ? [
                 {
                     key: "notifications",
                     kind: "notifications",
@@ -227,6 +227,10 @@ Item {
             return n > 1 ? `${n} notifications` : "a notification";
         case "launch":
             return n > 1 ? `${n} launches` : "launch";
+        case "external":
+            return n > 1 ? `${n} activities` : "activity";
+        case "timer":
+            return n > 1 ? `${n} timers` : "timer";
         }
         return key;
     }
@@ -270,7 +274,8 @@ Item {
     readonly property Item stage: scene
 
     function pressable(activity: var): bool {
-        return ["music", "download", "update", "kernel", "restart", "notification", "recording"].includes(activity?.kind ?? "");
+        const kind = activity?.kind ?? "";
+        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer", "alarm"].includes(kind) || (kind === "external" && !!activity.pressable);
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -413,6 +418,11 @@ Item {
             delete told[root.summon];
         }
         root.summon = "";
+        if (g.alarm) {
+            next = ["alarm", ...next.filter(x => x !== "alarm")];
+            held = held.filter(x => x !== "alarm");
+            delete told.alarm;
+        }
         const counted = {};
         const known = {};
         for (const k of Object.keys(g)) {
@@ -482,6 +492,17 @@ Item {
         root.reforming = false;
         if (!root.hovering)
             root.spent = false;
+    }
+
+    property var heeded: []
+
+    function heed(): void {
+        const wanted = (root.groups.timer?.items ?? []).filter(i => i.ending).map(i => i.key);
+        const fresh = wanted.some(k => !root.heeded.includes(k));
+        if (wanted.join("|") !== root.heeded.join("|"))
+            root.heeded = wanted;
+        if (fresh)
+            root.summon = "timer";
     }
 
     function tapBubble(key: string): void {
@@ -615,7 +636,10 @@ Item {
     onVoiceChanged: if (root.voice)
         Hypr.resync()
 
-    onGroupsChanged: Qt.callLater(root.arrange)
+    onGroupsChanged: {
+        root.heed();
+        Qt.callLater(root.arrange);
+    }
     onStackKeysChanged: root.mergeStack()
     onBubbleKeysChanged: root.mergeBubbles()
     onAlertingChanged: if (!root.alerting && root.hovering && !root.expanded && !root.pulling)
@@ -1341,6 +1365,9 @@ Item {
                         enabled: row.here && (root.openness === 0 || row.carried)
 
                         onChosen: root.choose(row.item)
+                        onActed: name => root.choose(Object.assign({}, row.item, {
+                                action: name
+                            }))
                     }
                 }
             }
