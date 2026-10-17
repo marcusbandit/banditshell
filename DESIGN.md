@@ -3711,8 +3711,9 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
 - `phrases`: `{ head, picks }` entries Tab completion offers, like
   `{ head: "emoji ", picks: ["smile", "heart"] }`.
 
-Scores: apps rank about 1 to 4 (4 for an exact name) and settings at least
-0.5. A row that shows up for a plain word the user did not clearly mean for a
+Scores: apps rank about 1 to 4 (4 for an exact name). Files whose name
+matches rank 0 down to -3, settings sit under every matching file (-4 to
+-7), and lines found inside files come last. A row that shows up for a plain word the user did not clearly mean for a
 source stays near or below 0.5 (an emoji whose name starts with the word, or
 a plain question for the AI, may reach 0.8, still under an app prefix match);
 a clear ask of a source puts its first row at Infinity. Rows the user
