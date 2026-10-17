@@ -279,13 +279,13 @@ test("version prints the release, commit, checkout and api, and as JSON", () => 
     const run = cli(["version"]);
     assert.strictEqual(run.code, 0, run.err);
     const newest = JSON.parse(fs.readFileSync(path.join(ROOT, "docs/whats-new.json"), "utf8")).entries[0].id;
-    assert.match(run.out, new RegExp(`^release\\s+${newest}$`, "m"));
+    assert.match(run.out, new RegExp(`^version\\s+${newest}$`, "m"));
     assert.match(run.out, new RegExp(`^checkout\\s+${ROOT.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "m"));
     assert.match(run.out, new RegExp(`^api\\s+${table.api}$`, "m"));
     for (const label of ["commit", "branch", "quickshell", "hyprland"])
         assert.match(run.out, new RegExp(`^${label}\\s+\\S`, "m"));
     const json = JSON.parse(cli(["version", "--json"]).out);
-    assert.strictEqual(json.release, newest);
+    assert.strictEqual(json.version, newest);
     assert.strictEqual(json.api, table.api);
     assert.strictEqual(json.checkout, ROOT);
 });

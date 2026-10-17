@@ -27,7 +27,7 @@ Singleton {
     readonly property string remoteHead: root.target.slice(0, 7)
 
     property string headBranch: ""
-    readonly property bool paused: root.headBranch !== "" && root.headBranch !== root.branch
+    readonly property bool paused: root.headBranch !== "" && !Words.following(root.headBranch, root.branch)
     readonly property bool diverged: root.behind > 0 && root.ahead > 0
 
     property string error: ""
@@ -49,7 +49,11 @@ Singleton {
 
     property bool checking: false
 
-    readonly property string branch: Config.values.updates.branch
+    readonly property string channel: Words.channelOf(Config.values.updates.channel)
+    readonly property string branch: Words.branchFor(Config.values.updates.channel, Config.values.updates.branch)
+    readonly property string channelLabel: Words.channelText(Config.values.updates.channel, Config.values.updates.branch)
+    readonly property string version: WhatsNew.version
+    property string targetVersion: ""
     readonly property string remote: Config.values.updates.remote
 
     readonly property string dir: Quickshell.shellDir
@@ -371,6 +375,7 @@ Singleton {
                 const counts = got.state === "available" || got.state === "diverged";
                 root.headBranch = got.headBranch ?? "";
                 root.target = root.commit(got.target ?? "") ? got.target : "";
+                root.targetVersion = got.targetVersion ?? "";
                 root.behind = counts ? Number(got.behind) || 0 : 0;
                 root.ahead = counts ? Number(got.ahead) || 0 : 0;
                 root.entries = got.entries ?? [];

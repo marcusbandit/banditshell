@@ -182,6 +182,11 @@ test("dev lint offers its flags, then the rule ids after --rule", () => {
     assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10"]);
 });
 
+test("dev promote offers its two flags and no push", () => {
+    assert.deepStrictEqual(bashComplete("dev", "promote", ""), ["--no-fetch", "--remote"]);
+    assert.ok(bashComplete("dev", "").includes("promote"));
+});
+
 test("flags complete after the words they belong to", () => {
     assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
     assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);

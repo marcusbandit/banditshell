@@ -15,6 +15,8 @@ Singleton {
 
     property bool checked: false
 
+    readonly property string version: WhatsNewLog.newestId(root.entries)
+
     readonly property bool ready: Config.loaded && root.checked
 
     readonly property bool firstRun: Config.fresh && Config.values.updates.seen === ""

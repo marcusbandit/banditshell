@@ -1876,7 +1876,9 @@ Singleton {
         return out;
     }
 
-    readonly property string version: Device.version || "dev"
+    readonly property string version: Update.version || Device.version || "dev"
+
+    readonly property string followedBranch: Update.branch
 
     readonly property string updateStatus: {
         switch (Update.state) {

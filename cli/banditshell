@@ -144,6 +144,11 @@
 #
 # update                         the shell's own version: look, apply, go back
 #   banditshell update           one line: where this copy stands
+#                                updates.channel in config.json picks what is
+#                                followed: main (every push, the default) or
+#                                stable (moves only when a tested main is
+#                                promoted); updates.branch, when it is not main,
+#                                follows that branch instead
 #   banditshell update check [--json] [--no-fetch]
 #                                fetch, then say what the new version changes
 #                                (restart or reload, commands, dependencies, your
@@ -198,9 +203,10 @@
 #
 # version                        which build is installed
 #   banditshell version [--json]
-#                                the newest what's-new id, the commit and branch,
-#                                the checkout, the API number and the Quickshell
-#                                and Hyprland versions
+#                                the version (the newest what's-new id), the update
+#                                channel and the branch it follows, the commit and
+#                                branch, the checkout, the API number and the
+#                                Quickshell and Hyprland versions
 #
 # completions                    tab completion for zsh and bash
 #   banditshell completions [install|status|remove|print] [zsh|bash]
@@ -243,6 +249,12 @@
 #                                today's counts as the new baseline
 #   banditshell dev lint --rule <rule>
 #                                one rule only, L1 to L10
+#   banditshell dev promote [--remote <name>] [--no-fetch]
+#                                check that main is fit to be the stable channel
+#                                (tests, modules, house rules, compile check, a
+#                                what's-new id) and print the git commands that
+#                                would move stable and tag the version; it
+#                                pushes nothing
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -1823,14 +1835,16 @@ route_api() {
 }
 
 route_version() {
-    local release commit branch quickshell hyprland number
+    local release commit branch quickshell hyprland number channel follows
     release=$(grep -m1 -o '"id": *"[^"]*"' "$SHELL_DIR/docs/whats-new.json" 2>/dev/null | sed 's/.*: *"\(.*\)"/\1/') || release=""
     commit=$(git -C "$SHELL_DIR" describe --always --dirty --tags 2>/dev/null) || commit=""
     branch=$(git -C "$SHELL_DIR" rev-parse --abbrev-ref HEAD 2>/dev/null) || branch=""
     quickshell=$(qs --version 2>/dev/null | head -n 1 | sed 's/ (revision.*//') || quickshell=""
     hyprland=$(Hyprland --version 2>/dev/null | head -n 1 | sed 's/ built from.*//') || hyprland=""
-    number=$(api_number)
-    printf '%-11s %s\n' release "${release:-unknown}" commit "${commit:-unknown}" branch "${branch:-unknown}" \
+    number=$(api_number) || number=""
+    channel=$(config_leaf updates channel main)
+    follows=$(update_branch_for "$channel" "$(config_leaf updates branch main)")
+    printf '%-11s %s\n' version "${release:-unknown}" channel "$channel" follows "$follows" commit "${commit:-unknown}" branch "${branch:-unknown}" \
         checkout "$SHELL_DIR" api "${number:-none}" quickshell "${quickshell:-unknown}" hyprland "${hyprland:-unknown}"
 }
 
@@ -2347,6 +2361,11 @@ route_dev() {
             ;;
         *) nope dev "lint $1" ;;
         esac ;;
+    promote)
+        case "${1:-}" in
+        "" | --remote | --no-fetch) exec bash "$SHELL_DIR/scripts/promote-stable.sh" "$@" ;;
+        *) nope dev "promote $1" ;;
+        esac ;;
     check)
         case "${1:-}" in
         "") check_everything ;;
@@ -2441,7 +2460,7 @@ config_leaf() {
 
 UPDATE_JSON=0
 UPDATE_APPLYING=0
-U_DIR="" U_REMOTE="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
+U_DIR="" U_REMOTE="" U_CHANNEL="" U_BRANCH="" U_BRANCH_NOW="" U_HEAD="" U_TARGET="" U_BEHIND=0 U_AHEAD=0 U_STATE=""
 A_RESTART=0 A_HELPERS=0 A_DEPS="" A_DIRTY="" A_BLOCKED="" A_BUTTON="" A_SUMMARY=""
 U_WARNINGS=()
 HEALTH_WHY=""
@@ -2485,6 +2504,17 @@ update_phase() {
     fi
 }
 
+update_branch_for() {
+    case "$2" in
+    "" | main) [ "$1" = stable ] && echo stable || echo main ;;
+    *) echo "$2" ;;
+    esac
+}
+
+update_on_branch() {
+    [ "$U_BRANCH_NOW" = "$U_BRANCH" ] || { [ "$U_BRANCH" = stable ] && [ "$U_BRANCH_NOW" = main ]; }
+}
+
 update_prepare() {
     local top="" saved
     top=$(git -C "$SHELL_DIR" rev-parse --show-toplevel 2>/dev/null || true)
@@ -2499,7 +2529,12 @@ update_prepare() {
     SHELL_DIR="$top"
     U_DIR="$top"
     U_REMOTE=$(config_leaf updates remote origin)
-    U_BRANCH=$(config_leaf updates branch main)
+    U_CHANNEL=$(config_leaf updates channel main)
+    case "$U_CHANNEL" in
+    stable | main) ;;
+    *) update_fail "fatal: updates.channel in config.json is \"$U_CHANNEL\", and it has to be stable or main" ;;
+    esac
+    U_BRANCH=$(update_branch_for "$U_CHANNEL" "$(config_leaf updates branch main)")
     case "$U_REMOTE:$U_BRANCH" in
     -* | *:-* | :* | *:) update_fail "fatal: the update remote or branch is not a name git can take" ;;
     esac
@@ -2528,7 +2563,7 @@ update_read() {
     [ -n "$U_TARGET" ] || update_fail "fatal: there is no fetched copy of $U_REMOTE/$U_BRANCH yet"
     U_BEHIND=$(ugit rev-list --count --end-of-options "HEAD..$U_REMOTE/$U_BRANCH" 2>/dev/null || echo 0)
     U_AHEAD=$(ugit rev-list --count --end-of-options "$U_REMOTE/$U_BRANCH..HEAD" 2>/dev/null || echo 0)
-    if [ "$U_BRANCH_NOW" != "$U_BRANCH" ]; then
+    if ! update_on_branch; then
         U_STATE=paused U_BEHIND=0 U_AHEAD=0
     elif [ "$U_BEHIND" -gt 0 ] && [ "$U_AHEAD" -gt 0 ]; then
         U_STATE=diverged
@@ -2550,16 +2585,17 @@ update_fetched_at() {
 }
 
 update_meta() {
-    printf '%s\n' "state=$U_STATE" "head=$U_HEAD" "target=$U_TARGET" "branch=$U_BRANCH" "headBranch=$U_BRANCH_NOW" \
+    printf '%s\n' "state=$U_STATE" "head=$U_HEAD" "target=$U_TARGET" "channel=$U_CHANNEL" "branch=$U_BRANCH" "headBranch=$U_BRANCH_NOW" \
         "remote=$U_REMOTE" "behind=$U_BEHIND" "ahead=$U_AHEAD" "skipped=$([ "$U_STATE" = skipped ] && echo 1 || echo 0)" \
-        "checkedAt=$(update_fetched_at)"
+        "checkedAt=$(update_fetched_at)" "version=$(update_label "$U_HEAD")" "targetVersion=$(update_label "$U_TARGET")"
 }
 
 update_meta_json() {
-    printf '{"state":%s,"head":%s,"target":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s' \
-        "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_BRANCH")" \
+    printf '{"state":%s,"head":%s,"target":%s,"channel":%s,"branch":%s,"headBranch":%s,"remote":%s,"behind":%s,"ahead":%s,"skipped":%s,"checkedAt":%s,"version":%s,"targetVersion":%s' \
+        "$(json_quote "$U_STATE")" "$(json_quote "$U_HEAD")" "$(json_quote "$U_TARGET")" "$(json_quote "$U_CHANNEL")" "$(json_quote "$U_BRANCH")" \
         "$(json_quote "$U_BRANCH_NOW")" "$(json_quote "$U_REMOTE")" "$U_BEHIND" "$U_AHEAD" \
-        "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)"
+        "$([ "$U_STATE" = skipped ] && echo true || echo false)" "$(update_fetched_at)" \
+        "$(json_quote "$(update_label "$U_HEAD")")" "$(json_quote "$(update_label "$U_TARGET")")"
 }
 
 update_facts() {
@@ -2822,7 +2858,7 @@ update_apply() {
         U_AHEAD=0
         U_STATE=current
         [ "$U_BEHIND" -eq 0 ] || U_STATE=available
-        [ "$U_BRANCH_NOW" = "$U_BRANCH" ] || U_STATE=paused
+        update_on_branch || U_STATE=paused
     else
         update_fetch
         update_read

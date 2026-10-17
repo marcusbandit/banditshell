@@ -6,7 +6,7 @@ const path = require("node:path");
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/whatsnew.js"), "utf8");
 const WhatsNew = new Function(src
-    + "\nreturn { parse, accumulated, severityOf, TYPES, IMPACT_KEYS };")();
+    + "\nreturn { parse, accumulated, severityOf, newestId, tagFor, TYPES, IMPACT_KEYS };")();
 
 const log = [
     { id: "third", date: "2026-09-03", changes: [{ type: "bugs", severity: "minor", text: "Fixed the thing." }] },
@@ -158,4 +158,19 @@ test("an entry is Major when any change in it is", () => {
     assert.strictEqual(WhatsNew.severityOf(log[2]), "major");
     assert.strictEqual(WhatsNew.severityOf({ id: "e", changes: [] }), "minor");
     assert.strictEqual(WhatsNew.severityOf(undefined), "minor");
+});
+
+test("the version is the newest real entry's id, the example skipped", () => {
+    assert.strictEqual(WhatsNew.newestId(log), "third");
+    assert.strictEqual(WhatsNew.newestId([{ id: "shape", example: true, changes: [] }, { id: "2026-10-17", changes: [] }]), "2026-10-17");
+    assert.strictEqual(WhatsNew.newestId([{ id: "shape", example: true, changes: [] }]), "");
+    assert.strictEqual(WhatsNew.newestId([]), "");
+    assert.strictEqual(WhatsNew.newestId(undefined), "");
+});
+
+test("a date id becomes the git tag for it, anything else becomes none", () => {
+    assert.strictEqual(WhatsNew.tagFor("2026-10-17"), "v2026.10.17");
+    assert.strictEqual(WhatsNew.tagFor("2026-10-16-7"), "v2026.10.16-7");
+    assert.strictEqual(WhatsNew.tagFor("v1"), "");
+    assert.strictEqual(WhatsNew.tagFor(""), "");
 });
