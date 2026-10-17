@@ -1,0 +1,25 @@
+{
+  "name": "notifications",
+  "summary": "the notification server, history and popups",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/notifications", "previews/NotificationPreview.qml"],
+    "services": ["AlertSounds", "AppNotifications", "NotificationBrief", "NotificationEntry", "Notifications"],
+    "js": ["services/notification-rules.js", "services/quiet-hours.js"],
+    "assets": ["assets/sounds"],
+    "scripts": ["scripts/alert-sounds.py"],
+    "tests": ["tests/alert-sounds.test.js", "tests/notification-rules.test.js", "tests/quiet-hours.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "apps"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["AppNotifications", "Notifications"],
+    "ipc": ["notifications", "quiet"]
+  },
+  "config": {
+    "namespace": ["notifications", "sound"],
+    "reads": ["control"]
+  }
+}

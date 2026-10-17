@@ -1,0 +1,23 @@
+{
+  "name": "capture",
+  "summary": "screen recording and region picking",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/picker"],
+    "services": ["ScreenRecorder"],
+    "js": ["services/recording.js"],
+    "scripts": ["scripts/screen-record.sh"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["ScreenRecorder"],
+    "ipc": ["picker"]
+  },
+  "config": {
+    "namespace": ["picker"],
+    "reads": ["control"]
+  }
+}

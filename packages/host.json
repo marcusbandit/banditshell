@@ -1,0 +1,35 @@
+{
+  "name": "host",
+  "summary": "the shell window, chassis, window registry and the IPC front",
+  "layer": 2,
+  "owns": {
+    "qml": [
+      "modules/Chassis.qml",
+      "modules/Cli.qml",
+      "modules/FrameExclusions.qml",
+      "modules/FullscreenBorder.qml",
+      "modules/SettingsCorner.qml",
+      "modules/ShellWindow.qml",
+      "modules/Tooltip.qml",
+      "modules/qmldir",
+      "preview.qml",
+      "previews/qmldir",
+      "shell.qml"
+    ],
+    "services": ["Shell"],
+    "scripts": ["scripts/bash-completion.sh", "scripts/completion-rules.sh", "scripts/zsh-completion.sh"],
+    "tests": ["tests/completion.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["border"]
+  },
+  "config": {
+    "namespace": [],
+    "reads": ["edge"]
+  }
+}

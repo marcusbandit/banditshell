@@ -1,0 +1,22 @@
+{
+  "name": "updates",
+  "summary": "update checks, pacman and what's new",
+  "layer": 4,
+  "owns": {
+    "services": ["Pacman", "Update", "WhatsNew"],
+    "js": ["services/pacman.js", "services/update.js", "services/whatsnew.js"],
+    "tests": ["tests/pacman.test.js", "tests/update.test.js", "tests/whatsnew.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Pacman", "Update"],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["updates", "packages"],
+    "reads": []
+  }
+}

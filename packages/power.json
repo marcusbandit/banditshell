@@ -1,0 +1,32 @@
+{
+  "name": "power",
+  "summary": "battery, charge limit, power profile, lid and idle",
+  "layer": 4,
+  "owns": {
+    "qml": ["previews/BatteryPreview.qml"],
+    "services": ["Battery", "ChargeLimit", "Idle", "Lid", "Power", "PowerProfile", "Suspension"],
+    "js": [
+      "services/battery.js",
+      "services/chargelimit.js",
+      "services/idle.js",
+      "services/lid.js",
+      "services/powerprofile.js",
+      "services/suspension.js"
+    ],
+    "assets": ["assets/polkit"],
+    "scripts": ["scripts/charge-limit.sh"],
+    "tests": ["tests/idle.test.js", "tests/power.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "notifications"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Battery", "Idle", "Power", "Suspension"],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["battery", "power", "idle"],
+    "reads": []
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "name": "stream",
+  "summary": "streamer mode and OBS",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/stream"],
+    "services": ["Obs", "StreamState"],
+    "js": ["services/obs.js"],
+    "tests": ["tests/obs.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "apps", "audio", "network"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["stream"]
+  },
+  "config": {
+    "namespace": ["obs", "stream"],
+    "reads": []
+  }
+}

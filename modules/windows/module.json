@@ -1,0 +1,23 @@
+{
+  "name": "windows",
+  "summary": "window previews, tiling layouts and the layout workshop",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/windows", "modules/workshop", "previews/WindowPreview.qml"],
+    "services": ["LayoutDraft", "WindowLayouts", "WorkshopLayouts"],
+    "js": ["services/layout-lua.js", "services/layout-model.js"],
+    "tests": ["tests/fixtures/stage.lua", "tests/layout-workshop.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "apps"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": []
+  },
+  "config": {
+    "namespace": ["windows"],
+    "reads": ["control"]
+  }
+}

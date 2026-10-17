@@ -1,0 +1,23 @@
+{
+  "name": "clock",
+  "summary": "timers, alarms, world clocks and weather",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/cli.js"],
+    "services": ["Clock", "Localisation", "Weather"],
+    "js": ["services/alarms.js", "services/localisation.js"],
+    "tests": ["tests/alarms.test.js", "tests/cli.test.js", "tests/localisation.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Weather"],
+    "ipc": ["timer", "alarm", "zone"]
+  },
+  "config": {
+    "namespace": ["clock", "weather"],
+    "reads": ["region"]
+  }
+}

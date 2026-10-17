@@ -1,0 +1,21 @@
+{
+  "name": "island",
+  "summary": "the dynamic island and its activities",
+  "layer": 5,
+  "owns": {
+    "qml": ["modules/island", "previews/IslandPreview.qml"],
+    "services": ["Notices"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "notifications", "media", "apps", "clock"],
+    "optional": ["clipboard", "capture", "updates", "files"]
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["island", "inspect"]
+  },
+  "config": {
+    "namespace": ["island"],
+    "reads": ["control"]
+  }
+}

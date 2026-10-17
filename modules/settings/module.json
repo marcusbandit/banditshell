@@ -1,0 +1,37 @@
+{
+  "name": "settings",
+  "summary": "the settings panel",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/settings", "previews/SettingsPreview.qml"],
+    "services": ["Modes", "Settings", "ThemeSwitcher"],
+    "scripts": ["scripts/pick-file.py", "scripts/pointing-devices.py"],
+    "tests": ["tests/pointing-devices.test.js", "tests/restore.test.js", "tests/settings.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["settings", "mode"]
+  },
+  "config": {
+    "namespace": ["settings", "corner", "menu"],
+    "reads": [
+      "access",
+      "anim",
+      "colour",
+      "control",
+      "edge",
+      "font",
+      "material",
+      "polkit",
+      "region",
+      "rounding",
+      "sourceEdits",
+      "theme",
+      "themeFromWallpaper"
+    ]
+  }
+}

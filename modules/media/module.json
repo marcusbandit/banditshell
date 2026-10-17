@@ -1,0 +1,24 @@
+{
+  "name": "media",
+  "summary": "media players, lyrics and the player widgets",
+  "layer": 2,
+  "owns": {
+    "qml": ["modules/media"],
+    "services": ["Lyrics", "Media"],
+    "js": ["services/lyrics.js"],
+    "scripts": ["scripts/spicy-lyrics.py"],
+    "tests": ["tests/lyrics.test.js"]
+  },
+  "requires": {
+    "packages": ["core", "compositor"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": ["Media"],
+    "ipc": ["media"]
+  },
+  "config": {
+    "namespace": ["media"],
+    "reads": []
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "quickcontrols",
+  "summary": "the quick controls panel",
+  "layer": 3,
+  "owns": {
+    "qml": ["modules/quickcontrols", "previews/QuickControlsPreview.qml"]
+  },
+  "requires": {
+    "packages": ["core", "compositor", "audio", "display"],
+    "optional": []
+  },
+  "provides": {
+    "singletons": [],
+    "ipc": ["quickcontrols"]
+  },
+  "config": {
+    "namespace": ["screen.grabFraction", "screen.linger"],
+    "reads": ["control"]
+  }
+}
