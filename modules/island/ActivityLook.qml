@@ -134,6 +134,13 @@ QtObject {
                 trailing: "icon",
                 trailingIcon: "chevron_right"
             };
+        case "held":
+            return {
+                icon: "notifications_paused",
+                text: `${a.count} held while quiet`,
+                trailing: "icon",
+                trailingIcon: "chevron_right"
+            };
         case "quiet":
             return {
                 icon: "do_not_disturb_on",

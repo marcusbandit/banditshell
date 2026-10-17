@@ -1,11 +1,11 @@
-const DEFAULT_RULE = { pop: true, snd: true, lock: false };
+const DEFAULT_RULE = { pop: true, snd: true, lock: false, muteUntil: 0 };
 
 function ruleFor(rules, key) {
     const mine = rules && key && Object.prototype.hasOwnProperty.call(rules, key) ? rules[key] : null;
     const out = Object.assign({}, DEFAULT_RULE);
     if (mine && typeof mine === "object")
         for (const field of Object.keys(DEFAULT_RULE))
-            if (typeof mine[field] === "boolean")
+            if (typeof mine[field] === typeof DEFAULT_RULE[field] && (typeof mine[field] !== "number" || (isFinite(mine[field]) && mine[field] >= 0)))
                 out[field] = mine[field];
     return out;
 }

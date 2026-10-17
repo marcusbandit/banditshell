@@ -14,6 +14,7 @@ QtObject {
 
     property bool durable: false
     property bool seen: false
+    property bool withheld: false
 
     property string appName: ""
     property string summary: ""

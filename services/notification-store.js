@@ -47,7 +47,8 @@ function serialise(entries, pictureLimit) {
             image: isBorrowed(e.image) || isTemporary(e.image) ? "" : text(e.image),
             picture: withPicture ? name : "",
             pinned: !!e.pinned,
-            seen: !!e.seen
+            seen: !!e.seen,
+            withheld: !!e.withheld
         });
     }
     return { version: VERSION, entries: kept };
@@ -93,7 +94,8 @@ function restore(raw, limit, known, picturesDir) {
             image: isBorrowed(r.image) || isTemporary(r.image) ? "" : text(r.image),
             cached: PICTURE_NAME.test(text(r.picture)) && picturesDir ? `${picturesDir}/${r.picture}` : "",
             pinned: !!r.pinned,
-            seen: !!r.seen
+            seen: !!r.seen,
+            withheld: !!r.withheld
         });
     }
     out.sort((a, b) => b.time - a.time);

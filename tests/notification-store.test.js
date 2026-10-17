@@ -41,6 +41,12 @@ test("an entry survives a round trip through the file", () => {
     assert.strictEqual(back.summary, "Ida");
 });
 
+test("an entry held back while quiet is still held back after a restart", () => {
+    const raw = JSON.stringify(Store.serialise([entry("a", 5000, { withheld: true }), entry("b", 4000)], 10));
+    const back = Store.restore(raw, 50, [], DIR);
+    assert.deepStrictEqual(back.map(e => e.withheld), [true, false]);
+});
+
 test("only durable entries are written, so a preview never reaches the file", () => {
     const saved = Store.serialise([entry("a", 1000), entry("b", 2000, { durable: false })], 10);
     assert.deepStrictEqual(saved.entries.map(e => e.id), ["a"]);
