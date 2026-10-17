@@ -12,7 +12,7 @@ Item {
 
     property bool wanted: false
 
-    property real progress: 0
+    readonly property real progress: cover.value
     property real seed: 0
     property bool waited: false
 
@@ -20,18 +20,12 @@ Item {
     readonly property bool showing: root.wanted && (root.ready || root.waited)
 
     function open(): void {
-        closing.stop();
-        if (root.progress === 0)
+        if (cover.value === 0)
             root.seed = Math.random() * 6.283;
-        if (root.progress < 1)
-            opening.start();
     }
 
     function close(): void {
-        opening.stop();
         root.waited = false;
-        if (root.progress > 0)
-            closing.start();
     }
 
     onShowingChanged: if (root.showing)
@@ -54,24 +48,12 @@ Item {
         seed: root.seed
     }
 
-    NumberAnimation {
-        id: opening
+    Follow {
+        id: cover
 
-        target: root
-        property: "progress"
-        to: 1
-        duration: Appearance.sizes.wallpaperReveal
-        easing.type: Easing.OutCubic
-    }
-
-    NumberAnimation {
-        id: closing
-
-        target: root
-        property: "progress"
-        to: 0
-        duration: Math.round(Appearance.sizes.wallpaperReveal * 0.6)
-        easing.type: Easing.OutCubic
+        target: root.showing ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.002
     }
 
     Timer {
