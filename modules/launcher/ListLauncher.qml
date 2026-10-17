@@ -148,6 +148,7 @@ LauncherConcept {
     }
 
     onHidden: {
+        FileSearch.halt();
         sheet.close();
         Assistant.following = false;
         if (!Assistant.inPlace)
