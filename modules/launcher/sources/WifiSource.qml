@@ -31,12 +31,13 @@ QtObject {
             wifi: 14
         })
 
-    readonly property var barIcons: ["signal_wifi_0_bar", "network_wifi_1_bar", "network_wifi_2_bar", "network_wifi_3_bar", "signal_wifi_4_bar"]
-    readonly property var lockedIcons: ["signal_wifi_0_bar", "network_wifi_1_bar_locked", "network_wifi_2_bar_locked", "network_wifi_3_bar_locked", "network_wifi_locked"]
+    readonly property var strengthIcons: ["wifi_1_bar", "wifi_2_bar", "wifi"]
 
     function iconFor(n: var): string {
-        const bars = Math.max(0, Math.min(4, Math.ceil(Network.percent(n) / 25)));
-        return (Network.secured(n) && !n.known ? root.lockedIcons : root.barIcons)[bars];
+        if (Network.secured(n) && !n.known)
+            return "wifi_lock";
+        const steps = root.strengthIcons.length;
+        return root.strengthIcons[Math.min(steps - 1, Math.floor(Network.percent(n) / 100 * steps))];
     }
 
     function detailFor(n: var): string {
