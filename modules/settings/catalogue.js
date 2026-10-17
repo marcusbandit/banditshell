@@ -400,7 +400,9 @@ const PAGES_SOURCE = {
                 { n: [], icon: "front_hand", label: "Skin tone", k: "skinTone", kind: "choice", o: [["none", "✋ default"], ["light", "✋🏻 light"], ["medium-light", "✋🏼 medium light"], ["medium", "✋🏽 medium"], ["medium-dark", "✋🏾 medium dark"], ["dark", "✋🏿 dark"]], cfg: "launcher.typing.skinTone", kw: "emoji skin tone hands people colour",
                     why: "Emoji with people and hands come in this tone. More on an emoji row still offers every tone." },
                 { n: [], icon: "content_paste_search", label: "Clipboard in search", k: "clipboardInSearch", kind: "toggle", cfg: "launcher.typing.clipboard", kw: "clipboard history search results paste",
-                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." }
+                    why: "Words you type also find recent clipboard entries. Typing clip shows them either way." },
+                { n: [], icon: "notifications", label: "Notifications in search", k: "notificationsInSearch", kind: "toggle", cfg: "launcher.typing.notifications", kw: "notification history search results messages private",
+                    why: "Words you type also find the text of recent notifications. Off by default because message text on screen is private. Typing notifications shows them either way." }
             ] },
             { t: "Snippets", rows: [
                 { n: [], kind: "w", w: "snippets", kw: "snippets saved text expand keyword placeholders" }

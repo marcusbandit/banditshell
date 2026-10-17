@@ -66,3 +66,95 @@ function threads(entries) {
     }
     return out.map(t => ({ id: `${t.key}\u0003${t.oldest}`, key: t.key, app: t.app, entries: t.entries, newest: t.newest }));
 }
+
+const HEADS = ["notifications", "notification", "notifs", "notif"];
+const QUALIFIERS = ["unread", "held"];
+
+function ask(text) {
+    const typed = String(text ?? "").trim();
+    const parts = typed.toLowerCase().split(/\s+/).filter(w => w);
+    const out = { explicit: false, unread: false, held: false, app: "", term: "", text: typed };
+    if (parts.length === 0)
+        return out;
+    let from = 0;
+    if (HEADS.includes(parts[0])) {
+        out.explicit = true;
+        from = 1;
+    } else if (QUALIFIERS.includes(parts[0])) {
+        out.explicit = true;
+    } else {
+        out.term = parts.join(" ");
+        return out;
+    }
+    const free = [];
+    for (let i = from; i < parts.length; i++) {
+        const word = parts[i];
+        if (word === "unread") {
+            out.unread = true;
+        } else if (word === "held") {
+            out.held = true;
+        } else if (word === "from" && i + 1 < parts.length && !out.app) {
+            out.app = parts[++i];
+        } else {
+            free.push(word);
+        }
+    }
+    out.term = free.join(" ");
+    return out;
+}
+
+function appMatches(entry, token) {
+    const want = String(token ?? "").toLowerCase();
+    if (!want)
+        return true;
+    return String(entry?.appName ?? "").toLowerCase().includes(want) || appOf(entry).toLowerCase().includes(want);
+}
+
+function haystack(entry) {
+    return `${entry?.appName ?? ""} ${entry?.summary ?? ""} ${entry?.body ?? ""}`.toLowerCase();
+}
+
+function matches(entry, asked) {
+    if (!entry || entry.leaving)
+        return false;
+    if (asked.unread && entry.seen)
+        return false;
+    if (asked.held && !entry.withheld)
+        return false;
+    if (asked.app && !appMatches(entry, asked.app))
+        return false;
+    const hay = haystack(entry);
+    return String(asked.term ?? "").split(" ").every(word => !word || hay.includes(word));
+}
+
+function find(entries, asked) {
+    const kept = (entries ?? []).filter(entry => matches(entry, asked));
+    if (!asked.term)
+        return threads(kept);
+    return kept.map((entry, index) => ({ entry, index })).sort((a, b) => (b.entry.time ?? 0) - (a.entry.time ?? 0) || a.index - b.index).map(({ entry }) => ({ id: `${entry.id}`, key: threadKey(entry), app: appOf(entry), entries: [entry], newest: entry }));
+}
+
+function apps(entries, limit) {
+    const seen = new Set();
+    const out = [];
+    for (const entry of (entries ?? []).slice().sort((a, b) => (b.time ?? 0) - (a.time ?? 0))) {
+        const name = String(entry?.appName ?? "").trim().toLowerCase();
+        if (!name || name.includes(" ") || seen.has(name))
+            continue;
+        seen.add(name);
+        out.push(name);
+        if (out.length >= limit)
+            break;
+    }
+    return out;
+}
+
+function line(entry, count, now) {
+    const parts = [String(entry?.appName ?? "")];
+    if (count > 1)
+        parts.push(String(count));
+    const when = age(entry?.time, now);
+    if (when)
+        parts.push(when);
+    return parts.filter(p => p).join(" \u00b7 ");
+}

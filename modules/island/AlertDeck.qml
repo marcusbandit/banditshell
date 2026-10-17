@@ -18,6 +18,7 @@ Item {
 
     signal dismissed(var entry)
     signal kept(var entry)
+    signal history
     signal advanced(bool forward, int count, var previous)
 
     readonly property real shuffleSpeed: Appearance.animation.revealSpeed * 0.45
@@ -389,6 +390,21 @@ Item {
             color: Appearance.colour.textFaint
             opacity: 1 - root.fanned
             visible: opacity > 0.01
+        }
+
+        Button {
+            id: historyButton
+
+            anchors.left: parent.left
+            anchors.leftMargin: Appearance.padding.card
+            y: (root.footerHeight - Appearance.padding.card - height) / 2
+            size: 0
+            style: "outlined"
+            icon: "notifications"
+            text: "all notifications"
+            opacity: root.fanned
+            visible: opacity > 0.01
+            onClicked: root.history()
         }
 
         Button {

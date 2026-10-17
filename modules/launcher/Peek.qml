@@ -20,6 +20,8 @@ Item {
     readonly property string peekPath: root.row?.peekPath ?? (root.row?.kind === "file" ? root.row.path : "")
     readonly property bool peekDir: root.row?.peekPath ? !!root.row.peekDir : !!root.row?.dir
     readonly property bool isFile: !!root.peekPath && !root.peekDir
+    readonly property Component cardPart: root.row?.peekCard ?? null
+    readonly property bool carded: root.cardPart !== null
     readonly property var clip: root.row?.kind === "clipboard" ? root.row.entry : null
     readonly property string clipText: root.row?.peekText ? root.row.peekText : root.clip && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
     readonly property string picture: root.isFile && Search.isPicture(root.peekPath) ? root.peekPath : root.clip?.kind === "image" && root.clip.file ? root.clip.file : ""
@@ -79,15 +81,15 @@ Item {
     readonly property var windowSize: root.toplevel?.lastIpcObject?.size ?? null
     readonly property real aspect: root.toplevel ? (root.windowSize ? root.windowSize[0] / Math.max(1, root.windowSize[1]) : 16 / 9) : image.ready ? image.aspect : 16 / 10
 
-    readonly property bool ready: root.toplevel ? shot.ready : root.picture ? image.ready : root.textReady
-    readonly property bool shown: root.wanted && (!!root.toplevel || !!root.picture || !!root.listed) && root.ready
+    readonly property bool ready: root.carded ? true : root.toplevel ? shot.ready : root.picture ? image.ready : root.textReady
+    readonly property bool shown: root.wanted && (root.carded || !!root.toplevel || !!root.picture || !!root.listed) && root.ready
 
     readonly property real frame: Appearance.padding.small
     readonly property real span: Appearance.sizes.launcherWidth * 0.7
     readonly property real tallest: Appearance.sizes.launcherWidth * 0.8
 
-    width: root.listed ? Math.round(root.span + root.frame * 2) : Math.round(Math.min(root.span, root.tallest * root.aspect) + root.frame * 2)
-    height: root.listed ? Math.round(Math.min(root.tallest, page.implicitHeight + Appearance.padding.normal * 2)) : Math.round(Math.min(root.tallest, root.span / root.aspect) + root.frame * 2)
+    width: root.carded ? Math.round(card.width + root.frame * 2) : root.listed ? Math.round(root.span + root.frame * 2) : Math.round(Math.min(root.span, root.tallest * root.aspect) + root.frame * 2)
+    height: root.carded ? Math.round(Math.min(root.tallest, card.height + root.frame * 2)) : root.listed ? Math.round(Math.min(root.tallest, page.implicitHeight + Appearance.padding.normal * 2)) : Math.round(Math.min(root.tallest, root.span / root.aspect) + root.frame * 2)
 
     opacity: fade.value
     visible: fade.value > 0.01
@@ -115,6 +117,22 @@ Item {
         color: Appearance.colour.surfaceSolid
         stroke: Appearance.colour.fillStrong
         strokeWidth: 1
+    }
+
+    Loader {
+        id: card
+
+        x: root.frame
+        y: root.frame
+        active: root.carded
+        sourceComponent: root.cardPart
+    }
+
+    Binding {
+        target: card.item
+        property: "entry"
+        value: root.row?.entry ?? null
+        when: card.item !== null
     }
 
     WindowView {

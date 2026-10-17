@@ -136,6 +136,10 @@ Scope {
                 kind: "restart",
                 version: "6.17.3"
             },
+            held: {
+                kind: "held",
+                count: 3
+            },
             music: {
                 kind: "music"
             },
@@ -231,7 +235,8 @@ Scope {
             timer: "pauses or resumes the timer",
             alarm: "stops or snoozes the alarm from its buttons",
             level: "nothing, it only shows",
-            notifications: "opens the notification list",
+            notifications: "opens the launcher on the notification history",
+            held: "opens the launcher on what was held while quiet",
             update: "opens the update menu",
             kernel: "starts the kernel upgrade",
             restart: "opens the session menu",
@@ -284,6 +289,10 @@ Scope {
         {
             name: "An update and a kernel",
             notices: ["update", "kernel"]
+        },
+        {
+            name: "Quiet ended with three held back",
+            notices: ["held"]
         },
         {
             name: "One notification",
@@ -1195,7 +1204,7 @@ Scope {
                                 spacing: Appearance.padding.small
 
                                 Repeater {
-                                    model: ["download", "update", "kernel", "restart", "music", "volume", "mute", "brightness", "mic"]
+                                    model: ["download", "update", "kernel", "restart", "held", "music", "volume", "mute", "brightness", "mic"]
 
                                     Button {
                                         required property string modelData

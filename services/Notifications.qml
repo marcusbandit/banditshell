@@ -9,6 +9,7 @@ import "quiet-hours.js" as QuietHours
 import "notification-rules.js" as Rules
 import "notification-search.js" as Search
 import "notification-store.js" as Store
+import "notification-timing.js" as Timing
 
 Singleton {
     id: root
@@ -38,6 +39,35 @@ Singleton {
 
     function threadsOf(list: var): var {
         return Search.threads(list);
+    }
+
+    readonly property int heldCount: root.history.filter(e => e.withheld && !e.leaving).length
+
+    function asking(text: string): bool {
+        return Search.ask(text).explicit;
+    }
+
+    function find(text: string): var {
+        return Search.find(root.history, Search.ask(text));
+    }
+
+    function muteLength(text: string): double {
+        return Timing.muteLength(text);
+    }
+
+    function snoozeLength(text: string): double {
+        return Timing.snoozeLength(text);
+    }
+
+    function markSeenOf(list: var): void {
+        let changed = false;
+        for (const entry of list ?? [])
+            if (entry && !entry.seen) {
+                entry.seen = true;
+                changed = true;
+            }
+        if (changed)
+            root.save();
     }
 
     function markSeen(): void {
@@ -129,6 +159,16 @@ Singleton {
 
     property double quietSince: 0
 
+    signal heldReleased(int count)
+
+    onQuietedChanged: {
+        if (root.quieted || !Config.loaded)
+            return;
+        const waiting = root.history.filter(e => e.withheld && !e.seen && !e.leaving).length;
+        if (waiting > 0)
+            root.heldReleased(waiting);
+    }
+
     onQuietChanged: {
         root.quietSince = root.quiet && Config.loaded ? Date.now() : 0;
         Qt.callLater(root.dropSpentDeadline);
@@ -169,6 +209,41 @@ Singleton {
 
     function setRule(key: string, changes: var): void {
         Config.set("notifications.rules", Rules.withRule(root.rules, key, changes));
+    }
+
+    function keyForApp(text: string): string {
+        const want = String(text ?? "").trim().toLowerCase();
+        if (!want)
+            return "";
+        const known = Object.keys(root.rules).find(k => k.toLowerCase() === want);
+        if (known)
+            return known;
+        const entry = root.history.find(e => root.ruleKeyFor(e).toLowerCase() === want || Search.appMatches(e, want));
+        return entry ? root.ruleKeyFor(entry) : want;
+    }
+
+    function mute(appKey: string, ms: double): void {
+        if (!appKey)
+            return;
+        if (ms > 0)
+            root.setRule(appKey, { muteUntil: Date.now() + ms });
+        else
+            root.setRule(appKey, { pop: false, snd: false });
+    }
+
+    function unmute(appKey: string): void {
+        if (appKey)
+            root.setRule(appKey, { pop: true, snd: true, muteUntil: 0 });
+    }
+
+    function mutedUntil(appKey: string): double {
+        const rule = root.ruleAt(appKey);
+        return Timing.muted(rule, Date.now()) ? rule.muteUntil : 0;
+    }
+
+    function isMuted(appKey: string): bool {
+        const rule = root.ruleAt(appKey);
+        return !rule.pop || Timing.muted(rule, Date.now());
     }
 
     readonly property int candidateLimit: 12
@@ -266,6 +341,54 @@ Singleton {
         return true;
     }
 
+    function front(): var {
+        const standing = root.popups.filter(e => !e.leaving);
+        return standing.find(e => e.urgency === NotificationUrgency.Critical) ?? standing[0] ?? null;
+    }
+
+    property var snoozed: []
+
+    function snooze(entry: var, ms: double): bool {
+        if (!entry || entry.leaving || !(ms > 0))
+            return false;
+        root.snoozed = Timing.snoozeAdd(root.snoozed, entry, Date.now() + ms);
+        entry.seen = false;
+        if (root.popups.includes(entry))
+            root.expire(entry);
+        return true;
+    }
+
+    function wake(entry: var): void {
+        if (!root.history.includes(entry) || entry.leaving)
+            return;
+        if (!(entry.timeout > 0) && entry.urgency !== NotificationUrgency.Critical)
+            entry.timeout = root.defaultTimeout;
+        entry.remaining = 1;
+        entry.seen = false;
+        const shown = [entry, ...root.popups.filter(e => e !== entry)];
+        root.popups = shown.slice(0, root.maxPopups);
+        for (const old of shown.slice(root.maxPopups))
+            root.expire(old);
+        if (!root.holdingAt(Date.now()))
+            AlertSounds.play("notification");
+    }
+
+    Timer {
+        interval: 1000
+        repeat: true
+        running: root.snoozed.length > 0
+
+        onTriggered: {
+            const split = Timing.due(root.snoozed, Date.now());
+            if (split.ready.length === 0)
+                return;
+            root.snoozed = split.waiting;
+            for (const item of split.ready)
+                if (item.entry)
+                    root.wake(item.entry);
+        }
+    }
+
     function expire(entry: var): void {
         root.beginLeave(entry, false);
     }
@@ -281,6 +404,7 @@ Singleton {
         }
 
         root.history = root.history.filter(e => e !== entry);
+        root.snoozed = root.snoozed.filter(item => item.entry !== entry);
         entry.notification?.dismiss();
 
         root.erase(entry.cached);
@@ -295,6 +419,7 @@ Singleton {
         root.history = [];
         root.popups = [];
         root.leaving = [];
+        root.snoozed = [];
 
         for (const entry of all) {
 
@@ -360,6 +485,7 @@ Singleton {
             cached: record.cached,
             pinned: record.pinned,
             seen: record.seen,
+            withheld: record.withheld,
             durable: true,
             live: false,
             timeout: 0,
@@ -553,15 +679,18 @@ Singleton {
             const critical = entry.urgency === NotificationUrgency.Critical;
             const held = root.holdingAt(Date.now()) && !(ours && kind === "battery") && !(kind === "alarm" && root.letAlarms) && !(critical && root.criticalThrough);
             const rule = root.ruleFor(entry);
+            const silenced = Timing.muted(rule, arrived);
 
-            if (!held && rule.pop) {
+            entry.withheld = held;
+
+            if (!held && rule.pop && !silenced) {
                 const shown = [entry, ...root.popups];
                 root.popups = shown.slice(0, root.maxPopups);
                 for (const old of shown.slice(root.maxPopups))
                     root.expire(old);
             }
 
-            if (!held && rule.snd)
+            if (!held && rule.snd && !silenced)
                 AlertSounds.play(AlertSounds.kinds.includes(kind) ? kind : "notification");
         }
     }

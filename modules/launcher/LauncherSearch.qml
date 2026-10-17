@@ -25,6 +25,7 @@ QtObject {
     signal launch(var what)
     signal leave(var what)
     signal retype(string text)
+    signal inquire(var row)
 
     readonly property list<QtObject> sources: [
         FallbackSource {
@@ -49,6 +50,9 @@ QtObject {
             search: root
         },
         ClipboardSource {
+            search: root
+        },
+        NotificationSource {
             search: root
         },
         ScriptSource {
@@ -473,16 +477,6 @@ QtObject {
             hidden: !root.openWindows.length,
             confirm: true,
             run: () => root.openWindows.forEach(t => Hypr.closeWindow(Hypr.windowAddress(t.address)))
-        },
-        {
-            id: "dismiss",
-            icon: "clear_all",
-            label: "Dismiss notifications",
-            words: "dismiss clear notifications",
-            detail: Notifications.count === 1 ? "1 notification" : `${Notifications.count} notifications`,
-            hidden: !Notifications.count,
-            stay: true,
-            run: () => Notifications.clear()
         }
     ].concat(root.windowCommands, root.layoutCommands, root.sourceCommands, Files.drives.map(d => ({
                 id: `eject:${d.path}`,
@@ -492,6 +486,12 @@ QtObject {
                 detail: d.detail,
                 run: () => root.eject(d.path)
             })))
+
+    readonly property bool onStage: !root.screenName || !Focus.offStageScreen || root.screenName === Focus.offStageScreen
+
+    function copyText(text: string): void {
+        root.leave(() => Files.copyText(text));
+    }
 
     function windowTarget(): string {
         return Hypr.windowAddress(root.target || Hypr.focusedOn(root.screenName));

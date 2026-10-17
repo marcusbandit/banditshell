@@ -131,7 +131,6 @@
     "R3 modules/launcher/LauncherSearch.qml uses Idle of power without requiring it",
     "R3 modules/launcher/LauncherSearch.qml uses Media of media without requiring it",
     "R3 modules/launcher/LauncherSearch.qml uses Network of network without requiring it",
-    "R3 modules/launcher/LauncherSearch.qml uses Notifications of notifications without requiring it",
     "R3 modules/launcher/LauncherSearch.qml uses Power of power without requiring it",
     "R3 modules/launcher/LauncherSearch.qml uses PowerProfile of power without requiring it",
     "R3 modules/launcher/LauncherSearch.qml uses Settings of settings without requiring it",

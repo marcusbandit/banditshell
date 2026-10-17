@@ -282,7 +282,7 @@ Item {
 
     function pressable(activity: var): bool {
         const kind = activity?.kind ?? "";
-        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer", "alarm"].includes(kind) || (kind === "external" && !!activity.pressable);
+        return ["music", "download", "update", "kernel", "restart", "held", "notification", "recording", "timer", "alarm"].includes(kind) || (kind === "external" && !!activity.pressable);
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))
@@ -1273,6 +1273,10 @@ Item {
 
                     onDismissed: entry => Notifications.dismiss(entry)
                     onKept: entry => Notifications.expire(entry)
+                    onHistory: root.chosen({
+                        key: "notifications",
+                        kind: "notifications"
+                    })
                     onAdvanced: (forward, count, previous) => {
                         if (root.fanning || root.openness > 0)
                             return;

@@ -162,4 +162,16 @@ Singleton {
             });
         }
     }
+
+    Connections {
+        target: Notifications
+
+        function onHeldReleased(count: int): void {
+            root.pass({
+                key: `held:${Date.now()}`,
+                kind: "held",
+                count: count
+            });
+        }
+    }
 }

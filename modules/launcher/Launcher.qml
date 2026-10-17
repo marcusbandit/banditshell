@@ -26,8 +26,8 @@ Item {
         return loader.item;
     }
 
-    function show(): void {
-        root.build().show();
+    function show(text = ""): void {
+        root.build().show(text);
     }
 
     function hide(): void {

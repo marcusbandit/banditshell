@@ -182,6 +182,7 @@ Singleton {
             fallbackTerminal: "launcher.fallbacks.terminal",
             skinTone: "launcher.typing.skinTone",
             clipboardInSearch: "launcher.typing.clipboard",
+            notificationsInSearch: "launcher.typing.notifications",
             onlineTranslate: "launcher.online.translate",
             onlineTranslateTo: "launcher.online.translateTo",
             onlineDefine: "launcher.online.define",

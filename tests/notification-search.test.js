@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/notification-search.js"), "utf8");
-const Search = new Function(src + "\nreturn { age, threads, threadKey };")();
+const Search = new Function(src + "\nreturn { age, threads, threadKey, ask, find, apps, line, appMatches };")();
 
 const NOW = new Date(2026, 9, 17, 14, 30, 0).getTime();
 const ago = ms => NOW - ms;
@@ -108,3 +108,120 @@ test("two threads of one sender have different ids", () => {
     assert.strictEqual(groups.length, 2);
     assert.notStrictEqual(groups[0].id, groups[1].id);
 });
+
+test("a bare query is not a notification query", () => {
+    const asked = Search.ask("signal");
+    assert.strictEqual(asked.explicit, false);
+    assert.strictEqual(asked.term, "signal");
+    assert.strictEqual(Search.ask("").explicit, false);
+    assert.strictEqual(Search.ask("  ").term, "");
+});
+
+test("the head words open the history, with or without a rest", () => {
+    for (const head of ["notifications", "notification", "notifs", "notif", "Notifications  "]) {
+        const asked = Search.ask(head);
+        assert.strictEqual(asked.explicit, true, head);
+        assert.strictEqual(asked.term, "");
+        assert.strictEqual(asked.unread, false);
+    }
+});
+
+test("unread and held qualify, in any order and as the first word", () => {
+    assert.deepStrictEqual(pick(Search.ask("notifications unread")), { explicit: true, unread: true, held: false, app: "", term: "" });
+    assert.deepStrictEqual(pick(Search.ask("held")), { explicit: true, unread: false, held: true, app: "", term: "" });
+    assert.deepStrictEqual(pick(Search.ask("unread held")), { explicit: true, unread: true, held: true, app: "", term: "" });
+    assert.deepStrictEqual(pick(Search.ask("notif held unread")), { explicit: true, unread: true, held: true, app: "", term: "" });
+});
+
+test("from takes one word as the app and the rest is free text", () => {
+    assert.deepStrictEqual(pick(Search.ask("notifications from signal")), { explicit: true, unread: false, held: false, app: "signal", term: "" });
+    assert.deepStrictEqual(pick(Search.ask("notifications from signal ida tonight")), { explicit: true, unread: false, held: false, app: "signal", term: "ida tonight" });
+    assert.deepStrictEqual(pick(Search.ask("unread from mail")), { explicit: true, unread: true, held: false, app: "mail", term: "" });
+});
+
+test("from with nothing after it is just a word", () => {
+    assert.strictEqual(Search.ask("notifications from").app, "");
+    assert.strictEqual(Search.ask("notifications from").term, "from");
+});
+
+test("from at the start is not a notification query", () => {
+    assert.strictEqual(Search.ask("from signal").explicit, false);
+});
+
+const seen = (entry, flags) => Object.assign(entry, flags);
+const stock = () => [
+    seen(note("Signal", "Ida", 1, { id: "1", body: "are you coming?", appId: "signal-desktop" }), { seen: false }),
+    seen(note("Signal", "Ida", 2, { id: "2", body: "the film starts at eight", appId: "signal-desktop" }), { seen: true }),
+    seen(note("Mail", "Invoice ready", 30, { id: "3", body: "from the landlord", appId: "org.mozilla.Thunderbird" }), { seen: true, withheld: true }),
+    seen(note("Steam", "Download finished", 90, { id: "4", body: "Hades II" }), { seen: false, withheld: true })
+];
+
+test("find with no filter gives one row per thread, newest first", () => {
+    const rows = Search.find(stock(), Search.ask("notifications"));
+    assert.deepStrictEqual(rows.map(r => r.entries.length), [2, 1, 1]);
+    assert.deepStrictEqual(rows.map(r => r.newest.id), ["1", "3", "4"]);
+});
+
+test("unread keeps only what has not been seen", () => {
+    const rows = Search.find(stock(), Search.ask("notifications unread"));
+    assert.deepStrictEqual(rows.map(r => r.newest.id), ["1", "4"]);
+    assert.strictEqual(rows[0].entries.length, 1);
+});
+
+test("held keeps only what arrived while quiet", () => {
+    const rows = Search.find(stock(), Search.ask("held"));
+    assert.deepStrictEqual(rows.map(r => r.newest.id), ["3", "4"]);
+});
+
+test("from matches the name or the desktop id", () => {
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications from signal")).map(r => r.newest.id), ["1"]);
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications from thunder")).map(r => r.newest.id), ["3"]);
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications from nothing")), []);
+});
+
+test("free text searches the app, summary and body and lists messages, not threads", () => {
+    const rows = Search.find(stock(), Search.ask("notifications ida"));
+    assert.deepStrictEqual(rows.map(r => r.newest.id), ["1", "2"]);
+    assert.ok(rows.every(r => r.entries.length === 1));
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications landlord")).map(r => r.newest.id), ["3"]);
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications hades")).map(r => r.newest.id), ["4"]);
+});
+
+test("every free word has to appear, in any order", () => {
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications eight film")).map(r => r.newest.id), ["2"]);
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications eight hades")), []);
+});
+
+test("filters and text combine", () => {
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("notifications unread from signal ida")).map(r => r.newest.id), ["1"]);
+});
+
+test("an entry already on its way out is not listed", () => {
+    const list = stock();
+    list[0].leaving = true;
+    assert.deepStrictEqual(Search.find(list, Search.ask("notifications from signal")).map(r => r.newest.id), ["2"]);
+});
+
+test("a plain query finds messages by its words", () => {
+    assert.deepStrictEqual(Search.find(stock(), Search.ask("landlord")).map(r => r.newest.id), ["3"]);
+});
+
+test("nothing in, nothing out", () => {
+    assert.deepStrictEqual(Search.find(undefined, Search.ask("notifications")), []);
+});
+
+test("the app words to complete are the recent single-word apps, once each", () => {
+    assert.deepStrictEqual(Search.apps(stock(), 8), ["signal", "mail", "steam"]);
+    assert.deepStrictEqual(Search.apps(stock(), 2), ["signal", "mail"]);
+    assert.deepStrictEqual(Search.apps([note("Visual Studio", "x", 1)], 8), []);
+});
+
+test("the row detail names who, how many and how long ago", () => {
+    assert.strictEqual(Search.line(note("Signal", "Ida", 4), 1, NOW), "Signal \u00b7 4m");
+    assert.strictEqual(Search.line(note("Signal", "Ida", 4), 4, NOW), "Signal \u00b7 4 \u00b7 4m");
+    assert.strictEqual(Search.line(note("Signal", "Ida", 0), 1, NOW), "Signal");
+});
+
+function pick(asked) {
+    return { explicit: asked.explicit, unread: asked.unread, held: asked.held, app: asked.app, term: asked.term };
+}

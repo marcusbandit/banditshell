@@ -12,6 +12,9 @@
 #   banditshell panel settings page <page>
 #                                settings on a page, or another page while it
 #                                stays put
+#   banditshell panel launcher open [<query>]
+#                                the launcher with the query already typed, like
+#                                notifications unread
 #   banditshell panel launcher run <app|row>
 #                                start an app the way the launcher does, or run
 #                                any launcher row by its id, like command:lock
@@ -29,6 +32,9 @@
 #                                opening it
 #   banditshell panel notifications clear
 #                                empty the notification history
+#   banditshell panel notifications [open|toggle|close]
+#                                the history is a launcher mode: open and toggle
+#                                show the launcher on notifications
 #   <panel>: launcher|session|clipboard|media|calculator|quickcontrols
 #            keyboard|settings|notifications|island|hotkeys|files|wallpaper
 #                                and every menu; banditshell panel lists them all
@@ -104,6 +110,26 @@
 #                                quiet notifications still collect in history but
 #                                show no popup and make no sound; the second word
 #                                is when quiet ends
+#
+# notifications                  the history in the launcher, and the alert on screen
+#   banditshell notifications    what is waiting: unread, held and whether quiet
+#   banditshell notifications list [unread|held] [<app>]
+#                                one line per conversation: number, app, age, how
+#                                many messages and what was said
+#   banditshell notifications open [<query>]
+#                                the launcher on the history, with the query typed
+#   banditshell notifications act
+#   banditshell notifications dismiss [front|all]
+#   banditshell notifications reply <text>
+#   banditshell notifications snooze [<span>]
+#                                the alert on screen: open it, put it away, answer
+#                                it, or have it back later; 10m, 1h or day
+#   banditshell notifications mute <app> [hour|day|never]
+#   banditshell notifications unmute <app>
+#                                stop an app's popups and sounds for a while, or
+#                                until unmuted; they still collect in the history
+#   banditshell notifications clear
+#                                empty the history
 #
 # island                         post a task, a timer or a level to the island
 #   banditshell island           what the island shows now
@@ -1079,7 +1105,8 @@ open_panel() {
     local name="$1"
     shift
     case "$name" in
-    launcher | session | clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
+    launcher) ipc launcher open "$*" ;;
+    session | clipboard | media | calculator | quickcontrols) ipc "$name" open ;;
     keyboard | notifications | island | hotkeys | files) ipc "$name" open "${1:-}" ;;
     settings) ipc settings open "${1:-}" "${2:-}" ;;
     wallpaper) ipc wallpapers open "${1:-}" ;;
@@ -1210,6 +1237,35 @@ island_post() {
     else
         activity_call update "$id" "$text" "$detail" "$progress" "$icon" "$lasts"
     fi
+}
+
+route_notifications() {
+    local verb="${1:-}" filter="" app="" word
+    if [ $# -gt 0 ]; then shift; fi
+    case "$verb" in
+    "")
+        ipc notifications status "" || return $?
+        ipc_quiet quiet status || true
+        ;;
+    list)
+        for word in "$@"; do
+            case "$word" in
+            unread | held) filter="$word" ;;
+            *) app="${app:+$app }$word" ;;
+            esac
+        done
+        ipc notifications list "$filter" "$app"
+        ;;
+    open) ipc notifications search "$*" ;;
+    act) ipc notifications act ;;
+    dismiss) ipc notifications dismiss "${1:-front}" ;;
+    reply) [ $# -ge 1 ] || say_usage "notifications reply <text>"; ipc notifications reply "$*" ;;
+    snooze) ipc notifications snooze "$*" ;;
+    mute) [ $# -ge 1 ] || say_usage "notifications mute <app> [hour|day|never]"; ipc notifications mute "$1" "${2:-}" ;;
+    unmute) [ $# -ge 1 ] || say_usage "notifications unmute <app>"; ipc notifications unmute "$*" ;;
+    clear) ipc notifications clear ;;
+    *) nope notifications "$verb" ;;
+    esac
 }
 
 route_island() {
@@ -3106,6 +3162,9 @@ fi
 case "$cmd" in
 panel)
     route_panel "$@"
+    ;;
+notifications)
+    route_notifications "$@"
     ;;
 island)
     route_island "$@"

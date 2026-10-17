@@ -1,7 +1,7 @@
 # api 1
 # id	status	since	argv	description
 launcher.toggle	stable	1	panel launcher toggle	Open or close the launcher
-launcher.open	stable	1	panel launcher open	Open the launcher
+launcher.open	stable	1	panel launcher open	Open the launcher (optional argument: query)
 launcher.close	stable	1	panel launcher close	Close the launcher
 launcher.run	stable	1	panel launcher run	Run an app or a launcher row (argument: app or row id)
 panel.close	stable	1	panel close	Close every panel and menu
@@ -79,6 +79,16 @@ clock.zone.list	stable	1	clock zone list	List the world clocks
 clock.zone.find	stable	1	clock zone find	Find a place for the world clocks (argument: place)
 clock.zone.add	stable	1	clock zone add	Add a world clock (argument: place)
 clock.zone.remove	stable	1	clock zone remove	Remove a world clock (argument: place)
+notifications.status	stable	1	notifications	Say what is waiting: unread, held and whether quiet
+notifications.list	stable	1	notifications list	List the notification history, one line per conversation (optional arguments: unread or held, app)
+notifications.open	stable	1	notifications open	Open the launcher on the notification history (optional argument: query)
+notifications.act	stable	1	notifications act	Run the default action of the alert on screen, or open its app
+notifications.dismiss	stable	1	notifications dismiss	Put away the alert on screen (optional argument: front or all)
+notifications.reply	stable	1	notifications reply	Answer the alert on screen (argument: text)
+notifications.snooze	stable	1	notifications snooze	Have the alert on screen come back later (optional argument: span)
+notifications.mute	stable	1	notifications mute	Stop an app's popups and sounds (arguments: app, optional span or never)
+notifications.unmute	stable	1	notifications unmute	Let an app's popups and sounds through again (argument: app)
+notifications.clear	stable	1	notifications clear	Empty the notification history
 focus.status	stable	1	focus	Say the focus mode and whether notifications are quiet
 focus.mode.list	stable	1	focus mode list	List the focus modes
 focus.mode.set	stable	1	focus mode	Switch focus mode (argument: none, work, play, stream or sleep)

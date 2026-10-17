@@ -80,7 +80,7 @@
   ],
   "launcher": [
     "close(): string",
-    "open(): string",
+    "open(query: string): string",
     "query(): string",
     "run(id: string): string",
     "scrub(fraction: string): string",
@@ -111,12 +111,20 @@
     "status(): string"
   ],
   "notifications": [
+    "act(): string",
     "clear(): string",
     "close(): string",
+    "dismiss(which: string): string",
     "held(app: string): string",
+    "list(filter: string, app: string): string",
+    "mute(app: string, duration: string): string",
     "open(screen: string): string",
+    "reply(text: string): string",
+    "search(query: string): string",
+    "snooze(duration: string): string",
     "status(screen: string): string",
-    "toggle(screen: string): string"
+    "toggle(screen: string): string",
+    "unmute(app: string): string"
   ],
   "output": [
     "assign(role: string, name: string): string",
