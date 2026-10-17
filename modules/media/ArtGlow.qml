@@ -13,7 +13,7 @@ Item {
     readonly property bool ready: palette.colours.length > 0
 
     function settle(c: color): color {
-        return Qt.hsla(Math.max(0, c.hslHue), Math.min(1, c.hslSaturation * 0.95), Math.min(0.42, c.hslLightness) * 0.82, 1);
+        return Appearance.hsl(Math.max(0, c.hslHue), Math.min(1, c.hslSaturation * 0.95), Math.min(0.42, c.hslLightness) * 0.82);
     }
 
     ImagePalette {

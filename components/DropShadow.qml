@@ -5,5 +5,5 @@ import qs.config
 RectangularShadow {
     offset.y: Appearance.padding.small
     blur: Appearance.padding.huge
-    color: Qt.rgba(0, 0, 0, 0.55)
+    color: Appearance.withAlpha(Appearance.colour.scrim, 0.55)
 }

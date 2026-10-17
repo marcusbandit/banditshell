@@ -6,6 +6,7 @@ var dim = "#5b8fb0";
 var mid = "#7fb3d4";
 var bright = "#b8dcf0";
 var alarm = "#ff7a4d";
+var mist = "#171f26";
 
 var void_ = ramp[0];
 var body = ramp[2];

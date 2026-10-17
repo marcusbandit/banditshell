@@ -176,6 +176,19 @@ test("L6 flags hex literals and colour functions outside config", () => {
     assert.deepStrictEqual(hits("tests/a.test.js", text, "L6"), []);
 });
 
+test("L6 lets a listed data file keep its hex literals but not its colour calls", () => {
+    assert.deepStrictEqual(hits("components/vt.js", "var a = \"#ff0000\";\n", "L6"), []);
+    assert.deepStrictEqual(lines("components/vt.js", "var a = Qt.rgba(1, 0, 0, 1);\n", "L6"), [1]);
+    assert.deepStrictEqual(lines("components/other.js", "var a = \"#ff0000\";\n", "L6"), [1]);
+});
+
+test("every colour data entry names a file that exists and carries a reason", () => {
+    for (const entry of lintRules.COLOUR_DATA) {
+        assert.ok(entry.reason.length > 20, entry.file);
+        assert.ok(fs.existsSync(path.join(ROOT, entry.file)), entry.file);
+    }
+});
+
 test("L7 flags textGhost as the colour of text and not of shapes", () => {
     const text = [
         "Item {",

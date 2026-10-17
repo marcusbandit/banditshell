@@ -76,7 +76,7 @@ Item {
         layer.enabled: visible && GraphicsInfo.api !== GraphicsInfo.Software
         layer.effect: MultiEffect {
             shadowEnabled: true
-            shadowColor: Qt.rgba(root.bright.r, root.bright.g, root.bright.b, 0.5)
+            shadowColor: Appearance.withAlpha(root.bright, 0.5)
             shadowBlur: 0.45
             shadowHorizontalOffset: 0
             shadowVerticalOffset: 0

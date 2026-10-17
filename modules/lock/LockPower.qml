@@ -158,7 +158,7 @@ Item {
                         anchors.fill: parent
                         radius: width / 2
                         cornerPower: 2
-                        color: press.containsMouse ? Appearance.colour.surfaceSolid : Qt.rgba(Appearance.colour.ink.r, Appearance.colour.ink.g, Appearance.colour.ink.b, 0.85)
+                        color: press.containsMouse ? Appearance.colour.surfaceSolid : Appearance.withAlpha(Appearance.colour.ink, 0.85)
                         stroke: Appearance.colour.seam
                         strokeWidth: Appearance.stroke.line
                     }

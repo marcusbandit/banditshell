@@ -84,7 +84,7 @@ Item {
         const turn = (root.baseHue + root.index / root.classes.length) % 1;
         const accent = Appearance.colour.accent;
 
-        return Qt.hsla(turn, accent.hslSaturation * 0.62, Math.max(0.62, accent.hslLightness), 1);
+        return Appearance.hsl(turn, accent.hslSaturation * 0.62, Math.max(0.62, accent.hslLightness));
     }
 
     Icon {

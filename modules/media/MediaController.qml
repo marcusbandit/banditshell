@@ -119,8 +119,7 @@ Item {
     }
 
     function tone(a: color, b: color): color {
-        const t = root.flown;
-        return Qt.rgba(a.r + (b.r - a.r) * t, a.g + (b.g - a.g) * t, a.b + (b.b - a.b) * t, a.a + (b.a - a.a) * t);
+        return Appearance.blend(a, b, root.flown);
     }
 
     function rest(item: Item): point {

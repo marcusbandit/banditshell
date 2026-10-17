@@ -545,7 +545,7 @@ Item {
 
         radius: Appearance.sizes.windowRadius * root.cardScale
 
-        color: Qt.rgba(root.body.r, root.body.g, root.body.b, root.body.a * tuck.value)
+        color: Appearance.withAlpha(root.body, root.body.a * tuck.value)
         stroke: Appearance.colour.fillStronger
         strokeWidth: Appearance.stroke.ring
 

@@ -30,6 +30,15 @@ const LOOPING_CLOCKS = [
     { file: "modules/settings/widgets/ViaWidget.qml", scope: "infinite", reason: "the settings keyboard widget spinner" }
 ];
 
+const COLOUR_DATA = [
+    { file: "components/vt.js", reason: "the terminal emulator's xterm ANSI palette and its default foreground and background" },
+    { file: "modules/settings/MiniWorkspaces.qml", reason: "the brand colours of the sample apps in the settings workspace mock-up" },
+    { file: "modules/settings/catalogue.js", reason: "a sample clipboard entry whose text is a hex colour" },
+    { file: "modules/settings/scenes/FilesScene.qml", reason: "the painted stand-in for an image in the files mock-up" },
+    { file: "modules/settings/scenes/TerminalScene.qml", reason: "the One Dark palette, a named external terminal theme the mock-up shows" },
+    { file: "modules/wallpaper/WallpaperPicker.qml", reason: "the fixed colour swatches the wallpaper picker filters by" }
+];
+
 const SPRING_EASINGS = /\bEasing\.(?:In|Out|InOut|OutIn)?(?:Back|Elastic|Bounce)\b/g;
 const ANIMATION_NODE = /(?<![\w.])(Behavior|(?:Number|Color|Property|Spring|Smoothed|Sequential|Parallel|Rotation)Animation|\w+Animator|\w+Animation(?=\s+on\s))\s*(?:on\s+[\w.]+\s*)?\{/g;
 const ENGINE_GAPS = [
@@ -355,9 +364,10 @@ function ruleL5(ctx) {
 function ruleL6(ctx) {
     const { code, plain, at } = ctx.scanned;
     const found = [];
+    const hexIsData = COLOUR_DATA.some(entry => entry.file === ctx.file);
     let m;
     HEX_COLOUR.lastIndex = 0;
-    while ((m = HEX_COLOUR.exec(plain)) !== null)
+    while (!hexIsData && (m = HEX_COLOUR.exec(plain)) !== null)
         if (code[m.index] !== "#")
             found.push({ line: at(m.index), detail: `hex colour ${m[0]}` });
     COLOUR_CALL.lastIndex = 0;
@@ -957,7 +967,7 @@ function run(argv, write) {
 }
 
 module.exports = {
-    RULES, LOOPING_CLOCKS, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, run
+    RULES, LOOPING_CLOCKS, COLOUR_DATA, scanSource, lintSource, lint, tally, compare, expectedQmldir, qmldirDirectories, checkMembers, run
 };
 
 if (require.main === module) {

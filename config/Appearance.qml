@@ -36,6 +36,22 @@ Singleton {
         return Qt.rgba(a.r + (b.r - a.r) * k, a.g + (b.g - a.g) * k, a.b + (b.b - a.b) * k, a.a + (b.a - a.a) * k);
     }
 
+    function withAlpha(c: color, alpha: real): color {
+        return Qt.rgba(c.r, c.g, c.b, alpha);
+    }
+
+    function rgb(r: real, g: real, b: real): color {
+        return Qt.rgba(r, g, b, 1);
+    }
+
+    function grey(level: real): color {
+        return Qt.rgba(level, level, level, 1);
+    }
+
+    function hsl(hue: real, saturation: real, lightness: real): color {
+        return Qt.hsla(hue, saturation, lightness, 1);
+    }
+
     function shade(c: color, tier: int): color {
         const w = root.labelAlphas;
         return Qt.rgba(c.r, c.g, c.b, w[Math.max(0, Math.min(tier, w.length - 1))]);
