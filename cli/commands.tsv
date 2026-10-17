@@ -136,6 +136,7 @@ rule	dev lint --all,--write-baseline
 rule	dev lint --rule @rule
 rule	dev promote --remote,--no-fetch
 rule	dev check island @dir
+rule	dev check boot @dir --shots
 rule	dev inspect island @screen
 rule	dev inspect close
 rule	dev preview lock @file

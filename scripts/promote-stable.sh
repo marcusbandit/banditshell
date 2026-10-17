@@ -6,7 +6,8 @@ usage() {
     echo "  check that main is fit to become the stable channel, then print the"
     echo "  commands that would move it. It never pushes unless --push is given."
     echo "  checks, run on a clean export of main: the node tests, check-modules,"
-    echo "  lint-rules, qml-compile-check, a what's-new id on the newest entry,"
+    echo "  lint-rules, qml-compile-check, a headless boot of the real shell when"
+    echo "  gamescope is installed, a what's-new id on the newest entry,"
     echo "  and that main is on GitHub and only moves stable forward"
     exit "${1:-2}"
 }
@@ -112,6 +113,11 @@ check "node tests" bash -c 'node --test tests/*.test.js'
 check "check-modules" node scripts/check-modules.js
 check "lint-rules" node scripts/lint-rules.js
 check "qml-compile-check" bash scripts/qml-compile-check.sh "$tree"
+if command -v gamescope >/dev/null && [ -x "$tree/cli/banditshell" ]; then
+    check "boot check" env -u BANDITSHELL_DIR "$tree/cli/banditshell" dev check boot "$tree/.boot-check"
+else
+    echo "${dim}skip boot check: needs gamescope${plain}"
+fi
 
 [ "${#failed[@]}" -eq 0 ] || stop "${failed[*]} did not pass on main (${main_sha:0:7})"
 

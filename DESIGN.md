@@ -1532,8 +1532,15 @@ banditshell/
 │   │                            of a member the singleton does not declare), counted
 │   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
+│   ├── boot-check.js            the pure half of `banditshell dev check boot`: which
+│   │                            ipc targets have a no-argument status call, and which
+│   │                            log lines are runtime errors (node, no dependencies)
+│   ├── boot-check-inner.sh      the other half: runs inside the private headless
+│   │                            session beside the shell, makes the calls, writes
+│   │                            PASS/FAIL rows to calls.tsv
 │   ├── promote-stable.sh        checks that main may become the stable channel (node
-│   │                            tests, check-modules, lint-rules, compile check, a
+│   │                            tests, check-modules, lint-rules, compile check, the
+│   │                            boot check when gamescope is there, a
 │   │                            what's-new id) on a clean export of it, then PRINTS
 │   │                            the git push and git tag commands; pushes only with
 │   │                            --push (`banditshell dev promote`)
@@ -1867,12 +1874,27 @@ banditshell version                which build is installed
 banditshell events [--filter <names>]   one JSON line per event (docs/events.md)
 banditshell completions install|print|status|remove [zsh|bash]
 banditshell dev try [worktree]|back|worktrees|run|build|shaders|test
-                |check [island [dir]]|inspect island [screen]|inspect close
+                |check [island [dir]|boot [--shots] [dir]]|inspect island [screen]|inspect close
 banditshell dev preview lock|settings [WxH] [page]|files [dir]|gallery|menu <key>
 banditshell dev menu [current|hover|list]
 banditshell dev launcher scrub <fraction>
 banditshell dev keyring|polkit [status|demo|close]
 ```
+
+**The boot check, 2026-10-17.** Two bugs got past the compile check and every node test: a read of
+a property that had moved (`Shell.offStageScreen` became `Focus.offStageScreen`), and
+`win["notifications"]` after the tray was removed, a TypeError on every `banditshell panel close`.
+Both fail only when the shell runs. `banditshell dev check boot [--shots] [dir]` runs it: the real
+`shell.qml` of the checkout, in a private headless gamescope with its own D-Bus, fake home and
+XDG directories, so nothing reaches the live session. It waits until `qs ipc show` lists
+targets, calls the no-argument `status` of every target in `tests/fixtures/ipc-targets.json`
+(a new target is covered without editing a list), drives a round of verbs through the
+checkout's own CLI, and then fails on any TypeError, ReferenceError, "is not defined",
+"Cannot read property", "Failed to load", "Unable to assign" or binding loop in the shell log.
+The lines a headless box always prints (no Hyprland signature, pipewire, ext-idle-notify, a
+wallpaper file missing under the fake home) are ignored; the classifier is `scripts/boot-check.js`
+and has node tests. `--shots` also photographs the shell at rest and with the launcher open.
+`banditshell dev promote` runs it as a last check when gamescope is installed.
 
 **REVISED 2026-10-14: the thing first, in groups.** The verb-first grammar of 2026-10-01
 fixed the noun-first one's inconsistency, and it paid for that by sorting every feature by
