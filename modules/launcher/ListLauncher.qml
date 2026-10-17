@@ -1116,7 +1116,7 @@ LauncherConcept {
                             id: empty
 
                             visible: !root.results.length && !root.answer && !assistantCard.shown
-                            text: query.text ? "nothing matches" : "no applications found"
+                            text: query.text ? (search.contentNote ? `nothing matches, inside files ${search.contentNote}` : "nothing matches") : "no applications found"
                             color: Appearance.colour.textFaint
                             font.pixelSize: Appearance.font.size.small
                         }
