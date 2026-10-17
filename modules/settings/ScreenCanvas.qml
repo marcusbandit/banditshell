@@ -190,7 +190,7 @@ FocusScope {
     Repeater {
         model: root.editable ? root.names : []
 
-        delegate: Rectangle {
+        delegate: SquircleRect {
             id: ghost
 
             required property string modelData
@@ -204,16 +204,15 @@ FocusScope {
             width: (ghost.r?.w ?? 0) * vk.value
             height: (ghost.r?.h ?? 0) * vk.value
             radius: 6
-            color: "transparent"
-            border.width: 1
-            border.color: Appearance.colour.textGhost
+            stroke: Appearance.colour.textGhost
+            strokeWidth: Appearance.stroke.line
 
             StyledText {
                 x: 6
                 y: 4
                 visible: ghost.width > implicitWidth + 12
                 text: "now"
-                color: Appearance.colour.textGhost
+                color: Appearance.colour.textFaint
                 font.pixelSize: Appearance.font.size.small
             }
         }
@@ -353,12 +352,13 @@ FocusScope {
                 strokeWidth: mon.picked || mon.clashing ? 3 : 2
             }
 
-            Rectangle {
+            SquircleRect {
                 x: parent.width - width - 7
                 y: 7
                 width: 8
                 height: 8
                 radius: 4
+                cornerPower: 2
                 visible: root.editable && mon.changed
                 color: Appearance.colour.accent
             }
@@ -530,16 +530,17 @@ FocusScope {
             }
         }
 
-        Rectangle {
+        SquircleRect {
             visible: !!root.corner
             x: root.toX(root.corner?.x ?? 0) - width / 2
             y: root.toY(root.corner?.y ?? 0) - height / 2
             width: 12
             height: 12
             radius: 6
+            cornerPower: 2
             color: Appearance.colour.accent
-            border.width: 2
-            border.color: Appearance.colour.surfaceSolid
+            stroke: Appearance.colour.surfaceSolid
+            strokeWidth: Appearance.stroke.ring
         }
     }
 

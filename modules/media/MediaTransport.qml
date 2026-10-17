@@ -129,7 +129,7 @@ Item {
                     size: button.small ? root.glyph * 0.8 : root.glyph
                     name: button.modelData.icon
                     fill: button.modelData.primary ? 1 : 0
-                    color: !button.modelData.enabled ? Appearance.colour.textGhost : button.small && !button.modelData.lit ? Appearance.colour.textFaint : Appearance.colour.text
+                    color: !button.modelData.enabled || button.small && !button.modelData.lit ? Appearance.colour.textFaint : Appearance.colour.text
                 }
 
                 SquircleRect {

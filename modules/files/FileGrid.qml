@@ -164,7 +164,7 @@ Item {
 
             name: Files.error ? "lock" : "folder_open"
             size: Appearance.icon.huge
-            color: Files.error ? Appearance.colour.alarm : Appearance.colour.textGhost
+            color: Files.error ? Appearance.colour.alarm : Appearance.colour.textFaint
         }
 
         StyledText {

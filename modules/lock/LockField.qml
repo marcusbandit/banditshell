@@ -144,7 +144,7 @@ Item {
             color: Appearance.colour.textDim
             opacity: hint.value
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+            font.pixelSize: Appearance.font.size.small
             renderType: Text.NativeRendering
         }
 
@@ -257,7 +257,7 @@ Item {
             text: Keymap.layout
             color: flip.containsMouse ? Appearance.colour.text : Appearance.colour.textFaint
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.72)
+            font.pixelSize: Appearance.font.size.small
             font.variableAxes: ({ "wght": 600 })
             renderType: Text.NativeRendering
         }

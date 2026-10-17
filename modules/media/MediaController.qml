@@ -747,7 +747,7 @@ Item {
                                 anchors.centerIn: parent
                                 name: "lyrics"
                                 fill: Lyrics.enabled && Lyrics.ready ? 1 : 0
-                                color: !Lyrics.enabled ? Appearance.colour.textFaint : Lyrics.ready ? Appearance.colour.text : Appearance.colour.textGhost
+                                color: Lyrics.enabled && Lyrics.ready ? Appearance.colour.text : Appearance.colour.textFaint
 
                                 SequentialAnimation on opacity {
                                     running: Lyrics.loading && root.open
@@ -806,7 +806,7 @@ Item {
                                     anchors.centerIn: parent
                                     size: Math.round(root.artSize / 4)
                                     name: "music_off"
-                                    color: Appearance.colour.textGhost
+                                    color: Appearance.colour.textFaint
                                 }
                             }
 

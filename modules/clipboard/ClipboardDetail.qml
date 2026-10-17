@@ -217,7 +217,7 @@ Item {
                     anchors.verticalCenter: parent.verticalCenter
                     name: parent.gone ? "help" : parent.mime.startsWith("image/") ? "image" : parent.mime.startsWith("audio/") ? "graphic_eq" : parent.mime.startsWith("video/") ? "movie" : "draft"
                     size: Appearance.font.iconSize
-                    color: parent.gone ? Appearance.colour.textGhost : Appearance.colour.textFaint
+                    color: parent.gone ? Appearance.colour.textFaint : Appearance.colour.textFaint
                 }
 
                 Column {

@@ -42,6 +42,6 @@ Row {
         anchors.verticalCenter: parent.verticalCenter
         visible: root.parts.length === 0
         text: "not set"
-        color: Appearance.colour.textGhost
+        color: Appearance.colour.textFaint
     }
 }

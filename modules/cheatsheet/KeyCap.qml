@@ -35,7 +35,7 @@ Item {
     readonly property real radius: Appearance.rounding.small
 
     readonly property color fill: root.blocked ? "transparent" : root.latched ? Appearance.colour.accentFill : root.lit ? Appearance.colour.fillStronger : Appearance.colour.fill
-    readonly property color ink: root.latched || root.lit ? Appearance.colour.text : Appearance.colour.textGhost
+    readonly property color ink: root.latched || root.lit ? Appearance.colour.text : Appearance.colour.textFaint
 
     readonly property color edge: root.selected ? Appearance.colour.accent : root.blocked ? Appearance.colour.separator : "transparent"
     readonly property real edgeWidth: root.selected || root.blocked ? Appearance.stroke.ring : 0

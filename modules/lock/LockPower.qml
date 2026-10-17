@@ -95,7 +95,7 @@ Item {
             color: Appearance.colour.textDim
             opacity: telling.value
             font.family: root.family
-            font.pixelSize: Math.round(Appearance.font.size.small * 0.9)
+            font.pixelSize: Appearance.font.size.small
             renderType: Text.NativeRendering
         }
 

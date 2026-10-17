@@ -80,7 +80,7 @@ Item {
                     anchors.verticalCenterOffset: glyph.inkOffsetY
 
                     name: button.modelData.icon
-                    color: button.modelData.enabled ? Appearance.colour.text : Appearance.colour.textGhost
+                    color: button.modelData.enabled ? Appearance.colour.text : Appearance.colour.textFaint
                 }
 
                 MouseArea {
@@ -273,7 +273,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
 
             name: "search"
-            color: Files.searching ? Appearance.colour.text : Appearance.colour.textGhost
+            color: Files.searching ? Appearance.colour.text : Appearance.colour.textFaint
         }
 
         TextInput {

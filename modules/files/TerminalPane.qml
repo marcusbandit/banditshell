@@ -29,20 +29,22 @@ Item {
 
         height: Appearance.sizes.minTarget
 
-        Rectangle {
+        SquircleRect {
             anchors.centerIn: parent
 
-            width: grip.hovered || resize.active ? parent.width * 0.08 : parent.width
-            height: Appearance.font.stem
+            width: gripWidth.value
+            height: Appearance.stroke.ring
             radius: height / 2
+            cornerPower: 2
             color: grip.hovered || resize.active ? Appearance.colour.text : Appearance.colour.separator
+        }
 
-            Behavior on width {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutQuad
-                }
-            }
+        Follow {
+            id: gripWidth
+
+            target: grip.hovered || resize.active ? handle.width * 0.08 : handle.width
+            speed: Appearance.animation.revealSpeed
+            startsAtTarget: true
         }
 
         HoverHandler {

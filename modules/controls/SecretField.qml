@@ -141,7 +141,7 @@ Item {
         anchors.verticalCenter: parent.verticalCenter
 
         text: root.placeholder
-        color: Appearance.colour.textGhost
+        color: Appearance.colour.textFaint
 
         opacity: root.empty ? 1 : 0
 

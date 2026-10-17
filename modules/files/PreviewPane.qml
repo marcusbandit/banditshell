@@ -401,7 +401,7 @@ Item {
 
                 name: root.stat && !root.stat.readable || root.contentsError ? "lock" : root.isFolder ? "folder_open" : "visibility_off"
                 size: Appearance.icon.huge
-                color: Appearance.colour.textGhost
+                color: Appearance.colour.textFaint
             }
 
             StyledText {

@@ -548,7 +548,7 @@ Item {
                                     anchors.verticalCenter: parent.verticalCenter
                                     visible: !query.text
                                     text: root.speech ? "Search what you said" : "Search what you copied"
-                                    color: Appearance.colour.textGhost
+                                    color: Appearance.colour.textFaint
                                 }
                             }
                         }

@@ -131,7 +131,7 @@ Item {
                                 text: fi.modelData[0]
                                 elide: Text.ElideRight
                                 font.family: Appearance.font.family
-                                font.pixelSize: 12
+                                font.pixelSize: Appearance.font.size.small
                                 renderType: Text.NativeRendering
                                 color: fi.sel ? Appearance.colour.text : Appearance.colour.textDim
                             }
@@ -217,7 +217,7 @@ Item {
 
                             text: modelData
                             font.family: Appearance.sizes.filesTerminalFont
-                            font.pixelSize: 11
+                            font.pixelSize: Appearance.font.size.small
                             renderType: Text.NativeRendering
                             color: Appearance.colour.textDim
                         }

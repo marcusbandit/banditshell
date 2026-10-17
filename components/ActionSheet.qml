@@ -188,7 +188,7 @@ Item {
                         }
                     }
 
-                    Rectangle {
+                    SquircleRect {
                         visible: cell.worn
 
                         anchors.centerIn: mark
@@ -196,6 +196,7 @@ Item {
                         width: mark.width
                         height: width
                         radius: width / 2
+                        cornerPower: 2
                         color: Appearance.colour.accent
                     }
 

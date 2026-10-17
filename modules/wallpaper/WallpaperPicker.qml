@@ -801,7 +801,7 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             visible: !query.text
                             text: "Search by name"
-                            color: Appearance.colour.textGhost
+                            color: Appearance.colour.textFaint
                         }
                     }
                 }

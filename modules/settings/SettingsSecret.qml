@@ -92,7 +92,7 @@ Row {
                 anchors.verticalCenter: parent.verticalCenter
                 visible: input.length === 0
                 text: "password"
-                color: Appearance.colour.textGhost
+                color: Appearance.colour.textFaint
             }
         }
 

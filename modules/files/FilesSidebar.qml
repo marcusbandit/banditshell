@@ -43,7 +43,7 @@ Item {
                     text: section.modelData.title.toUpperCase()
                     font.pixelSize: Files.zoomed(Appearance.font.size.small)
                     font.letterSpacing: Files.zoomed(Appearance.font.size.small) * 0.12
-                    color: Appearance.colour.textGhost
+                    color: Appearance.colour.textFaint
 
                     leftPadding: Appearance.padding.normal
                     bottomPadding: Appearance.padding.hair
@@ -114,7 +114,7 @@ Item {
 
                             text: place.modelData.detail ?? ""
                             font.pixelSize: Files.zoomed(Appearance.font.size.small)
-                            color: Appearance.colour.textGhost
+                            color: Appearance.colour.textFaint
                         }
 
                         Item {

@@ -34,7 +34,7 @@ Item {
         visible: !Bluetooth.enabled
         name: "bluetooth_disabled"
         size: Appearance.icon.hero
-        color: Appearance.colour.textGhost
+        color: Appearance.colour.textFaint
     }
 
     Column {
