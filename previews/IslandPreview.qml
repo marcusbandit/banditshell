@@ -4,6 +4,8 @@ import Quickshell.Services.Notifications
 import qs.services
 import qs.modules.island
 import "../services/activities.js" as Logic
+import "../services/moments.js" as MomentLogic
+import "../services/privacy.js" as PrivacyLogic
 
 ShellRoot {
     id: preview
@@ -353,6 +355,125 @@ ShellRoot {
             wait: 150,
             expect: "91 notifications spread out, beside it: dictation, 2 launches",
             holds: () => island.restHeight <= (island.host?.height ?? 900) * 0.62
+        },
+        {
+            name: "everything is dismissed before the moments",
+            run: () => {
+                island.fanning = false;
+                for (const e of [...Notifications.popups])
+                    Notifications.dismiss(e);
+                Launching.shown = [];
+                preview.speak("idle");
+            },
+            wait: 1500,
+            expect: "hidden"
+        },
+        {
+            name: "a screenshot is taken: the picture with Copy, Edit, Folder and Delete",
+            run: () => Activities.push(preview.shot(9000)),
+            expect: "activity"
+        },
+        {
+            name: "the microphone goes live: a privacy row shows below it first",
+            run: () => Activities.push(PrivacyLogic.usageSpec({
+                    kind: "mic",
+                    apps: ["Firefox"]
+                })),
+            expect: "activity, below it: privacy"
+        },
+        {
+            name: "then the privacy dot settles into a bubble beside the screenshot",
+            run: () => {},
+            wait: 2600,
+            expect: "activity, beside it: privacy"
+        },
+        {
+            name: "the screenshot leaves: the privacy row is alone",
+            run: () => {},
+            wait: 2600,
+            expect: "privacy"
+        },
+        {
+            name: "the camera and a screen share join: one privacy group with a count",
+            run: () => {
+                Activities.push(PrivacyLogic.usageSpec({
+                    kind: "camera",
+                    apps: ["Zoom"]
+                }));
+                Activities.push(PrivacyLogic.usageSpec({
+                    kind: "screen",
+                    apps: ["OBS Studio", "Firefox"]
+                }));
+            },
+            expect: "privacy"
+        },
+        {
+            name: "text is copied: a Copied row with the first twenty characters",
+            run: () => Activities.push(MomentLogic.copiedSpec(["wl-copy", "-n"], "the quick brown fox jumps over the lazy dog")),
+            wait: 400,
+            expect: "privacy, below it: activity"
+        },
+        {
+            name: "a secret is copied: the text is masked",
+            run: () => Activities.push(MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2")),
+            wait: 400,
+            expect: "privacy, below it: activity"
+        },
+        {
+            name: "the copied row is gone",
+            run: () => {},
+            wait: 1500,
+            expect: "privacy"
+        },
+        {
+            name: "headphones connect: their name and battery",
+            run: () => Activities.push(MomentLogic.bluetoothSpec("WH-1000XM5", "headphones", 64)),
+            wait: 400,
+            expect: "privacy, below it: activity"
+        },
+        {
+            name: "the Bluetooth moment is gone after three seconds",
+            run: () => {},
+            wait: 3200,
+            expect: "privacy"
+        },
+        {
+            name: "every stream stops: the privacy row goes",
+            run: () => {
+                Activities.remove("privacy:mic");
+                Activities.remove("privacy:camera");
+                Activities.remove("privacy:screen");
+            },
+            wait: 600,
+            expect: "hidden"
+        },
+        {
+            name: "dictating, then a screenshot: it shows below the bars first",
+            run: () => {
+                preview.speak("listening");
+                Activities.push(preview.shot(7000));
+            },
+            wait: 1200,
+            expect: "dictation, below it: activity"
+        },
+        {
+            name: "the microphone is in use while dictating: the privacy dot waits beside",
+            run: () => Activities.push(PrivacyLogic.usageSpec({
+                    kind: "mic",
+                    apps: ["gvoice"]
+                })),
+            wait: 3000,
+            expect: "activity, beside it: dictation, privacy"
+        },
+        {
+            name: "all of it ends",
+            run: () => {
+                preview.speak("idle");
+                Activities.remove("privacy:mic");
+                Activities.remove("moment:screenshot");
+            },
+            wait: 1500,
+            expect: "hidden"
         }
     ]
 
@@ -368,6 +489,12 @@ ShellRoot {
                 levels.push(Math.abs(Math.sin(i * 0.37)) * (0.35 + 0.65 * Math.abs(Math.sin(i * 0.11))));
             Dictation.levels = levels;
         }
+    }
+
+    function shot(ms: int): var {
+        return Object.assign(MomentLogic.screenshotSpec(Quickshell.shellPath("assets/inspector/screenshot.svg")), {
+            until: ms
+        });
     }
 
     function timer(id: string, label: string, left: real, total: real, paused: bool): var {
