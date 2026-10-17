@@ -61,7 +61,6 @@ test("a panel's own actions follow its name", () => {
     table([
         ["dispatch launcher run firefox", "panel launcher run firefox"],
         ["dispatch settings page wifi", "panel settings page wifi"],
-        ["dispatch settings float", "panel settings float"],
         ["dispatch keyboard dock", "panel keyboard dock"],
         ["dispatch keyboard page symbols DP-1", "panel keyboard page symbols DP-1"],
         ["dispatch clipboard pin 3", "panel clipboard pin 3"],

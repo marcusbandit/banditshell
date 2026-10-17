@@ -1,3 +1,4 @@
 module qs.modules.menu
+MenuIpc 1.0 MenuIpc.qml
 MenuPanel 1.0 MenuPanel.qml
 Menus 1.0 Menus.qml

@@ -3,6 +3,7 @@ ChordHints 1.0 ChordHints.qml
 FileGrid 1.0 FileGrid.qml
 FileMark 1.0 FileMark.qml
 FilesFace 1.0 FilesFace.qml
+FilesIpc 1.0 FilesIpc.qml
 FilesSettings 1.0 FilesSettings.qml
 FilesSidebar 1.0 FilesSidebar.qml
 FilesWindow 1.0 FilesWindow.qml

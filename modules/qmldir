@@ -1,9 +1,13 @@
 module qs.modules
 Chassis 1.0 Chassis.qml
-Cli 1.0 Cli.qml
 FrameExclusions 1.0 FrameExclusions.qml
 FullscreenBorder 1.0 FullscreenBorder.qml
+Ipc 1.0 Ipc.qml
 LazyPanel 1.0 LazyPanel.qml
+PanelIpc 1.0 PanelIpc.qml
+singleton PanelWindows 1.0 PanelWindows.qml
+PinnedPanelIpc 1.0 PinnedPanelIpc.qml
+ScreenPanelIpc 1.0 ScreenPanelIpc.qml
 SettingsCorner 1.0 SettingsCorner.qml
 ShellWindow 1.0 ShellWindow.qml
 Tooltip 1.0 Tooltip.qml
