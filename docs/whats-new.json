@@ -1,6 +1,47 @@
 {
   "entries": [
     {
+      "id": "2026-10-17-5",
+      "date": "2026-10-17",
+      "changes": [
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Music playing with everything closed no longer keeps the screens redrawing. A seek bar hidden in the island was animating out of sight; it now waits until you can see it, and the shell sits close to idle."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Memory no longer grows with every song. The island reads its colours from each cover and now lets the cover go afterwards; before, every cover played stayed in memory until the shell restarted."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Closing the launcher stops its search inside files. A word with no matches could keep reading your whole home folder for up to a minute after the launcher was gone."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Searching inside files stops after 2 seconds, and the Inside files heading says so when it does. It also skips Python and conda environments, the Android SDK and binary files such as images and archives, so a word with no matches comes back in about half a second."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "Typing in the launcher does less work for each key. Rows build a slider or a switch only when they show one, only the file results that fit in the list are prepared, and a row whose text changes is updated in place instead of built again."
+        },
+        {
+          "type": "bugs",
+          "severity": "minor",
+          "text": "The shell no longer asks for the power profile every 30 seconds. It already hears about every change as it happens."
+        },
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "Rounded shapes across the shell are drawn by the graphics card now. Their edges are a little smoother, and the open media panel uses about half the CPU it did while music plays."
+        }
+      ]
+    },
+    {
       "id": "2026-10-17-4",
       "date": "2026-10-17",
       "changes": [

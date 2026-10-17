@@ -650,7 +650,7 @@ Item {
                 visible: layout.active === layout.idAt(root.heldSlot) && !layout.eclipsed
             }
 
-            StyledText {
+            InkText {
                 anchors.centerIn: parent
 
                 anchors.horizontalCenterOffset: inkOffsetX

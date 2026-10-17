@@ -307,6 +307,11 @@ caelestia (Quickshell lets them coexist). Momentum beats the grand plan.
   (a squircle drawn with `QtQuick.Shapes`). `Rectangle.radius` is banned in this project: it's
   a circular arc, so curvature jumps at the corner and the eye reads a pinch.
   Portable rule: `~/.claude/rules/g2-corners.md`.
+  - **A convex SquircleRect is a fragment shader, not a path.** Fill and inside stroke draw through
+    `squirclefill.frag`, the same p-norm corner as the Shape's outline, so a size that animates
+    costs a few uniform updates per frame instead of a new SVG path, a JS string and a curve
+    tessellation. A concave corner keeps the `QtQuick.Shapes` path, which is the only one that
+    can draw it. `shaded: false` forces the Shape for one instance.
   - **Where a panel meets a screen edge, the corner is CONCAVE** (a negative radius in
     `SquircleRect`). A convex corner there curls the panel away from the edge and leaves a notch of
     dead space, which is wrong: nothing is floating, the panel is part of the edge. Concave
@@ -411,6 +416,7 @@ banditshell/
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
 │   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline
+│   ├── squirclefill.frag        the convex path of it, drawn by a shader (+ .qsb)
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── BlurredImage.qml         the same cut, the picture blurred to colour
 │   ├── ImagePalette.qml         a picture's main colours and how much of it each
