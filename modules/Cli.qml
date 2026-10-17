@@ -2,6 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQml
 import Quickshell
+import Quickshell.Hyprland
 import Quickshell.Io
 import qs.config
 import qs.services
@@ -157,6 +158,14 @@ Scope {
             root.picker.close();
             return "closed";
         }
+    }
+
+    GlobalShortcut {
+        appid: "banditshell"
+        name: "launcher"
+        description: "Toggle the launcher"
+
+        onPressed: root.togglePanel("launcher", "")
     }
 
     IpcHandler {

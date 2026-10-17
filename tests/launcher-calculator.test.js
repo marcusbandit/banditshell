@@ -11,7 +11,7 @@ function lib(file, names) {
 }
 
 const Dates = lib("services/dates.js", ["dateAsk", "parseDate", "isoWeek", "between"]);
-const Colours = lib("services/colours.js", ["colourAnswer", "parseColour"]);
+const Colours = lib("services/colours.js", ["colourAnswer", "parseColour", "withColour"]);
 const Search = lib("modules/launcher/search.js", ["zoneConvertAsk", "readConversion", "ZONE_ABBREVIATIONS"]);
 const Money = lib("services/currency.js", ["parse", "total", "readCoins", "coinsIn", "COINS", "coinFeed"]);
 
@@ -94,6 +94,14 @@ test.describe("colours", () => {
         assert.strictEqual(got.text, "rgba(255, 136, 0, 0.5)");
         assert.strictEqual(got.swatch, "#80ff8800");
         assert.strictEqual(Colours.colourAnswer("rgba(255, 136, 0, 0.5)").text, "#ff880080");
+    });
+
+    test.it("rewrites a typed colour in the form it was typed", () => {
+        assert.strictEqual(Colours.withColour("#ff8800", "#336699"), "#336699");
+        assert.strictEqual(Colours.withColour("rgb(255, 136, 0)", "#336699"), "rgb(51, 102, 153)");
+        assert.strictEqual(Colours.withColour("#ff8800 to hsl", "#336699"), "#336699 to hsl");
+        assert.strictEqual(Colours.withColour("hsl(32, 100%, 50%)", "#33669980"), "hsla(210, 50%, 40%, 0.5)");
+        assert.strictEqual(Colours.withColour("hello", "#336699"), "");
     });
 
     test.it("refuses what is not a colour", () => {

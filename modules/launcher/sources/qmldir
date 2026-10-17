@@ -29,6 +29,7 @@ SnippetSource 1.0 SnippetSource.qml
 SoundSource 1.0 SoundSource.qml
 SpeedtestSource 1.0 SpeedtestSource.qml
 SshSource 1.0 SshSource.qml
+TimerSource 1.0 TimerSource.qml
 TranslateSource 1.0 TranslateSource.qml
 VideoDownloadSource 1.0 VideoDownloadSource.qml
 VpnSource 1.0 VpnSource.qml
