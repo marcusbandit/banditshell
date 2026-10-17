@@ -51,9 +51,11 @@ Singleton {
             job.way = "keys";
             return;
         }
-        wayProbe.job = job;
-        wayProbe.command = ["sh", "-c", 'd=$(dirname "$(readlink "/proc/$1/exe")") && { [ -e "$d/v8_context_snapshot.bin" ] || [ -e "$d/snapshot_blob.bin" ]; }', "sh", String(pid)];
-        wayProbe.running = true;
+        wayProber.createObject(root, {
+            job: job,
+            command: ["sh", "-c", 'd=$(dirname "$(readlink "/proc/$1/exe")") && { [ -e "$d/v8_context_snapshot.bin" ] || [ -e "$d/snapshot_blob.bin" ]; }', "sh", String(pid)],
+            running: true
+        });
     }
 
     function paste(address: string): void {
@@ -147,8 +149,9 @@ Singleton {
         pasteLater.job = Object.assign({}, job, {
             terminal: root.isTerminal(job.address)
         });
-        root.restoring = before && before.text !== job.text ? {
-            entry: before,
+        const kept = root.restoring?.entry ?? before;
+        root.restoring = kept && kept.text !== job.text ? {
+            entry: kept,
             text: job.text
         } : null;
         pasteLater.restart();
@@ -205,15 +208,20 @@ Singleton {
         }
     }
 
-    Process {
-        id: wayProbe
+    Component {
+        id: wayProber
 
-        property var job: null
+        Process {
+            id: probe
 
-        onExited: code => {
-            if (root.job === wayProbe.job && !wayProbe.job.way)
-                wayProbe.job.way = code === 0 ? "paste" : "keys";
-            wayProbe.job = null;
+            property var job: null
+
+            onExited: code => {
+                if (probe.job && !probe.job.way)
+                    probe.job.way = code === 0 ? "paste" : "keys";
+                probe.job = null;
+                probe.destroy();
+            }
         }
     }
 

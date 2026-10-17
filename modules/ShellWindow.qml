@@ -68,7 +68,11 @@ PanelWindow {
     readonly property bool launcherAbove: win.underFullscreen && (launcherLayer.open || launcherLayer.drawnHeight > 0)
 
     onLauncherAboveChanged: if (!win.launcherAbove)
-        Qt.callLater(() => launcherLayer.stackBefore(clipLayer))
+        Qt.callLater(() => {
+            launcherLayer.stackBefore(clipLayer);
+            if (launcherLayer.open)
+                launcherLayer.concept?.input?.forceActiveFocus();
+        })
 
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);

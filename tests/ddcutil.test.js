@@ -5,7 +5,7 @@ const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "..");
 const src = fs.readFileSync(path.join(ROOT, "services/ddcutil.js"), "utf8");
-const Ddcutil = new Function(src + "\nreturn { parseDetect, target, rawLevel, restAfter };")();
+const Ddcutil = new Function(src + "\nreturn { parseDetect, target, rawLevel, restAfter, restEased };")();
 
 const TWO_SCREENS = [
     "Display 1",
@@ -104,5 +104,11 @@ test.describe("restAfter", () => {
         assert.strictEqual(Ddcutil.restAfter(undefined, 2500, 12000), 2500);
         assert.strictEqual(Ddcutil.restAfter(2500, 2500, 12000), 5000);
         assert.strictEqual(Ddcutil.restAfter(10000, 2500, 12000), 12000);
+    });
+
+    test.it("lets the rest shrink back after writes that land, so one slow moment is not kept forever", () => {
+        assert.strictEqual(Ddcutil.restEased(4000, 1000), 3000);
+        assert.strictEqual(Ddcutil.restEased(1200, 1000), 0);
+        assert.strictEqual(Ddcutil.restEased(undefined, 1000), 0);
     });
 });

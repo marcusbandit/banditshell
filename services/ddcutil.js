@@ -73,3 +73,8 @@ function rawLevel(fraction, max) {
 function restAfter(previous, floor, ceiling) {
     return Math.min(ceiling, Math.max(floor, (Number(previous) || 0) * 2));
 }
+
+function restEased(rest, floor) {
+    const eased = (Number(rest) || 0) * 0.75;
+    return eased < floor ? 0 : Math.round(eased);
+}

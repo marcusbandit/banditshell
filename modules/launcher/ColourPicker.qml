@@ -50,6 +50,7 @@ Item {
         const c = Qt.color(text);
         if (root.same(c, root.colour))
             return;
+        settle.stop();
         if (c.hslHue >= 0)
             root.hue = c.hslHue;
         root.saturation = c.hslSaturation;

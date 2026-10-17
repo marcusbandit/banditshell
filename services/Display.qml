@@ -44,6 +44,8 @@ Singleton {
 
     property var failures: ({})
 
+    property var unlanded: ({})
+
     property var rest: ({})
 
     property var restUntil: ({})
@@ -185,15 +187,27 @@ Singleton {
     function markPending(indexes: var): void {
         const pending = Object.assign({}, root.pending);
         const touched = Object.assign({}, root.touchedAt);
+        const unlanded = Object.assign({}, root.unlanded);
+        const failures = Object.assign({}, root.failures);
         const now = Date.now();
         for (const index of indexes) {
             pending[index] = true;
             touched[index] = now;
+            unlanded[index] = true;
+            delete failures[index];
         }
         root.pending = pending;
         root.touchedAt = touched;
+        root.unlanded = unlanded;
+        root.failures = failures;
         if (!displayDebounce.running)
             displayDebounce.start();
+    }
+
+    function writeCommand(index: string): var {
+        const display = root.displays.find(d => d.index === index);
+        const top = root.limits[index];
+        return display && top !== undefined ? ["ddcutil", ...Ddcutil.target(display), "setvcp", "10", `${Ddcutil.rawLevel(root.levelOf(display), top)}`, "--noverify"] : null;
     }
 
     function queued(kind: string): bool {
@@ -224,7 +238,7 @@ Singleton {
                 continue;
             }
             if (!root.queued(`write:${index}`))
-                root.enqueue(`write:${index}`, () => ["ddcutil", ...Ddcutil.target(display), "setvcp", "10", `${Ddcutil.rawLevel(root.levelOf(display), root.limits[index])}`, "--noverify"]);
+                root.enqueue(`write:${index}`, () => root.writeCommand(index));
         }
         root.pending = left;
         if (isFinite(wait)) {
@@ -247,11 +261,19 @@ Singleton {
             const pending = Object.assign({}, root.pending);
             delete pending[index];
             root.pending = pending;
+            const unlanded = Object.assign({}, root.unlanded);
+            delete unlanded[index];
+            root.unlanded = unlanded;
             console.warn(`Display: display ${index} stopped answering, so its brightness was left as it is`);
             return;
         }
-        if (root.pending[index] !== undefined || root.touchedAt[index] && Date.now() - root.touchedAt[index] < root.settleMs)
-            root.markPending([index]);
+        if (!root.unlanded[index])
+            return;
+        root.pending = Object.assign({}, root.pending, {
+            [index]: true
+        });
+        if (!displayDebounce.running)
+            displayDebounce.start();
     }
 
     function succeeded(index: string, wrote: bool): void {
@@ -259,10 +281,21 @@ Singleton {
             root.failures = Object.assign({}, root.failures, {
                 [index]: 0
             });
-        if (wrote && root.rest[index])
-            root.restUntil = Object.assign({}, root.restUntil, {
-                [index]: Date.now() + root.rest[index]
-            });
+        if (!wrote)
+            return;
+        if (root.pending[index] === undefined && !root.queued(`write:${index}`)) {
+            const unlanded = Object.assign({}, root.unlanded);
+            delete unlanded[index];
+            root.unlanded = unlanded;
+        }
+        if (!root.rest[index])
+            return;
+        root.restUntil = Object.assign({}, root.restUntil, {
+            [index]: Date.now() + root.rest[index]
+        });
+        root.rest = Object.assign({}, root.rest, {
+            [index]: Ddcutil.restEased(root.rest[index], 1000)
+        });
     }
 
     property var levelsReadAt: ({})
@@ -309,8 +342,24 @@ Singleton {
             return;
         const next = root.queue[0];
         root.queue = root.queue.slice(1);
+        const writing = next.kind.startsWith("write:") ? next.kind.slice(6) : "";
+        if (writing && Date.now() < (root.restUntil[writing] ?? 0)) {
+            root.pending = Object.assign({}, root.pending, {
+                [writing]: true
+            });
+            Qt.callLater(root.sendDisplayLevels);
+            Qt.callLater(root.step);
+            return;
+        }
+        const command = typeof next.command === "function" ? next.command() : next.command;
+        if (!command) {
+            if (next.kind.startsWith("write:"))
+                root.markPending([next.kind.slice(6)]);
+            Qt.callLater(root.step);
+            return;
+        }
         runner.kind = next.kind;
-        runner.command = typeof next.command === "function" ? next.command() : next.command;
+        runner.command = command;
         runner.running = true;
     }
 
@@ -325,6 +374,9 @@ Singleton {
             root.displays = code === 0 ? Ddcutil.parseDetect(output) : [];
             root.levelsReadAt = ({});
             root.limits = ({});
+            root.rest = ({});
+            root.restUntil = ({});
+            root.failures = ({});
             if (root.unwritten)
                 root.writeLevel();
         } else if (kind.startsWith("read:")) {

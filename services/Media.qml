@@ -38,8 +38,7 @@ Singleton {
         const url = root.urlOf(player);
         if (!url || !root.isBrowser(player) || player.lengthSupported && player.length > 0)
             return false;
-        const path = root.pathOfUrl(url);
-        return path === "/" || root.hostOf(url) === "youtube.com" && !root.watchPath.test(path);
+        return root.hostOf(url) === "youtube.com" && !root.watchPath.test(root.pathOfUrl(url));
     }
 
     function rank(player: MprisPlayer): int {
@@ -134,6 +133,11 @@ Singleton {
 
             function onIsPlayingChanged(): void {
                 if (modelData.isPlaying)
+                    root.started(modelData);
+            }
+
+            function onMetadataChanged(): void {
+                if (modelData.isPlaying && root.recent !== modelData)
                     root.started(modelData);
             }
         }
