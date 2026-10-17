@@ -954,9 +954,9 @@ Singleton {
 
                 seen: "",
 
-                availableColour: "#ff5252",
-                failedColour: "#ffb454",
-                readyColour: "#4da3ff"
+                availableColour: "alarm",
+                failedColour: "bright",
+                readyColour: "accent"
             }
         })
 

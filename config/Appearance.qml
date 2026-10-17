@@ -52,6 +52,14 @@ Singleton {
         return Qt.rgba(lerp(16), lerp(8), lerp(0), alpha);
     }
 
+    function roleColour(name: string): color {
+        if (name === "accent")
+            return root.colour.accent;
+        if (name === "alarm" || name === "bright" || name === "mid" || name === "dim")
+            return root.theme[name];
+        return name;
+    }
+
     readonly property color tint: theme.ramp[theme.ramp.length - 1]
 
     function veil(alpha: real): color {
@@ -114,9 +122,9 @@ Singleton {
 
         readonly property var terminalPalette: root.config.files.terminal.palette === "theme" ? root.colour.themePalette : root.config.files.terminal.palette
 
-        readonly property color updateAvailable: root.config.updates.availableColour
-        readonly property color updateFailed: root.config.updates.failedColour
-        readonly property color updateReady: root.config.updates.readyColour
+        readonly property color updateAvailable: root.roleColour(root.config.updates.availableColour)
+        readonly property color updateFailed: root.roleColour(root.config.updates.failedColour)
+        readonly property color updateReady: root.roleColour(root.config.updates.readyColour)
 
         readonly property color frame: root.config.edge.outerColour
 
