@@ -18,6 +18,8 @@ Item {
 
     property string modeIcon: ""
 
+    readonly property string slotIcon: root.modeIcon || (Services.Notifications.quieted ? "do_not_disturb_on" : "")
+
     readonly property string screen: QsWindow.window?.screen?.name ?? ""
 
     signal requested(string key)
@@ -149,11 +151,11 @@ Item {
             anchors.left: parent.left
             anchors.right: parent.right
             height: Appearance.sizes.statusSlot
-            visible: root.modeIcon !== ""
+            visible: root.slotIcon !== ""
 
             Icon {
                 anchors.centerIn: parent
-                name: root.modeIcon || "radio_button_unchecked"
+                name: root.slotIcon || "radio_button_unchecked"
                 fill: 1
                 color: Appearance.colour.accent
             }

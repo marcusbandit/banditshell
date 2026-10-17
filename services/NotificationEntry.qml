@@ -1,13 +1,19 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Notifications
+import qs.config
 import "../components/markup.js" as Markup
+import "notification-store.js" as Store
 
 QtObject {
     id: root
 
     property var notification: null
+    property string id: ""
     property double time: 0
+
+    property bool durable: false
+    property bool seen: false
 
     property string appName: ""
     property string summary: ""
@@ -34,7 +40,7 @@ QtObject {
     readonly property bool borrowed: root.borrows(root.image)
 
     function borrows(url: string): bool {
-        return url.startsWith("image://") && !url.startsWith("image://icon/");
+        return Store.isBorrowed(url) || Store.isTemporary(url);
     }
 
     readonly property string copyPath: root.copyPathFor(root.image)
@@ -42,7 +48,7 @@ QtObject {
     function copyPathFor(url: string): string {
         if (!root.cacheDir || !root.borrows(url))
             return "";
-        return `${root.cacheDir}/${url.replace(/[^a-zA-Z0-9]+/g, "-")}.png`;
+        return `${root.cacheDir}/${root.id || Math.round(root.time)}-${url.replace(/[^a-zA-Z0-9]+/g, "-").slice(0, 80)}.png`;
     }
 
     property string cached: ""
@@ -92,6 +98,32 @@ QtObject {
         }
 
         return Apps.iconSourceFor(names);
+    }
+
+    readonly property string appId: AppNotifications.appIdFor(root)
+
+    readonly property string appKey: root.appId || root.desktopEntry || root.appName
+
+    readonly property string markSpec: root.markSpecFor()
+
+    function markSpecFor(): string {
+        const file = root.appIcon.startsWith("/") || root.appIcon.startsWith("file:");
+        const chosen = file || !root.appKey ? "" : AppIcons.markFor(root.appKey, Config.values.sidebar.workspaces.iconMode);
+        if (chosen)
+            return chosen;
+        return root.mark ? `image:${root.mark}` : "";
+    }
+
+    readonly property bool canReply: root.live && (root.notification?.hasInlineReply ?? false)
+
+    readonly property string replyPlaceholder: root.notification?.inlineReplyPlaceholder || "Reply"
+
+    function reply(text: string): bool {
+        const said = text.trim();
+        if (!root.canReply || !said)
+            return false;
+        root.notification.sendInlineReply(said);
+        return true;
     }
 
     readonly property string brief: NotificationBrief.briefFor(root)
