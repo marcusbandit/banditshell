@@ -2,6 +2,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.modules.media
+import qs.modules.notifications
 import qs.services
 
 Item {

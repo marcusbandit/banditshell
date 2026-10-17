@@ -10,5 +10,3 @@ IslandMedia 1.0 IslandMedia.qml
 IslandOverview 1.0 IslandOverview.qml
 Island 1.0 Island.qml
 MockNotification 1.0 MockNotification.qml
-NotificationAlert 1.0 NotificationAlert.qml
-NotificationMark 1.0 NotificationMark.qml

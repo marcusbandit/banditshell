@@ -4,6 +4,7 @@ import QtQuick
 import qs.config
 import qs.components
 import qs.modules.media
+import qs.modules.notifications
 import qs.services
 
 Column {
@@ -56,6 +57,25 @@ Column {
             font.pixelSize: root.textSize
             font.variableAxes: ({ "wght": 500 })
             renderType: Text.NativeRendering
+        }
+    }
+
+    Column {
+        anchors.horizontalCenter: parent.horizontalCenter
+        visible: alerts.readable.length > 0
+        spacing: Appearance.padding.small
+
+        Repeater {
+            model: alerts.readable
+
+            NotificationCard {
+                required property var modelData
+
+                width: root.deckWidth
+                entry: modelData
+                density: "line"
+                family: root.family
+            }
         }
     }
 

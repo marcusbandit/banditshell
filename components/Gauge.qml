@@ -32,7 +32,8 @@ Item {
         color: root.fill
     }
 
-    Rectangle {
+    SquircleRect {
+        radius: width / 2
         visible: root.mark >= 0 && root.mark <= 1
 
         readonly property real span: root.width - root.height
