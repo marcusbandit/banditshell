@@ -146,7 +146,7 @@
 #                                banditshell on your PATH; exits 1 on a failure
 #   banditshell doctor binds     the binds still in an old form, and where
 #   banditshell doctor binds rewrite
-#                                rewrite them, a .bak beside each file
+#                                rewrite them, a dated .bak beside each file
 #
 # action                         run a stable action by its id
 #   banditshell action <id> [args...]

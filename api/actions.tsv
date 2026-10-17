@@ -104,7 +104,7 @@ tablet.pen.follow	stable	1	tablet pen follow	Make the pen area follow the screen
 tablet.pen.area	stable	1	tablet pen area	Map the pen to a rectangle (arguments: x y width height)
 config.get	stable	1	config get	Read a setting (argument: dotted key)
 config.set	stable	1	config set	Write a setting (arguments: dotted key, value)
-config.theme.get	stable	1	config theme	Say the theme in use
+config.theme.get	stable	1	config get theme	Say the theme in use
 config.theme.set	stable	1	config theme	Switch theme (argument: theme name)
 config.theme.list	stable	1	config theme list	List the themes
 shell.start	stable	1	start	Start the shell
