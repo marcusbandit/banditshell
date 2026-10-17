@@ -917,7 +917,7 @@ QtObject {
         };
     }
 
-    readonly property var fileRows: root.path || root.text.length < FileSearch.least ? [] : Search.fileRows(FileSearch.lines, root.text, Ranking.place).map(f => root.fileRow(Object.assign({}, f, {
+    readonly property var fileRows: root.path || root.text.length < FileSearch.least ? [] : Search.fileRows(FileSearch.lines, root.text, Ranking.place).slice(0, root.limits.files).map(f => root.fileRow(Object.assign({}, f, {
                 score: f.score - Ranking.EXACT
             }), "file"))
 
