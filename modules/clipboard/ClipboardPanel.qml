@@ -488,13 +488,16 @@ Item {
                             anchors.verticalCenter: parent.verticalCenter
                             height: Appearance.font.line.small + Appearance.padding.small * 2
 
-                            opacity: root.searching ? 1 : 0
-                            visible: opacity > 0.01
+                            opacity: searchFade.value
+                            visible: searchFade.value > 0.01
 
-                            Behavior on opacity {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fade.fast
-                                }
+                            Follow {
+                                id: searchFade
+
+                                target: root.searching ? 1 : 0
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
 
                             SquircleRect {
@@ -611,23 +614,6 @@ Item {
                             onEntered: root.hovered = index
                             onExited: if (root.hovered === index)
                                 root.hovered = -1
-                        }
-
-                        remove: Transition {
-                            NumberAnimation {
-                                property: "opacity"
-                                to: 0
-                                duration: Appearance.animation.fade.fast
-                                easing.type: Easing.OutCubic
-                            }
-                        }
-
-                        displaced: Transition {
-                            NumberAnimation {
-                                property: "y"
-                                duration: Appearance.animation.normal
-                                easing.type: Easing.OutCubic
-                            }
                         }
 
                         StyledText {

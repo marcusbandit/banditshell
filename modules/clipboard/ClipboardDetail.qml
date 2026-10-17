@@ -51,12 +51,15 @@ Item {
                 anchors.fill: parent
                 radius: height / 2
                 color: Appearance.colour.fill
-                opacity: backPress.containsMouse ? 1 : 0
+                opacity: backFade.value
 
-                Behavior on opacity {
-                    NumberAnimation {
-                        duration: Appearance.animation.fade.fast
-                    }
+                Follow {
+                    id: backFade
+
+                    target: backPress.containsMouse ? 1 : 0
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
             }
 
@@ -64,12 +67,13 @@ Item {
                 anchors.centerIn: parent
                 name: "chevron_left"
                 size: Appearance.font.iconSize
-                color: backPress.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+                color: backTone.value
 
-                Behavior on color {
-                    ColorAnimation {
-                        duration: Appearance.animation.fast
-                    }
+                FollowColour {
+                    id: backTone
+
+                    target: backPress.containsMouse ? Appearance.colour.text : Appearance.colour.textDim
+                    speed: Appearance.animation.revealSpeed
                 }
             }
 
