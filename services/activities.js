@@ -314,7 +314,7 @@ function levelMoment(kind, value, muted, max) {
     const fraction = Math.max(0, Math.min(1, value / top));
     const base = { key: `level:${kind}`, kind: "level", level: kind, muted: !!muted, ms: LEVEL_MS };
     if (kind === "mic")
-        return Object.assign(base, { icon: levelIcon(kind, fraction, muted), text: muted ? "Microphone muted" : "Microphone on", meter: -1, readout: "" });
+        return Object.assign(base, { icon: levelIcon(kind, fraction, muted), text: muted ? "Mic muted" : "Mic on", meter: -1, readout: "" });
     const name = kind === "volume" ? "Volume" : "Brightness";
     return Object.assign(base, {
         icon: levelIcon(kind, fraction, muted),
