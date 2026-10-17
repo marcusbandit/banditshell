@@ -105,7 +105,7 @@ has the whole update loop and the channels.
 ## The card
 
 `services/WhatsNew.qml` reads this file; entries newer than the marker
-(`whats-new-seen` in the shell's state dir; older copies kept `updates.seen` in config.json and move it over once) accumulate and surface in the
+(`whats-new-seen` in the shell's state dir; older copies kept `updates.seen` in config.json, which is copied over once and then left alone) accumulate and surface in the
 update menu when the user opens it; nothing summons it at launch. Entries
 are marked seen when the person dismisses the card, not when it is shown.
 Entries that are only incoming, before the update is taken, are listed in

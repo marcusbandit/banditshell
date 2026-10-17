@@ -17,7 +17,7 @@
         {
           "type": "config",
           "severity": "major",
-          "text": "Which What's new entries you have seen is kept outside config.json now. The first start moves the old updates.seen value over and takes it out of config.json."
+          "text": "Which What's new entries you have seen is kept outside config.json now. The first start copies the old updates.seen value over; the key stays in config.json as it was and the shell stops changing it."
         },
         {
           "type": "features",

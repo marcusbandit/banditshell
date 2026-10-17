@@ -40,15 +40,11 @@ Singleton {
         const old = WhatsNewLog.legacyToMove(root.stored, root.legacy);
         if (old !== "")
             root.keep(old);
-        else if (root.legacy !== "")
-            Config.set("updates.seen", "");
     }
 
     function keep(id: string): void {
         root.stored = id;
         store.setText(`${id}\n`);
-        if (root.legacy !== "")
-            Config.set("updates.seen", "");
     }
 
     function markSeen(id: string): void {
