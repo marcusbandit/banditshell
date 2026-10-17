@@ -100,8 +100,37 @@ test("after a panel's name, its own actions sit beside the shared ones", () => {
 
 test("a command that ends here is not also read as a placeholder", () => {
     assert.deepStrictEqual(bashComplete("panel", "close", ""), []);
-    assert.deepStrictEqual(bashComplete("doctor", ""), ["binds"]);
+    assert.deepStrictEqual(bashComplete("doctor", ""), ["--json", "api", "binds"]);
     assert.deepStrictEqual(bashComplete("doctor", "binds", ""), ["rewrite"]);
+});
+
+test("action, api and version complete: ids after action, the three api words, --json", () => {
+    const ids = table.find(r => r[0] === "values" && r[1] === "id")[2].split(" ").sort();
+    assert.ok(ids.includes("launcher.toggle") && ids.includes("panel.clipboard.toggle") && ids.includes("panel.close"));
+    assert.ok(!ids.some(id => id.includes("*")));
+    assert.deepStrictEqual(bashComplete("action", ""), ids);
+    assert.deepStrictEqual(bashComplete("action", "launcher.toggle", ""), []);
+    assert.deepStrictEqual(bashComplete("api", ""), ["check", "list", "show"]);
+    assert.deepStrictEqual(bashComplete("api", "show", ""), ids);
+    assert.deepStrictEqual(bashComplete("api", "list", "x", ""), ["--json"]);
+    assert.deepStrictEqual(bashComplete("version", ""), ["--json"]);
+    assert.deepStrictEqual(bashComplete("status", ""), ["--json"]);
+    assert.ok(bashComplete("", ).includes("action") && bashComplete("", ).includes("api") && bashComplete("", ).includes("version"));
+});
+
+test("the offered ids are the table's, wildcard rows spelled out once per panel", () => {
+    const rows = fs.readFileSync(path.join(ROOT, "api/actions.tsv"), "utf8").split("\n").filter(l => l && !l.startsWith("#")).map(l => l.split("\t")[0]);
+    const ids = table.find(r => r[0] === "values" && r[1] === "id")[2].split(" ");
+    const panels = table.find(r => r[0] === "values" && r[1] === "panel")[2].split(" ");
+    for (const id of rows.filter(r => !r.includes("*")))
+        assert.ok(ids.includes(id), id);
+    for (const panel of panels)
+        assert.ok(ids.includes(`panel.${panel}.toggle`), panel);
+});
+
+test("cli/commands.tsv is exactly what the parser prints now", () => {
+    const committed = fs.readFileSync(path.join(ROOT, "cli/commands.tsv"), "utf8");
+    assert.strictEqual(committed, run("bash", ["scripts/completion-rules.sh"]), "run: scripts/completion-rules.sh --write");
 });
 
 test("help offers the commands", () => {
@@ -173,6 +202,9 @@ _banditshell`;
     assert.deepStrictEqual(complete("clock", "timer", ""), ["cancel", "pause", "resume", "start", "toggle"]);
     assert.deepStrictEqual(complete("panel", "launcher", ""), ["close", "open", "run", "status", "toggle"]);
     assert.deepStrictEqual(complete("panel", "close", ""), []);
+    assert.ok(complete("action", "").includes("launcher.toggle"));
+    assert.deepStrictEqual(complete("api", ""), ["check", "list", "show"]);
+    assert.deepStrictEqual(complete("version", ""), ["--json"]);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 

@@ -1,0 +1,114 @@
+# api 1
+# id	status	since	argv	description
+launcher.toggle	stable	1	panel launcher toggle	Open or close the launcher
+launcher.open	stable	1	panel launcher open	Open the launcher
+launcher.close	stable	1	panel launcher close	Close the launcher
+launcher.run	stable	1	panel launcher run	Run an app or a launcher row (argument: app or row id)
+panel.close	stable	1	panel close	Close every panel and menu
+panel.*.toggle	stable	1	panel $1 toggle	Open or close a panel or menu (optional argument: screen)
+panel.*.open	stable	1	panel $1 open	Open a panel or menu (optional argument: screen)
+panel.*.close	stable	1	panel $1 close	Close a panel or menu
+panel.*.status	stable	1	panel $1 status	Say whether a panel or menu is open
+panel.settings.page	stable	1	panel settings page	Switch the settings page (argument: page)
+panel.keyboard.dock	stable	1	panel keyboard dock	Dock the on-screen keyboard
+panel.keyboard.float	stable	1	panel keyboard float	Float the on-screen keyboard
+panel.keyboard.page	stable	1	panel keyboard page	Show one layer of the on-screen keyboard (argument: layer)
+panel.clipboard.list	stable	1	panel clipboard list	List the clipboard history
+panel.clipboard.clear	stable	1	panel clipboard clear	Empty the clipboard history
+panel.clipboard.use	stable	1	panel clipboard use	Copy a history entry back (argument: index)
+panel.clipboard.pin	stable	1	panel clipboard pin	Pin a history entry (argument: index)
+panel.clipboard.remove	stable	1	panel clipboard remove	Remove a history entry (argument: index)
+panel.calculator.full	stable	1	panel calculator full	Open the calculator over the whole screen
+panel.calculator.compact	stable	1	panel calculator compact	Open the calculator as a strip
+panel.calculator.answer	stable	1	panel calculator answer	Answer a sum without opening the calculator (argument: expression)
+panel.notifications.clear	stable	1	panel notifications clear	Empty the notification history
+output.status	stable	1	output	Say which device plays
+output.toggle	stable	1	output toggle	Flip between the speakers and the headphones
+output.speakers	stable	1	output speakers	Play through the speakers
+output.headphones	stable	1	output headphones	Play through the headphones
+output.list	stable	1	output list	List every device that can play
+output.assign	stable	1	output assign	Name the device for a role (arguments: role device)
+screen.status	stable	1	screen	Say brightness, warmth, border, sidebar and streamer mode
+screen.brightness.up	stable	1	screen brightness +	Brighter by 10 percent
+screen.brightness.down	stable	1	screen brightness -	Dimmer by 10 percent
+screen.brightness.set	stable	1	screen brightness	Set brightness (argument: percent, +n or -n)
+screen.temperature.set	stable	1	screen temperature	Warm the colours (argument: kelvin)
+screen.temperature.off	stable	1	screen temperature off	Stop warming the colours
+screen.border.status	stable	1	screen border	Say whether the shell frame is on
+screen.border.toggle	stable	1	screen border toggle	Shell frame on or off
+screen.border.on	stable	1	screen border on	Shell frame on
+screen.border.off	stable	1	screen border off	Shell frame off, bare desktop
+screen.sidebar.status	stable	1	screen sidebar	Say whether the sidebar is shown
+screen.sidebar.toggle	stable	1	screen sidebar toggle	Show or hide the sidebar (optional argument: screen or all)
+screen.sidebar.on	stable	1	screen sidebar on	Show the sidebar (optional argument: screen or all)
+screen.sidebar.off	stable	1	screen sidebar off	Hide the sidebar (optional argument: screen or all)
+screen.stream.status	stable	1	screen stream	Say whether streamer mode is on
+screen.stream.on	stable	1	screen stream on	Start streamer mode (optional argument: screen)
+screen.stream.off	stable	1	screen stream off	Stop streamer mode
+wallpaper.status	stable	1	wallpaper	Say what each screen wears
+wallpaper.toggle	stable	1	wallpaper toggle	Wallpaper on or off
+wallpaper.on	stable	1	wallpaper on	Wallpaper on
+wallpaper.off	stable	1	wallpaper off	Wallpaper off
+wallpaper.next	stable	1	wallpaper next	Next wallpaper (optional argument: screen or all)
+wallpaper.prev	stable	1	wallpaper prev	Previous wallpaper (optional argument: screen or all)
+wallpaper.clear	stable	1	wallpaper clear	Forget the wallpaper of a screen (optional argument: screen or all)
+wallpaper.set	stable	1	wallpaper set	Wear a file (arguments: file, optional screen or all)
+wallpaper.list	stable	1	wallpaper list	List every picture (optional argument: screen)
+wallpaper.palette	stable	1	wallpaper palette	Print the colours of the picture worn
+screenshot.save	stable	1	screenshot save	Pick a region, save it and open the editor
+screenshot.save_frozen	stable	1	screenshot save --freeze	Freeze the screen, pick a region, save it
+screenshot.copy	stable	1	screenshot copy	Pick a region onto the clipboard
+screenshot.copy_frozen	stable	1	screenshot copy --freeze	Freeze the screen, pick a region onto the clipboard
+screenshot.full	stable	1	screenshot full	Save the whole desktop (optional argument: file)
+clock.status	stable	1	clock	Say the timers and the alarms
+clock.timer.status	stable	1	clock timer	List the running timers
+clock.timer.start	stable	1	clock timer start	Start a timer (arguments: duration, optional label)
+clock.timer.pause	stable	1	clock timer pause	Pause a timer (optional argument: handle)
+clock.timer.resume	stable	1	clock timer resume	Resume a timer (optional argument: handle)
+clock.timer.toggle	stable	1	clock timer toggle	Pause or resume a timer (optional argument: handle)
+clock.timer.cancel	stable	1	clock timer cancel	Cancel a timer (optional argument: handle)
+clock.alarm.status	stable	1	clock alarm	Say the next alarm and what is ringing
+clock.alarm.add	stable	1	clock alarm add	Add an alarm (arguments: time, then options)
+clock.alarm.list	stable	1	clock alarm list	List the alarms
+clock.alarm.snooze	stable	1	clock alarm snooze	Snooze the ringing alarm
+clock.alarm.stop	stable	1	clock alarm stop	Stop the ringing alarm
+clock.alarm.enable	stable	1	clock alarm enable	Turn an alarm on (argument: handle)
+clock.alarm.disable	stable	1	clock alarm disable	Turn an alarm off (argument: handle)
+clock.alarm.remove	stable	1	clock alarm remove	Delete an alarm (argument: handle)
+clock.zone.list	stable	1	clock zone list	List the world clocks
+clock.zone.find	stable	1	clock zone find	Find a place for the world clocks (argument: place)
+clock.zone.add	stable	1	clock zone add	Add a world clock (argument: place)
+clock.zone.remove	stable	1	clock zone remove	Remove a world clock (argument: place)
+focus.status	stable	1	focus	Say the focus mode and whether notifications are quiet
+focus.mode.list	stable	1	focus mode list	List the focus modes
+focus.mode.set	stable	1	focus mode	Switch focus mode (argument: none, work, play, stream or sleep)
+focus.quiet.status	stable	1	focus quiet	Say whether notifications are quiet
+focus.quiet.toggle	stable	1	focus quiet toggle	Quiet notifications on or off (optional argument: when it ends)
+focus.quiet.on	stable	1	focus quiet on	Quiet notifications on (optional argument: when it ends)
+focus.quiet.off	stable	1	focus quiet off	Quiet notifications off
+tablet.status	stable	1	tablet	Say the hinge, the lid and the pen area
+tablet.toggle	stable	1	tablet toggle	Flip tablet mode (optional argument: who said so)
+tablet.on	stable	1	tablet on	Tablet mode on (optional argument: who said so)
+tablet.off	stable	1	tablet off	Tablet mode off (optional argument: who said so)
+tablet.probe	stable	1	tablet probe	Ask the hardware for the hinge state
+tablet.lid.open	stable	1	tablet lid open	The lid is open (optional argument: who said so)
+tablet.lid.closed	stable	1	tablet lid closed	The lid is closed (optional argument: who said so)
+tablet.lid.toggle	stable	1	tablet lid toggle	Flip the lid state (optional argument: who said so)
+tablet.pen.status	stable	1	tablet pen	Say the pen mapping
+tablet.pen.edit	stable	1	tablet pen edit	Open the pen mapper over the screen
+tablet.pen.commit	stable	1	tablet pen commit	Keep the pen mapping being edited
+tablet.pen.cancel	stable	1	tablet pen cancel	Drop the pen mapping being edited
+tablet.pen.aspect	stable	1	tablet pen aspect	Match the pen area to the screen shape
+tablet.pen.centre	stable	1	tablet pen centre	Centre the pen area
+tablet.pen.follow	stable	1	tablet pen follow	Make the pen area follow the screen
+tablet.pen.area	stable	1	tablet pen area	Map the pen to a rectangle (arguments: x y width height)
+config.get	stable	1	config get	Read a setting (argument: dotted key)
+config.set	stable	1	config set	Write a setting (arguments: dotted key, value)
+config.theme.get	stable	1	config theme	Say the theme in use
+config.theme.set	stable	1	config theme	Switch theme (argument: theme name)
+config.theme.list	stable	1	config theme list	List the themes
+shell.start	stable	1	start	Start the shell
+shell.stop	stable	1	stop	Stop the shell
+shell.restart	stable	1	restart	Restart the shell
+shell.status	stable	1	status	Say what the shell thinks the compositor said
+shell.log	stable	1	log	Show the running shell's log
