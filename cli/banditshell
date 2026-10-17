@@ -774,6 +774,9 @@ usage() {
             name = ""
         }
         NR == 1 { print; print ""; next }
+        /^exit codes/ { emit(); foot = $0; infoot = 1; next }
+        infoot && /^[^ ]/ { foot = foot "\n" $0; next }
+        { infoot = 0 }
         /^[a-z][a-z|]*( |$)/ && !/^[a-z]+ [^ ]/ {
             emit()
             name = $1
@@ -790,7 +793,11 @@ usage() {
             next
         }
         { emit() }
-        END { emit() }
+        END {
+            emit()
+            if (foot != "")
+                print "\n" foot
+        }
     '
 }
 

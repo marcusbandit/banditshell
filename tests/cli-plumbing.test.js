@@ -328,3 +328,14 @@ test("the lua-api step writes the pointer and the shim through the CLI, into a t
     assert.match(run.stdout, /after-yes/, run.stdout + run.stderr);
     assert.deepStrictEqual(listing(hypr), ["banditshell.lua", "hyprland.lua"]);
 });
+
+test("help names the new verbs and writes the exit codes down", () => {
+    const run = cli(["help"]);
+    assert.strictEqual(run.code, 0, run.err);
+    for (const verb of ["action", "api", "version"])
+        assert.match(run.out, new RegExp(`^  ${verb}\\s+\\S`, "m"));
+    assert.match(run.out, /exit codes: 0 done, 1 failed, 2 usage, 3 the shell is not running, 4 the shell\nrefused\./);
+    for (const word of ["action", "api", "version"])
+        assert.strictEqual(cli([word, "help"]).code, 0, word);
+    assert.match(cli(["api", "help"]).out, /banditshell api list \[<pattern>\] \[--json\]/);
+});
