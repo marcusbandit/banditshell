@@ -83,6 +83,37 @@ QtObject {
             };
         case "external": {
             const ended = a.state === "ended";
+            if (a.style === "screenshot")
+                return {
+                    art: a.data?.picture,
+                    icon: a.icon,
+                    tone: Appearance.colour.accent,
+                    text: ended ? "Done" : a.text,
+                    detail: a.detail,
+                    trailing: ended ? "icon" : "actions",
+                    trailingIcon: "check_circle",
+                    trailingTone: Appearance.colour.accent,
+                    actions: a.actions ?? []
+                };
+            if (a.style === "copied")
+                return {
+                    icon: a.data?.secret ? "visibility_off" : a.icon,
+                    tone: a.data?.secret ? Appearance.colour.textDim : Appearance.colour.accent,
+                    text: a.text
+                };
+            if (a.style === "bluetooth") {
+                const battery = a.data?.battery ?? -1;
+                return {
+                    icon: a.icon,
+                    tone: Appearance.colour.accent,
+                    text: a.text,
+                    detail: a.detail,
+                    trailing: battery >= 0 ? "text" : "",
+                    trailingText: `${battery}%`,
+                    trailingSample: "100%",
+                    trailingTone: Appearance.colour.textDim
+                };
+            }
             const tone = !ended ? Appearance.colour.accent : a.outcome === "failed" ? Appearance.colour.alarm : a.outcome === "cancelled" ? Appearance.colour.textFaint : Appearance.colour.accent;
             return {
                 app: a.mark,
@@ -95,6 +126,18 @@ QtObject {
                 trailingIcon: a.outcome === "failed" ? "error" : a.outcome === "cancelled" ? "cancel" : "check_circle",
                 trailingTone: tone,
                 ringValue: Math.max(0, a.progress)
+            };
+        }
+        case "privacy": {
+            const tone = a.data?.privacy === "mic" ? Appearance.colour.accent : Appearance.colour.alarm;
+            return {
+                icon: a.icon,
+                tone: tone,
+                text: a.text,
+                detail: a.detail,
+                trailing: "icon",
+                trailingIcon: "fiber_manual_record",
+                trailingTone: tone
             };
         }
         case "timer":

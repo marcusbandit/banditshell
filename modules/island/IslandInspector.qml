@@ -8,6 +8,8 @@ import qs.config
 import qs.components
 import qs.services
 import "../../services/activities.js" as Logic
+import "../../services/moments.js" as MomentLogic
+import "../../services/privacy.js" as PrivacyLogic
 
 Scope {
     id: root
@@ -224,7 +226,23 @@ Scope {
                 progress: 0.8,
                 icon: "rocket_launch",
                 outcome: "failed"
-            }
+            },
+            shot: MomentLogic.screenshotSpec(Quickshell.shellPath("assets/inspector/screenshot.svg")),
+            copied: MomentLogic.copiedSpec(["wl-copy", "-n"], "the quick brown fox jumps over the lazy dog"),
+            secret: MomentLogic.copiedSpec(["wl-copy", "--sensitive", "-n"], "hunter2"),
+            headphones: MomentLogic.bluetoothSpec("WH-1000XM5", "headphones", 64),
+            mic: PrivacyLogic.usageSpec({
+                kind: "mic",
+                apps: ["Firefox"]
+            }),
+            camera: PrivacyLogic.usageSpec({
+                kind: "camera",
+                apps: ["Zoom"]
+            }),
+            screen: PrivacyLogic.usageSpec({
+                kind: "screen",
+                apps: ["OBS Studio", "Firefox"]
+            })
         })
 
     readonly property var verbs: ({
@@ -235,6 +253,7 @@ Scope {
             timer: "pauses or resumes the timer",
             alarm: "stops or snoozes the alarm from its buttons",
             level: "nothing, it only shows",
+            privacy: "opens the sound menu for the microphone, nothing for the camera or a screen share",
             notifications: "opens the launcher on the notification history",
             held: "opens the launcher on what was held while quiet",
             update: "opens the update menu",
@@ -381,6 +400,44 @@ Scope {
         {
             name: "The microphone is muted",
             notices: ["mic"]
+        },
+        {
+            name: "A screenshot was just taken",
+            tasks: ["shot"]
+        },
+        {
+            name: "A screenshot while dictating",
+            voice: "listening",
+            tasks: ["shot"]
+        },
+        {
+            name: "Text was copied",
+            tasks: ["copied"]
+        },
+        {
+            name: "A secret was copied",
+            tasks: ["secret"]
+        },
+        {
+            name: "Headphones connect",
+            tasks: ["headphones"]
+        },
+        {
+            name: "The microphone is in use",
+            tasks: ["mic"]
+        },
+        {
+            name: "Camera, screen share and microphone in use",
+            tasks: ["camera", "screen", "mic"]
+        },
+        {
+            name: "The microphone is in use beside a build",
+            tasks: ["build", "mic"]
+        },
+        {
+            name: "The microphone is in use while dictating",
+            voice: "listening",
+            tasks: ["mic"]
         },
         {
             name: "The overview",
@@ -777,7 +834,8 @@ Scope {
             const look = root.taskLooks[k];
             Activities.push(Object.assign({}, look, {
                 source: "inspector",
-                act: () => root.clicked = `${look.text}: its own command ran`
+                until: 0,
+                act: (entry, action) => root.clicked = action ? `${look.text}: ${action}` : `${look.text}: its own command ran`
             }));
             if (look.outcome)
                 Activities.end(look.id, look.outcome, 600000);
@@ -1252,7 +1310,7 @@ Scope {
                                 spacing: Appearance.padding.small
 
                                 Repeater {
-                                    model: ["build", "sync", "built", "broke"]
+                                    model: ["build", "sync", "built", "broke", "shot", "copied", "secret", "headphones", "mic", "camera", "screen"]
 
                                     Button {
                                         required property string modelData

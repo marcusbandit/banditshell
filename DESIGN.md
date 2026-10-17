@@ -945,6 +945,22 @@ banditshell/
 │   │                            already shows that level
 │   ├── LevelCover.qml           what a surface declares while it shows a
 │   │                            level, so Levels stays quiet about it
+│   ├── Moments.qml              the island's short moments, posted through
+│   │                            Activities: a screenshot thumbnail, a Copied
+│   │                            line, a Bluetooth audio device connecting.
+│   │                            `island.moments.*` switches each one off
+│   ├── moments.js               what those moments say and how long they last,
+│   │                            the copy masking, the screenshot actions.
+│   │                            No QML, tested in node
+│   ├── Privacy.qml              reads the PipeWire graph and posts a privacy
+│   │                            activity for each of microphone, camera and
+│   │                            screen share that is in use, and removes it
+│   │                            when the stream stops
+│   ├── privacy.js               which PipeWire nodes and links mean a camera,
+│   │                            a microphone or a screen share, and which
+│   │                            apps own them. No QML, tested in node
+│   ├── Screenshots.qml          the `captured(path)` signal the picker and
+│   │                            `screenshot full` raise when a picture exists
 │   ├── Downloads.qml            inotifywait on the XDG download folder. A name
 │   │                            counts once it is a non-empty file with no
 │   │                            .part or .crdownload beside it, which is what
@@ -1301,7 +1317,10 @@ banditshell/
 │   │   └── WallpaperView.qml    what the desktop shows on one output: two slots
 │   │                            that cross-fade through the reveal blob; the
 │   │                            wallpaper window and the picker share it
-│   ├── picker/                  screenshot: hover a window or drag a region
+│   ├── picker/                  screenshot: hover a window or drag a region. A
+│   │                            finished picture raises `Screenshots.captured`;
+│   │                            `picker taken <path>` does the same for
+│   │                            `screenshot full`, which never reaches the shell
 │   ├── settings/                the settings panel: a blob that melts out of the
 │   │   │                        sidebar's edge like the menus do, ported from the
 │   │   │                        settings-demo mockup. Rail, content and pane side
@@ -4039,6 +4058,26 @@ a surface that already shows that level is open (the sound menu, the quick
 controls, the settings volume row declare it with `LevelCover`), when the device
 just changed, and for the first seconds after the shell starts.
 `island.levels` turns it off.
+
+Four more things post through the same door, as `Moments` and `Privacy`, and each
+has its own switch under `island.moments`. A screenshot shows the picture small
+through `SquircleImage`, with Copy, Edit (the picker's editor), Folder and Delete,
+for six seconds; pressing the row opens the picture, and Delete moves it to the
+trash. It runs after `screenshot save`, `copy` and `full`. Copying anything from
+the shell gives a short Copied row with the first twenty characters; text that
+was copied as sensitive shows eight dots instead of the text. An audio device
+that connects over Bluetooth gets its name and battery for three seconds. The
+fourth is not a moment but a state: while a program holds the microphone, the
+camera or a screen cast open in PipeWire, a privacy activity stays up, coloured
+(the camera and the screen alarm red, the microphone accent), naming the app. It
+is kind `privacy`, so it sits in the island like dictation does, but it joins
+the others as a bubble and never takes the big spot from what is already
+there; hovering the bubble names the apps, and pressing the microphone's opens
+the sound menu. Dictation and the screen recorder already show themselves, so
+the microphone is left out while dictation runs, and the screen share while the
+shell records. What counts as a camera, a microphone or a cast is in
+`privacy.js`: a stream that an active link feeds from a device. A program that
+reads the camera without PipeWire (a raw video4linux grab) is not seen.
 
 ### The kernel
 

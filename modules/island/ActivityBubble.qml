@@ -34,7 +34,7 @@ Item {
         case "notification":
             return a.entry?.urgency === NotificationUrgency.Critical ? "alarm" : "";
         case "external":
-            return a.state === "ended" ? "" : a.progress < 0 ? "spin" : "measure";
+            return a.state === "ended" || a.style ? "" : a.progress < 0 ? "spin" : "measure";
         case "timer":
             return "measure";
         case "alarm":
@@ -74,7 +74,7 @@ Item {
                 text: a.clock,
                 tone: a.ending ? Appearance.colour.alarm : Appearance.colour.text
             };
-        if ((root.kind === "external" || root.kind === "timer" || root.kind === "alarm") && root.items.length > 1)
+        if ((root.kind === "external" || root.kind === "timer" || root.kind === "alarm" || root.kind === "privacy") && root.items.length > 1)
             return {
                 text: `${root.items.length}`
             };
@@ -109,6 +109,8 @@ Item {
             return root.items.length > 1 ? `${root.items.length} timers` : `${a.text}, ${a.clock} left`;
         case "alarm":
             return a.text;
+        case "privacy":
+            return root.items.map(i => i.text).join(", ");
         }
         return "";
     }

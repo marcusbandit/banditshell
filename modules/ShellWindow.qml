@@ -182,6 +182,10 @@ PanelWindow {
         case "alarm":
             Activities.activate(notice);
             return;
+        case "privacy":
+            if (notice.data?.menu)
+                win.openMenu(notice.data.menu, true);
+            return;
         case "music":
             if (notice.origin && !mediaLayer.open) {
                 islandLayer.handOff();
