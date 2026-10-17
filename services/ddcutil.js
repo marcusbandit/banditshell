@@ -11,6 +11,7 @@ function parseDetect(text) {
             const header = /^Display (\d+)\b/.exec(line);
             current = header ? {
                 index: header[1],
+                bus: "",
                 name: "",
                 model: "",
                 max: 100
@@ -22,6 +23,12 @@ function parseDetect(text) {
 
         if (!current)
             continue;
+
+        const bus = /^I2C bus:\s*\/dev\/i2c-(\d+)$/.exec(line);
+        if (bus) {
+            current.bus = bus[1];
+            continue;
+        }
 
         const connector = /^DRM connector:\s*card\d+-(\S+)$/.exec(line);
         if (connector) {
@@ -51,4 +58,23 @@ function parseVcp(text) {
 
 function staleDisplays(displays, readAt, now, windowMs) {
     return (displays ?? []).filter(display => !(now - (readAt?.[display.index] ?? -Infinity) < windowMs));
+}
+
+function target(display) {
+    return display?.bus ? ["--bus", display.bus] : ["--display", String(display?.index ?? "")];
+}
+
+function rawLevel(fraction, max) {
+    const top = Number(max) > 0 ? Number(max) : 100;
+    const f = Number(fraction);
+    return Math.max(0, Math.min(top, Math.round((isFinite(f) ? Math.max(0, Math.min(1, f)) : 0) * top)));
+}
+
+function restAfter(previous, floor, ceiling) {
+    return Math.min(ceiling, Math.max(floor, (Number(previous) || 0) * 2));
+}
+
+function restEased(rest, floor) {
+    const eased = (Number(rest) || 0) * 0.75;
+    return eased < floor ? 0 : Math.round(eased);
 }

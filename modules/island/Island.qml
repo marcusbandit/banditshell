@@ -51,6 +51,13 @@ Item {
                 kind: "recording"
             });
         if (root.focused)
+            for (const timer of Clock.timers.filter(t => !t.finished && !t.quiet))
+                out.push({
+                    key: `timer:${timer.id}`,
+                    kind: "timer",
+                    timer: timer
+                });
+        if (root.focused)
             for (const rec of Launching.shown.slice(-root.launchMax))
                 out.push({
                     key: `launch:${rec.id}`,
@@ -270,7 +277,7 @@ Item {
     readonly property Item stage: scene
 
     function pressable(activity: var): bool {
-        return ["music", "download", "update", "kernel", "restart", "notification", "recording"].includes(activity?.kind ?? "");
+        return ["music", "download", "update", "kernel", "restart", "notification", "recording", "timer"].includes(activity?.kind ?? "");
     }
 
     readonly property bool whole: root.openness > 0 || root.deckRest || root.stackItems.some(i => root.pressable(i))

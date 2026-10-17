@@ -129,6 +129,9 @@ QtObject {
         VpnSource {
             search: root
         },
+        TimerSource {
+            search: root
+        },
         DevSource {
             search: root
         }
@@ -182,6 +185,8 @@ QtObject {
     property bool started: false
 
     property bool quiet: false
+
+    property var colourEdit: null
 
     property bool active: true
 
@@ -791,7 +796,7 @@ QtObject {
             detail: group ? `${hit.page.name} › ${group}` : hit.page.name,
             icon: hit.row.icon || hit.page.icon || "tune",
             toggle: live ? !!SettingsState.v(hit.row.k) : undefined,
-            score: Math.max(0.5, Ranking.place(hit.label, root.text))
+            score: Math.max(Ranking.ANYWHERE, Ranking.place(hit.label, root.text)) - Ranking.EXACT * 2
         };
     }
 
@@ -925,7 +930,7 @@ QtObject {
                 label: hit.name,
                 detail: `${hit.text} · ${hit.where}`,
                 icon: Marks.iconFor(hit.path, hit.name, false, Files.home) || "draft",
-                score: -1
+                score: -Ranking.EXACT * 3
             }))
 
     readonly property string cli: `${Quickshell.shellDir}/cli/banditshell`

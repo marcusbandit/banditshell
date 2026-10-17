@@ -107,6 +107,14 @@ test.describe("fileRows", () => {
         assert.deepStrictEqual(rows.map(r => r.path), ["/h/a/b/c/notes", "/h/notes.md", "/h/x/y/notes.md", "/h/x/old-notes.txt"]);
         assert.ok(rows[0].dir && !rows[1].dir);
     });
+
+    test.it("ranks a path search by the end of the path, the folder itself first", () => {
+        const lines = ["/h/.config/hypr/lua/binds.lua", "/h/.config/hypr/lua/", "/h/.config/hypr/lua/rules.lua", "/h/.config/nvim/lua/"];
+        const rows = Search.fileRows(lines, "hypr/lua", Ranking.place);
+        assert.deepStrictEqual(rows.map(r => r.path), ["/h/.config/hypr/lua", "/h/.config/hypr/lua/binds.lua", "/h/.config/hypr/lua/rules.lua"]);
+        assert.ok(rows[0].score > rows[1].score);
+        assert.strictEqual(Search.fileRows(lines, "hypr/lu", Ranking.place)[0].path, "/h/.config/hypr/lua");
+    });
 });
 
 test.describe("urlOf", () => {

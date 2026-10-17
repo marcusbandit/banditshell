@@ -65,6 +65,15 @@ PanelWindow {
 
     readonly property bool underFullscreen: Hypr.fullscreenOn(win.screen?.name ?? "")
 
+    readonly property bool launcherAbove: win.underFullscreen && (launcherLayer.open || launcherLayer.drawnHeight > 0)
+
+    onLauncherAboveChanged: if (!win.launcherAbove)
+        Qt.callLater(() => {
+            launcherLayer.stackBefore(clipLayer);
+            if (launcherLayer.open)
+                launcherLayer.concept?.input?.forceActiveFocus();
+        })
+
     onUnderFullscreenChanged: if (win.underFullscreen) {
         win.closePanels(null, false);
         menuLayer.hide();
@@ -133,7 +142,7 @@ PanelWindow {
         for (const window of Shell.windows)
             window.closePanels(opening, window === win);
         if (win.underFullscreen)
-            win.closePanels(null, true);
+            win.closePanels(launcherLayer, true);
     }
 
     function closePanels(opening: Item, here: bool): void {
@@ -179,6 +188,9 @@ PanelWindow {
             return;
         case "recording":
             ScreenRecorder.stop();
+            return;
+        case "timer":
+            Clock.toggleTimer(notice.timer.id);
             return;
         case "music":
             if (notice.origin && !mediaLayer.open) {
@@ -362,6 +374,9 @@ PanelWindow {
         screen: win.screen
         chassis: chassis
         covering: win.underFullscreen
+        hosting: win.launcherAbove
+        taking: win.launcherAbove && launcherLayer.open
+        hostedBlobs: body.lowered(launcherLayer.blobs)
     }
 
     IdleInhibitor {
@@ -566,10 +581,11 @@ PanelWindow {
         Launcher {
             id: launcherLayer
 
+            parent: win.launcherAbove ? fullscreenBorder.stage : body
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach
             originX: chassis.barWidth
-            inset: win.border
+            inset: win.launcherAbove ? fullscreenBorder.ring : win.border
 
             onOpenChanged: if (open)
                 win.closeOthers(launcherLayer)

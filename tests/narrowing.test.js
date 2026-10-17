@@ -36,6 +36,17 @@ test.describe("narrowing a search instead of running it again", () => {
         assert.deepStrictEqual(Narrowing.keepNamed(lines, "FIRE"), ["/home/me/firefox.desktop", "/home/me/Firewall/", "/home/me/campfire.txt"]);
     });
 
+    test.it("never narrows between a name search and a path search", () => {
+        assert.ok(!Narrowing.narrows("hypr", "hypr/"));
+        assert.ok(!Narrowing.narrows("hypr/lua", "lua"));
+        assert.ok(Narrowing.narrows("hypr/l", "hypr/lua"));
+    });
+
+    test.it("matches a path search against the whole path, like fd --full-path", () => {
+        const lines = ["/home/me/.config/hypr/lua/", "/home/me/.config/hypr/lua/binds.lua", "/home/me/hypr-notes/lua.md", "/home/me/.config/nvim/lua/"];
+        assert.deepStrictEqual(Narrowing.keepNamed(lines, "hypr/lua"), ["/home/me/.config/hypr/lua/", "/home/me/.config/hypr/lua/binds.lua"]);
+    });
+
     test.it("reads the file out of a ripgrep hit", () => {
         assert.strictEqual(Narrowing.pathOf("/home/me/a.md:12:time: 10:30"), "/home/me/a.md");
         assert.strictEqual(Narrowing.pathOf("not a hit"), "");
