@@ -31,6 +31,7 @@ singleton Downloads 1.0 Downloads.qml
 singleton Emoji 1.0 Emoji.qml
 singleton FileSearch 1.0 FileSearch.qml
 singleton Files 1.0 Files.qml
+singleton Focus 1.0 Focus.qml
 singleton GitHub 1.0 GitHub.qml
 singleton Hotspot 1.0 Hotspot.qml
 singleton Hypr 1.0 Hypr.qml
@@ -63,9 +64,11 @@ singleton Notices 1.0 Notices.qml
 singleton NotificationBrief 1.0 NotificationBrief.qml
 NotificationEntry 1.0 NotificationEntry.qml
 singleton Notifications 1.0 Notifications.qml
+singleton Notify 1.0 Notify.qml
 singleton Obs 1.0 Obs.qml
 singleton PackageSearch 1.0 PackageSearch.qml
 singleton Pacman 1.0 Pacman.qml
+singleton Panels 1.0 Panels.qml
 singleton PasswordRequest 1.0 PasswordRequest.qml
 singleton PenButtons 1.0 PenButtons.qml
 singleton PenMap 1.0 PenMap.qml
@@ -80,6 +83,7 @@ singleton Prompts 1.0 Prompts.qml
 singleton Relaunch 1.0 Relaunch.qml
 singleton ScreenRecorder 1.0 ScreenRecorder.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
+singleton SessionControl 1.0 SessionControl.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
 singleton SidebarState 1.0 SidebarState.qml
@@ -89,6 +93,7 @@ singleton SshHosts 1.0 SshHosts.qml
 singleton StartupApps 1.0 StartupApps.qml
 singleton StreamState 1.0 StreamState.qml
 singleton Suspension 1.0 Suspension.qml
+singleton System 1.0 System.qml
 singleton SystemBinaries 1.0 SystemBinaries.qml
 singleton SystemInfo 1.0 SystemInfo.qml
 singleton SystemMonitor 1.0 SystemMonitor.qml

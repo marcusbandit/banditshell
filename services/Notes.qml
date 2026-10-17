@@ -11,14 +11,14 @@ Singleton {
     id: root
 
     readonly property var settings: Config.values.launcher.powerTools
-    readonly property var roots: Paths.listFrom(root.settings.noteFolders, Files.home)
+    readonly property var roots: Paths.listFrom(root.settings.noteFolders, System.home)
     readonly property string chosenVault: root.settings.noteVault
 
     property string registry: ""
     property string flatpakRegistry: ""
     property string discovered: ""
 
-    readonly property var vaults: Logic.withoutSkipped(Logic.vaultsFrom([root.registry, root.flatpakRegistry], root.discovered), root.settings.noteSkip, Files.home)
+    readonly property var vaults: Logic.withoutSkipped(Logic.vaultsFrom([root.registry, root.flatpakRegistry], root.discovered), root.settings.noteSkip, System.home)
     readonly property var vault: Logic.defaultVault(root.vaults, root.chosenVault)
 
     property var notes: []
@@ -63,7 +63,7 @@ Singleton {
     FileView {
         id: registryFile
 
-        path: `${Quickshell.env("XDG_CONFIG_HOME") || `${Files.home}/.config`}/obsidian/obsidian.json`
+        path: `${Quickshell.env("XDG_CONFIG_HOME") || `${System.home}/.config`}/obsidian/obsidian.json`
         printErrors: false
         watchChanges: true
         onFileChanged: registryFile.reload()
@@ -73,7 +73,7 @@ Singleton {
     FileView {
         id: flatpakFile
 
-        path: `${Files.home}/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json`
+        path: `${System.home}/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json`
         printErrors: false
         watchChanges: true
         onFileChanged: flatpakFile.reload()

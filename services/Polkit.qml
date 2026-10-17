@@ -73,7 +73,7 @@ Singleton {
     }
 
     function demo(): void {
-        root.screenName = root.screenFor(Shell.offStageScreen);
+        root.screenName = root.screenFor(Focus.offStageScreen);
         root.asked += 1;
         root.showing = true;
     }
@@ -124,7 +124,7 @@ Singleton {
 
         PolkitAgent {
             onAuthenticationRequestStarted: {
-                root.screenName = root.screenFor(Shell.offStageScreen);
+                root.screenName = root.screenFor(Focus.offStageScreen);
                 root.asked += 1;
             }
         }

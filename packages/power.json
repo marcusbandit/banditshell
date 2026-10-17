@@ -18,7 +18,7 @@
     "tests": ["tests/idle.test.js", "tests/power.test.js"]
   },
   "requires": {
-    "packages": ["core", "compositor", "notifications"],
+    "packages": ["core", "compositor"],
     "optional": []
   },
   "provides": {

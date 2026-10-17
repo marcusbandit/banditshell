@@ -10,7 +10,7 @@ Singleton {
     id: root
 
     readonly property string chosenFolder: Config.values.launcher.powerTools.scriptsFolder
-    readonly property string folder: root.chosenFolder ? root.chosenFolder.replace(/^~(?=\/|$)/, Files.home).replace(/(.)\/+$/, "$1") : `${Config.dir}/scripts`
+    readonly property string folder: root.chosenFolder ? root.chosenFolder.replace(/^~(?=\/|$)/, System.home).replace(/(.)\/+$/, "$1") : `${Config.dir}/scripts`
 
     property var scripts: []
     property bool folderExists: false
@@ -240,7 +240,7 @@ Singleton {
             items: [],
             error: `stopped after ${root.listTimeoutMs / 1000} s`,
             code: -1
-        } : Scripts.readList(run.code, run.out, run.err, folder, Files.home, 50);
+        } : Scripts.readList(run.code, run.out, run.err, folder, System.home, 50);
         const lists = Object.assign({}, root.lists);
         lists[run.key] = Object.assign(result, {
             key: run.key,

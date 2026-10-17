@@ -168,7 +168,7 @@ QtObject {
         })
 
     readonly property string text: root.query.trim()
-    readonly property var path: Search.pathQuery(root.query, Files.home)
+    readonly property var path: Search.pathQuery(root.query, System.home)
     readonly property string url: Search.urlOf(root.text)
 
     readonly property var timer: Search.timerAsk(root.text)
@@ -202,7 +202,7 @@ QtObject {
             root.listProcesses();
         if (root.quiet || ShellCli.ask(root.query) !== null)
             return;
-        const typed = Search.pathQuery(root.query, Files.home);
+        const typed = Search.pathQuery(root.query, System.home);
         if (typed)
             FileSearch.list(typed.dir);
         else
@@ -230,7 +230,7 @@ QtObject {
             icon: "lock",
             label: "Lock screen",
             words: "lock screen away",
-            run: () => Lock.lock()
+            run: () => SessionControl.requestLock()
         },
         {
             id: "suspend",
@@ -283,14 +283,18 @@ QtObject {
             icon: "content_paste",
             label: "Clipboard history",
             words: "clipboard paste copied history",
-            run: () => Shell.forScreen(root.screenName)?.clipboard.show()
+            run: () => Panels.open("clipboard", {
+                screen: root.screenName
+            })
         },
         {
             id: "wallpapers",
             icon: "wallpaper",
             label: "Wallpapers",
             words: "wallpaper background picture",
-            run: () => Shell.forScreen(root.screenName)?.wallpapers.show()
+            run: () => Panels.open("wallpapers", {
+                screen: root.screenName
+            })
         },
         {
             id: "screenshotarea",
@@ -906,8 +910,8 @@ QtObject {
             path: f.path,
             dir: f.dir,
             label: f.name,
-            detail: Search.shortPath(f.path.slice(0, f.path.lastIndexOf("/")) || "/", Files.home),
-            icon: Marks.iconFor(f.path, f.name, f.dir, Files.home) || (f.dir ? "folder" : "draft"),
+            detail: Search.shortPath(f.path.slice(0, f.path.lastIndexOf("/")) || "/", System.home),
+            icon: Marks.iconFor(f.path, f.name, f.dir, System.home) || (f.dir ? "folder" : "draft"),
             score: f.score ?? 0
         };
     }
@@ -916,7 +920,7 @@ QtObject {
                 score: f.score - Ranking.EXACT
             }), "file"))
 
-    readonly property var contentRows: !root.grepFor || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, Files.home)).filter(hit => hit && !Search.isSecretish(hit.path) && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
+    readonly property var contentRows: !root.grepFor || FileSearch.grepAnswered !== root.text ? [] : FileSearch.hits.map(line => Search.contentRow(line, System.home)).filter(hit => hit && !Search.isSecretish(hit.path) && !root.fileRows.some(f => f.path === hit.path)).map(hit => ({
                 key: `content:${hit.path}`,
                 kind: "file",
                 path: hit.path,
@@ -924,7 +928,7 @@ QtObject {
                 line: hit.line,
                 label: hit.name,
                 detail: `${hit.text} · ${hit.where}`,
-                icon: Marks.iconFor(hit.path, hit.name, false, Files.home) || "draft",
+                icon: Marks.iconFor(hit.path, hit.name, false, System.home) || "draft",
                 score: -1
             }))
 
@@ -1041,7 +1045,7 @@ QtObject {
         });
     }
 
-    readonly property var pathRows: root.path && FileSearch.listedDir === root.path.dir ? Search.pathRows(FileSearch.entries, root.path, FileSearch.hidden, Files.home).map(f => root.fileRow(f, "path")) : []
+    readonly property var pathRows: root.path && FileSearch.listedDir === root.path.dir ? Search.pathRows(FileSearch.entries, root.path, FileSearch.hidden, System.home).map(f => root.fileRow(f, "path")) : []
 
     readonly property bool windowList: Search.windowListAsk(root.text)
 
@@ -1494,7 +1498,7 @@ QtObject {
                 root.leave(() => root.remind(row.ask, row.moment));
             return;
         case "zone":
-            root.leave(() => Files.copyText(row.time));
+            root.leave(() => System.copyText(row.time));
             return;
         case "process":
             root.kill(row.pid, "TERM");
@@ -1507,11 +1511,11 @@ QtObject {
             return;
         case "file":
             if (row.dir && root.path)
-                root.retype(`${Search.shortPath(row.path, Files.home)}/`);
+                root.retype(`${Search.shortPath(row.path, System.home)}/`);
             else if (row.dir)
                 root.leave(() => Files.show(row.path));
             else
-                root.launch(() => Files.openWith(row.path));
+                root.launch(() => System.openWith(row.path));
             return;
         case "link":
             root.launch(() => Quickshell.execDetached(["xdg-open", root.url]));
@@ -1523,7 +1527,7 @@ QtObject {
             root.runCli(row.line);
             return;
         case "output":
-            root.leave(() => Files.copyText(row.label));
+            root.leave(() => System.copyText(row.label));
             return;
         }
     }
@@ -1615,7 +1619,7 @@ QtObject {
         }
         if (row?.kind !== "file")
             return false;
-        root.retype(`${Search.shortPath(row.path, Files.home)}${row.dir ? "/" : ""}`);
+        root.retype(`${Search.shortPath(row.path, System.home)}${row.dir ? "/" : ""}`);
         return true;
     }
 
@@ -1629,17 +1633,17 @@ QtObject {
                 {
                     icon: row.dir ? "folder_open" : "open_in_new",
                     label: "Open",
-                    run: () => row.dir ? root.leave(() => Files.show(row.path)) : root.launch(() => Files.openWith(row.path))
+                    run: () => row.dir ? root.leave(() => Files.show(row.path)) : root.launch(() => System.openWith(row.path))
                 },
                 {
                     icon: "drive_file_move",
                     label: "Show in folder",
-                    run: () => root.leave(() => Files.reveal(row.path))
+                    run: () => root.leave(() => System.reveal(row.path))
                 },
                 {
                     icon: "content_copy",
                     label: "Copy path",
-                    run: () => root.leave(() => Files.copyText(row.path))
+                    run: () => root.leave(() => System.copyText(row.path))
                 }
             ];
         case "setting":
@@ -1671,7 +1675,7 @@ QtObject {
                 {
                     icon: "content_copy",
                     label: "Copy link",
-                    run: () => root.leave(() => Files.copyText(root.url))
+                    run: () => root.leave(() => System.copyText(root.url))
                 }
             ];
         case "window":

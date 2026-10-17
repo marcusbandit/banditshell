@@ -17,7 +17,7 @@ Singleton {
 
     function command(text: string): var {
         const all = root.hidden === "all";
-        return ["nice", "-n", "10", "fd", "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", "600", ...(all ? ["--hidden"] : []), ...root.noise.reduce((out, n) => out.concat(["--exclude", n]), []), "--", text, Files.home, ...(root.hidden === ".config" ? [`${Files.home}/.config`] : [])];
+        return ["nice", "-n", "10", "fd", "--fixed-strings", "--ignore-case", "--type", "f", "--type", "d", "--max-results", "600", ...(all ? ["--hidden"] : []), ...root.noise.reduce((out, n) => out.concat(["--exclude", n]), []), "--", text, System.home, ...(root.hidden === ".config" ? [`${System.home}/.config`] : [])];
     }
 
     property bool fdFound: false
@@ -28,7 +28,7 @@ Singleton {
     readonly property int hitLimit: 8
 
     function grepCommand(text: string, within: var): var {
-        return ["nice", "-n", "19", "rg", "--fixed-strings", "--smart-case", "--max-count", "1", "--line-number", "--with-filename", "--no-heading", "--color", "never", "--max-filesize", "1M", "--max-columns", "240", "--max-columns-preview", ...(within ? [] : ["--threads", "2", ...root.noise.reduce((out, n) => out.concat(["--glob", `!${n}`]), [])]), "--", text, ...(within ?? [Files.home])];
+        return ["nice", "-n", "19", "rg", "--fixed-strings", "--smart-case", "--max-count", "1", "--line-number", "--with-filename", "--no-heading", "--color", "never", "--max-filesize", "1M", "--max-columns", "240", "--max-columns-preview", ...(within ? [] : ["--threads", "2", ...root.noise.reduce((out, n) => out.concat(["--glob", `!${n}`]), [])]), "--", text, ...(within ?? [System.home])];
     }
 
     property string grepped: ""

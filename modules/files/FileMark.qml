@@ -52,7 +52,7 @@ Item {
 
     readonly property string classIcon: root.classes[root.index].icon
 
-    readonly property string special: root.path ? Marks.iconFor(root.path, root.name, root.fileClass === "directory", Files.home) : ""
+    readonly property string special: root.path ? Marks.iconFor(root.path, root.name, root.fileClass === "directory", System.home) : ""
 
     readonly property string icon: root.special || root.classIcon
 
