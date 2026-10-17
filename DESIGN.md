@@ -433,6 +433,8 @@ banditshell/
 │                                docs/architecture/modules.md has the map
 ├── modules.baseline.json        the module boundary violations that exist today;
 │                                `banditshell dev modules` fails on any not in it
+├── rules.baseline.json          how many violations of each house rule each file holds
+│                                today; `banditshell dev lint` fails on any more
 ├── config/
 │   ├── Config.qml               SINGLETON. ~/.config/banditshell/config.json, live.
 │   ├── Compositor.qml           SINGLETON. What Hyprland/niri say about rounding + gaps.
@@ -1404,6 +1406,12 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
+│   ├── lint-rules.js            the house rules as ten checks (L1 to L10: comments,
+│   │                            Rectangle radius, motion outside Follow, spring easing,
+│   │                            font sizes, colour literals, textGhost text, dashes,
+│   │                            JS the engine lacks, qmldir drift), counted per rule and
+│   │                            file against rules.baseline.json (node, no
+│   │                            dependencies; `banditshell dev lint`)
 │   ├── qmldirs.sh               regenerates every */qmldir after a QML file
 │   │                            is added, moved or renamed; run it, the LSP
 │   │                            reads what it writes

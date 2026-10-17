@@ -137,6 +137,14 @@ test("dev modules offers its flags, then the packages after --explain", () => {
     assert.deepStrictEqual(bashComplete("dev", "modules", "--explain", "launcher-"), packages.filter(p => p.startsWith("launcher-")));
 });
 
+test("dev lint offers its flags, then the rule ids after --rule", () => {
+    const ids = table.find(r => r[0] === "values" && r[1] === "rule")[2].split(" ").sort();
+    assert.deepStrictEqual(ids, ["L1", "L10", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
+    assert.deepStrictEqual(bashComplete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
+    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", ""), ids);
+    assert.deepStrictEqual(bashComplete("dev", "lint", "--rule", "L1"), ["L1", "L10"]);
+});
+
 test("flags complete after the words they belong to", () => {
     assert.deepStrictEqual(bashComplete("clock", "alarm", "add", "7:00", ""), ["--ask", "--days", "--label", "--run"]);
     assert.deepStrictEqual(bashComplete("screenshot", "copy", ""), ["--freeze"]);
@@ -187,6 +195,8 @@ _banditshell`;
     assert.deepStrictEqual(complete("panel", "close", ""), []);
     assert.deepStrictEqual(complete("dev", "modules", ""), ["--explain", "--matrix"]);
     assert.ok(complete("dev", "modules", "--explain", "").includes("compositor"));
+    assert.deepStrictEqual(complete("dev", "lint", ""), ["--all", "--rule", "--write-baseline"]);
+    assert.deepStrictEqual(complete("dev", "lint", "--rule", ""), ["L1", "L10", "L2", "L3", "L4", "L5", "L6", "L7", "L8", "L9"]);
     assert.deepStrictEqual(complete("", ).sort(), tableVerbs);
 });
 

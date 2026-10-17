@@ -39,11 +39,11 @@ short() {
 deps() {
     printf '%s\n' "$REPO/cli/banditshell" "$RULES" "$SELF" \
         "$REPO/config/Themes.qml" "$REPO/modules/settings/catalogue.js" "$REPO/modules/keyboard/Layouts.qml" \
-        "$REPO/packages" "$REPO"/modules/*/module.json
+        "$REPO/scripts/lint-rules.js" "$REPO/packages" "$REPO"/modules/*/module.json
 }
 
 generate() {
-    local table kind name text verbs="" rules="" panel="" theme="" page="" layer="" package=""
+    local table kind name text verbs="" rules="" panel="" theme="" page="" layer="" package="" lintrule=""
     table="$("$RULES")" || return 1
     while IFS=$'\t' read -r kind name text; do
         case "$kind" in
@@ -56,6 +56,7 @@ generate() {
             page) page="$text" ;;
             layer) layer="$text" ;;
             package) package="$text" ;;
+            rule) lintrule="$text" ;;
             esac
             ;;
         esac
@@ -64,7 +65,7 @@ generate() {
     cat <<EOF
 #compdef banditshell
 typeset -g _bs_built=$EPOCHREALTIME
-typeset -ga _bs_verbs _bs_rules _bs_panel _bs_theme _bs_page _bs_layer _bs_package
+typeset -ga _bs_verbs _bs_rules _bs_panel _bs_theme _bs_page _bs_layer _bs_package _bs_lintrule
 typeset -g _bs_file=$(quote "$TARGET")
 
 _bs_verbs=(
@@ -78,6 +79,7 @@ _bs_theme=( $theme )
 _bs_page=( $page )
 _bs_layer=( $layer )
 _bs_package=( $package )
+_bs_lintrule=( $lintrule )
 EOF
     cat <<'EOF'
 
@@ -93,7 +95,7 @@ _bs_stale() {
     local dep
     for dep in $REPLY/cli/banditshell $REPLY/scripts/completion-rules.sh $REPLY/scripts/zsh-completion.sh \
         $REPLY/config/Themes.qml $REPLY/modules/settings/catalogue.js $REPLY/modules/keyboard/Layouts.qml \
-        $REPLY/packages $REPLY/modules/*/module.json(N); do
+        $REPLY/scripts/lint-rules.js $REPLY/packages $REPLY/modules/*/module.json(N); do
         [[ $dep -nt $_bs_file ]] && return 0
     done
     return 1
@@ -148,6 +150,7 @@ _bs_offer() {
     command) values=( ${_bs_verbs%%:*} ) ;;
     layer) values=( $_bs_layer ) ;;
     package) values=( $_bs_package ) ;;
+    rule) values=( $_bs_lintrule ) ;;
     screen) values=( ${(f)"$(hyprctl monitors 2>/dev/null | awk '/^Monitor /{print $2}')"} ) ;;
     key) values=( ${(f)"$(_bs_config_keys)"} ) ;;
     app) values=( ${(f)"$(_bs_desktop_ids)"} ) ;;

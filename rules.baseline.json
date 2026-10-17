@@ -1,0 +1,76 @@
+{
+  "violations": {
+    "L3": {
+      "components/SignalBars.qml": 2,
+      "modules/island/IslandMedia.qml": 6,
+      "modules/island/IslandOverview.qml": 2,
+      "modules/launcher/AlphabetLauncher.qml": 8,
+      "modules/launcher/AlphabetRow.qml": 18,
+      "modules/launcher/AnswerRow.qml": 2,
+      "modules/launcher/AssistantCard.qml": 4,
+      "modules/launcher/ListLauncher.qml": 2,
+      "modules/sidebar/SidebarClock.qml": 8,
+      "modules/sidebar/StatusIcon.qml": 2,
+      "modules/sidebar/TrayIcon.qml": 2,
+      "modules/sidebar/UpdateIndicator.qml": 4,
+      "modules/sidebar/WorkspaceBlocks.qml": 4,
+      "modules/sidebar/WorkspaceMap.qml": 6,
+      "modules/sidebar/WorkspacePlates.qml": 18
+    },
+    "L5": {
+      "modules/lock/LockAlerts.qml": 1
+    },
+    "L6": {
+      "components/BatteryMeter.qml": 1,
+      "components/DropShadow.qml": 1,
+      "components/FollowColour.qml": 2,
+      "components/ImagePalette.qml": 1,
+      "components/Waveform.qml": 1,
+      "components/marks/Kitty.qml": 2,
+      "components/vt.js": 18,
+      "installer/shell.qml": 1,
+      "modules/files/FileMark.qml": 1,
+      "modules/island/Island.qml": 4,
+      "modules/launcher/AlphabetRow.qml": 1,
+      "modules/lock/LockPower.qml": 1,
+      "modules/media/ArtGlow.qml": 1,
+      "modules/media/LyricBlock.qml": 1,
+      "modules/media/MediaController.qml": 1,
+      "modules/quickcontrols/QuickControls.qml": 1,
+      "modules/settings/MiniWorkspaces.qml": 5,
+      "modules/settings/catalogue.js": 1,
+      "modules/settings/scenes/CaptureScene.qml": 5,
+      "modules/settings/scenes/FilesScene.qml": 7,
+      "modules/settings/scenes/TerminalScene.qml": 6,
+      "modules/wallpaper/WallpaperPicker.qml": 9,
+      "modules/windows/WindowEdge.qml": 1,
+      "services/CompositorSync.qml": 1
+    },
+    "L7": {
+      "modules/island/IslandInspector.qml": 2,
+      "modules/launcher/AlphabetLauncher.qml": 2,
+      "modules/launcher/AnswerRow.qml": 1
+    },
+    "L8": {
+      "TODO.md": 10,
+      "docs/research/proximity-grouping.md": 57,
+      "docs/research/settings-spacing-plan.md": 21,
+      "docs/research/spacing-systems.md": 50,
+      "docs/research/typography-secondary-text.md": 75,
+      "docs/superpowers/specs/2026-08-28-files-tabs-design.md": 2,
+      "services/Calculator.qml": 1
+    },
+    "L10": {
+      "components/qmldir": 1,
+      "modules/cheatsheet/qmldir": 1,
+      "modules/files/qmldir": 1,
+      "modules/island/qmldir": 1,
+      "modules/launcher/qmldir": 1,
+      "modules/picker/qmldir": 1,
+      "modules/quickcontrols/qmldir": 1,
+      "modules/settings/qmldir": 1,
+      "modules/sidebar/qmldir": 1,
+      "services/qmldir": 1
+    }
+  }
+}
