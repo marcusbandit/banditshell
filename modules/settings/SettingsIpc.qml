@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import Quickshell
 import Quickshell.Io
 import qs.services
-import qs.modules
+import qs.modules.panel
 import "catalogue.js" as SettingsCatalogue
 
 Scope {

@@ -15,6 +15,7 @@ import qs.modules.menu
 import qs.modules.quickcontrols
 import qs.modules.launcher
 import qs.modules.notifications
+import qs.modules.panel
 import qs.modules.session
 import qs.modules.settings
 import qs.modules.sidebar

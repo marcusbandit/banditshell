@@ -966,14 +966,16 @@ banditshell/
 │   │                            names and function signatures are frozen by
 │   │                            tests/ipc-targets.test.js against
 │   │                            tests/fixtures/ipc-targets.json
-│   ├── PanelIpc.qml             the handler base for a panel with no screen
-│   │                            argument: toggle, open, close on the panel named
-│   │                            by its target. A module subclasses it and adds
-│   │                            status and its own verbs
-│   ├── ScreenPanelIpc.qml       the same, with a screen argument on toggle and open
-│   ├── PinnedPanelIpc.qml       the same for panels that are pinned rather than
-│   │                            shown (island, notifications)
-│   ├── PanelWindows.qml         what those bases share, and what any handler asks
+│   ├── panel/                   the panel contract, owned by core
+│   │   ├── LazyPanel.qml        a panel built the first time it is asked for
+│   │   ├── PanelIpc.qml         the handler base for a panel with no screen
+│   │   │                        argument: toggle, open, close on the panel named
+│   │   │                        by its target. A module subclasses it and adds
+│   │   │                        status and its own verbs
+│   │   ├── ScreenPanelIpc.qml   the same, with a screen argument on toggle and open
+│   │   ├── PinnedPanelIpc.qml   the same for panels that are pinned rather than
+│   │   │                        shown (island, notifications)
+│   │   └── PanelWindows.qml     what those bases share, and what any handler asks
 │   │                            of the shell windows: the window on a screen,
 │   │                            toggle, open, close, pin, and the screen a verb
 │   │                            means. A handler's own helpers cannot live on
@@ -1085,9 +1087,6 @@ banditshell/
 │   │                            seconds; camera, screen and the audio toggles
 │   │                            act on the scene on air, and a muted mic or a
 │   │                            hidden screen stays red until it is undone
-│   ├── SettingsCorner.qml       the bottom-right corner as a way in: hover, press
-│   ├── WallpaperWindow.qml      background layer, below every window; a
-│   │                            WallpaperView, motion only on an empty workspace
 │   ├── launcher/                grows out of the sidebar; the one keyboard grab
 │   │   ├── Launcher.qml         which of the two concepts is live; forwards to it
 │   │   ├── ListLauncher.qml     a search field that answers what you type;
@@ -1216,6 +1215,8 @@ banditshell/
 │   │                            is a TapHandler rather than a MouseArea so that
 │   │                            two thumbs can be down at once
 │   ├── wallpaper/               the picker: the bottom edge's SECOND swipe up
+│   │   ├── WallpaperWindow.qml  background layer, below every window; a
+│   │   │                        WallpaperView, motion only on an empty workspace
 │   │   ├── WallpaperPicker.qml  no panel at all, and kept low: the wallpaper
 │   │   │                        you are on as a hero 30% of the height, the
 │   │   │                        rest cropped to strips either side that never
@@ -1245,6 +1246,7 @@ banditshell/
 │   │   │                        has no catcher: the desktop stays usable, the X
 │   │   │                        or the corner closes it, and it steps aside while
 │   │   │                        another panel or a menu is up on its screen
+│   │   ├── SettingsCorner.qml   the bottom-right corner as a way in: hover, press
 │   │   ├── catalogue.js         every setting as data: ten categories, their hubs
 │   │   │                        (tiles, one suggestion, page rows) and pages of
 │   │   │                        grouped rows; search, aliases, formats. No QML

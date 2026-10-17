@@ -9,6 +9,7 @@ SettingsBars 1.0 SettingsBars.qml
 SettingsCell 1.0 SettingsCell.qml
 SettingsChip 1.0 SettingsChip.qml
 SettingsContent 1.0 SettingsContent.qml
+SettingsCorner 1.0 SettingsCorner.qml
 SettingsEntry 1.0 SettingsEntry.qml
 SettingsFacts 1.0 SettingsFacts.qml
 SettingsField 1.0 SettingsField.qml

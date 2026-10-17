@@ -3,7 +3,7 @@ pragma ComponentBehavior: Bound
 import QtQml
 import Quickshell
 import qs.services
-import qs.modules
+import qs.modules.panel
 
 Scope {
     id: root

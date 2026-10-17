@@ -1,6 +1,6 @@
 import Quickshell.Io
 import qs.services
-import qs.modules
+import qs.modules.panel
 
 IpcHandler {
     target: "quickcontrols"
