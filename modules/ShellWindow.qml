@@ -542,12 +542,10 @@ PanelWindow {
             }
         }
 
-        NotificationCopier {
-            entries: Notifications.history
-        }
-
         NotificationCorner {
             id: corner
+
+            onStage: !win.screen?.name || !Shell.offStageScreen || win.screen.name === Shell.offStageScreen
 
             anchors.fill: parent
             anchors.topMargin: chassis.streamReach

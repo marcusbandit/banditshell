@@ -167,7 +167,7 @@ function handlers() {
 
 const CONCRETE = { "*": "launcher" };
 const ARGUMENTS = { "clock.alarm.add": ["07:00"] };
-const DRY_SAFE = new Set(["panel", "output", "screen", "wallpaper", "clock", "focus", "tablet", "config", "launcher", "screenshot"]);
+const DRY_SAFE = new Set(["panel", "output", "screen", "wallpaper", "clock", "focus", "tablet", "config", "launcher", "screenshot", "notifications"]);
 
 test("every id that reaches the shell calls an IPC function the shell really has", () => {
     const known = handlers();

@@ -15,6 +15,7 @@ LoremSource 1.0 LoremSource.qml
 MediaSource 1.0 MediaSource.qml
 MonitorSource 1.0 MonitorSource.qml
 NotesSource 1.0 NotesSource.qml
+NotificationSource 1.0 NotificationSource.qml
 PackageSource 1.0 PackageSource.qml
 PhoneSource 1.0 PhoneSource.qml
 PomodoroSource 1.0 PomodoroSource.qml

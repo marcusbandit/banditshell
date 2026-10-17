@@ -33,6 +33,16 @@ launcher.close
 launcher.open
 launcher.run
 launcher.toggle
+notifications.act
+notifications.clear
+notifications.dismiss
+notifications.list
+notifications.mute
+notifications.open
+notifications.reply
+notifications.snooze
+notifications.status
+notifications.unmute
 output.assign
 output.headphones
 output.list

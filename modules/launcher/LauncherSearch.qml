@@ -483,6 +483,12 @@ QtObject {
                 run: () => root.eject(d.path)
             })))
 
+    readonly property bool onStage: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
+
+    function copyText(text: string): void {
+        root.leave(() => Files.copyText(text));
+    }
+
     function windowTarget(): string {
         return Hypr.windowAddress(root.target || Hypr.focusedOn(root.screenName));
     }

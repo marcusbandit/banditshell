@@ -11,6 +11,7 @@
       "modules/launcher/sources/LatestSource.qml",
       "modules/launcher/sources/LoremSource.qml",
       "modules/launcher/sources/NotesSource.qml",
+      "modules/launcher/sources/NotificationSource.qml",
       "modules/launcher/sources/PomodoroSource.qml",
       "modules/launcher/sources/ProjectSource.qml",
       "modules/launcher/sources/QuicklinkSource.qml",
@@ -55,7 +56,7 @@
     ]
   },
   "requires": {
-    "packages": ["core", "compositor", "launcher", "clipboard", "files"],
+    "packages": ["core", "compositor", "launcher", "clipboard", "files", "notifications"],
     "optional": []
   },
   "provides": {

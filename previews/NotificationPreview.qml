@@ -1,6 +1,8 @@
 import QtQuick
 import Quickshell
 import Quickshell.Services.Notifications
+import qs.config
+import qs.components
 import qs.services
 import qs.modules.island
 import qs.modules.notifications
@@ -12,14 +14,9 @@ ShellRoot {
 
     readonly property var steps: [
         {
-            name: "arrive: three popups, tray collapsed",
+            name: "arrive: three popups, the corner shows them and nothing else",
             run: () => preview.seed(3),
-            expect: () => Notifications.popups.length === 3 && Notifications.unread === 3 && !tray.expanded
-        },
-        {
-            name: "hover a card: must NOT expand",
-            run: () => {},
-            expect: () => !tray.expanded
+            expect: () => Notifications.popups.length === 3 && Notifications.unread === 3 && corner.items.length === 3
         },
         {
             name: "dismiss the middle popup",
@@ -27,7 +24,7 @@ ShellRoot {
             expect: () => Notifications.popups.length === 2
         },
         {
-            name: "pin the first, then dismiss it: it stays",
+            name: "pin the first, then dismiss it: it stays in history",
             run: () => {
                 Notifications.popups[0].pinned = true;
                 Notifications.dismiss(Notifications.popups[0]);
@@ -40,29 +37,79 @@ ShellRoot {
             expect: () => Notifications.threadsOf(Notifications.history).some(t => t.entries.length === 4) && Notifications.ageOf(Date.now() - 125000) === "2m"
         },
         {
-            name: "expand the tray: the thread is one card with a count, everything is seen",
-            run: () => tray.pinned = true,
-            expect: () => tray.expanded && Notifications.unread === 0 && tray.groups.length < Notifications.history.length
+            name: "notifications in the launcher: one row per thread, who, count and age",
+            run: () => preview.ask("notifications"),
+            expect: () => preview.rows.length === 3 && preview.rows.some(r => r.kind === "thread" && r.detail.startsWith("Signal \u00b7 4"))
         },
         {
-            name: "open the thread",
-            run: () => tray.toggleThread(tray.groups.find(g => g.entries.length === 4).id),
-            expect: () => tray.opened.length === 1
+            name: "unread keeps what has not been seen",
+            run: () => preview.ask("notifications unread"),
+            expect: () => preview.rows.length > 0 && preview.rows.every(r => !r.entry.seen)
         },
         {
-            name: "close the thread",
-            run: () => tray.opened = [],
-            expect: () => tray.opened.length === 0
+            name: "from signal keeps one app",
+            run: () => preview.ask("notifications from signal"),
+            expect: () => preview.rows.length === 1 && preview.rows[0].entry.appName === "Signal"
+        },
+        {
+            name: "free text lists messages, not threads",
+            run: () => preview.ask("notifications film eight"),
+            expect: () => preview.rows.length === 1 && preview.rows[0].kind === "notification" && preview.rows[0].entry.body === "the film starts at eight"
+        },
+        {
+            name: "a plain word never shows message text",
+            run: () => preview.ask("ida"),
+            expect: () => preview.rows.length === 0
+        },
+        {
+            name: "the thread row offers show all, open, copy, snooze, mute and dismiss",
+            run: () => preview.ask("notifications from signal"),
+            expect: () => {
+                const labels = preview.source.actionsFor(preview.rows[0]).map(a => a.label);
+                return labels[0] === "Show all 4" && labels.includes("Open Signal") && labels.includes("Copy text") && labels.includes("Snooze") && labels.includes("Mute Signal") && labels.includes("Dismiss 4");
+            }
+        },
+        {
+            name: "the row's card sits beside the launcher",
+            run: () => preview.peek(preview.rows[0]),
+            expect: () => !!preview.rows[0].peekCard && peekCard.item !== null && peekCard.item.density === "page" && peekCard.item.entry === preview.rows[0].entry
+        },
+        {
+            name: "enter on a thread drills in",
+            run: () => preview.source.activate(preview.rows[0]),
+            expect: () => preview.retyped.startsWith("notifications from signal ida")
+        },
+        {
+            name: "snooze puts a popup away and it comes back later",
+            run: () => {
+                preview.arrive(preview.make({ appName: "Mail", summary: "Standup moved", body: "Ten minutes later." }, 5), true);
+                preview.snoozed = Notifications.history[0];
+                Notifications.snooze(preview.snoozed, 60000);
+            },
+            expect: () => Notifications.snoozed.length === 1 && Notifications.snoozed[0].entry === preview.snoozed && !Notifications.popups.includes(preview.snoozed)
+        },
+        {
+            name: "wake the snoozed one: it pops again",
+            run: () => Notifications.wake(preview.snoozed),
+            expect: () => Notifications.popups.includes(preview.snoozed)
+        },
+        {
+            name: "an entry held back while quiet is found by held",
+            run: () => {
+                Notifications.history[0].withheld = true;
+                preview.ask("notifications held");
+            },
+            expect: () => preview.rows.length === 1 && preview.rows[0].detail.endsWith("held")
         },
         {
             name: "a progress notification arrives",
             run: () => preview.seedProgress(),
-            expect: () => Notifications.history[0].progress === 63 && Notifications.unread === 0
+            expect: () => Notifications.history[0].progress === 63 && Notifications.unread > 0
         },
         {
             name: "a critical notification arrives",
             run: () => preview.seedCritical(),
-            expect: () => Notifications.history[0].urgency === NotificationUrgency.Critical
+            expect: () => Notifications.history[0].urgency === NotificationUrgency.Critical && Notifications.front() === Notifications.history[0]
         },
         {
             name: "a notification with a picture and an app badge arrives",
@@ -75,12 +122,24 @@ ShellRoot {
             expect: () => Notifications.history[0].canReply && Notifications.history[0].replyPlaceholder === "Message Mia"
         },
         {
+            name: "the row for it offers a reply that asks a question",
+            run: () => preview.ask("notifications from signal mia"),
+            expect: () => {
+                const row = preview.rows[0];
+                const reply = preview.source.actionsFor(row).find(a => a.label === "Reply");
+                if (!reply)
+                    return false;
+                reply.run();
+                return preview.inquired !== null && preview.inquired.ask.prompt === "Reply to Mia";
+            }
+        },
+        {
             name: "send the reply: the sender gets it and the card goes",
             run: () => {
-                Notifications.reply(Notifications.history[0], "on my way");
+                preview.inquired.ask.take("on my way");
                 preview.sent = preview.mock.replies.slice();
             },
-            expect: () => preview.sent.length === 1 && preview.sent[0] === "on my way" && Notifications.history.length === 9
+            expect: () => preview.sent.length === 1 && preview.sent[0] === "on my way"
         },
         {
             name: "a restored entry is dead: no buttons, no reply",
@@ -103,17 +162,12 @@ ShellRoot {
             expect: () => !Notifications.history[0].unfolded
         },
         {
-            name: "forget everything left in the hub",
+            name: "forget everything: the history is empty and the corner draws nothing",
             run: () => {
                 for (const e of [...Notifications.history])
                     Notifications.forget(e);
             },
-            expect: () => Notifications.history.length === 0
-        },
-        {
-            name: "collapse the empty tray",
-            run: () => tray.pinned = false,
-            expect: () => !tray.expanded
+            expect: () => Notifications.history.length === 0 && corner.items.length === 0
         }
     ]
 
@@ -122,6 +176,22 @@ ShellRoot {
     property int made: 0
     property var mock: null
     property var sent: []
+    property var snoozed: null
+    property var inquired: null
+    property string retyped: ""
+    property string typed: ""
+    property var peeked: null
+
+    readonly property var source: sourceLoader.item
+    readonly property var rows: source?.groups[0].items ?? []
+
+    function ask(text: string): void {
+        preview.typed = text;
+    }
+
+    function peek(row: var): void {
+        preview.peeked = row;
+    }
 
     function make(props: var, ago: int): var {
         preview.made += 1;
@@ -226,8 +296,42 @@ ShellRoot {
 
     function report(label: string, ok: bool): void {
         const top = Notifications.history[0];
-        const t = tray.maskItem;
-        console.log(`${ok ? "PASS" : "FAIL"} ${label} | popups=${Notifications.popups.length} history=${Notifications.history.length} unread=${Notifications.unread} threads=${tray.groups.length} pinned=${Notifications.history.filter(e => e.pinned).length} | expanded=${tray.expanded} rows=${tray.items.length} trayVisible=${t.visible} trayHeight=${Math.round(t.height)} | top=${top ? `${top.appName}:${top.summary}` : "-"} age="${top ? Notifications.ageOf(top.time) : ""}" unfolded=${top?.unfolded ?? "-"} brief="${top?.brief ?? ""}"`);
+        console.log(`${ok ? "PASS" : "FAIL"} ${label} | popups=${Notifications.popups.length} history=${Notifications.history.length} unread=${Notifications.unread} threads=${Notifications.threadsOf(Notifications.history).length} pinned=${Notifications.history.filter(e => e.pinned).length} snoozed=${Notifications.snoozed.length} | query="${preview.typed}" rows=${preview.rows.length} cornerItems=${corner.items.length} cornerHeight=${Math.round(corner.maskItem.height)} | top=${top ? `${top.appName}:${top.summary}` : "-"} age="${top ? Notifications.ageOf(top.time) : ""}" unfolded=${top?.unfolded ?? "-"} brief="${top?.brief ?? ""}"`);
+    }
+
+    QtObject {
+        id: stub
+
+        readonly property string text: preview.typed
+        readonly property string screenName: ""
+        readonly property bool onStage: true
+
+        function launch(what: var): void {
+            what();
+        }
+
+        function leave(what: var): void {
+            what();
+        }
+
+        function retype(text: string): void {
+            preview.retyped = text;
+        }
+
+        function inquire(row: var): void {
+            preview.inquired = row;
+        }
+
+        function copyText(text: string): void {
+        }
+    }
+
+    Loader {
+        id: sourceLoader
+
+        Component.onCompleted: sourceLoader.setSource("../modules/launcher/sources/NotificationSource.qml", {
+            search: stub
+        })
     }
 
     Component {
@@ -243,16 +347,49 @@ ShellRoot {
     }
 
     FloatingWindow {
-        implicitWidth: 520
+        implicitWidth: 960
         implicitHeight: 700
         color: Appearance.colour.surfaceSolid
 
-        NotificationTray {
-            id: tray
+        Column {
+            x: 20
+            y: 20
+            width: 440
+            spacing: 8
+
+            Repeater {
+                model: preview.rows
+
+                delegate: StyledText {
+                    required property var modelData
+
+                    width: parent.width
+                    text: `${modelData.label}   ${modelData.detail}`
+                    elide: Text.ElideRight
+                }
+            }
+
+            Loader {
+                id: peekCard
+
+                sourceComponent: preview.peeked?.peekCard ?? null
+            }
+
+            Binding {
+                target: peekCard.item
+                property: "entry"
+                value: preview.peeked?.entry ?? null
+                when: peekCard.item !== null
+            }
+        }
+
+        NotificationCorner {
+            id: corner
 
             anchors.fill: parent
             inset: 20
-            edgeInset: 10
+            onStage: true
+            wanted: true
         }
     }
 
@@ -269,7 +406,12 @@ ShellRoot {
             if (ticker.pending) {
                 const s = ticker.pending;
                 ticker.pending = null;
-                const ok = !!s.expect();
+                let ok = false;
+                try {
+                    ok = !!s.expect();
+                } catch (err) {
+                    console.log(`ERROR ${preview.step}. ${s.name}: ${err}`);
+                }
                 if (!ok)
                     preview.failures++;
                 preview.report(`${preview.step}. ${s.name}`, ok);

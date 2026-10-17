@@ -1,6 +1,7 @@
 import QtQuick
 import qs.config
 import qs.services
+import qs.modules.notifications
 import "../../../services/notification-search.js" as NotificationSearch
 import "../../../services/notification-timing.js" as Timing
 
@@ -16,14 +17,11 @@ QtObject {
 
     readonly property bool blending: !root.explicit && Config.values.launcher.typing.notifications && root.asked.term.length >= 3
 
-    readonly property string screenName: root.search.screenName
-    readonly property bool onStage: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
-
-    readonly property bool active: (root.explicit || root.blending) && root.onStage && root.search.text.length > 0
+    readonly property bool active: (root.explicit || root.blending) && root.search.onStage && root.search.text.length > 0
 
     readonly property var found: root.active ? NotificationSearch.find(Notifications.history, root.asked).slice(0, root.explicit ? 40 : 3) : []
 
-    readonly property bool intent: root.explicit && root.onStage
+    readonly property bool intent: root.explicit && root.search.onStage
 
     readonly property var groups: [
         {
@@ -43,6 +41,14 @@ QtObject {
             picks: ["unread", "held", "from "].concat(NotificationSearch.apps(Notifications.history, 8).map(app => `from ${app}`))
         }
     ]
+
+    readonly property Component peekCard: Component {
+        NotificationCard {
+            entry: null
+            density: "page"
+            width: Appearance.sizes.notificationWidth
+        }
+    }
 
     property var lastShown: []
 
@@ -70,6 +76,7 @@ QtObject {
             kind: count > 1 ? "thread" : "notification",
             entry: entry,
             thread: thread,
+            peekCard: root.peekCard,
             label: root.firstLine(entry.summary) || root.firstLine(entry.body) || "(no message)",
             detail: parts.filter(p => p).join(" · "),
             icon: entry.urgency === 2 ? "priority_high" : "notifications",
@@ -167,9 +174,7 @@ QtObject {
             label: "Copy text",
             run: () => {
                 const text = entry.body || entry.summary;
-                root.search.leave(() => Clipboard.copy({
-                        text: text
-                    }));
+                root.search.copyText(text);
             }
         }, {
             icon: "snooze",

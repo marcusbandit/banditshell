@@ -13,19 +13,21 @@ Item {
 
     readonly property real panelWidth: Appearance.sizes.notificationWidth
 
-    readonly property string screenName: QsWindow.window?.screen?.name ?? ""
+    required property bool onStage
 
-    readonly property bool mine: !root.screenName || !Shell.offStageScreen || root.screenName === Shell.offStageScreen
+    property bool wanted: Config.values.notifications.placement !== "island"
 
-    readonly property bool wanted: Config.values.notifications.placement !== "island"
-
-    readonly property var items: root.wanted && root.mine ? Notifications.popups : []
+    readonly property var items: root.wanted && root.onStage ? Notifications.popups : []
 
     readonly property bool any: root.items.length > 0
 
     readonly property Item maskItem: plate
 
     readonly property real pad: Appearance.padding.normal
+
+    NotificationCopier {
+        entries: Notifications.history
+    }
 
     Item {
         id: plate

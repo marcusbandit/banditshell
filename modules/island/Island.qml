@@ -1273,6 +1273,10 @@ Item {
 
                     onDismissed: entry => Notifications.dismiss(entry)
                     onKept: entry => Notifications.expire(entry)
+                    onHistory: root.chosen({
+                        key: "notifications",
+                        kind: "notifications"
+                    })
                     onAdvanced: (forward, count, previous) => {
                         if (root.fanning || root.openness > 0)
                             return;
