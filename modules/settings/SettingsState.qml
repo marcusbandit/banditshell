@@ -12,9 +12,7 @@ import "screens.js" as Screens
 Singleton {
     id: root
 
-    readonly property var planDefaults: ({
-            customLayout: ""
-        })
+    readonly property var planDefaults: ({})
 
     readonly property var uiDefaults: ({
             wallTarget: "everywhere",

@@ -37,8 +37,8 @@ The layout row writes `general:layout` and reads it back from
 `hyprctl -j getoption`; `layout` left `planDefaults` and `isNew` is gone. A
 live layout that is none of the four cards (this machine's `lua:stage`) shows
 as the custom card, named in its row. Custom layouts stay undesigned: the card
-is still an entry point with its info tip and Add button, `customLayout` is
-still planned.
+is still an entry point with its info tip and Add button. The `customLayout`
+planned key was removed on 2026-10-17: it had no reader.
 
 Plugins: hy3 is offered only when `hyprctl plugin list` shows it. Scrolling is
 offered when the plugin is loaded or when Hyprland itself has the `scrolling:`

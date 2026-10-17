@@ -238,16 +238,8 @@ Item {
                             return `${c.pages.length} pages ${root.tone(Appearance.colour.textDim, `${Catalogue.rowCount(c)} rows`)}`;
                         }
                         const cover = Catalogue.pagesCovered(SettingsView.page);
-                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} settings`)}${cover.fresh ? ` · ${cover.fresh} new` : ""}`;
+                        return `covers ${root.tone(Appearance.colour.textDim, `${cover.settings} settings`)}`;
                     }
-                }
-
-                StyledText {
-                    width: parent.width
-                    visible: !!info.r?.isNew
-                    text: "new · nothing behind it in the shell yet"
-                    color: Appearance.colour.textFaint
-                    wrapMode: Text.WordWrap
                 }
 
                 StyledText {

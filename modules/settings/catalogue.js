@@ -1127,14 +1127,10 @@ function pagesCovered(page) {
     for (const g of page.groups)
         visit(g.rows);
     const nums = new Set();
-    const fresh = new Set();
     for (const r of rows)
-        for (const n of numbers(r)) {
+        for (const n of numbers(r))
             nums.add(n);
-            if (r.isNew)
-                fresh.add(n);
-        }
-    return { settings: nums.size, fresh: fresh.size };
+    return { settings: nums.size };
 }
 
 function rowCount(cat) {
