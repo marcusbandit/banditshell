@@ -336,6 +336,77 @@ function isFontSizeLiteral(value) {
     return new RegExp(`[*/+\\-]\\s*${literal}|${literal}\\s*[*/+\\-]`).test(expression);
 }
 
+const PILL_TYPES = "SquircleRect|DropShadow|RectangularShadow";
+const PILL_ROLES = ["object", "place"];
+const RADIUS_PROPERTY = /^(?:radius|topLeftRadius|topRightRadius|bottomLeftRadius|bottomRightRadius)$/;
+const HALF_SIZE = [
+    /^(?:[A-Za-z_][\w.]*\.)?(?:width|height)\s*(?:\/\s*2|\*\s*0?\.5)$/,
+    /^Math\.min\(\s*[\w.]+\s*,\s*[\w.]+\s*\)\s*(?:\/\s*2|\*\s*0?\.5)$/,
+    /^(?!Appearance\.)[A-Za-z_][\w.]*\s*(?:\/\s*2|\*\s*0?\.5)$/
+];
+
+function ownProperties(own) {
+    const props = [];
+    const pattern = /(?:^|[;{])[ \t]*([A-Za-z_][\w.]*)[ \t]*:/gm;
+    let m;
+    while ((m = pattern.exec(own)) !== null)
+        props.push({ name: m[1], valueAt: m.index + m[0].length, at: m.index + m[0].search(/\S/) });
+    return props;
+}
+
+function pillRoleIsValid(value) {
+    const literals = value.match(/"[^"]*"/g) || [];
+    const names = literals.map(literal => literal.slice(1, -1));
+    if (!names.length || !names.some(name => PILL_ROLES.includes(name)))
+        return false;
+    if (names.every(name => PILL_ROLES.includes(name)))
+        return true;
+    return value.includes("?") && names.every(name => name === "" || PILL_ROLES.includes(name));
+}
+
+function literalNumber(value) {
+    return /^\d+(?:\.\d+)?$/.test(value) ? Number(value) : null;
+}
+
+function halfSizeRadius(value, dims) {
+    if (HALF_SIZE.some(pattern => pattern.test(value)))
+        return true;
+    const radius = literalNumber(value);
+    if (radius === null || radius <= 0)
+        return false;
+    const sides = [dims.width, dims.height].filter(side => side !== null);
+    return sides.length > 0 && radius * 2 === Math.min(...sides);
+}
+
+function ruleL12(ctx) {
+    const { code, plain, at } = ctx.scanned;
+    const found = [];
+    for (const block of objectBlocks(code, PILL_TYPES, at)) {
+        const own = ownLevel(code, block);
+        const ownPlain = ownLevel(plain, block);
+        const props = ownProperties(own);
+        const valueOf = prop => readValue(ownPlain, prop.valueAt).replace(/\s+/g, " ");
+        const dims = { width: null, height: null };
+        for (const prop of props)
+            if (prop.name === "width" || prop.name === "height")
+                dims[prop.name] = literalNumber(valueOf(prop));
+        const pill = props.find(prop => prop.name === "pill");
+        const lineOf = prop => at(block.open + prop.at);
+        if (pill) {
+            if (!pillRoleIsValid(valueOf(pill)))
+                found.push({ line: lineOf(pill), detail: `pill must be "object" or "place", not ${valueOf(pill)}` });
+            for (const prop of props)
+                if (prop.name === "radius" || prop.name === "cornerPower")
+                    found.push({ line: lineOf(prop), detail: `a pill sets ${prop.name} from its role; drop it` });
+            continue;
+        }
+        const half = props.find(prop => RADIUS_PROPERTY.test(prop.name) && halfSizeRadius(valueOf(prop), dims));
+        if (half)
+            found.push({ line: lineOf(half), detail: `half-size ${half.name} without a pill role (object or place)` });
+    }
+    return found;
+}
+
 function ruleL5(ctx) {
     const { code, at } = ctx.scanned;
     const found = [];
@@ -442,7 +513,8 @@ const RULES = [
     { id: "L8", reason: "No em dashes or en dashes anywhere; use a comma, colon, semicolon or hyphen.", appliesTo: () => true, check: ruleL8, wantsText: true },
     { id: "L9", reason: "Quickshell's JS engine lacks matchAll, flat, flatMap, Object.fromEntries, at, structuredClone and regex lookbehind, and replaceAll is risky.", appliesTo: isShellCode, check: ruleL9 },
     { id: "L10", reason: "Every QML folder carries a qmldir that matches scripts/qmldirs.sh; run it after adding, moving or renaming a file.", appliesTo: () => false, check: null, whole: true },
-    { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true }
+    { id: "L11", reason: "Name.member on a singleton must name a member that singleton declares; a renamed or moved member reads as undefined at runtime.", appliesTo: () => false, check: null, whole: true },
+    { id: "L12", reason: "A pill is an object (round ends) or a place (the shell's corner): a SquircleRect or shadow with a half-size radius says pill: \"object\" or pill: \"place\" instead (DESIGN 6).", appliesTo: f => f.endsWith(".qml"), check: ruleL12 }
 ];
 
 function ruleById(id) {
@@ -876,7 +948,7 @@ function usage() {
         "usage: lint-rules.js [--root <dir>] [--rule <id>] [--all | --write-baseline | --list]",
         "",
         "  (none)             check the house rules against rules.baseline.json",
-        "  --rule <id>        only this rule, L1 to L11",
+        "  --rule <id>        only this rule, L1 to L12",
         "  --all              print every violation with file and line, known or not",
         "  --write-baseline   record today's counts as the new baseline",
         "  --list             rule ids with their reasons"

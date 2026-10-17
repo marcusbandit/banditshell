@@ -318,6 +318,91 @@ function memberHits(files) {
     })).map(hit => `${hit.file}:${hit.line}`);
 }
 
+test("L12 flags a half-size radius on a SquircleRect or a shadow that names no pill role", () => {
+    const text = [
+        "Item {",
+        "    SquircleRect {",
+        "        height: 8",
+        "        radius: height / 2",
+        "    }",
+        "    SquircleRect { radius: width / 2 }",
+        "    SquircleRect { radius: root.dot / 2; cornerPower: 2 }",
+        "    DropShadow {",
+        "        radius: Math.min(width, height) / 2",
+        "    }",
+        "    RectangularShadow { radius: height * 0.5 }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L12"), [4, 6, 7, 9, 11]);
+});
+
+test("L12 sees a half-size literal radius and the four corners set one by one", () => {
+    const text = [
+        "Item {",
+        "    SquircleRect {",
+        "        width: 6",
+        "        height: 20",
+        "        radius: 3",
+        "    }",
+        "    SquircleRect {",
+        "        topLeftRadius: height / 2",
+        "        bottomLeftRadius: height / 2",
+        "    }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L12"), [5, 8]);
+});
+
+test("L12 leaves token radii, clamped radii, other fractions and Rectangles alone", () => {
+    const text = [
+        "Item {",
+        "    SquircleRect { radius: Appearance.rounding.normal }",
+        "    SquircleRect { radius: Appearance.rounding.small / 2 }",
+        "    SquircleRect { radius: Math.min(Appearance.rounding.normal, height / 2) }",
+        "    SquircleRect { radius: height / 3 }",
+        "    SquircleRect { width: 10; height: 4; radius: 3 }",
+        "    SquircleRect { radius: root.pillRadius; cornerPower: root.pillPower }",
+        "    Rectangle { radius: height / 2 }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L12"), []);
+});
+
+test("L12 accepts object and place, and a conditional between them or the plain shape", () => {
+    const text = [
+        "Item {",
+        "    SquircleRect { pill: \"object\" }",
+        "    SquircleRect { pill: \"place\"; topLeftRadius: 0 }",
+        "    DropShadow { pill: \"place\" }",
+        "    SquircleRect { pill: marker.square ? \"\" : \"object\" }",
+        "    SquircleRect { pill: root.flat ? \"place\" : \"object\" }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L12"), []);
+});
+
+test("L12 rejects any other pill value and an explicit radius or corner power beside a role", () => {
+    const text = [
+        "Item {",
+        "    SquircleRect { pill: \"round\" }",
+        "    SquircleRect { pill: \"\" }",
+        "    SquircleRect { pill: root.kind }",
+        "    SquircleRect { pill: \"object\"; radius: height / 2 }",
+        "    SquircleRect { pill: \"place\"; cornerPower: 2 }",
+        "    SquircleRect { pill: root.on ? \"object\" : \"pebble\" }",
+        "}"
+    ].join("\n");
+    assert.deepStrictEqual(lines("modules/a.qml", text, "L12"), [2, 3, 4, 5, 6, 7]);
+});
+
+test("L12 names the problem and only applies to qml", () => {
+    const [bare] = hits("modules/a.qml", "SquircleRect { radius: height / 2 }", "L12");
+    assert.match(bare.detail, /half-size radius without a pill role/);
+    const [bad] = hits("modules/a.qml", "SquircleRect { pill: \"blob\" }", "L12");
+    assert.match(bad.detail, /pill must be "object" or "place"/);
+    assert.deepStrictEqual(hits("scripts/a.js", "SquircleRect { radius: height / 2 }", "L12"), []);
+});
+
 test("L11 flags a member the singleton does not declare and names the file and line", () => {
     const found = lintRules.checkMembers(sourceMap({
         "services/qmldir": "module qs.services\nsingleton Focus 1.0 Focus.qml\n",
@@ -438,7 +523,7 @@ test("--all lists every violation and the options are checked", () => {
 });
 
 test("every rule has an id in order and a reason", () => {
-    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 11 }, (_, i) => `L${i + 1}`));
+    assert.deepStrictEqual(lintRules.RULES.map(r => r.id), Array.from({ length: 12 }, (_, i) => `L${i + 1}`));
     for (const rule of lintRules.RULES)
         assert.ok(rule.reason.length > 20, rule.id);
 });
