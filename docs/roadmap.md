@@ -14,8 +14,8 @@ things live, and leaves the way it came.
    be reachable from one input alone. This builds on the 122 stable action ids
    in `api/actions.tsv` from the audit branch, draft PR #44.
 2. **Everything lives at an edge or grows from a source.** Pull it from that
-   edge, or press its key, to summon it. Push it back toward the edge, or press
-   Esc, to put it away. The same direction works for mouse, pen, finger and
+   edge, click its home, or press its key to summon it. The music card's home
+   is the island. Push it back toward the edge, or press Esc, to put it away. The same direction works for mouse, pen, finger and
    touchpad. No pointer can overshoot a screen edge, so the edges carry the
    surfaces used most.
 3. **Hover is a bonus, never a requirement.** Touch has no hover, and a pen
@@ -25,16 +25,21 @@ things live, and leaves the way it came.
    floor, set in `control.minTarget`. Pen and touch get larger. Density follows
    the last input you used, not a setting. That part is not built yet.
 5. **Direct manipulation is 1:1.** While a finger, pen or cursor holds
-   something, it moves exactly with it. Smoothing starts on release, and any
-   motion can be caught and reversed mid-flight.
-6. **Snappy by how often it runs.** Anything used all day shows up in the first
-   frame and settles in about 200 ms, with no extra stages and no bounce. Rare
-   moments may take longer and may play. Reduced motion removes movement but
-   keeps what the movement meant: a colour, a state, a still mark.
+   something, it moves exactly with it. Any motion can be grabbed mid-flight
+   and stopped or reversed. Two curves cover the rest. Ease-out, by exponential
+   smoothing, answers an input. A critically damped ease-in-out, with no
+   bounce, moves something already on screen somewhere new.
+6. **Snappy, with no play for now.** A hotkey opens a surface instantly, with
+   no animation, and a hotkey or Esc closes it just as fast. A pull or a click
+   shows up in the first frame and settles in about 200 ms, with no extra
+   stages. Nothing overshoots or bounces, rare moments included. Reduced motion
+   means no motion at all, fades included. What the motion meant stays as a
+   colour, a state or a still mark.
 
 Rules 5 and 6 come from DESIGN.md section 15, "Drag before click", and
-section 2.5, "Motion: animate to teach, never to decorate". Section 2.5 sits on
-branch `design-motion-rules` (commit fe484bf) and is not merged yet.
+section 2.5, "Motion: animate to teach, never to decorate", tightened by my
+motion calls of 18 October. Section 2.5 sits on branch `design-motion-rules`
+(commit fe484bf) and is not merged yet.
 
 ## Inputs
 
@@ -68,11 +73,36 @@ Goal: a working day with the pen in hand and the keyboard only for long text.
 
 ## Now (in flight)
 
-- **PR #53, motion fixes.** Push island notifications back up to hide them
-  all. They stay in history. The lock screen's power buttons need the full hold again with reduced
-  motion on. The launcher closes back into the bottom edge. Once one tooltip
-  is open, its neighbours show at once. Toggles, sliders and chevrons stop
-  bouncing. Reduced motion stops loops and keeps what they meant.
+PR #53, on branch `motion-fixes`, carries the motion work. Built on the branch
+so far:
+
+- **Island notifications go back up.** Push them up to hide them all. They
+  stay in history.
+- **Lock hold.** The power buttons need the full hold again with reduced
+  motion on.
+- **Launcher exit.** It sinks back into the bottom edge instead of shrinking
+  to its centre.
+- **Tooltips.** Once one is open, its neighbours show at once.
+- **Controls.** Toggles, sliders and chevrons stop bouncing.
+- **Loops.** Reduced motion stops them, and what they meant stays visible.
+
+Being built now, from my motion calls of 18 October:
+
+- **No play for now.** Every other overshoot and bounce goes too, rare
+  moments included.
+- **Hotkeys are instant.** A surface opened by a hotkey appears with no
+  animation, and a hotkey or Esc close is instant too. A pull from its edge or
+  a click on its home still brings it out of its origin, and the gesture
+  follows the finger 1:1.
+- **Two curves.** Ease-out, by exponential smoothing, for anything that
+  answers an input. A critically damped ease-in-out, with no bounce, for things
+  already on screen that move somewhere new.
+- **Reduced motion is no motion.** Fades go too.
+- **The workspace slide.** It leaves my Hyprland config and becomes a
+  banditshell Settings row, at most 250 ms.
+
+Also in flight:
+
 - **PR #52, spatial fixes.** Clipboard paging, the peek highlight, quick
   controls and the session menu centred, Settings panes matched to the mockup.
 - **Branch `design-motion-rules`.** DESIGN.md section 2.5, "animate to teach,
@@ -94,6 +124,8 @@ Goal: a working day with the pen in hand and the keyboard only for long text.
   the island and 376 with 12 in the tray. Tooltips, keycaps and text fields
   differ the same way. The sidebar's status and tray slots are 29 px, its
   workspace slots 32.
+- Grab anything mid-motion. Every moving surface can be caught mid-flight and
+  stopped, the way Apple's can.
 - An input parity matrix: for every surface and every input, how you summon
   it, move in it, act and dismiss.
 
@@ -108,10 +140,6 @@ Goal: a working day with the pen in hand and the keyboard only for long text.
   launcher, which would settle it.
 - With the stream bar on, a menu opened from it drops from the top. From the
   sidebar the same menu unrolls sideways.
-- Ease-in-out for things already on screen, against the shell's ease-out house
-  curve.
-- The 450 ms vertical workspace slide. It lives in my Hyprland config, not in
-  the shell.
 - The lock screen calls a password wrong if PAM has not answered in 300 ms,
   and counts it as a failure. Slow machines will hit that. A late yes still
   unlocks.
@@ -121,3 +149,5 @@ Goal: a working day with the pen in hand and the keyboard only for long text.
 - Voice commands that fire the same intents.
 - Hand tracking through the camera.
 - Touch mode: density that follows the last input.
+- Playfulness again, tuned on purpose.
+- Springs, once the two curves are in.
