@@ -26,11 +26,13 @@ Item {
 
     readonly property real contentWidth: root.iconColumn + root.columnGap + root.sliderWidth + root.columnGap + root.valueWidth
 
-    readonly property real panelWidth: root.border + root.contentWidth + Appearance.padding.large * 2
+    readonly property real panelWidth: root.contentWidth + Appearance.padding.large * 2
 
     readonly property real panelHeight: root.contentHeight + Appearance.padding.large * 2
 
-    readonly property real contentHeight: root.rowHeight * 3 + root.rowGap * 2
+    readonly property int rowCount: Display.brightnessReady ? 3 : 2
+
+    readonly property real contentHeight: root.rowHeight * root.rowCount + root.rowGap * (root.rowCount - 1)
 
     readonly property real rowHeight: Math.max(root.iconColumn, Appearance.sizes.sliderHeight * 2.2 * 1.35)
 
