@@ -62,6 +62,13 @@ Item {
             concept.show();
     }
 
+    Timer {
+        interval: 4000
+        running: !loader.active
+
+        onTriggered: loader.active = true
+    }
+
     Loader {
         id: loader
 

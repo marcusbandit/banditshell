@@ -15,6 +15,12 @@ Item {
     property var row: null
     property bool wanted: false
     property real longestFrame: Infinity
+    property bool growsLeft: false
+    property string colour: ""
+
+    signal colourPicked(string hex, bool done)
+
+    readonly property bool animated: Config.values.launcher.animatePreview && !Appearance.lessMotion
 
     readonly property var toplevel: root.row?.kind === "window" ? Hyprland.toplevels.values.find(t => Hypr.windowAddress(t.address) === root.row.address) ?? null : null
     readonly property string peekPath: root.row?.peekPath ?? (root.row?.kind === "file" ? root.row.path : "")
@@ -25,6 +31,7 @@ Item {
     readonly property var clip: root.row?.kind === "clipboard" ? root.row.entry : null
     readonly property string clipText: root.row?.peekText ? root.row.peekText : root.clip && !root.clip.file && ((root.clip.text ?? "").length > 48 || (root.clip.text ?? "").trim().indexOf("\n") >= 0) ? root.clip.text : ""
     readonly property string picture: root.isFile && Search.isPicture(root.peekPath) ? root.peekPath : root.clip?.kind === "image" && root.clip.file ? root.clip.file : ""
+    readonly property string pictureSource: root.row?.peekImage || (root.picture ? Search.fileUrl(root.picture) : "")
     readonly property string document: root.isFile && !root.picture && Search.isText(root.peekPath) && !Search.isSecretish(root.peekPath) ? root.peekPath : ""
     readonly property string folder: root.peekPath && root.peekDir ? root.peekPath : ""
     readonly property string listed: root.document || root.folder || (root.clipText ? "clipboard" : "")
@@ -81,15 +88,57 @@ Item {
     readonly property var windowSize: root.toplevel?.lastIpcObject?.size ?? null
     readonly property real aspect: root.toplevel ? (root.windowSize ? root.windowSize[0] / Math.max(1, root.windowSize[1]) : 16 / 9) : image.ready ? image.aspect : 16 / 10
 
-    readonly property bool ready: root.carded ? true : root.toplevel ? shot.ready : root.picture ? image.ready : root.textReady
-    readonly property bool shown: root.wanted && (root.carded || !!root.toplevel || !!root.picture || !!root.listed) && root.ready
+    readonly property bool picking: !!root.colour
+    readonly property bool paged: root.picking || !!root.listed
+
+    readonly property bool ready: root.carded || root.picking || (root.toplevel ? shot.ready : root.pictureSource ? image.ready : root.textReady)
+    readonly property bool loading: !root.toplevel && !root.picking && !!root.pictureSource && image.status === Image.Loading
+    readonly property bool shown: root.wanted && (root.carded || root.picking || !!root.toplevel || !!root.pictureSource || !!root.listed) && (root.ready || root.loading && root.visible)
 
     readonly property real frame: Appearance.padding.small
     readonly property real span: Appearance.sizes.launcherWidth * 0.7
     readonly property real tallest: Appearance.sizes.launcherWidth * 0.8
 
-    width: root.carded ? Math.round(card.width + root.frame * 2) : root.listed ? Math.round(root.span + root.frame * 2) : Math.round(Math.min(root.span, root.tallest * root.aspect) + root.frame * 2)
-    height: root.carded ? Math.round(Math.min(root.tallest, card.height + root.frame * 2)) : root.listed ? Math.round(Math.min(root.tallest, page.implicitHeight + Appearance.padding.normal * 2)) : Math.round(Math.min(root.tallest, root.span / root.aspect) + root.frame * 2)
+    readonly property real fullWidth: root.carded ? Math.round(card.width + root.frame * 2) : root.paged ? Math.round(root.span + root.frame * 2) : Math.round(Math.min(root.span, root.tallest * root.aspect) + root.frame * 2)
+    readonly property real fullHeight: root.carded ? Math.round(Math.min(root.tallest, card.height + root.frame * 2)) : root.picking ? Math.round(picker.implicitHeight + Appearance.padding.normal * 2) : root.listed ? Math.round(Math.min(root.tallest, page.implicitHeight + Appearance.padding.normal * 2)) : Math.round(Math.min(root.tallest, root.span / root.aspect) + root.frame * 2)
+    readonly property size full: Qt.size(root.fullWidth, root.fullHeight)
+
+    property size held: Qt.size(0, 0)
+
+    function hold(): void {
+        if (!root.ready)
+            return;
+        root.held = root.full;
+        if (!root.animated || !root.visible) {
+            frameWidth.snap();
+            frameHeight.snap();
+        }
+    }
+
+    onFullChanged: root.hold()
+    onReadyChanged: root.hold()
+    onAnimatedChanged: root.hold()
+
+    Follow {
+        id: frameWidth
+
+        target: root.held.width
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.5
+        longestFrame: root.longestFrame
+    }
+
+    Follow {
+        id: frameHeight
+
+        target: root.held.height
+        speed: Appearance.animation.resizeSpeed
+        epsilon: 0.5
+        longestFrame: root.longestFrame
+    }
+
+    width: Math.round(frameWidth.value)
+    height: Math.round(frameHeight.value)
 
     opacity: fade.value
     visible: fade.value > 0.01
@@ -104,13 +153,6 @@ Item {
         longestFrame: root.longestFrame
     }
 
-    DropShadow {
-        anchors.fill: parent
-        radius: Appearance.rounding.normal
-        blur: Appearance.padding.large
-        offset.y: Math.round(Appearance.padding.small / 2)
-    }
-
     SquircleRect {
         anchors.fill: parent
         radius: Appearance.rounding.normal
@@ -119,91 +161,124 @@ Item {
         strokeWidth: 1
     }
 
-    Loader {
-        id: card
-
-        x: root.frame
-        y: root.frame
-        active: root.carded
-        sourceComponent: root.cardPart
-    }
-
-    Binding {
-        target: card.item
-        property: "entry"
-        value: root.row?.entry ?? null
-        when: card.item !== null
-    }
-
-    WindowView {
-        id: shot
-
-        anchors.fill: parent
-        anchors.margins: root.frame
-        visible: !!root.toplevel
-
-        window: root.wanted ? root.toplevel : null
-        radius: Appearance.rounding.normal - root.frame
-        live: root.wanted
-    }
-
-    SquircleImage {
-        id: image
-
-        anchors.fill: parent
-        anchors.margins: root.frame
-        visible: !root.toplevel && !!root.picture
-
-        source: root.wanted && root.picture ? Search.fileUrl(root.picture) : ""
-        radius: Appearance.rounding.normal - root.frame
-        fillMode: Image.PreserveAspectFit
-        decodeWidth: root.span
-        decodeHeight: root.tallest
-    }
-
     Item {
+        id: window
+
         anchors.fill: parent
-        anchors.margins: Appearance.padding.normal
-        visible: !!root.listed
+        anchors.margins: root.frame
         clip: true
 
-        Column {
-            id: page
+        layer.enabled: root.visible
+        layer.effect: ShaderEffect {
+            property real corner: Appearance.rounding.normal - root.frame
+            property real power: Appearance.rounding.power
+            property vector2d extent: Qt.vector2d(width, height)
+            property vector4d crop: Qt.vector4d(0, 0, 1, 1)
 
-            width: parent.width
+            fragmentShader: Qt.resolvedUrl("../../components/squircle.frag.qsb")
+        }
 
-            Repeater {
-                model: root.textReady ? root.shownLines : []
+        Item {
+            id: content
 
-                delegate: Item {
-                    id: textLine
+            x: root.growsLeft ? window.width - width : 0
+            width: root.fullWidth - root.frame * 2
+            height: root.fullHeight - root.frame * 2
 
-                    required property string modelData
-                    required property int index
+            WindowView {
+                id: shot
 
-                    readonly property bool hit: root.firstLine + textLine.index === root.hitLine
+                anchors.fill: parent
+                visible: !!root.toplevel && !root.picking
 
-                    width: page.width
-                    height: lineText.implicitHeight
+                window: root.wanted ? root.toplevel : null
+                radius: Appearance.rounding.normal - root.frame
+                live: root.wanted
+            }
 
-                    SquircleRect {
-                        visible: textLine.hit
-                        anchors.fill: parent
-                        anchors.leftMargin: -Appearance.padding.small
-                        anchors.rightMargin: -Appearance.padding.small
-                        radius: Appearance.rounding.small
-                        color: Appearance.colour.accentFill
-                    }
+            SquircleImage {
+                id: image
 
-                    StyledText {
-                        id: lineText
+                anchors.fill: parent
+                visible: !root.toplevel && !root.picking && !!root.pictureSource
 
-                        width: parent.width
-                        text: textLine.modelData || " "
-                        wrapMode: root.clipText ? Text.Wrap : Text.NoWrap
-                        elide: root.clipText ? Text.ElideNone : Text.ElideRight
-                        font.pixelSize: Appearance.font.size.small
-                        color: textLine.hit ? Appearance.colour.text : Appearance.colour.textDim
+                source: root.wanted ? root.pictureSource : ""
+                radius: Appearance.rounding.normal - root.frame
+                fillMode: Image.PreserveAspectFit
+                decodeWidth: root.span
+                decodeHeight: root.tallest
+            }
+
+            ColourPicker {
+                id: picker
+
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.normal - root.frame
+                visible: root.picking
+
+                seed: root.colour
+                onPicked: (hex, done) => root.colourPicked(hex, done)
+            }
+
+            Loader {
+                id: card
+
+                active: root.carded
+                sourceComponent: root.cardPart
+            }
+
+            Binding {
+                target: card.item
+                property: "entry"
+                value: root.row?.entry ?? null
+                when: card.item !== null
+            }
+
+            Item {
+                anchors.fill: parent
+                anchors.margins: Appearance.padding.normal - root.frame
+                visible: !!root.listed && !root.picking && !root.carded
+                clip: true
+
+                Column {
+                    id: page
+
+                    width: parent.width
+
+                    Repeater {
+                        model: root.textReady ? root.shownLines : []
+
+                        delegate: Item {
+                            id: textLine
+
+                            required property string modelData
+                            required property int index
+
+                            readonly property bool hit: root.firstLine + textLine.index === root.hitLine
+
+                            width: page.width
+                            height: lineText.implicitHeight
+
+                            SquircleRect {
+                                visible: textLine.hit
+                                anchors.fill: parent
+                                anchors.leftMargin: -Appearance.padding.small
+                                anchors.rightMargin: -Appearance.padding.small
+                                radius: Appearance.rounding.small
+                                color: Appearance.colour.accentFill
+                            }
+
+                            StyledText {
+                                id: lineText
+
+                                width: parent.width
+                                text: textLine.modelData || " "
+                                wrapMode: root.clipText ? Text.Wrap : Text.NoWrap
+                                elide: root.clipText ? Text.ElideNone : Text.ElideRight
+                                font.pixelSize: Appearance.font.size.small
+                                color: textLine.hit ? Appearance.colour.text : Appearance.colour.textDim
+                            }
+                        }
                     }
                 }
             }

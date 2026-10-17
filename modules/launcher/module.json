@@ -7,6 +7,7 @@
       "modules/launcher/AlphabetLauncher.qml",
       "modules/launcher/AlphabetRow.qml",
       "modules/launcher/AnswerRow.qml",
+      "modules/launcher/ColourPicker.qml",
       "modules/launcher/LaunchEdge.qml",
       "modules/launcher/Launcher.qml",
       "modules/launcher/LauncherConcept.qml",
@@ -23,7 +24,9 @@
       "modules/launcher/sources/qmldir",
       "modules/launcher/system-asks.js"
     ],
-    "services": ["LauncherHotkeys"],
+    "services": [
+      "LauncherHotkeys"
+    ],
     "tests": [
       "tests/launcher-actions.test.js",
       "tests/launcher-calculator.test.js",
@@ -35,15 +38,25 @@
     ]
   },
   "requires": {
-    "packages": ["core", "compositor", "apps"],
+    "packages": [
+      "core",
+      "compositor",
+      "apps"
+    ],
     "optional": []
   },
   "provides": {
     "singletons": [],
-    "ipc": ["launcher"]
+    "ipc": [
+      "launcher"
+    ]
   },
   "config": {
-    "namespace": ["launcher"],
-    "reads": ["control"]
+    "namespace": [
+      "launcher"
+    ],
+    "reads": [
+      "control"
+    ]
   }
 }

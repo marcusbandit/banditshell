@@ -91,6 +91,23 @@ test("a bound id runs the checkout's CLI with the action verb and nothing else",
     assert.deepStrictEqual(r.notifications, []);
 });
 
+test("the launcher toggle dispatches the shell's global shortcut when Hyprland offers it, everything else still runs the CLI", { skip }, () => {
+    const home = fresh("home");
+    const r = run(checkout(), `
+        local dispatched = {}
+        hl.dsp.global = function(name) return { dispatcher = "global", name = name } end
+        hl.dispatch = function(d) dispatched[#dispatched + 1] = d.name end
+        bs = load_api()
+        hl.bind("SUPER + SPACE", bs.launcher.toggle)
+        hl.bind("SUPER + V", bs.panel.clipboard.toggle)
+        press(1) press(2)
+        hl.notification.create({ text = "dispatched " .. table.concat(dispatched, ",") })
+    `, { home });
+    assert.strictEqual(r.ok, true, r.error);
+    assert.deepStrictEqual(r.notifications, ["dispatched banditshell:launcher"]);
+    assert.deepStrictEqual(r.exec.map(c => execute(c, home)), [["action", "panel.clipboard.toggle"]]);
+});
+
 test("a wildcard row and an exact row under one prefix both resolve", { skip }, () => {
     const home = fresh("home");
     const r = run(checkout(), `

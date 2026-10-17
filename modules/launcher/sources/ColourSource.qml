@@ -54,6 +54,7 @@ QtObject {
             detail: colour ? `${Colours.rgbOf(colour)} · ${Colours.hslOf(colour)}` : "",
             icon: "palette",
             swatch: pick.hex,
+            peekColour: pick.hex,
             score: score
         };
     }
@@ -81,6 +82,11 @@ QtObject {
             colours: 41
         })
 
+    function shownHex(row: var): string {
+        const edit = root.search.colourEdit;
+        return edit?.key === row.key ? edit.hex : row.hex;
+    }
+
     function copy(text: string): void {
         root.search.leave(() => Clipboard.copy({
                 text: text
@@ -100,7 +106,7 @@ QtObject {
         if (row.kind === "colourpick")
             root.pick();
         else
-            root.copy(row.hex);
+            root.copy(root.shownHex(row));
     }
 
     function actionsFor(row: var): var {
@@ -112,24 +118,23 @@ QtObject {
                     run: () => root.pick()
                 }
             ];
-        const colour = Colours.parseColour(row.hex);
         return [
             {
                 icon: "content_copy",
                 label: "Copy hex",
-                run: () => root.copy(row.hex)
+                run: () => root.copy(root.shownHex(row))
             },
             {
                 icon: "content_copy",
                 label: "Copy rgb",
                 short: "rgb",
-                run: () => root.copy(Colours.rgbOf(colour))
+                run: () => root.copy(Colours.rgbOf(Colours.parseColour(root.shownHex(row))))
             },
             {
                 icon: "content_copy",
                 label: "Copy hsl",
                 short: "hsl",
-                run: () => root.copy(Colours.hslOf(colour))
+                run: () => root.copy(Colours.hslOf(Colours.parseColour(root.shownHex(row))))
             },
             {
                 icon: "delete",

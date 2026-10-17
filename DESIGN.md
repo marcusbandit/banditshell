@@ -101,6 +101,11 @@ Bare and a floating stream panel draw no edge at rest, so they draw none here ei
 reservations stay as they were, so the windows underneath do not re-tile on the way in or
 out. Other monitors are untouched.
 
+The launcher is the one exception (2026-10-17). Summoned over a fullscreen window, it opens on
+the overlay surface that draws the edge ring, as one solid panel rising out of the ring with no
+band or sidebar behind it. It takes the keyboard while it is open and closes back to the plain
+fullscreen window. Every other panel and menu still refuses to open there.
+
 The change is a motion, not a cut. Hyprland fades every top-layer surface out under a
 fullscreen window, so the overlay carries the transition: it starts as an exact copy of the
 chassis at rest and melts the band out to the edge ring at `revealSpeed`, which tracks the
@@ -3735,7 +3740,8 @@ casts nothing.
 
 Every activity is a mark, words and a sign: Firefox's icon, "Firefox" and a ring
 that fills, then a check; a microphone, the live bars and the language; a cover,
-the title and an equalizer. The compact island is one ActivityRow, or a few of
+the title and an equalizer; a running timer, its name, the time left and a pause
+sign that a tap answers. The compact island is one ActivityRow, or a few of
 them when the centre holds several of one kind (two apps opening are two lines).
 The overview lists the same rows.
 
@@ -4155,13 +4161,21 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   set, to }`, where `value()` reads the live level and `set(v)` changes it)
   for a level the row can drag; Left and Right nudge the selected one by
   `step` (0.05 unless set), a fifth of that with Shift. `text()` replaces the
-  percentage beside it, and `warnAbove` moves the marker that is at 1. A
+  percentage beside it, and `warnAbove` moves the marker that is at 1.
+  `nudge(offset)` takes the keys' step instead of `set`, for levels that are
+  not a clamped fraction (seeking), and `bare: true` hides the bar while the
+  label and the keys stay. A
   row can also carry `glyph` (a character, such as an emoji, drawn as its
   icon) and `ask` (`{ prompt, icon, suggestion, take }`): Enter on it turns
   the field into a one-line question and hands the answer to `take(text)`.
   `peekPath` (with `peekDir: true` for a folder) or `peekText` fills the card
   beside the launcher when the row is selected: a picture, the first lines of
-  a text file, a folder's contents, or the full text. `peekCard` is a
+  a text file, a folder's contents, or the full text. `peekImage` shows a
+  picture by URL (cover art), and `peekColour` opens the card as a colour
+  picker; what is picked there lands in `search.colourEdit` under the row's
+  key. The card sits level with the launcher's top edge. With Animate
+  preview on, its frame grows or shrinks to the next preview over content
+  already laid out at its final size. `peekCard` is a
   Component whose root has an `entry` property; the card hosts it with the
   row's `entry` set, for a row whose preview is a live item rather than text
   (the notification rows show their card at page density this way). An action
@@ -4170,7 +4184,10 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
   `search.onStage` is false on a screen the stream keeps private, and a source
   whose rows carry message text returns nothing there; `search.copyText(text)`
   closes the launcher and copies.
-  `swatch` (a colour) draws a colour chip in place of the icon, and `tab:
+  `columns` (`[{ text, chars, tone }]`) replaces the detail with fixed
+  columns `chars` digits wide, so the same fields line up from row to row;
+  `tone` is `"lit"` (accent) or `"dim"`. `swatch` (a colour) draws a colour
+  chip in place of the icon, and `tab:
   true` lets the row take Tab even when another row is selected. In
   `actionsFor`, a first action with `button: true` also shows as a button,
   for rows whose Enter action belongs next to the others (Pause beside Skip
@@ -4196,8 +4213,9 @@ under `modules/launcher/sources/` instead, and LauncherSearch lists them in
 - `phrases`: `{ head, picks }` entries Tab completion offers, like
   `{ head: "emoji ", picks: ["smile", "heart"] }`.
 
-Scores: apps rank about 1 to 4 (4 for an exact name) and settings at least
-0.5. A row that shows up for a plain word the user did not clearly mean for a
+Scores: apps rank about 1 to 4 (4 for an exact name). Files whose name
+matches rank 0 down to -3, settings sit under every matching file (-4 to
+-7), and lines found inside files come last. A row that shows up for a plain word the user did not clearly mean for a
 source stays near or below 0.5 (an emoji whose name starts with the word, or
 a plain question for the AI, may reach 0.8, still under an app prefix match);
 a clear ask of a source puts its first row at Infinity. Rows the user
@@ -4224,7 +4242,10 @@ away at once, so anything that outlives the call (a Process, a timer) belongs
 in a singleton service, not in the source. `FallbackSource.qml` is the
 smallest example; `SoundSource.qml` shows sliders. Typing into the window
 the user came from goes through `services/Typist.qml`, which waits for that
-window to have focus again and copies instead when wtype is missing.
+window to have focus again and copies instead when wtype is missing. Text
+with characters outside the keyboard map, such as an emoji, is pasted
+instead into Chromium and Electron windows, which ignore the keymap wtype
+swaps in, and the clipboard is put back a moment later.
 
 ---
 

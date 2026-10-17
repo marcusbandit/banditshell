@@ -16,7 +16,8 @@
       "modules/launcher/sources/ProjectSource.qml",
       "modules/launcher/sources/QuicklinkSource.qml",
       "modules/launcher/sources/ScriptSource.qml",
-      "modules/launcher/sources/SnippetSource.qml"
+      "modules/launcher/sources/SnippetSource.qml",
+      "modules/launcher/sources/TimerSource.qml"
     ],
     "services": [
       "ColourPicks",
@@ -46,7 +47,9 @@
       "services/script-commands.js",
       "services/snippets.js"
     ],
-    "scripts": ["scripts/emoji-table.py"],
+    "scripts": [
+      "scripts/emoji-table.py"
+    ],
     "tests": [
       "tests/launcher-dev-utilities.test.js",
       "tests/launcher-latest-files.test.js",
@@ -56,7 +59,15 @@
     ]
   },
   "requires": {
-    "packages": ["core", "compositor", "launcher", "clipboard", "files", "notifications"],
+    "packages": [
+      "clipboard",
+      "clock",
+      "compositor",
+      "core",
+      "files",
+      "launcher",
+      "notifications"
+    ],
     "optional": []
   },
   "provides": {
@@ -64,7 +75,11 @@
     "ipc": []
   },
   "config": {
-    "namespace": ["launcher.powerTools", "launcher.typing", "launcher.utilities"],
+    "namespace": [
+      "launcher.powerTools",
+      "launcher.typing",
+      "launcher.utilities"
+    ],
     "reads": []
   }
 }

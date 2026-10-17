@@ -287,6 +287,8 @@ Singleton {
 
                 hiddenFiles: ".config",
 
+                animatePreview: true,
+
                 currency: "DKK",
 
                 ai: {

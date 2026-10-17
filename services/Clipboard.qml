@@ -231,8 +231,10 @@ Singleton {
         if (ev.text && Dictation.said(ev.text))
             return;
 
-        if (ev.dropped || (!ev.text && !ev.file && !(ev.paths ?? []).length))
+        if (ev.dropped || (!ev.text && !ev.file && !(ev.paths ?? []).length)) {
+            root.current = "";
             return;
+        }
 
         const now = Date.now();
         const entry = {

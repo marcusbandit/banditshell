@@ -300,7 +300,7 @@ test("--json turns a status block into an object and leaves exit codes alone", (
 
 test("the legacy .conf example calls only ids that exist, and no raw banditshell command line", () => {
     const text = fs.readFileSync(path.join(ROOT, "docs/hyprland-binds.example.conf"), "utf8");
-    const binds = text.split("\n").filter(l => /^bind[a-z]* = /.test(l) && l.includes("banditshell"));
+    const binds = text.split("\n").filter(l => /^bind[a-z]* = /.test(l) && l.includes("banditshell") && !/, global, banditshell:[a-z]+$/.test(l));
     assert.ok(binds.length > 20);
     const patterns = table.rows.map(r => r.id.split("."));
     for (const line of binds) {

@@ -111,6 +111,21 @@ local function fire(command)
     end
 end
 
+local SHORTCUTS = {
+    ["launcher.toggle"] = "banditshell:launcher",
+}
+
+local function press(id, command)
+    local name = SHORTCUTS[id]
+    if name and hl.dsp and hl.dsp.global and hl.dispatch then
+        local made, dispatcher = pcall(hl.dsp.global, name)
+        if made and pcall(hl.dispatch, dispatcher) then
+            return
+        end
+    end
+    fire(command)
+end
+
 local function advance(entries, segment)
     local out = {}
     if segment == "*" then
@@ -217,12 +232,12 @@ local function leaf(id, row)
     local function action(...)
         local count = select("#", ...)
         if count == 0 then
-            fire(command)
+            press(id, command)
             return nil
         end
         local args = { ... }
         if not plain(args) then
-            fire(command)
+            press(id, command)
             return nil
         end
         return bound(id, args)

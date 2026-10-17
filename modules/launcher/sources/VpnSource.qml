@@ -108,6 +108,26 @@ QtObject {
         };
     }
 
+    function peerColumns(peer: var, status: string): var {
+        return [
+            {
+                text: status,
+                chars: 9,
+                tone: peer.online ? "lit" : "dim"
+            },
+            {
+                text: peer.os ?? "",
+                chars: 7,
+                tone: peer.online ? "" : "dim"
+            },
+            {
+                text: peer.address ?? "",
+                chars: 15,
+                tone: peer.online ? "" : "dim"
+            }
+        ];
+    }
+
     function exitRow(peer: var, score: real): var {
         const busy = Tailscale.busy === `exit:${peer.id}` || peer.exitActive && Tailscale.busy === "exit:";
         return {
@@ -115,7 +135,8 @@ QtObject {
             kind: "tailscaleexit",
             peerId: peer.id,
             label: peer.name,
-            detail: [busy ? "switching" : peer.exitActive ? "exit node in use" : "exit node", peer.online ? "" : "offline", peer.os].filter(Boolean).join(" · "),
+            detail: [busy ? "switching" : peer.exitActive ? "exit node in use" : "exit node", peer.online ? "online" : "offline", peer.os, peer.address].filter(Boolean).join(" · "),
+            columns: root.peerColumns(peer, busy ? "switching" : peer.exitActive ? "in use" : peer.online ? "online" : "offline"),
             icon: peer.exitActive ? "public" : "public_off",
             toggle: peer.exitActive,
             score: score
@@ -132,6 +153,7 @@ QtObject {
             online: peer.online,
             label: peer.name,
             detail: [peer.online ? "online" : "offline", peer.os, peer.address].filter(Boolean).join(" · "),
+            columns: root.peerColumns(peer, peer.online ? "online" : "offline"),
             icon: peer.os === "android" || peer.os === "iOS" ? "devices" : "computer",
             score: score
         };
