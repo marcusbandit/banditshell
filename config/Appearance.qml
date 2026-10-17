@@ -123,6 +123,27 @@ Singleton {
         readonly property color scrim: Qt.rgba(0, 0, 0, 0.45)
 
         readonly property color seam: Qt.rgba(root.colour.paper.r, root.colour.paper.g, root.colour.paper.b, 0.08)
+
+        readonly property color pane: root.blend(root.colour.surfaceSolid, root.colour.paper, 0.12)
+    }
+
+    readonly property QtObject opacity: QtObject {
+        readonly property real disabled: 0.4
+        readonly property real trail: 0.55
+        readonly property real glow: 0.8
+    }
+
+    readonly property QtObject stroke: QtObject {
+        readonly property int line: 1
+        readonly property int ring: root.font.stem
+    }
+
+    readonly property QtObject icon: QtObject {
+        readonly property int small: Math.round(root.font.iconSize * 0.8)
+        readonly property int normal: root.font.iconSize
+        readonly property int large: Math.round(root.font.iconSize * 1.4)
+        readonly property int huge: root.font.iconSize * 2
+        readonly property int hero: root.font.iconSize * 3
     }
 
     readonly property QtObject font: QtObject {
@@ -156,6 +177,8 @@ Singleton {
         readonly property real ring: 0.94
         readonly property real ringHover: 1.12
         readonly property real glyph: 0.92
+        readonly property real lift: 1.15
+        readonly property real grab: 1.3
     }
 
     readonly property QtObject rounding: QtObject {
@@ -174,6 +197,7 @@ Singleton {
     }
 
     readonly property QtObject padding: QtObject {
+        readonly property int hair: Math.round(small / 2)
         readonly property int small: Math.round(root.tier(root.config.padding.base, root.config.padding.scale, 0))
         readonly property int normal: Math.round(root.tier(root.config.padding.base, root.config.padding.scale, 1))
 
@@ -224,6 +248,10 @@ Singleton {
         readonly property real railSpeed: root.config.anim.railSpeed
         readonly property real resizeSpeed: root.config.anim.resizeSpeed
         readonly property real scrollSpeed: root.config.anim.scrollSpeed
+        readonly property real settleSpeed: revealSpeed * 0.5
+        readonly property real snapSpeed: revealSpeed * 1.5
+
+        readonly property real fadeEpsilon: 0.002
 
         readonly property int grace: root.config.anim.grace
         readonly property int dwell: root.config.anim.dwell
