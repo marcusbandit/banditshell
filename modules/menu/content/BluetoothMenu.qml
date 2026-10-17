@@ -223,7 +223,7 @@ Column {
             Behavior on rotation {
                 NumberAnimation {
                     duration: Appearance.animation.fast
-                    easing.type: Easing.OutBack
+                    easing.type: Easing.OutCubic
                 }
             }
         }

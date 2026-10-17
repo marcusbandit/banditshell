@@ -29,17 +29,19 @@ Item {
         readonly property real gap: Math.max(2, Math.round(root.height / 9))
 
         y: knob.gap
-        x: root.checked ? parent.width - width - knob.gap : knob.gap
+        x: knob.gap + slide.value * (knob.parent.width - knob.width - knob.gap * 2)
         width: root.height - knob.gap * 2
         height: width
         radius: height / 2
         color: root.checked ? Appearance.colour.accentText : Appearance.colour.text
 
-        Behavior on x {
-            NumberAnimation {
-                duration: Appearance.animation.fast
-                easing.type: Easing.OutBack
-            }
+        Follow {
+            id: slide
+
+            target: root.checked ? 1 : 0
+            speed: Appearance.animation.revealSpeed
+            epsilon: 0.005
+            Component.onCompleted: slide.snap()
         }
     }
 
