@@ -34,12 +34,13 @@ Item {
             anchors.centerIn: parent
             visible: !root.mark
             name: root.icon
-            color: root.markColour
+            color: markTone.value
 
-            Behavior on color {
-                ColorAnimation {
-                    duration: Appearance.animation.fast
-                }
+            FollowColour {
+                id: markTone
+
+                target: root.markColour
+                speed: Appearance.animation.revealSpeed
             }
         }
 

@@ -102,7 +102,7 @@ Item {
     Follow {
         id: glow
 
-        speed: Appearance.animation.revealSpeed * 1.5
+        speed: Appearance.animation.snapSpeed
         epsilon: 0.005
         target: root.lights && root.hovered ? 1 : 0
     }
@@ -176,7 +176,7 @@ Item {
     }
 
     Item {
-        x: root.width - root.inset - width + (root.look.trailing === "icon" ? Appearance.padding.small / 2 * glow.value : 0)
+        x: root.width - root.inset - width + (root.look.trailing === "icon" ? Appearance.padding.hair * glow.value : 0)
         anchors.verticalCenter: parent.verticalCenter
         width: root.trailingWidth
         height: root.slot
@@ -196,7 +196,7 @@ Item {
             value: 0.3
 
             RotationAnimation on rotation {
-                running: root.live && root.look.trailing === "spin"
+                running: root.live && root.look.trailing === "spin" && !Appearance.lessMotion
                 from: 0
                 to: 360
                 duration: 1100
@@ -252,7 +252,7 @@ Item {
                     Follow {
                         id: lift
 
-                        speed: Appearance.animation.revealSpeed * 1.5
+                        speed: Appearance.animation.snapSpeed
                         epsilon: 0.004
                         target: pillPress.containsMouse ? 1 : 0
                     }

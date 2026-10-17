@@ -130,8 +130,8 @@ Item {
                     cornerPower: 2
 
                     color: Appearance.colour.surfaceSolid
-                    stroke: Appearance.veil(0.12)
-                    strokeWidth: 1
+                    stroke: Appearance.colour.fillStrong
+                    strokeWidth: Appearance.stroke.line
                 }
 
                 Image {
@@ -204,7 +204,7 @@ Item {
                 text: root.shownTotal
                 color: Appearance.colour.ink
                 font.family: root.family
-                font.pixelSize: Math.round(parent.height * 0.68)
+                font.pixelSize: Appearance.font.size.small
                 font.variableAxes: ({ "wght": 650 })
                 font.features: ({ "tnum": 1 })
                 renderType: Text.NativeRendering

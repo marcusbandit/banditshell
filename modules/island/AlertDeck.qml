@@ -323,7 +323,7 @@ Item {
                 Follow {
                     id: departure
 
-                    speed: Appearance.animation.revealSpeed * 1.5
+                    speed: Appearance.animation.snapSpeed
                     epsilon: 0.004
                     target: slot.leaving ? 1 : 0
                 }
@@ -365,7 +365,7 @@ Item {
 
             x: Appearance.padding.card
             y: (root.footerHeight - Appearance.padding.card - height) / 2
-            spacing: Appearance.padding.small / 2
+            spacing: Appearance.padding.hair
             opacity: 1 - root.fanned
             visible: opacity > 0.01
 

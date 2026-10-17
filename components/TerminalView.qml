@@ -148,7 +148,7 @@ Item {
         height: root.cellHeight
 
         color: Appearance.colour.accent
-        opacity: 0.55
+        opacity: Appearance.opacity.trail
     }
 
     function cellAt(x: real, y: real): var {

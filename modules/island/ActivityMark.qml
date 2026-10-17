@@ -46,7 +46,7 @@ Item {
         onMeasured: (path, box) => AppIcons.recordFit(path, box)
         size: root.size
         fallback: Apps.genericIcon
-        opacity: root.look.dim ? 0.5 : 1
+        opacity: root.look.dim ? Appearance.opacity.disabled : 1
     }
 
     NotificationMark {
