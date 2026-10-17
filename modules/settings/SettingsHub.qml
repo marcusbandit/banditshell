@@ -103,10 +103,17 @@ Column {
                     startsAtTarget: true
                 }
 
+                FollowColour {
+                    id: tileTone
+
+                    target: press.pressed && !tile.on && !tile.off ? Appearance.colour.fillStronger : tileHover.hovered && !tile.on && !tile.off ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    speed: Appearance.animation.revealSpeed
+                }
+
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.large
-                    color: tileHover.hovered && !tile.on && !tile.off ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    color: tileTone.value
 
                     SquircleRect {
                         anchors.fill: parent

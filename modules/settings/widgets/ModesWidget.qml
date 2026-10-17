@@ -42,10 +42,17 @@ Column {
                 width: root.cell
                 height: Appearance.padding.card * 2 + Appearance.icon.large + 4 + 4 + Appearance.font.line.small
 
+                FollowColour {
+                    id: tone
+
+                    target: tap.pressed && !mode.on ? Appearance.colour.fillStronger : hover.hovered && !mode.on ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    speed: Appearance.animation.revealSpeed
+                }
+
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.large
-                    color: hover.hovered && !mode.on ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    color: tone.value
 
                     SquircleRect {
                         anchors.fill: parent
@@ -80,6 +87,8 @@ Column {
                 }
 
                 MouseArea {
+                    id: tap
+
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {

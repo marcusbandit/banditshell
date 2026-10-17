@@ -55,10 +55,17 @@ Column {
                 height: Appearance.padding.normal * 2 + mini.height + Appearance.padding.small + Appearance.font.line.small
                 opacity: card.ready ? 1 : Appearance.opacity.disabled
 
+                FollowColour {
+                    id: tone
+
+                    target: tap.pressed && !card.on ? Appearance.colour.fillStronger : hover.hovered && !card.on ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    speed: Appearance.animation.revealSpeed
+                }
+
                 SquircleRect {
                     anchors.fill: parent
                     radius: Appearance.rounding.large
-                    color: hover.hovered && !card.on ? Appearance.colour.fillStrong : Appearance.colour.fill
+                    color: tone.value
 
                     SquircleRect {
                         anchors.fill: parent
@@ -96,6 +103,8 @@ Column {
                 }
 
                 MouseArea {
+                    id: tap
+
                     anchors.fill: parent
                     cursorShape: Qt.PointingHandCursor
                     onClicked: {
