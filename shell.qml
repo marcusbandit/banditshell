@@ -21,6 +21,9 @@ ShellRoot {
     readonly property var penButtons: PenButtons
     readonly property var currency: Currency
     readonly property var calculator: Calculator
+    readonly property var hyprConfig: HyprConfig
+    readonly property var modes: Modes
+    readonly property var launcherHotkeys: LauncherHotkeys
 
     LockScreen {}
 
@@ -34,7 +37,7 @@ ShellRoot {
         id: islandInspector
     }
 
-    Cli {
+    Ipc {
         picker: picker
         inspector: islandInspector
     }

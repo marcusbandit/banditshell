@@ -1,0 +1,63 @@
+pragma ComponentBehavior: Bound
+
+import QtQml
+import Quickshell
+import qs.services
+import qs.modules
+
+Scope {
+    id: root
+
+    Component {
+        id: rowRunner
+
+        LauncherSearch {
+            onLaunch: what => {
+                what();
+                Hypr.claimNextWindow();
+            }
+            onLeave: what => what()
+        }
+    }
+
+    PanelIpc {
+        target: "launcher"
+
+        function status(): string {
+            const win = Shell.showing(w => w.launcher.open);
+            return `open=${win?.launcher.open ?? false}`;
+        }
+
+        function query(): string {
+            const win = Shell.showing(w => w.launcher.open);
+            return win?.launcher.concept?.input?.text ?? "";
+        }
+
+        function run(id: string): string {
+            if (/^[a-z]+:/.test(id)) {
+                const runner = rowRunner.createObject(root, {
+                    query: "",
+                    screenName: Hypr.focusedScreen
+                });
+                const ran = runner.runById(id);
+                runner.destroy();
+                if (ran || /^(app|command|setting):/.test(id))
+                    return ran ? `ran ${ran}` : `no launcher row is called ${id}`;
+            }
+            const entry = Apps.entryById(id) ?? Apps.search(id)[0];
+            if (!entry)
+                return `no application matches "${id}"`;
+            Apps.launch(entry);
+            Hypr.claimNextWindow();
+            return `launched ${entry.name}`;
+        }
+
+        function scrub(fraction: string): string {
+            const win = Shell.showing(w => w.launcher.open);
+            if (!win)
+                return "no shell window";
+            win.launcher.scrub(parseFloat(fraction));
+            return `scrubbed to ${fraction}`;
+        }
+    }
+}

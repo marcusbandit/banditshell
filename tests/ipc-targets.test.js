@@ -175,20 +175,12 @@ function inheritedFunctions(object, parsed, seen = new Set()) {
     return base && !seen.has(base) ? [...base.functions, ...inheritedFunctions(base, parsed, seen.add(base))] : [];
 }
 
-function inheritedTarget(object, parsed) {
-    const base = parsed.rootTypeOf[object.type];
-    if (!base)
-        return null;
-    const root = parsed.objects.find(o => o.file === base.file && o.type === base.type);
-    return root ? root.target ?? inheritedTarget(root, parsed) : null;
-}
-
 function targets(parsed) {
     const found = {};
     for (const object of parsed.objects) {
         if (!parsed.handlerTypes.has(object.type))
             continue;
-        const target = object.target ?? inheritedTarget(object, parsed);
+        const target = object.target;
         if (!target)
             continue;
         assert.ok(!(target in found), `target "${target}" is declared twice`);
@@ -212,5 +204,12 @@ test.describe("ipc targets", () => {
     test.it("has no empty target", () => {
         for (const [target, functions] of Object.entries(found))
             assert.ok(functions.length > 0, `${target} has no functions`);
+    });
+
+    test.it("instantiates every file that declares a target from modules/Ipc.qml", () => {
+        const wiring = fs.readFileSync(path.join(ROOT, "modules/Ipc.qml"), "utf8");
+        const declaring = new Set(parsed.objects.filter(o => o.target).map(o => path.basename(o.file, ".qml")));
+        for (const name of declaring)
+            assert.match(wiring, new RegExp(`^\\s*${name}\\s*\\{`, "m"), `${name} is not listed in modules/Ipc.qml`);
     });
 });

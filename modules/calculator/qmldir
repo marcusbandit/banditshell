@@ -1,2 +1,3 @@
 module qs.modules.calculator
+CalculatorIpc 1.0 CalculatorIpc.qml
 CalculatorPanel 1.0 CalculatorPanel.qml

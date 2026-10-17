@@ -1,4 +1,5 @@
 module qs.modules.clipboard
 ClipboardDetail 1.0 ClipboardDetail.qml
+ClipboardIpc 1.0 ClipboardIpc.qml
 ClipboardPanel 1.0 ClipboardPanel.qml
 ClipboardRow 1.0 ClipboardRow.qml

@@ -886,7 +886,37 @@ banditshell/
 │   ├── ShellWindow.qml          THE surface: everything visible, all the input
 │   ├── Chassis.qml              the band + sidebar as ONE shape
 │   ├── FrameExclusions.qml      invisible; reserves the room the chassis occupies
-│   ├── Cli.qml                   the control surface the CLI talks to
+│   ├── Ipc.qml                  the control surface the CLI talks to, as a flat
+│   │                            list: one line per <Name>Ipc.qml, no logic.
+│   │                            Each module keeps its own `qs ipc` handlers in
+│   │                            its folder (CalculatorIpc, ClipboardIpc, FilesIpc,
+│   │                            HotkeysIpc, KeyboardIpc, LauncherIpc, MediaIpc,
+│   │                            MenuIpc, ModeIpc, PasswordIpc, PenIpc, PickerIpc,
+│   │                            QuickControlsIpc, SessionIpc, SettingsIpc,
+│   │                            SidebarIpc, StreamIpc, WallpaperIpc). Target
+│   │                            names and function signatures are frozen by
+│   │                            tests/ipc-targets.test.js against
+│   │                            tests/fixtures/ipc-targets.json
+│   ├── PanelIpc.qml             the handler base for a panel with no screen
+│   │                            argument: toggle, open, close on the panel named
+│   │                            by its target. A module subclasses it and adds
+│   │                            status and its own verbs
+│   ├── ScreenPanelIpc.qml       the same, with a screen argument on toggle and open
+│   ├── PinnedPanelIpc.qml       the same for panels that are pinned rather than
+│   │                            shown (island, notifications)
+│   ├── PanelWindows.qml         what those bases share, and what any handler asks
+│   │                            of the shell windows: the window on a screen,
+│   │                            toggle, open, close, pin, and the screen a verb
+│   │                            means. A handler's own helpers cannot live on
+│   │                            its root, since every function there is a verb
+│   ├── cli.js                   the words the CLI speaks: durations, times of
+│   │                            day, repeat days, columns
+│   ├── ipc/                     the handlers that have no module folder of
+│   │                            their own, grouped by package: ClockIpc (timer,
+│   │                            alarm, zone), AudioIpc (output), DisplayIpc
+│   │                            (screen, tablet), NotificationsIpc (notifications,
+│   │                            quiet), CompositorIpc (migration), HostIpc
+│   │                            (border), CoreIpc (shell)
 │   ├── Tooltip.qml              the one tooltip, drawn wherever it was asked for
 │   ├── island/                  the top centre, where everything that pops up
 │   │   │                        now arrives (see 18)
@@ -915,6 +945,8 @@ banditshell/
 │   │   │                        it go, drag it up or down to scroll the list,
 │   │   │                        its actions always there, a close mark on hover
 │   │   ├── NotificationMark.qml its picture, else its app's mark, else a bell
+│   │   ├── IslandIpc.qml        the island's `qs ipc` handler; InspectIpc.qml
+│   │   │                        holds the inspector's
 │   │   ├── IslandInspector.qml  `banditshell dev inspect island`: a panel that
 │   │   │                        makes up each situation on the live island,
 │   │   │                        so it can be looked at, hovered and clicked;
