@@ -271,8 +271,7 @@ Item {
                 y: nia.pos === null ? 0 : (nia.pos + 0.5) * nia.step - height / 2
                 width: 14
                 height: 14
-                radius: 7
-                cornerPower: 2
+                pill: "object"
                 color: Appearance.colour.text
                 opacity: nia.pos === null ? 0 : 1
 
@@ -280,8 +279,7 @@ Item {
                     anchors.centerIn: parent
                     width: 26
                     height: 26
-                    radius: 13
-                    cornerPower: 2
+                    pill: "object"
                     z: -1
                     color: Appearance.colour.fillStronger
                 }

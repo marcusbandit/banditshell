@@ -1131,7 +1131,7 @@ Item {
                         y: under.twin?.y ?? 0
                         width: under.twin?.width ?? 0
                         height: under.twin?.height ?? 0
-                        radius: width / 2
+                        pill: "object"
                         opacity: settle.value * Appearance.opacity.glow * under.fade
                         visible: opacity > 0.01
                     }
@@ -1159,8 +1159,7 @@ Item {
                             y: (under.twin?.y ?? 0) + root.stackStep * behind.d * behindShown.value
                             width: under.twin?.width ?? 0
                             height: width
-                            radius: width / 2
-                            cornerPower: 2
+                            pill: "object"
                             color: Appearance.blend(Appearance.colour.ink, Appearance.colour.paper, 0.06 * behind.d)
                             stroke: Appearance.colour.seam
                             strokeWidth: Appearance.stroke.line
@@ -1506,8 +1505,7 @@ Item {
                         y: parent.height + Appearance.padding.small + root.stackStep * 2
                         width: label.implicitWidth + Appearance.padding.normal * 2
                         height: label.implicitHeight + Appearance.padding.small
-                        radius: height / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.ink
                         opacity: hoverGlow.value
                         visible: opacity > 0.01 && !!face.label

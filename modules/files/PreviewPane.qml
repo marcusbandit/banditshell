@@ -269,7 +269,7 @@ Item {
                 SquircleRect {
                     anchors.fill: parent
 
-                    radius: width / 2
+                    pill: "object"
                     stroke: Appearance.colour.text
                     strokeWidth: Appearance.stroke.ring
                 }

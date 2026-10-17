@@ -665,13 +665,12 @@ Item {
 
             DropShadow {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "place"
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
-                cornerPower: 2
+                pill: "place"
                 color: Appearance.colour.surface
             }
 
@@ -697,8 +696,7 @@ Item {
 
                         SquircleRect {
                             anchors.fill: parent
-                            radius: width / 2
-                            cornerPower: 2
+                            pill: "object"
                             color: "transparent"
                             stroke: Appearance.colour.text
                             strokeWidth: Appearance.stroke.ring
@@ -709,8 +707,7 @@ Item {
                             anchors.centerIn: parent
                             width: Math.round(parent.width * 0.6)
                             height: width
-                            radius: width / 2
-                            cornerPower: 2
+                            pill: "object"
                             color: swatch.modelData.colour
                             stroke: Appearance.colour.textGhost
                             strokeWidth: Appearance.stroke.line
@@ -768,8 +765,7 @@ Item {
 
                     SquircleRect {
                         anchors.fill: parent
-                        radius: height / 2
-                        cornerPower: 2
+                        pill: "place"
                         color: Appearance.colour.fill
                     }
 
@@ -827,13 +823,12 @@ Item {
 
             DropShadow {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "place"
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
-                cornerPower: 2
+                pill: "place"
                 color: Appearance.colour.surface
             }
 

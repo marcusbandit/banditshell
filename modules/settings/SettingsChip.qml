@@ -17,8 +17,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
-        cornerPower: 2
+        pill: "object"
         color: root.adder ? "transparent" : Appearance.colour.fill
         stroke: root.adder ? Appearance.colour.fillStrong : "transparent"
         strokeWidth: root.adder ? Appearance.stroke.ring : 0

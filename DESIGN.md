@@ -486,7 +486,8 @@ banditshell/
 ├── components/                  generic, reusable, know nothing about the shell
 │   ├── squircle.js              G2 corner geometry (pure maths, no QML)
 │   ├── wave.js                  a sine polyline, fixed at its START: the scrubber's played part
-│   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline
+│   ├── SquircleRect.qml               the ONE rounded-rect primitive; fill and/or outline;
+│   │                                  `pill: "object"|"place"` sets radius and corner power
 │   ├── SquircleImage.qml              a picture cut to that same corner, by mask
 │   ├── BlurredImage.qml         the same cut, the picture blurred to colour
 │   ├── ImagePalette.qml         a picture's main colours and how much of it each
@@ -568,7 +569,8 @@ banditshell/
 │   │                            picture solid inside it, both fitted to one box
 │   ├── DropShadow.qml           the soft shadow under a floating thing, drawn
 │   │                            from its shape rather than its pixels, so it
-│   │                            costs nothing when the thing resizes every frame
+│   │                            costs nothing when the thing resizes every frame;
+│   │                            takes the same `pill` role as the shape it mirrors
 │   ├── FloatingTooltip.qml      a plain label floating above whatever it is
 │   │                            dropped into, after the tooltip delay; for
 │   │                            surfaces with no chassis to melt a tip out of
@@ -1537,11 +1539,12 @@ banditshell/
 │   │                            boundary the manifests do not allow; --matrix and
 │   │                            --explain <package> show the edges (node, no
 │   │                            dependencies; `banditshell dev modules`)
-│   ├── lint-rules.js            the house rules as eleven checks (L1 to L11: comments,
+│   ├── lint-rules.js            the house rules as twelve checks (L1 to L12: comments,
 │   │                            Rectangle radius, motion outside Follow, spring easing,
 │   │                            font sizes, colour literals, textGhost text, dashes,
 │   │                            JS the engine lacks, qmldir drift, Name.member reads
-│   │                            of a member the singleton does not declare), counted
+│   │                            of a member the singleton does not declare, a pill
+│   │                            drawn without an object or place role), counted
 │   │                            per rule and file against rules.baseline.json (node, no
 │   │                            dependencies; `banditshell dev lint`)
 │   ├── boot-check.js            the pure half of `banditshell dev check boot`: which

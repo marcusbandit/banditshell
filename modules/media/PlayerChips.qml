@@ -40,7 +40,7 @@ Flow {
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "object"
                 color: chip.current && !chip.alone ? Appearance.colour.fillStrong : press.containsMouse ? Appearance.colour.fill : "transparent"
                 visible: !chip.alone || press.containsMouse
             }

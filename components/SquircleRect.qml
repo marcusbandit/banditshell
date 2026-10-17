@@ -6,13 +6,15 @@ import "squircle.js" as Squircle
 Item {
     id: root
 
-    property real radius: Appearance.rounding.normal
+    property string pill: ""
+
+    property real radius: root.pill !== "" ? Math.min(root.width, root.height) / 2 : Appearance.rounding.normal
     property real topLeftRadius: radius
     property real topRightRadius: radius
     property real bottomRightRadius: radius
     property real bottomLeftRadius: radius
 
-    property real cornerPower: Appearance.rounding.power
+    property real cornerPower: root.pill === "object" ? 2 : Appearance.rounding.power
 
     property color color: "transparent"
 

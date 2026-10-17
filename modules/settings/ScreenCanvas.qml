@@ -365,8 +365,7 @@ FocusScope {
                 y: 7
                 width: 8
                 height: 8
-                radius: 4
-                cornerPower: 2
+                pill: "object"
                 visible: root.editable && mon.changed
                 color: Appearance.colour.accent
             }
@@ -544,8 +543,7 @@ FocusScope {
             y: root.toY(root.corner?.y ?? 0) - height / 2
             width: 12
             height: 12
-            radius: 6
-            cornerPower: 2
+            pill: "object"
             color: Appearance.colour.accent
             stroke: Appearance.colour.surfaceSolid
             strokeWidth: Appearance.stroke.ring

@@ -119,15 +119,13 @@ Item {
                 SquircleRect {
                     anchors.fill: parent
                     anchors.margins: -root.ring
-                    radius: width / 2
-                    cornerPower: 2
+                    pill: "object"
                     color: Appearance.colour.ink
                 }
 
                 SquircleRect {
                     anchors.fill: parent
-                    radius: width / 2
-                    cornerPower: 2
+                    pill: "object"
 
                     color: Appearance.colour.surfaceSolid
                     stroke: Appearance.colour.fillStrong
@@ -185,15 +183,13 @@ Item {
             SquircleRect {
                 anchors.fill: parent
                 anchors.margins: -root.ring
-                radius: height / 2
-                cornerPower: 2
+                pill: "object"
                 color: Appearance.colour.ink
             }
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
-                cornerPower: 2
+                pill: "object"
                 color: Appearance.colour.accent
             }
 

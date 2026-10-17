@@ -131,7 +131,7 @@ Item {
                             SquircleRect {
                                 anchors.fill: parent
 
-                                radius: height / 2
+                                pill: "place"
                                 color: Appearance.colour.fill
                             }
 
@@ -139,7 +139,7 @@ Item {
                                 width: Math.max(parent.height, parent.width * (place.usage ? place.usage.fraction : 0))
                                 height: parent.height
 
-                                radius: height / 2
+                                pill: "place"
                                 color: place.usage && place.usage.fraction > 0.9 ? Appearance.colour.alarm : hover.hovered ? Appearance.colour.text : Appearance.colour.textFaint
                             }
                         }

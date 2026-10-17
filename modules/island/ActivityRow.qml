@@ -109,8 +109,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
-        cornerPower: 2
+        pill: "place"
         color: press.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill
         opacity: glow.value
         visible: glow.value > 0.01
@@ -150,16 +149,14 @@ Item {
 
         SquircleRect {
             anchors.fill: parent
-            radius: height / 2
-            cornerPower: 2
+            pill: "place"
             color: Appearance.colour.fillStrong
         }
 
         SquircleRect {
             width: Math.max(parent.height, parent.width * meterShown.value)
             height: parent.height
-            radius: height / 2
-            cornerPower: 2
+            pill: "place"
             color: root.look.tone ?? Appearance.colour.accent
         }
     }
@@ -259,8 +256,7 @@ Item {
 
                     SquircleRect {
                         anchors.fill: parent
-                        radius: height / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: pill.primary ? Appearance.colour.alarm : (pillPress.pressed ? Appearance.colour.fillStrong : Appearance.colour.fill)
                         scale: 1 + 0.06 * lift.value
                     }

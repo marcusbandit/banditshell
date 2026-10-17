@@ -59,8 +59,7 @@ Row {
 
                         width: 9
                         height: 9
-                        radius: 4.5
-                        cornerPower: 2
+                        pill: "object"
                         color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
                         scale: grow.value
 

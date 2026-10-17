@@ -149,15 +149,13 @@ Item {
                     SquircleRect {
                         anchors.fill: parent
                         anchors.margins: -root.ringWidth
-                        radius: width / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.ink
                     }
 
                     SquircleRect {
                         anchors.fill: parent
-                        radius: width / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: press.containsMouse ? Appearance.colour.surfaceSolid : Appearance.withAlpha(Appearance.colour.ink, 0.85)
                         stroke: Appearance.colour.seam
                         strokeWidth: Appearance.stroke.line

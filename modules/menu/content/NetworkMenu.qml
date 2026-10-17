@@ -114,7 +114,7 @@ Column {
 
         SquircleRect {
             anchors.fill: parent
-            radius: height / 2
+            pill: "object"
             color: tool.on ? Appearance.colour.accentFill : Appearance.colour.fill
             opacity: toolFade.value
 

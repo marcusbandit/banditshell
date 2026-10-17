@@ -65,13 +65,13 @@ Item {
 
         width: parent.width
         height: root.rail
-        radius: height / 2
+        pill: "place"
         color: Appearance.colour.fill
 
         SquircleRect {
             width: root.beadCentre
             height: parent.height
-            radius: height / 2
+            pill: "place"
             color: root.lit
             opacity: Appearance.opacity.trail
         }
@@ -81,7 +81,7 @@ Item {
             x: root.beadSize / 2 + ((root.warnAbove - root.from) / Math.max(0.0001, root.to - root.from)) * root.travel - width / 2
             width: Math.max(2, Math.round(root.rail / 3))
             height: parent.height
-            radius: width / 2
+            pill: "object"
             color: Appearance.colour.accentText
             opacity: Appearance.opacity.trail
         }
@@ -94,7 +94,7 @@ Item {
         y: (root.height - height) / 2
         width: root.beadSize
         height: width
-        radius: width / 2
+        pill: "object"
         color: root.lit
 
         scale: swell.value

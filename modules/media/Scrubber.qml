@@ -130,7 +130,7 @@ Item {
         y: 0
         width: root.stroke
         height: root.band
-        radius: width / 2
+        pill: "object"
         color: root.ink
         visible: root.timed
 

@@ -71,8 +71,7 @@ Item {
 
         SquircleRect {
             anchors.fill: parent
-            radius: width / 2
-            cornerPower: 2
+            pill: "object"
             color: Appearance.colour.ink
         }
 

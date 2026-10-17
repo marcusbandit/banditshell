@@ -169,8 +169,7 @@ Item {
                 y: (root.height - height) / 2 + held.fall * root.dot * 1.6
                 width: root.dot
                 height: root.dot
-                radius: root.dot / 2
-                cornerPower: 2
+                pill: "object"
 
                 visible: there.value > 0.01 && held.fall < 1
                 opacity: there.value * (1 - held.fall)
@@ -207,8 +206,7 @@ Item {
                 y: (root.height - height) / 2 + (1 - grow.value) * root.dot * 0.6
                 width: root.dot
                 height: root.dot
-                radius: root.dot / 2
-                cornerPower: 2
+                pill: "object"
 
                 visible: grow.value > 0.01
                 opacity: grow.value
@@ -231,7 +229,7 @@ Item {
 
             width: root.caretWidth
             height: Math.round(Appearance.font.size.small * 1.1)
-            radius: 1
+            pill: "object"
 
             visible: !root.waiting && present.value > 0.01
             color: Appearance.colour.accent

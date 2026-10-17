@@ -196,8 +196,7 @@ Item {
 
                         width: mark.width
                         height: width
-                        radius: width / 2
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.accent
                     }
 

@@ -256,15 +256,13 @@ Item {
         SquircleRect {
             anchors.fill: parent
             anchors.margins: -Math.max(1, Math.round(root.thickness / 2))
-            radius: height / 2
-            cornerPower: 2
+            pill: "object"
             color: Appearance.colour.ink
         }
 
         SquircleRect {
             anchors.fill: parent
-            radius: height / 2
-            cornerPower: 2
+            pill: "object"
             color: root.shownBadge?.icon ? (root.shownBadge.tone ?? Appearance.colour.accent) : Appearance.colour.fillStrong
         }
 

@@ -224,7 +224,7 @@ Item {
 
             SquircleRect {
                 anchors.fill: parent
-                radius: height / 2
+                pill: "object"
                 color: discPress.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
             }
 

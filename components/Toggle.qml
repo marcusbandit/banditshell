@@ -13,7 +13,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
+        pill: "place"
         color: trackTone.value
 
         FollowColour {
@@ -33,7 +33,7 @@ Item {
         x: slide.value
         width: root.height - knob.gap * 2
         height: width
-        radius: height / 2
+        pill: "object"
         color: root.checked ? Appearance.colour.accentText : Appearance.colour.text
 
         Follow {

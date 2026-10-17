@@ -18,7 +18,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
+        pill: "object"
         color: Appearance.colour.fill
 
         opacity: hoverFade.value

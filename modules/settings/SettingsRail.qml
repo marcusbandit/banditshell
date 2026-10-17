@@ -220,8 +220,7 @@ Item {
                             y: 4
                             width: 2
                             height: Math.max(0, column.implicitHeight - 8)
-                            radius: 1
-                            cornerPower: 2
+                            pill: "place"
                             color: Appearance.colour.fillStronger
                             visible: !root.tiny
                             opacity: stem.value

@@ -86,7 +86,7 @@ Item {
                             anchors.horizontalCenter: parent.horizontalCenter
                             width: 6
                             height: modelData ? 16 : 6
-                            radius: 3
+                            pill: "object"
                             color: modelData ? Appearance.colour.accent : Appearance.colour.fillStronger
                         }
                     }
@@ -146,8 +146,7 @@ Item {
                                 anchors.centerIn: parent
                                 width: 22
                                 height: 22
-                                radius: 11
-                                cornerPower: 2
+                                pill: "object"
                                 color: "transparent"
                                 stroke: Appearance.colour.accent
                                 strokeWidth: 3

@@ -125,8 +125,7 @@ Item {
 
                         width: 8
                         height: 8
-                        radius: 4
-                        cornerPower: 2
+                        pill: "object"
                         color: Appearance.colour.accent
                         opacity: clock.moving ? f.o : 1
                         scale: clock.moving ? f.s : 1

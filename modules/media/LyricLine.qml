@@ -129,7 +129,7 @@ Item {
                 y: (dots.height - height) / 2
                 width: dots.size
                 height: dots.size
-                radius: dots.size / 2
+                pill: "object"
                 color: Appearance.colour.text
                 opacity: 0.22 + 0.78 * lit
                 scale: 0.75 + 0.3 * lit

@@ -53,7 +53,7 @@ Item {
             y: root.height - height
             width: root.bar
             height: Math.max(root.bar, root.height * reach)
-            radius: root.bar / 2
+            pill: "object"
             color: root.color
         }
     }

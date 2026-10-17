@@ -170,7 +170,7 @@ Item {
 
                                     width: 6
                                     height: 6
-                                    radius: 3
+                                    pill: "object"
                                     color: root.statusColour(row.modelData.status)
                                 }
 
@@ -222,7 +222,7 @@ Item {
 
                     width: 8
                     height: 8
-                    radius: 4
+                    pill: "object"
                     color: root.statusColour(root.entry.status)
                 }
 

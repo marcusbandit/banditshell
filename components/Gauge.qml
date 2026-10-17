@@ -20,7 +20,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: root.height / 2
+        pill: "place"
         color: root.track
     }
 
@@ -28,12 +28,12 @@ Item {
 
         width: Math.max(root.height, root.width * root.fraction)
         height: root.height
-        radius: root.height / 2
+        pill: "place"
         color: root.fill
     }
 
     SquircleRect {
-        radius: width / 2
+        pill: "object"
         visible: root.mark >= 0 && root.mark <= 1
 
         readonly property real span: root.width - root.height

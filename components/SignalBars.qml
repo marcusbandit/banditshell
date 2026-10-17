@@ -28,7 +28,7 @@ Item {
 
             width: root.barWidth
             height: root.height * (1 / 3 + (2 / 3) * ((index + 1) / root.steps))
-            radius: width / 2
+            pill: "object"
 
             x: index * (root.barWidth + root.gap)
             y: root.height - height

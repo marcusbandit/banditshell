@@ -291,8 +291,7 @@ Item {
 
                         SquircleRect {
                             anchors.fill: parent
-                            radius: height / 2
-                            cornerPower: 2
+                            pill: "object"
                             color: tallyArea.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
                         }
 
@@ -556,8 +555,7 @@ Item {
 
         SquircleRect {
             anchors.fill: parent
-            radius: width / 2
-            cornerPower: 2
+            pill: "object"
             color: closer.containsMouse ? Appearance.colour.fillStronger : Appearance.colour.fillStrong
             scale: closeScale.value
         }

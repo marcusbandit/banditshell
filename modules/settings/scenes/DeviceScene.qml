@@ -107,8 +107,7 @@ Item {
                                 anchors.centerIn: parent
                                 width: Appearance.icon.normal + Appearance.padding.normal
                                 height: width
-                                radius: width / 2
-                                cornerPower: 2
+                                pill: "object"
                                 color: "transparent"
                                 stroke: Appearance.colour.accent
                                 strokeWidth: Appearance.stroke.ring

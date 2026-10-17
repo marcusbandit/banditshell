@@ -34,8 +34,7 @@ Item {
 
             width: gripWidth.value
             height: Appearance.stroke.ring
-            radius: height / 2
-            cornerPower: 2
+            pill: "object"
             color: grip.hovered || resize.active ? Appearance.colour.text : Appearance.colour.separator
         }
 

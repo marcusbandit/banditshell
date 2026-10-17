@@ -118,7 +118,7 @@ Item {
                     width: button.size
                     height: button.size
                     visible: !!button.modelData.primary
-                    radius: width / 2
+                    pill: "object"
                     color: "transparent"
                     stroke: Appearance.colour.text
                     strokeWidth: Appearance.stroke.ring
@@ -140,7 +140,7 @@ Item {
                     anchors.topMargin: -Appearance.padding.hair
                     width: Appearance.font.stem * 3
                     height: width
-                    radius: width / 2
+                    pill: "object"
                     visible: button.small && !!button.modelData.lit && !!button.modelData.enabled
                     color: Appearance.colour.text
                 }

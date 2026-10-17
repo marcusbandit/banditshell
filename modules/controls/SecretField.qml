@@ -277,7 +277,7 @@ Item {
 
             width: Math.max(2, Math.round(root.markSize / 6))
             height: root.markSize
-            radius: width / 2
+            pill: "object"
             color: root.alarm ? Appearance.colour.alarm : Appearance.colour.accent
             visible: field.activeFocus && !root.empty
         }

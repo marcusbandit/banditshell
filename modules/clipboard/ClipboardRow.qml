@@ -122,7 +122,7 @@ Item {
             anchors.verticalCenter: parent.verticalCenter
             width: Appearance.font.stem
             height: parent.height - Appearance.padding.normal * 2
-            radius: width / 2
+            pill: "object"
             color: Appearance.colour.accent
             visible: Clipboard.current === root.entry.id
         }
@@ -170,7 +170,7 @@ Item {
                 anchors.centerIn: parent
                 width: Appearance.font.iconSize
                 height: width
-                radius: height / 2
+                pill: "object"
                 visible: root.entry.kind === "colour"
                 color: root.swatch
                 stroke: Appearance.colour.separator

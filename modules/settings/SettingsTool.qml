@@ -24,8 +24,7 @@ Item {
 
     SquircleRect {
         anchors.fill: parent
-        radius: height / 2
-        cornerPower: 2
+        pill: "object"
         color: root.on ? Appearance.colour.accentFill : Appearance.colour.fill
         opacity: backdrop.value
 

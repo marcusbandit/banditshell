@@ -72,7 +72,7 @@ Item {
                 x: 0
                 width: Math.round(root.span * root.floor)
                 height: root.bar
-                radius: root.bar / 2
+                pill: "object"
                 topLeftRadius: 0
                 bottomLeftRadius: 0
                 color: emptyTone.value
@@ -102,7 +102,7 @@ Item {
                     width: reach.value
                     height: root.bar
 
-                    radius: root.bar / 2
+                    pill: "object"
                     topLeftRadius: 0
                     bottomLeftRadius: 0
 
