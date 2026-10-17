@@ -10,7 +10,7 @@ fi
 CLI="${1:-$REPO/cli/banditshell}"
 TABLE_FILE="$REPO/cli/commands.tsv"
 DESCRIPTION_COLUMN=31
-SOURCES=" panel menu screen theme key file dir page layer app place index worktree command package id "
+SOURCES=" panel menu screen theme key file dir page layer app place index worktree command package id rule "
 
 case "${1:-}" in
 -h | --help)
@@ -206,6 +206,7 @@ bake() {
     printf 'values\tpage\t%s\n' "$(sed -n -e 's/^    { id: "\([a-z]*\)", name: "[^"]*", icon: "[^"]*",\( preview: "[^"]*",\)\{0,1\}$/\1/p' -e 's/^        id: "\([a-z]*\)", name: .*/\1/p' "$REPO/modules/settings/catalogue.js" | paste -sd' ' -)"
     printf 'values\tlayer\t%s\n' "$(sed -n 's/^ \{12\}\([a-zA-Z]*\): \[$/\1/p' "$REPO/modules/keyboard/Layouts.qml" | paste -sd' ' -)"
     printf 'values\tpackage\t%s\n' "$(package_names | sort | paste -sd' ' -)"
+    printf 'values\trule\t%s\n' "$(sed -n 's/^    { id: "\(L[0-9]*\)".*/\1/p' "$REPO/scripts/lint-rules.js" | paste -sd' ' -)"
 }
 
 bake_ids() {

@@ -39,6 +39,7 @@
     "scripts": [
       "scripts/check-modules.js",
       "scripts/in-terminal.sh",
+      "scripts/lint-rules.js",
       "scripts/qml-compile-check.sh",
       "scripts/qmldirs.sh",
       "scripts/testbed.sh",
@@ -51,6 +52,7 @@
       "tests/configuration.test.js",
       "tests/desktop-entries.test.js",
       "tests/engine-compat.test.js",
+      "tests/lint-rules.test.js",
       "tests/markup.test.js",
       "tests/quoting.test.js",
       "tests/ranking.test.js",

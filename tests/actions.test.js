@@ -131,7 +131,7 @@ test("two wildcard rows with the same number of stars never match the same name"
 test("argv templates are plain words and descriptions carry no dash punctuation", () => {
     for (const row of table.rows) {
         assert.match(row.argv, /^[A-Za-z0-9_$+.-]+( [A-Za-z0-9_$+.-]+)*$/, row.id);
-        assert.ok(!/[–—]/.test(row.description), row.id);
+        assert.ok(!/[\u2013\u2014]/.test(row.description), row.id);
         assert.match(row.description, /^[A-Z]/, row.id);
     }
 });

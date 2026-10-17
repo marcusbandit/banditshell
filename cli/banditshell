@@ -235,6 +235,14 @@
 #                                which package reaches for which, as a table
 #   banditshell dev modules --explain <package>
 #                                what a package needs, from which file and line
+#   banditshell dev lint         check the house rules (comments, radii, motion,
+#                                font sizes, colours, dashes, qmldirs) against
+#                                rules.baseline.json; a new violation fails
+#   banditshell dev lint [--all] [--write-baseline]
+#                                every violation with file and line, or record
+#                                today's counts as the new baseline
+#   banditshell dev lint --rule <rule>
+#                                one rule only, L1 to L10
 #   banditshell dev check island [dir]
 #                                walk the island through every situation it has
 #                                a rule for, headless: each checked, and
@@ -2327,6 +2335,17 @@ route_dev() {
             exec node scripts/check-modules.js "$@"
             ;;
         *) nope dev "modules $1" ;;
+        esac ;;
+    lint)
+        command -v node >/dev/null || { echo "banditshell: node not found" >&2; exit 1; }
+        cd "$SHELL_DIR" || exit 1
+        case "${1:-}" in
+        "" | --all | --write-baseline) exec node scripts/lint-rules.js "$@" ;;
+        --rule)
+            [ -n "${2:-}" ] || say_usage "dev lint --rule <rule>"
+            exec node scripts/lint-rules.js "$@"
+            ;;
+        *) nope dev "lint $1" ;;
         esac ;;
     check)
         case "${1:-}" in

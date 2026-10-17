@@ -17,10 +17,10 @@ SettingsFilePicker 1.0 SettingsFilePicker.qml
 SettingsHub 1.0 SettingsHub.qml
 SettingsIpc 1.0 SettingsIpc.qml
 singleton SettingsKeys 1.0 SettingsKeys.qml
-SettingsPanel 1.0 SettingsPanel.qml
 SettingsPane 1.0 SettingsPane.qml
-SettingsPathEdit 1.0 SettingsPathEdit.qml
+SettingsPanel 1.0 SettingsPanel.qml
 SettingsPath 1.0 SettingsPath.qml
+SettingsPathEdit 1.0 SettingsPathEdit.qml
 SettingsRail 1.0 SettingsRail.qml
 singleton SettingsRestore 1.0 SettingsRestore.qml
 SettingsRowFrame 1.0 SettingsRowFrame.qml
