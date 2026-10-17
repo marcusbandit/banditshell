@@ -229,14 +229,13 @@ Singleton {
         return root.setOutputRole(other === "speakers" ? "headphones" : "speakers");
     }
 
+    readonly property var levelIcons: ["volume_mute", "volume_down", "volume_up"]
+
     function icon(v: real, isMuted: bool): string {
         if (isMuted)
-            return "no_sound";
-        if (v >= 0.5)
-            return "volume_up";
-        if (v > 0)
-            return "volume_down";
-        return "volume_mute";
+            return "volume_off";
+        const steps = root.levelIcons.length - 1;
+        return root.levelIcons[Math.ceil(Math.max(0, Math.min(1, v)) * steps)];
     }
 
     PwObjectTracker {

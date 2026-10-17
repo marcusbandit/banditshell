@@ -515,11 +515,9 @@ Singleton {
             return [];
         const special = mon.lastIpcObject?.specialWorkspace;
         const workspaceId = special?.name ? special.id : mon.activeWorkspace?.id;
-        return Hyprland.toplevels.values.filter(c => c.workspace?.id === workspaceId).sort((a, b) => {
-            const x = a.lastIpcObject;
-            const y = b.lastIpcObject;
-            return (y.pinned - x.pinned) || ((y.fullscreen !== 0) - (x.fullscreen !== 0)) || (y.floating - x.floating);
-        });
+        const layer = o => (o?.pinned ? 4 : 0) + (o?.fullscreen ? 2 : 0) + (o?.floating ? 1 : 0);
+        const recency = o => o?.focusHistoryID ?? Infinity;
+        return Hyprland.toplevels.values.filter(c => c.workspace?.id === workspaceId).sort((a, b) => layer(b.lastIpcObject) - layer(a.lastIpcObject) || recency(a.lastIpcObject) - recency(b.lastIpcObject));
     }
 
     readonly property var occupancy: {

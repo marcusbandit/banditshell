@@ -14,21 +14,14 @@ MouseArea {
     required property ShellScreen screen
 
     property bool onWindow: false
-
-    property real pressX: 0
-    property real pressY: 0
-
     property bool dragged: false
+    property point origin: Qt.point(0, 0)
+    property rect selection: Qt.rect(0, 0, 0, 0)
 
-    property real sx: 0
-    property real sy: 0
-    property real ex: 0
-    property real ey: 0
-
-    readonly property real rx: Math.min(sx, ex)
-    readonly property real ry: Math.min(sy, ey)
-    readonly property real rw: Math.abs(sx - ex)
-    readonly property real rh: Math.abs(sy - ey)
+    readonly property real rx: selection.x
+    readonly property real ry: selection.y
+    readonly property real rw: selection.width
+    readonly property real rh: selection.height
 
     readonly property real radius: onWindow ? Appearance.sizes.windowRadius : 0
 
@@ -39,63 +32,56 @@ MouseArea {
 
     Keys.onEscapePressed: root.state.close()
 
-    function snapTo(x: real, y: real): void {
+    function windowAt(x: real, y: real): var {
+        const px = x + root.screen.x;
+        const py = y + root.screen.y;
+        const hit = Hypr.clientsOn(root.screen).map(client => client.lastIpcObject).find(o => {
+            if (!o?.at || !o?.size)
+                return false;
+            const dx = px - o.at[0];
+            const dy = py - o.at[1];
+            return dx >= 0 && dy >= 0 && dx <= o.size[0] && dy <= o.size[1];
+        });
+        return hit ? Qt.rect(hit.at[0] - root.screen.x, hit.at[1] - root.screen.y, hit.size[0], hit.size[1]) : null;
+    }
+
+    function hover(x: real, y: real): void {
+        const win = root.windowAt(x, y);
+        root.onWindow = win !== null;
+        root.selection = win ?? Qt.rect(x, y, 0, 0);
+    }
+
+    function span(x: real, y: real): void {
         root.onWindow = false;
-        root.sx = x;
-        root.sy = y;
-        root.ex = x;
-        root.ey = y;
-        for (const client of Hypr.clientsOn(root.screen)) {
-            const at = client.lastIpcObject?.at;
-            const size = client.lastIpcObject?.size;
-            if (!at || !size)
-                continue;
-            const cx = at[0] - root.screen.x;
-            const cy = at[1] - root.screen.y;
-            if (x >= cx && y >= cy && x <= cx + size[0] && y <= cy + size[1]) {
-                root.onWindow = true;
-                root.sx = cx;
-                root.sy = cy;
-                root.ex = cx + size[0];
-                root.ey = cy + size[1];
-                return;
-            }
-        }
+        root.selection = Qt.rect(Math.min(root.origin.x, x), Math.min(root.origin.y, y), Math.abs(x - root.origin.x), Math.abs(y - root.origin.y));
     }
 
     function commit(): void {
         root.state.capture(root.screen, Math.round(root.rx), Math.round(root.ry), Math.round(root.rw), Math.round(root.rh));
     }
 
-    onEntered: root.snapTo(root.mouseX, root.mouseY)
+    onEntered: root.hover(root.mouseX, root.mouseY)
 
     Component.onCompleted: {
         if (root.containsMouse)
-            root.snapTo(root.mouseX, root.mouseY);
+            root.hover(root.mouseX, root.mouseY);
     }
 
     onPressed: event => {
-        root.snapTo(event.x, event.y);
-
-        root.pressX = event.x;
-        root.pressY = event.y;
-
+        root.hover(event.x, event.y);
+        root.origin = Qt.point(event.x, event.y);
         root.dragged = false;
     }
 
     onPositionChanged: event => {
         if (!root.pressed)
-            return root.snapTo(event.x, event.y);
+            return root.hover(event.x, event.y);
 
-        if (Math.abs(event.x - root.pressX) + Math.abs(event.y - root.pressY) < Config.values.control.dragThreshold)
+        if (!root.dragged && Math.abs(event.x - root.origin.x) + Math.abs(event.y - root.origin.y) < Config.values.control.dragThreshold)
             return;
 
         root.dragged = true;
-        root.onWindow = false;
-        root.sx = root.pressX;
-        root.sy = root.pressY;
-        root.ex = event.x;
-        root.ey = event.y;
+        root.span(event.x, event.y);
     }
 
     onReleased: {

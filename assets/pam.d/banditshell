@@ -6,19 +6,15 @@
 #
 # pam_unix reads /etc/shadow through the setuid unix_chkpwd helper, so this
 # authenticates correctly from the unprivileged process the shell runs as.
-# pam_faillock brackets it but never counts anything from here: its tally lives
-# in /run/faillock, a root-owned directory the shell cannot write, and
-# pam_faillock lets through any user it cannot record. Guessing is slowed by
-# the shell instead: after three wrong passwords in a row, services/Lock.qml
-# makes each further try wait, 5 s doubling to a 60 s cap. So every module here
-# runs nodelay, and a wrong password is answered as fast as a right one.
+# There is no pam_faillock here: its tally lives in /run/faillock, which the
+# shell cannot write, so it could never count a guess. The shell slows guessing
+# itself: after three wrong passwords in a row, services/Lock.qml makes each
+# further try wait, 5 s doubling to a 60 s cap. So pam_unix runs nodelay, and a
+# wrong password is answered as fast as a right one.
 #
 # DELIBERATELY NOT `include system-login`. That stack adds pam_shells and
 # pam_nologin, which answer "may this account start a session" - a question that
 # was settled when the session started. A lock screen asks only whether the
 # person in front of it is the same one, and an /etc/nologin dropped by a
 # routine update must never be able to make an already-locked screen unopenable.
-auth        required                    pam_faillock.so     preauth nodelay
-auth        [success=1 default=bad]     pam_unix.so         nullok nodelay
-auth        [default=die]               pam_faillock.so     authfail nodelay
-auth        required                    pam_faillock.so     authsucc nodelay
+auth required pam_unix.so nullok nodelay
