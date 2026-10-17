@@ -12,7 +12,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Tray"],
     "ipc": ["menu", "sidebar"]
   },
   "config": {

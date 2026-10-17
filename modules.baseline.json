@@ -62,6 +62,7 @@
     "R2 modules/launcher/LauncherSearch.qml imports launcher-ai without requiring it",
     "R2 modules/launcher/LauncherSearch.qml imports launcher-devops without requiring it",
     "R2 modules/launcher/LauncherSearch.qml imports launcher-online without requiring it",
+    "R2 modules/launcher/LauncherSearch.qml imports launcher-shell without requiring it",
     "R2 modules/launcher/LauncherSearch.qml imports launcher-system without requiring it",
     "R2 modules/launcher/LauncherSearch.qml imports launcher-tools without requiring it",
     "R2 modules/launcher/LauncherSearch.qml imports settings without requiring it",

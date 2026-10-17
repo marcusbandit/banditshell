@@ -129,6 +129,21 @@ QtObject {
         VpnSource {
             search: root
         },
+        KeysSource {
+            search: root
+        },
+        TraySource {
+            search: root
+        },
+        WorkspaceSource {
+            search: root
+        },
+        ActionsSource {
+            search: root
+        },
+        RecentSource {
+            search: root
+        },
         DevSource {
             search: root
         }

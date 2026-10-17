@@ -44,7 +44,7 @@
     "optional": []
   },
   "provides": {
-    "singletons": [],
+    "singletons": ["Shell"],
     "ipc": [
       "border"
     ]

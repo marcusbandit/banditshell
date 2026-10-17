@@ -19,7 +19,7 @@ package has one `module.json`.
 
 A package named after a folder under `modules/` keeps its manifest in that folder, at
 `modules/<name>/module.json`. Every other package has `packages/<name>.json` at the repo root. The
-name inside the file must match its place. There are 36 packages and the split is 18 and 18.
+name inside the file must match its place. There are 37 packages and the split is 18 and 19.
 
 A manifest has these fields, and the check refuses any other.
 
@@ -99,6 +99,7 @@ launcher's groups in the config.
 | updates | 4 | Update, Pacman, WhatsNew | core, compositor | none | updates, packages |
 | island | 5 | modules/island, Notices, Activities, Levels | core, compositor, notifications, media, apps, clock, audio, display (optional: clipboard, capture, updates, files) | island, inspect, activity | island |
 | launcher-online | 5 | browser, define, github, packages, speedtest, translate and video sources | core, compositor, launcher, files, apps | none | launcher.online |
+| launcher-shell | 5 | keys, tray, workspace, actions and recent documents sources | core, compositor, launcher, launcher-tools, bar, host, clipboard, files | none | launcher.shell |
 | lock | 5 | Lock, modules/lock | core, compositor, media, wallpaper, clock, power, notifications | none | lock |
 | screentime | 5 | Usage, UsageApps, UsageLimits | core, compositor, power | none | usage |
 | session | 5 | modules/session | core, compositor, power | session | session |

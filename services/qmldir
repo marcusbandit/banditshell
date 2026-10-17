@@ -77,11 +77,13 @@ singleton PowerProfile 1.0 PowerProfile.qml
 PrivateFile 1.0 PrivateFile.qml
 singleton Projects 1.0 Projects.qml
 singleton Prompts 1.0 Prompts.qml
+singleton RecentDocuments 1.0 RecentDocuments.qml
 singleton Relaunch 1.0 Relaunch.qml
 singleton ScreenRecorder 1.0 ScreenRecorder.qml
 singleton ScriptCommands 1.0 ScriptCommands.qml
 singleton Settings 1.0 Settings.qml
 singleton Shell 1.0 Shell.qml
+singleton ShellActions 1.0 ShellActions.qml
 singleton SidebarState 1.0 SidebarState.qml
 singleton Snippets 1.0 Snippets.qml
 singleton SpeedTest 1.0 SpeedTest.qml

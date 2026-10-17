@@ -575,6 +575,21 @@ banditshell/
 │   │                            hyprctl eval, so the files keep their own;
 │   │                            apply_layout_binds(name) runs after, when the
 │   │                            config defines one
+│   ├── keybind-search.js        the parsed binds as "which chord does this":
+│   │                            the chord written out, one entry per chord of
+│   │                            a bind, and the words that find it
+│   ├── tray-search.js           asking for the tray, and a tray item found by
+│   │                            name or id
+│   ├── special-workspaces.js    asking for the scratchpad or a special workspace
+│   │                            and what its row says
+│   ├── shell-actions.js         api/actions.tsv as launcher rows: wildcard ids
+│   │                            expanded per panel, ids that only print or would
+│   │                            recurse left out, arguments read from the
+│   │                            description, and the command an id runs
+│   ├── ShellActions.qml         api/actions.tsv and cli/commands.tsv, read once
+│   ├── recent-documents.js      recently-used.xbel read into documents, secret
+│   │                            names dropped, newest first
+│   ├── RecentDocuments.qml      those documents, kept to the ones that still exist
 │   ├── chords.js                hotkey chords as pure functions: same chord,
 │   │                            legacy keyword form, readable form and the
 │   │                            command a launcher hotkey runs; the launcher,
@@ -1145,7 +1160,15 @@ banditshell/
 │   │   │                        the launcher runs any command and completes
 │   │   │                        the next word the way the terminal's Tab does
 │   │   ├── sources/             one file per newer kind of result, plugged into
-│   │   │                        LauncherSearch's `sources` list (section 19)
+│   │   │                        LauncherSearch's `sources` list (section 19).
+│   │   │                        The shell's own state is five of them: `keys
+│   │   │                        <words>` (which chord does it, from the parsed
+│   │   │                        binds), `tray` or an app name (Enter opens the
+│   │   │                        item's menu), `scratchpad` and `special <name>`,
+│   │   │                        `action <words>` (every stable action id) and
+│   │   │                        `recent` (recently-used.xbel, secret names hidden).
+│   │   │                        Each answers below 0.5 for a plain word and
+│   │   │                        has a switch under `launcher.shell`
 │   │   ├── search.js            the pure part of it: paths, links, sections,
 │   │   │                        reading timer, reminder, volume, zone and
 │   │   │                        kill phrases, a time moved between places
@@ -4050,6 +4073,15 @@ The result list is not a binding: `arrangeInputs` lists everything
 turn. Key handlers call `arrangeNow()` first. A source whose groups read a
 property the hub does not already list must still expose it through
 `groups`, which is in `arrangeInputs`.
+
+Five sources read the shell's own state and live in the `launcher-shell` package
+(`packages/launcher-shell.json`), switched under `launcher.shell`: `keys`,
+`tray`, `workspaces`, `actions` and `recent`, each true by default. `ActionsSource`
+turns an action row with a required argument into an `ask` row and arms the ones
+that empty something (clear, remove, cancel) before they run through
+`banditshell action <id>`; ids under `launcher.` and `shell.` are never rows, and
+neither are ids that only print. The hotkey sheet has no open-at call, so Enter
+on a keybind copies the chord and the sheet is a second button.
 
 A hotkey runs a row through a LauncherSearch that the CLI makes and throws
 away at once, so anything that outlives the call (a Process, a timer) belongs
