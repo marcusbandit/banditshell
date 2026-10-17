@@ -465,12 +465,15 @@ Item {
                                 visible: Media.canRaise
                                 radius: artBox.corner
                                 color: Appearance.colour.scrim
-                                opacity: raise.containsMouse ? 1 : 0
+                                opacity: raiseFade.value
 
-                                Behavior on opacity {
-                                    NumberAnimation {
-                                        duration: Appearance.animation.fast
-                                    }
+                                Follow {
+                                    id: raiseFade
+
+                                    target: raise.containsMouse ? 1 : 0
+                                    speed: Appearance.animation.revealSpeed
+                                    epsilon: Appearance.animation.fadeEpsilon
+                                    startsAtTarget: true
                                 }
 
                                 Column {
@@ -732,13 +735,15 @@ Item {
                             width: Math.max(Appearance.sizes.minTarget, lyricsIcon.implicitWidth + Appearance.padding.small * 2)
                             height: width
 
-                            scale: lyricsPress.pressed ? Appearance.press.ring : lyricsPress.containsMouse ? Appearance.press.ringHover : 1
+                            scale: lyricsScale.value
 
-                            Behavior on scale {
-                                NumberAnimation {
-                                    duration: Appearance.animation.fast
-                                    easing.type: Easing.OutCubic
-                                }
+                            Follow {
+                                id: lyricsScale
+
+                                target: lyricsPress.pressed ? Appearance.press.ring : lyricsPress.containsMouse ? Appearance.press.ringHover : 1
+                                speed: Appearance.animation.revealSpeed
+                                epsilon: Appearance.animation.fadeEpsilon
+                                startsAtTarget: true
                             }
 
                             Icon {
@@ -750,7 +755,7 @@ Item {
                                 color: Lyrics.enabled && Lyrics.ready ? Appearance.colour.text : Appearance.colour.textFaint
 
                                 SequentialAnimation on opacity {
-                                    running: Lyrics.loading && root.open
+                                    running: Lyrics.loading && root.open && !Appearance.lessMotion
                                     loops: Animation.Infinite
                                     alwaysRunToEnd: true
 

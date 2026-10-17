@@ -102,13 +102,15 @@ Item {
                 width: button.size
                 height: root.ring
 
-                scale: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                scale: pressScale.value
 
-                Behavior on scale {
-                    NumberAnimation {
-                        duration: Appearance.animation.fast
-                        easing.type: Easing.OutCubic
-                    }
+                Follow {
+                    id: pressScale
+
+                    target: press.pressed ? Appearance.press.ring : press.containsMouse ? Appearance.press.ringHover : 1
+                    speed: Appearance.animation.revealSpeed
+                    epsilon: Appearance.animation.fadeEpsilon
+                    startsAtTarget: true
                 }
 
                 SquircleRect {

@@ -27,13 +27,15 @@ Flow {
             width: Math.max(height, content.implicitWidth + Appearance.padding.normal * 2)
             height: Math.max(Appearance.sizes.minTarget, content.implicitHeight + Appearance.padding.small)
 
-            scale: press.pressed ? Appearance.press.plate : 1
+            scale: pressScale.value
 
-            Behavior on scale {
-                NumberAnimation {
-                    duration: Appearance.animation.fast
-                    easing.type: Easing.OutCubic
-                }
+            Follow {
+                id: pressScale
+
+                target: press.pressed ? Appearance.press.plate : 1
+                speed: Appearance.animation.revealSpeed
+                epsilon: Appearance.animation.fadeEpsilon
+                startsAtTarget: true
             }
 
             SquircleRect {

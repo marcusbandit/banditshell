@@ -37,7 +37,7 @@ Item {
         to: Math.PI * 2
         duration: 1400
         loops: Animation.Infinite
-        running: root.visible && root.playing
+        running: root.visible && root.playing && !Appearance.lessMotion
     }
 
     Repeater {
