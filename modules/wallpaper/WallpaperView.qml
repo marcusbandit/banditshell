@@ -15,7 +15,7 @@ Item {
 
     readonly property string wanted: Wallpaper.shownOn(root.output)
 
-    readonly property var slots: [a, b, c]
+    readonly property var slots: [a, b, c, d, e]
     property int lifted: 0
 
     readonly property Slot front: root.slots.reduce((top, slot) => slot.order > top.order ? slot : top)
@@ -34,7 +34,7 @@ Item {
 
         if (root.front.path === path) {
             if (root.incoming)
-                root.incoming.path = "";
+                root.retire(root.incoming);
             return;
         }
 
@@ -61,15 +61,18 @@ Item {
             root.landed(slot);
     }
 
+    function retire(slot: var): void {
+        slot.order = 0;
+        slot.path = "";
+        slot.sweep.snap();
+    }
+
     function landed(slot: var): void {
         if (slot.order === 0)
             return;
-        for (const other of root.slots) {
-            if (other.order > 0 && other.order < slot.order) {
-                other.order = 0;
-                other.path = "";
-            }
-        }
+        for (const other of root.slots)
+            if (other.order > 0 && other.order < slot.order)
+                root.retire(other);
         root.load();
     }
 
@@ -77,12 +80,9 @@ Item {
         const slot = root.front;
         if (slot.order === 0)
             return;
-        for (const other of root.slots) {
-            if (other !== slot) {
-                other.order = 0;
-                other.path = "";
-            }
-        }
+        for (const other of root.slots)
+            if (other.order > 0 && other !== slot)
+                root.retire(other);
         root.reveal(slot);
     }
 
@@ -135,5 +135,13 @@ Item {
 
     Slot {
         id: c
+    }
+
+    Slot {
+        id: d
+    }
+
+    Slot {
+        id: e
     }
 }

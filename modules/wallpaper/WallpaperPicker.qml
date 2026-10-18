@@ -464,11 +464,9 @@ Item {
                 onTriggered: {
                     if (!root.open || !strip.currentPath)
                         return;
-                    const heading = strip.goal - strip.previewedGoal;
+                    const edge = Wallpaper.edgeTowards(Math.sign(strip.goal - strip.previewedGoal));
                     strip.previewedGoal = strip.goal;
-                    if (heading !== 0)
-                        Wallpaper.setOrigin(root.screen, heading > 0 ? 1 : 0, 0.5);
-                    Wallpaper.setPreview(root.screen, strip.currentPath);
+                    Wallpaper.previewFrom(root.screen, strip.currentPath, edge.x, edge.y);
                 }
             }
 
