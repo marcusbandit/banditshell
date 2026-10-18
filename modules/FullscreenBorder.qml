@@ -144,8 +144,22 @@ PanelWindow {
         layer.enabled: win.tinting
 
         colour: "white"
-        frameColour: "white"
+        frameColour: "transparent"
         sheenColour: "white"
+        content: edge.content
+        gap: edge.gap
+        band: edge.band
+        baseRadius: edge.baseRadius
+    }
+
+    BlobField {
+        anchors.fill: parent
+
+        visible: win.tinting && tint.value > 0
+        opacity: fade.value * win.progress * tint.value
+
+        colour: "transparent"
+        sheenColour: "transparent"
         content: edge.content
         gap: edge.gap
         band: edge.band
@@ -162,6 +176,8 @@ PanelWindow {
         brightness: -0.4
         maskEnabled: true
         maskSource: edgeShape
+        maskThresholdMin: 0.5
+        maskSpreadAtMin: 1
     }
 
     Item {

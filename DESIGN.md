@@ -102,8 +102,8 @@ reservations stay as they were, so the windows underneath do not re-tile on the 
 out. Other monitors are untouched.
 
 The ring takes its colour from the picture (2026-10-18). In the theme's colour it read as a
-bright frame round the black bars of films, so once the melt is done the ring and corners show
-the fullscreen window's own edge: a toplevel capture, refreshed eight times a second, shrunk to
+bright frame round the black bars of films, so once the melt is done the ring shows the
+fullscreen window's own edge, while the frame outside the rounded corners stays black: a toplevel capture, refreshed eight times a second, shrunk to
 a 32-pixel swatch and stretched back, then darkened. Black bars give a black edge that
 disappears; bright content gives a soft darker edge in its own colour, so the rounded screen
 still reads. `edge.fullscreen` (Settings, Shape and motion) turns the ring off for a plain
