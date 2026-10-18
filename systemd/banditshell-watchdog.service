@@ -1,0 +1,11 @@
+[Unit]
+Description=banditshell watchdog: unstick a frozen shell, bring back a lock screen that died
+
+[Service]
+ExecStart=%h/bin/banditshell watchdog
+Restart=always
+RestartSec=5
+KillMode=process
+
+[Install]
+WantedBy=default.target

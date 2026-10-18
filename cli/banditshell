@@ -215,6 +215,14 @@
 #   banditshell doctor binds rewrite
 #                                rewrite them, a dated .bak beside each file
 #
+# unstick|watchdog               a frozen or crashed shell, lock screen included
+#   banditshell unstick          keep a trace of a frozen shell, stop it and
+#                                start it again; a locked session gets its lock
+#                                screen back
+#   banditshell watchdog         check on the shell every 10 seconds and unstick
+#                                it on its own: frozen for 30 seconds, or gone
+#                                while the session is locked
+#
 # action                         run a stable action by its id
 #   banditshell action <id> [args...]
 #                                the names a bind keeps across updates. The id is
@@ -359,6 +367,7 @@ HEALTH_WAIT="${BANDITSHELL_HEALTH_WAIT:-8}"
 HEALTH_SCAN="${BANDITSHELL_HEALTH_SCAN:-3}"
 SURFACES=(launcher session clipboard media calculator quickcontrols keyboard settings notifications island hotkeys files wallpaper)
 HELPERS=(bs-pty bs-ls bs-gamma)
+HANG_DIR="$STATE_DIR/hangs"
 
 if [ -t 1 ] && [ -z "${NO_COLOR:-}" ] && [ "${TERM:-dumb}" != dumb ]; then
     bold=$'\e[1m' dim=$'\e[2m' red=$'\e[31m' green=$'\e[32m' yellow=$'\e[33m' magenta=$'\e[35m' cyan=$'\e[36m' plain=$'\e[0m'
@@ -958,6 +967,119 @@ try_worktree() {
     SHELL_DIR=$(main_dir)
     start_checkout "back on $(branch_of "$SHELL_DIR")"
     exit 1
+}
+
+reach_hyprland() {
+    local instance socket
+    if [ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" ] && [ -d "${XDG_RUNTIME_DIR:-/tmp}/hypr/$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+        [ -n "${WAYLAND_DISPLAY:-}" ] && return 0
+    fi
+    read -r instance socket < <(hyprctl instances 2>/dev/null | awk '
+        /^instance / { sub(/^instance /, ""); sub(/:$/, ""); instance = $0 }
+        /wl socket:/ && instance != "" { print instance, $NF; exit }
+    ') || return 1
+    [ -n "$instance" ] || return 1
+    export HYPRLAND_INSTANCE_SIGNATURE="$instance" WAYLAND_DISPLAY="$socket"
+}
+
+session_locked() {
+    local pid session
+    pid=$(hyprctl instances 2>/dev/null | awk -v sig="$HYPRLAND_INSTANCE_SIGNATURE" '
+        /^instance / { here = index($0, sig) > 0 }
+        here && /pid:/ { print $NF; exit }
+    ')
+    [ -n "$pid" ] && session=$(cat "/proc/$pid/sessionid" 2>/dev/null) || return 1
+    [ "$(loginctl show-session "$session" -p LockedHint --value 2>/dev/null)" = yes ]
+}
+
+frozen_pid() {
+    local pid
+    for pid in $(shell_pids); do
+        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && continue
+        kill -0 "$pid" 2>/dev/null && { echo "$pid"; return 0; }
+    done
+    return 1
+}
+
+shell_answering() {
+    local pid
+    for pid in $(shell_pids); do
+        (cd "$HOME" && timeout 5 qs ipc --pid "$pid" call shell status) >/dev/null 2>&1 && return 0
+    done
+    return 1
+}
+
+dump_frozen() {
+    local pid="$1" file="$2" tries report="" crashes="${XDG_CACHE_HOME:-$HOME/.cache}/quickshell/crashes"
+    {
+        echo "the shell (pid $pid) stopped answering at $(date '+%F %T')"
+        session_locked && echo "the session was locked"
+        echo
+    } >"$file"
+    touch "$file.mark"
+    kill -ABRT "$pid" 2>/dev/null || true
+    for ((tries = 0; tries < 50; tries++)); do
+        report=$(find "$crashes" -mindepth 2 -maxdepth 2 -name report.txt -newer "$file.mark" 2>/dev/null | head -n 1 || true)
+        [ -n "$report" ] && break
+        sleep 0.2
+    done
+    rm -f "$file.mark"
+    if [ -n "$report" ]; then
+        cat "$report" >>"$file"
+    else
+        echo "quickshell wrote no crash report; its last log lines:" >>"$file"
+        (cd "$HOME" && qs log --pid "$pid" --log-times 2>/dev/null) | sed 's/\x1b\[[0-9;]*m//g' |
+            grep -v 'quickshell.io.socket' | tail -n 30 >>"$file"
+    fi
+}
+
+unstick() {
+    local pid live="" file="" tries
+    reach_hyprland || { complain "no Hyprland to bring the shell back into"; return 1; }
+    hyprctl eval 'hl.config({ misc = { allow_session_lock_restore = true } })' >/dev/null 2>&1 || true
+    if pid=$(frozen_pid); then
+        live=$(live_worktree || true)
+        mkdir -p "$HANG_DIR"
+        file="$HANG_DIR/$(date +%F-%H%M%S).txt"
+        dump_frozen "$pid" "$file"
+        echo "the shell had frozen; its trace is in $file"
+        for ((tries = 0; tries < HEALTH_WAIT; tries++)); do
+            shell_answering && break
+            sleep 1
+        done
+    elif running; then
+        echo "the shell answers; nothing to unstick"
+        return 0
+    fi
+    if shell_answering; then
+        echo "${green}back up$plain"
+    else
+        [ -z "$pid" ] || kill -KILL "$pid" 2>/dev/null || true
+        if [ -n "$live" ]; then
+            (try_worktree "$live")
+        else
+            (start_checkout "back up")
+        fi
+    fi
+    if session_locked; then
+        loginctl lock-session >/dev/null 2>&1 || true
+    fi
+}
+
+watchdog() {
+    local strikes=0
+    while sleep 10; do
+        reach_hyprland || { strikes=0; continue; }
+        if frozen_pid >/dev/null; then
+            strikes=$((strikes + 1))
+            [ "$strikes" -ge 3 ] || continue
+        elif running || ! session_locked; then
+            strikes=0
+            continue
+        fi
+        strikes=0
+        unstick || true
+    done
 }
 
 header() { awk 'NR > 1 { if (!/^#/) exit; sub(/^# ?/, ""); print }' "$(readlink -f "${BASH_SOURCE[0]}")"; }
@@ -3474,6 +3596,14 @@ restart)
     fi
     stop_shell || true
     start_checkout "restarted"
+    ;;
+unstick)
+    [ $# -eq 0 ] || nope unstick "$1"
+    unstick
+    ;;
+watchdog)
+    [ $# -eq 0 ] || nope watchdog "$1"
+    watchdog
     ;;
 status)
     [ $# -eq 0 ] || migrate_or_fail status "$@"
