@@ -101,9 +101,13 @@ Bare and a floating stream panel draw no edge at rest, so they draw none here ei
 reservations stay as they were, so the windows underneath do not re-tile on the way in or
 out. Other monitors are untouched.
 
-The edge ring is switched off for now (2026-10-18): it read as a bright frame round the black
-bars of films. A fullscreen window covers the whole monitor until a smarter ring and a setting
-for it land.
+The ring takes its colour from the picture (2026-10-18). In the theme's colour it read as a
+bright frame round the black bars of films, so once the melt is done the ring shows the
+fullscreen window's own edge, while the frame outside the rounded corners stays black: a toplevel capture, refreshed eight times a second, shrunk to
+a 32-pixel swatch and stretched back, then darkened. Black bars give a black edge that
+disappears; bright content gives a soft darker edge in its own colour, so the rounded screen
+still reads. `edge.fullscreen` (Settings, Shape and motion) turns the ring off for a plain
+fullscreen.
 
 The launcher is the one exception (2026-10-17). Summoned over a fullscreen window, it opens on
 the overlay surface that draws the edge ring, as one solid panel rising out of the ring with no

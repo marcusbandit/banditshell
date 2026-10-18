@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Effects
 import Quickshell
 import Quickshell.Wayland
 import qs.config
@@ -11,6 +12,8 @@ PanelWindow {
     required property Chassis chassis
 
     property bool covering: false
+    property var window: null
+    property var held: null
 
     property bool hosting: false
     property bool taking: false
@@ -29,8 +32,12 @@ PanelWindow {
         return rest + (edge - rest) * win.progress;
     }
 
+    readonly property bool tinting: !win.chassis.bare && (win.covering || win.yielded) && win.held !== null
+
     onCoveringChanged: if (win.covering)
         fade.value = 1
+    onWindowChanged: if (win.window)
+        win.held = win.window
 
     visible: win.hosting || !win.chassis.bare && (win.covering || win.yielded || fade.value > 0)
 
@@ -71,11 +78,55 @@ PanelWindow {
         longestFrame: 0.05
     }
 
+    Follow {
+        id: tint
+
+        target: win.tinting && picture.hasContent ? 1 : 0
+        speed: Appearance.animation.revealSpeed
+        epsilon: 0.01
+        longestFrame: 0.05
+    }
+
+    ScreencopyView {
+        id: picture
+
+        anchors.fill: parent
+        captureSource: win.tinting ? win.held?.wayland ?? null : null
+        paintCursor: false
+        visible: false
+    }
+
+    Timer {
+        interval: 125
+        repeat: true
+        running: picture.captureSource !== null && win.covering
+        onTriggered: picture.captureFrame()
+    }
+
+    Item {
+        id: swatch
+
+        width: 32
+        height: Math.max(1, Math.round(32 * win.height / Math.max(1, win.width)))
+        visible: false
+        layer.enabled: win.tinting
+        layer.smooth: true
+
+        ShaderEffectSource {
+            anchors.fill: parent
+            sourceItem: win.tinting ? picture : null
+            mipmap: true
+            smooth: true
+        }
+    }
+
     BlobField {
+        id: edge
+
         anchors.fill: parent
 
         visible: !win.chassis.bare
-        opacity: fade.value
+        opacity: fade.value * (1 - win.progress * tint.value)
 
         colour: Appearance.blend(Appearance.colour.surface, Appearance.colour.surfaceSolid, win.progress)
 
@@ -83,6 +134,50 @@ PanelWindow {
         gap: win.toward(win.chassis.gap, win.reach - win.ring)
         band: win.toward(Appearance.sizes.band, win.ring)
         baseRadius: Qt.vector4d(win.toward(win.chassis.corners.x, win.corner), win.toward(win.chassis.corners.y, win.corner), win.toward(win.chassis.corners.z, win.corner), win.toward(win.chassis.corners.w, win.corner))
+    }
+
+    BlobField {
+        id: edgeShape
+
+        anchors.fill: parent
+        visible: false
+        layer.enabled: win.tinting
+
+        colour: "white"
+        frameColour: "transparent"
+        sheenColour: "white"
+        content: edge.content
+        gap: edge.gap
+        band: edge.band
+        baseRadius: edge.baseRadius
+    }
+
+    BlobField {
+        anchors.fill: parent
+
+        visible: win.tinting && tint.value > 0
+        opacity: fade.value * win.progress * tint.value
+
+        colour: "transparent"
+        sheenColour: "transparent"
+        content: edge.content
+        gap: edge.gap
+        band: edge.band
+        baseRadius: edge.baseRadius
+    }
+
+    MultiEffect {
+        anchors.fill: parent
+
+        visible: win.tinting && tint.value > 0
+        opacity: fade.value * win.progress * tint.value
+
+        source: swatch
+        brightness: -0.4
+        maskEnabled: true
+        maskSource: edgeShape
+        maskThresholdMin: 0.5
+        maskSpreadAtMin: 1
     }
 
     Item {
