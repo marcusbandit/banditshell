@@ -101,6 +101,10 @@ Bare and a floating stream panel draw no edge at rest, so they draw none here ei
 reservations stay as they were, so the windows underneath do not re-tile on the way in or
 out. Other monitors are untouched.
 
+The edge ring is switched off for now (2026-10-18): it read as a bright frame round the black
+bars of films. A fullscreen window covers the whole monitor until a smarter ring and a setting
+for it land.
+
 The launcher is the one exception (2026-10-17). Summoned over a fullscreen window, it opens on
 the overlay surface that draws the edge ring, as one solid panel rising out of the ring with no
 band or sidebar behind it. It takes the keyboard while it is open and closes back to the plain

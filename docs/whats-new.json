@@ -27,6 +27,17 @@
       ]
     },
     {
+      "id": "2026-10-18-7",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "ui",
+          "severity": "minor",
+          "text": "A fullscreen window covers the whole screen again, with no line round its edge. The bright edge stood out against the black bars of films and series; a smarter edge and a setting to switch it are on the way."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-6",
       "date": "2026-10-18",
       "changes": [

@@ -370,7 +370,6 @@ PanelWindow {
 
         screen: win.screen
         chassis: chassis
-        covering: win.underFullscreen
         hosting: win.launcherAbove
         taking: win.launcherAbove && launcherLayer.open
         hostedBlobs: body.lowered(launcherLayer.blobs)
