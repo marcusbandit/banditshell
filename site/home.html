@@ -1,0 +1,111 @@
+<section class="hero">
+<div class="hero-text">
+<h1><img class="wordmark" src="/wordmark-word.svg" width="800" height="150" alt="banditshell"></h1>
+<p class="lead">A desktop shell for Hyprland. Nothing sits on screen while you work. The rest comes out of the frame when you reach for it, and goes back where it came from.</p>
+<p class="actions"><a class="button primary" href="#install">Install</a><a class="button" href="/roadmap/">Read the roadmap</a></p>
+</div>
+<div class="stage">
+<div class="desk" data-desk>
+<canvas aria-hidden="true"></canvas>
+<span class="handle" data-handle="island" aria-hidden="true"></span>
+<span class="handle" data-handle="launcher" aria-hidden="true"></span>
+<span class="handle" data-handle="calendar" aria-hidden="true"></span>
+<div class="rail" aria-hidden="true">
+<span class="plate on"></span><span class="plate"></span><span class="plate"></span>
+<span class="clock" data-clock data-home="calendar"><span data-hours>00</span><span data-minutes>00</span><span class="date" data-date></span></span>
+</div>
+<section class="surface island" data-surface="island" aria-label="Island">
+<a class="note" href="/roadmap/">
+<span class="note-icon" aria-hidden="true"></span>
+<span class="note-text"><span class="note-app">banditshell</span><strong>The roadmap is up</strong><span>Where the shell is going, and what is being built now.</span></span>
+</a>
+</section>
+<section class="surface launcher" data-surface="launcher" aria-label="Launcher">
+<label class="field"><span class="sr-only">Search this site, or type a sum</span><input type="text" placeholder="Search, or try 12*7+3" autocomplete="off" spellcheck="false"></label>
+<div class="results" data-results></div>
+<script type="application/json" data-entries>{{entries}}</script>
+</section>
+<section class="surface calendar" data-surface="calendar" aria-label="Calendar" data-calendar>
+<p class="calendar-day" data-day></p>
+<p class="calendar-month" data-month></p>
+<div class="calendar-grid" aria-hidden="true"><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span><span>S</span></div>
+<div class="calendar-grid" data-days></div>
+</section>
+<picture class="recording">
+<source media="(prefers-reduced-motion: reduce)" srcset="/images/hero-still.webp">
+<img src="/hero.webp" width="1280" height="720" loading="lazy" decoding="async" alt="The real shell at rest, then the island, the launcher and a panel coming out of the frame and going back">
+</picture>
+</div>
+<div class="keys">
+<button type="button" data-summon="island"><kbd>I</kbd>Island</button>
+<button type="button" data-summon="launcher"><kbd>L</kbd>Launcher</button>
+<button type="button" data-summon="calendar"><kbd>C</kbd>Calendar</button>
+<button type="button" class="watch" data-watch aria-pressed="false">Watch the real one</button>
+</div>
+<p class="hint">Try it here. Press a key, click a button, or pull from an edge of the screen above. Esc puts everything away.</p>
+</div>
+</section>
+
+<section id="features" class="band">
+<h2>What's in it</h2>
+<div class="tour" data-tour>
+<article class="on">
+<button type="button" class="tour-pick" aria-pressed="true"><span class="tour-title">The island</span><span>Notifications, the song that just changed, a finished download. The newest takes the spot at the top of the screen and the rest wait beside it. Push them back up to put them away.</span></button>
+<img src="/images/island.webp" width="800" height="500" alt="A mail notification in the island at the top of the screen">
+</article>
+<article>
+<button type="button" class="tour-pick" aria-pressed="false"><span class="tour-title">The launcher</span><span>It answers as you type. Sums, units, dates and colours go through qalc, and it finds open windows, emoji, your scripts, Wi-Fi networks and SSH hosts.</span></button>
+<img src="/images/launcher.webp" width="1120" height="700" alt="The launcher answering 12*7+3 with 87">
+</article>
+<article>
+<button type="button" class="tour-pick" aria-pressed="false"><span class="tour-title">The sidebar</span><span>The clock pulls out into a calendar. Quick controls, notifications, a clipboard history and a media card with word-timed lyrics are one pull or one key away.</span></button>
+<img src="/images/calendar.webp" width="880" height="550" alt="The calendar pulled out of the clock in the sidebar">
+</article>
+<article>
+<button type="button" class="tour-pick" aria-pressed="false"><span class="tour-title">The session menu</span><span>Power off, restart, log out and lock sit on the right edge. On the lock screen the power buttons need a hold, so a stray click never ends your session.</span></button>
+<img src="/images/session.webp" width="880" height="550" alt="The session menu on the right edge of the screen">
+</article>
+</div>
+<ul class="more">
+<li><strong>Settings for the whole machine</strong> Ten categories that grow out of the sidebar and drive the real thing: Wi-Fi, Bluetooth, monitors, sound, power and the night light.</li>
+<li><strong>Bare mode</strong> One switch turns all of the chrome off. A wallpaper picker sits next to it.</li>
+<li><strong>Streamer mode</strong> An OBS deck for when you are live.</li>
+<li><strong>A memory</strong> Restart the shell and the panels you had open come back, Settings on the page you left it.</li>
+<li><strong>Updates from the inside</strong> The update menu fetches the new version and a What's new card says what changed in plain words.</li>
+</ul>
+</section>
+
+<section id="install" class="band">
+<h2>Install</h2>
+<p class="measure">You need Arch Linux and Hyprland. The installer brings the rest: Quickshell, the Monocraft font, every tool the shell calls and tab completion for zsh and bash. It asks for sudo only when a package needs installing.</p>
+<ol class="commands">
+<li><code>git clone https://github.com/marcusbandit/banditshell.git</code><button type="button" data-copy>Copy</button></li>
+<li><code>cd banditshell</code><button type="button" data-copy>Copy</button></li>
+<li><code>./install.sh</code><button type="button" data-copy>Copy</button></li>
+<li><code>bin/banditshell start</code><button type="button" data-copy>Copy</button></li>
+</ol>
+<p class="measure"><code>./install.sh --dry-run</code> walks every step without installing anything. To bring the shell up with Hyprland, add one line to your config:</p>
+<ol class="commands">
+<li><code>exec-once = ~/bin/banditshell start</code><button type="button" data-copy>Copy</button></li>
+</ol>
+</section>
+
+<section class="band">
+<h2>Drive it from anywhere</h2>
+<p class="measure">Everything the shell does is a command. A keybind, a script and a terminal all drive it the same way, and Tab completes every word.</p>
+<pre class="terminal"><code><span class="prompt">$</span> banditshell panel launcher toggle
+<span class="prompt">$</span> banditshell wallpaper next
+<span class="prompt">$</span> banditshell clock timer start 10m
+<span class="prompt">$</span> banditshell screen border off
+<span class="prompt">$</span> banditshell doctor</code></pre>
+</section>
+
+<section class="band ahead">
+<h2>Where it is going</h2>
+<p class="measure">{{vision}}</p>
+<p class="measure dim">Being built right now:</p>
+<div class="stack">
+{{now}}
+</div>
+<p class="actions"><a class="button primary" href="/roadmap/">Read the roadmap</a></p>
+</section>

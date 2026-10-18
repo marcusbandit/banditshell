@@ -1,6 +1,17 @@
 {
   "entries": [
     {
+      "id": "2026-10-18-3",
+      "date": "2026-10-18",
+      "changes": [
+        {
+          "type": "features",
+          "severity": "minor",
+          "text": "banditshell has a website at banditshell.marcusrosado.com: what the shell does, how to install it, and the roadmap of where it is going. Nothing in the shell itself changed."
+        }
+      ]
+    },
+    {
       "id": "2026-10-18-4",
       "date": "2026-10-18",
       "changes": [
